@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RentAll.Api", "RentAll.Api\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RentAll.Domain", "RentAll.Domain\RentAll.Domain.csproj", "{568DF429-2215-451F-9D5F-3BFD4A091FDA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RentAll.Infrastructure", "RentalAll.Infrastructure\RentAll.Infrastructure.csproj", "{1B7C7C84-7FD0-4896-9B78-1ADCA3D799F3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RentAll.Infrastructure", "RentAll.Infrastructure\RentAll.Infrastructure.csproj", "{1B7C7C84-7FD0-4896-9B78-1ADCA3D799F3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
