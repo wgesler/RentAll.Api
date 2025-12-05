@@ -62,4 +62,3 @@ namespace RentAll.Infrastructure.Repositories.Rentals
         }
     }
 }
-

@@ -39,4 +39,3 @@ public class CompanyResponseDto
         ModifiedBy = company.ModifiedBy;
     }
 }
-

@@ -27,6 +27,3 @@ public class UserResponseDto
 		ModifiedOn = user.ModifiedOn;
     }
 }
-
-
-

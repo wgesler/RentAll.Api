@@ -46,4 +46,3 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
     }
 }
-

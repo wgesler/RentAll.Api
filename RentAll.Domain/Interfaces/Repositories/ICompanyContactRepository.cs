@@ -17,6 +17,3 @@ public interface ICompanyContactRepository
 	// Deletes
 	Task DeleteByIdAsync(Guid contactId);
 }
-
-
-

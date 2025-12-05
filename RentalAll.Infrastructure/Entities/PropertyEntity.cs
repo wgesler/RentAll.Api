@@ -31,4 +31,3 @@ public class PropertyEntity
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-

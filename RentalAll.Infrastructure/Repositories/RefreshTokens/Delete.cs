@@ -22,6 +22,3 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		}
 	}
 }
-
-
-

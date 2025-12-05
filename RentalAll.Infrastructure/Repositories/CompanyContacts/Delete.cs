@@ -16,6 +16,3 @@ namespace RentAll.Infrastructure.Repositories.CompanyContacts
 		}
 	}
 }
-
-
-

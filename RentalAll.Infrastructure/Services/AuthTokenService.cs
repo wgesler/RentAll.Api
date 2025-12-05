@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RentAll.Domain.Interfaces.Auth;
@@ -28,11 +29,29 @@ public class AuthTokenService : IAuthTokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // Generate session GUID for sub claim
+        var sessionGuid = Guid.NewGuid().ToString();
+
+        // Create user object with GUID and userGroups (roles)
+        // userGroups is an array, even if there's only one role
+        var userGroups = string.IsNullOrEmpty(user.Role) 
+            ? new List<string>() 
+            : new List<string> { user.Role };
+
+        var userObject = new
+        {
+            userGuid = user.UserId.ToString(),
+            userGroups = userGroups
+        };
+
+        // Serialize and base64 encode the user object
+        var userJson = JsonSerializer.Serialize(userObject);
+        var userBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(userJson));
+
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Email, user.Email)
+            new Claim("sub", sessionGuid),
+            new Claim("user", userBase64)
         };
 
         var token = new JwtSecurityToken(
@@ -46,5 +65,3 @@ public class AuthTokenService : IAuthTokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
-
-

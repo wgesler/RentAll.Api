@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Properties;
 
 namespace RentAll.Api.Controllers
@@ -47,4 +47,3 @@ namespace RentAll.Api.Controllers
         }
     }
 }
-

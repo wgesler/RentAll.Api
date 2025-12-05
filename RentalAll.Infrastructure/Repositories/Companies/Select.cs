@@ -47,6 +47,3 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		}
 	}
 }
-
-
-

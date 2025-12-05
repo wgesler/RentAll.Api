@@ -35,4 +35,3 @@ public class ContactResponseDto
         Email = contact.Email;
     }
 }
-

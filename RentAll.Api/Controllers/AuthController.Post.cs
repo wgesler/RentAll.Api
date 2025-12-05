@@ -56,4 +56,3 @@ public partial class AuthController
         return Ok(response);
     }
 }
-

@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Properties;
+﻿using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Api.Dtos.Properties;
 
@@ -95,4 +95,3 @@ public class UpdatePropertyDto
         };
     }
 }
-

@@ -1,4 +1,4 @@
-using System.Data.SqlClient;
+﻿using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models.Rentals;
 using RentAll.Infrastructure.Configuration;
@@ -28,4 +28,3 @@ namespace RentAll.Infrastructure.Repositories.Rentals
         }
     }
 }
-

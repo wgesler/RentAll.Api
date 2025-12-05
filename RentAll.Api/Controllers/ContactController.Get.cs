@@ -53,4 +53,3 @@ namespace RentAll.Api.Controllers
         }
     }
 }
-

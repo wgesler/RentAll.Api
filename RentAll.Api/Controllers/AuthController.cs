@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Managers;
 
@@ -32,4 +32,3 @@ public partial class AuthController : ControllerBase
         return expirationMinutes * 60; // Convert minutes to seconds
     }
 }
-

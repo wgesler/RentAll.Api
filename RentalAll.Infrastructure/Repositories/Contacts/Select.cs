@@ -64,4 +64,3 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         }
     }
 }
-
