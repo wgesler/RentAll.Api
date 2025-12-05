@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RentAll.Domain.Interfaces.Auth;
-using RentAll.Domain.Models;
+using RentAll.Domain.Models.Users;
 
 namespace RentAll.Infrastructure.Services;
 

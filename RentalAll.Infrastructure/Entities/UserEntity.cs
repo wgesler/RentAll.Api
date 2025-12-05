@@ -10,8 +10,10 @@ public class UserEntity
 	public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public int IsActive { get; set; } = 1;
-	public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
 }
 
 

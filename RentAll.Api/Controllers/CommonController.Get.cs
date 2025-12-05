@@ -10,8 +10,7 @@ namespace RentAll.Api.Controllers
 		/// Get daily quote
 		/// </summary>        
 		/// <returns>Daily Quote</returns>
-		[AcceptVerbs(new[] { "GET" })]
-		[Route("daily-quote")]
+		[HttpGet("daily-quote")]
 		public async Task<DailyQuoteResponse> GetDailyQuote()
 		{
 			DailyQuote quote;

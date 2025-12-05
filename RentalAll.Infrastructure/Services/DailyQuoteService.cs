@@ -19,7 +19,7 @@ public class DailyQuoteService : IDailyQuoteService
 
 	public async Task<DailyQuote> GetDailyQuote()
 	{
-		DateOnly currentDate = DateOnly.FromDateTime(DateTime.Now);
+		DateOnly currentDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
 		// Only hit this api once a day as it's the free version
 		if (_dailyQuoteDate == currentDate)
@@ -51,7 +51,7 @@ public class DailyQuoteService : IDailyQuoteService
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 		_httpClient.DefaultRequestHeaders.Add("User-Agent", "ReProTool Dev (https://www.4tier.com/)");
 
-		DateOnly currentDate = DateOnly.FromDateTime(DateTime.Now);
+		DateOnly currentDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
 		// Only hit this api once a day as it's the free version
 		if (_dailyQuoteDate == currentDate)

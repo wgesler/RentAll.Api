@@ -2,35 +2,35 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace RentAll.Api.Controllers
 {
-	public partial class ContactController
-	{
-		/// <summary>
-		/// Delete a contact
-		/// </summary>
-		/// <param name="id">Contact ID</param>
-		/// <returns>No content</returns>
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> Delete(Guid id)
-		{
-			if (id == Guid.Empty)
-				return BadRequest(new { message = "Contact ID is required" });
+    public partial class ContactController
+    {
+        /// <summary>
+        /// Delete a contact
+        /// </summary>
+        /// <param name="id">Contact ID</param>
+        /// <returns>No content</returns>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            if (id == Guid.Empty)
+                return BadRequest(new { message = "Contact ID is required" });
 
-			try
-			{
-				// Check if contact exists
-				var contact = await _contactRepository.GetByIdAsync(id);
-				if (contact == null)
-					return NotFound(new { message = "Contact not found" });
+            try
+            {
+                // Check if contact exists
+                var contact = await _contactRepository.GetByIdAsync(id);
+                if (contact == null)
+                    return NotFound(new { message = "Contact not found" });
 
-				await _contactRepository.DeleteByIdAsync(id);
-				return NoContent();
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error deleting contact: {ContactId}", id);
-				return StatusCode(500, new { message = "An error occurred while deleting the contact" });
-			}
-		}
-	}
+                await _contactRepository.DeleteByIdAsync(id);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting contact: {ContactId}", id);
+                return StatusCode(500, new { message = "An error occurred while deleting the contact" });
+            }
+        }
+    }
 }
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models;
+using RentAll.Domain.Models.Users;
 using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Users
@@ -12,7 +12,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 
 		public UserRepository(IOptions<AppSettings> appSettings)
 		{
-			_dbConnectionString = appSettings.Value.DBConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
+			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
 		private User ConvertDtoToModel(UserEntity dto)
@@ -27,8 +27,10 @@ namespace RentAll.Infrastructure.Repositories.Users
 				Email = dto.Email,
 				PasswordHash = dto.PasswordHash,
 				IsActive = dto.IsActive,
-				CreatedAt = dto.CreatedAt,
-				UpdatedAt = dto.UpdatedAt
+				CreatedOn = dto.CreatedOn,
+				CreatedBy = dto.CreatedBy,
+				ModifiedOn = dto.ModifiedOn,
+				ModifiedBy = dto.ModifiedBy
 			};
 
 			return response;

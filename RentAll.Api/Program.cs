@@ -1,24 +1,21 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using RentAll.Api.Configuration;
+using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.HealthChecks;
-<<<<<<< Updated upstream
-using RentAll.Infrastructure.Repositories;
-=======
 using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Properties;
-using RentAll.Infrastructure.Repositories.RefreshTokens;
 using RentAll.Infrastructure.Repositories.Rentals;
->>>>>>> Stashed changes
+using RentAll.Infrastructure.Repositories.RefreshTokens;
 using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Infrastructure.Services;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,7 +37,7 @@ builder.Services.AddScoped<IDatabaseConnectionFactory, DatabaseConnectionFactory
 
 // Configure Health Checks
 builder.Services.AddHealthChecks()
-	.AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "sql", "ready" });
+    .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "sql", "ready" });
 
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -48,55 +45,62 @@ var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException(
 
 builder.Services.AddAuthentication(options =>
 {
-	options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-	options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-	options.TokenValidationParameters = new TokenValidationParameters
-	{
-		ValidateIssuer = true,
-		ValidateAudience = true,
-		ValidateLifetime = true,
-		ValidateIssuerSigningKey = true,
-		ValidIssuer = jwtSettings["Issuer"],
-		ValidAudience = jwtSettings["Audience"],
-		IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
-	};
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+    };
 });
 
 // Register services
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<AuthManager>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
-builder.Services.AddScoped<AuthManager>();
+builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
+builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
+builder.Services.AddScoped<IContactRepository, ContactRepository>();
+builder.Services.AddScoped<IRentalRepository, RentalRepository>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>
 {
-	c.SwaggerDoc("v1", new OpenApiInfo { Title = "RentAll API", Version = "v1" });
-	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-	{
-		Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
-		Name = "Authorization",
-		In = ParameterLocation.Header,
-		Type = SecuritySchemeType.ApiKey,
-		Scheme = "Bearer"
-	});
-	c.AddSecurityRequirement(new OpenApiSecurityRequirement
-	{
-		{
-			new OpenApiSecurityScheme
-			{
-				Reference = new OpenApiReference
-				{
-					Type = ReferenceType.SecurityScheme,
-					Id = "Bearer"
-				}
-			},
-			Array.Empty<string>()
-		}
-	});
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "RentAll API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 var app = builder.Build();
@@ -108,19 +112,19 @@ app.UseHttpsRedirection();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-	c.SwaggerEndpoint("/swagger/v1/swagger.json", "RentAll API v1");
-	c.DisplayRequestDuration();
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "RentAll API v1");
+    c.DisplayRequestDuration();
 });
 
 // Map Health Check endpoints
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-	Predicate = check => check.Tags.Contains("ready")
+    Predicate = check => check.Tags.Contains("ready")
 });
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-	Predicate = _ => false
+    Predicate = _ => false
 });
 
 app.UseAuthentication();

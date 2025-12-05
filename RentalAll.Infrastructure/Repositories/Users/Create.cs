@@ -1,6 +1,6 @@
 ﻿using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models;
+using RentAll.Domain.Models.Users;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 
@@ -17,7 +17,8 @@ namespace RentAll.Infrastructure.Repositories.Users
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				Email = user.Email,
-				PasswordHash = user.PasswordHash
+				PasswordHash = user.PasswordHash,
+				CreatedBy = user.CreatedBy
 			});
 
 			if (res == null || !res.Any())
