@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         private readonly IContactRepository _contactRepository;
         private readonly ILogger<ContactController> _logger;
 
-        protected Guid CurrentUser { get; private set; }
+        protected Guid CurrentUser => GetCurrentUserIdFromJwt();
 
         public ContactController(
             IContactRepository contactRepository,
@@ -19,9 +19,6 @@ namespace RentAll.Api.Controllers
         {
             _contactRepository = contactRepository;
             _logger = logger;
-
-            // Extract user ID from JWT claims on instantiation
-            CurrentUser = GetCurrentUserIdFromJwt();
         }
 
         private Guid GetCurrentUserIdFromJwt()

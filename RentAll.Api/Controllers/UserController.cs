@@ -13,7 +13,7 @@ namespace RentAll.Api.Controllers
         private readonly IPasswordHasher _passwordHasher;
         private readonly ILogger<UserController> _logger;
 
-        protected Guid CurrentUser { get; private set; }
+        protected Guid CurrentUser => GetCurrentUserIdFromJwt();
 
         public UserController(
             IUserRepository userRepository,
@@ -23,9 +23,6 @@ namespace RentAll.Api.Controllers
             _userRepository = userRepository;
             _passwordHasher = passwordHasher;
             _logger = logger;
-
-            // Extract user ID from JWT claims on instantiation
-            CurrentUser = GetCurrentUserIdFromJwt();
         }
 
         private Guid GetCurrentUserIdFromJwt()

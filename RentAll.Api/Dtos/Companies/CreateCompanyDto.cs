@@ -41,22 +41,22 @@ public class CreateCompanyDto
         return (true, null);
     }
 
-    public Company ToModel(Guid currentUser)
+    public Company ToModel(CreateCompanyDto c, Guid currentUser)
     {
         return new Company
         {
-            CompanyCode = CompanyCode,
-            Name = Name,
-            Address1 = Address1,
-            Address2 = Address2,
-            City = City,
-            State = State,
-            Zip = Zip,
-            Phone = Phone,
-            Website = Website,
-            LogoStorageId = LogoStorageId,
+            CompanyCode = c.CompanyCode,
+            Name = c.Name,
+            Address1 = c.Address1,
+            Address2 = c.Address2,
+            City = c.City,
+            State = c.State,
+            Zip = c.Zip,
+            Phone = c.Phone,
+            Website = c.Website,
+            LogoStorageId = c.LogoStorageId,
             IsActive = 1,
             CreatedBy = currentUser
-        };
+		};
     }
 }

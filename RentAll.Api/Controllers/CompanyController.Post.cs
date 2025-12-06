@@ -26,7 +26,7 @@ namespace RentAll.Api.Controllers
                 if (await _companyRepository.ExistsByCompanyCodeAsync(dto.CompanyCode))
                     return Conflict(new { message = "Company Code already exists" });
 
-                var company = dto.ToModel(CurrentUser);
+                var company = dto.ToModel(dto, CurrentUser);
                 var createdCompany = await _companyRepository.CreateAsync(company);
                 return CreatedAtAction(nameof(GetById), new { id = createdCompany.CompanyId }, new CompanyResponseDto(createdCompany));
             }

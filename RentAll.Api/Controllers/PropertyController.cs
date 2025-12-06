@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         private readonly IPropertyRepository _propertyRepository;
         private readonly ILogger<PropertyController> _logger;
 
-        protected Guid CurrentUser { get; private set; }
+        protected Guid CurrentUser => GetCurrentUserIdFromJwt();
 
         public PropertyController(
             IPropertyRepository propertyRepository,
@@ -19,9 +19,6 @@ namespace RentAll.Api.Controllers
         {
             _propertyRepository = propertyRepository;
             _logger = logger;
-
-            // Extract user ID from JWT claims on instantiation
-            CurrentUser = GetCurrentUserIdFromJwt();
         }
 
         private Guid GetCurrentUserIdFromJwt()

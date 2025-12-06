@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Linq;
+using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Common;
 using RentAll.Domain.Models.Common;
 
@@ -20,7 +22,7 @@ namespace RentAll.Api.Controllers
 					quote = await _dailyQuoteService.GetDailyDadJoke();
 				else
 					quote = await _dailyQuoteService.GetDailyQuote();
-				return new DailyQuoteResponse(quote);
+				return Ok(new DailyQuoteResponse(quote));
 			}
 			catch (Exception ex)
 			{
