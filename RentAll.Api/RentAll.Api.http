@@ -1,6 +1,6 @@
 @RentalAllApi_HostAddress = http://localhost:5252
 
-GET {{RentalAllApi_HostAddress}}/weatherforecast/
+GET {{RentAllApi_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###

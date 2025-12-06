@@ -22,6 +22,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Zip = company.Zip,
 				Phone = company.Phone,
 				Website = company.Website,
+				LogoStorageId = company.LogoStorageId,
 				CreatedBy = company.CreatedBy
 			});
 

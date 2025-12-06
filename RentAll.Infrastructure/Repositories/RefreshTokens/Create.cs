@@ -13,7 +13,6 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			await using var db = new SqlConnection(_dbConnectionString);
 			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("dbo.RefreshToken_Add", new
 			{
-				RefreshTokenId = refreshToken.RefreshTokenId,
 				UserId = refreshToken.UserId,
 				TokenHash = refreshToken.TokenHash,
 				ExpiresOn = refreshToken.ExpiresOn

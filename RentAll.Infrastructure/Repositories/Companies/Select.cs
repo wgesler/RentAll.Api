@@ -36,14 +36,12 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		public async Task<bool> ExistsByCompanyCodeAsync(string companyCode)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetByCompanyCode", new
+			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Company_ExistsByCode", new
 			{
 				CompanyCode = companyCode
 			});
 
-			if (res == null || !res.Any())
-				return false;
-			return true;
+			return result == 1;
 		}
 	}
 }

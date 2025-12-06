@@ -87,7 +87,6 @@ public class AuthManager
 
         var storedToken = new RefreshToken
         {
-            RefreshTokenId = Guid.NewGuid(),
             UserId = userId,
             TokenHash = tokenHash,
             ExpiresOn = DateTimeOffset.UtcNow.AddDays(7), // 7 days expiration
@@ -144,6 +143,24 @@ public class AuthManager
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
+    }
+
+    public async Task<bool> LogoutAsync(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return false;
+
+        // Hash the provided refresh token to look it up
+        var tokenHash = HashRefreshToken(refreshToken);
+        
+        // Look up the refresh token
+        var storedToken = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash);
+        if (storedToken == null)
+            return false; // Token not found, but we'll return success to avoid information leakage
+
+        // Delete the refresh token
+        await _refreshTokenRepository.DeleteByIdAsync(storedToken.RefreshTokenId);
+        return true;
     }
 
     private static string HashRefreshToken(string token)

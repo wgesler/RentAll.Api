@@ -55,4 +55,18 @@ public partial class AuthController
         var response = new AuthResponseDto(accessToken, refreshToken, expiresIn);
         return Ok(response);
     }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenDto refreshTokenDto)
+    {
+        if (string.IsNullOrWhiteSpace(refreshTokenDto.RefreshToken))
+            return BadRequest(new { message = "Refresh token is required" });
+
+        var success = await _authManager.LogoutAsync(refreshTokenDto.RefreshToken);
+
+        if (!success)
+            return BadRequest(new { message = "Failed to logout" });
+
+        return Ok(new { message = "Logged out successfully" });
+    }
 }

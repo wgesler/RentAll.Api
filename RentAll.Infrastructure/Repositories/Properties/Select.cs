@@ -63,15 +63,13 @@ namespace RentAll.Infrastructure.Repositories.Properties
 
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode)
         {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByPropertyCode", new
-            {
-                PropertyCode = propertyCode
-            });
+			await using var db = new SqlConnection(_dbConnectionString);
+			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Property_ExistsByCode", new
+			{
+				PropertyCode = propertyCode
+			});
 
-            if (res == null || !res.Any())
-                return false;
-            return true;
-        }
+			return result == 1;
+		}
     }
 }

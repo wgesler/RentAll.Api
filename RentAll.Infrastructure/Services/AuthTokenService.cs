@@ -1,8 +1,10 @@
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Models.Users;
@@ -41,8 +43,11 @@ public class AuthTokenService : IAuthTokenService
         var userObject = new
         {
             userGuid = user.UserId.ToString(),
-            userGroups = userGroups
-        };
+			firstName = user.FirstName,
+			lastName = user.LastName,
+            email = user.Email,
+			userGroups = userGroups
+		};
 
         // Serialize and base64 encode the user object
         var userJson = JsonSerializer.Serialize(userObject);

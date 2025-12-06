@@ -14,11 +14,8 @@ public class CompanyResponseDto
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
+    public Guid? LogoStorageId { get; set; }
     public int IsActive { get; set; }
-    public DateTimeOffset CreatedOn { get; set; }
-    public Guid CreatedBy { get; set; }
-    public DateTimeOffset ModifiedOn { get; set; }
-    public Guid ModifiedBy { get; set; }
 
     public CompanyResponseDto(Company company)
     {
@@ -32,10 +29,7 @@ public class CompanyResponseDto
         Zip = company.Zip;
         Phone = company.Phone;
         Website = company.Website;
+        LogoStorageId = company.LogoStorageId;
         IsActive = company.IsActive;
-        CreatedOn = company.CreatedOn;
-        CreatedBy = company.CreatedBy;
-        ModifiedOn = company.ModifiedOn;
-        ModifiedBy = company.ModifiedBy;
     }
 }

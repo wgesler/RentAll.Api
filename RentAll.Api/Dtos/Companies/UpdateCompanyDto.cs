@@ -14,6 +14,7 @@ public class UpdateCompanyDto
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
+    public Guid? LogoStorageId { get; set; }
     public int IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -62,6 +63,7 @@ public class UpdateCompanyDto
             Zip = Zip,
             Phone = Phone,
             Website = Website,
+            LogoStorageId = LogoStorageId,
             IsActive = IsActive,
             CreatedOn = existingCompany.CreatedOn,
             CreatedBy = existingCompany.CreatedBy,

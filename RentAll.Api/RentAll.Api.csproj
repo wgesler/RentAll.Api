@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RentAll.Domain\RentAll.Domain.csproj" />
-    <ProjectReference Include="..\RentalAll.Infrastructure\RentAll.Infrastructure.csproj" />
+    <ProjectReference Include="..\RentAll.Infrastructure\RentAll.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

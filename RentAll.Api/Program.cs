@@ -14,6 +14,7 @@ using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Rentals;
 using RentAll.Infrastructure.Repositories.RefreshTokens;
+using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Infrastructure.Services;
 
@@ -31,6 +32,18 @@ var isDev = environment.ToLower() == "development";
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(allowedHosts)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
 
 // Configure Database Connection
 builder.Services.AddScoped<IDatabaseConnectionFactory, DatabaseConnectionFactory>();
@@ -74,6 +87,7 @@ builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
 builder.Services.AddScoped<IRentalRepository, RentalRepository>();
+builder.Services.AddScoped<ICommonRepository, CommonRepository>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>
@@ -107,6 +121,9 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
+
+// Enable CORS (must be before UseAuthentication and UseAuthorization)
+app.UseCors();
 
 // Enable Swagger in all environments
 app.UseSwagger();

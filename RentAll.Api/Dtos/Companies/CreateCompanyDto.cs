@@ -13,6 +13,7 @@ public class CreateCompanyDto
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
+    public Guid? LogoStorageId { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -53,6 +54,7 @@ public class CreateCompanyDto
             Zip = Zip,
             Phone = Phone,
             Website = Website,
+            LogoStorageId = LogoStorageId,
             IsActive = 1,
             CreatedBy = currentUser
         };

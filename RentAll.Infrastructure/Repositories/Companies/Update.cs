@@ -23,6 +23,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Zip = company.Zip,
 				Phone = company.Phone,
 				Website = company.Website,
+				LogoStorageId = company.LogoStorageId,
 				IsActive = company.IsActive,
 				ModifiedBy = company.ModifiedBy
 			});

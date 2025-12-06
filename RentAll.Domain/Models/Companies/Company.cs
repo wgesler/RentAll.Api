@@ -12,6 +12,7 @@ public class Company
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
+    public Guid? LogoStorageId { get; set; }
     public int IsActive { get; set; } = 1;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

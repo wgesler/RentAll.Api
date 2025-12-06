@@ -29,6 +29,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Zip = dto.Zip,
 				Phone = dto.Phone,
 				Website = dto.Website,
+				LogoStorageId = dto.LogoStorageId,
 				IsActive = dto.IsActive,
 				CreatedOn = dto.CreatedOn,
 				CreatedBy = dto.CreatedBy,
