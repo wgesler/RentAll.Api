@@ -5,6 +5,7 @@ namespace RentAll.Api.Dtos.Companies;
 public class CreateCompanyDto
 {
     public string CompanyCode { get; set; } = string.Empty;
+    public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -46,6 +47,7 @@ public class CreateCompanyDto
         return new Company
         {
             CompanyCode = c.CompanyCode,
+            ContactId = c.ContactId,
             Name = c.Name,
             Address1 = c.Address1,
             Address2 = c.Address2,
@@ -55,7 +57,7 @@ public class CreateCompanyDto
             Phone = c.Phone,
             Website = c.Website,
             LogoStorageId = c.LogoStorageId,
-            IsActive = 1,
+            IsActive = true,
             CreatedBy = currentUser
 		};
     }

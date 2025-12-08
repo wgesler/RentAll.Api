@@ -17,22 +17,18 @@ namespace RentAll.Api.Controllers
                 return BadRequest(new { message = "User data is required" });
 
             var (isValid, errorMessage) = dto.IsValid();
-            if (!isValid)
+            if (!isValid || !IsValidEmail(dto.Email))
                 return BadRequest(new { message = errorMessage });
 
             try
             {
-                // Check if Username already exists
-                if (await _userRepository.ExistsByUsernameAsync(dto.Username))
-                    return Conflict(new { message = "Username already exists" });
-
                 // Check if Email already exists
                 if (await _userRepository.ExistsByEmailAsync(dto.Email))
                     return Conflict(new { message = "Email already exists" });
 
                 // Hash the password
                 var passwordHash = _passwordHasher.HashPassword(dto.Password);
-                var user = dto.ToModel(passwordHash, CurrentUser);
+                var user = dto.ToModel(dto, passwordHash, CurrentUser);
                 var createdUser = await _userRepository.CreateAsync(user);
                 return CreatedAtAction(nameof(GetById), new { id = createdUser.UserId }, new UserResponseDto(createdUser));
             }

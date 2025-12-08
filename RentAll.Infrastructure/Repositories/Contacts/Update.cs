@@ -24,13 +24,15 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 State = contact.State,
                 Zip = contact.Zip,
                 Phone = contact.Phone,
-                Email = contact.Email
+                Email = contact.Email,
+                IsActive = contact.IsActive,
+                ModifiedBy = contact.ModifiedBy
             });
 
             if (res == null || !res.Any())
                 throw new Exception("Contact not found");
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
     }
 }

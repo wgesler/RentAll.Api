@@ -14,6 +14,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_Add", new
 			{
 				CompanyCode = company.CompanyCode,
+				ContactId = company.ContactId,
 				Name = company.Name,
 				Address1 = company.Address1,
 				Address2 = company.Address2,
@@ -29,7 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			if (res == null || !res.Any())
 				throw new Exception("Company not created");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 	}
 }

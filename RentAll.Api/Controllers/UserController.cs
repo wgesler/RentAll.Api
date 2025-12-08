@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Repositories;
@@ -7,13 +7,12 @@ namespace RentAll.Api.Controllers
 {
     [ApiController]
     [Route("user")]
-    public partial class UserController : ControllerBase
+    [Authorize]
+    public partial class UserController : BaseController
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ILogger<UserController> _logger;
-
-        protected Guid CurrentUser => GetCurrentUserIdFromJwt();
 
         public UserController(
             IUserRepository userRepository,
@@ -23,18 +22,6 @@ namespace RentAll.Api.Controllers
             _userRepository = userRepository;
             _passwordHasher = passwordHasher;
             _logger = logger;
-        }
-
-        private Guid GetCurrentUserIdFromJwt()
-        {
-            if (User?.Identity?.IsAuthenticated != true)
-                return Guid.Empty;
-
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Guid.Empty;
-
-            return userId;
         }
     }
 }

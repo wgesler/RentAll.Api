@@ -19,7 +19,7 @@ namespace RentAll.Infrastructure.Repositories.CompanyContacts
 			if (res == null || !res.Any())
 				return null;
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
 		public async Task<IEnumerable<CompanyContact>> GetByCompanyIdAsync(Guid companyId)
@@ -33,7 +33,7 @@ namespace RentAll.Infrastructure.Repositories.CompanyContacts
 			if (res == null || !res.Any())
 				return Enumerable.Empty<CompanyContact>();
 
-			return res.Select(ConvertDtoToModel);
+			return res.Select(ConvertEntityToModel);
 		}
 	}
 }

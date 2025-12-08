@@ -19,13 +19,13 @@ namespace RentAll.Infrastructure.Repositories.Properties
             if (res == null || !res.Any())
                 return null;
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
         public async Task<Property?> GetByPropertyCodeAsync(string propertyCode)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByPropertyCode", new
+            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByCode", new
             {
                 PropertyCode = propertyCode
             });
@@ -33,7 +33,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             if (res == null || !res.Any())
                 return null;
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
         public async Task<IEnumerable<Property>> GetAllAsync()
@@ -44,7 +44,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             if (res == null || !res.Any())
                 return Enumerable.Empty<Property>();
 
-            return res.Select(ConvertDtoToModel);
+            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<IEnumerable<Property>> GetByStateAsync(string state)
@@ -58,7 +58,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             if (res == null || !res.Any())
                 return Enumerable.Empty<Property>();
 
-            return res.Select(ConvertDtoToModel);
+            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode)

@@ -3,14 +3,12 @@ namespace RentAll.Infrastructure.Entities;
 public class UserEntity
 {
     public Guid UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
-    public int IsActive { get; set; } = 1;
-	public string Role { get; set; } = string.Empty;
+	public string UserGroups { get; set; } = string.Empty;
+	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

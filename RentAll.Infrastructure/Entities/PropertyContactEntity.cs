@@ -1,8 +1,8 @@
 namespace RentAll.Infrastructure.Entities;
 
-public class CompanyContactEntity
+public class PropertyContactEntity
 {
-	public Guid CompanyId { get; set; }
+	public Guid PropertyId { get; set; }
 	public Guid ContactId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

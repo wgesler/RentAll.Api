@@ -15,17 +15,17 @@ namespace RentAll.Infrastructure.Repositories.CompanyContacts
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private CompanyContact ConvertDtoToModel(CompanyContactEntity dto)
+		private CompanyContact ConvertEntityToModel(CompanyContactEntity e)
 		{
 			var response = new CompanyContact()
 			{
-				ContactId = dto.ContactId,
-				CompanyId = dto.CompanyId,
-				IsActive = dto.IsActive,
-				CreatedOn = dto.CreatedOn,
-				CreatedBy = dto.CreatedBy,
-				ModifiedOn = dto.ModifiedOn,
-				ModifiedBy = dto.ModifiedBy
+				ContactId = e.ContactId,
+				CompanyId = e.CompanyId,
+				IsActive = e.IsActive,
+				CreatedOn = e.CreatedOn,
+				CreatedBy = e.CreatedBy,
+				ModifiedOn = e.ModifiedOn,
+				ModifiedBy = e.ModifiedBy
 			};
 
 			return response;

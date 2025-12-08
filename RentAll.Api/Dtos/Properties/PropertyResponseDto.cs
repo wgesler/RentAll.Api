@@ -6,7 +6,8 @@ public class PropertyResponseDto
 {
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid Owner { get; set; }
+    public Guid? ContactId { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string Address2 { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
@@ -37,7 +38,8 @@ public class PropertyResponseDto
     {
         PropertyId = property.PropertyId;
         PropertyCode = property.PropertyCode;
-        Owner = property.Owner;
+        ContactId = property.ContactId;
+        Name = property.Name;
         Address1 = property.Address1;
         Address2 = property.Address2;
         City = property.City;

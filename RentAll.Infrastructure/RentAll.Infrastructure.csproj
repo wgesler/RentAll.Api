@@ -21,8 +21,4 @@
     <ProjectReference Include="..\RentAll.Domain\RentAll.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Entities\" />
-  </ItemGroup>
-
 </Project>

@@ -5,7 +5,8 @@ namespace RentAll.Api.Dtos.Properties;
 public class CreatePropertyDto
 {
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid Owner { get; set; }
+    public Guid? ContactId { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string Address2 { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
@@ -24,16 +25,13 @@ public class CreatePropertyDto
     public bool HotTub { get; set; }
     public int ParkingSpaces { get; set; }
     public bool Yard { get; set; }
-    public decimal Amount { get; set; }
-    public int AmountTypeId { get; set; }
-
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (string.IsNullOrWhiteSpace(PropertyCode))
             return (false, "Property Code is required");
 
-        if (Owner == Guid.Empty)
-            return (false, "Owner is required");
+        if (string.IsNullOrWhiteSpace(Name))
+            return (false, "Name is required");
 
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
@@ -53,32 +51,31 @@ public class CreatePropertyDto
         return (true, null);
     }
 
-    public Property ToModel(Guid currentUser)
+    public Property ToModel(CreatePropertyDto p, Guid currentUser)
     {
         return new Property
         {
-            PropertyCode = PropertyCode,
-            Owner = Owner,
-            Address1 = Address1,
-            Address2 = Address2,
-            City = City,
-            State = State,
-            Zip = Zip,
-            Phone = Phone,
-            Bedrooms = Bedrooms,
-            Bathrooms = Bathrooms,
-            SquareFeet = SquareFeet,
-            Gated = Gated,
-            Alarm = Alarm,
-            AlarmCode = AlarmCode,
-            WasherDryer = WasherDryer,
-            Amenities = Amenities,
-            Pool = Pool,
-            HotTub = HotTub,
-            ParkingSpaces = ParkingSpaces,
-            Yard = Yard,
-            Amount = Amount,
-            AmountTypeId = AmountTypeId,
+            PropertyCode = p.PropertyCode,
+            ContactId = p.ContactId,
+            Name = p.Name,
+            Address1 = p.Address1,
+            Address2 = p.Address2,
+            City = p.City,
+            State = p.State,
+            Zip = p.Zip,
+            Phone = p.Phone,
+            Bedrooms = p.Bedrooms,
+            Bathrooms = p.Bathrooms,
+            SquareFeet = p.SquareFeet,
+            Gated = p.Gated,
+            Alarm = p.Alarm,
+            AlarmCode = p.AlarmCode,
+            WasherDryer = p.WasherDryer,
+            Amenities = p.Amenities,
+            Pool = p.Pool,
+            HotTub = p.HotTub,
+            ParkingSpaces = p.ParkingSpaces,
+            Yard = p.Yard,
             IsActive = true,
             CreatedBy = currentUser
         };

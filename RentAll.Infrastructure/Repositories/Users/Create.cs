@@ -1,4 +1,5 @@
 ﻿using System.Data.SqlClient;
+using System.Text.Json;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models.Users;
 using RentAll.Infrastructure.Configuration;
@@ -10,21 +11,25 @@ namespace RentAll.Infrastructure.Repositories.Users
 	{
 		public async Task<User> CreateAsync(User user)
 		{
+			var userGroupsJson = user.UserGroups != null && user.UserGroups.Any()
+				? JsonSerializer.Serialize(user.UserGroups)
+				: "[]";
+
 			await using var db = new SqlConnection(_dbConnectionString);
 			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_Add", new
 			{
-				Username = user.Username,
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				Email = user.Email,
 				PasswordHash = user.PasswordHash,
+				UserGroups = userGroupsJson,
 				CreatedBy = user.CreatedBy
 			});
 
 			if (res == null || !res.Any())
 				throw new Exception("User not found");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 	}
 }

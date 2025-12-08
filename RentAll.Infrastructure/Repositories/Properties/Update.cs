@@ -15,7 +15,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
             {
                 PropertyId = property.PropertyId,
                 PropertyCode = property.PropertyCode,
-                Owner = property.Owner,
+                ContactId = property.ContactId,
+                Name = property.Name,
                 Address1 = property.Address1,
                 Address2 = property.Address2,
                 City = property.City,
@@ -36,13 +37,14 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Yard = property.Yard,
                 Amount = property.Amount,
                 AmountTypeId = property.AmountTypeId,
-                IsActive = property.IsActive
+                IsActive = property.IsActive,
+                ModifiedBy = property.ModifiedBy
             });
 
             if (res == null || !res.Any())
                 throw new Exception("Property not found");
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
     }
 }

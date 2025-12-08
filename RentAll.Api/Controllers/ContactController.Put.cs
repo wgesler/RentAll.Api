@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
                 return BadRequest(new { message = "Contact data is required" });
 
             var (isValid, errorMessage) = dto.IsValid(id);
-            if (!isValid)
+            if (!isValid || !IsValidEmail(dto.Email))
                 return BadRequest(new { message = errorMessage });
 
             try
@@ -35,7 +35,7 @@ namespace RentAll.Api.Controllers
                         return Conflict(new { message = "Contact Code already exists" });
                 }
 
-                var contact = dto.ToModel(existingContact);
+                var contact = dto.ToModel(dto, CurrentUser);
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 return Ok(new ContactResponseDto(updatedContact));
             }

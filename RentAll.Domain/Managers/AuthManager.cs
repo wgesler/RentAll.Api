@@ -26,19 +26,15 @@ public class AuthManager
         _tokenService = tokenService;
     }
 
-    public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken)> LoginAsync(string username, string password)
+    public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken)> LoginAsync(string email, string password)
     {
-        var user = await _userRepository.GetByUsernameAsync(username);
+        var user = await _userRepository.GetByEmailAsync(email);
         
         if (user == null)
-        {
             return (false, null, null, null);
-        }
 
         if (!_passwordHasher.VerifyPassword(password, user.PasswordHash))
-        {
             return (false, null, null, null);
-        }
 
         var accessToken = _tokenService.GenerateToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.UserId);
@@ -46,31 +42,20 @@ public class AuthManager
         return (true, user, accessToken, refreshToken);
     }
 
-    public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken, string? ErrorMessage)> RegisterAsync(string username, string firstName, string lastName, string email, string password)
+    public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken, string? ErrorMessage)> RegisterAsync(string firstName, string lastName, string email, string password)
     {
-        if (await _userRepository.ExistsByUsernameAsync(username))
-        {
-            return (false, null, null, null, "Username already exists");
-        }
-
         if (await _userRepository.ExistsByEmailAsync(email))
-        {
             return (false, null, null, null, "Email already exists");
-        }
 
         var passwordHash = _passwordHasher.HashPassword(password);
-        var fullName = $"{firstName} {lastName}".Trim();
         var user = new User
         {
-            Username = username,
             FirstName = firstName,
             LastName = lastName,
-            FullName = fullName,
             Email = email,
             PasswordHash = passwordHash,
-            IsActive = 1,
+            IsActive = true,
             CreatedBy = Guid.Empty
-            // CreatedOn, ModifiedOn, ModifiedBy are set by database defaults
         };
 
         var createdUser = await _userRepository.CreateAsync(user);

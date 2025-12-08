@@ -13,7 +13,6 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_Add", new
             {
-                ContactId = contact.ContactId,
                 ContactCode = contact.ContactCode,
                 ContactTypeId = contact.ContactTypeId,
                 FirstName = contact.FirstName,
@@ -24,13 +23,14 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 State = contact.State,
                 Zip = contact.Zip,
                 Phone = contact.Phone,
-                Email = contact.Email
+                Email = contact.Email,
+                CreatedBy = contact.CreatedBy
             });
 
             if (res == null || !res.Any())
                 throw new Exception("Contact not created");
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
     }
 }

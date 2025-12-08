@@ -15,23 +15,27 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
         }
 
-        private Contact ConvertDtoToModel(ContactEntity dto)
+        private Contact ConvertEntityToModel(ContactEntity e)
         {
             var response = new Contact()
             {
-                ContactId = dto.ContactId,
-                ContactCode = dto.ContactCode,
-                ContactTypeId = dto.ContactTypeId,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName,
-                FullName = dto.FullName,
-                Address1 = dto.Address1,
-                Address2 = dto.Address2,
-                City = dto.City,
-                State = dto.State,
-                Zip = dto.Zip,
-                Phone = dto.Phone,
-                Email = dto.Email
+                ContactId = e.ContactId,
+                ContactCode = e.ContactCode,
+                ContactTypeId = e.ContactTypeId,
+                FirstName = e.FirstName,
+                LastName = e.LastName,
+                Address1 = e.Address1,
+                Address2 = e.Address2,
+                City = e.City,
+                State = e.State,
+                Zip = e.Zip,
+                Phone = e.Phone,
+                Email = e.Email,
+                IsActive = e.IsActive,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy,
+                ModifiedOn = e.ModifiedOn,
+                ModifiedBy = e.ModifiedBy
             };
 
             return response;

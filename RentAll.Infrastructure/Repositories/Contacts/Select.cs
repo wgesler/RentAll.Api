@@ -19,13 +19,13 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             if (res == null || !res.Any())
                 return null;
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
         public async Task<Contact?> GetByContactCodeAsync(string contactCode)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetByContactCode", new
+            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetByCode", new
             {
                 ContactCode = contactCode
             });
@@ -33,7 +33,18 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             if (res == null || !res.Any())
                 return null;
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
+        public async Task<IEnumerable<Contact>> GetAllAsync()
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetAll", null);
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Contact>();
+
+            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<IEnumerable<Contact>> GetByContactTypeIdAsync(int contactTypeId)
@@ -47,20 +58,18 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             if (res == null || !res.Any())
                 return Enumerable.Empty<Contact>();
 
-            return res.Select(ConvertDtoToModel);
+            return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<bool> ExistsByContactCodeAsync(string contactCode)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetByContactCode", new
-            {
-                ContactCode = contactCode
-            });
+		public async Task<bool> ExistsByContactCodeAsync(string contactCode)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Contact_ExistsByCode", new
+			{
+				ContactCode = contactCode
+			});
 
-            if (res == null || !res.Any())
-                return false;
-            return true;
-        }
-    }
+			return result == 1;
+		}
+	}
 }

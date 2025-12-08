@@ -15,15 +15,15 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private RefreshToken ConvertDtoToModel(RefreshTokenEntity dto)
+		private RefreshToken ConvertEntityToModel(RefreshTokenEntity e)
 		{
 			var response = new RefreshToken()
 			{
-				RefreshTokenId = dto.RefreshTokenId,
-				UserId = dto.UserId,
-				TokenHash = dto.TokenHash,
-				ExpiresOn = dto.ExpiresOn,
-				CreatedOn = dto.CreatedOn
+				RefreshTokenId = e.RefreshTokenId,
+				UserId = e.UserId,
+				TokenHash = e.TokenHash,
+				ExpiresOn = e.ExpiresOn,
+				CreatedOn = e.CreatedOn
 			};
 
 			return response;

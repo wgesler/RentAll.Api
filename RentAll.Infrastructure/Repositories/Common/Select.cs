@@ -16,7 +16,7 @@ namespace RentAll.Infrastructure.Repositories.Common
 			if (res == null || !res.Any())
 				return Enumerable.Empty<State>();
 
-			return res.Select(ConvertDtoToModel);
+			return res.Select(ConvertEntityToModel);
 		}
 	}
 }

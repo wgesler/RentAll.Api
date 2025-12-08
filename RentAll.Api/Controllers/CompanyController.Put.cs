@@ -35,7 +35,7 @@ namespace RentAll.Api.Controllers
                         return Conflict(new { message = "Company Code already exists" });
                 }
 
-                var company = dto.ToModel(existingCompany, CurrentUser);
+                var company = dto.ToModel(dto, CurrentUser);
                 var updatedCompany = await _companyRepository.UpdateByIdAsync(company);
                 return Ok(new CompanyResponseDto(updatedCompany));
             }

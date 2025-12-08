@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
@@ -15,23 +16,34 @@ namespace RentAll.Infrastructure.Repositories.Users
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private User ConvertDtoToModel(UserEntity dto)
+		private User ConvertEntityToModel(UserEntity e)
 		{
+			List<string> userGroups = new List<string>();
+			if (!string.IsNullOrWhiteSpace(e.UserGroups))
+			{
+				try
+				{
+					userGroups = JsonSerializer.Deserialize<List<string>>(e.UserGroups) ?? new List<string>();
+				}
+				catch
+				{
+					userGroups = new List<string>();
+				}
+			}
+
 			var response = new User()
 			{
-				UserId = dto.UserId,
-				Username = dto.Username,
-				FirstName = dto.FirstName,
-				LastName = dto.LastName,
-				FullName = dto.FullName,
-				Email = dto.Email,
-				PasswordHash = dto.PasswordHash,
-				IsActive = dto.IsActive,
-				Role = dto.Role,
-				CreatedOn = dto.CreatedOn,
-				CreatedBy = dto.CreatedBy,
-				ModifiedOn = dto.ModifiedOn,
-				ModifiedBy = dto.ModifiedBy
+				UserId = e.UserId,
+				FirstName = e.FirstName,
+				LastName = e.LastName,
+				Email = e.Email,
+				PasswordHash = e.PasswordHash,
+				IsActive = e.IsActive,
+				UserGroups = userGroups,
+				CreatedOn = e.CreatedOn,
+				CreatedBy = e.CreatedBy,
+				ModifiedOn = e.ModifiedOn,
+				ModifiedBy = e.ModifiedBy
 			};
 
 			return response;

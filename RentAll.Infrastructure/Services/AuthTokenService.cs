@@ -34,19 +34,13 @@ public class AuthTokenService : IAuthTokenService
         // Generate session GUID for sub claim
         var sessionGuid = Guid.NewGuid().ToString();
 
-        // Create user object with GUID and userGroups (roles)
-        // userGroups is an array, even if there's only one role
-        var userGroups = string.IsNullOrEmpty(user.Role) 
-            ? new List<string>() 
-            : new List<string> { user.Role };
-
         var userObject = new
         {
             userGuid = user.UserId.ToString(),
 			firstName = user.FirstName,
 			lastName = user.LastName,
             email = user.Email,
-			userGroups = userGroups
+			userGroups = user.UserGroups
 		};
 
         // Serialize and base64 encode the user object

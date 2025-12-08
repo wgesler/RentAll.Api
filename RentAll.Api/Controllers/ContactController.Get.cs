@@ -6,6 +6,26 @@ namespace RentAll.Api.Controllers
     public partial class ContactController
     {
         /// <summary>
+        /// Get all contacts
+        /// </summary>
+        /// <returns>List of contacts</returns>
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var contacts = await _contactRepository.GetAllAsync();
+                var response = contacts.Select(c => new ContactResponseDto(c));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all contacts");
+                return StatusCode(500, new { message = "An error occurred while retrieving contacts" });
+            }
+        }
+
+        /// <summary>
         /// Get contact by ID
         /// </summary>
         /// <param name="id">Contact ID</param>

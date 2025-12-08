@@ -5,12 +5,32 @@ namespace RentAll.Api.Controllers
 {
     public partial class UserController
     {
-        /// <summary>
-        /// Get user by ID
-        /// </summary>
-        /// <param name="id">User ID</param>
-        /// <returns>User</returns>
-        [HttpGet("{id}")]
+		/// <summary>
+		/// Get all users
+		/// </summary>
+		/// <returns>List of users</returns>
+		[HttpGet]
+		public async Task<IActionResult> GetAll()
+		{
+			try
+			{
+				var users = await _userRepository.GetAllAsync();
+				var response = users.Select(u => new UserResponseDto(u));
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting all users");
+				return StatusCode(500, new { message = "An error occurred while retrieving users" });
+			}
+		}
+		
+		/// <summary>
+				 /// Get user by ID
+				 /// </summary>
+				 /// <param name="id">User ID</param>
+				 /// <returns>User</returns>
+		[HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
@@ -27,32 +47,6 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting user by ID: {UserId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the user" });
-            }
-        }
-
-        /// <summary>
-        /// Get user by username
-        /// </summary>
-        /// <param name="username">Username</param>
-        /// <returns>User</returns>
-        [HttpGet("username/{username}")]
-        public async Task<IActionResult> GetByUsername(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username))
-                return BadRequest(new { message = "Username is required" });
-
-            try
-            {
-                var user = await _userRepository.GetByUsernameAsync(username);
-                if (user == null)
-                    return NotFound(new { message = "User not found" });
-
-                return Ok(new UserResponseDto(user));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting user by username: {Username}", username);
                 return StatusCode(500, new { message = "An error occurred while retrieving the user" });
             }
         }

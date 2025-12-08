@@ -19,7 +19,7 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             if (res == null || !res.Any())
                 return null;
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
         public async Task<IEnumerable<Rental>> GetActiveRentalsAsync()
@@ -30,7 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             if (res == null || !res.Any())
                 return Enumerable.Empty<Rental>();
 
-            return res.Select(ConvertDtoToModel);
+            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<IEnumerable<Rental>> GetByPropertyIdAsync(Guid propertyId)
@@ -44,7 +44,7 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             if (res == null || !res.Any())
                 return Enumerable.Empty<Rental>();
 
-            return res.Select(ConvertDtoToModel);
+            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<IEnumerable<Rental>> GetByContactIdAsync(Guid contactId)
@@ -58,7 +58,7 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             if (res == null || !res.Any())
                 return Enumerable.Empty<Rental>();
 
-            return res.Select(ConvertDtoToModel);
+            return res.Select(ConvertEntityToModel);
         }
     }
 }

@@ -4,17 +4,16 @@ namespace RentAll.Api.Dtos.Users;
 
 public class CreateUserDto
 {
-    public string Username { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+	public List<string> UserGroups { get; set; } = new List<string>();
+    public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+
+	public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (string.IsNullOrWhiteSpace(Username))
-            return (false, "Username is required");
-
         if (string.IsNullOrWhiteSpace(FirstName))
             return (false, "First Name is required");
 
@@ -33,18 +32,16 @@ public class CreateUserDto
         return (true, null);
     }
 
-    public User ToModel(string passwordHash, Guid currentUser)
+    public User ToModel(CreateUserDto d, string passwordHash, Guid currentUser)
     {
-        var fullName = $"{FirstName} {LastName}".Trim();
         return new User
         {
-            Username = Username,
-            FirstName = FirstName,
-            LastName = LastName,
-            FullName = fullName,
-            Email = Email,
+            FirstName = d.FirstName,
+            LastName = d.LastName,
+            Email = d.Email,
             PasswordHash = passwordHash,
-            IsActive = 1,
+			UserGroups = d.UserGroups,
+			IsActive = d.IsActive,
             CreatedBy = currentUser
         };
     }

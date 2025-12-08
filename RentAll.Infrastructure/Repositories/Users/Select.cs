@@ -8,18 +8,6 @@ namespace RentAll.Infrastructure.Repositories.Users
 {
 	public partial class UserRepository : IUserRepository
 	{
-		public async Task<bool> ExistsByUsernameAsync(string username)
-		{
-			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetByName", new
-			{
-				username = username
-			});
-
-			if (res == null || !res.Any())
-				return false;
-			return true;
-		}
 		public async Task<bool> ExistsByEmailAsync(string email)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
@@ -44,7 +32,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 			if (res == null || !res.Any())
 				throw new Exception("User not found");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
 		public async Task<User?> GetByEmailAsync(string email)
@@ -58,7 +46,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 			if (res == null || !res.Any())
 				throw new Exception("User not found");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
 		public async Task<User?> GetByUsernameAsync(string username)
@@ -72,7 +60,18 @@ namespace RentAll.Infrastructure.Repositories.Users
 			if (res == null || !res.Any())
 				throw new Exception("User not found");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+
+		public async Task<IEnumerable<User>> GetAllAsync()
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetAll", null);
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<User>();
+
+			return res.Select(ConvertEntityToModel);
 		}
 	}
 }

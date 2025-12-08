@@ -22,7 +22,7 @@ namespace RentAll.Infrastructure.Repositories.CompanyContacts
 			if (res == null || !res.Any())
 				throw new Exception("CompanyContact not found");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 	}
 }

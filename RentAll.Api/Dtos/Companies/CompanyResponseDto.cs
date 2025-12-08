@@ -6,6 +6,7 @@ public class CompanyResponseDto
 {
     public Guid CompanyId { get; set; }
     public string CompanyCode { get; set; } = string.Empty;
+    public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -15,12 +16,13 @@ public class CompanyResponseDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
-    public int IsActive { get; set; }
+    public bool IsActive { get; set; }
 
     public CompanyResponseDto(Company company)
     {
         CompanyId = company.CompanyId;
         CompanyCode = company.CompanyCode;
+        ContactId = company.ContactId;
         Name = company.Name;
         Address1 = company.Address1;
         Address2 = company.Address2;

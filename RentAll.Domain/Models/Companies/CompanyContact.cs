@@ -4,7 +4,7 @@ public class CompanyContact
 {
     public Guid ContactId { get; set; }
     public Guid CompanyId { get; set; }
-    public int IsActive { get; set; } = 1;
+    public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

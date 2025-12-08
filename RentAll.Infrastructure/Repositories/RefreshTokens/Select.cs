@@ -19,7 +19,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			if (res == null || !res.Any())
 				return null;
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
 		public async Task<RefreshToken?> GetByIdAsync(Guid refreshTokenId)
@@ -33,7 +33,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			if (res == null || !res.Any())
 				return null;
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
 		public async Task<IEnumerable<RefreshToken>> GetByUserIdAsync(Guid userId)
@@ -47,7 +47,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			if (res == null || !res.Any())
 				return Enumerable.Empty<RefreshToken>();
 
-			return res.Select(ConvertDtoToModel);
+			return res.Select(ConvertEntityToModel);
 		}
 
 		public async Task<IEnumerable<RefreshToken>> GetActiveByUserIdAsync(Guid userId)
@@ -61,7 +61,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			if (res == null || !res.Any())
 				return Enumerable.Empty<RefreshToken>();
 
-			return res.Select(ConvertDtoToModel);
+			return res.Select(ConvertEntityToModel);
 		}
 	}
 }

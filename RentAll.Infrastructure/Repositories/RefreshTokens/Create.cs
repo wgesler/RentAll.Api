@@ -21,7 +21,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 			if (res == null || !res.Any())
 				throw new Exception("RefreshToken not created");
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 	}
 }

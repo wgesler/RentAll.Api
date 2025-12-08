@@ -15,21 +15,21 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
         }
 
-        private Rental ConvertDtoToModel(RentalEntity dto)
+        private Rental ConvertEntityToModel(RentalEntity e)
         {
             var response = new Rental()
             {
-                RentalId = dto.RentalId,
-                PropertyId = dto.PropertyId,
-                ContactId = dto.ContactId,
-                StartDate = dto.StartDate,
-                EndDate = dto.EndDate,
-                DailyRate = dto.DailyRate,
-                IsActive = dto.IsActive,
-                CreatedOn = dto.CreatedOn,
-                CreatedBy = dto.CreatedBy,
-                ModifiedOn = dto.ModifiedOn,
-                ModifiedBy = dto.ModifiedBy
+                RentalId = e.RentalId,
+                PropertyId = e.PropertyId,
+                ContactId = e.ContactId,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                DailyRate = e.DailyRate,
+                IsActive = e.IsActive,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy,
+                ModifiedOn = e.ModifiedOn,
+                ModifiedBy = e.ModifiedBy
             };
 
             return response;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Auth;
 
@@ -6,6 +7,7 @@ namespace RentAll.Api.Controllers;
 public partial class AuthController
 {
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
     {
         if (string.IsNullOrWhiteSpace(loginDto.Username) || string.IsNullOrWhiteSpace(loginDto.Password))
@@ -22,14 +24,14 @@ public partial class AuthController
     }
 
     [HttpPost("register")]
+    [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
     {
-        if (string.IsNullOrWhiteSpace(registerDto.Username) || string.IsNullOrWhiteSpace(registerDto.FirstName) ||
-            string.IsNullOrWhiteSpace(registerDto.LastName) || string.IsNullOrWhiteSpace(registerDto.Email) || 
-            string.IsNullOrWhiteSpace(registerDto.Password))
-            return BadRequest(new { message = "Username, first, last, email, and password are required" });
+        if (string.IsNullOrWhiteSpace(registerDto.FirstName) || string.IsNullOrWhiteSpace(registerDto.LastName) || 
+            string.IsNullOrWhiteSpace(registerDto.Email) || string.IsNullOrWhiteSpace(registerDto.Password))
+            return BadRequest(new { message = "First, last, email, and password are required" });
 
-        var (success, user, accessToken, refreshToken, errorMessage) = await _authManager.RegisterAsync(registerDto.Username,
+        var (success, user, accessToken, refreshToken, errorMessage) = await _authManager.RegisterAsync(
             registerDto.FirstName, registerDto.LastName, registerDto.Email, registerDto.Password);
 
         if (!success || user == null || accessToken == null || refreshToken == null)
@@ -41,6 +43,7 @@ public partial class AuthController
     }
 
     [HttpPost("refresh")]
+    [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto refreshTokenDto)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenDto.RefreshToken))
@@ -57,6 +60,7 @@ public partial class AuthController
     }
 
     [HttpPost("logout")]
+    [AllowAnonymous]
     public async Task<IActionResult> Logout([FromBody] RefreshTokenDto refreshTokenDto)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenDto.RefreshToken))

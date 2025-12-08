@@ -6,6 +6,7 @@ public class UpdateCompanyDto
 {
     public Guid CompanyId { get; set; }
     public string CompanyCode { get; set; } = string.Empty;
+    public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -15,7 +16,7 @@ public class UpdateCompanyDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
-    public int IsActive { get; set; }
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
     {
@@ -49,24 +50,23 @@ public class UpdateCompanyDto
         return (true, null);
     }
 
-    public Company ToModel(Company existingCompany, Guid currentUser)
+    public Company ToModel(UpdateCompanyDto c, Guid currentUser)
     {
         return new Company
         {
-            CompanyId = CompanyId,
-            CompanyCode = CompanyCode,
-            Name = Name,
-            Address1 = Address1,
-            Address2 = Address2,
-            City = City,
-            State = State,
-            Zip = Zip,
-            Phone = Phone,
-            Website = Website,
-            LogoStorageId = LogoStorageId,
-            IsActive = IsActive,
-            CreatedOn = existingCompany.CreatedOn,
-            CreatedBy = existingCompany.CreatedBy,
+            CompanyId = c.CompanyId,
+            CompanyCode = c.CompanyCode,
+            ContactId = c.ContactId,
+            Name = c.Name,
+            Address1 = c.Address1,
+            Address2 = c.Address2,
+            City = c.City,
+            State = c.State,
+            Zip = c.Zip,
+            Phone = c.Phone,
+            Website = c.Website,
+            LogoStorageId = c.LogoStorageId,
+            IsActive = c.IsActive,
             ModifiedBy = currentUser
         };
     }

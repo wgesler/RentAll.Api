@@ -9,7 +9,6 @@ public class ContactResponseDto
     public int ContactTypeId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }
     public string? City { get; set; }
@@ -17,6 +16,7 @@ public class ContactResponseDto
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
 
     public ContactResponseDto(Contact contact)
     {
@@ -25,7 +25,6 @@ public class ContactResponseDto
         ContactTypeId = contact.ContactTypeId;
         FirstName = contact.FirstName;
         LastName = contact.LastName;
-        FullName = contact.FullName;
         Address1 = contact.Address1;
         Address2 = contact.Address2;
         City = contact.City;
@@ -33,5 +32,6 @@ public class ContactResponseDto
         Zip = contact.Zip;
         Phone = contact.Phone;
         Email = contact.Email;
+        IsActive = contact.IsActive;
     }
 }

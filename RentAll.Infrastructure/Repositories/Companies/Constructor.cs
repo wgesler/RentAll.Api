@@ -15,26 +15,27 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private Company ConvertDtoToModel(CompanyEntity dto)
+		private Company ConvertEntityToModel(CompanyEntity e)
 		{
 			var response = new Company()
 			{
-				CompanyId = dto.CompanyId,
-				CompanyCode = dto.CompanyCode,
-				Name = dto.Name,
-				Address1 = dto.Address1,
-				Address2 = dto.Address2,
-				City = dto.City,
-				State = dto.State,
-				Zip = dto.Zip,
-				Phone = dto.Phone,
-				Website = dto.Website,
-				LogoStorageId = dto.LogoStorageId,
-				IsActive = dto.IsActive,
-				CreatedOn = dto.CreatedOn,
-				CreatedBy = dto.CreatedBy,
-				ModifiedOn = dto.ModifiedOn,
-				ModifiedBy = dto.ModifiedBy
+				CompanyId = e.CompanyId,
+				CompanyCode = e.CompanyCode,
+				ContactId = e.ContactId,
+				Name = e.Name,
+				Address1 = e.Address1,
+				Address2 = e.Address2,
+				City = e.City,
+				State = e.State,
+				Zip = e.Zip,
+				Phone = e.Phone,
+				Website = e.Website,
+				LogoStorageId = e.LogoStorageId,
+				IsActive = e.IsActive,
+				CreatedOn = e.CreatedOn,
+				CreatedBy = e.CreatedBy,
+				ModifiedOn = e.ModifiedOn,
+				ModifiedBy = e.ModifiedBy
 			};
 
 			return response;

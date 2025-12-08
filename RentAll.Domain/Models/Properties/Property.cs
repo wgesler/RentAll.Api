@@ -4,7 +4,8 @@ public class Property
 {
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid Owner { get; set; }
+    public Guid? ContactId { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string Address2 { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;

@@ -24,7 +24,7 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             if (res == null || !res.Any())
                 throw new Exception("Rental not created");
 
-            return ConvertDtoToModel(res.FirstOrDefault()!);
+            return ConvertEntityToModel(res.FirstOrDefault()!);
         }
     }
 }

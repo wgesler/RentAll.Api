@@ -15,38 +15,39 @@ namespace RentAll.Infrastructure.Repositories.Properties
             _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
         }
 
-        private Property ConvertDtoToModel(PropertyEntity dto)
+        private Property ConvertEntityToModel(PropertyEntity e)
         {
             var response = new Property()
             {
-                PropertyId = dto.PropertyId,
-                PropertyCode = dto.PropertyCode,
-                Owner = dto.Owner,
-                Address1 = dto.Address1,
-                Address2 = dto.Address2,
-                City = dto.City,
-                State = dto.State,
-                Zip = dto.Zip,
-                Phone = dto.Phone,
-                Bedrooms = dto.Bedrooms,
-                Bathrooms = dto.Bathrooms,
-                SquareFeet = dto.SquareFeet,
-                Gated = dto.Gated,
-                Alarm = dto.Alarm,
-                AlarmCode = dto.AlarmCode,
-                WasherDryer = dto.WasherDryer,
-                Amenities = dto.Amenities,
-                Pool = dto.Pool,
-                HotTub = dto.HotTub,
-                ParkingSpaces = dto.ParkingSpaces,
-                Yard = dto.Yard,
-                Amount = dto.Amount,
-                AmountTypeId = dto.AmountTypeId,
-                IsActive = dto.IsActive,
-                CreatedOn = dto.CreatedOn,
-                CreatedBy = dto.CreatedBy,
-                ModifiedOn = dto.ModifiedOn,
-                ModifiedBy = dto.ModifiedBy
+                PropertyId = e.PropertyId,
+                PropertyCode = e.PropertyCode,
+                ContactId = e.ContactId,
+                Name = e.Name,
+                Address1 = e.Address1,
+                Address2 = e.Address2,
+                City = e.City,
+                State = e.State,
+                Zip = e.Zip,
+                Phone = e.Phone,
+                Bedrooms = e.Bedrooms,
+                Bathrooms = e.Bathrooms,
+                SquareFeet = e.SquareFeet,
+                Gated = e.Gated,
+                Alarm = e.Alarm,
+                AlarmCode = e.AlarmCode,
+                WasherDryer = e.WasherDryer,
+                Amenities = e.Amenities,
+                Pool = e.Pool,
+                HotTub = e.HotTub,
+                ParkingSpaces = e.ParkingSpaces,
+                Yard = e.Yard,
+                Amount = e.Amount,
+                AmountTypeId = e.AmountTypeId,
+                IsActive = e.IsActive,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy,
+                ModifiedOn = e.ModifiedOn,
+                ModifiedBy = e.ModifiedBy
             };
 
             return response;

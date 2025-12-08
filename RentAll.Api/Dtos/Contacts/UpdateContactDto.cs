@@ -16,6 +16,7 @@ public class UpdateContactDto
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
     {
@@ -27,6 +28,9 @@ public class UpdateContactDto
 
         if (string.IsNullOrWhiteSpace(ContactCode))
             return (false, "Contact Code is required");
+
+        if (ContactTypeId <= 0)
+            return (false, "Contact Type ID is required");
 
         if (string.IsNullOrWhiteSpace(FirstName))
             return (false, "First Name is required");
@@ -43,24 +47,24 @@ public class UpdateContactDto
         return (true, null);
     }
 
-    public Contact ToModel(Contact existingContact)
+    public Contact ToModel(UpdateContactDto c, Guid currentUser)
     {
-        var fullName = $"{FirstName} {LastName}".Trim();
         return new Contact
         {
-            ContactId = ContactId,
-            ContactCode = ContactCode,
-            ContactTypeId = ContactTypeId,
-            FirstName = FirstName,
-            LastName = LastName,
-            FullName = fullName,
-            Address1 = Address1,
-            Address2 = Address2,
-            City = City,
-            State = State,
-            Zip = Zip,
-            Phone = Phone,
-            Email = Email
-        };
+            ContactId = c.ContactId,
+			ContactCode = c.ContactCode,
+			ContactTypeId = c.ContactTypeId,
+			FirstName = c.FirstName,
+			LastName = c.LastName,
+			Address1 = c.Address1,
+			Address2 = c.Address2,
+			City = c.City,
+			State = c.State,
+			Zip = c.Zip,
+			Phone = c.Phone,
+			Email = c.Email,
+			IsActive = c.IsActive,
+			ModifiedBy = currentUser
+		};
     }
 }

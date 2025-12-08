@@ -14,7 +14,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
             await db.DapperProcExecuteAsync("dbo.Property_Add", new
             {
                 PropertyCode = property.PropertyCode,
-                Owner = property.Owner,
+                ContactId = property.ContactId,
+                Name = property.Name,
                 Address1 = property.Address1,
                 Address2 = property.Address2,
                 City = property.City,

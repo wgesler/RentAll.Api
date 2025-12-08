@@ -15,22 +15,22 @@ namespace RentAll.Infrastructure.Repositories.Common
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private State ConvertDtoToModel(StateEntity dto)
+		private State ConvertEntityToModel(StateEntity e)
 		{
 			return new State
 			{
-				Code = dto.Code,
-				Name = dto.Name
+				Code = e.Code,
+				Name = e.Name
 			};
 		}
 
-		private DailyQuote ConvertDtoToModel(DailyQuoteEntity dto)
+		private DailyQuote ConvertEntityToModel(DailyQuoteEntity e)
 		{
 			return new DailyQuote
 			{
-				q = dto.Quote,
-				a = dto.Author,
-				h = dto.HTML
+				q = e.Quote,
+				a = e.Author,
+				h = e.HTML
 			};
 		}
 	}

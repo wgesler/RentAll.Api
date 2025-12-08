@@ -19,7 +19,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			if (res == null || !res.Any())
 				return null;
 
-			return ConvertDtoToModel(res.FirstOrDefault()!);
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
 		public async Task<IEnumerable<Company>> GetAllAsync()
@@ -30,7 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			if (res == null || !res.Any())
 				return Enumerable.Empty<Company>();
 
-			return res.Select(ConvertDtoToModel);
+			return res.Select(ConvertEntityToModel);
 		}
 
 		public async Task<bool> ExistsByCompanyCodeAsync(string companyCode)

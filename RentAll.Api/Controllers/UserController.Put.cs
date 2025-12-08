@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
                 return BadRequest(new { message = "User data is required" });
 
             var (isValid, errorMessage) = dto.IsValid(id);
-            if (!isValid)
+            if (!isValid || !IsValidEmail(dto.Email))
                 return BadRequest(new { message = errorMessage });
 
             try
@@ -28,12 +28,6 @@ namespace RentAll.Api.Controllers
                 if (existingUser == null)
                     return NotFound(new { message = "User not found" });
 
-                // Check if Username is being changed and if the new username already exists
-                if (existingUser.Username != dto.Username)
-                {
-                    if (await _userRepository.ExistsByUsernameAsync(dto.Username))
-                        return Conflict(new { message = "Username already exists" });
-                }
 
                 // Check if Email is being changed and if the new email already exists
                 if (existingUser.Email != dto.Email)
@@ -42,7 +36,7 @@ namespace RentAll.Api.Controllers
                         return Conflict(new { message = "Email already exists" });
                 }
 
-                var user = dto.ToModel(existingUser, CurrentUser);
+                var user = dto.ToModel(dto,existingUser, CurrentUser);
                 var updatedUser = await _userRepository.UpdateByIdAsync(user);
                 return Ok(new UserResponseDto(updatedUser));
             }
