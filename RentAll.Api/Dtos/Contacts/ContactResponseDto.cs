@@ -22,7 +22,7 @@ public class ContactResponseDto
     {
         ContactId = contact.ContactId;
         ContactCode = contact.ContactCode;
-        ContactTypeId = contact.ContactTypeId;
+        ContactTypeId = (int)contact.ContactTypeId;
         FirstName = contact.FirstName;
         LastName = contact.LastName;
         Address1 = contact.Address1;

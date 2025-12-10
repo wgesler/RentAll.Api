@@ -19,3 +19,4 @@ public interface IRentalRepository
     // Deletes
     Task DeleteByIdAsync(Guid rentalId);
 }
+

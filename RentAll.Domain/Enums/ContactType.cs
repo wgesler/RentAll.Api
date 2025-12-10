@@ -9,3 +9,5 @@ public enum ContactType
 	Rentor = 4,
 	Rentee = 5
 }
+
+

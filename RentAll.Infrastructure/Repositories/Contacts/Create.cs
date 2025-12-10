@@ -14,7 +14,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_Add", new
             {
                 ContactCode = contact.ContactCode,
-                ContactTypeId = contact.ContactTypeId,
+                ContactTypeId = (int)contact.ContactTypeId,
                 FirstName = contact.FirstName,
                 LastName = contact.LastName,
                 Address1 = contact.Address1,

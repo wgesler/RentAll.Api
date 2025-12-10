@@ -20,3 +20,4 @@ public interface IPropertyRepository
     // Deletes
     Task DeleteByIdAsync(Guid propertyId);
 }
+

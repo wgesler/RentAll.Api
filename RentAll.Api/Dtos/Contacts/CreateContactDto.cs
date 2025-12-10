@@ -1,4 +1,5 @@
 using RentAll.Domain.Models.Contacts;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Contacts;
 
@@ -37,6 +38,10 @@ public class CreateContactDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
+        // Validate enum value
+        if (!Enum.IsDefined(typeof(ContactType), ContactTypeId))
+            return (false, $"Invalid ContactType value: {ContactTypeId}");
+
         return (true, null);
     }
 
@@ -45,7 +50,7 @@ public class CreateContactDto
         return new Contact
         {
             ContactCode = c.ContactCode,
-            ContactTypeId = c.ContactTypeId,
+            ContactTypeId = (ContactType)c.ContactTypeId,
             FirstName = c.FirstName,
             LastName = c.LastName,
             Address1 = c.Address1,

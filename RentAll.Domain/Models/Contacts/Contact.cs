@@ -1,10 +1,12 @@
+using RentAll.Domain.Enums;
+
 namespace RentAll.Domain.Models.Contacts;
 
 public class Contact
 {
     public Guid ContactId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
-    public int ContactTypeId { get; set; }
+    public ContactType ContactTypeId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Address1 { get; set; }
@@ -20,3 +22,5 @@ public class Contact
 	public DateTimeOffset ModifiedOn { get; set; }
 	public Guid ModifiedBy { get; set; }
 }
+
+

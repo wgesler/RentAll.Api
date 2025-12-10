@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models.Contacts;
+using RentAll.Domain.Enums;
 using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Contacts
@@ -21,7 +22,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             {
                 ContactId = e.ContactId,
                 ContactCode = e.ContactCode,
-                ContactTypeId = e.ContactTypeId,
+                ContactTypeId = (ContactType)e.ContactTypeId,
                 FirstName = e.FirstName,
                 LastName = e.LastName,
                 Address1 = e.Address1,

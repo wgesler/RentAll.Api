@@ -8,7 +8,18 @@ namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository : IPropertyRepository
     {
-        public async Task<Property?> GetByIdAsync(Guid propertyId)
+		public async Task<IEnumerable<Property>> GetAllAsync()
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetAll", null);
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Property>();
+
+			return res.Select(ConvertEntityToModel);
+		}
+
+		public async Task<Property?> GetByIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetById", new
@@ -34,17 +45,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 return null;
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<IEnumerable<Property>> GetAllAsync()
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetAll", null);
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Property>();
-
-            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<IEnumerable<Property>> GetByStateAsync(string state)

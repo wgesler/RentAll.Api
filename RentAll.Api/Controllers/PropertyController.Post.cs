@@ -16,6 +16,9 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest(new { message = "Property data is required" });
 
+            if (!ModelState.IsValid)
+                return BadRequest(new { message = "Invalid request data" });
+
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(new { message = errorMessage });

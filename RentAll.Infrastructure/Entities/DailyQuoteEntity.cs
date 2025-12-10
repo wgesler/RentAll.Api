@@ -7,3 +7,5 @@ public class DailyQuoteEntity
 	public string HTML { get; set; } = string.Empty;
 }
 
+
+

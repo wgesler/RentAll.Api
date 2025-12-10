@@ -20,3 +20,5 @@ public interface IContactRepository
     // Deletes
     Task DeleteByIdAsync(Guid contactId);
 }
+
+

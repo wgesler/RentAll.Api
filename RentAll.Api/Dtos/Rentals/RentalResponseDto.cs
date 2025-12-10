@@ -31,3 +31,4 @@ public class RentalResponseDto
         ModifiedBy = rental.ModifiedBy;
     }
 }
+
