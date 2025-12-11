@@ -2,21 +2,23 @@ using RentAll.Domain.Models.Rentals;
 
 namespace RentAll.Domain.Interfaces.Repositories;
 
-public interface IRentalRepository
+public interface IReservationRepository
 {
     // Creates
-    Task<Rental> CreateAsync(Rental rental);
+    Task<Reservation> CreateAsync(Reservation reservation);
 
-    // Selects
-    Task<Rental?> GetByIdAsync(Guid rentalId);
-    Task<IEnumerable<Rental>> GetActiveRentalsAsync();
-    Task<IEnumerable<Rental>> GetByPropertyIdAsync(Guid propertyId);
-    Task<IEnumerable<Rental>> GetByContactIdAsync(Guid contactId);
+	// Selects
+	Task<IEnumerable<Reservation>> GetAllAsync();
+	Task<IEnumerable<Reservation>> GetActiveReservationsAsync();
+	Task<Reservation?> GetByIdAsync(Guid reservationId);
+    Task<IEnumerable<Reservation>> GetByPropertyIdAsync(Guid propertyId);
+    Task<IEnumerable<Reservation>> GetByContactIdAsync(Guid contactId);
 
     // Updates
-    Task<Rental> UpdateByIdAsync(Rental rental);
+    Task<Reservation> UpdateByIdAsync(Reservation reservation);
 
     // Deletes
-    Task DeleteByIdAsync(Guid rentalId);
+    Task DeleteByIdAsync(Guid reservationId);
 }
+
 

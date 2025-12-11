@@ -5,12 +5,32 @@ namespace RentAll.Api.Controllers
 {
     public partial class CompanyController
     {
-        /// <summary>
-        /// Get company by ID
-        /// </summary>
-        /// <param name="id">Company ID</param>
-        /// <returns>Company</returns>
-        [HttpGet("{id}")]
+		/// <summary>
+		/// Get all companies
+		/// </summary>
+		/// <returns>List of companies</returns>
+		[HttpGet]
+		public async Task<IActionResult> GetAll()
+		{
+			try
+			{
+				var companies = await _companyRepository.GetAllAsync();
+				var response = companies.Select(c => new CompanyResponseDto(c));
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting all companies");
+				return StatusCode(500, new { message = "An error occurred while retrieving companies" });
+			}
+		}
+		
+		/// <summary>
+		/// Get company by ID
+		/// </summary>
+		/// <param name="id">Company ID</param>
+		/// <returns>Company</returns>
+		[HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
@@ -30,26 +50,7 @@ namespace RentAll.Api.Controllers
                 return StatusCode(500, new { message = "An error occurred while retrieving the company" });
             }
         }
-
-        /// <summary>
-        /// Get all companies
-        /// </summary>
-        /// <returns>List of companies</returns>
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            try
-            {
-                var companies = await _companyRepository.GetAllAsync();
-                var response = companies.Select(c => new CompanyResponseDto(c));
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all companies");
-                return StatusCode(500, new { message = "An error occurred while retrieving companies" });
-            }
-        }
     }
 }
+
 

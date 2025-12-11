@@ -8,6 +8,17 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 {
     public partial class ContactRepository : IContactRepository
     {
+		public async Task<IEnumerable<Contact>> GetAllAsync()
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetAll", null);
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Contact>();
+
+			return res.Select(ConvertEntityToModel);
+		}
+		
         public async Task<Contact?> GetByIdAsync(Guid contactId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -34,17 +45,6 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 return null;
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<IEnumerable<Contact>> GetAllAsync()
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetAll", null);
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Contact>();
-
-            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<IEnumerable<Contact>> GetByContactTypeIdAsync(int contactTypeId)

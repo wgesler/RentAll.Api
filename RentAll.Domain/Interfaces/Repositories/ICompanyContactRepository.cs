@@ -18,3 +18,4 @@ public interface ICompanyContactRepository
 	Task DeleteByIdAsync(Guid contactId);
 }
 
+

@@ -8,6 +8,17 @@ namespace RentAll.Infrastructure.Repositories.Companies
 {
 	public partial class CompanyRepository : ICompanyRepository
 	{
+		public async Task<IEnumerable<Company>> GetAllAsync()
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetAll", null);
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Company>();
+
+			return res.Select(ConvertEntityToModel);
+		}
+
 		public async Task<Company?> GetByIdAsync(Guid companyId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
@@ -20,17 +31,6 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				return null;
 
 			return ConvertEntityToModel(res.FirstOrDefault()!);
-		}
-
-		public async Task<IEnumerable<Company>> GetAllAsync()
-		{
-			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetAll", null);
-
-			if (res == null || !res.Any())
-				return Enumerable.Empty<Company>();
-
-			return res.Select(ConvertEntityToModel);
 		}
 
 		public async Task<bool> ExistsByCompanyCodeAsync(string companyCode)

@@ -2,7 +2,6 @@ using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -80,6 +79,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 TrashPickupId = property.TrashPickupId,
                 TrashRemoval = property.TrashRemoval,
                 Amenities = property.Amenities,
+                IsActive = property.IsActive,
 				CreatedBy = property.CreatedBy
             });
 

@@ -26,10 +26,10 @@ namespace RentAll.Api.Controllers
 		}
 		
 		/// <summary>
-				 /// Get user by ID
-				 /// </summary>
-				 /// <param name="id">User ID</param>
-				 /// <returns>User</returns>
+		/// Get user by ID
+		/// </summary>
+		/// <param name="id">User ID</param>
+		/// <returns>User</returns>
 		[HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -52,5 +52,6 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 

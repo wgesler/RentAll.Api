@@ -19,3 +19,4 @@ public interface ICompanyRepository
 	Task DeleteByIdAsync(Guid companyId);
 }
 
+

@@ -7,7 +7,7 @@ namespace RentAll.Api.Controllers
 {
     [ApiController]
     [Route("user")]
-    [Authorize]
+    //[Authorize]
     public partial class UserController : BaseController
     {
         private readonly IUserRepository _userRepository;

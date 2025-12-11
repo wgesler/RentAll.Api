@@ -13,6 +13,7 @@ using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Rentals;
+using RentAll.Infrastructure.Repositories.Agents;
 using RentAll.Infrastructure.Repositories.RefreshTokens;
 using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Users;
@@ -86,7 +87,8 @@ builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
-builder.Services.AddScoped<IRentalRepository, RentalRepository>();
+builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+builder.Services.AddScoped<IAgentRepository, AgentRepository>();
 builder.Services.AddScoped<ICommonRepository, CommonRepository>();
 
 // Configure Swagger/OpenAPI with JWT support
