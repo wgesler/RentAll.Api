@@ -8,29 +8,30 @@ namespace RentAll.Infrastructure.Repositories.Rentals
 {
     public partial class ReservationRepository : IReservationRepository
     {
-        public async Task<Reservation> UpdateByIdAsync(Reservation rental)
+        public async Task<Reservation> UpdateByIdAsync(Reservation r)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_UpdateById", new
             {
-				ReservationId = rental.ReservationId,
-                AgentId = rental.AgentId,
-                PropertyId = rental.PropertyId,
-                ContactId = rental.ContactId,
-                ClientType = (int)rental.ClientType,
-                ReservationStatus = (int)rental.ReservationStatus,
-                IsActive = rental.IsActive,
-                StartDate = rental.ArrivalDate,
-                EndDate = rental.DepartureDate,
-                CheckInTimeId = (int)rental.CheckInTime,
-                CheckOutTimeId = (int)rental.CheckOutTime,
-                MonthlyRate = rental.MonthlyRate,
-                DailyRate = rental.DailyRate,
-                NumberOfPeople = rental.NumberOfPeople,
-                Deposit = rental.Deposit,
-                DepartureFee = rental.DepartureFee,
-                Taxes = rental.Taxes
-            });
+				ReservationId = r.ReservationId,
+                AgentId = r.AgentId,
+                PropertyId = r.PropertyId,
+                ContactId = r.ContactId,
+                ClientTypeId = (int)r.ClientType,
+                ReservationStatusId = (int)r.ReservationStatus,
+                IsActive = r.IsActive,
+                ArrivalDate = r.ArrivalDate,
+                DepartureDate = r.DepartureDate,
+                CheckInTimeId = (int)r.CheckInTime,
+                CheckOutTimeId = (int)r.CheckOutTime,
+                MonthlyRate = r.MonthlyRate,
+                DailyRate = r.DailyRate,
+                NumberOfPeople = r.NumberOfPeople,
+                Deposit = r.Deposit,
+                DepartureFee = r.DepartureFee,
+                Taxes = r.Taxes,
+				ModifiedBy = r.ModifiedBy
+			});
 
             if (res == null || !res.Any())
                 throw new Exception("Reservation not found");

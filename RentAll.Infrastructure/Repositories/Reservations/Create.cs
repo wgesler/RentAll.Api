@@ -8,28 +8,28 @@ namespace RentAll.Infrastructure.Repositories.Rentals
 {
     public partial class ReservationRepository : IReservationRepository
     {
-        public async Task<Reservation> CreateAsync(Reservation rental)
+        public async Task<Reservation> CreateAsync(Reservation r)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_Add", new
             {
-                AgentId = rental.AgentId,
-                PropertyId = rental.PropertyId,
-                ContactId = rental.ContactId,
-                ClientTypeId = (int)rental.ClientType,
-                ReservationStatusId = (int)rental.ReservationStatus,
-                IsActive = rental.IsActive,
-                ArrivalDate = rental.ArrivalDate,
-                DepartureDate = rental.DepartureDate,
-                CheckInTimeId = (int)rental.CheckInTime,
-                CheckOutTimeId = (int)rental.CheckOutTime,
-                MonthlyRate = rental.MonthlyRate,
-                DailyRate = rental.DailyRate,
-                NumberOfPeople = rental.NumberOfPeople,
-                Deposit = rental.Deposit,
-                DepartureFee = rental.DepartureFee,
-                Taxes = rental.Taxes,
-                CreatedBy = rental.CreatedBy
+                AgentId = r.AgentId,
+                PropertyId = r.PropertyId,
+                ContactId = r.ContactId,
+                ClientTypeId = (int)r.ClientType,
+                ReservationStatusId = (int)r.ReservationStatus,
+                IsActive = r.IsActive,
+                ArrivalDate = r.ArrivalDate,
+                DepartureDate = r.DepartureDate,
+                CheckInTimeId = (int)r.CheckInTime,
+                CheckOutTimeId = (int)r.CheckOutTime,
+                MonthlyRate = r.MonthlyRate,
+                DailyRate = r.DailyRate,
+                NumberOfPeople = r.NumberOfPeople,
+                Deposit = r.Deposit,
+                DepartureFee = r.DepartureFee,
+                Taxes = r.Taxes,
+                CreatedBy = r.CreatedBy
             });
 
             if (res == null || !res.Any())
