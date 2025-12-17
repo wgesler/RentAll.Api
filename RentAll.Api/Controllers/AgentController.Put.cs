@@ -24,14 +24,14 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if agent exists
-                var existingAgent = await _agentRepository.GetByIdAsync(id);
+                var existingAgent = await _agentRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingAgent == null)
                     return NotFound(new { message = "Agent not found" });
 
                 // Check if AgentCode is being changed and if the new code already exists
                 if (existingAgent.AgentCode != dto.AgentCode)
                 {
-                    if (await _agentRepository.ExistsByAgentCodeAsync(dto.AgentCode))
+                    if (await _agentRepository.ExistsByAgentCodeAsync(dto.AgentCode, CurrentOrganizationId))
                         return Conflict(new { message = "Agent Code already exists" });
                 }
 

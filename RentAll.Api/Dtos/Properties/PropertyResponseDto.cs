@@ -4,44 +4,48 @@ namespace RentAll.Api.Dtos.Properties;
 
 public class PropertyResponseDto
 {
-    public Guid PropertyId { get; set; }
+	public Guid PropertyId { get; set; }
+	public Guid OrganizationId { get; set; }
 	public string PropertyCode { get; set; } = string.Empty;
-	public Guid ContactId { get; set; }
-	public bool IsActive { get; set; }
-
+	public Guid Owner1Id { get; set; }
+	public Guid? Owner2Id { get; set; }
 
 	// Availability Section 
 	public DateTimeOffset? AvailableFrom { get; set; }
 	public DateTimeOffset? AvailableUntil { get; set; }
 	public int MinStay { get; set; }
 	public int MaxStay { get; set; }
-	public int CheckInTimeId { get; set; }
-	public int CheckOutTimeId { get; set; }
-	public decimal MonthlyRate { get; set; }
-	public decimal DailyRate { get; set; }
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
+	public decimal MonthlyRate { get; set; }
+	public decimal DailyRate { get; set; }
+	public decimal DepartureFee { get; set; }
+	public decimal MaidServiceFee { get; set; }
+	public decimal PetFee { get; set; }
 	public int Bedrooms { get; set; }
 	public decimal Bathrooms { get; set; }
 	public int Accomodates { get; set; }
 	public int SquareFeet { get; set; }
-	public string BedSizes { get; set; } = string.Empty;
+	public int BedroomId1 { get; set; }
+	public int BedroomId2 { get; set; }
+	public int BedroomId3 { get; set; }
+	public int BedroomId4 { get; set; }
 
 	// Address Section
 	public string Address1 { get; set; } = string.Empty;
-	public string Address2 { get; set; } = string.Empty;
-	public string Suite { get; set; } = string.Empty;
+	public string? Address2 { get; set; }
+	public string? Suite { get; set; }
 	public string City { get; set; } = string.Empty;
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
-	public string Phone { get; set; } = string.Empty;
-	public string Neighborhood { get; set; } = string.Empty;
-	public string CrossStreet { get; set; } = string.Empty;
-	public string View { get; set; } = string.Empty;
+	public string? Phone { get; set; }
+	public string? Neighborhood { get; set; }
+	public string? CrossStreet { get; set; }
+	public string? View { get; set; }
 	public string? Mailbox { get; set; }
 
-	// Featues & Security Section
+	// Features & Security Section
 	public bool Furnished { get; set; }
 	public bool Heating { get; set; }
 	public bool Ac { get; set; }
@@ -51,11 +55,12 @@ public class PropertyResponseDto
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
 	public bool AssignedParking { get; set; }
-	public string Notes { get; set; } = string.Empty;
+	public string? Notes { get; set; }
 	public bool Alarm { get; set; }
-	public string AlarmCode { get; set; } = string.Empty;
-	public bool RemoteAccess { get; set; }
-	public string KeyCode { get; set; } = string.Empty;
+	public string? AlarmCode { get; set; }
+	public bool KeypadAccess { get; set; }
+	public string? MasterKeyCode { get; set; }
+	public string? TenantKeyCode { get; set; }
 
 	// Kitchen & Bath
 	public bool Kitchen { get; set; }
@@ -71,6 +76,7 @@ public class PropertyResponseDto
 	public bool Tv { get; set; }
 	public bool Cable { get; set; }
 	public bool Dvd { get; set; }
+	public bool Streaming { get; set; }
 	public bool FastInternet { get; set; }
 
 	//Outdoor Spaces Section
@@ -88,82 +94,92 @@ public class PropertyResponseDto
 
 	// Trash Section
 	public int TrashPickupId { get; set; }
-	public string TrashRemoval { get; set; } = string.Empty;
+	public string? TrashRemoval { get; set; }
 
 	// Additional Amenities Section
-	public string Amenities { get; set; } = string.Empty;
+	public string? Amenities { get; set; }
+	public string? Description { get; set; }
+	public bool IsActive { get; set; }
 
-
-    public PropertyResponseDto(Property property)
-    {
-        PropertyId = property.PropertyId;
-        PropertyCode = property.PropertyCode;
-        ContactId = property.ContactId;
-        IsActive = property.IsActive;
-        AvailableFrom = property.AvailableFrom;
-        AvailableUntil = property.AvailableUntil;
-        MinStay = property.MinStay;
-        MaxStay = property.MaxStay;
-        CheckInTimeId = (int)property.CheckInTime;
-        CheckOutTimeId = (int)property.CheckOutTime;
-        MonthlyRate = property.MonthlyRate;
-        DailyRate = property.DailyRate;
-        PropertyStyleId = (int)property.PropertyStyle;
-        PropertyTypeId = (int)property.PropertyType;
-        PropertyStatusId = (int)property.PropertyStatus;
-        Bedrooms = property.Bedrooms;
-        Bathrooms = property.Bathrooms;
-        Accomodates = property.Accomodates;
-        SquareFeet = property.SquareFeet;
-        BedSizes = property.BedSizes;
-        Address1 = property.Address1;
-        Address2 = property.Address2;
-        Suite = property.Suite ?? string.Empty;
-        City = property.City;
-        State = property.State;
-        Zip = property.Zip;
-        Phone = property.Phone;
-        Neighborhood = property.Neighborhood;
-        CrossStreet = property.CrossStreet;
-        View = property.View;
-        Mailbox = property.Mailbox;
-        Furnished = property.Furnished;
-        Heating = property.Heating;
-        Ac = property.Ac;
-        Elevator = property.Elevator;
-        Security = property.Security;
-        Gated = property.Gated;
-        PetsAllowed = property.PetsAllowed;
-        Smoking = property.Smoking;
-        AssignedParking = property.AssignedParking;
-        Notes = property.Notes;
-        Alarm = property.Alarm;
-        AlarmCode = property.AlarmCode;
-        RemoteAccess = property.RemoteAccess;
-        KeyCode = property.KeyCode;
-        Kitchen = property.Kitchen;
-        Oven = property.Oven;
-        Refrigerator = property.Refrigerator;
-        Microwave = property.Microwave;
-        Dishwasher = property.Dishwasher;
-        Bathtub = property.Bathtub;
-        WasherDryer = property.WasherDryer;
-        Sofabeds = property.Sofabeds;
-        Tv = property.Tv;
-        Cable = property.Cable;
-        Dvd = property.Dvd;
-        FastInternet = property.FastInternet;
-        Deck = property.Deck;
-        Patio = property.Patio;
-        Yard = property.Yard;
-        Garden = property.Garden;
-        CommonPool = property.CommonPool;
-        PrivatePool = property.PrivatePool;
-        Jacuzzi = property.Jacuzzi;
-        Sauna = property.Sauna;
-        Gym = property.Gym;
-        TrashPickupId = property.TrashPickupId;
-        TrashRemoval = property.TrashRemoval;
-        Amenities = property.Amenities;
-    }
+	public PropertyResponseDto(Property property)
+	{
+		PropertyId = property.PropertyId;
+		OrganizationId = property.OrganizationId;
+		PropertyCode = property.PropertyCode;
+		Owner1Id = property.Owner1Id;
+		Owner2Id = property.Owner2Id;
+		AvailableFrom = property.AvailableFrom;
+		AvailableUntil = property.AvailableUntil;
+		MinStay = property.MinStay;
+		MaxStay = property.MaxStay;
+		PropertyStyleId = (int)property.PropertyStyle;
+		PropertyTypeId = (int)property.PropertyType;
+		PropertyStatusId = (int)property.PropertyStatus;
+		MonthlyRate = property.MonthlyRate;
+		DailyRate = property.DailyRate;
+		DepartureFee = property.DepartureFee;
+		MaidServiceFee = property.MaidServiceFee;
+		PetFee = property.PetFee;
+		Bedrooms = property.Bedrooms;
+		Bathrooms = property.Bathrooms;
+		Accomodates = property.Accomodates;
+		SquareFeet = property.SquareFeet;
+		BedroomId1 = (int)property.Bedroom1;
+		BedroomId2 = (int)property.Bedroom2;
+		BedroomId3 = (int)property.Bedroom3;
+		BedroomId4 = (int)property.Bedroom4;
+		Address1 = property.Address1;
+		Address2 = property.Address2;
+		Suite = property.Suite;
+		City = property.City;
+		State = property.State;
+		Zip = property.Zip;
+		Phone = property.Phone;
+		Neighborhood = property.Neighborhood;
+		CrossStreet = property.CrossStreet;
+		View = property.View;
+		Mailbox = property.Mailbox;
+		Furnished = property.Furnished;
+		Heating = property.Heating;
+		Ac = property.Ac;
+		Elevator = property.Elevator;
+		Security = property.Security;
+		Gated = property.Gated;
+		PetsAllowed = property.PetsAllowed;
+		Smoking = property.Smoking;
+		AssignedParking = property.AssignedParking;
+		Notes = property.Notes;
+		Alarm = property.Alarm;
+		AlarmCode = property.AlarmCode;
+		KeypadAccess = property.KeypadAccess;
+		MasterKeyCode = property.MasterKeyCode;
+		TenantKeyCode = property.TenantKeyCode;
+		Kitchen = property.Kitchen;
+		Oven = property.Oven;
+		Refrigerator = property.Refrigerator;
+		Microwave = property.Microwave;
+		Dishwasher = property.Dishwasher;
+		Bathtub = property.Bathtub;
+		WasherDryer = property.WasherDryer;
+		Sofabeds = property.Sofabeds;
+		Tv = property.Tv;
+		Cable = property.Cable;
+		Dvd = property.Dvd;
+		Streaming = property.Streaming;
+		FastInternet = property.FastInternet;
+		Deck = property.Deck;
+		Patio = property.Patio;
+		Yard = property.Yard;
+		Garden = property.Garden;
+		CommonPool = property.CommonPool;
+		PrivatePool = property.PrivatePool;
+		Jacuzzi = property.Jacuzzi;
+		Sauna = property.Sauna;
+		Gym = property.Gym;
+		TrashPickupId = property.TrashPickupId;
+		TrashRemoval = property.TrashRemoval;
+		Amenities = property.Amenities;
+		Description = property.Description;
+		IsActive = property.IsActive;
+	}
 }

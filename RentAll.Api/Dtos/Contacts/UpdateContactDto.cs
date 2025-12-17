@@ -6,8 +6,9 @@ namespace RentAll.Api.Dtos.Contacts;
 public class UpdateContactDto
 {
     public Guid ContactId { get; set; }
-    public string ContactCode { get; set; } = string.Empty;
-    public int ContactTypeId { get; set; }
+	public Guid OrganizationId { get; set; }
+	public string ContactCode { get; set; } = string.Empty;
+	public int EntityTypeId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Address1 { get; set; }
@@ -27,11 +28,14 @@ public class UpdateContactDto
         if (ContactId != id)
             return (false, "Contact ID mismatch");
 
-        if (string.IsNullOrWhiteSpace(ContactCode))
-            return (false, "Contact Code is required");
+		if (string.IsNullOrWhiteSpace(ContactCode))
+			return (false, "Contact Code is required");
 
-        if (ContactTypeId <= 0)
-            return (false, "Contact Type ID is required");
+		if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
+        if (EntityTypeId <= 0)
+            return (false, "Entity Type ID is required");
 
         if (string.IsNullOrWhiteSpace(FirstName))
             return (false, "First Name is required");
@@ -46,8 +50,8 @@ public class UpdateContactDto
             return (false, "Email is required");
 
         // Validate enum value
-        if (!Enum.IsDefined(typeof(ContactType), ContactTypeId))
-            return (false, $"Invalid ContactType value: {ContactTypeId}");
+        if (!Enum.IsDefined(typeof(EntityType), EntityTypeId))
+            return (false, $"Invalid EntityType value: {EntityTypeId}");
 
         return (true, null);
     }
@@ -56,9 +60,10 @@ public class UpdateContactDto
     {
         return new Contact
         {
-            ContactId = c.ContactId,
+			ContactId = c.ContactId,
+			OrganizationId = c.OrganizationId,
 			ContactCode = c.ContactCode,
-			ContactTypeId = (ContactType)c.ContactTypeId,
+			EntityType = (EntityType)c.EntityTypeId,
 			FirstName = c.FirstName,
 			LastName = c.LastName,
 			Address1 = c.Address1,

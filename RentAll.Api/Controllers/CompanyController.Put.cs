@@ -24,18 +24,15 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if company exists
-                var existingCompany = await _companyRepository.GetByIdAsync(id);
+                var existingCompany = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingCompany == null)
                     return NotFound(new { message = "Company not found" });
 
-                // Check if CompanyCode is being changed and if the new code already exists
+                // Check if CompanyCode is being changed
                 if (existingCompany.CompanyCode != dto.CompanyCode)
-                {
-                    if (await _companyRepository.ExistsByCompanyCodeAsync(dto.CompanyCode))
-                        return Conflict(new { message = "Company Code already exists" });
-                }
+					return BadRequest(new { message = "Company Code cannot change" });
 
-                var company = dto.ToModel(dto, CurrentUser);
+				var company = dto.ToModel(dto, CurrentUser);
                 var updatedCompany = await _companyRepository.UpdateByIdAsync(company);
                 return Ok(new CompanyResponseDto(updatedCompany));
             }
@@ -47,6 +44,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

@@ -4,12 +4,16 @@ namespace RentAll.Api.Dtos.Agents;
 
 public class CreateAgentDto
 {
+    public Guid OrganizationId { get; set; }
     public string AgentCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (string.IsNullOrWhiteSpace(AgentCode))
             return (false, "Agent Code is required");
 
@@ -30,6 +34,7 @@ public class CreateAgentDto
         return new Agent
         {
             AgentId = Guid.NewGuid(),
+            OrganizationId = a.OrganizationId,
             AgentCode = a.AgentCode,
             Description = a.Description,
             IsActive = a.IsActive,

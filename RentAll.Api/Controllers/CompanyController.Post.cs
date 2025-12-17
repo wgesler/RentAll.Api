@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Companies;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -22,11 +23,10 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                // Check if CompanyCode already exists
-                if (await _companyRepository.ExistsByCompanyCodeAsync(dto.CompanyCode))
-                    return Conflict(new { message = "Company Code already exists" });
+				// Get a new Contact code
+				var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Company);
+				var company = dto.ToModel(dto, code, CurrentUser);
 
-                var company = dto.ToModel(dto, CurrentUser);
                 var createdCompany = await _companyRepository.CreateAsync(company);
                 return CreatedAtAction(nameof(GetById), new { id = createdCompany.CompanyId }, new CompanyResponseDto(createdCompany));
             }
@@ -38,6 +38,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

@@ -1,68 +1,69 @@
-using RentAll.Domain.Models.Rentals;
+using RentAll.Domain.Models.Reservations;
 
-namespace RentAll.Api.Dtos.Rentals;
+namespace RentAll.Api.Dtos.Reservations;
 
 public class ReservationResponseDto
 {
-    public Guid ReservationId { get; set; }
-    public Guid AgentId { get; set; }
-    public Guid PropertyId { get; set; }
-    public string? PropertyCode { get; set; }
-    public string? PropertyAddress { get; set; }
-    public int PropertyStatusId { get; set; }
-    public Guid ContactId { get; set; }
-    public int ClientTypeId { get; set; }
-    public int ReservationStatusId { get; set; }
-    public bool IsActive { get; set; }
-    public DateTimeOffset? ArrivalDate { get; set; }
-    public DateTimeOffset? DepartureDate { get; set; }
-    public int CheckInTimeId { get; set; }
-    public int CheckOutTimeId { get; set; }
-    public decimal MonthlyRate { get; set; }
-    public decimal DailyRate { get; set; }
-    public int Bedrooms { get; set; }
-    public decimal Bathrooms { get; set; }
-    public int NumberOfPeople { get; set; }
-    public decimal Deposit { get; set; }
-    public decimal DepartureFee { get; set; }
-    public decimal Taxes { get; set; }
+	public Guid ReservationId { get; set; }
+	public Guid OrganizationId { get; set; }
+	public Guid? AgentId { get; set; }
+	public Guid PropertyId { get; set; }
+	public string TenantName { get; set; } = string.Empty;
+	public Guid ClientId { get; set; }
+	public int ClientTypeId { get; set; }
+	public int ReservationStatusId { get; set; }
+	public DateTimeOffset ArrivalDate { get; set; }
+	public DateTimeOffset DepartureDate { get; set; }
+	public int CheckInTimeId { get; set; }
+	public int CheckOutTimeId { get; set; }
+	public int BillingTypeId { get; set; }
+	public decimal BillingRate { get; set; }
+	public int NumberOfPeople { get; set; }
+	public decimal? Deposit { get; set; }
+	public decimal CheckoutFee { get; set; }
+	public decimal MaidServiceFee { get; set; }
+	public int FrequencyId { get; set; }
+	public decimal PetFee { get; set; }
+	public decimal ExtraFee { get; set; }
+	public string ExtraFeeName { get; set; } = string.Empty;
+	public decimal Taxes { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
+	public Guid CreatedBy { get; set; }
+	public DateTimeOffset ModifiedOn { get; set; }
+	public Guid ModifiedBy { get; set; }
+	public bool IsActive { get; set; }
 
-    public DateTimeOffset CreatedOn { get; set; }
-    public Guid CreatedBy { get; set; }
-    public DateTimeOffset ModifiedOn { get; set; }
-    public Guid ModifiedBy { get; set; }
-
-    public ReservationResponseDto(Reservation rental)
-    {
-        ReservationId = rental.ReservationId;
-        AgentId = rental.AgentId;
-        PropertyId = rental.PropertyId;
-        PropertyCode = rental.PropertyCode;
-        PropertyAddress = rental.PropertyAddress;
-        PropertyStatusId = (int)rental.PropertyStatus;
-        ContactId = rental.ContactId;
-        ClientTypeId = (int)rental.ClientType;
-        ReservationStatusId = (int)rental.ReservationStatus;
-        IsActive = rental.IsActive;
-
-        ArrivalDate = rental.ArrivalDate;
-        DepartureDate = rental.DepartureDate;
-        CheckInTimeId = (int)rental.CheckInTime;
-        CheckOutTimeId = (int)rental.CheckOutTime;
-        MonthlyRate = rental.MonthlyRate;
-        DailyRate = rental.DailyRate;
-        Bedrooms = rental.Bedrooms;
-        Bathrooms = rental.Bathrooms;
-        NumberOfPeople = rental.NumberOfPeople;
-        Deposit = rental.Deposit;
-        DepartureFee = rental.DepartureFee;
-        Taxes = rental.Taxes;
-
-        CreatedOn = rental.CreatedOn;
-        CreatedBy = rental.CreatedBy;
-        ModifiedOn = rental.ModifiedOn;
-        ModifiedBy = rental.ModifiedBy;
-    }
+	public ReservationResponseDto(Reservation reservation)
+	{
+		ReservationId = reservation.ReservationId;
+		OrganizationId = reservation.OrganizationId;
+		AgentId = reservation.AgentId;
+		PropertyId = reservation.PropertyId;
+		TenantName = reservation.TenantName;
+		ClientId = reservation.ClientId;
+		ClientTypeId = (int)reservation.ClientType;
+		ReservationStatusId = (int)reservation.ReservationStatus;
+		ArrivalDate = reservation.ArrivalDate;
+		DepartureDate = reservation.DepartureDate;
+		CheckInTimeId = (int)reservation.CheckInTime;
+		CheckOutTimeId = (int)reservation.CheckOutTime;
+		BillingTypeId = (int)reservation.BillingType;
+		BillingRate = reservation.BillingRate;
+		NumberOfPeople = reservation.NumberOfPeople;
+		Deposit = reservation.Deposit;
+		CheckoutFee = reservation.CheckoutFee;
+		MaidServiceFee = reservation.MaidServiceFee;
+		FrequencyId = reservation.FrequencyId;
+		PetFee = reservation.PetFee;
+		ExtraFee = reservation.ExtraFee;
+		ExtraFeeName = reservation.ExtraFeeName;
+		Taxes = reservation.Taxes;
+		CreatedOn = reservation.CreatedOn;
+		CreatedBy = reservation.CreatedBy;
+		ModifiedOn = reservation.ModifiedOn;
+		ModifiedBy = reservation.ModifiedBy;
+		IsActive = reservation.IsActive;
+	}
 }
 
 

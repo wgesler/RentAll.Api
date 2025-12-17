@@ -5,8 +5,9 @@ namespace RentAll.Api.Dtos.Contacts;
 public class ContactResponseDto
 {
     public Guid ContactId { get; set; }
+    public Guid OrganizationId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
-    public int ContactTypeId { get; set; }
+    public int EntityTypeId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Address1 { get; set; }
@@ -21,8 +22,9 @@ public class ContactResponseDto
     public ContactResponseDto(Contact contact)
     {
         ContactId = contact.ContactId;
+        OrganizationId = contact.OrganizationId;
         ContactCode = contact.ContactCode;
-        ContactTypeId = (int)contact.ContactTypeId;
+        EntityTypeId = (int)contact.EntityType;
         FirstName = contact.FirstName;
         LastName = contact.LastName;
         Address1 = contact.Address1;

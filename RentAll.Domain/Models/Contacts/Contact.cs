@@ -5,8 +5,9 @@ namespace RentAll.Domain.Models.Contacts;
 public class Contact
 {
     public Guid ContactId { get; set; }
+    public Guid OrganizationId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
-    public ContactType ContactTypeId { get; set; }
+    public EntityType EntityType { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Address1 { get; set; }

@@ -4,12 +4,14 @@ namespace RentAll.Api.Dtos.Companies;
 
 public class UpdateCompanyDto
 {
+    public Guid OrganizationId { get; set; }
     public Guid CompanyId { get; set; }
     public string CompanyCode { get; set; } = string.Empty;
     public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
+    public string? Suite { get; set; }
     public string City { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
@@ -25,6 +27,9 @@ public class UpdateCompanyDto
 
         if (CompanyId != id)
             return (false, "Company ID mismatch");
+
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
 
         if (string.IsNullOrWhiteSpace(CompanyCode))
             return (false, "Company Code is required");
@@ -54,12 +59,14 @@ public class UpdateCompanyDto
     {
         return new Company
         {
+            OrganizationId = c.OrganizationId,
             CompanyId = c.CompanyId,
             CompanyCode = c.CompanyCode,
             ContactId = c.ContactId,
             Name = c.Name,
             Address1 = c.Address1,
             Address2 = c.Address2,
+            Suite = c.Suite,
             City = c.City,
             State = c.State,
             Zip = c.Zip,

@@ -5,11 +5,13 @@ namespace RentAll.Api.Dtos.Companies;
 public class CompanyResponseDto
 {
     public Guid CompanyId { get; set; }
+    public Guid OrganizationId { get; set; }
     public string CompanyCode { get; set; } = string.Empty;
     public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
+    public string? Suite { get; set; }
     public string City { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
@@ -21,11 +23,13 @@ public class CompanyResponseDto
     public CompanyResponseDto(Company company)
     {
         CompanyId = company.CompanyId;
+        OrganizationId = company.OrganizationId;
         CompanyCode = company.CompanyCode;
         ContactId = company.ContactId;
         Name = company.Name;
         Address1 = company.Address1;
         Address2 = company.Address2;
+        Suite = company.Suite;
         City = company.City;
         State = company.State;
         Zip = company.Zip;

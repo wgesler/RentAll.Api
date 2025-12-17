@@ -8,9 +8,9 @@ namespace RentAll.Domain.Interfaces.Repositories
 		Task<User> CreateAsync(User user);
 
 		// Selects
+		Task<IEnumerable<User>> GetAllAsync(Guid organizationId);
 		Task<User?> GetByIdAsync(Guid userId);
 		Task<User?> GetByEmailAsync(string email);
-		Task<IEnumerable<User>> GetAllAsync();
 		Task<bool> ExistsByEmailAsync(string email);
 
 		// Updates

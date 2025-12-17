@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if contact exists
-                var contact = await _contactRepository.GetByIdAsync(id);
+                var contact = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound(new { message = "Contact not found" });
 
@@ -33,6 +33,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

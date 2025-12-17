@@ -21,8 +21,9 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             var response = new Contact()
             {
                 ContactId = e.ContactId,
+                OrganizationId = e.OrganizationId,
                 ContactCode = e.ContactCode,
-                ContactTypeId = (ContactType)e.ContactTypeId,
+                EntityType = (EntityType)e.EntityTypeId,
                 FirstName = e.FirstName,
                 LastName = e.LastName,
                 Address1 = e.Address1,

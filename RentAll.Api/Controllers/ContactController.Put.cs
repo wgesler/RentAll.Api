@@ -23,20 +23,18 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                // Check if contact exists
-                var existingContact = await _contactRepository.GetByIdAsync(id);
-                if (existingContact == null)
-                    return NotFound(new { message = "Contact not found" });
+				// Check if contact exists
+				var existing = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
+				if (existing == null)
+					return NotFound(new { message = "Contact not found" });
 
-                // Check if ContactCode is being changed and if the new code already exists
-                if (existingContact.ContactCode != dto.ContactCode)
-                {
-                    if (await _contactRepository.ExistsByContactCodeAsync(dto.ContactCode))
-                        return Conflict(new { message = "Contact Code already exists" });
-                }
+				// Check if CompanyCode is being changed
+				if (existing.ContactCode != dto.ContactCode)
+					return BadRequest(new { message = "Contact Code cannot change" });
+
 
                 var contact = dto.ToModel(dto, CurrentUser);
-                var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
+				var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 return Ok(new ContactResponseDto(updatedContact));
             }
             catch (Exception ex)
@@ -47,6 +45,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         /// <param name="dto">Property data</param>
         /// <returns>Created property</returns>
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreatePropertyDto dto)
+        public async Task<IActionResult> Create([FromBody] PropertyCreateDto dto)
         {
             if (dto == null)
                 return BadRequest(new { message = "Property data is required" });
@@ -26,7 +26,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if PropertyCode already exists
-                if (await _propertyRepository.ExistsByPropertyCodeAsync(dto.PropertyCode))
+                if (await _propertyRepository.ExistsByPropertyCodeAsync(dto.PropertyCode, CurrentOrganizationId))
                     return Conflict(new { message = "Property Code already exists" });
 
                 var property = dto.ToModel(dto, CurrentUser);

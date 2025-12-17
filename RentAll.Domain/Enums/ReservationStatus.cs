@@ -8,8 +8,10 @@ public enum ReservationStatus
     GaveNotice = 3,
     FirstRightRefusal = 4,
     Maintenance = 5,
-    OwnerBlocked = 6
+    OwnerBlocked = 6,
+    ArrivalDeparture = 7
 }
+
 
 
 

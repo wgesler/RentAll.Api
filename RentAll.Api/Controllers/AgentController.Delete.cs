@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if agent exists
-                var agent = await _agentRepository.GetByIdAsync(id);
+                var agent = await _agentRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (agent == null)
                     return NotFound(new { message = "Agent not found" });
 

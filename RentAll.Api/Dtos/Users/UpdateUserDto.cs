@@ -4,6 +4,7 @@ namespace RentAll.Api.Dtos.Users;
 
 public class UpdateUserDto
 {
+    public Guid OrganizationId { get; set; }
     public Guid UserId { get; set; }
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
@@ -19,6 +20,9 @@ public class UpdateUserDto
 
         if (UserId != id)
             return (false, "User ID mismatch");
+
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
 
         if (string.IsNullOrWhiteSpace(FirstName))
             return (false, "First Name is required");
@@ -36,6 +40,7 @@ public class UpdateUserDto
     {
         return new User
         {
+            OrganizationId = d.OrganizationId,
             UserId = d.UserId,
             FirstName = d.FirstName,
             LastName = d.LastName,
@@ -47,6 +52,7 @@ public class UpdateUserDto
 		};
     }
 }
+
 
 
 

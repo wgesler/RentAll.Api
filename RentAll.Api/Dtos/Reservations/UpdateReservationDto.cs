@@ -1,97 +1,115 @@
 using RentAll.Domain.Enums;
-using RentAll.Domain.Models.Rentals;
+using RentAll.Domain.Models.Reservations;
 
-namespace RentAll.Api.Dtos.Rentals;
+namespace RentAll.Api.Dtos.Reservations;
 
 public class UpdateReservationDto
 {
-    public Guid ReservationId { get; set; }
-    public Guid AgentId { get; set; }
-    public Guid PropertyId { get; set; }
-    public Guid ContactId { get; set; }
-    public int ClientTypeId { get; set; }
-    public int ReservationStatusId { get; set; }
-    public bool IsActive { get; set; }
+	public Guid OrganizationId { get; set; }
+	public Guid ReservationId { get; set; }
+	public Guid? AgentId { get; set; }
+	public Guid PropertyId { get; set; }
+	public string TenantName { get; set; } = string.Empty;
+	public Guid ClientId { get; set; }
+	public int ClientTypeId { get; set; }
+	public int ReservationStatusId { get; set; }
+	public bool IsActive { get; set; }
+	public DateTimeOffset ArrivalDate { get; set; }
+	public DateTimeOffset DepartureDate { get; set; }
+	public int CheckInTimeId { get; set; }
+	public int CheckOutTimeId { get; set; }
+	public int BillingTypeId { get; set; }
+	public decimal BillingRate { get; set; }
+	public int NumberOfPeople { get; set; }
+	public decimal? Deposit { get; set; }
+	public decimal CheckoutFee { get; set; }
+	public decimal MaidServiceFee { get; set; }
+	public int FrequencyId { get; set; }
+	public decimal PetFee { get; set; }
+	public decimal ExtraFee { get; set; }
+	public string ExtraFeeName { get; set; } = string.Empty;
+	public decimal Taxes { get; set; }
 
-    // Details
-    public DateTimeOffset? ArrivalDate { get; set; }
-    public DateTimeOffset? DepartureDate { get; set; }
-    public int CheckInTimeId { get; set; }
-    public int CheckOutTimeId { get; set; }
-    public decimal MonthlyRate { get; set; }
-    public decimal DailyRate { get; set; }
-    public int NumberOfPeople { get; set; }
-    public decimal Deposit { get; set; }
-    public decimal DepartureFee { get; set; }
-    public decimal Taxes { get; set; }
+	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	{
+		if (id == Guid.Empty)
+			return (false, "ReservationId is required");
 
-    public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
-    {
-        if (id == Guid.Empty)
-            return (false, "reservationId is required");
+		if (ReservationId != id)
+			return (false, "ReservationId mismatch");
 
-        if (ReservationId != id)
-            return (false, "reservationId mismatch");
+		if (OrganizationId == Guid.Empty)
+			return (false, "OrganizationId is required");
 
 		if (PropertyId == Guid.Empty)
-			return (false, "propertyId is required");
+			return (false, "PropertyId is required");
 
-		if (ContactId == Guid.Empty)
-			return (false, "contactId is required");
+		if (string.IsNullOrWhiteSpace(TenantName))
+			return (false, "TenantName is required");
 
-		if (ArrivalDate.HasValue && DepartureDate.HasValue && ArrivalDate >= DepartureDate)
-			return (false, "departureDate must be after arrivalDate");
+		if (ClientId == Guid.Empty)
+			return (false, "ClientId is required");
 
-		if (DailyRate < 1)
-			return (false, "dailyRate must be zero or greater");
+		if (ArrivalDate >= DepartureDate)
+			return (false, "DepartureDate must be after ArrivalDate");
 
-		if (MonthlyRate < 1)
-			return (false, "monthlyRate must be zero or greater");
+		if (BillingRate < 0)
+			return (false, "BillingRate must be zero or greater");
 
-		if (NumberOfPeople < 1)
-			return (false, "numberOfPeople must be zero or greater");
+		if (NumberOfPeople < 0)
+			return (false, "NumberOfPeople must be zero or greater");
 
 		if (!Enum.IsDefined(typeof(ClientType), ClientTypeId))
-			return (false, $"Invalid clientTypeId value: {ClientTypeId}");
+			return (false, $"Invalid ClientTypeId value: {ClientTypeId}");
 
 		if (!Enum.IsDefined(typeof(ReservationStatus), ReservationStatusId))
-			return (false, $"Invalid reservationStatusId value: {ReservationStatusId}");
+			return (false, $"Invalid ReservationStatusId value: {ReservationStatusId}");
 
 		if (!Enum.IsDefined(typeof(CheckInTime), CheckInTimeId))
-			return (false, $"Invalid checkInTimeId value: {CheckInTimeId}");
+			return (false, $"Invalid CheckInTimeId value: {CheckInTimeId}");
 
 		if (!Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId))
-			return (false, $"Invalid checkOutTimeId value: {CheckOutTimeId}");
+			return (false, $"Invalid CheckOutTimeId value: {CheckOutTimeId}");
+
+		if (!Enum.IsDefined(typeof(BillingType), BillingTypeId))
+			return (false, $"Invalid BillingTypeId value: {BillingTypeId}");
 
 		return (true, null);
-    }
+	}
 
-    public Reservation ToModel(Reservation existingReservation, Guid currentUser)
-    {
-        return new Reservation
-        {
-            ReservationId = ReservationId,
-            AgentId = AgentId,
-            PropertyId = PropertyId,
-            ContactId = ContactId,
-            ClientType = (ClientType)ClientTypeId,
-            ReservationStatus = (ReservationStatus)ReservationStatusId,
-            IsActive = IsActive,
-            ArrivalDate = ArrivalDate,
-            DepartureDate = DepartureDate,
-            CheckInTime = (CheckInTime)CheckInTimeId,
-            CheckOutTime = (CheckOutTime)CheckOutTimeId,
-            MonthlyRate = MonthlyRate,
-            DailyRate = DailyRate,
-            NumberOfPeople = NumberOfPeople,
-            Deposit = Deposit,
-            DepartureFee = DepartureFee,
-            Taxes = Taxes,
-            CreatedOn = existingReservation.CreatedOn,
-            CreatedBy = existingReservation.CreatedBy,
-            ModifiedBy = currentUser
-        };
-    }
+	public Reservation ToModel(Reservation existingReservation, Guid currentUser)
+	{
+		return new Reservation
+		{
+			OrganizationId = OrganizationId,
+			ReservationId = ReservationId,
+			AgentId = AgentId,
+			PropertyId = PropertyId,
+			TenantName = TenantName,
+			ClientId = ClientId,
+			ClientType = (ClientType)ClientTypeId,
+			ReservationStatus = (ReservationStatus)ReservationStatusId,
+			IsActive = IsActive,
+			ArrivalDate = ArrivalDate,
+			DepartureDate = DepartureDate,
+			CheckInTime = (CheckInTime)CheckInTimeId,
+			CheckOutTime = (CheckOutTime)CheckOutTimeId,
+			BillingType = (BillingType)BillingTypeId,
+			BillingRate = BillingRate,
+			NumberOfPeople = NumberOfPeople,
+			Deposit = Deposit,
+			CheckoutFee = CheckoutFee,
+			MaidServiceFee = MaidServiceFee,
+			FrequencyId = FrequencyId,
+			PetFee = PetFee,
+			ExtraFee = ExtraFee,
+			ExtraFeeName = ExtraFeeName ?? string.Empty,
+			Taxes = Taxes,
+			CreatedOn = existingReservation.CreatedOn,
+			CreatedBy = existingReservation.CreatedBy,
+			ModifiedBy = currentUser
+		};
+	}
 }
 
 

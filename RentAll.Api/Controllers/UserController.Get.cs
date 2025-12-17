@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var users = await _userRepository.GetAllAsync();
+				var users = await _userRepository.GetAllAsync(CurrentOrganizationId);
 				var response = users.Select(u => new UserResponseDto(u));
 				return Ok(response);
 			}
@@ -52,8 +52,4 @@ namespace RentAll.Api.Controllers
         }
     }
 }
-
-
-
-
 

@@ -20,6 +20,7 @@ namespace RentAll.Infrastructure.Repositories.Agents
             var response = new Agent()
             {
                 AgentId = e.AgentId,
+                OrganizationId = e.OrganizationId,
                 AgentCode = e.AgentCode,
                 Description = e.Description,
                 IsActive = e.IsActive,
@@ -33,6 +34,7 @@ namespace RentAll.Infrastructure.Repositories.Agents
         }
     }
 }
+
 
 
 

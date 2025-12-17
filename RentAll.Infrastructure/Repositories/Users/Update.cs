@@ -19,6 +19,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 
 			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_UpdateById", new
 			{
+				OrganizationId = user.OrganizationId,
 				UserId = user.UserId,
 				FirstName = user.FirstName,
 				LastName = user.LastName,

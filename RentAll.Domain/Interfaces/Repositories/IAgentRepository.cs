@@ -7,11 +7,11 @@ public interface IAgentRepository
     // Creates
     Task<Agent> CreateAsync(Agent agent);
 
-    // Selects
-    Task<Agent?> GetByIdAsync(Guid agentId);
-    Task<Agent?> GetByAgentCodeAsync(string agentCode);
-    Task<IEnumerable<Agent>> GetAllAsync();
-    Task<bool> ExistsByAgentCodeAsync(string agentCode);
+	// Selects
+	Task<IEnumerable<Agent>> GetAllAsync(Guid OrganizationId);
+	Task<Agent?> GetByIdAsync(Guid agentId, Guid OrganizationId);
+    Task<Agent?> GetByAgentCodeAsync(string agentCode, Guid OrganizationId);
+    Task<bool> ExistsByAgentCodeAsync(string agentCode, Guid OrganizationId);
 
     // Updates
     Task<Agent> UpdateByIdAsync(Agent agent);

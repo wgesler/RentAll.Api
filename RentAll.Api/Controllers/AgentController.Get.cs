@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
         {
             try
             {
-                var agents = await _agentRepository.GetAllAsync();
+                var agents = await _agentRepository.GetAllAsync(CurrentOrganizationId);
                 var response = agents.Select(a => new AgentResponseDto(a));
                 return Ok(response);
             }
@@ -38,7 +38,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var agent = await _agentRepository.GetByIdAsync(id);
+                var agent = await _agentRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (agent == null)
                     return NotFound(new { message = "Agent not found" });
 
@@ -64,7 +64,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var exists = await _agentRepository.ExistsByAgentCodeAsync(agentCode);
+                var exists = await _agentRepository.ExistsByAgentCodeAsync(agentCode, CurrentOrganizationId);
                 return Ok(new { exists = exists });
             }
             catch (Exception ex)

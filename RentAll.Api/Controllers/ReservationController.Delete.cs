@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if reservation exists
-                var reservation = await _reservationRepository.GetByIdAsync(id);
+                var reservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (reservation == null)
                     return NotFound(new { message = "Reservation not found" });
 

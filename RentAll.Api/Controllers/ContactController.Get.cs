@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
         {
             try
             {
-                var contacts = await _contactRepository.GetAllAsync();
+                var contacts = await _contactRepository.GetAllAsync(CurrentOrganizationId);
                 var response = contacts.Select(c => new ContactResponseDto(c));
                 return Ok(response);
             }
@@ -38,7 +38,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var contact = await _contactRepository.GetByIdAsync(id);
+                var contact = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound(new { message = "Contact not found" });
 
@@ -61,7 +61,7 @@ namespace RentAll.Api.Controllers
         {
             try
             {
-                var contacts = await _contactRepository.GetByContactTypeIdAsync(contactTypeId);
+                var contacts = await _contactRepository.GetByContactTypeIdAsync(contactTypeId, CurrentOrganizationId);
                 var response = contacts.Select(c => new ContactResponseDto(c));
                 return Ok(response);
             }
@@ -73,6 +73,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

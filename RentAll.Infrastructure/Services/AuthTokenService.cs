@@ -36,7 +36,8 @@ public class AuthTokenService : IAuthTokenService
 
         var userObject = new
         {
-            userGuid = user.UserId.ToString(),
+            userId = user.UserId.ToString(),
+			organizationId = user.OrganizationId.ToString(),
 			firstName = user.FirstName,
 			lastName = user.LastName,
             email = user.Email,

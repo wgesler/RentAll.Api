@@ -12,12 +12,20 @@ using RentAll.Infrastructure.HealthChecks;
 using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Properties;
-using RentAll.Infrastructure.Repositories.Rentals;
+using RentAll.Infrastructure.Repositories.Reservations;
 using RentAll.Infrastructure.Repositories.Agents;
 using RentAll.Infrastructure.Repositories.RefreshTokens;
 using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Users;
+using RentAll.Infrastructure.Repositories.Areas;
+using RentAll.Infrastructure.Repositories.Buildings;
+using RentAll.Infrastructure.Repositories.Regions;
+using RentAll.Infrastructure.Repositories.Franchises;
+using RentAll.Infrastructure.Repositories.Organizations;
+using RentAll.Infrastructure.Repositories.CodeSequences;
+using RentAll.Infrastructure.Repositories.Colors;
 using RentAll.Infrastructure.Services;
+using RentAll.Domain.Interfaces.Managers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,14 +90,26 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 
+builder.Services.AddScoped<IContactManager, ContactManager>();
+builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
+
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
 builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<IAgentRepository, AgentRepository>();
 builder.Services.AddScoped<ICommonRepository, CommonRepository>();
+
+builder.Services.AddScoped<IFranchiseRepository, FranchiseRepository>();
+builder.Services.AddScoped<IAreaRepository, AreaRepository>();
+builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
+builder.Services.AddScoped<IRegionRepository, RegionRepository>();
+builder.Services.AddScoped<ICodeSequenceRepository, CodeSequenceRepository>();
+builder.Services.AddScoped<IColorRepository, ColorRepository>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>

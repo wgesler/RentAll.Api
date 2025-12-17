@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Rentals;
+using RentAll.Api.Dtos.Reservations;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class ReservationController
+    public partial class ReservationController  
     {
         /// <summary>
         /// Update an existing reservation
@@ -23,7 +23,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existingReservation = await _reservationRepository.GetByIdAsync(id);
+                var existingReservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingReservation == null)
                     return NotFound(new { message = "Reservation not found" });
 

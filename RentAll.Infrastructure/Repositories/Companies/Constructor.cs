@@ -20,11 +20,13 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			var response = new Company()
 			{
 				CompanyId = e.CompanyId,
+				OrganizationId = e.OrganizationId,
 				CompanyCode = e.CompanyCode,
 				ContactId = e.ContactId,
 				Name = e.Name,
 				Address1 = e.Address1,
 				Address2 = e.Address2,
+				Suite = e.Suite,
 				City = e.City,
 				State = e.State,
 				Zip = e.Zip,

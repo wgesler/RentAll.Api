@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if company exists
-                var company = await _companyRepository.GetByIdAsync(id);
+                var company = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (company == null)
                     return NotFound(new { message = "Company not found" });
 
@@ -33,6 +33,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

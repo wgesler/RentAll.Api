@@ -8,17 +8,18 @@ namespace RentAll.Infrastructure.Repositories.Users
 {
 	public partial class UserRepository : IUserRepository
 	{
-		public async Task<bool> ExistsByEmailAsync(string email)
+		public async Task<IEnumerable<User>> GetAllAsync(Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetByEmail", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetAll", new
 			{
-				Email = email
+				OrganizationId = organizationId
 			});
 
 			if (res == null || !res.Any())
-				return false;
-			return true;
+				return Enumerable.Empty<User>();
+
+			return res.Select(ConvertEntityToModel);
 		}
 
 		public async Task<User?> GetByIdAsync(Guid userId)
@@ -49,29 +50,19 @@ namespace RentAll.Infrastructure.Repositories.Users
 			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
 
-		public async Task<User?> GetByUsernameAsync(string username)
+		public async Task<bool> ExistsByEmailAsync(string email)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetByName", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetByEmail", new
 			{
-				username = username
+				Email = email
 			});
 
 			if (res == null || !res.Any())
-				throw new Exception("User not found");
-
-			return ConvertEntityToModel(res.FirstOrDefault()!);
+				return false;
+			return true;
 		}
 
-		public async Task<IEnumerable<User>> GetAllAsync()
-		{
-			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetAll", null);
 
-			if (res == null || !res.Any())
-				return Enumerable.Empty<User>();
-
-			return res.Select(ConvertEntityToModel);
-		}
 	}
 }

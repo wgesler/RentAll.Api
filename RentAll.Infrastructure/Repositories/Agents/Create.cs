@@ -13,6 +13,7 @@ namespace RentAll.Infrastructure.Repositories.Agents
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<AgentEntity>("dbo.Agent_Add", new
             {
+                OrganizationId = agent.OrganizationId,
                 AgentCode = agent.AgentCode,
                 Description = agent.Description,
                 IsActive = agent.IsActive,
@@ -26,6 +27,7 @@ namespace RentAll.Infrastructure.Repositories.Agents
         }
     }
 }
+
 
 
 

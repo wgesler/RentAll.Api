@@ -1,28 +1,20 @@
 using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Rentals;
+using RentAll.Domain.Models.Reservations;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 
-namespace RentAll.Infrastructure.Repositories.Rentals
+namespace RentAll.Infrastructure.Repositories.Reservations
 {
     public partial class ReservationRepository : IReservationRepository
     {
-		public async Task<IEnumerable<Reservation>> GetAllAsync()
+		public async Task<IEnumerable<Reservation>> GetAllAsync(Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetAll", null);
-
-			if (res == null || !res.Any())
-				return Enumerable.Empty<Reservation>();
-
-			return res.Select(ConvertEntityToModel);
-		}
-
-		public async Task<IEnumerable<Reservation>> GetActiveReservationsAsync()
-		{
-			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetAllActive", null);
+			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetAll", new
+			{
+				OrganizationId = organizationId
+			});
 
 			if (res == null || !res.Any())
 				return Enumerable.Empty<Reservation>();
@@ -30,12 +22,13 @@ namespace RentAll.Infrastructure.Repositories.Rentals
 			return res.Select(ConvertEntityToModel);
 		}
 		
-        public async Task<Reservation?> GetByIdAsync(Guid reservationId)
+        public async Task<Reservation?> GetByIdAsync(Guid reservationId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetById", new
             {
-				ReservationId = reservationId
+				ReservationId = reservationId,
+                OrganizationId = organizationId
             });
 
             if (res == null || !res.Any())
@@ -44,13 +37,14 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
-        public async Task<IEnumerable<Reservation>> GetByPropertyIdAsync(Guid propertyId)
+        public async Task<IEnumerable<Reservation>> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetByPropertyId", new
             {
-                PropertyId = propertyId
-            });
+                PropertyId = propertyId,
+				OrganizationId = organizationId
+			});
 
             if (res == null || !res.Any())
                 return Enumerable.Empty<Reservation>();
@@ -58,18 +52,32 @@ namespace RentAll.Infrastructure.Repositories.Rentals
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<Reservation>> GetByContactIdAsync(Guid contactId)
+        public async Task<IEnumerable<Reservation>> GetByClientIdAsync(Guid clientId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetByContactId", new
+            var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetByClientId", new
             {
-                ContactId = contactId
-            });
+                ClientId = clientId,
+				OrganizationId = organizationId
+			});
 
             if (res == null || !res.Any())
                 return Enumerable.Empty<Reservation>();
 
             return res.Select(ConvertEntityToModel);
         }
-    }
+		public async Task<IEnumerable<Reservation>> GetActiveReservationsAsync(Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetAllActive", new
+			{
+				OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Reservation>();
+
+			return res.Select(ConvertEntityToModel);
+		}
+	}
 }

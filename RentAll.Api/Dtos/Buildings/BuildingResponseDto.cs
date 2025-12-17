@@ -1,0 +1,22 @@
+using RentAll.Domain.Models.Properties;
+
+namespace RentAll.Api.Dtos.Buildings;
+
+public class BuildingResponseDto
+{
+	public Guid OrganizationId { get; set; }
+	public int BuildingId { get; set; }
+	public string BuildingCode { get; set; } = string.Empty;
+	public string Description { get; set; } = string.Empty;
+	public bool IsActive { get; set; }
+
+	public BuildingResponseDto(Building building)
+	{
+		OrganizationId = building.OrganizationId;
+		BuildingId = building.BuildingId;
+		BuildingCode = building.BuildingCode;
+		Description = building.Description;
+		IsActive = building.IsActive;
+	}
+}
+

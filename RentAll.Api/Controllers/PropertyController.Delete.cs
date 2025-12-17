@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if property exists
-                var property = await _propertyRepository.GetByIdAsync(id);
+                var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -33,7 +33,3 @@ namespace RentAll.Api.Controllers
         }
     }
 }
-
-
-
-

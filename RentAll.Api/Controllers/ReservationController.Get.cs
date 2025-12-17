@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Rentals;
+using RentAll.Api.Dtos.Reservations;
 
 namespace RentAll.Api.Controllers
 {
@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var reservations = await _reservationRepository.GetAllAsync();
+				var reservations = await _reservationRepository.GetAllAsync(CurrentOrganizationId);
 				var response = reservations.Select(r => new ReservationResponseDto(r));
 				return Ok(response);
 			}
@@ -34,7 +34,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var reservations = await _reservationRepository.GetActiveReservationsAsync();
+				var reservations = await _reservationRepository.GetActiveReservationsAsync(CurrentOrganizationId);
 				var response = reservations.Select(r => new ReservationResponseDto(r));
 				return Ok(response);
 			}
@@ -58,7 +58,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reservation = await _reservationRepository.GetByIdAsync(id);
+                var reservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (reservation == null)
                     return NotFound(new { message = "Reservation not found" });
 
@@ -84,7 +84,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reservations = await _reservationRepository.GetByPropertyIdAsync(propertyId);
+                var reservations = await _reservationRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
                 var response = reservations.Select(r => new ReservationResponseDto(r));
                 return Ok(response);
             }
@@ -108,7 +108,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reservations = await _reservationRepository.GetByContactIdAsync(contactId);
+                var reservations = await _reservationRepository.GetByClientIdAsync(contactId, CurrentOrganizationId);
                 var response = reservations.Select(r => new ReservationResponseDto(r));
                 return Ok(response);
             }

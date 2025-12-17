@@ -32,7 +32,7 @@ public partial class AuthController
             return BadRequest(new { message = "First, last, email, and password are required" });
 
         var (success, user, accessToken, refreshToken, errorMessage) = await _authManager.RegisterAsync(
-            registerDto.FirstName, registerDto.LastName, registerDto.Email, registerDto.Password);
+            registerDto.OrganizationId, registerDto.FirstName, registerDto.LastName, registerDto.Email, registerDto.Password);
 
         if (!success || user == null || accessToken == null || refreshToken == null)
             return BadRequest(new { message = errorMessage ?? "Registration failed" });

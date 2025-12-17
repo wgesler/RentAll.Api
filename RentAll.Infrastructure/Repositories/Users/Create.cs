@@ -18,6 +18,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 			await using var db = new SqlConnection(_dbConnectionString);
 			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_Add", new
 			{
+				OrganizationId = user.OrganizationId,
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				Email = user.Email,

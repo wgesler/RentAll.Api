@@ -4,11 +4,12 @@ namespace RentAll.Api.Dtos.Companies;
 
 public class CreateCompanyDto
 {
-    public string CompanyCode { get; set; } = string.Empty;
+    public Guid OrganizationId { get; set; }
     public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
+    public string? Suite { get; set; }
     public string City { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
@@ -18,8 +19,8 @@ public class CreateCompanyDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (string.IsNullOrWhiteSpace(CompanyCode))
-            return (false, "Company Code is required");
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
 
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
@@ -42,15 +43,17 @@ public class CreateCompanyDto
         return (true, null);
     }
 
-    public Company ToModel(CreateCompanyDto c, Guid currentUser)
+    public Company ToModel(CreateCompanyDto c, string code, Guid currentUser)
     {
         return new Company
         {
-            CompanyCode = c.CompanyCode,
+            OrganizationId = c.OrganizationId,
+            CompanyCode = code,
             ContactId = c.ContactId,
             Name = c.Name,
             Address1 = c.Address1,
             Address2 = c.Address2,
+            Suite = c.Suite,
             City = c.City,
             State = c.State,
             Zip = c.Zip,

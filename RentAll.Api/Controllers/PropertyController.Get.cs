@@ -15,7 +15,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var properties = await _propertyRepository.GetAllAsync();
+				var properties = await _propertyRepository.GetAllAsync(CurrentOrganizationId);
 				var response = properties.Select(p => new PropertyResponseDto(p));
 				return Ok(response);
 			}
@@ -39,7 +39,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var property = await _propertyRepository.GetByIdAsync(id);
+                var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -65,7 +65,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var property = await _propertyRepository.GetByPropertyCodeAsync(propertyCode);
+                var property = await _propertyRepository.GetByPropertyCodeAsync(propertyCode, CurrentOrganizationId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -91,7 +91,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var properties = await _propertyRepository.GetByStateAsync(state);
+                var properties = await _propertyRepository.GetByStateAsync(state, CurrentOrganizationId);
                 var response = properties.Select(p => new PropertyResponseDto(p));
                 return Ok(response);
             }
@@ -103,7 +103,3 @@ namespace RentAll.Api.Controllers
         }
     }
 }
-
-
-
-

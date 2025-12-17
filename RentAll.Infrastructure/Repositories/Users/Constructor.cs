@@ -34,6 +34,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 			var response = new User()
 			{
 				UserId = e.UserId,
+				OrganizationId = e.OrganizationId,
 				FirstName = e.FirstName,
 				LastName = e.LastName,
 				Email = e.Email,

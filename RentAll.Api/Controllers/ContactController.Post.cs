@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Contacts;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -22,11 +23,10 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                // Check if ContactCode already exists
-                if (await _contactRepository.ExistsByContactCodeAsync(dto.ContactCode))
-                    return Conflict(new { message = "Contact Code already exists" });
+                // Get a new Contact code
+                var code = await _contactManager.GenerateContactCodeAsync(dto.OrganizationId, dto.EntityTypeId);
+                var contact = dto.ToModel(dto, code, CurrentUser);
 
-                var contact = dto.ToModel(dto, CurrentUser);
                 var createdContact = await _contactRepository.CreateAsync(contact);
                 return CreatedAtAction(nameof(GetById), new { id = createdContact.ContactId }, new ContactResponseDto(createdContact));
             }
@@ -38,6 +38,7 @@ namespace RentAll.Api.Controllers
         }
     }
 }
+
 
 
 

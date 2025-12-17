@@ -42,7 +42,7 @@ public class AuthManager
         return (true, user, accessToken, refreshToken);
     }
 
-    public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken, string? ErrorMessage)> RegisterAsync(string firstName, string lastName, string email, string password)
+    public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken, string? ErrorMessage)> RegisterAsync(Guid organizationId, string firstName, string lastName, string email, string password)
     {
         if (await _userRepository.ExistsByEmailAsync(email))
             return (false, null, null, null, "Email already exists");
@@ -50,6 +50,7 @@ public class AuthManager
         var passwordHash = _passwordHasher.HashPassword(password);
         var user = new User
         {
+            OrganizationId = organizationId,
             FirstName = firstName,
             LastName = lastName,
             Email = email,

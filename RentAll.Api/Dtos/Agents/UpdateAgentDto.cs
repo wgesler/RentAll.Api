@@ -4,7 +4,8 @@ namespace RentAll.Api.Dtos.Agents;
 
 public class UpdateAgentDto
 {
-    public Guid AgentId { get; set; }
+	public Guid AgentId { get; set; }
+	public Guid OrganizationId { get; set; }
     public string AgentCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsActive { get; set; }
@@ -16,6 +17,9 @@ public class UpdateAgentDto
 
         if (AgentId != id)
             return (false, "Agent ID mismatch");
+
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
 
         if (string.IsNullOrWhiteSpace(AgentCode))
             return (false, "Agent Code is required");
@@ -37,6 +41,7 @@ public class UpdateAgentDto
         return new Agent
         {
             AgentId = a.AgentId,
+            OrganizationId = a.OrganizationId,
             AgentCode = a.AgentCode,
             Description = a.Description,
             IsActive = a.IsActive,

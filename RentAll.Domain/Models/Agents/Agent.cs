@@ -3,6 +3,7 @@ namespace RentAll.Domain.Models.Agents;
 public class Agent
 {
     public Guid AgentId { get; set; }
+    public Guid OrganizationId { get; set; }
     public string AgentCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsActive { get; set; }
