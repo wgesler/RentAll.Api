@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using RentAll.Domain.Interfaces.Auth;
-using RentAll.Domain.Models.Users;
+using RentAll.Domain.Models;
 
 namespace RentAll.Infrastructure.Services;
 

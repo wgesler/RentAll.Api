@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Organizations;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Organizations;
 
@@ -50,23 +50,23 @@ public class UpdateOrganizationDto
 		return (true, null);
 	}
 
-	public Organization ToModel(UpdateOrganizationDto d, Guid currentUser)
+	public Organization ToModel(Guid currentUser)
 	{
 		return new Organization
 		{
-			OrganizationId = d.OrganizationId,
-			OrganizationCode = d.OrganizationCode,
-			Name = d.Name,
-			Address1 = d.Address1,
-			Address2 = d.Address2,
-			Suite = d.Suite,
-			City = d.City,
-			State = d.State,
-			Zip = d.Zip,
-			Phone = d.Phone,
-			Website = d.Website,
-			LogoStorageId = d.LogoStorageId,
-			IsActive = d.IsActive,
+			OrganizationId = OrganizationId,
+			OrganizationCode = OrganizationCode,
+			Name = Name,
+			Address1 = Address1,
+			Address2 = Address2,
+			Suite = Suite,
+			City = City,
+			State = State,
+			Zip = Zip,
+			Phone = Phone,
+			Website = Website,
+			LogoStorageId = LogoStorageId,
+			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};
 	}

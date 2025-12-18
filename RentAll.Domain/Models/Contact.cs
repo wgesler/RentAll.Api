@@ -1,6 +1,6 @@
 using RentAll.Domain.Enums;
 
-namespace RentAll.Domain.Models.Contacts;
+namespace RentAll.Domain.Models;
 
 public class Contact
 {

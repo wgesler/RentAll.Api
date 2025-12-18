@@ -1,5 +1,5 @@
 using RentAll.Domain.Enums;
-using RentAll.Domain.Models.Reservations;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Reservations;
 
@@ -8,9 +8,9 @@ public class CreateReservationDto
 	public Guid OrganizationId { get; set; }
 	public Guid? AgentId { get; set; }
 	public Guid PropertyId { get; set; }
-	public string TenantName { get; set; } = string.Empty;
-	public Guid ClientId { get; set; }
-	public int ClientTypeId { get; set; }
+	public int ReservationTypeId { get; set; }
+	public Guid ContactId { get; set; }
+	public string? TenantName { get; set; }
 	public int ReservationStatusId { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset ArrivalDate { get; set; }
@@ -20,7 +20,7 @@ public class CreateReservationDto
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public int NumberOfPeople { get; set; }
-	public decimal? Deposit { get; set; }
+	public decimal Deposit { get; set; }
 	public decimal CheckoutFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
@@ -40,8 +40,8 @@ public class CreateReservationDto
 		if (string.IsNullOrWhiteSpace(TenantName))
 			return (false, "TenantName is required");
 
-		if (ClientId == Guid.Empty)
-			return (false, "ClientId is required");
+		if (ContactId == Guid.Empty)
+			return (false, "ContactId is required");
 
 		if (ArrivalDate >= DepartureDate)
 			return (false, "DepartureDate must be after ArrivalDate");
@@ -52,8 +52,8 @@ public class CreateReservationDto
 		if (NumberOfPeople < 0)
 			return (false, "NumberOfPeople must be zero or greater");
 
-		if (!Enum.IsDefined(typeof(ClientType), ClientTypeId))
-			return (false, $"Invalid ClientTypeId value: {ClientTypeId}");
+		if (!Enum.IsDefined(typeof(ReservationType), ReservationTypeId))
+			return (false, $"Invalid ReservationTypeId value: {ReservationTypeId}");
 
 		if (!Enum.IsDefined(typeof(ReservationStatus), ReservationStatusId))
 			return (false, $"Invalid ReservationStatusId value: {ReservationStatusId}");
@@ -78,8 +78,8 @@ public class CreateReservationDto
 			AgentId = AgentId,
 			PropertyId = PropertyId,
 			TenantName = TenantName,
-			ClientId = ClientId,
-			ClientType = (ClientType)ClientTypeId,
+			ReservationType = (ReservationType)ReservationTypeId,
+			ContactId = ContactId,
 			ReservationStatus = (ReservationStatus)ReservationStatusId,
 			IsActive = IsActive,
 			ArrivalDate = ArrivalDate,

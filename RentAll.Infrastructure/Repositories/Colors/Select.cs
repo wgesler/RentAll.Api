@@ -1,6 +1,7 @@
 using System.Data.SqlClient;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Colors;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 

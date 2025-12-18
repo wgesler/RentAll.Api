@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Contacts;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Contacts;
 
@@ -18,8 +18,13 @@ public class ContactResponseDto
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
+	public Guid CreatedBy { get; set; }
+	public DateTimeOffset ModifiedOn { get; set; }
+	public Guid ModifiedBy { get; set; }
 
-    public ContactResponseDto(Contact contact)
+
+	public ContactResponseDto(Contact contact)
     {
         ContactId = contact.ContactId;
         OrganizationId = contact.OrganizationId;
@@ -35,5 +40,9 @@ public class ContactResponseDto
         Phone = contact.Phone;
         Email = contact.Email;
         IsActive = contact.IsActive;
-    }
+		CreatedOn = contact.CreatedOn;
+		CreatedBy = contact.CreatedBy;
+		ModifiedOn = contact.ModifiedOn;
+		ModifiedBy = contact.ModifiedBy;
+	}
 }

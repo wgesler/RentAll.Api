@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Properties;
+namespace RentAll.Domain.Models;
 
 public class Area
 {

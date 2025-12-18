@@ -33,7 +33,7 @@ namespace RentAll.Api.Controllers
 					return BadRequest(new { message = "Contact Code cannot change" });
 
 
-                var contact = dto.ToModel(dto, CurrentUser);
+                var contact = dto.ToModel(CurrentUser);
 				var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 return Ok(new ContactResponseDto(updatedContact));
             }

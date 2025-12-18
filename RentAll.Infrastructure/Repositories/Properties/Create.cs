@@ -1,6 +1,6 @@
 using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Properties;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 
 namespace RentAll.Infrastructure.Repositories.Properties

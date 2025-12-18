@@ -28,7 +28,7 @@ namespace RentAll.Api.Controllers
 
                 // Hash the password
                 var passwordHash = _passwordHasher.HashPassword(dto.Password);
-                var user = dto.ToModel(dto, passwordHash, CurrentUser);
+                var user = dto.ToModel(passwordHash, CurrentUser);
                 var createdUser = await _userRepository.CreateAsync(user);
                 return CreatedAtAction(nameof(GetById), new { id = createdUser.UserId }, new UserResponseDto(createdUser));
             }

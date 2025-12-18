@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Colors;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Colors;
 

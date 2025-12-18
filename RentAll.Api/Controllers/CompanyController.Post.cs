@@ -25,7 +25,7 @@ namespace RentAll.Api.Controllers
             {
 				// Get a new Contact code
 				var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Company);
-				var company = dto.ToModel(dto, code, CurrentUser);
+				var company = dto.ToModel(code, CurrentUser);
 
                 var createdCompany = await _companyRepository.CreateAsync(company);
                 return CreatedAtAction(nameof(GetById), new { id = createdCompany.CompanyId }, new CompanyResponseDto(createdCompany));

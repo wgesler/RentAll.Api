@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Colors;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Colors;
 
@@ -9,14 +9,14 @@ public class UpdateColorDto
 	public int ReservationStatusId { get; set; }
 	public string Color { get; set; } = string.Empty;
 
-	public Colour ToModel(UpdateColorDto c)
+	public Colour ToModel()
 	{
 		return new Colour
 		{
-			ColorId = c.ColorId,
-			OrganizationId = c.OrganizationId,
-			ReservationStatusId = c.ReservationStatusId,
-			Color = c.Color
+			ColorId = ColorId,
+			OrganizationId = OrganizationId,
+			ReservationStatusId = ReservationStatusId,
+			Color = Color
 		};
 	}
 }

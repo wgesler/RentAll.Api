@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Contacts;
 using RentAll.Domain.Enums;
 using RentAll.Infrastructure.Entities;
+using RentAll.Domain.Models;
 
 namespace RentAll.Infrastructure.Repositories.Contacts
 {

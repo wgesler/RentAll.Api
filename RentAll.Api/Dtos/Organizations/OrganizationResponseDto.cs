@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Organizations;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Organizations;
 
@@ -17,6 +17,11 @@ public class OrganizationResponseDto
 	public string? Website { get; set; }
 	public Guid? LogoStorageId { get; set; }
 	public bool IsActive { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
+	public Guid CreatedBy { get; set; }
+	public DateTimeOffset ModifiedOn { get; set; }
+	public Guid ModifiedBy { get; set; }
+
 
 	public OrganizationResponseDto(Organization org)
 	{
@@ -33,6 +38,10 @@ public class OrganizationResponseDto
 		Website = org.Website;
 		LogoStorageId = org.LogoStorageId;
 		IsActive = org.IsActive;
+		CreatedOn = org.CreatedOn;
+		CreatedBy = org.CreatedBy;
+		ModifiedOn = org.ModifiedOn;
+		ModifiedBy = org.ModifiedBy;
 	}
 }
 

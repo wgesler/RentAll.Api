@@ -94,30 +94,6 @@ namespace RentAll.Api.Controllers
                 return StatusCode(500, new { message = "An error occurred while retrieving reservations" });
             }
         }
-
-        /// <summary>
-        /// Get reservations by Contact ID
-        /// </summary>
-        /// <param name="contactId">Contact ID</param>
-        /// <returns>List of reservations</returns>
-        [HttpGet("contact/{contactId}")]
-        public async Task<IActionResult> GetByContactId(Guid contactId)
-        {
-            if (contactId == Guid.Empty)
-                return BadRequest(new { message = "Contact ID is required" });
-
-            try
-            {
-                var reservations = await _reservationRepository.GetByClientIdAsync(contactId, CurrentOrganizationId);
-                var response = reservations.Select(r => new ReservationResponseDto(r));
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting reservations by ContactId: {ContactId}", contactId);
-                return StatusCode(500, new { message = "An error occurred while retrieving reservations" });
-            }
-        }
     }
 }
 

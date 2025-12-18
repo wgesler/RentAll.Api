@@ -32,7 +32,7 @@ namespace RentAll.Api.Controllers
                 if (existingCompany.CompanyCode != dto.CompanyCode)
 					return BadRequest(new { message = "Company Code cannot change" });
 
-				var company = dto.ToModel(dto, CurrentUser);
+				var company = dto.ToModel(CurrentUser);
                 var updatedCompany = await _companyRepository.UpdateByIdAsync(company);
                 return Ok(new CompanyResponseDto(updatedCompany));
             }

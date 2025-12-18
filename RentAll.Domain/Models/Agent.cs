@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Agents;
+namespace RentAll.Domain.Models;
 
 public class Agent
 {

@@ -26,7 +26,7 @@ namespace RentAll.Api.Controllers
                 if (await _agentRepository.ExistsByAgentCodeAsync(dto.AgentCode, CurrentOrganizationId))
                     return Conflict(new { message = "Agent Code already exists" });
 
-                var agent = dto.ToModel(dto, CurrentUser);
+                var agent = dto.ToModel(CurrentUser);
                 var createdAgent = await _agentRepository.CreateAsync(agent);
                 return CreatedAtAction(nameof(GetById), new { id = createdAgent.AgentId }, new AgentResponseDto(createdAgent));
             }

@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Users;
+using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Interfaces.Auth;
 

@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Companies;
+using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Interfaces.Repositories;
 

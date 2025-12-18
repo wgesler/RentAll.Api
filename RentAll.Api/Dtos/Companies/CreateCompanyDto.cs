@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Companies;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Companies;
 
@@ -43,23 +43,23 @@ public class CreateCompanyDto
         return (true, null);
     }
 
-    public Company ToModel(CreateCompanyDto c, string code, Guid currentUser)
+    public Company ToModel(string code, Guid currentUser)
     {
         return new Company
         {
-            OrganizationId = c.OrganizationId,
+            OrganizationId = OrganizationId,
             CompanyCode = code,
-            ContactId = c.ContactId,
-            Name = c.Name,
-            Address1 = c.Address1,
-            Address2 = c.Address2,
-            Suite = c.Suite,
-            City = c.City,
-            State = c.State,
-            Zip = c.Zip,
-            Phone = c.Phone,
-            Website = c.Website,
-            LogoStorageId = c.LogoStorageId,
+            ContactId = ContactId,
+            Name = Name,
+            Address1 = Address1,
+            Address2 = Address2,
+            Suite = Suite,
+            City = City,
+            State = State,
+            Zip = Zip,
+            Phone = Phone,
+            Website = Website,
+            LogoStorageId = LogoStorageId,
             IsActive = true,
             CreatedBy = currentUser
 		};

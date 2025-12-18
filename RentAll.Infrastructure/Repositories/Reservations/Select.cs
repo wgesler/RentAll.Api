@@ -1,6 +1,6 @@
 using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Reservations;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 
@@ -52,12 +52,12 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<Reservation>> GetByClientIdAsync(Guid clientId, Guid organizationId)
+        public async Task<IEnumerable<Reservation>> GetByContactIdAsync(Guid contactId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetByClientId", new
+            var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetByContactId", new
             {
-                ClientId = clientId,
+                ContactId = contactId,
 				OrganizationId = organizationId
 			});
 

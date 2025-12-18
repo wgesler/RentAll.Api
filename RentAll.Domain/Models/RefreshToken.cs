@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Auth;
+namespace RentAll.Domain.Models;
 
 public class RefreshToken
 {

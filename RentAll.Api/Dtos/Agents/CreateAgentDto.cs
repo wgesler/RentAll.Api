@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Agents;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Agents;
 
@@ -29,15 +29,15 @@ public class CreateAgentDto
         return (true, null);
     }
 
-    public Agent ToModel(CreateAgentDto a, Guid currentUser)
+    public Agent ToModel(Guid currentUser)
     {
         return new Agent
         {
             AgentId = Guid.NewGuid(),
-            OrganizationId = a.OrganizationId,
-            AgentCode = a.AgentCode,
-            Description = a.Description,
-            IsActive = a.IsActive,
+            OrganizationId = OrganizationId,
+            AgentCode = AgentCode,
+            Description = Description,
+            IsActive = IsActive,
             CreatedBy = currentUser
         };
     }

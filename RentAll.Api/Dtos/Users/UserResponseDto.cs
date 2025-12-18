@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Users;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -26,10 +26,7 @@ public class UserResponseDto
         Email = user.Email;
         UserGroups = user.UserGroups;
         IsActive = user.IsActive;
-        CreatedOn = user.CreatedOn;
-        CreatedBy = user.CreatedBy;
-        ModifiedOn = user.ModifiedOn;
-        ModifiedBy = user.ModifiedBy;
+
     }
 }
 

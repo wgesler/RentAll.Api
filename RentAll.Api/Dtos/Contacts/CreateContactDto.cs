@@ -1,5 +1,5 @@
-using RentAll.Domain.Models.Contacts;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Contacts;
 
@@ -45,23 +45,23 @@ public class CreateContactDto
         return (true, null);
     }
 
-    public Contact ToModel(CreateContactDto c, string code, Guid currentUser)
+    public Contact ToModel(string code, Guid currentUser)
     {
         return new Contact
         {
-            OrganizationId = c.OrganizationId,
+            OrganizationId = OrganizationId,
             ContactCode = code,
-            EntityType = (EntityType)c.EntityTypeId,
-            FirstName = c.FirstName,
-            LastName = c.LastName,
-            Address1 = c.Address1,
-            Address2 = c.Address2,
-            City = c.City,
-            State = c.State,
-            Zip = c.Zip,
-            Phone = c.Phone,
-            Email = c.Email,
-            IsActive = true,
+            EntityType = (EntityType)EntityTypeId,
+            FirstName = FirstName,
+            LastName = LastName,
+            Address1 = Address1,
+            Address2 = Address2,
+            City = City,
+            State = State,
+            Zip = Zip,
+            Phone = Phone,
+            Email = Email,
+            IsActive = IsActive,
             CreatedBy = currentUser
         };
     }

@@ -1,6 +1,6 @@
 using RentAll.Domain.Enums;
 
-namespace RentAll.Domain.Models.Properties;
+namespace RentAll.Domain.Models;
 
 public class Property
 {
@@ -100,7 +100,6 @@ public class Property
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
 	public bool IsActive { get; set; }
-	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }

@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
                 if (!string.Equals(existing.OrganizationCode, dto.OrganizationCode, StringComparison.OrdinalIgnoreCase))
                     return Conflict(new { message = "OrganizationCode cannot change" });
 
-                var model = dto.ToModel(dto, CurrentUser);
+                var model = dto.ToModel(CurrentUser);
                 var updated = await _organizationRepository.UpdateByIdAsync(model);
                 return Ok(new OrganizationResponseDto(updated));
             }

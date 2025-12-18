@@ -1,6 +1,6 @@
 using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Reservations;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 
@@ -18,8 +18,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				AgentId = r.AgentId,
 				PropertyId = r.PropertyId,
 				TenantName = r.TenantName,
-				ClientId = r.ClientId,
-				ClientTypeId = (int)r.ClientType,
+				ReservationTypeId = (int)r.ReservationType,
+				ContactId = r.ContactId,
 				ReservationStatusId = (int)r.ReservationStatus,
 				IsActive = r.IsActive,
 				ArrivalDate = r.ArrivalDate,

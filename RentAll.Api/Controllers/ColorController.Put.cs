@@ -1,7 +1,6 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Colors;
-using RentAll.Domain.Models.Colors;
-using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Controllers
 {
@@ -31,10 +30,10 @@ namespace RentAll.Api.Controllers
 			if (colorValue.Length != 6 || !Regex.IsMatch(colorValue, @"^[0-9A-Fa-f]{6}$"))
 				return BadRequest(new { message = "Color must be a 6-character hexadecimal value (e.g., FF0000 or #FF0000)" });
 
-			var existingColor = dto.ToModel(dto);
+			var existingColor = dto.ToModel();
 	
-			var updated = await _colorRepository.UpdateByIdAsync(existingColor);
-			return Ok(new ColorResponseDto(updated));
+			await _colorRepository.UpdateByIdAsync(existingColor);
+			return Ok();
 		}
 	}
 }

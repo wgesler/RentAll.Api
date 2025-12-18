@@ -27,7 +27,7 @@ namespace RentAll.Api.Controllers
                 if (existingReservation == null)
                     return NotFound(new { message = "Reservation not found" });
 
-                var reservation = dto.ToModel(existingReservation, CurrentUser);
+                var reservation = dto.ToModel(CurrentUser);
                 var updatedReservation = await _reservationRepository.UpdateByIdAsync(reservation);
                 return Ok(new ReservationResponseDto(updatedReservation));
             }

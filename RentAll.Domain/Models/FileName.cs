@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RentAll.Domain.Models.Services
+namespace RentAll.Domain.Models
 {
 	internal class FileName
 	{

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Colors;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -28,28 +29,20 @@ namespace RentAll.Api.Controllers
 		/// <summary>
 		/// Get color by ColorId
 		/// </summary>
-		/// <param name="id">Color ID</param>
+		/// <param name="ColorId">Color Id</param>
 		/// <returns>Color</returns>
-		[HttpGet("{id}")]
-		public async Task<IActionResult> GetById(int id)
+		[HttpGet("{colorId}")]
+		public async Task<IActionResult> GetById(int colorId)
 		{
-			if (id <= 0)
+			if (colorId < 0)
 				return BadRequest(new { message = "Invalid ColorId" });
 
-			try
-			{
-				var color = await _colorRepository.GetByIdAsync(id, CurrentOrganizationId);
-				if (color == null)
-					return NotFound(new { message = "Color not found" });
+			var color = await _colorRepository.GetByIdAsync(colorId, CurrentOrganizationId);
+			if (color == null)
+				return NotFound(new { message = "Color not found" });
 
-				var response = new ColorResponseDto(color);
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting color by ColorId: {ColorId}", id);
-				return StatusCode(500, new { message = "An error occurred while retrieving the color" });
-			}
+			var response = new ColorResponseDto(color);
+			return Ok(response);
 		}
 	}
 }

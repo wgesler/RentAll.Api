@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Organizations;
+namespace RentAll.Domain.Models;
 
 public class Organization
 {
@@ -15,7 +15,6 @@ public class Organization
 	public string? Website { get; set; }
 	public Guid? LogoStorageId { get; set; }
 	public bool IsActive { get; set; }
-	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }

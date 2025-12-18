@@ -98,7 +98,6 @@ public class PropertyEntity
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
 	public bool IsActive { get; set; }
-	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }

@@ -1,4 +1,5 @@
-using RentAll.Domain.Models.Colors;
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Interfaces.Repositories;
 
@@ -9,6 +10,6 @@ public interface IColorRepository
 	Task<Colour?> GetByIdAsync(int colorId, Guid organizationId);
 
 	// Updates
-	Task<Colour> UpdateByIdAsync(Colour color);
+	Task UpdateByIdAsync(Colour color);
 }
 

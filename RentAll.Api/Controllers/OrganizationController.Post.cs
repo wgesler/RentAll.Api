@@ -24,7 +24,7 @@ namespace RentAll.Api.Controllers
             {
 				// Get a new organization code
 				var code = await _organizationManager.GenerateEntityCodeAsync();
-				var model = dto.ToModel(dto, code, CurrentUser);
+				var model = dto.ToModel(code, CurrentUser);
 
                 var created = await _organizationRepository.CreateAsync(model);
                 return CreatedAtAction(nameof(GetById), new { id = created.OrganizationId }, new OrganizationResponseDto(created));

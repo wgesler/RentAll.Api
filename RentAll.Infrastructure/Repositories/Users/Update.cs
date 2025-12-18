@@ -1,7 +1,7 @@
 ﻿using System.Data.SqlClient;
 using System.Text.Json;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Users;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 

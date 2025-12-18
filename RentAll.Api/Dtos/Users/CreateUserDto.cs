@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Users;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -30,23 +30,23 @@ public class CreateUserDto
         if (string.IsNullOrWhiteSpace(Password))
             return (false, "Password is required");
 
-        if (Password.Length < 6)
-            return (false, "Password must be at least 6 characters");
+        if (Password.Length < 8)
+            return (false, "Password must be at least 8 characters");
 
         return (true, null);
     }
 
-    public User ToModel(CreateUserDto d, string passwordHash, Guid currentUser)
+    public User ToModel(string passwordHash, Guid currentUser)
     {
         return new User
         {
-            OrganizationId = d.OrganizationId,
-            FirstName = d.FirstName,
-            LastName = d.LastName,
-            Email = d.Email,
+            OrganizationId = OrganizationId,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
             PasswordHash = passwordHash,
-			UserGroups = d.UserGroups,
-			IsActive = d.IsActive,
+			UserGroups = UserGroups,
+			IsActive = IsActive,
             CreatedBy = currentUser
         };
     }

@@ -29,7 +29,7 @@ namespace RentAll.Api.Controllers
                 if (await _propertyRepository.ExistsByPropertyCodeAsync(dto.PropertyCode, CurrentOrganizationId))
                     return Conflict(new { message = "Property Code already exists" });
 
-                var property = dto.ToModel(dto, CurrentUser);
+                var property = dto.ToModel(CurrentUser);
                 var createdProperty = await _propertyRepository.CreateAsync(property);
                 return CreatedAtAction(nameof(GetById), new { id = createdProperty.PropertyId }, new PropertyResponseDto(createdProperty));
             }

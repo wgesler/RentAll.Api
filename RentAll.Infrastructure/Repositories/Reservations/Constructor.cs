@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Reservations;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Reservations
@@ -24,10 +24,16 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				OrganizationId = e.OrganizationId,
 				AgentId = e.AgentId,
 				PropertyId = e.PropertyId,
-				TenantName = e.TenantName,
-				ClientId = e.ClientId,
-				ClientType = (ClientType)e.ClientTypeId,
+				ContactId = e.ContactId,
+				ReservationType = (ReservationType)e.ReservationTypeId,
 				ReservationStatus = (ReservationStatus)e.ReservationStatusId,
+				PropertyCode = e.PropertyCode,
+				PropertyAddress = e.PropertyAddress,
+				PropertyStatus = (PropertyStatus)e.PropertyStatusId,
+				ContactName = e.ContactName,
+				ContactPhone = e.ContactPhone,
+				ContactEmail = e.ContactEmail,
+				TenantName = e.TenantName,
 				ArrivalDate = e.ArrivalDate,
 				DepartureDate = e.DepartureDate,
 				CheckInTime = (CheckInTime)e.CheckInTimeId,
@@ -43,10 +49,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				ExtraFee = e.ExtraFee,
 				ExtraFeeName = e.ExtraFeeName,
 				Taxes = e.Taxes,
-				CreatedOn = e.CreatedOn,
-				CreatedBy = e.CreatedBy,
-				ModifiedOn = e.ModifiedOn,
-				ModifiedBy = e.ModifiedBy,
 				IsActive = e.IsActive
 			};
 		}

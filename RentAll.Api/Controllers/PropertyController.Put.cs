@@ -35,7 +35,7 @@ namespace RentAll.Api.Controllers
                         return Conflict(new { message = "Property Code already exists" });
                 }
 
-                var property = dto.ToModel(dto, CurrentUser);
+                var property = dto.ToModel(CurrentUser);
                 var updatedProperty = await _propertyRepository.UpdateByIdAsync(property);
                 return Ok(new PropertyResponseDto(updatedProperty));
             }

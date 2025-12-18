@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Colors;
+namespace RentAll.Domain.Models;
 
 public class Colour
 {

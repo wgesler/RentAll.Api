@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Companies;
+namespace RentAll.Domain.Models;
 
 public class Company
 {

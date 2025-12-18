@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Users;
+namespace RentAll.Domain.Models;
 
 public class User
 {

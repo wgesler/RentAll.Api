@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Organizations;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Organizations;
 
@@ -39,22 +39,22 @@ public class CreateOrganizationDto
 		return (true, null);
 	}
 
-	public Organization ToModel(CreateOrganizationDto dto, string code, Guid currentUser)
+	public Organization ToModel(string code, Guid currentUser)
 	{
 		return new Organization
 		{
 			OrganizationCode = code,
-			Name = dto.Name,
-			Address1 = dto.Address1,
-			Address2 = dto.Address2,
-			Suite = dto.Suite,
-			City = dto.City,
-			State = dto.State,
-			Zip = dto.Zip,
-			Phone = dto.Phone,
-			Website = dto.Website,
-			LogoStorageId = dto.LogoStorageId,
-			IsActive = dto.IsActive,
+			Name = Name,
+			Address1 = Address1,
+			Address2 = Address2,
+			Suite = Suite,
+			City = City,
+			State = State,
+			Zip = Zip,
+			Phone = Phone,
+			Website = Website,
+			LogoStorageId = LogoStorageId,
+			IsActive = IsActive,
 			CreatedBy = currentUser
 		};
 	}

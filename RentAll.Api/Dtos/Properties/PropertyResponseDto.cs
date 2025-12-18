@@ -1,4 +1,4 @@
-using RentAll.Domain.Models.Properties;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Properties;
 
@@ -100,6 +100,11 @@ public class PropertyResponseDto
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
 	public bool IsActive { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
+	public Guid CreatedBy { get; set; }
+	public DateTimeOffset ModifiedOn { get; set; }
+	public Guid ModifiedBy { get; set; }
+
 
 	public PropertyResponseDto(Property property)
 	{
@@ -181,5 +186,9 @@ public class PropertyResponseDto
 		Amenities = property.Amenities;
 		Description = property.Description;
 		IsActive = property.IsActive;
+		CreatedOn = property.CreatedOn;
+		CreatedBy = property.CreatedBy;
+		ModifiedOn = property.ModifiedOn;
+		ModifiedBy = property.ModifiedBy;
 	}
 }

@@ -2,8 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Auth;
-using RentAll.Domain.Models.Users;
+using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
 

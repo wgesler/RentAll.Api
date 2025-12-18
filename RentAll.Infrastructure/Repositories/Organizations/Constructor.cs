@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Organizations;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
@@ -32,7 +32,6 @@ public partial class OrganizationRepository : IOrganizationRepository
 			Website = e.Website,
 			LogoStorageId = e.LogoStorageId,
 			IsActive = e.IsActive,
-			IsDeleted = e.IsDeleted,
 			CreatedOn = e.CreatedOn,
 			CreatedBy = e.CreatedBy,
 			ModifiedOn = e.ModifiedOn,
