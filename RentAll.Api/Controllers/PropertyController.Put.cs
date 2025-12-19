@@ -12,7 +12,7 @@ namespace RentAll.Api.Controllers
         /// <param name="dto">Property data</param>
         /// <returns>Updated property</returns>
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] PropertyUpdateDto dto)
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePropertyDto dto)
         {
             if (dto == null)
                 return BadRequest(new { message = "Property data is required" });
@@ -45,5 +45,33 @@ namespace RentAll.Api.Controllers
                 return StatusCode(500, new { message = "An error occurred while updating the property" });
             }
         }
+
+		/// <summary>
+		/// Upsert the current user's property selection
+		/// </summary>
+		/// <param name="dto">Property selection data</param>
+		/// <returns>Updated property selection</returns>
+		[HttpPut("selection")]
+		public async Task<IActionResult> PutPropertySelection([FromBody] UpsertPropertySelectionDto dto)
+		{
+			if (dto == null)
+				return BadRequest(new { message = "Property selection data is required" });
+
+			var (isValid, errorMessage) = dto.IsValid(CurrentUser);
+			if (!isValid)
+				return BadRequest(new { message = errorMessage });
+
+			try
+			{
+				var selection = dto.ToModel();
+				var updatedSelection = await _propertySelectionRepository.UpsertAsync(selection);
+				return Ok(new PropertySelectionResponseDto(updatedSelection));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error upserting property selection for user: {UserId}", CurrentUser);
+				return StatusCode(500, new { message = "An error occurred while saving the property selection" });
+			}
+		}
     }
 }

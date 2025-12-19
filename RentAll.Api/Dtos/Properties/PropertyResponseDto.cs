@@ -18,6 +18,10 @@ public class PropertyResponseDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
+	public string? FranchiseCode { get; set; }
+	public string? BuildingCode { get; set; }
+	public string? RegionCode { get; set; }
+	public string? AreaCode { get; set; }
 	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
@@ -54,7 +58,7 @@ public class PropertyResponseDto
 	public bool Gated { get; set; }
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
-	public bool AssignedParking { get; set; }
+	public bool Parking { get; set; }
 	public string? Notes { get; set; }
 	public bool Alarm { get; set; }
 	public string? AlarmCode { get; set; }
@@ -100,6 +104,7 @@ public class PropertyResponseDto
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
 	public bool IsActive { get; set; }
+	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }
@@ -120,6 +125,10 @@ public class PropertyResponseDto
 		PropertyStyleId = (int)property.PropertyStyle;
 		PropertyTypeId = (int)property.PropertyType;
 		PropertyStatusId = (int)property.PropertyStatus;
+		FranchiseCode = property.FranchiseCode;
+		BuildingCode = property.BuildingCode;
+		RegionCode = property.RegionCode;
+		AreaCode = property.AreaCode;
 		MonthlyRate = property.MonthlyRate;
 		DailyRate = property.DailyRate;
 		DepartureFee = property.DepartureFee;
@@ -152,7 +161,7 @@ public class PropertyResponseDto
 		Gated = property.Gated;
 		PetsAllowed = property.PetsAllowed;
 		Smoking = property.Smoking;
-		AssignedParking = property.AssignedParking;
+		Parking = property.Parking;
 		Notes = property.Notes;
 		Alarm = property.Alarm;
 		AlarmCode = property.AlarmCode;

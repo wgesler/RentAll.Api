@@ -67,6 +67,21 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return res.Select(ConvertEntityToModel);
         }
 
+		public async Task<IEnumerable<Property>> GetBySelectionCriteriaAsync(Guid userId, Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetBySelection", new
+			{
+				UserId = userId,
+                OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Property>();
+
+			return res.Select(ConvertEntityToModel);
+		}
+
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)
         {
 			await using var db = new SqlConnection(_dbConnectionString);

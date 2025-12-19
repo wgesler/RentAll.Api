@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Properties;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -101,5 +102,55 @@ namespace RentAll.Api.Controllers
                 return StatusCode(500, new { message = "An error occurred while retrieving properties" });
             }
         }
-    }
+
+		/// <summary>
+		/// Get properties by the current user's selection criteria
+		/// </summary>
+		/// <param name="userId">User Id</param>
+		/// <returns>List of properties</returns>
+		[HttpGet("user/{userId}")]
+		public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
+		{
+			if (CurrentUser == Guid.Empty || CurrentUser != userId)
+				return Unauthorized();
+
+			try
+			{
+				var properties = await _propertyRepository.GetBySelectionCriteriaAsync(CurrentUser, CurrentOrganizationId);
+				var response = properties.Select(p => new PropertyResponseDto(p));
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
+				return StatusCode(500, new { message = "An error occurred while retrieving properties" });
+			}
+		}
+
+		/// <summary>
+		/// Get the current user's property selection
+		/// </summary>
+		/// <param name="userId">User Id</param>
+		/// <returns>Property selection</returns>
+		[HttpGet("selection/{userId}")]
+		public async Task<IActionResult> GetPropertySelection(Guid userId)
+		{
+			if (CurrentUser == Guid.Empty || CurrentUser != userId)
+				return Unauthorized();
+
+			try
+			{
+				var selection = await _propertySelectionRepository.GetByUserIdAsync(CurrentUser);
+				if (selection == null)
+					return Ok();
+
+				return Ok(new PropertySelectionResponseDto(selection));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting property selection for user: {UserId}", CurrentUser);
+				return StatusCode(500, new { message = "An error occurred while retrieving the property selection" });
+			}
+		}
+	}
 }

@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         /// <param name="dto">Property data</param>
         /// <returns>Created property</returns>
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] PropertyCreateDto dto)
+        public async Task<IActionResult> Create([FromBody] CreatePropertyDto dto)
         {
             if (dto == null)
                 return BadRequest(new { message = "Property data is required" });

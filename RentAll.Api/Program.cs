@@ -24,6 +24,7 @@ using RentAll.Infrastructure.Repositories.Franchises;
 using RentAll.Infrastructure.Repositories.Organizations;
 using RentAll.Infrastructure.Repositories.CodeSequences;
 using RentAll.Infrastructure.Repositories.Colors;
+using RentAll.Infrastructure.Repositories.PropertySelections;
 using RentAll.Infrastructure.Services;
 using RentAll.Domain.Interfaces.Managers;
 
@@ -98,6 +99,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
+builder.Services.AddScoped<IPropertySelectionRepository, PropertySelectionRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
 builder.Services.AddScoped<IReservationRepository, ReservationRepository>();

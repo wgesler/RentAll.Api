@@ -16,6 +16,10 @@ public class PropertyEntity
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
+	public string? FranchiseCode { get; set; }
+	public string? BuildingCode { get; set; }
+	public string? RegionCode { get; set; }
+	public string? AreaCode { get; set; }
 	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
@@ -52,7 +56,7 @@ public class PropertyEntity
 	public bool Gated { get; set; }
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
-	public bool AssignedParking { get; set; }
+	public bool Parking { get; set; }
 	public string? Notes { get; set; }
 	public bool Alarm { get; set; }
 	public string? AlarmCode { get; set; }

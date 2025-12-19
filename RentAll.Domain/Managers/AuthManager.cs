@@ -35,7 +35,10 @@ public class AuthManager
         if (!_passwordHasher.VerifyPassword(password, user.PasswordHash))
             return (false, null, null, null);
 
-        var accessToken = _tokenService.GenerateToken(user);
+        if(!user.IsActive)
+			return (false, null, null, null);
+
+		var accessToken = _tokenService.GenerateToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.UserId);
         
         return (true, user, accessToken, refreshToken);

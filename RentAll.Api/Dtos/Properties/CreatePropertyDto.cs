@@ -3,10 +3,9 @@ using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Properties;
 
-public class PropertyUpdateDto
+public class CreatePropertyDto
 {
 	public Guid OrganizationId { get; set; }
-	public Guid PropertyId { get; set; }
 	public string PropertyCode { get; set; } = string.Empty;
 	public Guid Owner1Id { get; set; }
 	public Guid? Owner2Id { get; set; }
@@ -19,6 +18,10 @@ public class PropertyUpdateDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
+	public string? FranchiseCode { get; set; }
+	public string? BuildingCode { get; set; }
+	public string? RegionCode { get; set; }
+	public string? AreaCode { get; set; }
 	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
@@ -55,7 +58,7 @@ public class PropertyUpdateDto
 	public bool Gated { get; set; }
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
-	public bool AssignedParking { get; set; }
+	public bool Parking { get; set; }
 	public string? Notes { get; set; }
 	public bool Alarm { get; set; }
 	public string? AlarmCode { get; set; }
@@ -102,13 +105,10 @@ public class PropertyUpdateDto
 	public string? Description { get; set; }
 	public bool IsActive { get; set; }
 
-	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
 		if (string.IsNullOrWhiteSpace(PropertyCode))
 			return (false, "Property Code is required");
-
-		if (id != PropertyId)
-			return (false, "Property ID is invalid");
 
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
@@ -146,7 +146,6 @@ public class PropertyUpdateDto
 		return new Property
 		{
 			OrganizationId = OrganizationId,
-			PropertyId = PropertyId,
 			PropertyCode = PropertyCode,
 			Owner1Id = Owner1Id,
 			Owner2Id = Owner2Id,
@@ -157,6 +156,10 @@ public class PropertyUpdateDto
 			PropertyStyle = (PropertyStyle)PropertyStyleId,
 			PropertyType = (PropertyType)PropertyTypeId,
 			PropertyStatus = (PropertyStatus)PropertyStatusId,
+			FranchiseCode = FranchiseCode,
+			BuildingCode = BuildingCode,
+			RegionCode = RegionCode,
+			AreaCode = AreaCode,
 			MonthlyRate = MonthlyRate,
 			DailyRate = DailyRate,
 			DepartureFee = DepartureFee,
@@ -189,7 +192,7 @@ public class PropertyUpdateDto
 			Gated = Gated,
 			PetsAllowed = PetsAllowed,
 			Smoking = Smoking,
-			AssignedParking = AssignedParking,
+			Parking = Parking,
 			Notes = Notes,
 			Alarm = Alarm,
 			AlarmCode = AlarmCode,
@@ -223,7 +226,7 @@ public class PropertyUpdateDto
 			Amenities = Amenities,
 			Description = Description,
 			IsActive = IsActive,
-			ModifiedBy = currentUser
+			CreatedBy = currentUser
 		};
 	}
 }
