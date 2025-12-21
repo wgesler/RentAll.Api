@@ -26,6 +26,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Zip = contact.Zip,
                 Phone = contact.Phone,
                 Email = contact.Email,
+                Notes = contact.Notes,
                 IsActive = contact.IsActive,
                 ModifiedBy = contact.ModifiedBy
             });

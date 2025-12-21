@@ -28,7 +28,7 @@ public partial class PropertySelectionRepository : IPropertySelectionRepository
 			PropertyCode = e.PropertyCode,
 			City = e.City,
 			State = e.State,
-			Furnished = e.Furnished,
+			Unfurnished = e.Unfurnished,
 			Cable = e.Cable,
 			Streaming = e.Streaming,
 			Pool = e.Pool,

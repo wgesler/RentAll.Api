@@ -37,6 +37,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				ExtraFee = r.ExtraFee,
 				ExtraFeeName = r.ExtraFeeName,
 				Taxes = r.Taxes,
+				Notes = r.Notes,
 				ModifiedBy = r.ModifiedBy
 			});
 

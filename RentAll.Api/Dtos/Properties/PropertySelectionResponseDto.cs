@@ -12,7 +12,7 @@ public class PropertySelectionResponseDto
 	public string? PropertyCode { get; set; }
 	public string? City { get; set; } 
 	public string? State { get; set; } 
-	public bool Furnished { get; set; }
+	public bool Unfurnished { get; set; }
 	public bool Cable { get; set; }
 	public bool Streaming { get; set; }
 	public bool Pool { get; set; }
@@ -38,7 +38,7 @@ public class PropertySelectionResponseDto
 		PropertyCode = s.PropertyCode;
 		City = s.City;
 		State = s.State;
-		Furnished = s.Furnished;
+		Unfurnished = s.Unfurnished;
 		Cable = s.Cable;
 		Streaming = s.Streaming;
 		Pool = s.Pool;

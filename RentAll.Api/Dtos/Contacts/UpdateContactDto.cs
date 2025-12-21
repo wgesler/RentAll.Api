@@ -18,7 +18,8 @@ public class UpdateContactDto
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
     {
@@ -73,6 +74,7 @@ public class UpdateContactDto
 			Zip = Zip,
 			Phone = Phone,
 			Email = Email,
+			Notes = Notes,
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};

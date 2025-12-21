@@ -18,7 +18,8 @@ public class CompanyResponseDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
-    public bool IsActive { get; set; }
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }
@@ -41,7 +42,8 @@ public class CompanyResponseDto
         Phone = company.Phone;
         Website = company.Website;
         LogoStorageId = company.LogoStorageId;
-        IsActive = company.IsActive;
+		Notes = company.Notes;
+		IsActive = company.IsActive;
 		CreatedOn = company.CreatedOn;
 		CreatedBy = company.CreatedBy;
 		ModifiedOn = company.ModifiedOn;

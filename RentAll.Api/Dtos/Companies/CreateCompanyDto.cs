@@ -16,8 +16,11 @@ public class CreateCompanyDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+
+	public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
@@ -60,7 +63,8 @@ public class CreateCompanyDto
             Phone = Phone,
             Website = Website,
             LogoStorageId = LogoStorageId,
-            IsActive = true,
+			Notes = Notes,
+			IsActive = IsActive,
             CreatedBy = currentUser
 		};
     }

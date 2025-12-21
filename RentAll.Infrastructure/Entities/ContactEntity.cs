@@ -15,7 +15,8 @@ public class ContactEntity
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

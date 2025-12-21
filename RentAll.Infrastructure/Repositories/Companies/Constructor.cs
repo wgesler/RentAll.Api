@@ -33,6 +33,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Phone = e.Phone,
 				Website = e.Website,
 				LogoStorageId = e.LogoStorageId,
+				Notes = e.Notes,
 				IsActive = e.IsActive,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,

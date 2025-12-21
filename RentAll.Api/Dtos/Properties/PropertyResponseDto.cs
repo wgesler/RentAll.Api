@@ -50,7 +50,7 @@ public class PropertyResponseDto
 	public string? Mailbox { get; set; }
 
 	// Features & Security Section
-	public bool Furnished { get; set; }
+	public bool Unfurnished { get; set; }
 	public bool Heating { get; set; }
 	public bool Ac { get; set; }
 	public bool Elevator { get; set; }
@@ -59,7 +59,7 @@ public class PropertyResponseDto
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
 	public bool Parking { get; set; }
-	public string? Notes { get; set; }
+	public string? ParkingNotes { get; set; }
 	public bool Alarm { get; set; }
 	public string? AlarmCode { get; set; }
 	public bool KeypadAccess { get; set; }
@@ -103,6 +103,7 @@ public class PropertyResponseDto
 	// Additional Amenities Section
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
+	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
@@ -153,7 +154,7 @@ public class PropertyResponseDto
 		CrossStreet = property.CrossStreet;
 		View = property.View;
 		Mailbox = property.Mailbox;
-		Furnished = property.Furnished;
+		Unfurnished = property.Unfurnished;
 		Heating = property.Heating;
 		Ac = property.Ac;
 		Elevator = property.Elevator;

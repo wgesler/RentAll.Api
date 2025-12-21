@@ -33,6 +33,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Zip = e.Zip,
                 Phone = e.Phone,
                 Email = e.Email,
+                Notes = e.Notes,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,

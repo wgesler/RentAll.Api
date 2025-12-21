@@ -16,7 +16,8 @@ public class CreateContactDto
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -61,7 +62,8 @@ public class CreateContactDto
             Zip = Zip,
             Phone = Phone,
             Email = Email,
-            IsActive = IsActive,
+			Notes = Notes,
+			IsActive = IsActive,
             CreatedBy = currentUser
         };
     }

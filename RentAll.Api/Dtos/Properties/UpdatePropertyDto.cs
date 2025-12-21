@@ -51,7 +51,7 @@ public class UpdatePropertyDto
 	public string? Mailbox { get; set; }
 
 	// Features & Security Section
-	public bool Furnished { get; set; }
+	public bool Unfurnished { get; set; }
 	public bool Heating { get; set; }
 	public bool Ac { get; set; }
 	public bool Elevator { get; set; }
@@ -60,7 +60,7 @@ public class UpdatePropertyDto
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
 	public bool Parking { get; set; }
-	public string? Notes { get; set; }
+	public string? ParkingNotes { get; set; }
 	public bool Alarm { get; set; }
 	public string? AlarmCode { get; set; }
 	public bool KeypadAccess { get; set; }
@@ -104,6 +104,7 @@ public class UpdatePropertyDto
 	// Additional Amenities Section
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
+	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -189,7 +190,7 @@ public class UpdatePropertyDto
 			CrossStreet = CrossStreet,
 			View = View,
 			Mailbox = Mailbox,
-			Furnished = Furnished,
+			Unfurnished = Unfurnished,
 			Heating = Heating,
 			Ac = Ac,
 			Elevator = Elevator,

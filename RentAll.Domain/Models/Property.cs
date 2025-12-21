@@ -50,7 +50,7 @@ public class Property
 	public string? Mailbox { get; set; }
 
 	// Features & Security Section
-	public bool Furnished { get; set; }
+	public bool Unfurnished { get; set; }
 	public bool Heating { get; set; }
 	public bool Ac { get; set; }
 	public bool Elevator { get; set; }
@@ -59,7 +59,7 @@ public class Property
 	public bool PetsAllowed { get; set; }
 	public bool Smoking { get; set; }
 	public bool Parking { get; set; }
-	public string? Notes { get; set; }
+	public string? ParkingNotes { get; set; }
 	public bool Alarm { get; set; }
 	public string? AlarmCode { get; set; }
 	public bool KeypadAccess { get; set; }
@@ -103,6 +103,7 @@ public class Property
 	// Additional Amenities Section
 	public string? Amenities { get; set; }
 	public string? Description { get; set; }
+	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

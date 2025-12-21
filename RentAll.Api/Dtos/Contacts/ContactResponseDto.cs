@@ -16,8 +16,9 @@ public class ContactResponseDto
     public string? State { get; set; }
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
+	public string Email { get; set; } = string.Empty;
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }
@@ -39,7 +40,8 @@ public class ContactResponseDto
         Zip = contact.Zip;
         Phone = contact.Phone;
         Email = contact.Email;
-        IsActive = contact.IsActive;
+		Notes = contact.Notes;
+		IsActive = contact.IsActive;
 		CreatedOn = contact.CreatedOn;
 		CreatedBy = contact.CreatedBy;
 		ModifiedOn = contact.ModifiedOn;

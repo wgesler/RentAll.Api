@@ -18,7 +18,8 @@ public class UpdateCompanyDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
-    public bool IsActive { get; set; }
+	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
     {
@@ -73,7 +74,8 @@ public class UpdateCompanyDto
             Phone = Phone,
             Website = Website,
             LogoStorageId = LogoStorageId,
-            IsActive = IsActive,
+			Notes = Notes,
+			IsActive = IsActive,
             ModifiedBy = currentUser
         };
     }

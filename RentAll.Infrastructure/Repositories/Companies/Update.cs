@@ -27,6 +27,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Phone = company.Phone,
 				Website = company.Website,
 				LogoStorageId = company.LogoStorageId,
+				Notes = company.Notes,
 				IsActive = company.IsActive,
 				ModifiedBy = company.ModifiedBy
 			});

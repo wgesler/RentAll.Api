@@ -28,6 +28,8 @@ public class CreateReservationDto
 	public decimal ExtraFee { get; set; }
 	public string ExtraFeeName { get; set; } = string.Empty;
 	public decimal Taxes { get; set; }
+	public string? Notes { get; set; }
+
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -97,6 +99,7 @@ public class CreateReservationDto
 			ExtraFee = ExtraFee,
 			ExtraFeeName = ExtraFeeName ?? string.Empty,
 			Taxes = Taxes,
+			Notes = Notes,
 			CreatedBy = currentUser
 		};
 	}

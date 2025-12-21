@@ -31,6 +31,7 @@ public class ReservationEntity
 	public decimal ExtraFee { get; set; }
 	public string ExtraFeeName { get; set; } = string.Empty;
 	public decimal Taxes { get; set; }
+	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

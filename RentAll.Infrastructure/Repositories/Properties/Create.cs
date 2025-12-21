@@ -51,7 +51,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				CrossStreet = property.CrossStreet,
 				View = property.View,
 				Mailbox = property.Mailbox,
-				Furnished = property.Furnished,
+				Unfurnished = property.Unfurnished,
 				Heating = property.Heating,
 				AC = property.Ac,
 				Elevator = property.Elevator,
@@ -60,7 +60,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				PetsAllowed = property.PetsAllowed,
 				Smoking = property.Smoking,
 				Parking = property.Parking,
-				Notes = property.Notes,
+				ParkingNotes = property.ParkingNotes,
 				Alarm = property.Alarm,
 				AlarmCode = property.AlarmCode,
 				KeypadAccess = property.KeypadAccess,
@@ -92,6 +92,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				TrashRemoval = property.TrashRemoval,
 				Amenities = property.Amenities,
 				Description = property.Description,
+				Notes = property.Notes,
 				IsActive = property.IsActive,
 				CreatedBy = property.CreatedBy
 			});

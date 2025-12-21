@@ -10,7 +10,7 @@ public class PropertySelectionEntity
 	public string? PropertyCode { get; set; }
 	public string? City { get; set; }
 	public string? State { get; set; }
-	public bool Furnished { get; set; }
+	public bool Unfurnished { get; set; }
 	public bool Cable { get; set; }
 	public bool Streaming { get; set; }
 	public bool Pool { get; set; }
