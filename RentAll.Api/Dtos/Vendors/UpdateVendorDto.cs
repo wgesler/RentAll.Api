@@ -1,10 +1,12 @@
 using RentAll.Domain.Models;
 
-namespace RentAll.Api.Dtos.Companies;
+namespace RentAll.Api.Dtos.Vendors;
 
-public class CreateCompanyDto
+public class UpdateVendorDto
 {
     public Guid OrganizationId { get; set; }
+    public Guid VendorId { get; set; }
+    public string VendorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -15,14 +17,21 @@ public class CreateCompanyDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
-	public string? Notes { get; set; }
-	public bool IsActive { get; set; }
+    public bool IsActive { get; set; }
 
-
-	public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
     {
+        if (id == Guid.Empty)
+            return (false, "Vendor ID is required");
+
+        if (VendorId != id)
+            return (false, "Vendor ID mismatch");
+
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
+
+        if (string.IsNullOrWhiteSpace(VendorCode))
+            return (false, "Vendor Code is required");
 
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
@@ -45,12 +54,13 @@ public class CreateCompanyDto
         return (true, null);
     }
 
-    public Company ToModel(string code, Guid currentUser)
+    public Vendor ToModel(Guid currentUser)
     {
-        return new Company
+        return new Vendor
         {
             OrganizationId = OrganizationId,
-            CompanyCode = code,
+            VendorId = VendorId,
+            VendorCode = VendorCode,
             Name = Name,
             Address1 = Address1,
             Address2 = Address2,
@@ -61,9 +71,9 @@ public class CreateCompanyDto
             Phone = Phone,
             Website = Website,
             LogoStorageId = LogoStorageId,
-			Notes = Notes,
-			IsActive = IsActive,
-            CreatedBy = currentUser
-		};
+            IsActive = IsActive,
+            ModifiedBy = currentUser
+        };
     }
 }
+

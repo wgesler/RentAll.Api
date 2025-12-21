@@ -4,24 +4,24 @@ using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Entities;
 
-namespace RentAll.Infrastructure.Repositories.Companies
+namespace RentAll.Infrastructure.Repositories.Vendors
 {
-	public partial class CompanyRepository : ICompanyRepository
+	public partial class VendorRepository : IVendorRepository
 	{
 		private readonly string _dbConnectionString;
 
-		public CompanyRepository(IOptions<AppSettings> appSettings)
+		public VendorRepository(IOptions<AppSettings> appSettings)
 		{
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private Company ConvertEntityToModel(CompanyEntity e)
+		private Vendor ConvertEntityToModel(VendorEntity e)
 		{
-			var response = new Company()
+			var response = new Vendor()
 			{
-				CompanyId = e.CompanyId,
+				VendorId = e.VendorId,
 				OrganizationId = e.OrganizationId,
-				CompanyCode = e.CompanyCode,
+				VendorCode = e.VendorCode,
 				Name = e.Name,
 				Address1 = e.Address1,
 				Address2 = e.Address2,
@@ -32,7 +32,6 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Phone = e.Phone,
 				Website = e.Website,
 				LogoStorageId = e.LogoStorageId,
-				Notes = e.Notes,
 				IsActive = e.IsActive,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,
@@ -44,3 +43,4 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		}
 	}
 }
+

@@ -7,6 +7,7 @@ public class CreateContactDto
 {
 	public Guid OrganizationId { get; set; }
 	public int EntityTypeId { get; set; }
+	public Guid? EntityId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Address1 { get; set; }
@@ -53,6 +54,7 @@ public class CreateContactDto
             OrganizationId = OrganizationId,
             ContactCode = code,
             EntityType = (EntityType)EntityTypeId,
+            EntityId = EntityId,
             FirstName = FirstName,
             LastName = LastName,
             Address1 = Address1,

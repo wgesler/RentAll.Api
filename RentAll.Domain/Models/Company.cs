@@ -5,7 +5,6 @@ public class Company
     public Guid CompanyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string CompanyCode { get; set; } = string.Empty;
-    public Guid? ContactId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }

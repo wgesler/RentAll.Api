@@ -1,8 +1,8 @@
 using RentAll.Domain.Models;
 
-namespace RentAll.Api.Dtos.Companies;
+namespace RentAll.Api.Dtos.Vendors;
 
-public class CreateCompanyDto
+public class CreateVendorDto
 {
     public Guid OrganizationId { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -15,11 +15,9 @@ public class CreateCompanyDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public Guid? LogoStorageId { get; set; }
-	public string? Notes { get; set; }
-	public bool IsActive { get; set; }
+    public bool IsActive { get; set; }
 
-
-	public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
@@ -45,12 +43,12 @@ public class CreateCompanyDto
         return (true, null);
     }
 
-    public Company ToModel(string code, Guid currentUser)
+    public Vendor ToModel(string code, Guid currentUser)
     {
-        return new Company
+        return new Vendor
         {
             OrganizationId = OrganizationId,
-            CompanyCode = code,
+            VendorCode = code,
             Name = Name,
             Address1 = Address1,
             Address2 = Address2,
@@ -61,9 +59,9 @@ public class CreateCompanyDto
             Phone = Phone,
             Website = Website,
             LogoStorageId = LogoStorageId,
-			Notes = Notes,
-			IsActive = IsActive,
+            IsActive = IsActive,
             CreatedBy = currentUser
-		};
+        };
     }
 }
+

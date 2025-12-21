@@ -16,7 +16,6 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				OrganizationId = company.OrganizationId,
 				CompanyId = company.CompanyId,
 				CompanyCode = company.CompanyCode,
-				ContactId = company.ContactId,
 				Name = company.Name,
 				Address1 = company.Address1,
 				Address2 = company.Address2,
