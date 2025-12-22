@@ -13,22 +13,23 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 			await using var db = new SqlConnection(_dbConnectionString);
 			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_UpdateById", new
 			{
-				OrganizationId = r.OrganizationId,
 				ReservationId = r.ReservationId,
+				OrganizationId = r.OrganizationId,
 				AgentId = r.AgentId,
 				PropertyId = r.PropertyId,
-				TenantName = r.TenantName,
-				ReservationTypeId = (int)r.ReservationType,
 				ContactId = r.ContactId,
+				ReservationTypeId = (int)r.ReservationType,
 				ReservationStatusId = (int)r.ReservationStatus,
-				IsActive = r.IsActive,
+				ReservationNoticeId = (int)r.ReservationNotice,
+				NumberOfPeople = r.NumberOfPeople,
+				HasPets = r.HasPets,
+				TenantName = r.TenantName,
 				ArrivalDate = r.ArrivalDate,
 				DepartureDate = r.DepartureDate,
 				CheckInTimeId = (int)r.CheckInTime,
 				CheckOutTimeId = (int)r.CheckOutTime,
 				BillingTypeId = (int)r.BillingType,
 				BillingRate = r.BillingRate,
-				NumberOfPeople = r.NumberOfPeople,
 				Deposit = r.Deposit,
 				DepartureFee = r.DepartureFee,
 				MaidServiceFee = r.MaidServiceFee,
@@ -38,6 +39,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				ExtraFeeName = r.ExtraFeeName,
 				Taxes = r.Taxes,
 				Notes = r.Notes,
+				IsActive = r.IsActive,
 				ModifiedBy = r.ModifiedBy
 			});
 

@@ -5,22 +5,23 @@ namespace RentAll.Api.Dtos.Reservations;
 
 public class UpdateReservationDto
 {
-	public Guid OrganizationId { get; set; }
 	public Guid ReservationId { get; set; }
+	public Guid OrganizationId { get; set; }
 	public Guid? AgentId { get; set; }
 	public Guid PropertyId { get; set; }
-	public int ReservationTypeId { get; set; }
 	public Guid ContactId { get; set; }
-	public string? TenantName { get; set; }
+	public int ReservationTypeId { get; set; }
 	public int ReservationStatusId { get; set; }
-	public bool IsActive { get; set; }
+	public int ReservationNoticeId { get; set; }
+	public int NumberOfPeople { get; set; }
+	public bool HasPets { get; set; }
+	public string? TenantName { get; set; }
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public int CheckInTimeId { get; set; }
 	public int CheckOutTimeId { get; set; }
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
-	public int NumberOfPeople { get; set; }
 	public decimal Deposit { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
@@ -30,6 +31,7 @@ public class UpdateReservationDto
 	public string ExtraFeeName { get; set; } = string.Empty;
 	public decimal Taxes { get; set; }
 	public string? Notes { get; set; }
+	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
 	{
@@ -66,6 +68,9 @@ public class UpdateReservationDto
 		if (!Enum.IsDefined(typeof(ReservationStatus), ReservationStatusId))
 			return (false, $"Invalid ReservationStatusId value: {ReservationStatusId}");
 
+		if (!Enum.IsDefined(typeof(ReservationNotice), ReservationNoticeId))
+			return (false, $"Invalid ReservationNoticeId value: {ReservationNoticeId}");
+
 		if (!Enum.IsDefined(typeof(CheckInTime), CheckInTimeId))
 			return (false, $"Invalid CheckInTimeId value: {CheckInTimeId}");
 
@@ -86,18 +91,19 @@ public class UpdateReservationDto
 			ReservationId = ReservationId,
 			AgentId = AgentId,
 			PropertyId = PropertyId,
-			ReservationType = (ReservationType)ReservationTypeId,
 			ContactId = ContactId,
-			TenantName = TenantName,
+			ReservationType = (ReservationType)ReservationTypeId,
 			ReservationStatus = (ReservationStatus)ReservationStatusId,
-			IsActive = IsActive,
+			ReservationNotice = (ReservationNotice)ReservationNoticeId,
+			NumberOfPeople = NumberOfPeople,
+			HasPets = HasPets,
+			TenantName = TenantName,
 			ArrivalDate = ArrivalDate,
 			DepartureDate = DepartureDate,
 			CheckInTime = (CheckInTime)CheckInTimeId,
 			CheckOutTime = (CheckOutTime)CheckOutTimeId,
 			BillingType = (BillingType)BillingTypeId,
 			BillingRate = BillingRate,
-			NumberOfPeople = NumberOfPeople,
 			Deposit = Deposit,
 			DepartureFee = DepartureFee,
 			MaidServiceFee = MaidServiceFee,
@@ -107,6 +113,7 @@ public class UpdateReservationDto
 			ExtraFeeName = ExtraFeeName ?? string.Empty,
 			Taxes = Taxes,
 			Notes = Notes,
+			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};
 	}

@@ -11,20 +11,22 @@ public class Reservation
 	public Guid ContactId { get; set; }
 	public ReservationType ReservationType { get; set; }
 	public ReservationStatus ReservationStatus { get; set; }
+	public ReservationNotice ReservationNotice { get; set; }
+	public int NumberOfPeople { get; set; }
+	public bool HasPets { get; set; }
+	public string? TenantName { get; set; }
 	public string PropertyCode { get; set; } = string.Empty;
 	public string PropertyAddress { get; set; } = string.Empty;
 	public PropertyStatus PropertyStatus { get; set; }
 	public string ContactName { get; set; } = string.Empty;
 	public string ContactPhone { get; set; } = string.Empty;
 	public string ContactEmail { get; set; } = string.Empty;
-	public string? TenantName { get; set; }
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public CheckInTime CheckInTime { get; set; }
 	public CheckOutTime CheckOutTime { get; set; }
 	public BillingType BillingType { get; set; }
 	public decimal BillingRate { get; set; }
-	public int NumberOfPeople { get; set; }
 	public decimal Deposit { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }

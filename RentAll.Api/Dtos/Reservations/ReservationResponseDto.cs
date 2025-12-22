@@ -11,20 +11,22 @@ public class ReservationResponseDto
 	public Guid ContactId { get; set; }
 	public int ReservationTypeId { get; set; }
 	public int ReservationStatusId { get; set; }
+	public int ReservationNoticeId { get; set; }
+	public int NumberOfPeople { get; set; }
+	public bool HasPets { get; set; }
+	public string? TenantName { get; set; }
 	public string PropertyCode { get; set; }
 	public string PropertyAddress {get; set; }
 	public int PropertyStatusId { get; set; }
 	public string ContactName { get; set; }
 	public string ContactPhone { get; set; }
 	public string ContactEmail { get; set; }
-	public string? TenantName { get; set; }
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public int CheckInTimeId { get; set; }
 	public int CheckOutTimeId { get; set; }
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
-	public int NumberOfPeople { get; set; }
 	public decimal Deposit { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
@@ -50,20 +52,22 @@ public class ReservationResponseDto
 		ContactId = reservation.ContactId;
 		ReservationTypeId = (int)reservation.ReservationType;
 		ReservationStatusId = (int)reservation.ReservationStatus;
+		ReservationNoticeId = (int)reservation.ReservationNotice;
+		NumberOfPeople = reservation.NumberOfPeople;
+		HasPets = reservation.HasPets;
+		TenantName = reservation.TenantName;
 		PropertyCode = reservation.PropertyCode;
 		PropertyAddress = reservation.PropertyAddress;
 		PropertyStatusId = (int)reservation.PropertyStatus;
 		ContactName = reservation.ContactName;
 		ContactPhone = reservation.ContactPhone;
 		ContactEmail = reservation.ContactEmail;
-		TenantName = reservation.TenantName;
 		ArrivalDate = reservation.ArrivalDate;
 		DepartureDate = reservation.DepartureDate;
 		CheckInTimeId = (int)reservation.CheckInTime;
 		CheckOutTimeId = (int)reservation.CheckOutTime;
 		BillingTypeId = (int)reservation.BillingType;
 		BillingRate = reservation.BillingRate;
-		NumberOfPeople = reservation.NumberOfPeople;
 		Deposit = reservation.Deposit;
 		DepartureFee = reservation.DepartureFee;
 		MaidServiceFee = reservation.MaidServiceFee;
@@ -74,10 +78,6 @@ public class ReservationResponseDto
 		Taxes = reservation.Taxes;
 		Notes = reservation.Notes;
 		IsActive = reservation.IsActive;
-		CreatedOn = reservation.CreatedOn;
-		CreatedBy = reservation.CreatedBy;
-		ModifiedOn = reservation.ModifiedOn;
-		ModifiedBy = reservation.ModifiedBy;
 	}
 }
 

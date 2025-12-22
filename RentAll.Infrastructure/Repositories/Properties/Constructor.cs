@@ -30,6 +30,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				AvailableUntil = e.AvailableUntil,
 				MinStay = e.MinStay,
 				MaxStay = e.MaxStay,
+				CheckInTime = (CheckInTime)e.CheckInTimeId,
+				CheckOutTime = (CheckOutTime)e.CheckOutTimeId,
 				PropertyStyle = (PropertyStyle)e.PropertyStyleId,
 				PropertyType = (PropertyType)e.PropertyTypeId,
 				PropertyStatus = (PropertyStatus)e.PropertyStatusId,
