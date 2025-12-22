@@ -30,6 +30,8 @@ public partial class OrganizationRepository : IOrganizationRepository
 			Zip = e.Zip,
 			Phone = e.Phone,
 			Website = e.Website,
+			MaintenanceEmail = e.MaintenanceEmail,
+			AfterHoursPhone = e.AfterHoursPhone,
 			LogoStorageId = e.LogoStorageId,
 			IsActive = e.IsActive,
 			CreatedOn = e.CreatedOn,

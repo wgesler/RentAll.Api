@@ -15,6 +15,8 @@ public class OrganizationResponseDto
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
 	public string? Website { get; set; }
+	public string? MaintenanceEmail { get; set; }
+	public string? AfterHoursPhone { get; set; }
 	public Guid? LogoStorageId { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
@@ -36,6 +38,8 @@ public class OrganizationResponseDto
 		Zip = org.Zip;
 		Phone = org.Phone;
 		Website = org.Website;
+		MaintenanceEmail = org.MaintenanceEmail;
+		AfterHoursPhone = org.AfterHoursPhone;
 		LogoStorageId = org.LogoStorageId;
 		IsActive = org.IsActive;
 		CreatedOn = org.CreatedOn;
