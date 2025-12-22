@@ -139,6 +139,12 @@ public class CreatePropertyDto
 			return (false, "Zip is required");
 
 		// Validate enum values
+		if (!Enum.IsDefined(typeof(CheckInTime), CheckInTimeId))
+			return (false, $"Invalid CheckIn Time value: {CheckInTimeId}");
+
+		if (!Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId))
+			return (false, $"Invalid CheckOutTime value: {CheckOutTimeId}");
+
 		if (!Enum.IsDefined(typeof(PropertyStyle), PropertyStyleId))
 			return (false, $"Invalid PropertyStyle value: {PropertyStyleId}");
 
