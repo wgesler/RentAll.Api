@@ -16,6 +16,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				PropertyCode = property.PropertyCode,
 				Owner1Id = property.Owner1Id,
 				Owner2Id = property.Owner2Id,
+				Owner3Id = property.Owner3Id,
 				AvailableFrom = property.AvailableFrom,
 				AvailableUntil = property.AvailableUntil,
 				MinStay = property.MinStay,

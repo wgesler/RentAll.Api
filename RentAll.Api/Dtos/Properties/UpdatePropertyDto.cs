@@ -10,6 +10,7 @@ public class UpdatePropertyDto
 	public string PropertyCode { get; set; } = string.Empty;
 	public Guid Owner1Id { get; set; }
 	public Guid? Owner2Id { get; set; }
+	public Guid? Owner3Id { get; set; }
 
 	// Availability Section 
 	public DateTimeOffset? AvailableFrom { get; set; }
@@ -164,6 +165,7 @@ public class UpdatePropertyDto
 			PropertyCode = PropertyCode,
 			Owner1Id = Owner1Id,
 			Owner2Id = Owner2Id,
+			Owner3Id = Owner3Id,
 			AvailableFrom = AvailableFrom,
 			AvailableUntil = AvailableUntil,
 			MinStay = MinStay,

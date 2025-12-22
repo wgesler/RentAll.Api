@@ -9,6 +9,7 @@ public class Property
 	public string PropertyCode { get; set; } = string.Empty;
 	public Guid Owner1Id { get; set; }
 	public Guid? Owner2Id { get; set; }
+	public Guid? Owner3Id { get; set; }
 
 	// Availability Section 
 	public DateTimeOffset? AvailableFrom { get; set; }

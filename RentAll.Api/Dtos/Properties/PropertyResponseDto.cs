@@ -9,6 +9,7 @@ public class PropertyResponseDto
 	public string PropertyCode { get; set; } = string.Empty;
 	public Guid Owner1Id { get; set; }
 	public Guid? Owner2Id { get; set; }
+	public Guid? Owner3Id { get; set; }
 
 	// Availability Section 
 	public DateTimeOffset? AvailableFrom { get; set; }
@@ -126,6 +127,7 @@ public class PropertyResponseDto
 		PropertyCode = property.PropertyCode;
 		Owner1Id = property.Owner1Id;
 		Owner2Id = property.Owner2Id;
+		Owner3Id = property.Owner3Id;
 		AvailableFrom = property.AvailableFrom;
 		AvailableUntil = property.AvailableUntil;
 		MinStay = property.MinStay;
