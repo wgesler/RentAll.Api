@@ -20,3 +20,5 @@ public interface IBuildingRepository
 	Task DeleteByIdAsync(int buildingId);
 }
 
+
+

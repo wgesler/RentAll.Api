@@ -8,3 +8,5 @@ public class ColorEntity
 	public string Color { get; set; } = string.Empty;
 }
 
+
+

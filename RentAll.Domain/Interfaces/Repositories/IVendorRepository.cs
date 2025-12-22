@@ -20,3 +20,5 @@ public interface IVendorRepository
 	Task DeleteByIdAsync(Guid vendorId);
 }
 
+
+

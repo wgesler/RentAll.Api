@@ -10,3 +10,4 @@ public enum TrashDay
     Saturday = 5,
     Sunday = 6
 }
+

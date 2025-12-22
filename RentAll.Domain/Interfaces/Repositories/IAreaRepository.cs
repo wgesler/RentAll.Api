@@ -20,3 +20,5 @@ public interface IAreaRepository
 	Task DeleteByIdAsync(int areaId);
 }
 
+
+

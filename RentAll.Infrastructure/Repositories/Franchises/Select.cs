@@ -65,3 +65,5 @@ public partial class FranchiseRepository : IFranchiseRepository
 	}
 }
 
+
+

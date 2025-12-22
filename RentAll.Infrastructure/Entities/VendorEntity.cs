@@ -22,3 +22,5 @@ public class VendorEntity
     public Guid ModifiedBy { get; set; }
 }
 
+
+

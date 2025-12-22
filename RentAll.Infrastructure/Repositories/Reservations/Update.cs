@@ -30,7 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				BillingRate = r.BillingRate,
 				NumberOfPeople = r.NumberOfPeople,
 				Deposit = r.Deposit,
-				CheckoutFee = r.CheckoutFee,
+				DepartureFee = r.DepartureFee,
 				MaidServiceFee = r.MaidServiceFee,
 				FrequencyId = r.FrequencyId,
 				PetFee = r.PetFee,

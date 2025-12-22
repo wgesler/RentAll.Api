@@ -16,3 +16,5 @@ public partial class BuildingRepository : IBuildingRepository
 	}
 }
 
+
+

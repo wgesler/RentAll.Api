@@ -22,7 +22,7 @@ public class UpdateReservationDto
 	public decimal BillingRate { get; set; }
 	public int NumberOfPeople { get; set; }
 	public decimal Deposit { get; set; }
-	public decimal CheckoutFee { get; set; }
+	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
 	public decimal PetFee { get; set; }
@@ -60,6 +60,9 @@ public class UpdateReservationDto
 		if (NumberOfPeople < 0)
 			return (false, "NumberOfPeople must be zero or greater");
 
+		if (!Enum.IsDefined(typeof(ReservationType), ReservationTypeId))
+			return (false, $"Invalid ReservationTypeId value: {ReservationTypeId}");
+
 		if (!Enum.IsDefined(typeof(ReservationStatus), ReservationStatusId))
 			return (false, $"Invalid ReservationStatusId value: {ReservationStatusId}");
 
@@ -96,7 +99,7 @@ public class UpdateReservationDto
 			BillingRate = BillingRate,
 			NumberOfPeople = NumberOfPeople,
 			Deposit = Deposit,
-			CheckoutFee = CheckoutFee,
+			DepartureFee = DepartureFee,
 			MaidServiceFee = MaidServiceFee,
 			FrequencyId = FrequencyId,
 			PetFee = PetFee,

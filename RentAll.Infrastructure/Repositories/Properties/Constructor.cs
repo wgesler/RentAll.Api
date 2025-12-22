@@ -41,6 +41,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				DepartureFee = e.DepartureFee,
 				MaidServiceFee = e.MaidServiceFee,
 				PetFee = e.PetFee,
+				ExtraFee = e.ExtraFee,
+				ExtraFeeName = e.ExtraFeeName,
 				Bedrooms = e.Bedrooms,
 				Bathrooms = e.Bathrooms,
 				Accomodates = e.Accomodates,

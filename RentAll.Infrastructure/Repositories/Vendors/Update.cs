@@ -38,3 +38,5 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 	}
 }
 
+
+

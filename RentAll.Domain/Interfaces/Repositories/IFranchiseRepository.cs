@@ -20,3 +20,5 @@ public interface IFranchiseRepository
 	Task DeleteByIdAsync(int franchiseId);
 }
 
+
+

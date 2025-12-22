@@ -42,7 +42,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				BillingRate = e.BillingRate,
 				NumberOfPeople = e.NumberOfPeople,
 				Deposit = e.Deposit,
-				CheckoutFee = e.CheckoutFee,
+				DepartureFee = e.DepartureFee,
 				MaidServiceFee = e.MaidServiceFee,
 				FrequencyId = e.FrequencyId,
 				PetFee = e.PetFee,
@@ -50,7 +50,11 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				ExtraFeeName = e.ExtraFeeName,
 				Taxes = e.Taxes,
 				Notes = e.Notes,
-				IsActive = e.IsActive
+				IsActive = e.IsActive,
+				CreatedBy = e.CreatedBy,
+				CreatedOn = e.CreatedOn,
+				ModifiedBy = e.ModifiedBy,
+				ModifiedOn = e.ModifiedOn
 			};
 		}
 	}

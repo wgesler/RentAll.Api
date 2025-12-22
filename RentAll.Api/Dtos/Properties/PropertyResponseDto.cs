@@ -15,6 +15,10 @@ public class PropertyResponseDto
 	public DateTimeOffset? AvailableUntil { get; set; }
 	public int MinStay { get; set; }
 	public int MaxStay { get; set; }
+	public int CheckInTimeId { get; set; }
+	public int CheckOutTimeId { get; set; }
+
+	// Property Classification
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
@@ -22,11 +26,15 @@ public class PropertyResponseDto
 	public string? BuildingCode { get; set; }
 	public string? RegionCode { get; set; }
 	public string? AreaCode { get; set; }
+
+	// Rates & Fees
 	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public decimal PetFee { get; set; }
+	public decimal ExtraFee { get; set; }
+	public string ExtraFeeName { get; set; } = string.Empty;
 	public int Bedrooms { get; set; }
 	public decimal Bathrooms { get; set; }
 	public int Accomodates { get; set; }
@@ -105,7 +113,6 @@ public class PropertyResponseDto
 	public string? Description { get; set; }
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
-	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
 	public DateTimeOffset ModifiedOn { get; set; }
@@ -123,6 +130,8 @@ public class PropertyResponseDto
 		AvailableUntil = property.AvailableUntil;
 		MinStay = property.MinStay;
 		MaxStay = property.MaxStay;
+		CheckInTimeId = (int)property.CheckInTime;
+		CheckOutTimeId = (int)property.CheckOutTime;
 		PropertyStyleId = (int)property.PropertyStyle;
 		PropertyTypeId = (int)property.PropertyType;
 		PropertyStatusId = (int)property.PropertyStatus;
@@ -135,6 +144,8 @@ public class PropertyResponseDto
 		DepartureFee = property.DepartureFee;
 		MaidServiceFee = property.MaidServiceFee;
 		PetFee = property.PetFee;
+		ExtraFee = property.ExtraFee;
+		ExtraFeeName = property.ExtraFeeName;
 		Bedrooms = property.Bedrooms;
 		Bathrooms = property.Bathrooms;
 		Accomodates = property.Accomodates;
@@ -163,7 +174,7 @@ public class PropertyResponseDto
 		PetsAllowed = property.PetsAllowed;
 		Smoking = property.Smoking;
 		Parking = property.Parking;
-		Notes = property.Notes;
+		ParkingNotes = property.ParkingNotes;
 		Alarm = property.Alarm;
 		AlarmCode = property.AlarmCode;
 		KeypadAccess = property.KeypadAccess;
@@ -195,6 +206,7 @@ public class PropertyResponseDto
 		TrashRemoval = property.TrashRemoval;
 		Amenities = property.Amenities;
 		Description = property.Description;
+		Notes = property.Notes;
 		IsActive = property.IsActive;
 		CreatedOn = property.CreatedOn;
 		CreatedBy = property.CreatedBy;

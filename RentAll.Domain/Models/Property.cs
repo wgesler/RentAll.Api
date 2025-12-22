@@ -15,6 +15,10 @@ public class Property
 	public DateTimeOffset? AvailableUntil { get; set; }
 	public int MinStay { get; set; }
 	public int MaxStay { get; set; }
+	public CheckInTime CheckInTime { get; set; }
+	public CheckOutTime CheckOutTime { get; set; }
+
+	// Property Classification
 	public PropertyStyle PropertyStyle { get; set; }
 	public PropertyType PropertyType { get; set; }
 	public PropertyStatus PropertyStatus { get; set; }
@@ -22,11 +26,15 @@ public class Property
 	public string? BuildingCode { get; set; }
 	public string? RegionCode { get; set; }
 	public string? AreaCode { get; set; }
+
+	// Rates & Fees
 	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public decimal PetFee { get; set; }
+	public decimal ExtraFee { get; set; }
+	public string ExtraFeeName { get; set; } = string.Empty;
 	public int Bedrooms { get; set; }
 	public decimal Bathrooms { get; set; }
 	public int Accomodates { get; set; }

@@ -26,7 +26,7 @@ public class ReservationResponseDto
 	public decimal BillingRate { get; set; }
 	public int NumberOfPeople { get; set; }
 	public decimal Deposit { get; set; }
-	public decimal CheckoutFee { get; set; }
+	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
 	public decimal PetFee { get; set; }
@@ -65,7 +65,7 @@ public class ReservationResponseDto
 		BillingRate = reservation.BillingRate;
 		NumberOfPeople = reservation.NumberOfPeople;
 		Deposit = reservation.Deposit;
-		CheckoutFee = reservation.CheckoutFee;
+		DepartureFee = reservation.DepartureFee;
 		MaidServiceFee = reservation.MaidServiceFee;
 		FrequencyId = reservation.FrequencyId;
 		PetFee = reservation.PetFee;

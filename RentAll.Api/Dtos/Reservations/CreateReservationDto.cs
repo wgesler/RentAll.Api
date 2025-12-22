@@ -21,7 +21,7 @@ public class CreateReservationDto
 	public decimal BillingRate { get; set; }
 	public int NumberOfPeople { get; set; }
 	public decimal Deposit { get; set; }
-	public decimal CheckoutFee { get; set; }
+	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
 	public decimal PetFee { get; set; }
@@ -92,7 +92,7 @@ public class CreateReservationDto
 			BillingRate = BillingRate,
 			NumberOfPeople = NumberOfPeople,
 			Deposit = Deposit,
-			CheckoutFee = CheckoutFee,
+			DepartureFee = DepartureFee,
 			MaidServiceFee = MaidServiceFee,
 			FrequencyId = FrequencyId,
 			PetFee = PetFee,

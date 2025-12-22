@@ -15,6 +15,10 @@ public class CreatePropertyDto
 	public DateTimeOffset? AvailableUntil { get; set; }
 	public int MinStay { get; set; }
 	public int MaxStay { get; set; }
+	public int CheckInTimeId { get; set; }
+	public int CheckOutTimeId { get; set; }
+
+	// Property Classification
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
@@ -22,11 +26,15 @@ public class CreatePropertyDto
 	public string? BuildingCode { get; set; }
 	public string? RegionCode { get; set; }
 	public string? AreaCode { get; set; }
+
+	// Rates & Fees
 	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public decimal PetFee { get; set; }
+	public decimal ExtraFee { get; set; }
+	public string ExtraFeeName { get; set; } = string.Empty;
 	public int Bedrooms { get; set; }
 	public decimal Bathrooms { get; set; }
 	public int Accomodates { get; set; }
@@ -154,6 +162,8 @@ public class CreatePropertyDto
 			AvailableUntil = AvailableUntil,
 			MinStay = MinStay,
 			MaxStay = MaxStay,
+			CheckInTime = (CheckInTime)CheckInTimeId,
+			CheckOutTime = (CheckOutTime)CheckOutTimeId,
 			PropertyStyle = (PropertyStyle)PropertyStyleId,
 			PropertyType = (PropertyType)PropertyTypeId,
 			PropertyStatus = (PropertyStatus)PropertyStatusId,
@@ -166,6 +176,8 @@ public class CreatePropertyDto
 			DepartureFee = DepartureFee,
 			MaidServiceFee = MaidServiceFee,
 			PetFee = PetFee,
+			ExtraFee = ExtraFee,
+			ExtraFeeName = ExtraFeeName ?? string.Empty,
 			Bedrooms = Bedrooms,
 			Bathrooms = Bathrooms,
 			Accomodates = Accomodates,
@@ -194,7 +206,7 @@ public class CreatePropertyDto
 			PetsAllowed = PetsAllowed,
 			Smoking = Smoking,
 			Parking = Parking,
-			Notes = Notes,
+			ParkingNotes = ParkingNotes,
 			Alarm = Alarm,
 			AlarmCode = AlarmCode,
 			KeypadAccess = KeypadAccess,
@@ -226,6 +238,7 @@ public class CreatePropertyDto
 			TrashRemoval = TrashRemoval,
 			Amenities = Amenities,
 			Description = Description,
+			Notes = Notes,
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};
