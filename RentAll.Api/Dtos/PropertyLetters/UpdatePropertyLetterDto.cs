@@ -5,6 +5,7 @@ namespace RentAll.Api.Dtos.PropertyLetters;
 public class UpdatePropertyLetterDto
 {
 	public Guid PropertyId { get; set; }
+	public Guid OrganizationId { get; set; }
 	public string? ArrivalInstructions { get; set; }
 	public string? MailboxInstructions { get; set; }
 	public string? PackageInstructions { get; set; }
@@ -15,16 +16,19 @@ public class UpdatePropertyLetterDto
 	public string? Housekeeping { get; set; }
 	public string? TelevisionSource { get; set; }
 	public string? InternetService { get; set; }
-	public string? InternetNetwork { get; set; }
-	public string? InternetPassword { get; set; }
 	public string? KeyReturn { get; set; }
 	public string? Concierge { get; set; }
-	public string? GuestServiceEmail { get; set; }
+	public string? MaintenanceEmail { get; set; }
+	public string? EmergencyPhone { get; set; }
+	public string? AdditionalNotes { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
 		if (PropertyId == Guid.Empty)
 			return (false, "PropertyId is required");
+
+		if (OrganizationId == Guid.Empty)
+			return (false, "OrganizationId is required");
 
 		return (true, null);
 	}
@@ -34,6 +38,7 @@ public class UpdatePropertyLetterDto
 		return new PropertyLetter
 		{
 			PropertyId = PropertyId,
+			OrganizationId = OrganizationId,
 			ArrivalInstructions = ArrivalInstructions,
 			MailboxInstructions = MailboxInstructions,
 			PackageInstructions = PackageInstructions,
@@ -44,11 +49,11 @@ public class UpdatePropertyLetterDto
 			Housekeeping = Housekeeping,
 			TelevisionSource = TelevisionSource,
 			InternetService = InternetService,
-			InternetNetwork = InternetNetwork,
-			InternetPassword = InternetPassword,
 			KeyReturn = KeyReturn,
 			Concierge = Concierge,
-			GuestServiceEmail = GuestServiceEmail,
+			MaintenanceEmail = MaintenanceEmail,
+			EmergencyPhone = EmergencyPhone,
+			AdditionalNotes = AdditionalNotes,
 			ModifiedBy = currentUser
 		};
 	}

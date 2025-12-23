@@ -8,8 +8,7 @@ public interface IPropertyLetterRepository
 	Task<PropertyLetter> CreateAsync(PropertyLetter propertyLetter);
 
 	// Selects
-	Task<IEnumerable<PropertyLetter>> GetAllAsync();
-	Task<PropertyLetter?> GetByPropertyIdAsync(Guid propertyId);
+	Task<PropertyLetter?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId);
 
 	// Updates
 	Task<PropertyLetter> UpdateByIdAsync(PropertyLetter propertyLetter);

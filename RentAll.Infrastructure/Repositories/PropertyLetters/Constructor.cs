@@ -20,6 +20,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 			var response = new PropertyLetter()
 			{
 				PropertyId = e.PropertyId,
+				OrganizationId = e.OrganizationId,
 				ArrivalInstructions = e.ArrivalInstructions,
 				MailboxInstructions = e.MailboxInstructions,
 				PackageInstructions = e.PackageInstructions,
@@ -30,11 +31,11 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 				Housekeeping = e.Housekeeping,
 				TelevisionSource = e.TelevisionSource,
 				InternetService = e.InternetService,
-				InternetNetwork = e.InternetNetwork,
-				InternetPassword = e.InternetPassword,
 				KeyReturn = e.KeyReturn,
 				Concierge = e.Concierge,
-				GuestServiceEmail = e.GuestServiceEmail,
+				MaintenanceEmail = e.MaintenanceEmail,
+				EmergencyPhone = e.EmergencyPhone,
+				AdditionalNotes = e.AdditionalNotes,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,
 				ModifiedOn = e.ModifiedOn,

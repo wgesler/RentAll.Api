@@ -91,6 +91,8 @@ public class PropertyResponseDto
 	public bool Dvd { get; set; }
 	public bool Streaming { get; set; }
 	public bool FastInternet { get; set; }
+	public string? InternetNetwork { get; set; }
+	public string? InternetPassword { get; set; }
 
 	//Outdoor Spaces Section
 	public bool Deck { get; set; }
@@ -195,6 +197,8 @@ public class PropertyResponseDto
 		Dvd = property.Dvd;
 		Streaming = property.Streaming;
 		FastInternet = property.FastInternet;
+		InternetNetwork = property.InternetNetwork;
+		InternetPassword = property.InternetPassword;
 		Deck = property.Deck;
 		Patio = property.Patio;
 		Yard = property.Yard;

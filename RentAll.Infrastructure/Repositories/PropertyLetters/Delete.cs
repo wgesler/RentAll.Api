@@ -9,7 +9,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 	public async Task DeleteByPropertyIdAsync(Guid propertyId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		await db.DapperProcExecuteAsync("dbo.PropertyLetter_DeleteByPropertyId", new
+		await db.DapperProcExecuteAsync("dbo.PropertyLetterInformation_DeleteByPropertyId", new
 		{
 			PropertyId = propertyId
 		});

@@ -27,11 +27,6 @@ namespace RentAll.Api.Controllers
 				if (property == null)
 					return NotFound(new { message = "Property not found" });
 
-				// Check if property letter already exists
-				var existing = await _propertyLetterRepository.GetByPropertyIdAsync(dto.PropertyId);
-				if (existing != null)
-					return Conflict(new { message = "Property letter already exists for this property" });
-
 				var propertyLetter = dto.ToModel(CurrentUser);
 				var createdPropertyLetter = await _propertyLetterRepository.CreateAsync(propertyLetter);
 				return CreatedAtAction(nameof(GetByPropertyId), new { propertyId = createdPropertyLetter.PropertyId }, new PropertyLetterResponseDto(createdPropertyLetter));

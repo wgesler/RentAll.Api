@@ -6,31 +6,11 @@ namespace RentAll.Api.Controllers
 	public partial class PropertyLetterController
 	{
 		/// <summary>
-		/// Get all property letters
-		/// </summary>
-		/// <returns>List of property letters</returns>
-		[HttpGet]
-		public async Task<IActionResult> GetAll()
-		{
-			try
-			{
-				var propertyLetters = await _propertyLetterRepository.GetAllAsync();
-				var response = propertyLetters.Select(pl => new PropertyLetterResponseDto(pl));
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting all property letters");
-				return StatusCode(500, new { message = "An error occurred while retrieving property letters" });
-			}
-		}
-
-		/// <summary>
 		/// Get property letter by Property ID
 		/// </summary>
 		/// <param name="propertyId">Property ID</param>
 		/// <returns>Property letter</returns>
-		[HttpGet("property/{propertyId}")]
+		[HttpGet("{propertyId}")]
 		public async Task<IActionResult> GetByPropertyId(Guid propertyId)
 		{
 			if (propertyId == Guid.Empty)
@@ -43,7 +23,7 @@ namespace RentAll.Api.Controllers
 				if (property == null)
 					return NotFound(new { message = "Property not found" });
 
-				var propertyLetter = await _propertyLetterRepository.GetByPropertyIdAsync(propertyId);
+				var propertyLetter = await _propertyLetterRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
 				if (propertyLetter == null)
 					return NotFound(new { message = "Property letter not found" });
 

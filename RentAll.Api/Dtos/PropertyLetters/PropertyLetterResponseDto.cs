@@ -5,6 +5,7 @@ namespace RentAll.Api.Dtos.PropertyLetters;
 public class PropertyLetterResponseDto
 {
 	public Guid PropertyId { get; set; }
+	public Guid OrganizationId { get; set; }
 	public string? ArrivalInstructions { get; set; }
 	public string? MailboxInstructions { get; set; }
 	public string? PackageInstructions { get; set; }
@@ -15,15 +16,16 @@ public class PropertyLetterResponseDto
 	public string? Housekeeping { get; set; }
 	public string? TelevisionSource { get; set; }
 	public string? InternetService { get; set; }
-	public string? InternetNetwork { get; set; }
-	public string? InternetPassword { get; set; }
 	public string? KeyReturn { get; set; }
 	public string? Concierge { get; set; }
-	public string? GuestServiceEmail { get; set; }
+	public string? MaintenanceEmail { get; set; }
+	public string? EmergencyPhone { get; set; }
+	public string? AdditionalNotes { get; set; }
 
 	public PropertyLetterResponseDto(PropertyLetter propertyLetter)
 	{
 		PropertyId = propertyLetter.PropertyId;
+		OrganizationId = propertyLetter.OrganizationId;
 		ArrivalInstructions = propertyLetter.ArrivalInstructions;
 		MailboxInstructions = propertyLetter.MailboxInstructions;
 		PackageInstructions = propertyLetter.PackageInstructions;
@@ -34,11 +36,11 @@ public class PropertyLetterResponseDto
 		Housekeeping = propertyLetter.Housekeeping;
 		TelevisionSource = propertyLetter.TelevisionSource;
 		InternetService = propertyLetter.InternetService;
-		InternetNetwork = propertyLetter.InternetNetwork;
-		InternetPassword = propertyLetter.InternetPassword;
 		KeyReturn = propertyLetter.KeyReturn;
 		Concierge = propertyLetter.Concierge;
-		GuestServiceEmail = propertyLetter.GuestServiceEmail;
+		MaintenanceEmail = propertyLetter.MaintenanceEmail;
+		EmergencyPhone = propertyLetter.EmergencyPhone;
+		AdditionalNotes = propertyLetter.AdditionalNotes;
 	}
 }
 

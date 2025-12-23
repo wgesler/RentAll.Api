@@ -86,6 +86,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				Dvd = property.Dvd,
 				Streaming = property.Streaming,
 				FastInternet = property.FastInternet,
+				InternetNetwork = property.InternetNetwork,
+				InternetPassword = property.InternetPassword,
 				Deck = property.Deck,
 				Patio = property.Patio,
 				Yard = property.Yard,

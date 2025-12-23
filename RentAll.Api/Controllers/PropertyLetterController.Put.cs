@@ -23,7 +23,7 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				// Check if property letter exists
-				var existing = await _propertyLetterRepository.GetByPropertyIdAsync(dto.PropertyId);
+				var existing = await _propertyLetterRepository.GetByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId);
 				if (existing == null)
 					return NotFound(new { message = "Property letter not found" });
 

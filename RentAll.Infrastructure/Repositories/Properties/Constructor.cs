@@ -93,6 +93,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				Dvd = e.Dvd,
 				Streaming = e.Streaming,
 				FastInternet = e.FastInternet,
+				InternetNetwork = e.InternetNetwork,
+				InternetPassword = e.InternetPassword,
 				Deck = e.Deck,
 				Patio = e.Patio,
 				Yard = e.Yard,

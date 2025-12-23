@@ -11,9 +11,10 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 		public async Task<PropertyLetter> CreateAsync(PropertyLetter propertyLetter)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("dbo.PropertyLetter_Add", new
+			var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("dbo.PropertyLetterInformation_Add", new
 			{
 				PropertyId = propertyLetter.PropertyId,
+				OrganizationId = propertyLetter.OrganizationId,
 				ArrivalInstructions = propertyLetter.ArrivalInstructions,
 				MailboxInstructions = propertyLetter.MailboxInstructions,
 				PackageInstructions = propertyLetter.PackageInstructions,
@@ -24,11 +25,11 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 				Housekeeping = propertyLetter.Housekeeping,
 				TelevisionSource = propertyLetter.TelevisionSource,
 				InternetService = propertyLetter.InternetService,
-				InternetNetwork = propertyLetter.InternetNetwork,
-				InternetPassword = propertyLetter.InternetPassword,
 				KeyReturn = propertyLetter.KeyReturn,
 				Concierge = propertyLetter.Concierge,
-				GuestServiceEmail = propertyLetter.GuestServiceEmail,
+				MaintenanceEmail = propertyLetter.MaintenanceEmail,
+				EmergencyPhone = propertyLetter.EmergencyPhone,
+				AdditionalNotes = propertyLetter.AdditionalNotes,
 				CreatedBy = propertyLetter.CreatedBy
 			});
 

@@ -91,6 +91,8 @@ public class CreatePropertyDto
 	public bool Dvd { get; set; }
 	public bool Streaming { get; set; }
 	public bool FastInternet { get; set; }
+	public string? InternetNetwork { get; set; }
+	public string? InternetPassword { get; set; }
 
 	//Outdoor Spaces Section
 	public bool Deck { get; set; }
@@ -233,6 +235,8 @@ public class CreatePropertyDto
 			Dvd = Dvd,
 			Streaming = Streaming,
 			FastInternet = FastInternet,
+			InternetNetwork = InternetNetwork,
+			InternetPassword = InternetPassword,
 			Deck = Deck,
 			Patio = Patio,
 			Yard = Yard,

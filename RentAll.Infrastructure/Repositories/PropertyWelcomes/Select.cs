@@ -4,14 +4,14 @@ using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities;
 
-namespace RentAll.Infrastructure.Repositories.PropertyLetters
+namespace RentAll.Infrastructure.Repositories.PropertyWelcomes
 {
-	public partial class PropertyLetterRepository : IPropertyLetterRepository
+	public partial class PropertyWelcomeRepository : IPropertyWelcomeRepository
 	{
-		public async Task<PropertyLetter?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
+		public async Task<PropertyWelcome?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("dbo.PropertyLetterInformation_GetByPropertyId", new
+			var res = await db.DapperProcQueryAsync<PropertyWelcomeEntity>("dbo.PropertyWelcomeLetter_GetByPropertyId", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId
@@ -24,4 +24,5 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 		}
 	}
 }
+
 

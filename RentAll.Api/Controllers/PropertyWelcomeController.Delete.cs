@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace RentAll.Api.Controllers
 {
-	public partial class PropertyLetterController
+	public partial class PropertyWelcomeController
 	{
 		/// <summary>
-		/// Delete a property letter
+		/// Delete a property welcome letter
 		/// </summary>
 		/// <param name="propertyId">Property ID</param>
 		/// <returns>No content</returns>
@@ -22,20 +22,21 @@ namespace RentAll.Api.Controllers
 				if (property == null)
 					return NotFound(new { message = "Property not found" });
 
-				// Check if property letter exists
-				var propertyLetter = await _propertyLetterRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
-				if (propertyLetter == null)
-					return NotFound(new { message = "Property letter not found" });
+				// Check if welcome exists
+				var propertyWelcome = await _propertyWelcomeRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
+				if (propertyWelcome == null)
+					return NotFound(new { message = "Property welcome not found" });
 
-				await _propertyLetterRepository.DeleteByPropertyIdAsync(propertyId);
+				await _propertyWelcomeRepository.DeleteByPropertyIdAsync(propertyId);
 				return NoContent();
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error deleting property letter: {PropertyId}", propertyId);
-				return StatusCode(500, new { message = "An error occurred while deleting the property letter" });
+				_logger.LogError(ex, "Error deleting property welcome: {PropertyId}", propertyId);
+				return StatusCode(500, new { message = "An error occurred while deleting the property welcome" });
 			}
 		}
 	}
 }
+
 
