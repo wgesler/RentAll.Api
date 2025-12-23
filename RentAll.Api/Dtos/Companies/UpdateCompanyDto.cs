@@ -16,7 +16,8 @@ public class UpdateCompanyDto
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
-    public Guid? LogoStorageId { get; set; }
+    public string? LogoPath { get; set; }
+    public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; }
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 
@@ -71,7 +72,7 @@ public class UpdateCompanyDto
             Zip = Zip,
             Phone = Phone,
             Website = Website,
-            LogoStorageId = LogoStorageId,
+            LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
 			Notes = Notes,
 			IsActive = IsActive,
             ModifiedBy = currentUser

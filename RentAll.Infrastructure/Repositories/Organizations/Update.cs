@@ -26,7 +26,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 			Website = organization.Website,
 			MaintenanceEmail = organization.MaintenanceEmail,
 			AfterHoursPhone = organization.AfterHoursPhone,
-			LogoStorageId = organization.LogoStorageId,
+			LogoPath = organization.LogoPath,
 			IsActive = organization.IsActive,
 			ModifiedBy = organization.ModifiedBy
 		});

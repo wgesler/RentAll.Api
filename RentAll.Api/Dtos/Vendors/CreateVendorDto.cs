@@ -14,7 +14,7 @@ public class CreateVendorDto
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
-    public Guid? LogoStorageId { get; set; }
+    public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -58,7 +58,7 @@ public class CreateVendorDto
             Zip = Zip,
             Phone = Phone,
             Website = Website,
-            LogoStorageId = LogoStorageId,
+            LogoPath = null, // Will be set by controller after file save
             IsActive = IsActive,
             CreatedBy = currentUser
         };

@@ -31,7 +31,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 				Zip = e.Zip,
 				Phone = e.Phone,
 				Website = e.Website,
-				LogoStorageId = e.LogoStorageId,
+				LogoPath = e.LogoPath,
 				IsActive = e.IsActive,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,

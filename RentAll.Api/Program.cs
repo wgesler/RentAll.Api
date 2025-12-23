@@ -93,6 +93,13 @@ builder.Services.AddScoped<AuthManager>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
+builder.Services.AddScoped<IFileService>(sp =>
+{
+	var environment = sp.GetRequiredService<IWebHostEnvironment>();
+	var logger = sp.GetRequiredService<ILogger<FileService>>();
+	var wwwRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
+	return new FileService(wwwRootPath, logger);
+});
 
 builder.Services.AddScoped<IContactManager, ContactManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
@@ -151,6 +158,9 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
+
+// Enable static files (for images, logos, etc.)
+app.UseStaticFiles();
 
 // Enable CORS (must be before UseAuthentication and UseAuthorization)
 app.UseCors();

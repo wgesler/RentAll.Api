@@ -27,6 +27,21 @@ namespace RentAll.Api.Controllers
 				var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Vendor);
 				var vendor = dto.ToModel(code, CurrentUser);
 
+				// Handle logo file upload if provided
+				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+				{
+					try
+					{
+						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Vendor);
+						vendor.LogoPath = logoPath;
+					}
+					catch (Exception ex)
+					{
+						_logger.LogError(ex, "Error saving vendor logo");
+						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+					}
+				}
+
                 var createdVendor = await _vendorRepository.CreateAsync(vendor);
                 return CreatedAtAction(nameof(GetById), new { id = createdVendor.VendorId }, new VendorResponseDto(createdVendor));
             }

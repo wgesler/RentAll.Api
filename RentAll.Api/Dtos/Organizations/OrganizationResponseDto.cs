@@ -17,7 +17,7 @@ public class OrganizationResponseDto
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
-	public Guid? LogoStorageId { get; set; }
+	public string? LogoPath { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -40,7 +40,7 @@ public class OrganizationResponseDto
 		Website = org.Website;
 		MaintenanceEmail = org.MaintenanceEmail;
 		AfterHoursPhone = org.AfterHoursPhone;
-		LogoStorageId = org.LogoStorageId;
+		LogoPath = org.LogoPath;
 		IsActive = org.IsActive;
 		CreatedOn = org.CreatedOn;
 		CreatedBy = org.CreatedBy;

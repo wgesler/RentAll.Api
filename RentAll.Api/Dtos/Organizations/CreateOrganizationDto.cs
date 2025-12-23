@@ -15,7 +15,7 @@ public class CreateOrganizationDto
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
-	public Guid? LogoStorageId { get; set; }
+	public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; } 
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -57,7 +57,7 @@ public class CreateOrganizationDto
 			Website = Website,
 			MaintenanceEmail = MaintenanceEmail,
 			AfterHoursPhone = AfterHoursPhone,
-			LogoStorageId = LogoStorageId,
+			LogoPath = null, // Will be set by controller after file save
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};

@@ -17,7 +17,8 @@ public class UpdateOrganizationDto
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
-	public Guid? LogoStorageId { get; set; }
+	public string? LogoPath { get; set; }
+	public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -69,7 +70,7 @@ public class UpdateOrganizationDto
 			Website = Website,
 			MaintenanceEmail = MaintenanceEmail,
 			AfterHoursPhone = AfterHoursPhone,
-			LogoStorageId = LogoStorageId,
+			LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};

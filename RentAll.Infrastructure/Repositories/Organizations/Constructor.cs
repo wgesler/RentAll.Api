@@ -32,7 +32,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 			Website = e.Website,
 			MaintenanceEmail = e.MaintenanceEmail,
 			AfterHoursPhone = e.AfterHoursPhone,
-			LogoStorageId = e.LogoStorageId,
+			LogoPath = e.LogoPath,
 			IsActive = e.IsActive,
 			CreatedOn = e.CreatedOn,
 			CreatedBy = e.CreatedBy,

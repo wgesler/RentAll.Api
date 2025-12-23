@@ -24,7 +24,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 				Zip = vendor.Zip,
 				Phone = vendor.Phone,
 				Website = vendor.Website,
-				LogoStorageId = vendor.LogoStorageId,
+				LogoPath = vendor.LogoPath,
 				CreatedBy = vendor.CreatedBy
 			});
 

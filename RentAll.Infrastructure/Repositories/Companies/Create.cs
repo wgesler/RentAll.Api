@@ -24,7 +24,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Zip = company.Zip,
 				Phone = company.Phone,
 				Website = company.Website,
-				LogoStorageId = company.LogoStorageId,
+				LogoPath = company.LogoPath,
 				Notes = company.Notes,
 				CreatedBy = company.CreatedBy
 			});

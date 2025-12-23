@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Companies;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -33,6 +34,36 @@ namespace RentAll.Api.Controllers
 					return BadRequest(new { message = "Company Code cannot change" });
 
 				var company = dto.ToModel(CurrentUser);
+
+				// Handle logo file upload if provided
+				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+				{
+					try
+					{
+						// Delete old logo if it exists
+						if (!string.IsNullOrWhiteSpace(existingCompany.LogoPath))
+							await _fileService.DeleteLogoAsync(existingCompany.LogoPath);
+
+						// Save new logo
+						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Company);
+						company.LogoPath = logoPath;
+					}
+					catch (Exception ex)
+					{
+						_logger.LogError(ex, "Error saving company logo");
+						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+					}
+				}
+				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
+				{
+					// If LogoPath is explicitly set to null/empty, delete the old logo
+					if (!string.IsNullOrWhiteSpace(existingCompany.LogoPath))
+					{
+						await _fileService.DeleteLogoAsync(existingCompany.LogoPath);
+						company.LogoPath = null;
+					}
+				}
+
                 var updatedCompany = await _companyRepository.UpdateByIdAsync(company);
                 return Ok(new CompanyResponseDto(updatedCompany));
             }

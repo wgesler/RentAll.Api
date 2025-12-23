@@ -14,7 +14,7 @@ public class Vendor
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
-    public Guid? LogoStorageId { get; set; }
+    public string? LogoPath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

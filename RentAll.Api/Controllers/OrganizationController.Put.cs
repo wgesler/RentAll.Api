@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Organizations;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -32,6 +33,36 @@ namespace RentAll.Api.Controllers
                     return Conflict(new { message = "OrganizationCode cannot change" });
 
                 var model = dto.ToModel(CurrentUser);
+
+				// Handle logo file upload if provided
+				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+				{
+					try
+					{
+						// Delete old logo if it exists
+						if (!string.IsNullOrWhiteSpace(existing.LogoPath))
+							await _fileService.DeleteLogoAsync(existing.LogoPath);
+
+						// Save new logo
+						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						model.LogoPath = logoPath;
+					}
+					catch (Exception ex)
+					{
+						_logger.LogError(ex, "Error saving organization logo");
+						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+					}
+				}
+				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
+				{
+					// If LogoPath is explicitly set to null/empty, delete the old logo
+					if (!string.IsNullOrWhiteSpace(existing.LogoPath))
+					{
+						await _fileService.DeleteLogoAsync(existing.LogoPath);
+						model.LogoPath = null;
+					}
+				}
+
                 var updated = await _organizationRepository.UpdateByIdAsync(model);
                 return Ok(new OrganizationResponseDto(updated));
             }

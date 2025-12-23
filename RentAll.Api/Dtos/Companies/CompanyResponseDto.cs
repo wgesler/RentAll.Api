@@ -16,7 +16,7 @@ public class CompanyResponseDto
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
-    public Guid? LogoStorageId { get; set; }
+    public string? LogoPath { get; set; }
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
@@ -39,7 +39,7 @@ public class CompanyResponseDto
         Zip = company.Zip;
         Phone = company.Phone;
         Website = company.Website;
-        LogoStorageId = company.LogoStorageId;
+        LogoPath = company.LogoPath;
 		Notes = company.Notes;
 		IsActive = company.IsActive;
 		CreatedOn = company.CreatedOn;

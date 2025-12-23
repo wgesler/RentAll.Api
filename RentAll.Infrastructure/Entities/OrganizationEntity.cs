@@ -15,7 +15,7 @@ public class OrganizationEntity
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
-	public Guid? LogoStorageId { get; set; }
+	public string? LogoPath { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
