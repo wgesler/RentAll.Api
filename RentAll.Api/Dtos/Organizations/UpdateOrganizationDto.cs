@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations;
 
@@ -18,7 +19,7 @@ public class UpdateOrganizationDto
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? LogoPath { get; set; }
-	public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; }
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -70,7 +71,8 @@ public class UpdateOrganizationDto
 			Website = Website,
 			MaintenanceEmail = MaintenanceEmail,
 			AfterHoursPhone = AfterHoursPhone,
-			LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
+			LogoPath = LogoPath,
+			FileDetails = FileDetails,
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};

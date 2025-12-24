@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Domain.Models;
 
 public class Organization
@@ -16,6 +18,7 @@ public class Organization
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? LogoPath { get; set; }
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

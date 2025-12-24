@@ -64,7 +64,12 @@ namespace RentAll.Api.Controllers
 				}
 
                 var updated = await _organizationRepository.UpdateByIdAsync(model);
-                return Ok(new OrganizationResponseDto(updated));
+                var response = new OrganizationResponseDto(updated);
+                if (!string.IsNullOrWhiteSpace(updated.LogoPath))
+                {
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(updated.LogoPath);
+                }
+                return Ok(response);
             }
             catch (Exception ex)
             {

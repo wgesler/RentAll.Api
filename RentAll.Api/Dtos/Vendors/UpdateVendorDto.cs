@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Vendors;
 
@@ -17,7 +18,7 @@ public class UpdateVendorDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public string? LogoPath { get; set; }
-    public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; }
+    public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)

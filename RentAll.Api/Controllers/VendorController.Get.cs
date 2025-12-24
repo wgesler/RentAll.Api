@@ -15,7 +15,15 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				var vendors = await _vendorRepository.GetAllAsync(CurrentOrganizationId);
-				var response = vendors.Select(v => new VendorResponseDto(v));
+				var response = new List<VendorResponseDto>();
+				foreach (var vendor in vendors)
+				{
+					var dto = new VendorResponseDto(vendor);
+					if (!string.IsNullOrWhiteSpace(vendor.LogoPath))
+						dto.FileDetails = await _fileService.GetFileDetailsAsync(vendor.LogoPath);
+
+					response.Add(dto);
+				}
 				return Ok(response);
 			}
 			catch (Exception ex)
@@ -42,7 +50,11 @@ namespace RentAll.Api.Controllers
                 if (vendor == null)
                     return NotFound(new { message = "Vendor not found" });
 
-                return Ok(new VendorResponseDto(vendor));
+                var response = new VendorResponseDto(vendor);
+                if (!string.IsNullOrWhiteSpace(vendor.LogoPath))
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(vendor.LogoPath);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {

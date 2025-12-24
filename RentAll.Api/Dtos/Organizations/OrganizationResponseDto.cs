@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations;
 
@@ -18,6 +19,7 @@ public class OrganizationResponseDto
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? LogoPath { get; set; }
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

@@ -15,7 +15,15 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				var companies = await _companyRepository.GetAllAsync(CurrentOrganizationId);
-				var response = companies.Select(c => new CompanyResponseDto(c));
+				var response = new List<CompanyResponseDto>();
+				foreach (var company in companies)
+				{
+					var dto = new CompanyResponseDto(company);
+					if (!string.IsNullOrWhiteSpace(company.LogoPath))
+						dto.FileDetails = await _fileService.GetFileDetailsAsync(company.LogoPath);
+
+					response.Add(dto);
+				}
 				return Ok(response);
 			}
 			catch (Exception ex)
@@ -42,7 +50,11 @@ namespace RentAll.Api.Controllers
                 if (company == null)
                     return NotFound(new { message = "Company not found" });
 
-                return Ok(new CompanyResponseDto(company));
+                var response = new CompanyResponseDto(company);
+                if (!string.IsNullOrWhiteSpace(company.LogoPath))
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(company.LogoPath);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {

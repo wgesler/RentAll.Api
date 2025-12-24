@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Domain.Models;
 
 public class Vendor
@@ -15,7 +17,8 @@ public class Vendor
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public string? LogoPath { get; set; }
-    public bool IsActive { get; set; }
+	public FileDetails? FileDetails { get; set; }
+	public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

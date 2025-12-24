@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Vendors;
 
@@ -17,6 +18,7 @@ public class VendorResponseDto
     public string Phone { get; set; } = string.Empty;
     public string? Website { get; set; }
     public string? LogoPath { get; set; }
+    public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

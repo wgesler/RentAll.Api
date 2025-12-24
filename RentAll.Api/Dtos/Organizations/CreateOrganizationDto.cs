@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations;
 
@@ -15,7 +16,7 @@ public class CreateOrganizationDto
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
-	public RentAll.Domain.Models.Common.FileDetails? FileDetails { get; set; } 
+	public FileDetails? FileDetails { get; set; } 
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()

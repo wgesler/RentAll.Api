@@ -43,7 +43,12 @@ namespace RentAll.Api.Controllers
 				}
 
                 var created = await _organizationRepository.CreateAsync(model);
-                return CreatedAtAction(nameof(GetById), new { id = created.OrganizationId }, new OrganizationResponseDto(created));
+                var response = new OrganizationResponseDto(created);
+                if (!string.IsNullOrWhiteSpace(created.LogoPath))
+                {
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(created.LogoPath);
+                }
+                return CreatedAtAction(nameof(GetById), new { id = created.OrganizationId }, response);
             }
             catch (Exception ex)
             {

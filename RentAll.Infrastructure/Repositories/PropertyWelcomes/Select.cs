@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyWelcomes
 		public async Task<PropertyWelcome?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyWelcomeEntity>("dbo.PropertyWelcomeLetter_GetByPropertyId", new
+			var res = await db.DapperProcQueryAsync<PropertyWelcomeEntity>("dbo.PropertyWelcome_GetByPropertyId", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId

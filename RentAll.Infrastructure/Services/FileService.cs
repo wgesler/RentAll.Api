@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Services;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Infrastructure.Services;
 
@@ -98,6 +99,57 @@ public class FileService : IFileService
 		{
 			_logger.LogError(ex, "Error deleting logo file: {FilePath}", filePath);
 			return Task.FromResult(false);
+		}
+	}
+
+	public async Task<FileDetails?> GetFileDetailsAsync(string filePath)
+	{
+		if (string.IsNullOrWhiteSpace(filePath))
+			return null;
+
+		// Security: Ensure path is within wwwroot/images/logos
+		if (!filePath.StartsWith("/images/logos/", StringComparison.OrdinalIgnoreCase))
+		{
+			_logger.LogWarning("Attempted to read file outside allowed directory: {FilePath}", filePath);
+			return null;
+		}
+
+		try
+		{
+			var fullPath = Path.Combine(
+				_wwwRootPath,
+				filePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+			if (!File.Exists(fullPath))
+				return null;
+
+			var fileBytes = await File.ReadAllBytesAsync(fullPath);
+			var base64Content = Convert.ToBase64String(fileBytes);
+			var fileName = Path.GetFileName(filePath);
+			var extension = Path.GetExtension(filePath).ToLowerInvariant();
+
+			// Determine content type from extension
+			var contentType = extension switch
+			{
+				".png" => "image/png",
+				".jpg" or ".jpeg" => "image/jpeg",
+				".gif" => "image/gif",
+				".svg" => "image/svg+xml",
+				_ => "application/octet-stream"
+			};
+
+			return new FileDetails
+			{
+				FileName = fileName,
+				ContentType = contentType,
+				File = base64Content,
+				DataUrl = $"data:{contentType};base64,{base64Content}"
+			};
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error reading logo file: {FilePath}", filePath);
+			return null;
 		}
 	}
 }

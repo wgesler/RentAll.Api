@@ -10,6 +10,7 @@ public class UpdatePropertyLetterDto
 	public string? MailboxInstructions { get; set; }
 	public string? PackageInstructions { get; set; }
 	public string? ParkingInformation { get; set; }
+	public string? Access { get; set; }
 	public string? Amenities { get; set; }
 	public string? Laundry { get; set; }
 	public string? ProvidedFurnishings { get; set; }
@@ -43,6 +44,7 @@ public class UpdatePropertyLetterDto
 			MailboxInstructions = MailboxInstructions,
 			PackageInstructions = PackageInstructions,
 			ParkingInformation = ParkingInformation,
+			Access = Access,
 			Amenities = Amenities,
 			Laundry = Laundry,
 			ProvidedFurnishings = ProvidedFurnishings,

@@ -17,7 +17,12 @@ public class FileDetails
 	public string ContentType { get; set; } = string.Empty;
 	
 	/// <summary>
-	/// Base64 encoded file content (can include data URL prefix like "data:image/png;base64,...")
+	/// Plain base64 encoded file content (without data URL prefix)
 	/// </summary>
 	public string File { get; set; } = string.Empty;
+	
+	/// <summary>
+	/// Data URL format for direct use in HTML/img src (e.g., "data:image/png;base64,iVBORw0KG...")
+	/// </summary>
+	public string DataUrl { get; set; } = string.Empty;
 }

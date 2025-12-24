@@ -43,7 +43,12 @@ namespace RentAll.Api.Controllers
 				}
 
                 var createdCompany = await _companyRepository.CreateAsync(company);
-                return CreatedAtAction(nameof(GetById), new { id = createdCompany.CompanyId }, new CompanyResponseDto(createdCompany));
+                var response = new CompanyResponseDto(createdCompany);
+                if (!string.IsNullOrWhiteSpace(createdCompany.LogoPath))
+                {
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(createdCompany.LogoPath);
+                }
+                return CreatedAtAction(nameof(GetById), new { id = createdCompany.CompanyId }, response);
             }
             catch (Exception ex)
             {

@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyWelcomes
 		public async Task<PropertyWelcome> UpdateByIdAsync(PropertyWelcome propertyWelcome)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyWelcomeEntity>("dbo.PropertyWelcomeLetter_UpdateByPropertyId", new
+			var res = await db.DapperProcQueryAsync<PropertyWelcomeEntity>("dbo.PropertyWelcome_UpsertByPropertyId", new
 			{
 				PropertyId = propertyWelcome.PropertyId,
 				OrganizationId = propertyWelcome.OrganizationId,

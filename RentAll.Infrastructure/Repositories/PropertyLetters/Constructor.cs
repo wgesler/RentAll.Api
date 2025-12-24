@@ -25,6 +25,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 				MailboxInstructions = e.MailboxInstructions,
 				PackageInstructions = e.PackageInstructions,
 				ParkingInformation = e.ParkingInformation,
+				Access = e.Access,
 				Amenities = e.Amenities,
 				Laundry = e.Laundry,
 				ProvidedFurnishings = e.ProvidedFurnishings,

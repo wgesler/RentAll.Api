@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 		public async Task<PropertyLetter> CreateAsync(PropertyLetter propertyLetter)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("dbo.PropertyLetterInformation_Add", new
+			var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("dbo.PropertyInformation_Add", new
 			{
 				PropertyId = propertyLetter.PropertyId,
 				OrganizationId = propertyLetter.OrganizationId,
@@ -19,6 +19,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyLetters
 				MailboxInstructions = propertyLetter.MailboxInstructions,
 				PackageInstructions = propertyLetter.PackageInstructions,
 				ParkingInformation = propertyLetter.ParkingInformation,
+				Access = propertyLetter.Access,
 				Amenities = propertyLetter.Amenities,
 				Laundry = propertyLetter.Laundry,
 				ProvidedFurnishings = propertyLetter.ProvidedFurnishings,

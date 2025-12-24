@@ -43,7 +43,12 @@ namespace RentAll.Api.Controllers
 				}
 
                 var createdVendor = await _vendorRepository.CreateAsync(vendor);
-                return CreatedAtAction(nameof(GetById), new { id = createdVendor.VendorId }, new VendorResponseDto(createdVendor));
+                var response = new VendorResponseDto(createdVendor);
+                if (!string.IsNullOrWhiteSpace(createdVendor.LogoPath))
+                {
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(createdVendor.LogoPath);
+                }
+                return CreatedAtAction(nameof(GetById), new { id = createdVendor.VendorId }, response);
             }
             catch (Exception ex)
             {
