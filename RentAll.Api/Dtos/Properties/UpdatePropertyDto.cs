@@ -25,10 +25,10 @@ public class UpdatePropertyDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
-	public Guid? FranchiseId { get; set; }
-	public Guid? BuildingId { get; set; }
-	public Guid? RegionId { get; set; }
-	public Guid? AreaId { get; set; }
+	public int? FranchiseId { get; set; }
+	public int? BuildingId { get; set; }
+	public int? RegionId { get; set; }
+	public int? AreaId { get; set; }
 
 	// Rates & Fees
 	public decimal MonthlyRate { get; set; }

@@ -23,10 +23,10 @@ public class Property
 	public PropertyStyle PropertyStyle { get; set; }
 	public PropertyType PropertyType { get; set; }
 	public PropertyStatus PropertyStatus { get; set; }
-	public Guid? FranchiseId { get; set; }
-	public Guid? BuildingId { get; set; }
-	public Guid? RegionId { get; set; }
-	public Guid? AreaId { get; set; }
+	public int? FranchiseId { get; set; }
+	public int? BuildingId { get; set; }
+	public int? RegionId { get; set; }
+	public int? AreaId { get; set; }
 
 	// Rates & Fees
 	public decimal MonthlyRate { get; set; }
