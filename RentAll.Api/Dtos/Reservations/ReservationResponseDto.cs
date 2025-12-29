@@ -13,14 +13,7 @@ public class ReservationResponseDto
 	public int ReservationStatusId { get; set; }
 	public int ReservationNoticeId { get; set; }
 	public int NumberOfPeople { get; set; }
-	public bool HasPets { get; set; }
 	public string? TenantName { get; set; }
-	public string PropertyCode { get; set; }
-	public string PropertyAddress {get; set; }
-	public int PropertyStatusId { get; set; }
-	public string ContactName { get; set; }
-	public string ContactPhone { get; set; }
-	public string ContactEmail { get; set; }
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public int CheckInTimeId { get; set; }
@@ -28,20 +21,22 @@ public class ReservationResponseDto
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }
+	public int DepositTypeId { get; set; }
 	public decimal DepartureFee { get; set; }
+	public bool HasPets { get; set; }
+	public decimal PetFee { get; set; }
+	public int NumberOfPets { get; set; }
+	public string? PetDescription { get; set; }
+	public bool MaidService { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
-	public decimal PetFee { get; set; }
+	public decimal Taxes { get; set; }
 	public decimal ExtraFee { get; set; }
 	public string ExtraFeeName { get; set; } = string.Empty;
-	public decimal Taxes { get; set; }
+	public decimal ExtraFee2 { get; set; }
+	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
-	public DateTimeOffset CreatedOn { get; set; }
-	public Guid CreatedBy { get; set; }
-	public DateTimeOffset ModifiedOn { get; set; }
-	public Guid ModifiedBy { get; set; }
-
 
 	public ReservationResponseDto(Reservation reservation)
 	{
@@ -54,14 +49,7 @@ public class ReservationResponseDto
 		ReservationStatusId = (int)reservation.ReservationStatus;
 		ReservationNoticeId = (int)reservation.ReservationNotice;
 		NumberOfPeople = reservation.NumberOfPeople;
-		HasPets = reservation.HasPets;
 		TenantName = reservation.TenantName;
-		PropertyCode = reservation.PropertyCode;
-		PropertyAddress = reservation.PropertyAddress;
-		PropertyStatusId = (int)reservation.PropertyStatus;
-		ContactName = reservation.ContactName;
-		ContactPhone = reservation.ContactPhone;
-		ContactEmail = reservation.ContactEmail;
 		ArrivalDate = reservation.ArrivalDate;
 		DepartureDate = reservation.DepartureDate;
 		CheckInTimeId = (int)reservation.CheckInTime;
@@ -69,13 +57,20 @@ public class ReservationResponseDto
 		BillingTypeId = (int)reservation.BillingType;
 		BillingRate = reservation.BillingRate;
 		Deposit = reservation.Deposit;
+		DepositTypeId = (int)reservation.DepositType;
 		DepartureFee = reservation.DepartureFee;
-		MaidServiceFee = reservation.MaidServiceFee;
-		FrequencyId = reservation.FrequencyId;
+		HasPets = reservation.HasPets;
 		PetFee = reservation.PetFee;
+		NumberOfPets = reservation.NumberOfPets;
+		PetDescription = reservation.PetDescription;
+		MaidService = reservation.MaidService;
+		MaidServiceFee = reservation.MaidServiceFee;
+		FrequencyId = (int)reservation.Frequency;
+		Taxes = reservation.Taxes;
 		ExtraFee = reservation.ExtraFee;
 		ExtraFeeName = reservation.ExtraFeeName;
-		Taxes = reservation.Taxes;
+		ExtraFee2 = reservation.ExtraFee2;
+		ExtraFee2Name = reservation.ExtraFee2Name;
 		Notes = reservation.Notes;
 		IsActive = reservation.IsActive;
 	}

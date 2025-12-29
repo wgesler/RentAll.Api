@@ -13,7 +13,6 @@ public class CreateReservationDto
 	public int ReservationStatusId { get; set; }
 	public int ReservationNoticeId { get; set; }
 	public int NumberOfPeople { get; set; }
-	public bool HasPets { get; set; }
 	public string? TenantName { get; set; }
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
@@ -22,13 +21,20 @@ public class CreateReservationDto
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }
+	public int DepositTypeId { get; set; }
 	public decimal DepartureFee { get; set; }
+	public bool HasPets { get; set; }
+	public decimal PetFee { get; set; }
+	public int NumberOfPets { get; set; }
+	public string? PetDescription { get; set; }
+	public bool MaidService { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
-	public decimal PetFee { get; set; }
+	public decimal Taxes { get; set; }
 	public decimal ExtraFee { get; set; }
 	public string ExtraFeeName { get; set; } = string.Empty;
-	public decimal Taxes { get; set; }
+	public decimal ExtraFee2 { get; set; }
+	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 
@@ -74,6 +80,12 @@ public class CreateReservationDto
 		if (!Enum.IsDefined(typeof(BillingType), BillingTypeId))
 			return (false, $"Invalid BillingTypeId value: {BillingTypeId}");
 
+		if (!Enum.IsDefined(typeof(DepositType), DepositTypeId))
+			return (false, $"Invalid DepositTypeId value: {DepositTypeId}");
+
+		if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
+			return (false, $"Invalid FrequencyId value: {FrequencyId}");
+
 		return (true, null);
 	}
 
@@ -89,7 +101,6 @@ public class CreateReservationDto
 			ReservationStatus = (ReservationStatus)ReservationStatusId,
 			ReservationNotice = (ReservationNotice)ReservationNoticeId,
 			NumberOfPeople = NumberOfPeople,
-			HasPets = HasPets,
 			TenantName = TenantName,
 			ArrivalDate = ArrivalDate,
 			DepartureDate = DepartureDate,
@@ -98,13 +109,20 @@ public class CreateReservationDto
 			BillingType = (BillingType)BillingTypeId,
 			BillingRate = BillingRate,
 			Deposit = Deposit,
+			DepositType = (DepositType)DepositTypeId,
 			DepartureFee = DepartureFee,
-			MaidServiceFee = MaidServiceFee,
-			FrequencyId = FrequencyId,
+			HasPets = HasPets,
 			PetFee = PetFee,
+			NumberOfPets = NumberOfPets,
+			PetDescription = PetDescription,
+			MaidService = MaidService,
+			MaidServiceFee = MaidServiceFee,
+			Frequency = (FrequencyType)FrequencyId,
+			Taxes = Taxes,
 			ExtraFee = ExtraFee,
 			ExtraFeeName = ExtraFeeName ?? string.Empty,
-			Taxes = Taxes,
+			ExtraFee2 = ExtraFee2,
+			ExtraFee2Name = ExtraFee2Name ?? string.Empty,
 			Notes = Notes,
 			IsActive = IsActive,
 			CreatedBy = currentUser

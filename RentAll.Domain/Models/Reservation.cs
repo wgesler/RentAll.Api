@@ -13,14 +13,7 @@ public class Reservation
 	public ReservationStatus ReservationStatus { get; set; }
 	public ReservationNotice ReservationNotice { get; set; }
 	public int NumberOfPeople { get; set; }
-	public bool HasPets { get; set; }
 	public string? TenantName { get; set; }
-	public string PropertyCode { get; set; } = string.Empty;
-	public string PropertyAddress { get; set; } = string.Empty;
-	public PropertyStatus PropertyStatus { get; set; }
-	public string ContactName { get; set; } = string.Empty;
-	public string ContactPhone { get; set; } = string.Empty;
-	public string ContactEmail { get; set; } = string.Empty;
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public CheckInTime CheckInTime { get; set; }
@@ -28,13 +21,20 @@ public class Reservation
 	public BillingType BillingType { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }
+	public DepositType DepositType { get; set; }
 	public decimal DepartureFee { get; set; }
-	public decimal MaidServiceFee { get; set; }
-	public int FrequencyId { get; set; }
+	public bool HasPets { get; set; }
 	public decimal PetFee { get; set; }
+	public int NumberOfPets { get; set; }
+	public string? PetDescription { get; set; }
+	public bool MaidService { get; set; }
+	public decimal MaidServiceFee { get; set; }
+	public FrequencyType Frequency { get; set; }
+	public decimal Taxes { get; set; }
 	public decimal ExtraFee { get; set; }
 	public string ExtraFeeName { get; set; } = string.Empty;
-	public decimal Taxes { get; set; }
+	public decimal ExtraFee2 { get; set; }
+	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }

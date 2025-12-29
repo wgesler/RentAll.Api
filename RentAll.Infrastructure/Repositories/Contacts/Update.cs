@@ -13,8 +13,8 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_UpdateById", new
             {
-                OrganizationId = contact.OrganizationId,
-                ContactId = contact.ContactId,
+				ContactId = contact.ContactId,
+				OrganizationId = contact.OrganizationId,
                 ContactCode = contact.ContactCode,
                 EntityTypeId = (int)contact.EntityType,
                 EntityId = contact.EntityId,
