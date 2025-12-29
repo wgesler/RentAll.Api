@@ -23,10 +23,10 @@ public class CreatePropertyDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
-	public string? FranchiseCode { get; set; }
-	public string? BuildingCode { get; set; }
-	public string? RegionCode { get; set; }
-	public string? AreaCode { get; set; }
+	public Guid? FranchiseId { get; set; }
+	public Guid? BuildingId { get; set; }
+	public Guid? RegionId { get; set; }
+	public Guid? AreaId { get; set; }
 
 	// Rates & Fees
 	public decimal MonthlyRate { get; set; }
@@ -177,10 +177,10 @@ public class CreatePropertyDto
 			PropertyStyle = (PropertyStyle)PropertyStyleId,
 			PropertyType = (PropertyType)PropertyTypeId,
 			PropertyStatus = (PropertyStatus)PropertyStatusId,
-			FranchiseCode = FranchiseCode,
-			BuildingCode = BuildingCode,
-			RegionCode = RegionCode,
-			AreaCode = AreaCode,
+			FranchiseId = FranchiseId,
+			BuildingId = BuildingId,
+			RegionId = RegionId,
+			AreaId = AreaId,
 			MonthlyRate = MonthlyRate,
 			DailyRate = DailyRate,
 			DepartureFee = DepartureFee,

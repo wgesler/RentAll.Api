@@ -23,10 +23,10 @@ public class PropertyResponseDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
-	public string? FranchiseCode { get; set; }
-	public string? BuildingCode { get; set; }
-	public string? RegionCode { get; set; }
-	public string? AreaCode { get; set; }
+	public Guid? FranchiseId { get; set; }
+	public Guid? BuildingId { get; set; }
+	public Guid? RegionId { get; set; }
+	public Guid? AreaId { get; set; }
 
 	// Rates & Fees
 	public decimal MonthlyRate { get; set; }
@@ -139,10 +139,10 @@ public class PropertyResponseDto
 		PropertyStyleId = (int)property.PropertyStyle;
 		PropertyTypeId = (int)property.PropertyType;
 		PropertyStatusId = (int)property.PropertyStatus;
-		FranchiseCode = property.FranchiseCode;
-		BuildingCode = property.BuildingCode;
-		RegionCode = property.RegionCode;
-		AreaCode = property.AreaCode;
+		FranchiseId = property.FranchiseId;
+		BuildingId = property.BuildingId;
+		RegionId = property.RegionId;
+		AreaId = property.AreaId;
 		MonthlyRate = property.MonthlyRate;
 		DailyRate = property.DailyRate;
 		DepartureFee = property.DepartureFee;
