@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
@@ -10,13 +11,16 @@ namespace RentAll.Api.Controllers
     [Authorize]
     public partial class ReservationController : BaseController
     {
-        private readonly IReservationRepository _reservationRepository;
+        private readonly IOrganizationManager _organizationManager;
+		private readonly IReservationRepository _reservationRepository;
         private readonly ILogger<ReservationController> _logger;
 
         public ReservationController(
+            IOrganizationManager organizationManager,
             IReservationRepository reservationRepository,
             ILogger<ReservationController> logger)
         {
+            _organizationManager = organizationManager;
             _reservationRepository = reservationRepository;
             _logger = logger;
         }

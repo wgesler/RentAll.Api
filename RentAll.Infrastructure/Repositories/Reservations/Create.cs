@@ -14,6 +14,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_Add", new
 			{
 				OrganizationId = r.OrganizationId,
+				ReservationCode = r.ReservationCode,
 				AgentId = r.AgentId,
 				PropertyId = r.PropertyId,
 				ContactId = r.ContactId,

@@ -1,0 +1,42 @@
+using System.Data.SqlClient;
+using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Models;
+using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities;
+
+namespace RentAll.Infrastructure.Repositories.LeaseInformations
+{
+	public partial class LeaseInformationRepository : ILeaseInformationRepository
+	{
+		public async Task<LeaseInformation?> GetByIdAsync(Guid leaseInformationId, Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("dbo.LeaseInformation_GetById", new
+			{
+				LeaseInformationId = leaseInformationId,
+				OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				return null;
+
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+
+		public async Task<LeaseInformation?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("dbo.LeaseInformation_GetByPropertyId", new
+			{
+				PropertyId = propertyId,
+				OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				return null;
+
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+	}
+}
+

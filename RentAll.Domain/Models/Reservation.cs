@@ -6,6 +6,7 @@ public class Reservation
 {
 	public Guid ReservationId { get; set; }
 	public Guid OrganizationId { get; set; }
+	public string ReservationCode { get; set; } = string.Empty;
 	public Guid? AgentId { get; set; }
 	public Guid PropertyId { get; set; }
 	public Guid ContactId { get; set; }

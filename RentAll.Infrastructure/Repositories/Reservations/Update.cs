@@ -15,6 +15,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 			{
 				ReservationId = r.ReservationId,
 				OrganizationId = r.OrganizationId,
+				ReservationCode = r.ReservationCode,
 				AgentId = r.AgentId,
 				PropertyId = r.PropertyId,
 				ContactId = r.ContactId,

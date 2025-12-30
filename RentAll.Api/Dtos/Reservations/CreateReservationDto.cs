@@ -89,11 +89,12 @@ public class CreateReservationDto
 		return (true, null);
 	}
 
-	public Reservation ToModel(Guid currentUser)
+	public Reservation ToModel(string code, Guid currentUser)
 	{
 		return new Reservation
 		{
 			OrganizationId = OrganizationId,
+			ReservationCode = code,
 			AgentId = AgentId,
 			PropertyId = PropertyId,
 			ContactId = ContactId,

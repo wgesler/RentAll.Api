@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Reservations;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -22,7 +23,10 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reservation = dto.ToModel(CurrentUser);
+				// Get a new Contact code
+				var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Reservation);				
+                var reservation = dto.ToModel(code, CurrentUser);
+
                 var createdReservation = await _reservationRepository.CreateAsync(reservation);
                 return CreatedAtAction(nameof(GetById), new { id = createdReservation.ReservationId }, new ReservationResponseDto(createdReservation));
             }
