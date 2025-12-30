@@ -23,6 +23,7 @@ public partial class FranchiseRepository : IFranchiseRepository
 			FranchiseId = e.FranchiseId,
 			FranchiseCode = e.FranchiseCode,
 			Description = e.Description,
+			Phone = e.Phone,
 			IsActive = e.IsActive
 		};
 	}

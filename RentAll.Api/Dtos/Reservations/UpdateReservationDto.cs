@@ -54,6 +54,9 @@ public class UpdateReservationDto
 		if (PropertyId == Guid.Empty)
 			return (false, "PropertyId is required");
 
+		if (string.IsNullOrWhiteSpace(ReservationCode))
+			return (false, "ReservationCode is required");
+
 		if (string.IsNullOrWhiteSpace(TenantName))
 			return (false, "TenantName is required");
 

@@ -16,6 +16,7 @@ public partial class FranchiseRepository : IFranchiseRepository
 			OrganizationId = franchise.OrganizationId,
 			FranchiseCode = franchise.FranchiseCode,
 			Description = franchise.Description,
+			Phone = franchise.Phone,
 			IsActive = franchise.IsActive
 		});
 

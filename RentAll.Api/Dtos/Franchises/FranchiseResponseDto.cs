@@ -8,6 +8,7 @@ public class FranchiseResponseDto
 	public int FranchiseId { get; set; }
 	public string FranchiseCode { get; set; } = string.Empty;
 	public string Description { get; set; } = string.Empty;
+	public string Phone { get; set; } = string.Empty;
 	public bool IsActive { get; set; }
 
 	public FranchiseResponseDto(Franchise franchise)
@@ -16,6 +17,7 @@ public class FranchiseResponseDto
 		FranchiseId = franchise.FranchiseId;
 		FranchiseCode = franchise.FranchiseCode;
 		Description = franchise.Description;
+		Phone = franchise.Phone;
 		IsActive = franchise.IsActive;
 	}
 }
