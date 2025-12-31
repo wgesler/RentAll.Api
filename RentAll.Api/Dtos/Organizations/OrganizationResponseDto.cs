@@ -23,7 +23,7 @@ public class OrganizationResponseDto
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
 	public decimal UtilityFourBed { get; set; }
-	public decimal UtilityHouseBed { get; set; }
+	public decimal UtilityHouse { get; set; }
 	public decimal MaidOneBed { get; set; }
 	public decimal MaidTwoBed { get; set; }
 	public decimal MaidThreeBed { get; set; }
@@ -57,7 +57,7 @@ public class OrganizationResponseDto
 		UtilityTwoBed = org.UtilityTwoBed;
 		UtilityThreeBed = org.UtilityThreeBed;
 		UtilityFourBed = org.UtilityFourBed;
-		UtilityHouseBed = org.UtilityHouseBed;
+		UtilityHouse = org.UtilityHouse;
 		MaidOneBed = org.MaidOneBed;
 		MaidTwoBed = org.MaidTwoBed;
 		MaidThreeBed = org.MaidThreeBed;

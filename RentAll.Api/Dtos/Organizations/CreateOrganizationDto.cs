@@ -21,7 +21,7 @@ public class CreateOrganizationDto
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
 	public decimal UtilityFourBed { get; set; }
-	public decimal UtilityHouseBed { get; set; }
+	public decimal UtilityHouse { get; set; }
 	public decimal MaidOneBed { get; set; }
 	public decimal MaidTwoBed { get; set; }
 	public decimal MaidThreeBed { get; set; }
@@ -73,7 +73,7 @@ public class CreateOrganizationDto
 			UtilityTwoBed = UtilityTwoBed,
 			UtilityThreeBed = UtilityThreeBed,
 			UtilityFourBed = UtilityFourBed,
-			UtilityHouseBed = UtilityHouseBed,
+			UtilityHouse = UtilityHouse,
 			MaidOneBed = MaidOneBed,
 			MaidTwoBed = MaidTwoBed,
 			MaidThreeBed = MaidThreeBed,

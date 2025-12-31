@@ -20,7 +20,7 @@ public class OrganizationEntity
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
 	public decimal UtilityFourBed { get; set; }
-	public decimal UtilityHouseBed { get; set; }
+	public decimal UtilityHouse { get; set; }
 	public decimal MaidOneBed { get; set; }
 	public decimal MaidTwoBed { get; set; }
 	public decimal MaidThreeBed { get; set; }

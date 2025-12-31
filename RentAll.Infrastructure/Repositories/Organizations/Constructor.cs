@@ -37,7 +37,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 			UtilityTwoBed = e.UtilityTwoBed,
 			UtilityThreeBed = e.UtilityThreeBed,
 			UtilityFourBed = e.UtilityFourBed,
-			UtilityHouseBed = e.UtilityHouseBed,
+			UtilityHouse = e.UtilityHouse,
 			MaidOneBed = e.MaidOneBed,
 			MaidTwoBed = e.MaidTwoBed,
 			MaidThreeBed = e.MaidThreeBed,
