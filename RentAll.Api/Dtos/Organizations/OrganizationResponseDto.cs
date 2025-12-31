@@ -18,6 +18,16 @@ public class OrganizationResponseDto
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
+	public decimal DefaultDeposit { get; set; }
+	public decimal UtilityOneBed { get; set; }
+	public decimal UtilityTwoBed { get; set; }
+	public decimal UtilityThreeBed { get; set; }
+	public decimal UtilityFourBed { get; set; }
+	public decimal UtilityHouseBed { get; set; }
+	public decimal MaidOneBed { get; set; }
+	public decimal MaidTwoBed { get; set; }
+	public decimal MaidThreeBed { get; set; }
+	public decimal MaidFourBed { get; set; }
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
@@ -42,6 +52,16 @@ public class OrganizationResponseDto
 		Website = org.Website;
 		MaintenanceEmail = org.MaintenanceEmail;
 		AfterHoursPhone = org.AfterHoursPhone;
+		DefaultDeposit = org.DefaultDeposit;
+		UtilityOneBed = org.UtilityOneBed;
+		UtilityTwoBed = org.UtilityTwoBed;
+		UtilityThreeBed = org.UtilityThreeBed;
+		UtilityFourBed = org.UtilityFourBed;
+		UtilityHouseBed = org.UtilityHouseBed;
+		MaidOneBed = org.MaidOneBed;
+		MaidTwoBed = org.MaidTwoBed;
+		MaidThreeBed = org.MaidThreeBed;
+		MaidFourBed = org.MaidFourBed;
 		LogoPath = org.LogoPath;
 		IsActive = org.IsActive;
 		CreatedOn = org.CreatedOn;

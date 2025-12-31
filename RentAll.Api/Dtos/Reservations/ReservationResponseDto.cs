@@ -37,7 +37,13 @@ public class ReservationResponseDto
 	public decimal ExtraFee2 { get; set; }
 	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public bool AllowExtensions { get; set; }
 	public bool IsActive { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
+	public Guid CreatedBy { get; set; }
+	public DateTimeOffset ModifiedOn { get; set; }
+	public Guid ModifiedBy { get; set; }
+
 
 	public ReservationResponseDto(Reservation reservation)
 	{
@@ -74,7 +80,12 @@ public class ReservationResponseDto
 		ExtraFee2 = reservation.ExtraFee2;
 		ExtraFee2Name = reservation.ExtraFee2Name;
 		Notes = reservation.Notes;
+		AllowExtensions = reservation.AllowExtensions;
 		IsActive = reservation.IsActive;
+		CreatedOn = reservation.CreatedOn;
+		CreatedBy = reservation.CreatedBy;
+		ModifiedOn = reservation.ModifiedOn;
+		ModifiedBy = reservation.ModifiedBy;
 	}
 }
 

@@ -38,6 +38,7 @@ public class UpdateReservationDto
 	public decimal ExtraFee2 { get; set; }
 	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public bool AllowExtensions { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -136,6 +137,7 @@ public class UpdateReservationDto
 			ExtraFee2 = ExtraFee2,
 			ExtraFee2Name = ExtraFee2Name ?? string.Empty,
 			Notes = Notes,
+			AllowExtensions = AllowExtensions,
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};
