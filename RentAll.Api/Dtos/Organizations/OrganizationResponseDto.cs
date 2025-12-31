@@ -15,6 +15,7 @@ public class OrganizationResponseDto
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
+	public string? Fax { get; set; }
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
@@ -49,6 +50,7 @@ public class OrganizationResponseDto
 		State = org.State;
 		Zip = org.Zip;
 		Phone = org.Phone;
+		Fax = org.Fax;
 		Website = org.Website;
 		MaintenanceEmail = org.MaintenanceEmail;
 		AfterHoursPhone = org.AfterHoursPhone;

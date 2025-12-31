@@ -15,6 +15,7 @@ public class UpdateOrganizationDto
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
+	public string? Fax { get; set; }
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
@@ -78,6 +79,7 @@ public class UpdateOrganizationDto
 			State = State,
 			Zip = Zip,
 			Phone = Phone,
+			Fax = Fax,
 			Website = Website,
 			MaintenanceEmail = MaintenanceEmail,
 			AfterHoursPhone = AfterHoursPhone,

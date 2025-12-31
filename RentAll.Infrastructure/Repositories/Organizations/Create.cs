@@ -22,6 +22,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 			State = organization.State,
 			Zip = organization.Zip,
 			Phone = organization.Phone,
+			Fax = organization.Fax,
 			Website = organization.Website,
 			MaintenanceEmail = organization.MaintenanceEmail,
 			AfterHoursPhone = organization.AfterHoursPhone,

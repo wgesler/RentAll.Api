@@ -12,6 +12,7 @@ public class OrganizationEntity
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
+	public string? Fax { get; set; } = string.Empty;
 	public string? Website { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
