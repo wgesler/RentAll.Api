@@ -23,6 +23,7 @@ using RentAll.Infrastructure.Repositories.Regions;
 using RentAll.Infrastructure.Repositories.Offices;
 using RentAll.Infrastructure.Repositories.OfficeConfigurations;
 using RentAll.Infrastructure.Repositories.Organizations;
+using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.CodeSequences;
 using RentAll.Infrastructure.Repositories.Colors;
 using RentAll.Infrastructure.Repositories.PropertySelections;
@@ -124,6 +125,7 @@ builder.Services.AddScoped<ICommonRepository, CommonRepository>();
 
 builder.Services.AddScoped<IOfficeRepository, OfficeRepository>();
 builder.Services.AddScoped<IOfficeConfigurationRepository, OfficeConfigurationRepository>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IAreaRepository, AreaRepository>();
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IRegionRepository, RegionRepository>();
