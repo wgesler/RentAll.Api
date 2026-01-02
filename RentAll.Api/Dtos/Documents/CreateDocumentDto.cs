@@ -6,10 +6,10 @@ namespace RentAll.Api.Dtos.Documents;
 
 public class CreateDocumentDto
 {
+	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
-	public DocumentType DocumentType { get; set; }
+	public int DocumentTypeId { get; set; }
 	public FileDetails? FileDetails { get; set; }
-	public bool IsDeleted { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -22,9 +22,9 @@ public class CreateDocumentDto
 		if (string.IsNullOrWhiteSpace(FileDetails.ContentType))
 			return (false, "Content type is required");
 
-		// Validate content type is PDF
-		if (!FileDetails.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-			return (false, "Only PDF files are allowed");
+		// Validate enum value
+		if (!Enum.IsDefined(typeof(DocumentType), DocumentTypeId))
+			return (false, $"Invalid Document value: {DocumentTypeId}");
 
 		return (true, null);
 	}
@@ -34,18 +34,18 @@ public class CreateDocumentDto
 		var fileExtension = Path.GetExtension(FileDetails!.FileName);
 		if (string.IsNullOrWhiteSpace(fileExtension))
 			fileExtension = ".pdf"; // Default to .pdf if no extension
-		
+
 		return new Document
 		{
 			DocumentId = Guid.NewGuid(),
 			OrganizationId = organizationId,
 			OfficeId = OfficeId,
-			DocumentType = DocumentType,
+			DocumentType = (DocumentType)DocumentTypeId,
 			FileName = FileDetails.FileName,
 			FileExtension = fileExtension,
 			ContentType = FileDetails.ContentType,
 			DocumentPath = documentPath,
-			IsDeleted = IsDeleted,
+			IsDeleted = false,
 			CreatedBy = currentUser
 		};
 	}

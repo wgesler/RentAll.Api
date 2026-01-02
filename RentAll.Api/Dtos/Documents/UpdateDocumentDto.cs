@@ -9,7 +9,7 @@ public class UpdateDocumentDto
 	public Guid DocumentId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
-	public DocumentType DocumentType { get; set; }
+	public int DocumentTypeId { get; set; }
 	public string FileName { get; set; } = string.Empty;
 	public string FileExtension { get; set; } = string.Empty;
 	public string ContentType { get; set; } = string.Empty;
@@ -34,6 +34,10 @@ public class UpdateDocumentDto
 		if (string.IsNullOrWhiteSpace(DocumentPath))
 			return (false, "Document path is required");
 
+		// Validate enum value
+		if (!Enum.IsDefined(typeof(DocumentType), DocumentTypeId))
+			return (false, $"Invalid Document value: {DocumentTypeId}");
+
 		// If FileDetails is provided, validate it
 		if (FileDetails != null && !string.IsNullOrWhiteSpace(FileDetails.File))
 		{
@@ -51,7 +55,7 @@ public class UpdateDocumentDto
 			DocumentId = DocumentId,
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
-			DocumentType = DocumentType,
+			DocumentType = (DocumentType)DocumentTypeId,
 			FileName = FileName,
 			FileExtension = FileExtension,
 			ContentType = ContentType,
