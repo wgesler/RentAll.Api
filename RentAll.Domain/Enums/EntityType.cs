@@ -4,31 +4,36 @@ public enum EntityType
 {
 	Unknown = 0,
 	Organization = 1,
-	Company = 2,
-	Owner = 3,
-    Tenant = 4,
-	Vendor = 5,
-    Reservation = 6
+	Reservation = 2,
+	Company = 3,
+	Owner = 4,
+    Tenant = 5,
+	Vendor = 6,
+    Hoa = 7
 }
 
 public static class EntityTypeExtensions
 {
     private static readonly Dictionary<EntityType, string> EntityTypeCodes = new()
     {
-		{ EntityType.Organization, "ORG" },
-		{ EntityType.Company, "COM" },
-        { EntityType.Owner, "OWN" },
-        { EntityType.Tenant, "TEN" },
-		{ EntityType.Vendor, "VEN" }
+		{ EntityType.Reservation, "R" },
+		{ EntityType.Organization, "G" },
+		{ EntityType.Company, "C" },
+        { EntityType.Owner, "O" },
+        { EntityType.Tenant, "T" },
+		{ EntityType.Vendor, "V" },
+		{ EntityType.Hoa, "H" }
 	};
 
     private static readonly Dictionary<string, EntityType> CodeToEntityType = new()
     {
-		{ "ORG", EntityType.Organization },
-		{ "COM", EntityType.Company },
-        { "OWN", EntityType.Owner },
-        { "TEN", EntityType.Tenant },
-		{ "VEN", EntityType.Vendor }
+		{ "R", EntityType.Reservation },
+		{ "G", EntityType.Organization },
+		{ "C", EntityType.Company },
+        { "O", EntityType.Owner },
+        { "T", EntityType.Tenant },
+		{ "V", EntityType.Vendor },
+		{ "H", EntityType.Hoa }
 	};
 
     public static string ToCode(this EntityType entityType)

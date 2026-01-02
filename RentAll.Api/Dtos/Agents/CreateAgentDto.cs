@@ -5,8 +5,9 @@ namespace RentAll.Api.Dtos.Agents;
 public class CreateAgentDto
 {
     public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
     public string AgentCode { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -20,11 +21,8 @@ public class CreateAgentDto
         if (AgentCode.Length > 10)
             return (false, "Agent Code must be 10 characters or less");
 
-        if (string.IsNullOrWhiteSpace(Description))
-            return (false, "Description is required");
-
-        if (Description.Length > 50)
-            return (false, "Description must be 50 characters or less");
+        if (string.IsNullOrWhiteSpace(Name))
+            return (false, "Name is required");
 
         return (true, null);
     }
@@ -35,8 +33,9 @@ public class CreateAgentDto
         {
             AgentId = Guid.NewGuid(),
             OrganizationId = OrganizationId,
+            OfficeId = OfficeId,
             AgentCode = AgentCode,
-            Description = Description,
+            Name = Name,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

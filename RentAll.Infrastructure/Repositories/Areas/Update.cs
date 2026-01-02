@@ -15,7 +15,9 @@ public partial class AreaRepository : IAreaRepository
 		{
 			AreaId = area.AreaId,
 			OrganizationId = area.OrganizationId,
+			OfficeId = area.OfficeId,
 			AreaCode = area.AreaCode,
+			Name = area.Name,
 			Description = area.Description,
 			IsActive = area.IsActive
 		});

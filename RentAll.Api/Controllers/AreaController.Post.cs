@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                if (await _areaRepository.ExistsByAreaCodeAsync(dto.AreaCode, CurrentOrganizationId))
+                if (await _areaRepository.ExistsByAreaCodeAsync(dto.AreaCode, CurrentOrganizationId, dto.OfficeId))
                     return Conflict(new { message = "Area Code already exists" });
 
                 var area = dto.ToModel();

@@ -32,7 +32,7 @@ public partial class PropertySelectionRepository : IPropertySelectionRepository
 			Smoking = s.Smoking,
 			HighSpeedInternet = s.HighSpeedInternet,
 			PropertyStatusId = s.PropertyStatusId,
-			FranchiseCode = s.FranchiseCode,
+			OfficeCode = s.OfficeCode,
 			BuildingCode = s.BuildingCode,
 			RegionCode = s.RegionCode,
 			AreaCode = s.AreaCode,

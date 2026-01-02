@@ -6,7 +6,9 @@ public class AreaResponseDto
 {
 	public Guid OrganizationId { get; set; }
 	public int AreaId { get; set; }
+	public int? OfficeId { get; set; }
 	public string AreaCode { get; set; } = string.Empty;
+	public string Name { get; set; } = string.Empty;
 	public string Description { get; set; } = string.Empty;
 	public bool IsActive { get; set; }
 
@@ -14,7 +16,9 @@ public class AreaResponseDto
 	{
 		OrganizationId = area.OrganizationId;
 		AreaId = area.AreaId;
+		OfficeId = area.OfficeId;
 		AreaCode = area.AreaCode;
+		Name = area.Name;
 		Description = area.Description;
 		IsActive = area.IsActive;
 	}

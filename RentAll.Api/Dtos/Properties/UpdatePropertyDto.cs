@@ -25,7 +25,7 @@ public class UpdatePropertyDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
-	public int? FranchiseId { get; set; }
+	public int? OfficeId { get; set; }
 	public int? BuildingId { get; set; }
 	public int? RegionId { get; set; }
 	public int? AreaId { get; set; }
@@ -183,7 +183,7 @@ public class UpdatePropertyDto
 			PropertyStyle = (PropertyStyle)PropertyStyleId,
 			PropertyType = (PropertyType)PropertyTypeId,
 			PropertyStatus = (PropertyStatus)PropertyStatusId,
-			FranchiseId = FranchiseId,
+			OfficeId = OfficeId,
 			BuildingId = BuildingId,
 			RegionId = RegionId,
 			AreaId = AreaId,

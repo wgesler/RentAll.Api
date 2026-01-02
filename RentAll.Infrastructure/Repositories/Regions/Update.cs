@@ -15,7 +15,9 @@ public partial class RegionRepository : IRegionRepository
 		{
 			RegionId = region.RegionId,
 			OrganizationId = region.OrganizationId,
+			OfficeId = region.OfficeId,
 			RegionCode = region.RegionCode,
+			Name = region.Name,
 			Description = region.Description,
 			IsActive = region.IsActive
 		});

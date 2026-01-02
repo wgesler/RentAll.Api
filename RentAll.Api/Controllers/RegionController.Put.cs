@@ -32,7 +32,7 @@ namespace RentAll.Api.Controllers
 
                 if (existingRegion.RegionCode != dto.RegionCode)
                 {
-                    if (await _regionRepository.ExistsByRegionCodeAsync(dto.RegionCode, CurrentOrganizationId))
+                    if (await _regionRepository.ExistsByRegionCodeAsync(dto.RegionCode, CurrentOrganizationId, dto.OfficeId))
                         return Conflict(new { message = "Region Code already exists" });
                 }
 

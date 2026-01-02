@@ -14,8 +14,13 @@ public partial class BuildingRepository : IBuildingRepository
 		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_Add", new
 		{
 			OrganizationId = building.OrganizationId,
+			OfficeId = building.OfficeId,
 			BuildingCode = building.BuildingCode,
+			Name = building.Name,
 			Description = building.Description,
+			HoaName = building.HoaName,
+			HoaPhone = building.HoaPhone,
+			HoaEmail = building.HoaEmail,
 			IsActive = building.IsActive
 		});
 

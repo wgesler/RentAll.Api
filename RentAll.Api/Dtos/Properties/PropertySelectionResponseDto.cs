@@ -23,7 +23,7 @@ public class PropertySelectionResponseDto
 	public bool Smoking { get; set; }
 	public bool HighSpeedInternet { get; set; }
 	public int PropertyStatusId { get; set; }
-	public string? FranchiseCode { get; set; }
+	public string? OfficeCode { get; set; }
 	public string? BuildingCode { get; set; }
 	public string? RegionCode { get; set; }
 	public string? AreaCode { get; set; }
@@ -49,7 +49,7 @@ public class PropertySelectionResponseDto
 		Smoking = s.Smoking;
 		HighSpeedInternet = s.HighSpeedInternet;
 		PropertyStatusId = s.PropertyStatusId;
-		FranchiseCode = s.FranchiseCode;
+		OfficeCode = s.OfficeCode;
 		BuildingCode = s.BuildingCode;
 		RegionCode = s.RegionCode;
 		AreaCode = s.AreaCode;

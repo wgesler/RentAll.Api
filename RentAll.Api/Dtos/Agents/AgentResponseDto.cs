@@ -6,8 +6,9 @@ public class AgentResponseDto
 {
     public Guid AgentId { get; set; }
     public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
     public string AgentCode { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -19,8 +20,9 @@ public class AgentResponseDto
     {
         AgentId = agent.AgentId;
         OrganizationId = agent.OrganizationId;
+        OfficeId = agent.OfficeId;
         AgentCode = agent.AgentCode;
-        Description = agent.Description;
+		Name = agent.Name;
         IsActive = agent.IsActive;
 		CreatedOn = agent.CreatedOn;
 		CreatedBy = agent.CreatedBy;

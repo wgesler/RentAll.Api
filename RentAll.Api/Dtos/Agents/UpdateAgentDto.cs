@@ -6,8 +6,9 @@ public class UpdateAgentDto
 {
 	public Guid AgentId { get; set; }
 	public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
     public string AgentCode { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -27,11 +28,8 @@ public class UpdateAgentDto
         if (AgentCode.Length > 10)
             return (false, "Agent Code must be 10 characters or less");
 
-        if (string.IsNullOrWhiteSpace(Description))
-            return (false, "Description is required");
-
-        if (Description.Length > 50)
-            return (false, "Description must be 50 characters or less");
+        if (string.IsNullOrWhiteSpace(Name))
+            return (false, "Name is required");
 
         return (true, null);
     }
@@ -42,8 +40,9 @@ public class UpdateAgentDto
         {
             AgentId = AgentId,
             OrganizationId = OrganizationId,
+            OfficeId = OfficeId,
             AgentCode = AgentCode,
-            Description = Description,
+			Name = Name,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

@@ -37,13 +37,14 @@ public partial class RegionRepository : IRegionRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<Region?> GetByRegionCodeAsync(string regionCode, Guid organizationId)
+	public async Task<Region?> GetByRegionCodeAsync(string regionCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
 		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_GetByCode", new
 		{
 			RegionCode = regionCode,
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			OfficeId = officeId
 		});
 
 		if (res == null || !res.Any())
@@ -52,13 +53,14 @@ public partial class RegionRepository : IRegionRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<bool> ExistsByRegionCodeAsync(string regionCode, Guid organizationId)
+	public async Task<bool> ExistsByRegionCodeAsync(string regionCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
 		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Region_ExistsByCode", new
 		{
 			RegionCode = regionCode,
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			OfficeId = officeId
 		});
 
 		return result == 1;

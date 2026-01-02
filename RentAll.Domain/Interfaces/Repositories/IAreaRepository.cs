@@ -10,8 +10,8 @@ public interface IAreaRepository
 	// Selects
 	Task<IEnumerable<Area>> GetAllAsync(Guid organizationId);
 	Task<Area?> GetByIdAsync(int areaId, Guid organizationId);
-	Task<Area?> GetByAreaCodeAsync(string areaCode, Guid organizationId);
-	Task<bool> ExistsByAreaCodeAsync(string areaCode, Guid organizationId);
+	Task<Area?> GetByAreaCodeAsync(string areaCode, Guid organizationId, int? officeId);
+	Task<bool> ExistsByAreaCodeAsync(string areaCode, Guid organizationId, int? officeId);
 
 	// Updates
 	Task<Area> UpdateByIdAsync(Area area);

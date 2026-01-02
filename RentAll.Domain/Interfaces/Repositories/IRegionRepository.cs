@@ -10,8 +10,8 @@ public interface IRegionRepository
 	// Selects
 	Task<IEnumerable<Region>> GetAllAsync(Guid OrganizationId);
 	Task<Region?> GetByIdAsync(int regionId, Guid OrganizationId);
-	Task<Region?> GetByRegionCodeAsync(string regionCode, Guid OrganizationId);
-	Task<bool> ExistsByRegionCodeAsync(string regionCode, Guid OrganizationId);
+	Task<Region?> GetByRegionCodeAsync(string regionCode, Guid OrganizationId, int? officeId);
+	Task<bool> ExistsByRegionCodeAsync(string regionCode, Guid OrganizationId, int? officeId);
 
 	// Updates
 	Task<Region> UpdateByIdAsync(Region region);

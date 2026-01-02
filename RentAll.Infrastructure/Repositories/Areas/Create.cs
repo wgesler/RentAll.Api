@@ -14,7 +14,9 @@ public partial class AreaRepository : IAreaRepository
 		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_Add", new
 		{
 			OrganizationId = area.OrganizationId,
+			OfficeId = area.OfficeId,
 			AreaCode = area.AreaCode,
+			Name = area.Name,
 			Description = area.Description,
 			IsActive = area.IsActive
 		});

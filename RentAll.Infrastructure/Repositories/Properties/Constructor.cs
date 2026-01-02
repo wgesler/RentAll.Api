@@ -35,7 +35,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				PropertyStyle = (PropertyStyle)e.PropertyStyleId,
 				PropertyType = (PropertyType)e.PropertyTypeId,
 				PropertyStatus = (PropertyStatus)e.PropertyStatusId,
-				FranchiseId = e.FranchiseId,
+				OfficeId = e.OfficeId,
 				BuildingId = e.BuildingId,
 				RegionId = e.RegionId,
 				AreaId = e.AreaId,

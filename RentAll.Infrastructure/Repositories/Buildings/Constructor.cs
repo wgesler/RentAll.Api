@@ -21,8 +21,13 @@ public partial class BuildingRepository : IBuildingRepository
 		{
 			OrganizationId = e.OrganizationId,
 			BuildingId = e.BuildingId,
+			OfficeId = e.OfficeId,
 			BuildingCode = e.BuildingCode,
+			Name = e.Name,
 			Description = e.Description,
+			HoaName = e.HoaName,
+			HoaPhone = e.HoaPhone,
+			HoaEmail = e.HoaEmail,
 			IsActive = e.IsActive
 		};
 	}

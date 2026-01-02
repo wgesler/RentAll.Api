@@ -21,7 +21,9 @@ public partial class AreaRepository : IAreaRepository
 		{
 			OrganizationId = e.OrganizationId,
 			AreaId = e.AreaId,
+			OfficeId = e.OfficeId,
 			AreaCode = e.AreaCode,
+			Name = e.Name,
 			Description = e.Description,
 			IsActive = e.IsActive
 		};

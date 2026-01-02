@@ -22,7 +22,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                if (await _regionRepository.ExistsByRegionCodeAsync(dto.RegionCode, CurrentOrganizationId))
+                if (await _regionRepository.ExistsByRegionCodeAsync(dto.RegionCode, CurrentOrganizationId, dto.OfficeId))
                     return Conflict(new { message = "Region Code already exists" });
 
                 var region = dto.ToModel();

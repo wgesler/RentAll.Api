@@ -23,7 +23,7 @@ public class PropertyResponseDto
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
-	public int? FranchiseId { get; set; }
+	public int? OfficeId { get; set; }
 	public int? BuildingId { get; set; }
 	public int? RegionId { get; set; }
 	public int? AreaId { get; set; }
@@ -139,7 +139,7 @@ public class PropertyResponseDto
 		PropertyStyleId = (int)property.PropertyStyle;
 		PropertyTypeId = (int)property.PropertyType;
 		PropertyStatusId = (int)property.PropertyStatus;
-		FranchiseId = property.FranchiseId;
+		OfficeId = property.OfficeId;
 		BuildingId = property.BuildingId;
 		RegionId = property.RegionId;
 		AreaId = property.AreaId;

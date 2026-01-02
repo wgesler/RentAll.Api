@@ -37,13 +37,14 @@ public partial class BuildingRepository : IBuildingRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<Building?> GetByBuildingCodeAsync(string buildingCode, Guid organizationId)
+	public async Task<Building?> GetByBuildingCodeAsync(string buildingCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
 		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_GetByCode", new
 		{
 			BuildingCode = buildingCode,
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			OfficeId = officeId
 		});
 
 		if (res == null || !res.Any())
@@ -52,13 +53,15 @@ public partial class BuildingRepository : IBuildingRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<bool> ExistsByBuildingCodeAsync(string buildingCode, Guid organizationId)
+	public async Task<bool> ExistsByBuildingCodeAsync(string buildingCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
 		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Building_ExistsByCode", new
 		{
 			BuildingCode = buildingCode,
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			OfficeId = officeId
+
 		});
 
 		return result == 1;

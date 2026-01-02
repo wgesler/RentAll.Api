@@ -19,7 +19,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                if (await _buildingRepository.ExistsByBuildingCodeAsync(dto.BuildingCode, CurrentOrganizationId))
+                if (await _buildingRepository.ExistsByBuildingCodeAsync(dto.BuildingCode, CurrentOrganizationId, dto.OfficeId))
                     return Conflict(new { message = "Building Code already exists" });
 
                 var building = dto.ToModel();

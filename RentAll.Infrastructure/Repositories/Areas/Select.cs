@@ -37,13 +37,14 @@ public partial class AreaRepository : IAreaRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<Area?> GetByAreaCodeAsync(string areaCode, Guid organizationId)
+	public async Task<Area?> GetByAreaCodeAsync(string areaCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
 		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_GetByCode", new
 		{
 			AreaCode = areaCode,
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			OfficeId = officeId
 		});
 
 		if (res == null || !res.Any())
@@ -52,13 +53,14 @@ public partial class AreaRepository : IAreaRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<bool> ExistsByAreaCodeAsync(string areaCode, Guid organizationId)
+	public async Task<bool> ExistsByAreaCodeAsync(string areaCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
 		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Area_ExistsByCode", new
 		{
 			AreaCode = areaCode,
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			OfficeId = officeId
 		});
 
 		return result == 1;

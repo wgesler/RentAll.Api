@@ -22,7 +22,7 @@ public class ContactManager : IContactManager
         var entityType = (EntityType)entityTypeId;
         var prefix = entityType.ToCode();
         int nextNumber = await _codeSequenceRepository.GetNextAsync(organizationId, entityTypeId, entityType.ToString());
-        var code = $"{prefix}-{nextNumber:D6}";
+        var code = $"C{prefix}-{nextNumber:D6}";
 
         return code;
     }

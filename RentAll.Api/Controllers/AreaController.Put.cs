@@ -29,9 +29,13 @@ namespace RentAll.Api.Controllers
                 if (existingArea == null)
                     return NotFound(new { message = "Area not found" });
 
-                if (existingArea.AreaCode != dto.AreaCode)
-					return BadRequest(new { message = "Area Code cannot change" });
-
+				// Check if AgentCode is being changed and if the new code already exists
+				if (existingArea.AreaCode != dto.AreaCode)
+				{
+					if (await _areaRepository.ExistsByAreaCodeAsync(dto.AreaCode, CurrentOrganizationId, dto.OfficeId))
+						return Conflict(new { message = "Area Code already exists" });
+				}
+				
 				var area = dto.ToModel();
                 var updatedArea = await _areaRepository.UpdateByIdAsync(area);
                 return Ok(new AreaResponseDto(updatedArea));

@@ -14,7 +14,9 @@ public partial class RegionRepository : IRegionRepository
 		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_Add", new
 		{
 			OrganizationId = region.OrganizationId,
+			OfficeId = region.OfficeId,
 			RegionCode = region.RegionCode,
+			Name = region.Name,
 			Description = region.Description,
 			IsActive = region.IsActive
 		});
