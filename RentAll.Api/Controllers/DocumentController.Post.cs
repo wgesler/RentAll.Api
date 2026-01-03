@@ -36,7 +36,7 @@ namespace RentAll.Api.Controllers
 							dto.FileDetails.File,
 							dto.FileDetails.FileName,
 							dto.FileDetails.ContentType,
-							dto.DocumentType);
+							(DocumentType)dto.DocumentTypeId);
 						model.DocumentPath = documentPath;
 					}
 					catch (Exception ex)

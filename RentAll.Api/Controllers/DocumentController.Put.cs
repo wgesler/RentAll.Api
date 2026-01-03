@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Documents;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -43,7 +44,7 @@ namespace RentAll.Api.Controllers
 							dto.FileDetails.File,
 							dto.FileDetails.FileName,
 							dto.FileDetails.ContentType,
-							dto.DocumentType);
+							(DocumentType)dto.DocumentTypeId);
 						model.DocumentPath = documentPath;
 					}
 					catch (Exception ex)
