@@ -22,7 +22,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 				PropertyId = e.PropertyId,
 				OrganizationId = e.OrganizationId,
 				WelcomeLetter = e.WelcomeLetter,
-				DefaultLease = e.DefaultLease,
+				Lease = e.Lease,
 				IsDeleted = e.IsDeleted,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,

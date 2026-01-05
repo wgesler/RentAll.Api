@@ -7,7 +7,7 @@ public class UpdatePropertyHtmlDto
 	public Guid PropertyId { get; set; }
 	public Guid? OrganizationId { get; set; }
 	public string WelcomeLetter { get; set; } = string.Empty;
-	public string DefaultLease { get; set; } = string.Empty;
+	public string Lease { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -17,8 +17,8 @@ public class UpdatePropertyHtmlDto
 		if (string.IsNullOrWhiteSpace(WelcomeLetter))
 			return (false, "WelcomeLetter is required");
 
-		if (string.IsNullOrWhiteSpace(DefaultLease))
-			return (false, "DefaultLease is required");
+		if (string.IsNullOrWhiteSpace(Lease))
+			return (false, "Lease is required");
 
 		return (true, null);
 	}
@@ -30,7 +30,7 @@ public class UpdatePropertyHtmlDto
 			PropertyId = PropertyId,
 			OrganizationId = currentOrganization,
 			WelcomeLetter = WelcomeLetter,
-			DefaultLease = DefaultLease,
+			Lease = Lease,
 			ModifiedBy = currentUser
 		};
 	}
