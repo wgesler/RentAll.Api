@@ -1,0 +1,30 @@
+using Microsoft.Data.SqlClient;
+using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Models;
+using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities;
+
+namespace RentAll.Infrastructure.Repositories.PropertyHtmls
+{
+	public partial class PropertyHtmlRepository : IPropertyHtmlRepository
+	{
+		public async Task<PropertyHtml> CreateAsync(PropertyHtml propertyHtml)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("dbo.PropertyHtml_UpsertByPropertyId", new
+			{
+				PropertyId = propertyHtml.PropertyId,
+				OrganizationId = propertyHtml.OrganizationId,
+				WelcomeLetter = propertyHtml.WelcomeLetter,
+				DefaultLease = propertyHtml.DefaultLease,
+				CreatedBy = propertyHtml.CreatedBy
+			});
+
+			if (res == null || !res.Any())
+				throw new Exception("PropertyHtml not created");
+
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+	}
+}
+

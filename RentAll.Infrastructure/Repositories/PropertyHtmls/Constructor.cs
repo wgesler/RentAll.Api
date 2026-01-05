@@ -4,24 +4,26 @@ using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Entities;
 
-namespace RentAll.Infrastructure.Repositories.PropertyWelcomes
+namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 {
-	public partial class PropertyWelcomeRepository : IPropertyWelcomeRepository
+	public partial class PropertyHtmlRepository : IPropertyHtmlRepository
 	{
 		private readonly string _dbConnectionString;
 
-		public PropertyWelcomeRepository(IOptions<AppSettings> appSettings)
+		public PropertyHtmlRepository(IOptions<AppSettings> appSettings)
 		{
 			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 		}
 
-		private PropertyWelcome ConvertEntityToModel(PropertyWelcomeEntity e)
+		private PropertyHtml ConvertEntityToModel(PropertyHtmlEntity e)
 		{
-			var response = new PropertyWelcome()
+			var response = new PropertyHtml()
 			{
 				PropertyId = e.PropertyId,
 				OrganizationId = e.OrganizationId,
 				WelcomeLetter = e.WelcomeLetter,
+				DefaultLease = e.DefaultLease,
+				IsDeleted = e.IsDeleted,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,
 				ModifiedOn = e.ModifiedOn,
@@ -32,5 +34,4 @@ namespace RentAll.Infrastructure.Repositories.PropertyWelcomes
 		}
 	}
 }
-
 

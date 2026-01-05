@@ -1,12 +1,13 @@
 using RentAll.Domain.Models;
 
-namespace RentAll.Api.Dtos.PropertyWelcomes;
+namespace RentAll.Api.Dtos.PropertyHtmls;
 
-public class CreatePropertyWelcomeDto
+public class CreatePropertyHtmlDto
 {
 	public Guid PropertyId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public string WelcomeLetter { get; set; } = string.Empty;
+	public string DefaultLease { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -19,19 +20,23 @@ public class CreatePropertyWelcomeDto
 		if (string.IsNullOrWhiteSpace(WelcomeLetter))
 			return (false, "WelcomeLetter is required");
 
+		if (string.IsNullOrWhiteSpace(DefaultLease))
+			return (false, "DefaultLease is required");
+
 		return (true, null);
 	}
 
-	public PropertyWelcome ToModel(Guid currentUser)
+	public PropertyHtml ToModel(Guid currentUser)
 	{
-		return new PropertyWelcome
+		return new PropertyHtml
 		{
 			PropertyId = PropertyId,
 			OrganizationId = OrganizationId,
 			WelcomeLetter = WelcomeLetter,
+			DefaultLease = DefaultLease,
+			IsDeleted = false,
 			CreatedBy = currentUser
 		};
 	}
 }
-
 
