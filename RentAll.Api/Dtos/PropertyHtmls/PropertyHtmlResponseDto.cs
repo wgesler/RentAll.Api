@@ -19,7 +19,7 @@ public class PropertyHtmlResponseDto
 		PropertyId = propertyHtml.PropertyId;
 		OrganizationId = propertyHtml.OrganizationId;
 		WelcomeLetter = propertyHtml.WelcomeLetter;
-		DefaultLease = propertyHtml.DefaultLease;
+		Lease = propertyHtml.Lease;
 		IsDeleted = propertyHtml.IsDeleted;
 		CreatedOn = propertyHtml.CreatedOn;
 		CreatedBy = propertyHtml.CreatedBy;
