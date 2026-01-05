@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Common;
 

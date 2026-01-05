@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models.Common;
 using RentAll.Infrastructure.Configuration;

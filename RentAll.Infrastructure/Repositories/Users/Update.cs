@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using System.Text.Json;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;

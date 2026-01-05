@@ -1,5 +1,5 @@
 using System.Data;
-using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using Dapper;
 
 namespace RentAll.Infrastructure.Configuration;

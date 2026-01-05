@@ -1,5 +1,5 @@
 using System.Data;
-using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace RentAll.Infrastructure.Configuration;
