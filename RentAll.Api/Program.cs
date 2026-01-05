@@ -103,6 +103,7 @@ builder.Services.AddScoped<IFileService>(sp =>
 	var wwwRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
 	return new FileService(wwwRootPath, logger);
 });
+builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
 
 builder.Services.AddScoped<IContactManager, ContactManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
