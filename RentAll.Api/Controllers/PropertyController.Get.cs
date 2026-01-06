@@ -23,7 +23,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting all properties");
-				return StatusCode(500, new { message = "An error occurred while retrieving properties" });
+				return ServerError("An error occurred while retrieving properties");
 			}
 		}
         
@@ -36,20 +36,20 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Property ID is required" });
+                return BadRequest("Property ID is required");
 
             try
             {
                 var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (property == null)
-                    return NotFound(new { message = "Property not found" });
+                    return NotFound("Property not found");
 
                 return Ok(new PropertyResponseDto(property));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting property by ID: {PropertyId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the property" });
+                return ServerError("An error occurred while retrieving the property");
             }
         }
 
@@ -62,20 +62,20 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetByPropertyCode(string propertyCode)
         {
             if (string.IsNullOrWhiteSpace(propertyCode))
-                return BadRequest(new { message = "Property Code is required" });
+                return BadRequest("Property Code is required");
 
             try
             {
                 var property = await _propertyRepository.GetByPropertyCodeAsync(propertyCode, CurrentOrganizationId);
                 if (property == null)
-                    return NotFound(new { message = "Property not found" });
+                    return NotFound("Property not found");
 
                 return Ok(new PropertyResponseDto(property));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting property by PropertyCode: {PropertyCode}", propertyCode);
-                return StatusCode(500, new { message = "An error occurred while retrieving the property" });
+                return ServerError("An error occurred while retrieving the property");
             }
         }
 
@@ -88,7 +88,7 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetByState(string state)
         {
             if (string.IsNullOrWhiteSpace(state))
-                return BadRequest(new { message = "State is required" });
+                return BadRequest("State is required");
 
             try
             {
@@ -99,7 +99,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting properties by state: {State}", state);
-                return StatusCode(500, new { message = "An error occurred while retrieving properties" });
+                return ServerError("An error occurred while retrieving properties");
             }
         }
 
@@ -123,7 +123,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
-				return StatusCode(500, new { message = "An error occurred while retrieving properties" });
+				return ServerError("An error occurred while retrieving properties");
 			}
 		}
 
@@ -149,7 +149,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting property selection for user: {UserId}", CurrentUser);
-				return StatusCode(500, new { message = "An error occurred while retrieving the property selection" });
+				return ServerError("An error occurred while retrieving the property selection");
 			}
 		}
 	}

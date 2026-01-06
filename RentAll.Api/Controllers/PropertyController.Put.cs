@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Properties;
 
 namespace RentAll.Api.Controllers
@@ -15,24 +15,24 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePropertyDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Property data is required" });
+                return BadRequest("Property data is required");
 
             var (isValid, errorMessage) = dto.IsValid(id);
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if property exists
                 var existingProperty = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingProperty == null)
-                    return NotFound(new { message = "Property not found" });
+                    return NotFound("Property not found");
 
                 // Check if PropertyCode is being changed and if the new code already exists
                 if (existingProperty.PropertyCode != dto.PropertyCode)
                 {
                     if (await _propertyRepository.ExistsByPropertyCodeAsync(dto.PropertyCode, CurrentOrganizationId))
-                        return Conflict(new { message = "Property Code already exists" });
+                        return Conflict("Property Code already exists");
                 }
 
                 var property = dto.ToModel(CurrentUser);
@@ -42,7 +42,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating property: {PropertyId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the property" });
+                return ServerError("An error occurred while updating the property");
             }
         }
 
@@ -55,11 +55,11 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> PutPropertySelection([FromBody] UpsertPropertySelectionDto dto)
 		{
 			if (dto == null)
-				return BadRequest(new { message = "Property selection data is required" });
+				return BadRequest("Property selection data is required");
 
 			var (isValid, errorMessage) = dto.IsValid(CurrentUser);
 			if (!isValid)
-				return BadRequest(new { message = errorMessage });
+				return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
@@ -70,7 +70,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error upserting property selection for user: {UserId}", CurrentUser);
-				return StatusCode(500, new { message = "An error occurred while saving the property selection" });
+				return ServerError("An error occurred while saving the property selection");
 			}
 		}
     }

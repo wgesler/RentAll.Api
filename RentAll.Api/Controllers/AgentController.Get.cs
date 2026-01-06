@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all agents");
-                return StatusCode(500, new { message = "An error occurred while retrieving agents" });
+                return ServerError("An error occurred while retrieving agents");
             }
         }
 
@@ -34,20 +34,20 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Agent ID is required" });
+                return BadRequest("Agent ID is required");
 
             try
             {
                 var agent = await _agentRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (agent == null)
-                    return NotFound(new { message = "Agent not found" });
+                    return NotFound("Agent not found");
 
                 return Ok(new AgentResponseDto(agent));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting agent by ID: {AgentId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the agent" });
+                return ServerError("An error occurred while retrieving the agent");
             }
         }
 
@@ -60,7 +60,7 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> ExistsByCode(string agentCode)
         {
             if (string.IsNullOrWhiteSpace(agentCode))
-                return BadRequest(new { message = "Agent Code is required" });
+                return BadRequest("Agent Code is required");
 
             try
             {
@@ -70,7 +70,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking if agent exists by code: {AgentCode}", agentCode);
-                return StatusCode(500, new { message = "An error occurred while checking agent existence" });
+                return ServerError("An error occurred while checking agent existence");
             }
         }
     }

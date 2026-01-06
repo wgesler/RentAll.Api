@@ -14,17 +14,17 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] CreateAgentDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Agent data is required" });
+                return BadRequest("Agent data is required");
 
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if AgentCode already exists
                 if (await _agentRepository.ExistsByAgentCodeAsync(dto.AgentCode, CurrentOrganizationId))
-                    return Conflict(new { message = "Agent Code already exists" });
+                    return Conflict("Agent Code already exists");
 
                 var agent = dto.ToModel(CurrentUser);
                 var createdAgent = await _agentRepository.CreateAsync(agent);
@@ -33,11 +33,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating agent");
-                return StatusCode(500, new { message = "An error occurred while creating the agent" });
+                return ServerError("An error occurred while creating the agent");
             }
         }
     }
 }
+
 
 
 

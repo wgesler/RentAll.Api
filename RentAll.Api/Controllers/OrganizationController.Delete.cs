@@ -13,17 +13,17 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "OrganizationId is required" });
+                return BadRequest("OrganizationId is required");
 
             try
             {
                 var existing = await _organizationRepository.GetByIdAsync(id);
                 if (existing == null)
-                    return NotFound(new { message = "Organization not found" });
+                    return NotFound("Organization not found");
 
 				var users = await _userRepository.GetAllAsync(existing.OrganizationId);
 				if (users != null)
-					return BadRequest(new { message = "Unable to delete an organization that still has users" });
+					return BadRequest("Unable to delete an organization that still has users");
 
 				await _organizationRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -31,11 +31,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting organization: {OrganizationId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the organization" });
+                return ServerError("An error occurred while deleting the organization");
             }
         }
     }
 }
+
 
 
 

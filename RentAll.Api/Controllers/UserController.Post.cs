@@ -14,17 +14,17 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "User data is required" });
+                return BadRequest("User data is required");
 
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid || !IsValidEmail(dto.Email))
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if Email already exists
                 if (await _userRepository.ExistsByEmailAsync(dto.Email))
-                    return Conflict(new { message = "Email already exists" });
+                    return Conflict("Email already exists");
 
                 // Hash the password
                 var passwordHash = _passwordHasher.HashPassword(dto.Password);
@@ -35,11 +35,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating user");
-                return StatusCode(500, new { message = "An error occurred while creating the user" });
+                return ServerError("An error occurred while creating the user");
             }
         }
     }
 }
+
 
 
 

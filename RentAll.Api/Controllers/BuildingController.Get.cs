@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all buildings");
-                return StatusCode(500, new { message = "An error occurred while retrieving buildings" });
+                return ServerError("An error occurred while retrieving buildings");
             }
         }
 
@@ -34,24 +34,25 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             if (id <= 0)
-                return BadRequest(new { message = "Building ID is required" });
+                return BadRequest("Building ID is required");
 
             try
             {
                 var building = await _buildingRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (building == null)
-                    return NotFound(new { message = "Building not found" });
+                    return NotFound("Building not found");
 
                 return Ok(new BuildingResponseDto(building));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting building by ID: {BuildingId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the building" });
+                return ServerError("An error occurred while retrieving the building");
             }
         }
     }
 }
+
 
 
 

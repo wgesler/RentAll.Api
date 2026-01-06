@@ -13,13 +13,13 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             if (id <= 0)
-                return BadRequest(new { message = "Region ID is required" });
+                return BadRequest("Region ID is required");
 
             try
             {
                 var region = await _regionRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (region == null)
-                    return NotFound(new { message = "Region not found" });
+                    return NotFound("Region not found");
 
                 await _regionRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -27,11 +27,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting region: {RegionId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the region" });
+                return ServerError("An error occurred while deleting the region");
             }
         }
     }
 }
+
 
 
 

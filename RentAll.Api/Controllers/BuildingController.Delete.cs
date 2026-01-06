@@ -13,13 +13,13 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             if (id <= 0)
-                return BadRequest(new { message = "Building ID is required" });
+                return BadRequest("Building ID is required");
 
             try
             {
                 var building = await _buildingRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (building == null)
-                    return NotFound(new { message = "Building not found" });
+                    return NotFound("Building not found");
 
                 await _buildingRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -27,11 +27,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting building: {BuildingId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the building" });
+                return ServerError("An error occurred while deleting the building");
             }
         }
     }
 }
+
 
 
 

@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all areas");
-                return StatusCode(500, new { message = "An error occurred while retrieving areas" });
+                return ServerError("An error occurred while retrieving areas");
             }
         }
 
@@ -34,24 +34,25 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             if (id <= 0)
-                return BadRequest(new { message = "Area ID is required" });
+                return BadRequest("Area ID is required");
 
             try
             {
                 var area = await _areaRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (area == null)
-                    return NotFound(new { message = "Area not found" });
+                    return NotFound("Area not found");
 
                 return Ok(new AreaResponseDto(area));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting area by ID: {AreaId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the area" });
+                return ServerError("An error occurred while retrieving the area");
             }
         }
     }
 }
+
 
 
 

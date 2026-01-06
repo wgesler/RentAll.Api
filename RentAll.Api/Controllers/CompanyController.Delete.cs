@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Company ID is required" });
+                return BadRequest("Company ID is required");
 
             try
             {
                 // Check if company exists
                 var company = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (company == null)
-                    return NotFound(new { message = "Company not found" });
+                    return NotFound("Company not found");
 
                 await _companyRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -28,11 +28,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting company: {CompanyId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the company" });
+                return ServerError("An error occurred while deleting the company");
             }
         }
     }
 }
+
 
 
 

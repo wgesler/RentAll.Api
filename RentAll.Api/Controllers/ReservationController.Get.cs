@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting reservations");
-				return StatusCode(500, new { message = "An error occurred while retrieving reservations" });
+				return ServerError("An error occurred while retrieving reservations");
 			}
 		}
 
@@ -41,7 +41,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting active reservations");
-				return StatusCode(500, new { message = "An error occurred while retrieving active reservations" });
+				return ServerError("An error occurred while retrieving active reservations");
 			}
 		}
 
@@ -54,20 +54,20 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Reservation ID is required" });
+                return BadRequest("Reservation ID is required");
 
             try
             {
                 var reservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (reservation == null)
-                    return NotFound(new { message = "Reservation not found" });
+                    return NotFound("Reservation not found");
 
                 return Ok(new ReservationResponseDto(reservation));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting reservation by ID: {ReservationId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the reservation" });
+                return ServerError("An error occurred while retrieving the reservation");
             }
         }
 
@@ -80,7 +80,7 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetByPropertyId(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
-                return BadRequest(new { message = "Property ID is required" });
+                return BadRequest("Property ID is required");
 
             try
             {
@@ -91,7 +91,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting reservations by PropertyId: {PropertyId}", propertyId);
-                return StatusCode(500, new { message = "An error occurred while retrieving reservations" });
+                return ServerError("An error occurred while retrieving reservations");
             }
         }
     }

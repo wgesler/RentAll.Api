@@ -11,12 +11,12 @@ public partial class AuthController
     public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
     {
         if (string.IsNullOrWhiteSpace(loginDto.Username) || string.IsNullOrWhiteSpace(loginDto.Password))
-            return BadRequest(new { message = "Username and password are required" });
+            return BadRequest("Username and password are required");
 
         var (success, user, accessToken, refreshToken) = await _authManager.LoginAsync(loginDto.Username, loginDto.Password);
 
         if (!success || user == null || accessToken == null || refreshToken == null)
-            return Unauthorized(new { message = "Invalid username or password" });
+            return Unauthorized("Invalid username or password");
 
         var expiresIn = GetExpiresInSeconds();
         var response = new AuthResponseDto(accessToken, refreshToken, expiresIn);
@@ -29,13 +29,13 @@ public partial class AuthController
     {
         if (string.IsNullOrWhiteSpace(registerDto.FirstName) || string.IsNullOrWhiteSpace(registerDto.LastName) || 
             string.IsNullOrWhiteSpace(registerDto.Email) || string.IsNullOrWhiteSpace(registerDto.Password))
-            return BadRequest(new { message = "First, last, email, and password are required" });
+            return BadRequest("First, last, email, and password are required");
 
         var (success, user, accessToken, refreshToken, errorMessage) = await _authManager.RegisterAsync(
             registerDto.OrganizationId, registerDto.FirstName, registerDto.LastName, registerDto.Email, registerDto.Password);
 
         if (!success || user == null || accessToken == null || refreshToken == null)
-            return BadRequest(new { message = errorMessage ?? "Registration failed" });
+            return BadRequest(errorMessage ?? "Registration failed");
 
         var expiresIn = GetExpiresInSeconds();
         var response = new AuthResponseDto(accessToken, refreshToken, expiresIn);
@@ -47,12 +47,12 @@ public partial class AuthController
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto refreshTokenDto)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenDto.RefreshToken))
-            return BadRequest(new { message = "Refresh token is required" });
+            return BadRequest("Refresh token is required");
 
         var (success, user, accessToken, refreshToken, errorMessage) = await _authManager.RefreshTokenAsync(refreshTokenDto.RefreshToken);
 
         if (!success || user == null || accessToken == null || refreshToken == null)
-            return Unauthorized(new { message = errorMessage ?? "Invalid refresh token" });
+            return Unauthorized(errorMessage ?? "Invalid refresh token");
 
         var expiresIn = GetExpiresInSeconds();
         var response = new AuthResponseDto(accessToken, refreshToken, expiresIn);
@@ -64,12 +64,12 @@ public partial class AuthController
     public async Task<IActionResult> Logout([FromBody] RefreshTokenDto refreshTokenDto)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenDto.RefreshToken))
-            return BadRequest(new { message = "Refresh token is required" });
+            return BadRequest("Refresh token is required");
 
         var success = await _authManager.LogoutAsync(refreshTokenDto.RefreshToken);
 
         if (!success)
-            return BadRequest(new { message = "Failed to logout" });
+            return BadRequest("Failed to logout");
 
         return Ok(new { message = "Logged out successfully" });
     }

@@ -15,17 +15,17 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateReservationDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Reservation data is required" });
+                return BadRequest("Reservation data is required");
 
             var (isValid, errorMessage) = dto.IsValid(id);
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 var existingReservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingReservation == null)
-                    return NotFound(new { message = "Reservation not found" });
+                    return NotFound("Reservation not found");
 
                 var reservation = dto.ToModel(CurrentUser);
                 var updatedReservation = await _reservationRepository.UpdateByIdAsync(reservation);
@@ -34,7 +34,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating reservation: {ReservationId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the reservation" });
+                return ServerError("An error occurred while updating the reservation");
             }
         }
     }

@@ -15,22 +15,22 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] BuildingUpdateDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Building data is required" });
+                return BadRequest("Building data is required");
 
             if (id != dto.BuildingId)
-                return BadRequest(new { message = "Building ID mismatch" });
+                return BadRequest("Building ID mismatch");
 
             if (string.IsNullOrWhiteSpace(dto.BuildingCode))
-                return BadRequest(new { message = "Building Code is required" });
+                return BadRequest("Building Code is required");
 
             try
             {
                 var existingBuilding = await _buildingRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingBuilding == null)
-                    return NotFound(new { message = "Building not found" });
+                    return NotFound("Building not found");
 
                 if (existingBuilding.BuildingCode != dto.BuildingCode)
-					return BadRequest(new { message = "building Code cannot change" });
+					return BadRequest("building Code cannot change");
 
 				var building = dto.ToModel();
                 var updatedBuilding = await _buildingRepository.UpdateByIdAsync(building);
@@ -39,11 +39,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating building: {BuildingId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the building" });
+                return ServerError("An error occurred while updating the building");
             }
         }
     }
 }
+
 
 
 

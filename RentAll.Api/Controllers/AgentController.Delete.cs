@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Agent ID is required" });
+                return BadRequest("Agent ID is required");
 
             try
             {
                 // Check if agent exists
                 var agent = await _agentRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (agent == null)
-                    return NotFound(new { message = "Agent not found" });
+                    return NotFound("Agent not found");
 
                 await _agentRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -28,7 +28,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting agent: {AgentId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the agent" });
+                return ServerError("An error occurred while deleting the agent");
             }
         }
     }

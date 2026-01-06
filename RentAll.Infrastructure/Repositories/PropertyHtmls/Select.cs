@@ -25,3 +25,4 @@ namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 	}
 }
 
+

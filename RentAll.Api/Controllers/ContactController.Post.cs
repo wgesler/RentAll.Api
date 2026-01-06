@@ -15,11 +15,11 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] CreateContactDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Contact data is required" });
+                return BadRequest("Contact data is required");
 
 			var (isValid, errorMessage) = dto.IsValid();
             if (!isValid || !IsValidEmail(dto.Email))
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
@@ -33,7 +33,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating contact");
-                return StatusCode(500, new { message = "An error occurred while creating the contact" });
+                return ServerError("An error occurred while creating the contact");
             }
         }
     }

@@ -13,13 +13,13 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             if (id <= 0)
-                return BadRequest(new { message = "Area ID is required" });
+                return BadRequest("Area ID is required");
 
             try
             {
                 var area = await _areaRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (area == null)
-                    return NotFound(new { message = "Area not found" });
+                    return NotFound("Area not found");
 
                 await _areaRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -27,11 +27,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting area: {AreaId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the area" });
+                return ServerError("An error occurred while deleting the area");
             }
         }
     }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Properties;
 
 namespace RentAll.Api.Controllers
@@ -14,20 +14,20 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] CreatePropertyDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Property data is required" });
+                return BadRequest("Property data is required");
 
             if (!ModelState.IsValid)
-                return BadRequest(new { message = "Invalid request data" });
+                return BadRequest("Invalid request data");
 
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if PropertyCode already exists
                 if (await _propertyRepository.ExistsByPropertyCodeAsync(dto.PropertyCode, CurrentOrganizationId))
-                    return Conflict(new { message = "Property Code already exists" });
+                    return Conflict("Property Code already exists");
 
                 var property = dto.ToModel(CurrentUser);
                 var createdProperty = await _propertyRepository.CreateAsync(property);
@@ -36,7 +36,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating property");
-                return StatusCode(500, new { message = "An error occurred while creating the property" });
+                return ServerError("An error occurred while creating the property");
             }
         }
     }

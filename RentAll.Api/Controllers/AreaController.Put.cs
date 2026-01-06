@@ -15,25 +15,25 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] AreaUpdateDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Area data is required" });
+                return BadRequest("Area data is required");
 
             if (id != dto.AreaId)
-                return BadRequest(new { message = "Area ID mismatch" });
+                return BadRequest("Area ID mismatch");
 
             if (string.IsNullOrWhiteSpace(dto.AreaCode))
-                return BadRequest(new { message = "Area Code is required" });
+                return BadRequest("Area Code is required");
 
             try
             {
                 var existingArea = await _areaRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingArea == null)
-                    return NotFound(new { message = "Area not found" });
+                    return NotFound("Area not found");
 
 				// Check if AgentCode is being changed and if the new code already exists
 				if (existingArea.AreaCode != dto.AreaCode)
 				{
 					if (await _areaRepository.ExistsByAreaCodeAsync(dto.AreaCode, CurrentOrganizationId, dto.OfficeId))
-						return Conflict(new { message = "Area Code already exists" });
+						return Conflict("Area Code already exists");
 				}
 				
 				var area = dto.ToModel();
@@ -43,11 +43,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating area: {AreaId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the area" });
+                return ServerError("An error occurred while updating the area");
             }
         }
     }
 }
+
 
 
 

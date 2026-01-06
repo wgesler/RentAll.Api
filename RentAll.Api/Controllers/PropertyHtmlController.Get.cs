@@ -13,26 +13,26 @@ namespace RentAll.Api.Controllers
 		[HttpGet("{propertyId}")]
 		public async Task<IActionResult> GetByPropertyId(Guid propertyId)
 		{
-			if (propertyId == Guid.Empty)
-				return BadRequest(new { message = "Property ID is required" });
+		if (propertyId == Guid.Empty)
+			return BadRequest("Property ID is required");
 
 			try
 			{
 				// Verify property belongs to organization
 				var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
-				if (property == null)
-					return NotFound(new { message = "Property not found" });
+			if (property == null)
+				return NotFound("Property not found");
 
-				var propertyHtml = await _propertyHtmlRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
-				if (propertyHtml == null)
-					return NotFound(new { message = "Property HTML not found" });
+			var propertyHtml = await _propertyHtmlRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
+			if (propertyHtml == null)
+				return NotFound("Property HTML not found");
 
 				return Ok(new PropertyHtmlResponseDto(propertyHtml));
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting property HTML by Property ID: {PropertyId}", propertyId);
-				return StatusCode(500, new { message = "An error occurred while retrieving the property HTML" });
+			_logger.LogError(ex, "Error getting property HTML by Property ID: {PropertyId}", propertyId);
+			return ServerError("An error occurred while retrieving the property HTML");
 			}
 		}
 	}

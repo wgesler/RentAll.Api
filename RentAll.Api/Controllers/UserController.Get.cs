@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting all users");
-				return StatusCode(500, new { message = "An error occurred while retrieving users" });
+				return ServerError("An error occurred while retrieving users");
 			}
 		}
 		
@@ -34,24 +34,25 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "User ID is required" });
+                return BadRequest("User ID is required");
 
             try
             {
                 var user = await _userRepository.GetByIdAsync(id);
                 if (user == null)
-                    return NotFound(new { message = "User not found" });
+                    return NotFound("User not found");
 
                 return Ok(new UserResponseDto(user));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting user by ID: {UserId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the user" });
+                return ServerError("An error occurred while retrieving the user");
             }
         }
     }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Common;
@@ -13,7 +13,7 @@ namespace RentAll.Api.Controllers
 		/// </summary>        
 		/// <returns>Daily Quote</returns>
 		[HttpGet("daily-quote")]
-		public async Task<ActionResult<DailyQuoteResponse>> GetDailyQuote()
+		public async Task<IActionResult> GetDailyQuote()
 		{
 			try
 			{
@@ -27,7 +27,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting daily quote.");
-				return StatusCode(500, new { message = "An error occurred while retrieving daily quote" });
+				return ServerError("An error occurred while retrieving daily quote");
 			}
 		}
 
@@ -36,7 +36,7 @@ namespace RentAll.Api.Controllers
 		/// </summary>        
 		/// <returns>List of states with two-digit code and name</returns>
 		[HttpGet("state")]
-		public async Task<ActionResult<IEnumerable<StateResponseDto>>> GetStates()
+		public async Task<IActionResult> GetStates()
 		{
 			try
 			{
@@ -47,7 +47,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting states");
-				return StatusCode(500, new { message = "An error occurred while retrieving states" });
+				return ServerError("An error occurred while retrieving states");
 			}
 		}
 	}

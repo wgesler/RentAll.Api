@@ -16,15 +16,15 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] OfficeCreateDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Office data is required" });
+                return BadRequest("Office data is required");
 
             if (string.IsNullOrWhiteSpace(dto.OfficeCode))
-                return BadRequest(new { message = "Office Code is required" });
+                return BadRequest("Office Code is required");
 
             try
             {
                 if (await _officeRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
-                    return Conflict(new { message = "Office Code already exists" });
+                    return Conflict("Office Code already exists");
 
 				var office = dto.ToModel();
 
@@ -39,7 +39,7 @@ namespace RentAll.Api.Controllers
 					catch (Exception ex)
 					{
 						_logger.LogError(ex, "Error saving office logo");
-						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+						return ServerError("An error occurred while saving the logo file");
 					}
 				}
 				
@@ -54,7 +54,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating office");
-                return StatusCode(500, new { message = "An error occurred while creating the office" });
+                return ServerError("An error occurred while creating the office");
             }
         }
 
@@ -68,22 +68,22 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> CreateConfiguration(int officeId, [FromBody] OfficeConfigurationCreateDto dto)
 		{
 			if (dto == null)
-				return BadRequest(new { message = "Office configuration data is required" });
+				return BadRequest("Office configuration data is required");
 
 			if (officeId != dto.OfficeId)
-				return BadRequest(new { message = "Office ID mismatch" });
+				return BadRequest("Office ID mismatch");
 
 			try
 			{
 				// Verify office exists and belongs to organization
 				var office = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-				if (office == null)
-					return NotFound(new { message = "Office not found" });
+			if (office == null)
+				return NotFound("Office not found");
 
-				// Check if configuration already exists
-				var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
-				if (existingConfig != null)
-					return Conflict(new { message = "Office configuration already exists for this office" });
+			// Check if configuration already exists
+			var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
+			if (existingConfig != null)
+				return Conflict("Office configuration already exists for this office");
 
 				var configuration = dto.ToModel();
 				var createdConfiguration = await _officeConfigurationRepository.CreateAsync(configuration);
@@ -92,7 +92,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error creating office configuration: {OfficeId}", officeId);
-				return StatusCode(500, new { message = "An error occurred while creating the office configuration" });
+				return ServerError("An error occurred while creating the office configuration");
 			}
 		}
 	}

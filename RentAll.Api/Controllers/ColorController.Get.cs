@@ -22,7 +22,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting all colors");
-				return StatusCode(500, new { message = "An error occurred while retrieving colors" });
+				return ServerError("An error occurred while retrieving colors");
 			}
 		}
 
@@ -35,11 +35,11 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> GetById(int colorId)
 		{
 			if (colorId < 0)
-				return BadRequest(new { message = "Invalid ColorId" });
+				return BadRequest("Invalid ColorId");
 
 			var color = await _colorRepository.GetByIdAsync(colorId, CurrentOrganizationId);
 			if (color == null)
-				return NotFound(new { message = "Color not found" });
+				return NotFound("Color not found");
 
 			var response = new ColorResponseDto(color);
 			return Ok(response);

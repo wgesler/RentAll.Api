@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all contacts");
-                return StatusCode(500, new { message = "An error occurred while retrieving contacts" });
+                return ServerError("An error occurred while retrieving contacts");
             }
         }
 
@@ -34,20 +34,20 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Contact ID is required" });
+                return BadRequest("Contact ID is required");
 
             try
             {
                 var contact = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (contact == null)
-                    return NotFound(new { message = "Contact not found" });
+                    return NotFound("Contact not found");
 
                 return Ok(new ContactResponseDto(contact));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting contact by ID: {ContactId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the contact" });
+                return ServerError("An error occurred while retrieving the contact");
             }
         }
 
@@ -68,11 +68,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting contacts by ContactTypeId: {ContactTypeId}", contactTypeId);
-                return StatusCode(500, new { message = "An error occurred while retrieving contacts" });
+                return ServerError("An error occurred while retrieving contacts");
             }
         }
     }
 }
+
 
 
 

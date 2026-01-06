@@ -29,7 +29,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting all companies");
-				return StatusCode(500, new { message = "An error occurred while retrieving companies" });
+				return ServerError("An error occurred while retrieving companies");
 			}
 		}
 		
@@ -42,13 +42,13 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Company ID is required" });
+                return BadRequest("Company ID is required");
 
             try
             {
                 var company = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (company == null)
-                    return NotFound(new { message = "Company not found" });
+                    return NotFound("Company not found");
 
                 var response = new CompanyResponseDto(company);
                 if (!string.IsNullOrWhiteSpace(company.LogoPath))
@@ -59,7 +59,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting company by ID: {CompanyId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the company" });
+                return ServerError("An error occurred while retrieving the company");
             }
         }
     }

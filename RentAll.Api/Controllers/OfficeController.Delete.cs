@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(int officeId)
         {
             if (officeId <= 0)
-                return BadRequest(new { message = "Office ID is required" });
+                return BadRequest("Office ID is required");
 
             try
             {
@@ -25,9 +25,10 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting office: {OfficeId}", officeId);
-                return StatusCode(500, new { message = "An error occurred while deleting the office" });
+                return ServerError("An error occurred while deleting the office");
             }
         }
 	}
 }
+
 

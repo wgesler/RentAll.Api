@@ -14,18 +14,18 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> Update([FromBody] UpdatePropertyLetterDto dto)
 		{
 			if (dto == null)
-				return BadRequest(new { message = "Property letter data is required" });
+				return BadRequest("Property letter data is required");
 
 			var (isValid, errorMessage) = dto.IsValid();
 			if (!isValid)
-				return BadRequest(new { message = errorMessage });
+				return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
 				// Check if property letter exists
 				var existing = await _propertyLetterRepository.GetByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId);
 				if (existing == null)
-					return NotFound(new { message = "Property letter not found" });
+					return NotFound("Property letter not found");
 
 				var propertyLetter = dto.ToModel(CurrentUser);
 				var updatedPropertyLetter = await _propertyLetterRepository.UpdateByIdAsync(propertyLetter);
@@ -34,9 +34,10 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error updating property letter: {PropertyId}", dto.PropertyId);
-				return StatusCode(500, new { message = "An error occurred while updating the property letter" });
+				return ServerError("An error occurred while updating the property letter");
 			}
 		}
 	}
 }
+
 

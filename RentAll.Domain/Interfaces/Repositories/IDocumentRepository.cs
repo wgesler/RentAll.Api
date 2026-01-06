@@ -20,3 +20,4 @@ public interface IDocumentRepository
 	Task DeleteByIdAsync(Guid documentId, Guid organizationId);
 }
 
+

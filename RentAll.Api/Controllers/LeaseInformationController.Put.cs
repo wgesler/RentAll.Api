@@ -14,30 +14,30 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> Update([FromBody] UpdateLeaseInformationDto dto)
 		{
 			if (dto == null)
-				return BadRequest(new { message = "Lease information data is required" });
+				return BadRequest("Lease information data is required");
 
 			var (isValid, errorMessage) = dto.IsValid();
 			if (!isValid)
-				return BadRequest(new { message = errorMessage });
+				return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
 				// Check if lease information exists
 				var existing = await _leaseInformationRepository.GetByIdAsync(dto.LeaseInformationId, CurrentOrganizationId);
 				if (existing == null)
-					return NotFound(new { message = "Lease information not found" });
+					return NotFound("Lease information not found");
 
 				// Verify property belongs to organization
 				var property = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
 				if (property == null)
-					return NotFound(new { message = "Property not found" });
+					return NotFound("Property not found");
 
 				// Verify contact belongs to organization if ContactId is provided
 				if (dto.ContactId.HasValue)
 				{
 					var contact = await _contactRepository.GetByIdAsync(dto.ContactId.Value, CurrentOrganizationId);
 					if (contact == null)
-						return NotFound(new { message = "Contact not found" });
+						return NotFound("Contact not found");
 				}
 
 				var leaseInformation = dto.ToModel(CurrentUser);
@@ -47,7 +47,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error updating lease information: {LeaseInformationId}", dto.LeaseInformationId);
-				return StatusCode(500, new { message = "An error occurred while updating the lease information" });
+				return ServerError("An error occurred while updating the lease information");
 			}
 		}
 	}

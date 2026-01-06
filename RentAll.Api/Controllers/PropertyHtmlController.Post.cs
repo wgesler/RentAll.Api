@@ -13,19 +13,19 @@ namespace RentAll.Api.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Create([FromBody] CreatePropertyHtmlDto dto)
 		{
-			if (dto == null)
-				return BadRequest(new { message = "Property HTML data is required" });
+		if (dto == null)
+			return BadRequest("Property HTML data is required");
 
-			var (isValid, errorMessage) = dto.IsValid();
-			if (!isValid)
-				return BadRequest(new { message = errorMessage });
+		var (isValid, errorMessage) = dto.IsValid();
+		if (!isValid)
+			return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
 				// Verify property belongs to organization
 				var property = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
-				if (property == null)
-					return NotFound(new { message = "Property not found" });
+			if (property == null)
+				return NotFound("Property not found");
 
 				var propertyHtml = dto.ToModel(CurrentUser);
 				var createdPropertyHtml = await _propertyHtmlRepository.CreateAsync(propertyHtml);
@@ -33,8 +33,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error creating property HTML");
-				return StatusCode(500, new { message = "An error occurred while creating the property HTML" });
+			_logger.LogError(ex, "Error creating property HTML");
+			return ServerError("An error occurred while creating the property HTML");
 			}
 		}
 	}

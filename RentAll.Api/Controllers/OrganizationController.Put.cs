@@ -16,21 +16,21 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrganizationDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Organization data is required" });
+                return BadRequest("Organization data is required");
 
             var (isValid, errorMessage) = dto.IsValid(id);
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 var existing = await _organizationRepository.GetByIdAsync(id);
                 if (existing == null)
-                    return NotFound(new { message = "Organization not found" });
+                    return NotFound("Organization not found");
 
                 // If OrganizationCode changed, ensure new one is unique
                 if (!string.Equals(existing.OrganizationCode, dto.OrganizationCode, StringComparison.OrdinalIgnoreCase))
-                    return Conflict(new { message = "OrganizationCode cannot change" });
+                    return Conflict("OrganizationCode cannot change");
 
                 var model = dto.ToModel(CurrentUser);
 
@@ -50,7 +50,7 @@ namespace RentAll.Api.Controllers
 					catch (Exception ex)
 					{
 						_logger.LogError(ex, "Error saving organization logo");
-						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+						return ServerError("An error occurred while saving the logo file");
 					}
 				}
 				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
@@ -74,7 +74,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating organization: {OrganizationId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the organization" });
+                return ServerError("An error occurred while updating the organization");
             }
         }
     }

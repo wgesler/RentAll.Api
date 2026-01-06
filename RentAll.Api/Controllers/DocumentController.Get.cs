@@ -28,8 +28,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting all documents");
-				return StatusCode(500, new { message = "An error occurred while retrieving documents" });
+			_logger.LogError(ex, "Error getting all documents");
+			return ServerError("An error occurred while retrieving documents");
 			}
 		}
 
@@ -41,14 +41,14 @@ namespace RentAll.Api.Controllers
 		[HttpGet("{id}")]
 		public async Task<IActionResult> GetById(Guid id)
 		{
-			if (id == Guid.Empty)
-				return BadRequest(new { message = "Document ID is required" });
+		if (id == Guid.Empty)
+			return BadRequest("Document ID is required");
 
 			try
 			{
 				var document = await _documentRepository.GetByIdAsync(id, CurrentOrganizationId);
-				if (document == null || document.IsDeleted)
-					return NotFound(new { message = "Document not found" });
+			if (document == null || document.IsDeleted)
+				return NotFound("Document not found");
 
 				var response = new DocumentResponseDto(document);
 				if (!string.IsNullOrWhiteSpace(document.DocumentPath))
@@ -58,8 +58,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting document by ID: {DocumentId}", id);
-				return StatusCode(500, new { message = "An error occurred while retrieving the document" });
+			_logger.LogError(ex, "Error getting document by ID: {DocumentId}", id);
+			return ServerError("An error occurred while retrieving the document");
 			}
 		}
 
@@ -71,8 +71,8 @@ namespace RentAll.Api.Controllers
 		[HttpGet("office/{officeId}")]
 		public async Task<IActionResult> GetByOfficeId(int officeId)
 		{
-			if (officeId <= 0)
-				return BadRequest(new { message = "Office ID is required" });
+		if (officeId <= 0)
+			return BadRequest("Office ID is required");
 
 			try
 			{
@@ -90,8 +90,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting documents by office ID: {OfficeId}", officeId);
-				return StatusCode(500, new { message = "An error occurred while retrieving documents" });
+			_logger.LogError(ex, "Error getting documents by office ID: {OfficeId}", officeId);
+			return ServerError("An error occurred while retrieving documents");
 			}
 		}
 
@@ -119,10 +119,11 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting documents by type: {DocumentType}", documentType);
-				return StatusCode(500, new { message = "An error occurred while retrieving documents" });
+			_logger.LogError(ex, "Error getting documents by type: {DocumentType}", documentType);
+			return ServerError("An error occurred while retrieving documents");
 			}
 		}
 	}
 }
+
 

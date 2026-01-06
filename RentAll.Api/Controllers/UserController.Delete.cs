@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "User ID is required" });
+                return BadRequest("User ID is required");
 
             try
             {
                 // Check if user exists
                 var user = await _userRepository.GetByIdAsync(id);
                 if (user == null)
-                    return NotFound(new { message = "User not found" });
+                    return NotFound("User not found");
 
                 await _userRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -28,11 +28,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting user: {UserId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the user" });
+                return ServerError("An error occurred while deleting the user");
             }
         }
     }
 }
+
 
 
 

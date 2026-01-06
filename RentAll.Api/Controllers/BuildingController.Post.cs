@@ -15,12 +15,12 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] BuildingCreateDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Building data is required" });
+                return BadRequest("Building data is required");
 
             try
             {
                 if (await _buildingRepository.ExistsByBuildingCodeAsync(dto.BuildingCode, CurrentOrganizationId, dto.OfficeId))
-                    return Conflict(new { message = "Building Code already exists" });
+                    return Conflict("Building Code already exists");
 
                 var building = dto.ToModel();
                 var createdBuilding = await _buildingRepository.CreateAsync(building);
@@ -29,11 +29,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating building");
-                return StatusCode(500, new { message = "An error occurred while creating the building" });
+                return ServerError("An error occurred while creating the building");
             }
         }
     }
 }
+
 
 
 

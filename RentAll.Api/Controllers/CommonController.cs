@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
 	[ApiController]
 	[Route("common")]
 	[AllowAnonymous]
-	public partial class CommonController : ControllerBase
+	public partial class CommonController : BaseController
 	{
 		private readonly AppSettings _appSettings;
 		private readonly IDailyQuoteService _dailyQuoteService;

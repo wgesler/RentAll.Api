@@ -13,19 +13,19 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> Delete(Guid propertyId)
 		{
 			if (propertyId == Guid.Empty)
-				return BadRequest(new { message = "Property ID is required" });
+				return BadRequest("Property ID is required");
 
 			try
 			{
 				// Verify property belongs to organization
 				var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
 				if (property == null)
-					return NotFound(new { message = "Property not found" });
+					return NotFound("Property not found");
 
 				// Check if property letter exists
 				var propertyLetter = await _propertyLetterRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
 				if (propertyLetter == null)
-					return NotFound(new { message = "Property letter not found" });
+					return NotFound("Property letter not found");
 
 				await _propertyLetterRepository.DeleteByPropertyIdAsync(propertyId);
 				return NoContent();
@@ -33,9 +33,10 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error deleting property letter: {PropertyId}", propertyId);
-				return StatusCode(500, new { message = "An error occurred while deleting the property letter" });
+				return ServerError("An error occurred while deleting the property letter");
 			}
 		}
 	}
 }
+
 

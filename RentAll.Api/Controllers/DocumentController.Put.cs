@@ -15,18 +15,18 @@ namespace RentAll.Api.Controllers
 		[HttpPut("{id}")]
 		public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDocumentDto dto)
 		{
-			if (dto == null)
-				return BadRequest(new { message = "Document data is required" });
+		if (dto == null)
+			return BadRequest("Document data is required");
 
-			var (isValid, errorMessage) = dto.IsValid(id);
-			if (!isValid)
-				return BadRequest(new { message = errorMessage });
+		var (isValid, errorMessage) = dto.IsValid(id);
+		if (!isValid)
+			return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
 				var existing = await _documentRepository.GetByIdAsync(id, CurrentOrganizationId);
-				if (existing == null || existing.IsDeleted)
-					return NotFound(new { message = "Document not found" });
+			if (existing == null || existing.IsDeleted)
+				return NotFound("Document not found");
 
 				var model = dto.ToModel(CurrentUser);
 
@@ -49,8 +49,8 @@ namespace RentAll.Api.Controllers
 					}
 					catch (Exception ex)
 					{
-						_logger.LogError(ex, "Error saving document file");
-						return StatusCode(500, new { message = "An error occurred while saving the document file" });
+					_logger.LogError(ex, "Error saving document file");
+					return ServerError("An error occurred while saving the document file");
 					}
 				}
 
@@ -64,10 +64,11 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating document: {DocumentId}", id);
-				return StatusCode(500, new { message = "An error occurred while updating the document" });
+			_logger.LogError(ex, "Error updating document: {DocumentId}", id);
+			return ServerError("An error occurred while updating the document");
 			}
 		}
 	}
 }
+
 

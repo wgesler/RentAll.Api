@@ -16,25 +16,25 @@ namespace RentAll.Api.Controllers
 		[HttpPut("{officeId}")]
 		public async Task<IActionResult> Update(int officeId, [FromBody] OfficeUpdateDto dto)
 		{
-			if (dto == null)
-				return BadRequest(new { message = "Office data is required" });
+		if (dto == null)
+			return BadRequest("Office data is required");
 
-			if (officeId != dto.OfficeId)
-				return BadRequest(new { message = "Office ID mismatch" });
+		if (officeId != dto.OfficeId)
+			return BadRequest("Office ID mismatch");
 
-			if (string.IsNullOrWhiteSpace(dto.OfficeCode))
-				return BadRequest(new { message = "Office Code is required" });
+		if (string.IsNullOrWhiteSpace(dto.OfficeCode))
+			return BadRequest("Office Code is required");
 
 			try
 			{
 				var existingOffice = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-				if (existingOffice == null)
-					return NotFound(new { message = "Office not found" });
+			if (existingOffice == null)
+				return NotFound("Office not found");
 
 				if (existingOffice.OfficeCode != dto.OfficeCode)
 				{
 					if (await _officeRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
-						return Conflict(new { message = "Office Code already exists" });
+						return Conflict("Office Code already exists");
 				}
 
 				var office = dto.ToModel();
@@ -54,8 +54,8 @@ namespace RentAll.Api.Controllers
 					}
 					catch (Exception ex)
 					{
-						_logger.LogError(ex, "Error saving office logo");
-						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+					_logger.LogError(ex, "Error saving office logo");
+					return ServerError("An error occurred while saving the logo file");
 					}
 				}
 				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
@@ -78,8 +78,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating office: {OfficeId}", officeId);
-				return StatusCode(500, new { message = "An error occurred while updating the office" });
+			_logger.LogError(ex, "Error updating office: {OfficeId}", officeId);
+			return ServerError("An error occurred while updating the office");
 			}
 		}
 
@@ -92,23 +92,23 @@ namespace RentAll.Api.Controllers
 		[HttpPut("{officeId}/configuration")]
 		public async Task<IActionResult> UpdateConfiguration(int officeId, [FromBody] OfficeConfigurationUpdateDto dto)
 		{
-			if (dto == null)
-				return BadRequest(new { message = "Office configuration data is required" });
+		if (dto == null)
+			return BadRequest("Office configuration data is required");
 
-			if (officeId != dto.OfficeId)
-				return BadRequest(new { message = "Office ID mismatch" });
+		if (officeId != dto.OfficeId)
+			return BadRequest("Office ID mismatch");
 
 			try
 			{
 				// Verify office exists and belongs to organization
 				var office = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-				if (office == null)
-					return NotFound(new { message = "Office not found" });
+			if (office == null)
+				return NotFound("Office not found");
 
-				// Verify configuration exists
-				var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
-				if (existingConfig == null)
-					return NotFound(new { message = "Office configuration not found" });
+			// Verify configuration exists
+			var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
+			if (existingConfig == null)
+				return NotFound("Office configuration not found");
 
 				var configuration = dto.ToModel();
 				var updatedConfiguration = await _officeConfigurationRepository.UpdateByOfficeIdAsync(configuration);
@@ -116,8 +116,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating office configuration: {OfficeId}", officeId);
-				return StatusCode(500, new { message = "An error occurred while updating the office configuration" });
+			_logger.LogError(ex, "Error updating office configuration: {OfficeId}", officeId);
+			return ServerError("An error occurred while updating the office configuration");
 			}
 		}
 	}

@@ -16,22 +16,22 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCompanyDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Company data is required" });
+                return BadRequest("Company data is required");
 
             var (isValid, errorMessage) = dto.IsValid(id);
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if company exists
                 var existingCompany = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingCompany == null)
-                    return NotFound(new { message = "Company not found" });
+                    return NotFound("Company not found");
 
                 // Check if CompanyCode is being changed
                 if (existingCompany.CompanyCode != dto.CompanyCode)
-					return BadRequest(new { message = "Company Code cannot change" });
+					return BadRequest("Company Code cannot change");
 
 				var company = dto.ToModel(CurrentUser);
 
@@ -51,7 +51,7 @@ namespace RentAll.Api.Controllers
 					catch (Exception ex)
 					{
 						_logger.LogError(ex, "Error saving company logo");
-						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+						return ServerError("An error occurred while saving the logo file");
 					}
 				}
 				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
@@ -75,7 +75,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating company: {CompanyId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the company" });
+                return ServerError("An error occurred while updating the company");
             }
         }
     }

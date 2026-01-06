@@ -21,3 +21,4 @@ public class OfficeConfigurationEntity
 	public bool IsActive { get; set; }
 }
 
+

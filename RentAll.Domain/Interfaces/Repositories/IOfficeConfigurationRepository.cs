@@ -17,3 +17,4 @@ public interface IOfficeConfigurationRepository
 	Task DeleteByOfficeIdAsync(int officeId);
 }
 
+

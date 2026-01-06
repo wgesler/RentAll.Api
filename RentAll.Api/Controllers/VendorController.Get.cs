@@ -29,7 +29,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting all vendors");
-				return StatusCode(500, new { message = "An error occurred while retrieving vendors" });
+				return ServerError("An error occurred while retrieving vendors");
 			}
 		}
 		
@@ -42,13 +42,13 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Vendor ID is required" });
+                return BadRequest("Vendor ID is required");
 
             try
             {
                 var vendor = await _vendorRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (vendor == null)
-                    return NotFound(new { message = "Vendor not found" });
+                    return NotFound("Vendor not found");
 
                 var response = new VendorResponseDto(vendor);
                 if (!string.IsNullOrWhiteSpace(vendor.LogoPath))
@@ -59,7 +59,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting vendor by ID: {VendorId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the vendor" });
+                return ServerError("An error occurred while retrieving the vendor");
             }
         }
     }

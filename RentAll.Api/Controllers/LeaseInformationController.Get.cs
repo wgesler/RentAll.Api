@@ -14,20 +14,20 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> GetById(Guid id)
 		{
 			if (id == Guid.Empty)
-				return BadRequest(new { message = "Lease Information ID is required" });
+				return BadRequest("Lease Information ID is required");
 
 			try
 			{
 				var leaseInformation = await _leaseInformationRepository.GetByIdAsync(id, CurrentOrganizationId);
 				if (leaseInformation == null)
-					return NotFound(new { message = "Lease information not found" });
+					return NotFound("Lease information not found");
 
 				return Ok(new LeaseInformationResponseDto(leaseInformation));
 			}
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting lease information by ID: {LeaseInformationId}", id);
-				return StatusCode(500, new { message = "An error occurred while retrieving the lease information" });
+				return ServerError("An error occurred while retrieving the lease information");
 			}
 		}
 
@@ -40,25 +40,25 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> GetByPropertyId(Guid propertyId)
 		{
 			if (propertyId == Guid.Empty)
-				return BadRequest(new { message = "Property ID is required" });
+				return BadRequest("Property ID is required");
 
 			try
 			{
 				// Verify property belongs to organization
 				var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
 				if (property == null)
-					return NotFound(new { message = "Property not found" });
+					return NotFound("Property not found");
 
 				var leaseInformation = await _leaseInformationRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
 				if (leaseInformation == null)
-					return NotFound(new { message = "Lease information not found" });
+					return NotFound("Lease information not found");
 
 				return Ok(new LeaseInformationResponseDto(leaseInformation));
 			}
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error getting lease information by Property ID: {PropertyId}", propertyId);
-				return StatusCode(500, new { message = "An error occurred while retrieving the lease information" });
+				return ServerError("An error occurred while retrieving the lease information");
 			}
 		}
 	}

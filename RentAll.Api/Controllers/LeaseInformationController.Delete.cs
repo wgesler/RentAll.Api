@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> Delete(Guid id)
 		{
 			if (id == Guid.Empty)
-				return BadRequest(new { message = "Lease Information ID is required" });
+				return BadRequest("Lease Information ID is required");
 
 			try
 			{
 				// Check if lease information exists
 				var leaseInformation = await _leaseInformationRepository.GetByIdAsync(id, CurrentOrganizationId);
 				if (leaseInformation == null)
-					return NotFound(new { message = "Lease information not found" });
+					return NotFound("Lease information not found");
 
 				await _leaseInformationRepository.DeleteByIdAsync(id);
 				return NoContent();
@@ -28,7 +28,7 @@ namespace RentAll.Api.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error deleting lease information: {LeaseInformationId}", id);
-				return StatusCode(500, new { message = "An error occurred while deleting the lease information" });
+				return ServerError("An error occurred while deleting the lease information");
 			}
 		}
 	}

@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Vendor ID is required" });
+                return BadRequest("Vendor ID is required");
 
             try
             {
                 // Check if vendor exists
                 var vendor = await _vendorRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (vendor == null)
-                    return NotFound(new { message = "Vendor not found" });
+                    return NotFound("Vendor not found");
 
                 await _vendorRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -28,11 +28,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting vendor: {VendorId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the vendor" });
+                return ServerError("An error occurred while deleting the vendor");
             }
         }
     }
 }
+
 
 
 

@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all regions");
-                return StatusCode(500, new { message = "An error occurred while retrieving regions" });
+                return ServerError("An error occurred while retrieving regions");
             }
         }
 
@@ -34,24 +34,25 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             if (id <= 0)
-                return BadRequest(new { message = "Region ID is required" });
+                return BadRequest("Region ID is required");
 
             try
             {
                 var region = await _regionRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (region == null)
-                    return NotFound(new { message = "Region not found" });
+                    return NotFound("Region not found");
 
                 return Ok(new RegionResponseDto(region));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting region by ID: {RegionId}", id);
-                return StatusCode(500, new { message = "An error occurred while retrieving the region" });
+                return ServerError("An error occurred while retrieving the region");
             }
         }
     }
 }
+
 
 
 

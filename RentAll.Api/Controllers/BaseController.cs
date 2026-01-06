@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
+using RentAll.Api.Dtos.Common;
 
 namespace RentAll.Api.Controllers
 {
@@ -9,6 +10,72 @@ namespace RentAll.Api.Controllers
 	{
 		protected Guid CurrentUser => GetCurrentUserIdFromJwt();
 		protected Guid CurrentOrganizationId => GetCurrentUserOrganizationIdFromJwt();
+
+		protected ErrorResponseDto ErrorResponse(string message)
+		{
+			var controllerName = this.GetType().Name.Replace("Controller", "");
+			var httpMethod = HttpContext.Request.Method;
+			var actionName = ControllerContext.ActionDescriptor?.ActionName ?? "";
+			
+			// Get route - try multiple sources
+			var route = "";
+			var actionDescriptor = ControllerContext.ActionDescriptor;
+			if (actionDescriptor != null)
+			{
+				// Try AttributeRouteInfo template first (e.g., "propertyhtml/{propertyId}")
+				route = actionDescriptor.AttributeRouteInfo?.Template ?? "";
+				
+				// If no template, build from controller and action route values
+				if (string.IsNullOrEmpty(route))
+				{
+					var routeValues = actionDescriptor.RouteValues;
+					if (routeValues != null)
+					{
+						var controller = routeValues.TryGetValue("controller", out var controllerValue) ? controllerValue : "";
+						var action = routeValues.TryGetValue("action", out var actionValue) ? actionValue : "";
+						if (!string.IsNullOrEmpty(controller) && !string.IsNullOrEmpty(action))
+						{
+							route = $"{controller}/{action}";
+						}
+					}
+				}
+			}
+
+			return new ErrorResponseDto
+			{
+				Controller = controllerName,
+				HttpMethod = httpMethod,
+				ActionName = actionName,
+				Route = route,
+				Message = message
+			};
+		}
+
+		// Wrapper methods for common HTTP error responses
+		protected IActionResult BadRequest(string message)
+		{
+			return base.BadRequest(ErrorResponse(message));
+		}
+
+		protected IActionResult NotFound(string message)
+		{
+			return base.NotFound(ErrorResponse(message));
+		}
+
+		protected IActionResult Unauthorized(string message)
+		{
+			return base.Unauthorized(ErrorResponse(message));
+		}
+
+		protected IActionResult Conflict(string message)
+		{
+			return base.Conflict(ErrorResponse(message));
+		}
+
+		protected IActionResult ServerError(string message)
+		{
+			return StatusCode(500, ErrorResponse(message));
+		}
 
 		private Guid GetCurrentUserIdFromJwt()
 		{

@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Contact ID is required" });
+                return BadRequest("Contact ID is required");
 
             try
             {
                 // Check if contact exists
                 var contact = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (contact == null)
-                    return NotFound(new { message = "Contact not found" });
+                    return NotFound("Contact not found");
 
                 await _contactRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -28,11 +28,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting contact: {ContactId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the contact" });
+                return ServerError("An error occurred while deleting the contact");
             }
         }
     }
 }
+
 
 
 

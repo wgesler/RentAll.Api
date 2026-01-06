@@ -14,15 +14,15 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Create([FromBody] AreaCreateDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Area data is required" });
+                return BadRequest("Area data is required");
 
             if (string.IsNullOrWhiteSpace(dto.AreaCode))
-                return BadRequest(new { message = "Area Code is required" });
+                return BadRequest("Area Code is required");
 
             try
             {
                 if (await _areaRepository.ExistsByAreaCodeAsync(dto.AreaCode, CurrentOrganizationId, dto.OfficeId))
-                    return Conflict(new { message = "Area Code already exists" });
+                    return Conflict("Area Code already exists");
 
                 var area = dto.ToModel();
                 var createdArea = await _areaRepository.CreateAsync(area);
@@ -31,11 +31,12 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating area");
-                return StatusCode(500, new { message = "An error occurred while creating the area" });
+                return ServerError("An error occurred while creating the area");
             }
         }
     }
 }
+
 
 
 

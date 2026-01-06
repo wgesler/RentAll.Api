@@ -17,3 +17,4 @@ public interface IPropertyHtmlRepository
 	Task DeleteByPropertyIdAsync(Guid propertyId);
 }
 
+

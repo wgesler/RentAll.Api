@@ -13,14 +13,14 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             if (id == Guid.Empty)
-                return BadRequest(new { message = "Property ID is required" });
+                return BadRequest("Property ID is required");
 
             try
             {
                 // Check if property exists
                 var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (property == null)
-                    return NotFound(new { message = "Property not found" });
+                    return NotFound("Property not found");
 
                 await _propertyRepository.DeleteByIdAsync(id);
                 return NoContent();
@@ -28,7 +28,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting property: {PropertyId}", id);
-                return StatusCode(500, new { message = "An error occurred while deleting the property" });
+                return ServerError("An error occurred while deleting the property");
             }
         }
     }

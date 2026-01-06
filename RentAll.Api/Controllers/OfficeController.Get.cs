@@ -30,7 +30,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting all offices");
-                return StatusCode(500, new { message = "An error occurred while retrieving offices" });
+                return ServerError("An error occurred while retrieving offices");
             }
         }
 
@@ -43,13 +43,13 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetById(int officeId)
         {
             if (officeId <= 0)
-                return BadRequest(new { message = "Office ID is required" });
+                return BadRequest("Office ID is required");
 
             try
             {
                 var office = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
                 if (office == null)
-                    return NotFound(new { message = "Office not found" });
+                    return NotFound("Office not found");
 
                 var response = new OfficeResponseDto(office);
                 if (!string.IsNullOrWhiteSpace(office.LogoPath))
@@ -60,7 +60,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting office by ID: {OfficeId}", officeId);
-                return StatusCode(500, new { message = "An error occurred while retrieving the office" });
+                return ServerError("An error occurred while retrieving the office");
             }
         }
 
@@ -73,20 +73,20 @@ namespace RentAll.Api.Controllers
 		public async Task<IActionResult> GetConfiguration(int officeId)
 		{
 			if (officeId <= 0)
-				return BadRequest(new { message = "Office ID is required" });
+				return BadRequest("Office ID is required");
 
 			try
 			{
 				var configuration = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
-				if (configuration == null)
-					return NotFound(new { message = "Office configuration not found" });
+			if (configuration == null)
+				return NotFound("Office configuration not found");
 
 				return Ok(new OfficeConfigurationResponseDto(configuration));
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting office configuration: {OfficeId}", officeId);
-				return StatusCode(500, new { message = "An error occurred while retrieving the office configuration" });
+			_logger.LogError(ex, "Error getting office configuration: {OfficeId}", officeId);
+			return ServerError("An error occurred while retrieving the office configuration");
 			}
 		}
 	}

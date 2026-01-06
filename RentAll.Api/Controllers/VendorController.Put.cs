@@ -16,22 +16,22 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVendorDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Vendor data is required" });
+                return BadRequest("Vendor data is required");
 
             var (isValid, errorMessage) = dto.IsValid(id);
             if (!isValid)
-                return BadRequest(new { message = errorMessage });
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if vendor exists
                 var existingVendor = await _vendorRepository.GetByIdAsync(id, CurrentOrganizationId);
                 if (existingVendor == null)
-                    return NotFound(new { message = "Vendor not found" });
+                    return NotFound("Vendor not found");
 
                 // Check if VendorCode is being changed
                 if (existingVendor.VendorCode != dto.VendorCode)
-					return BadRequest(new { message = "Vendor Code cannot change" });
+					return BadRequest("Vendor Code cannot change");
 
 				var vendor = dto.ToModel(CurrentUser);
 
@@ -51,7 +51,7 @@ namespace RentAll.Api.Controllers
 					catch (Exception ex)
 					{
 						_logger.LogError(ex, "Error saving vendor logo");
-						return StatusCode(500, new { message = "An error occurred while saving the logo file" });
+						return ServerError("An error occurred while saving the logo file");
 					}
 				}
 				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
@@ -75,7 +75,7 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating vendor: {VendorId}", id);
-                return StatusCode(500, new { message = "An error occurred while updating the vendor" });
+                return ServerError("An error occurred while updating the vendor");
             }
         }
     }
