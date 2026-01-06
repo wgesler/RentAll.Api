@@ -29,8 +29,12 @@ namespace RentAll.Api.Controllers
                 if (existingBuilding == null)
                     return NotFound("Building not found");
 
-                if (existingBuilding.BuildingCode != dto.BuildingCode)
-					return BadRequest("building Code cannot change");
+				// Check if BuildingCode is being changed and if the new code already exists
+				if (existingBuilding.BuildingCode != dto.BuildingCode)
+				{
+					if (await _buildingRepository.ExistsByBuildingCodeAsync(dto.BuildingCode, CurrentOrganizationId, dto.OfficeId))
+						return Conflict("Building Code already exists");
+				}
 
 				var building = dto.ToModel();
                 var updatedBuilding = await _buildingRepository.UpdateByIdAsync(building);
