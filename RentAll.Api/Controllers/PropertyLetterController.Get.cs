@@ -25,7 +25,7 @@ namespace RentAll.Api.Controllers
 
 				var propertyLetter = await _propertyLetterRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
 				if (propertyLetter == null)
-					return NotFound("Property letter not found");
+					return Ok(); // Not required
 
 				return Ok(new PropertyLetterResponseDto(propertyLetter));
 			}

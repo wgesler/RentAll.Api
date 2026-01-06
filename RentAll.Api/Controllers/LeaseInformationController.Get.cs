@@ -51,7 +51,7 @@ namespace RentAll.Api.Controllers
 
 				var leaseInformation = await _leaseInformationRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
 				if (leaseInformation == null)
-					return NotFound("Lease information not found");
+					return Ok(); // Not required
 
 				return Ok(new LeaseInformationResponseDto(leaseInformation));
 			}

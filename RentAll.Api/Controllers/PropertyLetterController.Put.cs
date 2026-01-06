@@ -22,14 +22,20 @@ namespace RentAll.Api.Controllers
 
 			try
 			{
+				var propertyLetter = dto.ToModel(CurrentUser);
+
 				// Check if property letter exists
 				var existing = await _propertyLetterRepository.GetByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId);
 				if (existing == null)
-					return NotFound("Property letter not found");
-
-				var propertyLetter = dto.ToModel(CurrentUser);
-				var updatedPropertyLetter = await _propertyLetterRepository.UpdateByIdAsync(propertyLetter);
-				return Ok(new PropertyLetterResponseDto(updatedPropertyLetter));
+				{
+					var addPropertyLetter = await _propertyLetterRepository.CreateAsync(propertyLetter);
+					return Ok(new PropertyLetterResponseDto(addPropertyLetter));
+				}
+				else
+				{
+					var updatedPropertyLetter = await _propertyLetterRepository.UpdateByIdAsync(propertyLetter);
+					return Ok(new PropertyLetterResponseDto(updatedPropertyLetter));
+				}
 			}
 			catch (Exception ex)
 			{
