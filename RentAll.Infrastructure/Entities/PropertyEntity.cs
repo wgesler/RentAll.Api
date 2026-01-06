@@ -21,7 +21,7 @@ public class PropertyEntity
 	public int PropertyStyleId { get; set; }
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
-	public int? OfficeId { get; set; }
+	public int OfficeId { get; set; }
 	public int? BuildingId { get; set; }
 	public int? RegionId { get; set; }
 	public int? AreaId { get; set; }

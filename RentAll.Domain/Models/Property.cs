@@ -23,7 +23,7 @@ public class Property
 	public PropertyStyle PropertyStyle { get; set; }
 	public PropertyType PropertyType { get; set; }
 	public PropertyStatus PropertyStatus { get; set; }
-	public int? OfficeId { get; set; }
+	public int OfficeId { get; set; }
 	public int? BuildingId { get; set; }
 	public int? RegionId { get; set; }
 	public int? AreaId { get; set; }

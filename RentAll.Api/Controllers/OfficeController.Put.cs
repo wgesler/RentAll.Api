@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.OfficeConfigurations;
 using RentAll.Api.Dtos.Offices;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -28,8 +29,8 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				var existingOffice = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-			if (existingOffice == null)
-				return NotFound("Office not found");
+				if (existingOffice == null)
+					return NotFound("Office not found");
 
 				if (existingOffice.OfficeCode != dto.OfficeCode)
 				{
@@ -54,8 +55,8 @@ namespace RentAll.Api.Controllers
 					}
 					catch (Exception ex)
 					{
-					_logger.LogError(ex, "Error saving office logo");
-					return ServerError("An error occurred while saving the logo file");
+						_logger.LogError(ex, "Error saving office logo");
+						return ServerError("An error occurred while saving the logo file");
 					}
 				}
 				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
@@ -106,7 +107,7 @@ namespace RentAll.Api.Controllers
 				return NotFound("Office not found");
 
 			// Verify configuration exists
-			var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
+			var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId, CurrentOrganizationId);
 			if (existingConfig == null)
 				return NotFound("Office configuration not found");
 

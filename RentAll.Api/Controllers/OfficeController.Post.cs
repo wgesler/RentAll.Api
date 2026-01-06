@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using RentAll.Api.Dtos.OfficeConfigurations;
 using RentAll.Api.Dtos.Offices;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -44,11 +46,12 @@ namespace RentAll.Api.Controllers
 				}
 				
                 var createdOffice = await _officeRepository.CreateAsync(office);
-                var response = new OfficeResponseDto(createdOffice);
+				var createdConfiguration = await _officeConfigurationRepository.CreateAsync(new OfficeConfiguration(createdOffice.OfficeId));
+
+				var response = new OfficeResponseDto(createdOffice);
                 if (!string.IsNullOrWhiteSpace(createdOffice.LogoPath))
-                {
                     response.FileDetails = await _fileService.GetFileDetailsAsync(createdOffice.LogoPath);
-                }
+
                 return CreatedAtAction(nameof(GetById), new { officeId = createdOffice.OfficeId }, response);
             }
             catch (Exception ex)
@@ -77,13 +80,13 @@ namespace RentAll.Api.Controllers
 			{
 				// Verify office exists and belongs to organization
 				var office = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-			if (office == null)
-				return NotFound("Office not found");
+				if (office == null)
+					return NotFound("Office not found");
 
-			// Check if configuration already exists
-			var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
-			if (existingConfig != null)
-				return Conflict("Office configuration already exists for this office");
+				// Check if configuration already exists
+				var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId, CurrentOrganizationId);
+				if (existingConfig != null)
+					return Conflict("Office configuration already exists for this office");
 
 				var configuration = dto.ToModel();
 				var createdConfiguration = await _officeConfigurationRepository.CreateAsync(configuration);

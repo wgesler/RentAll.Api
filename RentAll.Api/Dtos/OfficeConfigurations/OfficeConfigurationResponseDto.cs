@@ -5,6 +5,8 @@ namespace RentAll.Api.Dtos.OfficeConfigurations;
 public class OfficeConfigurationResponseDto
 {
 	public int OfficeId { get; set; }
+	public string? OfficeCode { get; set; } 
+	public string? Name { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? AfterHoursInstructions { get; set; }
@@ -25,6 +27,8 @@ public class OfficeConfigurationResponseDto
 	public OfficeConfigurationResponseDto(OfficeConfiguration officeConfiguration)
 	{
 		OfficeId = officeConfiguration.OfficeId;
+		OfficeCode = officeConfiguration.OfficeCode;
+		Name = officeConfiguration.Name;
 		MaintenanceEmail = officeConfiguration.MaintenanceEmail;
 		AfterHoursPhone = officeConfiguration.AfterHoursPhone;
 		AfterHoursInstructions = officeConfiguration.AfterHoursInstructions;

@@ -3,6 +3,8 @@ namespace RentAll.Domain.Models;
 public class OfficeConfiguration
 {
 	public int OfficeId { get; set; }
+	public string? OfficeCode { get; set; }
+	public string? Name { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? AfterHoursInstructions { get; set; }
@@ -19,6 +21,10 @@ public class OfficeConfiguration
 	public decimal ParkingLowEnd { get; set; }
 	public decimal ParkingHighEnd { get; set; }
 	public bool IsActive { get; set; }
+
+	public OfficeConfiguration() { }
+	public OfficeConfiguration(int officeId) { OfficeId = officeId; IsActive = true; }
+
 }
 
 

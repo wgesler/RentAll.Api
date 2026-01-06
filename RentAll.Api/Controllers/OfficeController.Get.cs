@@ -65,6 +65,26 @@ namespace RentAll.Api.Controllers
         }
 
 		/// <summary>
+		/// Get all office configurations
+		/// </summary>
+		/// <returns>List of office configurations</returns>
+		[HttpGet("configuration")]
+		public async Task<IActionResult> GetConfigurations()
+		{
+			try
+			{
+				var configurations = await _officeConfigurationRepository.GetAllAsync(CurrentOrganizationId);
+				var response = configurations.Select(c => new OfficeConfigurationResponseDto(c));
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting all office configurations");
+				return ServerError("An error occurred while retrieving office configurations");
+			}
+		}
+
+		/// <summary>
 		/// Get office configuration by Office ID
 		/// </summary>
 		/// <param name="officeId">Office ID</param>
@@ -77,9 +97,9 @@ namespace RentAll.Api.Controllers
 
 			try
 			{
-				var configuration = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId);
-			if (configuration == null)
-				return NotFound("Office configuration not found");
+				var configuration = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId, CurrentOrganizationId);
+			    if (configuration == null)
+				    return NotFound("Office configuration not found");
 
 				return Ok(new OfficeConfigurationResponseDto(configuration));
 			}

@@ -20,6 +20,8 @@ public partial class OfficeConfigurationRepository : IOfficeConfigurationReposit
 		return new OfficeConfiguration
 		{
 			OfficeId = e.OfficeId,
+			OfficeCode = e.OfficeCode,
+			Name = e.Name,
 			MaintenanceEmail = e.MaintenanceEmail,
 			AfterHoursPhone = e.AfterHoursPhone,
 			AfterHoursInstructions = e.AfterHoursInstructions,

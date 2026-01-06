@@ -3,6 +3,8 @@ namespace RentAll.Infrastructure.Entities;
 public class OfficeConfigurationEntity
 {
 	public int OfficeId { get; set; }
+	public string? OfficeCode { get; set; }
+	public string? Name { get; set; }
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? AfterHoursInstructions { get; set; }
