@@ -2,8 +2,8 @@ namespace RentAll.Domain.Enums;
 
 public enum ReservationNotice
 {
-	ThirtyDays = 1,
-	FourteenDays = 2
+	ThirtyDays = 0,
+	FourteenDays = 1
 }
 
 
