@@ -26,6 +26,7 @@ public partial class OfficeConfigurationRepository : IOfficeConfigurationReposit
 			AfterHoursPhone = e.AfterHoursPhone,
 			AfterHoursInstructions = e.AfterHoursInstructions,
 			DefaultDeposit = e.DefaultDeposit,
+			DefaultSdw = e.DefaultSdw,
 			UtilityOneBed = e.UtilityOneBed,
 			UtilityTwoBed = e.UtilityTwoBed,
 			UtilityThreeBed = e.UtilityThreeBed,

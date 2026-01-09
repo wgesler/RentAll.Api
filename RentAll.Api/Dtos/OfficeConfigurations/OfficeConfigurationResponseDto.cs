@@ -11,6 +11,7 @@ public class OfficeConfigurationResponseDto
 	public string? AfterHoursPhone { get; set; }
 	public string? AfterHoursInstructions { get; set; }
 	public decimal DefaultDeposit { get; set; }
+	public decimal DefaultSdw { get; set; }
 	public decimal UtilityOneBed { get; set; }
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
@@ -33,6 +34,7 @@ public class OfficeConfigurationResponseDto
 		AfterHoursPhone = officeConfiguration.AfterHoursPhone;
 		AfterHoursInstructions = officeConfiguration.AfterHoursInstructions;
 		DefaultDeposit = officeConfiguration.DefaultDeposit;
+		DefaultSdw = officeConfiguration.DefaultSdw;
 		UtilityOneBed = officeConfiguration.UtilityOneBed;
 		UtilityTwoBed = officeConfiguration.UtilityTwoBed;
 		UtilityThreeBed = officeConfiguration.UtilityThreeBed;

@@ -9,6 +9,7 @@ public class OfficeConfigurationCreateDto
 	public string? AfterHoursPhone { get; set; }
 	public string? AfterHoursInstructions { get; set; }
 	public decimal DefaultDeposit { get; set; }
+	public decimal DefaultSdw { get; set; }
 	public decimal UtilityOneBed { get; set; }
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
@@ -31,6 +32,7 @@ public class OfficeConfigurationCreateDto
 			AfterHoursPhone = AfterHoursPhone,
 			AfterHoursInstructions = AfterHoursInstructions,
 			DefaultDeposit = DefaultDeposit,
+			DefaultSdw = DefaultSdw,
 			UtilityOneBed = UtilityOneBed,
 			UtilityTwoBed = UtilityTwoBed,
 			UtilityThreeBed = UtilityThreeBed,
