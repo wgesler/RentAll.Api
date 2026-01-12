@@ -12,6 +12,7 @@ public class OfficeConfigurationResponseDto
 	public string? AfterHoursInstructions { get; set; }
 	public decimal DefaultDeposit { get; set; }
 	public decimal DefaultSdw { get; set; }
+	public decimal DefaultKeyFee { get; set; }
 	public decimal UtilityOneBed { get; set; }
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
@@ -35,6 +36,7 @@ public class OfficeConfigurationResponseDto
 		AfterHoursInstructions = officeConfiguration.AfterHoursInstructions;
 		DefaultDeposit = officeConfiguration.DefaultDeposit;
 		DefaultSdw = officeConfiguration.DefaultSdw;
+		DefaultKeyFee = officeConfiguration.DefaultKeyFee;
 		UtilityOneBed = officeConfiguration.UtilityOneBed;
 		UtilityTwoBed = officeConfiguration.UtilityTwoBed;
 		UtilityThreeBed = officeConfiguration.UtilityThreeBed;
