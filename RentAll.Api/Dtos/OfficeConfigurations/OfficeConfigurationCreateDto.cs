@@ -11,6 +11,8 @@ public class OfficeConfigurationCreateDto
 	public decimal DefaultDeposit { get; set; }
 	public decimal DefaultSdw { get; set; }
 	public decimal DefaultKeyFee { get; set; }
+	public decimal UndisclosedPetFee { get; set; }
+	public decimal MinimumSmokingFee { get; set; }
 	public decimal UtilityOneBed { get; set; }
 	public decimal UtilityTwoBed { get; set; }
 	public decimal UtilityThreeBed { get; set; }
@@ -35,6 +37,8 @@ public class OfficeConfigurationCreateDto
 			DefaultDeposit = DefaultDeposit,
 			DefaultSdw = DefaultSdw,
 			DefaultKeyFee = DefaultKeyFee,
+			UndisclosedPetFee = UndisclosedPetFee,
+			MinimumSmokingFee = MinimumSmokingFee,
 			UtilityOneBed = UtilityOneBed,
 			UtilityTwoBed = UtilityTwoBed,
 			UtilityThreeBed = UtilityThreeBed,

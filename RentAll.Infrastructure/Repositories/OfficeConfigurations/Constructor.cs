@@ -28,6 +28,8 @@ public partial class OfficeConfigurationRepository : IOfficeConfigurationReposit
 			DefaultDeposit = e.DefaultDeposit,
 			DefaultSdw = e.DefaultSdw,
 			DefaultKeyFee = e.DefaultKeyFee,
+			UndisclosedPetFee = e.UndisclosedPetFee,
+			MinimumSmokingFee = e.MinimumSmokingFee,
 			UtilityOneBed = e.UtilityOneBed,
 			UtilityTwoBed = e.UtilityTwoBed,
 			UtilityThreeBed = e.UtilityThreeBed,
