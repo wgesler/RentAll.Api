@@ -9,7 +9,7 @@ public class CreateDocumentDto
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
 	public int DocumentTypeId { get; set; }
-	public FileDetails? FileDetails { get; set; }
+	public FileDetails FileDetails { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -31,18 +31,13 @@ public class CreateDocumentDto
 
 	public Document ToModel(Guid organizationId, string documentPath, Guid currentUser)
 	{
-		var fileExtension = Path.GetExtension(FileDetails!.FileName);
-		if (string.IsNullOrWhiteSpace(fileExtension))
-			fileExtension = ".pdf"; // Default to .pdf if no extension
-
 		return new Document
 		{
-			DocumentId = Guid.NewGuid(),
 			OrganizationId = organizationId,
 			OfficeId = OfficeId,
 			DocumentType = (DocumentType)DocumentTypeId,
 			FileName = FileDetails.FileName,
-			FileExtension = fileExtension,
+			FileExtension = FileDetails.,
 			ContentType = FileDetails.ContentType,
 			DocumentPath = documentPath,
 			IsDeleted = false,

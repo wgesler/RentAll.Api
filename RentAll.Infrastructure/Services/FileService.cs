@@ -176,14 +176,23 @@ public class FileService : IFileService
 	public async Task<string> SaveDocumentAsync(Stream fileStream, string fileName, string contentType, DocumentType documentType)
 	{
 		// Validate file type
-		var allowedExtensions = new[] { ".pdf" };
+		var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt" };
 		var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
 		if (!allowedExtensions.Contains(fileExtension))
 			throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
 
 		// Validate content type
-		if (!contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-			throw new ArgumentException("Content type must be application/pdf");
+		var allowedContentTypes = new[]
+		{
+			"application/pdf",
+			"application/msword",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			"image/jpeg",
+			"image/png",
+			"text/plain"
+		};
+		if (!allowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
+			throw new ArgumentException($"Invalid content type. Allowed types: {string.Join(", ", allowedContentTypes)}");
 
 		// Create directory if it doesn't exist
 		var uploadsPath = Path.Combine(_wwwRootPath, "documents", documentType.ToString().ToLowerInvariant());
@@ -266,6 +275,11 @@ public class FileService : IFileService
 			var contentType = extension switch
 			{
 				".pdf" => "application/pdf",
+				".doc" => "application/msword",
+				".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+				".jpg" or ".jpeg" => "image/jpeg",
+				".png" => "image/png",
+				".txt" => "text/plain",
 				_ => "application/octet-stream"
 			};
 
