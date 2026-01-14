@@ -10,10 +10,6 @@ public class UpdateDocumentDto
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
 	public int DocumentTypeId { get; set; }
-	public string FileName { get; set; } = string.Empty;
-	public string FileExtension { get; set; } = string.Empty;
-	public string ContentType { get; set; } = string.Empty;
-	public string DocumentPath { get; set; } = string.Empty;
 	public FileDetails? FileDetails { get; set; }
 	public bool IsDeleted { get; set; }
 
@@ -25,25 +21,18 @@ public class UpdateDocumentDto
 		if (DocumentId != id)
 			return (false, "Document ID mismatch");
 
-		if (OrganizationId == Guid.Empty)
-			return (false, "OrganizationId is required");
+		if (FileDetails == null || string.IsNullOrWhiteSpace(FileDetails.File))
+			return (false, "File is required");
 
-		if (string.IsNullOrWhiteSpace(FileName))
+		if (string.IsNullOrWhiteSpace(FileDetails.FileName))
 			return (false, "File name is required");
 
-		if (string.IsNullOrWhiteSpace(DocumentPath))
-			return (false, "Document path is required");
+		if (string.IsNullOrWhiteSpace(FileDetails.ContentType))
+			return (false, "Content type is required");
 
 		// Validate enum value
 		if (!Enum.IsDefined(typeof(DocumentType), DocumentTypeId))
 			return (false, $"Invalid Document value: {DocumentTypeId}");
-
-		// If FileDetails is provided, validate it
-		if (FileDetails != null && !string.IsNullOrWhiteSpace(FileDetails.File))
-		{
-			if (!FileDetails.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-				return (false, "Only PDF files are allowed");
-		}
 
 		return (true, null);
 	}
@@ -56,10 +45,10 @@ public class UpdateDocumentDto
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
 			DocumentType = (DocumentType)DocumentTypeId,
-			FileName = FileName,
-			FileExtension = FileExtension,
-			ContentType = ContentType,
-			DocumentPath = DocumentPath,
+			FileName = Path.GetFileNameWithoutExtension(FileDetails!.FileName),
+			FileExtension = Path.GetExtension(FileDetails!.FileName),
+			ContentType = FileDetails!.ContentType,
+			DocumentPath = string.Empty,
 			IsDeleted = IsDeleted,
 			ModifiedBy = currentUser
 		};

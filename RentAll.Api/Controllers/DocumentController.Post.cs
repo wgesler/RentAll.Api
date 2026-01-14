@@ -23,7 +23,7 @@ namespace RentAll.Api.Controllers
 
 			try
 			{
-				var model = dto.ToModel(CurrentOrganizationId, string.Empty, CurrentUser);
+				var model = dto.ToModel(CurrentOrganizationId, CurrentUser);
 
 				// Handle file upload if provided
 				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))

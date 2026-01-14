@@ -74,7 +74,7 @@ namespace RentAll.Api.Controllers
 				if (!isValid)
 					return BadRequest(new { message = errorMessage });
 
-				var model = createDto.ToModel(CurrentOrganizationId, string.Empty, CurrentUser);
+				var model = createDto.ToModel(CurrentOrganizationId, CurrentUser);
 
 				// Save PDF file
 				var documentPath = await _fileService.SaveDocumentAsync(
