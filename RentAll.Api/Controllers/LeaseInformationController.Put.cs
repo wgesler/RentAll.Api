@@ -25,7 +25,7 @@ namespace RentAll.Api.Controllers
 				var leaseInformation = dto.ToModel(CurrentUser);
 
 				// Check if lease information exists
-				var existing = await _leaseInformationRepository.GetByIdAsync(dto.LeaseInformationId, CurrentOrganizationId);
+				var existing = await _leaseInformationRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
 				if (existing == null)
 				{
 					var addLeaseInformation = await _leaseInformationRepository.CreateAsync(leaseInformation);
@@ -39,7 +39,7 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating lease information: {LeaseInformationId}", dto.LeaseInformationId);
+				_logger.LogError(ex, "Error updating lease information: {PropertyId}", dto.PropertyId);
 				return ServerError("An error occurred while updating the lease information");
 			}
 		}

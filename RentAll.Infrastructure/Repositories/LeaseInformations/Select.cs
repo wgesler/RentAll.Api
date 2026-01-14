@@ -8,12 +8,12 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 {
 	public partial class LeaseInformationRepository : ILeaseInformationRepository
 	{
-		public async Task<LeaseInformation?> GetByIdAsync(Guid leaseInformationId, Guid organizationId)
+		public async Task<LeaseInformation?> GetByIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
 			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("dbo.LeaseInformation_GetById", new
 			{
-				LeaseInformationId = leaseInformationId,
+				PropertyId = propertyId,
 				OrganizationId = organizationId
 			});
 

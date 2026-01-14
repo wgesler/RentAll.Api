@@ -13,8 +13,8 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 			await using var db = new SqlConnection(_dbConnectionString);
 			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("dbo.LeaseInformation_Add", new
 			{
-				OrganizationId = leaseInformation.OrganizationId,
 				PropertyId = leaseInformation.PropertyId,
+				OrganizationId = leaseInformation.OrganizationId,
 				ContactId = leaseInformation.ContactId,
 				RentalPayment = leaseInformation.RentalPayment,
 				SecurityDeposit = leaseInformation.SecurityDeposit,

@@ -19,9 +19,8 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 		{
 			var response = new LeaseInformation()
 			{
-				LeaseInformationId = e.LeaseInformationId,
-				OrganizationId = e.OrganizationId,
 				PropertyId = e.PropertyId,
+				OrganizationId = e.OrganizationId,
 				ContactId = e.ContactId,
 				RentalPayment = e.RentalPayment,
 				SecurityDeposit = e.SecurityDeposit,

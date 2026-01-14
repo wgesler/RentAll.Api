@@ -4,8 +4,8 @@ namespace RentAll.Api.Dtos.LeaseInformations;
 
 public class CreateLeaseInformationDto
 {
-	public Guid OrganizationId { get; set; }
 	public Guid PropertyId { get; set; }
+	public Guid OrganizationId { get; set; }
 	public Guid? ContactId { get; set; }
 	public string? RentalPayment { get; set; }
 	public string? SecurityDeposit { get; set; }
@@ -47,8 +47,8 @@ public class CreateLeaseInformationDto
 	{
 		return new LeaseInformation
 		{
-			OrganizationId = OrganizationId,
 			PropertyId = PropertyId,
+			OrganizationId = OrganizationId,
 			ContactId = ContactId,
 			RentalPayment = RentalPayment,
 			SecurityDeposit = SecurityDeposit,

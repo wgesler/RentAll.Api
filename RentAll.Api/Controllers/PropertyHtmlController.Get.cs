@@ -13,19 +13,19 @@ namespace RentAll.Api.Controllers
 		[HttpGet("{propertyId}")]
 		public async Task<IActionResult> GetByPropertyId(Guid propertyId)
 		{
-		if (propertyId == Guid.Empty)
-			return BadRequest("Property ID is required");
+			if (propertyId == Guid.Empty)
+				return BadRequest("Property ID is required");
 
 			try
 			{
 				// Verify property belongs to organization
 				var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
-			if (property == null)
-				return NotFound("Property not found");
+				if (property == null)
+					return NotFound("Property not found");
 
-			var propertyHtml = await _propertyHtmlRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
-			if (propertyHtml == null)
-				return NotFound("Property HTML not found");
+				var propertyHtml = await _propertyHtmlRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
+				if (propertyHtml == null)
+					return NotFound("Property HTML not found");
 
 				return Ok(new PropertyHtmlResponseDto(propertyHtml));
 			}
