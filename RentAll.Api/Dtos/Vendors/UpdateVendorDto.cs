@@ -7,6 +7,7 @@ public class UpdateVendorDto
 {
     public Guid OrganizationId { get; set; }
     public Guid VendorId { get; set; }
+	public int OfficeId { get; set; }
     public string VendorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
@@ -62,6 +63,7 @@ public class UpdateVendorDto
         {
             OrganizationId = OrganizationId,
             VendorId = VendorId,
+			OfficeId = OfficeId,
             VendorCode = VendorCode,
             Name = Name,
             Address1 = Address1,

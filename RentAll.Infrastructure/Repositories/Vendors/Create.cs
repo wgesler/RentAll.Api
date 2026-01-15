@@ -14,6 +14,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 			var res = await db.DapperProcQueryAsync<VendorEntity>("dbo.Vendor_Add", new
 			{
 				OrganizationId = vendor.OrganizationId,
+				OfficeId = vendor.OfficeId,
 				VendorCode = vendor.VendorCode,
 				Name = vendor.Name,
 				Address1 = vendor.Address1,

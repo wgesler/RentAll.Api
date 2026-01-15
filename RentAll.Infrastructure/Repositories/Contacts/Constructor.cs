@@ -22,6 +22,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             {
                 ContactId = e.ContactId,
                 OrganizationId = e.OrganizationId,
+				OfficeId = e.OfficeId,
                 ContactCode = e.ContactCode,
                 EntityType = (EntityType)e.EntityTypeId,
                 EntityId = e.EntityId,

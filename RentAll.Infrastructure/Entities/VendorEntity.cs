@@ -3,8 +3,9 @@ namespace RentAll.Infrastructure.Entities;
 public class VendorEntity
 {
     public Guid VendorId { get; set; }
-    public Guid OrganizationId { get; set; }
-    public string VendorCode { get; set; } = string.Empty;
+	public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
+	public string VendorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }

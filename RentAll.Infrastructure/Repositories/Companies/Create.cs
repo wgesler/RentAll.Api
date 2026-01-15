@@ -14,6 +14,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_Add", new
 			{
 				OrganizationId = company.OrganizationId,
+				OfficeId = company.OfficeId,
 				CompanyCode = company.CompanyCode,
 				Name = company.Name,
 				Address1 = company.Address1,

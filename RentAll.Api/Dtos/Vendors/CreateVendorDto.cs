@@ -6,6 +6,7 @@ namespace RentAll.Api.Dtos.Vendors;
 public class CreateVendorDto
 {
     public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -49,6 +50,7 @@ public class CreateVendorDto
         return new Vendor
         {
             OrganizationId = OrganizationId,
+			OfficeId = OfficeId,
             VendorCode = code,
             Name = Name,
             Address1 = Address1,

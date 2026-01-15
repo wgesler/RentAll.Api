@@ -6,6 +6,7 @@ public class ContactResponseDto
 {
     public Guid ContactId { get; set; }
     public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
@@ -30,6 +31,7 @@ public class ContactResponseDto
     {
         ContactId = contact.ContactId;
         OrganizationId = contact.OrganizationId;
+		OfficeId = contact.OfficeId;
         ContactCode = contact.ContactCode;
         EntityTypeId = (int)contact.EntityType;
         EntityId = contact.EntityId;

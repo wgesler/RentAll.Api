@@ -6,6 +6,7 @@ namespace RentAll.Api.Dtos.Contacts;
 public class CreateContactDto
 {
 	public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
 	public int EntityTypeId { get; set; }
 	public Guid? EntityId { get; set; }
     public string FirstName { get; set; } = string.Empty;
@@ -52,6 +53,7 @@ public class CreateContactDto
         return new Contact
         {
             OrganizationId = OrganizationId,
+			OfficeId = OfficeId,
             ContactCode = code,
             EntityType = (EntityType)EntityTypeId,
             EntityId = EntityId,

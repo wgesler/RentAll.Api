@@ -6,6 +6,7 @@ namespace RentAll.Api.Dtos.Companies;
 public class CreateCompanyDto
 {
     public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -51,6 +52,7 @@ public class CreateCompanyDto
         return new Company
         {
             OrganizationId = OrganizationId,
+			OfficeId = OfficeId,
             CompanyCode = code,
             Name = Name,
             Address1 = Address1,

@@ -4,6 +4,7 @@ public class ContactEntity
 {
     public Guid ContactId { get; set; }
     public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
