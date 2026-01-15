@@ -21,6 +21,21 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
 			return res.Select(ConvertEntityToModel);
 		}
+
+		public async Task<IEnumerable<Reservation>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetAllByOfficeId", new
+			{
+				OrganizationId = organizationId,
+                Offices = officeAccess
+			});
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Reservation>();
+
+			return res.Select(ConvertEntityToModel);
+		}
 		
         public async Task<Reservation?> GetByIdAsync(Guid reservationId, Guid organizationId)
         {

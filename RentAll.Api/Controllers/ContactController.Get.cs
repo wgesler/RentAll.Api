@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
         {
             try
             {
-                var contacts = await _contactRepository.GetAllAsync(CurrentOrganizationId);
+                var contacts = await _contactRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = contacts.Select(c => new ContactResponseDto(c));
                 return Ok(response);
             }

@@ -16,7 +16,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var properties = await _propertyRepository.GetAllAsync(CurrentOrganizationId);
+				var properties = await _propertyRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
 				var response = properties.Select(p => new PropertyResponseDto(p));
 				return Ok(response);
 			}

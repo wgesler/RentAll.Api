@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
         {
             try
             {
-                var regions = await _regionRepository.GetAllAsync(CurrentOrganizationId);
+                var regions = await _regionRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = regions.Select(r => new RegionResponseDto(r));
                 return Ok(response);
             }

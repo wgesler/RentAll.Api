@@ -9,6 +9,7 @@ public interface ICompanyRepository
 
 	// Selects
 	Task<IEnumerable<Company>> GetAllAsync(Guid OrganizationId);
+	Task<IEnumerable<Company>> GetAllByOfficeIdAsync(Guid OrganizationId, string officeAccess);
 	Task<Company?> GetByIdAsync(Guid companyId, Guid OrganizationId);
 	Task<Company?> GetByCompanyCodeAsync(string companyCode, Guid OrganizationId);
 	Task<bool> ExistsByCompanyCodeAsync(string companyCode, Guid OrganizationId);

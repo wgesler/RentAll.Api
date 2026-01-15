@@ -31,6 +31,19 @@ namespace RentAll.Infrastructure.Repositories.Users
 				}
 			}
 
+			List<int> officeAccess = new List<int>();
+			if (!string.IsNullOrWhiteSpace(e.OfficeAccess))
+			{
+				try
+				{
+					officeAccess = JsonSerializer.Deserialize<List<int>>(e.OfficeAccess) ?? new List<int>();
+				}
+				catch
+				{
+					officeAccess = new List<int>();
+				}
+			}
+
 			var response = new User()
 			{
 				UserId = e.UserId,
@@ -42,6 +55,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				PasswordHash = e.PasswordHash,
 				IsActive = e.IsActive,
 				UserGroups = userGroups,
+				OfficeAccess = officeAccess,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,
 				ModifiedOn = e.ModifiedOn,

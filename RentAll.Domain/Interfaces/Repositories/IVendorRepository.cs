@@ -9,6 +9,7 @@ public interface IVendorRepository
 
 	// Selects
 	Task<IEnumerable<Vendor>> GetAllAsync(Guid OrganizationId);
+	Task<IEnumerable<Vendor>> GetAllByOfficeIdAsync(Guid OrganizationId, string officeAccess);
 	Task<Vendor?> GetByIdAsync(Guid vendorId, Guid OrganizationId);
 	Task<Vendor?> GetByVendorCodeAsync(string vendorCode, Guid OrganizationId);
 	Task<bool> ExistsByVendorCodeAsync(string vendorCode, Guid OrganizationId);

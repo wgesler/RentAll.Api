@@ -9,6 +9,7 @@ public interface IBuildingRepository
 
 	// Selects
 	Task<IEnumerable<Building>> GetAllAsync(Guid organizationId);
+	Task<IEnumerable<Building>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
 	Task<Building?> GetByIdAsync(int buildingId, Guid organizationId);
 	Task<Building?> GetByBuildingCodeAsync(string buildingCode, Guid organizationId, int? officeId);
 	Task<bool> ExistsByBuildingCodeAsync(string buildingCode, Guid organizationId, int? officeId);

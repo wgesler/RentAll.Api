@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var documents = await _documentRepository.GetAllAsync(CurrentOrganizationId);
+				var documents = await _documentRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
 				var response = new List<DocumentResponseDto>();
 				foreach (var document in documents.Where(d => !d.IsDeleted))
 				{

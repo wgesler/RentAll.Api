@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var reservations = await _reservationRepository.GetAllAsync(CurrentOrganizationId);
+				var reservations = await _reservationRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
 				var response = reservations.Select(r => new ReservationResponseDto(r));
 				return Ok(response);
 			}

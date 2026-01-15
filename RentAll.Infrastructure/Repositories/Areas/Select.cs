@@ -22,6 +22,21 @@ public partial class AreaRepository : IAreaRepository
 		return res.Select(ConvertEntityToModel);
 	}
 
+	public async Task<IEnumerable<Area>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
+	{
+		await using var db = new SqlConnection(_dbConnectionString);
+		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_GetAllByOfficeId", new
+		{
+			OrganizationId = organizationId,
+			Offices = officeAccess
+		});
+
+		if (res == null || !res.Any())
+			return Enumerable.Empty<Area>();
+
+		return res.Select(ConvertEntityToModel);
+	}
+
 	public async Task<Area?> GetByIdAsync(int areaId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);

@@ -11,6 +11,7 @@ public class UserResponseDto
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
+	public List<int> OfficeAccess { get; set; } = new List<int>();
 
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
@@ -27,6 +28,7 @@ public class UserResponseDto
         LastName = user.LastName;
         Email = user.Email;
         UserGroups = user.UserGroups;
+        OfficeAccess = user.OfficeAccess;
         IsActive = user.IsActive;
         CreatedOn = user.CreatedOn;
         CreatedBy = user.CreatedBy;

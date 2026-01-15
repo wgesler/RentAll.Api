@@ -17,6 +17,10 @@ namespace RentAll.Infrastructure.Repositories.Users
 				? JsonSerializer.Serialize(user.UserGroups)
 				: "[]";
 
+			var officeAccessJson = user.OfficeAccess != null && user.OfficeAccess.Any()
+				? JsonSerializer.Serialize(user.OfficeAccess)
+				: "[]";
+
 			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_UpdateById", new
 			{
 				OrganizationId = user.OrganizationId,
@@ -26,6 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				Email = user.Email,
 				PasswordHash = user.PasswordHash,
 				UserGroups = userGroupsJson,
+				OfficeAccess = officeAccessJson,
 				IsActive = user.IsActive,
 				ModifiedBy = user.ModifiedBy
 			});

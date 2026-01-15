@@ -1,13 +1,11 @@
-using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using RentAll.Domain.Interfaces.Auth;
+using RentAll.Domain.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
-using RentAll.Domain.Interfaces.Auth;
-using RentAll.Domain.Models;
 
 namespace RentAll.Infrastructure.Services;
 
@@ -34,6 +32,16 @@ public class AuthTokenService : IAuthTokenService
         // Generate session GUID for sub claim
         var sessionGuid = Guid.NewGuid().ToString();
 
+        // Convert UserGroups List<string> to comma-delimited string
+        var userGroupsString = user.UserGroups != null && user.UserGroups.Any()
+            ? string.Join(",", user.UserGroups)
+            : string.Empty;
+
+        // Convert OfficeAccess List<int> to comma-delimited string
+        var officeAccessString = user.OfficeAccess != null && user.OfficeAccess.Any()
+            ? string.Join(",", user.OfficeAccess)
+            : string.Empty;
+
         var userObject = new
         {
             userId = user.UserId.ToString(),
@@ -41,7 +49,8 @@ public class AuthTokenService : IAuthTokenService
 			firstName = user.FirstName,
 			lastName = user.LastName,
             email = user.Email,
-			userGroups = user.UserGroups
+			userGroups = userGroupsString,
+			officeAccess = officeAccessString
 		};
 
         // Serialize and base64 encode the user object

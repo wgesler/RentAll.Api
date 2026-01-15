@@ -364,3 +364,4 @@ FodyWeavers.xsd
 /RentAll.Api/wwwroot/documents/reservationlease
 /RentAll.Api/wwwroot/documents/unknown
 /RentAll.Api/wwwroot/documents/propertyletter
+/RentAll.Infrastructure/RentAll.Infrastructure.csproj.Backup.tmp

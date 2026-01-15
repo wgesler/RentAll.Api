@@ -10,6 +10,7 @@ public class UserEntity
 	public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
 	public string UserGroups { get; set; } = string.Empty;
+	public string OfficeAccess { get; set; } = string.Empty;
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

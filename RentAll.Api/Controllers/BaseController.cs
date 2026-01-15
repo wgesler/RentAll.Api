@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -8,8 +11,12 @@ namespace RentAll.Api.Controllers
 {
 	public class BaseController : ControllerBase
 	{
-		protected Guid CurrentUser => GetCurrentUserIdFromJwt();
-		protected Guid CurrentOrganizationId => GetCurrentUserOrganizationIdFromJwt();
+		private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups)? _cachedUserInfo;
+
+		protected Guid CurrentUser => GetUserInfoFromJwt().UserId;
+		protected Guid CurrentOrganizationId => GetUserInfoFromJwt().OrganizationId;
+		protected string CurrentOfficeAccess => GetUserInfoFromJwt().OfficeAccess;
+		protected string CurrentUserGroups => GetUserInfoFromJwt().UserGroups;
 
 		protected ErrorResponseDto ErrorResponse(string message)
 		{
@@ -77,14 +84,26 @@ namespace RentAll.Api.Controllers
 			return StatusCode(500, ErrorResponse(message));
 		}
 
-		private Guid GetCurrentUserIdFromJwt()
+		private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups) GetUserInfoFromJwt()
 		{
+			// Return cached value if available
+			if (_cachedUserInfo.HasValue)
+				return _cachedUserInfo.Value;
+
+			var result = (UserId: Guid.Empty, OrganizationId: Guid.Empty, OfficeAccess: string.Empty, UserGroups: string.Empty);
+
 			if (User?.Identity?.IsAuthenticated != true)
-				return Guid.Empty;
+			{
+				_cachedUserInfo = result;
+				return result;
+			}
 
 			var userClaim = User.FindFirst("user");
 			if (userClaim == null || string.IsNullOrWhiteSpace(userClaim.Value))
-				return Guid.Empty;
+			{
+				_cachedUserInfo = result;
+				return result;
+			}
 
 			try
 			{
@@ -92,55 +111,62 @@ namespace RentAll.Api.Controllers
 				var userJson = Encoding.UTF8.GetString(userJsonBytes);
 				var userObject = JsonSerializer.Deserialize<JsonElement>(userJson);
 
+				// Extract userId
 				if (userObject.TryGetProperty("userId", out var userIdElement))
 				{
 					var userIdString = userIdElement.GetString();
 					if (!string.IsNullOrWhiteSpace(userIdString) && Guid.TryParse(userIdString, out var userId))
-						return userId;
+						result.UserId = userId;
 				}
-			}
-			catch
-			{
-				// If decoding fails, return empty GUID
-			}
 
-			return Guid.Empty;
-		}
-
-		private Guid GetCurrentUserOrganizationIdFromJwt()
-		{
-			if (User?.Identity?.IsAuthenticated != true)
-				return Guid.Empty;
-
-			var userClaim = User.FindFirst("user");
-			if (userClaim == null || string.IsNullOrWhiteSpace(userClaim.Value))
-				return Guid.Empty;
-
-			try
-			{
-				var userJsonBytes = Convert.FromBase64String(userClaim.Value);
-				var userJson = Encoding.UTF8.GetString(userJsonBytes);
-				var userObject = JsonSerializer.Deserialize<JsonElement>(userJson);
-
-				// Try a few common property names for organization id in the JWT payload
-				string[] possiblePropertyNames = ["organizationId", "OrganizationId"];
-
-				foreach (var propName in possiblePropertyNames)
+				// Extract organizationId (try a few common property names)
+				string[] possibleOrgPropertyNames = ["organizationId", "OrganizationId"];
+				foreach (var propName in possibleOrgPropertyNames)
 				{
 					if (userObject.TryGetProperty(propName, out var orgIdElement))
 					{
 						var orgIdString = orgIdElement.GetString();
 						if (!string.IsNullOrWhiteSpace(orgIdString) && Guid.TryParse(orgIdString, out var orgId))
-							return orgId;
+						{
+							result.OrganizationId = orgId;
+							break;
+						}
+					}
+				}
+
+				// Extract OfficeAccess
+				string[] possibleOfficeAccessPropertyNames = ["officeAccess", "OfficeAccess"];
+				foreach (var propName in possibleOfficeAccessPropertyNames)
+				{
+					if (userObject.TryGetProperty(propName, out var officeAccessElement))
+					{
+						var officeAccessString = officeAccessElement.GetString();
+						if (!string.IsNullOrWhiteSpace(officeAccessString))
+							result.OfficeAccess = officeAccessString;
+						break;
+					}
+				}
+
+				// Extract UserGroups (try both property name variations - it's a comma-delimited string)
+				string[] possibleUserGroupsPropertyNames = ["userGroups", "UserGroups"];
+				foreach (var propName in possibleUserGroupsPropertyNames)
+				{
+					if (userObject.TryGetProperty(propName, out var userGroupsElement))
+					{
+						var userGroupsString = userGroupsElement.GetString();
+						if (!string.IsNullOrWhiteSpace(userGroupsString))
+							result.UserGroups = userGroupsString;
+						break;
 					}
 				}
 			}
 			catch
 			{
-				// If decoding fails, return empty GUID
+				// If decoding fails, return empty values
 			}
 
-			return Guid.Empty;
+			_cachedUserInfo = result;
+			return result;
 		}
 
 		protected bool IsValidEmail(string email)
@@ -159,6 +185,14 @@ namespace RentAll.Api.Controllers
 			{
 				return false;
 			}
+		}
+
+		protected bool IsAdmin()
+		{
+			if (string.IsNullOrWhiteSpace(CurrentUserGroups))
+				return false;
+
+			return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("Admin", StringComparison.OrdinalIgnoreCase));
 		}
 	}
 }

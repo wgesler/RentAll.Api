@@ -9,6 +9,7 @@ public interface IPropertyRepository
 
 	// Selects
 	Task<IEnumerable<Property>> GetAllAsync(Guid organizationId);
+	Task<IEnumerable<Property>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
 	Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId);
     Task<Property?> GetByPropertyCodeAsync(string propertyCode, Guid organizationId);
     Task<IEnumerable<Property>> GetByStateAsync(string state, Guid organizationId);

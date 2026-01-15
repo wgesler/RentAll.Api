@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.OfficeConfigurations;
 using RentAll.Api.Dtos.Offices;
 using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -81,44 +79,6 @@ namespace RentAll.Api.Controllers
 			{
 			_logger.LogError(ex, "Error updating office: {OfficeId}", officeId);
 			return ServerError("An error occurred while updating the office");
-			}
-		}
-
-		/// <summary>
-		/// Update an existing office configuration
-		/// </summary>
-		/// <param name="officeId">Office ID</param>
-		/// <param name="dto">Office configuration data</param>
-		/// <returns>Updated office configuration</returns>
-		[HttpPut("{officeId}/configuration")]
-		public async Task<IActionResult> UpdateConfiguration(int officeId, [FromBody] OfficeConfigurationUpdateDto dto)
-		{
-		if (dto == null)
-			return BadRequest("Office configuration data is required");
-
-		if (officeId != dto.OfficeId)
-			return BadRequest("Office ID mismatch");
-
-			try
-			{
-				// Verify office exists and belongs to organization
-				var office = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-			if (office == null)
-				return NotFound("Office not found");
-
-			// Verify configuration exists
-			var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId, CurrentOrganizationId);
-			if (existingConfig == null)
-				return NotFound("Office configuration not found");
-
-				var configuration = dto.ToModel();
-				var updatedConfiguration = await _officeConfigurationRepository.UpdateByOfficeIdAsync(configuration);
-				return Ok(new OfficeConfigurationResponseDto(updatedConfiguration));
-			}
-			catch (Exception ex)
-			{
-			_logger.LogError(ex, "Error updating office configuration: {OfficeId}", officeId);
-			return ServerError("An error occurred while updating the office configuration");
 			}
 		}
 	}

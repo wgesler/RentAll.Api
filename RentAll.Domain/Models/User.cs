@@ -11,6 +11,7 @@ public class User
 	public string Email { get; set; } = string.Empty;
 	public string PasswordHash { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
+	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

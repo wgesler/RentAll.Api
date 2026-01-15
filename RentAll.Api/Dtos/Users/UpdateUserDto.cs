@@ -11,6 +11,7 @@ public class UpdateUserDto
 	public string Email { get; set; } = string.Empty;
 	public string Password { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
+	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -47,6 +48,7 @@ public class UpdateUserDto
             Email = d.Email,
             PasswordHash = existingUser.PasswordHash, // Preserve existing password hash
 			UserGroups = d.UserGroups,
+			OfficeAccess = d.OfficeAccess,
 			IsActive = d.IsActive,
 			ModifiedBy = currentUser
 		};

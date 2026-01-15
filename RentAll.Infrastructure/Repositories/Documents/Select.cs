@@ -22,6 +22,21 @@ public partial class DocumentRepository : IDocumentRepository
 		return res.Select(ConvertEntityToModel);
 	}
 
+	public async Task<IEnumerable<Document>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
+	{
+		await using var db = new SqlConnection(_dbConnectionString);
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetAllByOfficeId", new
+		{
+			OrganizationId = organizationId,
+			Offices = officeAccess
+		});
+
+		if (res == null || !res.Any())
+			return Enumerable.Empty<Document>();
+
+		return res.Select(ConvertEntityToModel);
+	}
+
 	public async Task<Document?> GetByIdAsync(Guid documentId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);

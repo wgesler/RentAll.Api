@@ -13,20 +13,17 @@ namespace RentAll.Api.Controllers
     {
 		private readonly IOrganizationManager _organizationManager;
 		private readonly IOfficeRepository _officeRepository;
-		private readonly IOfficeConfigurationRepository _officeConfigurationRepository;
 		private readonly IFileService _fileService;
 		private readonly ILogger<OfficeController> _logger;
 
         public OfficeController(
 			IOrganizationManager organizationManager,
 		    IOfficeRepository officeRepository,
-			IOfficeConfigurationRepository officeConfigurationRepository,
 			IFileService fileService,
 			ILogger<OfficeController> logger)
         {
 			_organizationManager = organizationManager;
 			_officeRepository = officeRepository;
-			_officeConfigurationRepository = officeConfigurationRepository;
 			_fileService = fileService;
             _logger = logger;
         }

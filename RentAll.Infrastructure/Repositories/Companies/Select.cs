@@ -22,6 +22,21 @@ namespace RentAll.Infrastructure.Repositories.Companies
 			return res.Select(ConvertEntityToModel);
 		}
 
+		public async Task<IEnumerable<Company>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetAllByOfficeId", new
+			{
+				OrganizationId = organizationId,
+				Offices = officeAccess
+			});
+
+			if (res == null || !res.Any())
+				return Enumerable.Empty<Company>();
+
+			return res.Select(ConvertEntityToModel);
+		}
+
 		public async Task<Company?> GetByIdAsync(Guid companyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);

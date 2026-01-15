@@ -10,6 +10,7 @@ public class CreateUserDto
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
+	public List<int> OfficeAccess { get; set; } = new List<int>();
     public bool IsActive { get; set; }
 
 
@@ -46,6 +47,7 @@ public class CreateUserDto
             Email = Email,
             PasswordHash = passwordHash,
 			UserGroups = UserGroups,
+			OfficeAccess = OfficeAccess,
 			IsActive = IsActive,
             CreatedBy = currentUser
         };

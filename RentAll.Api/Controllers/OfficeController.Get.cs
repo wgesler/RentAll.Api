@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.OfficeConfigurations;
 using RentAll.Api.Dtos.Offices;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -15,7 +15,12 @@ namespace RentAll.Api.Controllers
         {
             try
             {
-                var offices = await _officeRepository.GetAllAsync(CurrentOrganizationId);
+				IEnumerable<Office> offices;
+				if (IsAdmin())
+					offices = await _officeRepository.GetAllAsync(CurrentOrganizationId);
+				else
+					offices = await _officeRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+
                 var response = new List<OfficeResponseDto>();
                 foreach (var office in offices)
                 {
@@ -63,52 +68,6 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the office");
             }
         }
-
-		/// <summary>
-		/// Get all office configurations
-		/// </summary>
-		/// <returns>List of office configurations</returns>
-		[HttpGet("configuration")]
-		public async Task<IActionResult> GetConfigurations()
-		{
-			try
-			{
-				var configurations = await _officeConfigurationRepository.GetAllAsync(CurrentOrganizationId);
-				var response = configurations.Select(c => new OfficeConfigurationResponseDto(c));
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting all office configurations");
-				return ServerError("An error occurred while retrieving office configurations");
-			}
-		}
-
-		/// <summary>
-		/// Get office configuration by Office ID
-		/// </summary>
-		/// <param name="officeId">Office ID</param>
-		/// <returns>Office configuration</returns>
-		[HttpGet("{officeId}/configuration")]
-		public async Task<IActionResult> GetConfiguration(int officeId)
-		{
-			if (officeId <= 0)
-				return BadRequest("Office ID is required");
-
-			try
-			{
-				var configuration = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId, CurrentOrganizationId);
-			    if (configuration == null)
-				    return NotFound("Office configuration not found");
-
-				return Ok(new OfficeConfigurationResponseDto(configuration));
-			}
-			catch (Exception ex)
-			{
-			_logger.LogError(ex, "Error getting office configuration: {OfficeId}", officeId);
-			return ServerError("An error occurred while retrieving the office configuration");
-			}
-		}
 	}
 }
 

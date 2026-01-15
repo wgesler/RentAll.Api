@@ -8,8 +8,9 @@ public interface IDocumentRepository
 	Task<Document> CreateAsync(Document document);
 
 	// Selects
-	Task<Document?> GetByIdAsync(Guid documentId, Guid organizationId);
 	Task<IEnumerable<Document>> GetAllAsync(Guid organizationId);
+	Task<IEnumerable<Document>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
+	Task<Document?> GetByIdAsync(Guid documentId, Guid organizationId);
 	Task<IEnumerable<Document>> GetByOfficeIdAsync(int officeId, Guid organizationId);
 	Task<IEnumerable<Document>> GetByDocumentTypeAsync(int documentType, Guid organizationId);
 

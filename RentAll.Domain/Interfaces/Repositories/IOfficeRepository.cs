@@ -9,6 +9,7 @@ public interface IOfficeRepository
 
 	// Selects
 	Task<IEnumerable<Office>> GetAllAsync(Guid organizationId);
+	Task<IEnumerable<Office>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
 	Task<Office?> GetByIdAsync(int officeId, Guid organizationId);
 	Task<Office?> GetByOfficeCodeAsync(string officeCode, Guid organizationId);
 	Task<bool> ExistsByOfficeCodeAsync(string officeCode, Guid organizationId);

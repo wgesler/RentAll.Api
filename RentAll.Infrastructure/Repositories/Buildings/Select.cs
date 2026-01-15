@@ -22,6 +22,21 @@ public partial class BuildingRepository : IBuildingRepository
 		return res.Select(ConvertEntityToModel);
 	}
 
+	public async Task<IEnumerable<Building>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
+	{
+		await using var db = new SqlConnection(_dbConnectionString);
+		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_GetAllByOfficeId", new
+		{
+			OrganizationId = organizationId,
+			Offices = officeAccess
+		});
+
+		if (res == null || !res.Any())
+			return Enumerable.Empty<Building>();
+
+		return res.Select(ConvertEntityToModel);
+	}
+
 	public async Task<Building?> GetByIdAsync(int buildingId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);

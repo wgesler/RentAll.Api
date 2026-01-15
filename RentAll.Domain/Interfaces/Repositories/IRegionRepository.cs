@@ -9,6 +9,7 @@ public interface IRegionRepository
 
 	// Selects
 	Task<IEnumerable<Region>> GetAllAsync(Guid OrganizationId);
+	Task<IEnumerable<Region>> GetAllByOfficeIdAsync(Guid OrganizationId, string officeAccess);
 	Task<Region?> GetByIdAsync(int regionId, Guid OrganizationId);
 	Task<Region?> GetByRegionCodeAsync(string regionCode, Guid OrganizationId, int? officeId);
 	Task<bool> ExistsByRegionCodeAsync(string regionCode, Guid OrganizationId, int? officeId);

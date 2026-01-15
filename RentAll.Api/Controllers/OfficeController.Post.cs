@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using RentAll.Api.Dtos.OfficeConfigurations;
 using RentAll.Api.Dtos.Offices;
 using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -46,7 +44,6 @@ namespace RentAll.Api.Controllers
 				}
 				
                 var createdOffice = await _officeRepository.CreateAsync(office);
-				var createdConfiguration = await _officeConfigurationRepository.CreateAsync(new OfficeConfiguration(createdOffice.OfficeId));
 
 				var response = new OfficeResponseDto(createdOffice);
                 if (!string.IsNullOrWhiteSpace(createdOffice.LogoPath))
@@ -60,44 +57,6 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while creating the office");
             }
         }
-
-		/// <summary>
-		/// Create a new office configuration
-		/// </summary>
-		/// <param name="officeId">Office ID</param>
-		/// <param name="dto">Office configuration data</param>
-		/// <returns>Created office configuration</returns>
-		[HttpPost("{officeId}/configuration")]
-		public async Task<IActionResult> CreateConfiguration(int officeId, [FromBody] OfficeConfigurationCreateDto dto)
-		{
-			if (dto == null)
-				return BadRequest("Office configuration data is required");
-
-			if (officeId != dto.OfficeId)
-				return BadRequest("Office ID mismatch");
-
-			try
-			{
-				// Verify office exists and belongs to organization
-				var office = await _officeRepository.GetByIdAsync(officeId, CurrentOrganizationId);
-				if (office == null)
-					return NotFound("Office not found");
-
-				// Check if configuration already exists
-				var existingConfig = await _officeConfigurationRepository.GetByOfficeIdAsync(officeId, CurrentOrganizationId);
-				if (existingConfig != null)
-					return Conflict("Office configuration already exists for this office");
-
-				var configuration = dto.ToModel();
-				var createdConfiguration = await _officeConfigurationRepository.CreateAsync(configuration);
-				return CreatedAtAction(nameof(GetConfiguration), new { officeId = createdConfiguration.OfficeId }, new OfficeConfigurationResponseDto(createdConfiguration));
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error creating office configuration: {OfficeId}", officeId);
-				return ServerError("An error occurred while creating the office configuration");
-			}
-		}
 	}
 }
 

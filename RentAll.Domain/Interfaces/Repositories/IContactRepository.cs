@@ -9,6 +9,7 @@ public interface IContactRepository
 
 	// Selects
 	Task<IEnumerable<Contact>> GetAllAsync(Guid organizationId);
+	Task<IEnumerable<Contact>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
 	Task<Contact?> GetByIdAsync(Guid contactId, Guid organizationId);
     Task<Contact?> GetByContactCodeAsync(string contactCode, Guid organizationId);
     Task<IEnumerable<Contact>> GetByContactTypeIdAsync(int contactTypeId, Guid organizationId);

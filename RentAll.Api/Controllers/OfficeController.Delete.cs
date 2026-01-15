@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -18,7 +17,6 @@ namespace RentAll.Api.Controllers
 
             try
             {
-				await _officeConfigurationRepository.DeleteByOfficeIdAsync(officeId);
 				await _officeRepository.DeleteByIdAsync(officeId);
                 return NoContent();
             }
