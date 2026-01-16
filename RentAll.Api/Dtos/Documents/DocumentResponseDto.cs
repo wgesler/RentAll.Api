@@ -9,6 +9,7 @@ public class DocumentResponseDto
 	public Guid DocumentId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public int DocumentTypeId { get; set; }
 	public string FileName { get; set; } = string.Empty;
 	public string FileExtension { get; set; } = string.Empty;
@@ -26,6 +27,7 @@ public class DocumentResponseDto
 		DocumentId = document.DocumentId;
 		OrganizationId = document.OrganizationId;
 		OfficeId = document.OfficeId;
+		OfficeName = document.OfficeName;
 		DocumentTypeId = (int)document.DocumentType;
 		FileName = document.FileName;
 		FileExtension = document.FileExtension;

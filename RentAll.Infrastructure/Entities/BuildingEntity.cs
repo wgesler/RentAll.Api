@@ -5,6 +5,7 @@ public class BuildingEntity
 	public int BuildingId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public string BuildingCode { get; set; } = string.Empty;
 	public string Name { get; set; } = string.Empty;
 	public string Description { get; set; } = string.Empty;

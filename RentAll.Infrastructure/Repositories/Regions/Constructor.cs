@@ -22,6 +22,7 @@ public partial class RegionRepository : IRegionRepository
 			OrganizationId = e.OrganizationId,
 			RegionId = e.RegionId,
 			OfficeId = e.OfficeId,
+			OfficeName = e.OfficeName,
 			RegionCode = e.RegionCode,
 			Name = e.Name,
 			Description = e.Description,

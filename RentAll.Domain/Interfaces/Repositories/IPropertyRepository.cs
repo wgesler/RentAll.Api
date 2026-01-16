@@ -8,12 +8,11 @@ public interface IPropertyRepository
     Task<Property> CreateAsync(Property property);
 
 	// Selects
-	Task<IEnumerable<Property>> GetAllAsync(Guid organizationId);
-	Task<IEnumerable<Property>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
+	Task<IEnumerable<PropertyList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess);
+	Task<IEnumerable<PropertyList>> GetListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess);
+
 	Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId);
     Task<Property?> GetByPropertyCodeAsync(string propertyCode, Guid organizationId);
-    Task<IEnumerable<Property>> GetByStateAsync(string state, Guid organizationId);
-	Task<IEnumerable<Property>> GetBySelectionCriteriaAsync(Guid userId, Guid organizationId);
     Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId);
 
     // Updates

@@ -5,6 +5,7 @@ public class DocumentEntity
 	public Guid DocumentId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public int DocumentTypeId { get; set; }
 	public string FileName { get; set; } = string.Empty;
 	public string FileExtension { get; set; } = string.Empty;

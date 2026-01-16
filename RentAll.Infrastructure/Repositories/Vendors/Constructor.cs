@@ -22,6 +22,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 				VendorId = e.VendorId,
 				OrganizationId = e.OrganizationId,
 				OfficeId = e.OfficeId,
+				OfficeName = e.OfficeName,
 				VendorCode = e.VendorCode,
 				Name = e.Name,
 				Address1 = e.Address1,

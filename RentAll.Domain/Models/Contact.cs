@@ -7,11 +7,13 @@ public class Contact
     public Guid ContactId { get; set; }
     public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
     public string ContactCode { get; set; } = string.Empty;
     public EntityType EntityType { get; set; }
     public Guid? EntityId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }
     public string? City { get; set; }

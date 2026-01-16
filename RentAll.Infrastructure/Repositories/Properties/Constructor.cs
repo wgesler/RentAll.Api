@@ -36,6 +36,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				PropertyType = (PropertyType)e.PropertyTypeId,
 				PropertyStatus = (PropertyStatus)e.PropertyStatusId,
 				OfficeId = e.OfficeId,
+				OfficeName = e.OfficeName,
 				BuildingId = e.BuildingId,
 				RegionId = e.RegionId,
 				AreaId = e.AreaId,
@@ -118,5 +119,30 @@ namespace RentAll.Infrastructure.Repositories.Properties
 
             return response;
         }
+
+		private PropertyList ConvertEntityToModel(PropertyListEntity e)
+		{
+			return new PropertyList
+			{
+				PropertyId = e.PropertyId,
+				PropertyCode = e.PropertyCode,
+				ShortAddress = e.ShortAddress,
+				OfficeId = e.OfficeId,
+				OfficeName = e.OfficeName,
+				Owner1Id = e.Owner1Id,
+				OwnerName = e.OwnerName,
+				Bedrooms = e.Bedrooms,
+				Bathrooms = e.Bathrooms,
+				Accomodates = e.Accomodates,
+				SquareFeet = e.SquareFeet,
+				MonthlyRent = e.MonthlyRent,
+				DailyRate = e.DailyRate,
+				DepartureFee = e.DepartureFee,
+				PetFee = e.PetFee,
+				MaidServiceFee = e.MaidServiceFee,
+				PropertyStatus = (PropertyStatus)e.PropertyStatusId,
+				IsActive = e.IsActive
+			};
+		}
     }
 }

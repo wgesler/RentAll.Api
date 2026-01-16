@@ -22,6 +22,7 @@ namespace RentAll.Infrastructure.Repositories.Agents
                 AgentId = e.AgentId,
                 OrganizationId = e.OrganizationId,
                 OfficeId = e.OfficeId,
+				OfficeName = e.OfficeName,
                 AgentCode = e.AgentCode,
 				Name = e.Name,
                 IsActive = e.IsActive,

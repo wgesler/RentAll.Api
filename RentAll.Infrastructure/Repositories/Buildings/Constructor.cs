@@ -22,6 +22,7 @@ public partial class BuildingRepository : IBuildingRepository
 			OrganizationId = e.OrganizationId,
 			BuildingId = e.BuildingId,
 			OfficeId = e.OfficeId,
+			OfficeName = e.OfficeName,
 			BuildingCode = e.BuildingCode,
 			Name = e.Name,
 			Description = e.Description,

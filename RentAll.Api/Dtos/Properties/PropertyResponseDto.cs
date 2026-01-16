@@ -24,6 +24,7 @@ public class PropertyResponseDto
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
 	public int OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public int? BuildingId { get; set; }
 	public int? RegionId { get; set; }
 	public int? AreaId { get; set; }
@@ -140,6 +141,7 @@ public class PropertyResponseDto
 		PropertyTypeId = (int)property.PropertyType;
 		PropertyStatusId = (int)property.PropertyStatus;
 		OfficeId = property.OfficeId;
+		OfficeName = property.OfficeName;
 		BuildingId = property.BuildingId;
 		RegionId = property.RegionId;
 		AreaId = property.AreaId;

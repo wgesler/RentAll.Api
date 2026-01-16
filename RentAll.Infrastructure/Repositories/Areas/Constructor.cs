@@ -22,6 +22,7 @@ public partial class AreaRepository : IAreaRepository
 			OrganizationId = e.OrganizationId,
 			AreaId = e.AreaId,
 			OfficeId = e.OfficeId,
+			OfficeName = e.OfficeName,
 			AreaCode = e.AreaCode,
 			Name = e.Name,
 			Description = e.Description,

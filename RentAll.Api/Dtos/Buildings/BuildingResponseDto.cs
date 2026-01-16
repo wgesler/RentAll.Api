@@ -7,6 +7,7 @@ public class BuildingResponseDto
 	public Guid OrganizationId { get; set; }
 	public int BuildingId { get; set; }
 	public int? OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public string BuildingCode { get; set; } = string.Empty;
 	public string Name { get; set; } = string.Empty;
 	public string Description { get; set; } = string.Empty;
@@ -20,6 +21,7 @@ public class BuildingResponseDto
 		OrganizationId = building.OrganizationId;
 		BuildingId = building.BuildingId;
 		OfficeId = building.OfficeId;
+		OfficeName = building.OfficeName;
 		BuildingCode = building.BuildingCode;
 		Name = building.Name;
 		Description = building.Description;

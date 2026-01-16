@@ -22,6 +22,7 @@ public class PropertyEntity
 	public int PropertyTypeId { get; set; }
 	public int PropertyStatusId { get; set; }
 	public int OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public int? BuildingId { get; set; }
 	public int? RegionId { get; set; }
 	public int? AreaId { get; set; }

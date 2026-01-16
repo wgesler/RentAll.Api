@@ -7,6 +7,7 @@ public class UpdateReservationDto
 {
 	public Guid ReservationId { get; set; }
 	public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
 	public string ReservationCode { get; set; } = string.Empty;
 	public Guid? AgentId { get; set; }
 	public Guid PropertyId { get; set; }

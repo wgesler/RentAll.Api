@@ -4,10 +4,13 @@ public class ReservationEntity
 {
 	public Guid ReservationId { get; set; }
 	public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
+	public string OfficeName { get; set; } = string.Empty;
 	public string ReservationCode { get; set; } = string.Empty;
 	public Guid? AgentId { get; set; }
 	public Guid PropertyId { get; set; }
 	public Guid ContactId { get; set; }
+	public string ContactName { get; set; } = string.Empty;
 	public int ReservationTypeId { get; set; }
 	public int ReservationStatusId { get; set; }
 	public int ReservationNoticeId { get; set; }

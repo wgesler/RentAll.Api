@@ -23,6 +23,7 @@ public partial class DocumentRepository : IDocumentRepository
 			DocumentId = e.DocumentId,
 			OrganizationId = e.OrganizationId,
 			OfficeId = e.OfficeId,
+			OfficeName = e.OfficeName,
 			DocumentType = (DocumentType)e.DocumentTypeId,
 			FileName = e.FileName,
 			FileExtension = e.FileExtension,

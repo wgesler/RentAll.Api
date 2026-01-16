@@ -8,12 +8,9 @@ public interface IReservationRepository
 	Task<Reservation> CreateAsync(Reservation reservation);
 
 	// Selects
-	Task<IEnumerable<Reservation>> GetAllAsync(Guid organizationId);
-	Task<IEnumerable<Reservation>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess);
+	Task<IEnumerable<ReservationList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess);
 	Task<Reservation?> GetByIdAsync(Guid reservationId, Guid organizationId);
 	Task<IEnumerable<Reservation>> GetByPropertyIdAsync(Guid propertyId, Guid organizationId);
-	Task<IEnumerable<Reservation>> GetByContactIdAsync(Guid contactId, Guid organizationId);
-	Task<IEnumerable<Reservation>> GetActiveReservationsAsync(Guid organizationId);
 
 	// Updates
 	Task<Reservation> UpdateByIdAsync(Reservation reservation);

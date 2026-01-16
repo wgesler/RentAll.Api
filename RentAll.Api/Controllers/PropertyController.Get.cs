@@ -1,33 +1,57 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Properties;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
     public partial class PropertyController
     {
-
 		/// <summary>
-		/// Get all properties
+		/// Get all properties list
 		/// </summary>
 		/// <returns>List of properties</returns>
-		[HttpGet]
-		public async Task<IActionResult> GetAll()
+		[HttpGet("list")]
+		public async Task<IActionResult> GetList()
 		{
 			try
 			{
-				var properties = await _propertyRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
-				var response = properties.Select(p => new PropertyResponseDto(p));
+				// Get the property summary for the list of properties
+				var list = await _propertyRepository.GetListByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+				var response = list.Select(p => new PropertyListResponseDto(p));
 				return Ok(response);
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error getting all properties");
+				_logger.LogError(ex, "Error getting properties list");
+				return ServerError("An error occurred while retrieving properties list");
+			}
+		}
+
+
+		/// <summary>
+		/// Get properties by the current user's selection criteria
+		/// </summary>
+		/// <param name="userId">User Id</param>
+		/// <returns>List of properties by user selection</returns>
+		[HttpGet("user/{userId}")]
+		public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
+		{
+			if (CurrentUser == Guid.Empty || CurrentUser != userId)
+				return Unauthorized();
+
+			try
+			{
+				var properties = await _propertyRepository.GetListBySelectionCriteriaAsync(CurrentUser, CurrentOrganizationId, CurrentOfficeAccess);
+				var response = properties.Select(p => new PropertyListResponseDto(p));
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
 				return ServerError("An error occurred while retrieving properties");
 			}
 		}
-        
-        /// <summary>
+
+		/// <summary>
 		/// Get property by ID
 		/// </summary>
 		/// <param name="id">Property ID</param>
@@ -78,54 +102,6 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the property");
             }
         }
-
-        /// <summary>
-        /// Get properties by state
-        /// </summary>
-        /// <param name="state">State code</param>
-        /// <returns>List of properties</returns>
-        [HttpGet("state/{state}")]
-        public async Task<IActionResult> GetByState(string state)
-        {
-            if (string.IsNullOrWhiteSpace(state))
-                return BadRequest("State is required");
-
-            try
-            {
-                var properties = await _propertyRepository.GetByStateAsync(state, CurrentOrganizationId);
-                var response = properties.Select(p => new PropertyResponseDto(p));
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting properties by state: {State}", state);
-                return ServerError("An error occurred while retrieving properties");
-            }
-        }
-
-		/// <summary>
-		/// Get properties by the current user's selection criteria
-		/// </summary>
-		/// <param name="userId">User Id</param>
-		/// <returns>List of properties</returns>
-		[HttpGet("user/{userId}")]
-		public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
-		{
-			if (CurrentUser == Guid.Empty || CurrentUser != userId)
-				return Unauthorized();
-
-			try
-			{
-				var properties = await _propertyRepository.GetBySelectionCriteriaAsync(CurrentUser, CurrentOrganizationId);
-				var response = properties.Select(p => new PropertyResponseDto(p));
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
-				return ServerError("An error occurred while retrieving properties");
-			}
-		}
 
 		/// <summary>
 		/// Get the current user's property selection

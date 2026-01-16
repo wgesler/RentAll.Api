@@ -8,96 +8,70 @@ namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository : IPropertyRepository
     {
-		public async Task<IEnumerable<Property>> GetAllAsync(Guid organizationId)
+		// Property Lists
+		public async Task<IEnumerable<PropertyList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetAll", new
-			{
-				OrganizationId = organizationId
-			});
-
-			if (res == null || !res.Any())
-				return Enumerable.Empty<Property>();
-
-			return res.Select(ConvertEntityToModel);
-		}
-
-		public async Task<IEnumerable<Property>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
-		{
-			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetAllByOfficeId", new
+			var res = await db.DapperProcQueryAsync<PropertyListEntity>("dbo.Property_GetListByOfficeId", new
 			{
 				OrganizationId = organizationId,
-                Offices = officeAccess
+				Offices = officeAccess
 			});
 
 			if (res == null || !res.Any())
-				return Enumerable.Empty<Property>();
+				return Enumerable.Empty<PropertyList>();
 
 			return res.Select(ConvertEntityToModel);
 		}
 
-		public async Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetById", new
-            {
-                PropertyId = propertyId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<Property?> GetByPropertyCodeAsync(string propertyCode, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByCode", new
-            {
-                PropertyCode = propertyCode,
-				OrganizationId = organizationId
-			});
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<IEnumerable<Property>> GetByStateAsync(string state, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByState", new
-            {
-                State = state,
-				OrganizationId = organizationId
-			});
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Property>();
-
-            return res.Select(ConvertEntityToModel);
-        }
-
-		public async Task<IEnumerable<Property>> GetBySelectionCriteriaAsync(Guid userId, Guid organizationId)
+		public async Task<IEnumerable<PropertyList>> GetListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetBySelection", new
+			var res = await db.DapperProcQueryAsync<PropertyListEntity>("dbo.Property_GetListBySelection", new
 			{
 				UserId = userId,
-                OrganizationId = organizationId
+                OrganizationId = organizationId,
+				Offices = officeAccess
 			});
 
 			if (res == null || !res.Any())
-				return Enumerable.Empty<Property>();
+				return Enumerable.Empty<PropertyList>();
 
 			return res.Select(ConvertEntityToModel);
 		}
 
-        public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)
+		// Individual Properties
+		public async Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetById", new
+			{
+				PropertyId = propertyId,
+				OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				return null;
+
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+
+		public async Task<Property?> GetByPropertyCodeAsync(string propertyCode, Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByCode", new
+			{
+				PropertyCode = propertyCode,
+				OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				return null;
+
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+
+		public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)
         {
 			await using var db = new SqlConnection(_dbConnectionString);
 			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Property_ExistsByCode", new
