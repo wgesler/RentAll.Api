@@ -151,6 +151,29 @@ public class AuthManager
         return true;
     }
 
+    public async Task<(bool Success, string? ErrorMessage)> UpdatePasswordAsync(Guid userId, string currentPassword, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(currentPassword))
+            return (false, "Current password is required");
+
+        if (string.IsNullOrWhiteSpace(newPassword))
+            return (false, "New password is required");
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return (false, "User not found");
+
+        if (!_passwordHasher.VerifyPassword(currentPassword, user.PasswordHash))
+            return (false, "Current password is incorrect");
+
+        var newPasswordHash = _passwordHasher.HashPassword(newPassword);
+        user.PasswordHash = newPasswordHash;
+        user.ModifiedBy = userId; // User is updating their own password
+
+        await _userRepository.UpdateByIdAsync(user);
+        return (true, null);
+    }
+
     private static string HashRefreshToken(string token)
     {
         using var sha256 = SHA256.Create();
