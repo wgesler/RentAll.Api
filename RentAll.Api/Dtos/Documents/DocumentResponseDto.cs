@@ -10,6 +10,10 @@ public class DocumentResponseDto
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
 	public string OfficeName { get; set; } = string.Empty;
+	public Guid? PropertyId { get; set; }
+	public string PropertyCode { get; set; } = string.Empty;
+	public Guid? ReservationId { get; set; }
+	public string ReservationCode { get; set; } = string.Empty;
 	public int DocumentTypeId { get; set; }
 	public string FileName { get; set; } = string.Empty;
 	public string FileExtension { get; set; } = string.Empty;
@@ -28,6 +32,10 @@ public class DocumentResponseDto
 		OrganizationId = document.OrganizationId;
 		OfficeId = document.OfficeId;
 		OfficeName = document.OfficeName;
+		PropertyId = document.PropertyId;
+		PropertyCode = document.PropertyCode;
+		ReservationId = document.ReservationId;
+		ReservationCode = document.ReservationCode;
 		DocumentTypeId = (int)document.DocumentType;
 		FileName = document.FileName;
 		FileExtension = document.FileExtension;

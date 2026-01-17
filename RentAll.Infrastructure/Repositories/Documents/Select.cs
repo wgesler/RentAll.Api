@@ -37,6 +37,23 @@ public partial class DocumentRepository : IDocumentRepository
 		return res.Select(ConvertEntityToModel);
 	}
 
+	public async Task<IEnumerable<Document>> GetAllByPropertyTypeAsync(Guid organizationId, Guid propertyId, int documentTypeId, string officeAccess)
+	{
+		await using var db = new SqlConnection(_dbConnectionString);
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetAllByPropertyType", new
+		{
+			OrganizationId = organizationId,
+			PropertyId = propertyId,
+			DocumentTypeId = documentTypeId,
+			Offices = officeAccess
+		});
+
+		if (res == null || !res.Any())
+			return Enumerable.Empty<Document>();
+
+		return res.Select(ConvertEntityToModel);
+	}
+
 	public async Task<Document?> GetByIdAsync(Guid documentId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);

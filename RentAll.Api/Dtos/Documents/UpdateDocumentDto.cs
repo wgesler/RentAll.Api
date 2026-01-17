@@ -9,6 +9,8 @@ public class UpdateDocumentDto
 	public Guid DocumentId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
+	public Guid? PropertyId { get; set; }
+	public Guid? ReservationId { get; set; }
 	public int DocumentTypeId { get; set; }
 	public FileDetails? FileDetails { get; set; }
 	public bool IsDeleted { get; set; }
@@ -44,6 +46,8 @@ public class UpdateDocumentDto
 			DocumentId = DocumentId,
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
+			PropertyId = PropertyId,
+			ReservationId = ReservationId,
 			DocumentType = (DocumentType)DocumentTypeId,
 			FileName = Path.GetFileNameWithoutExtension(FileDetails!.FileName),
 			FileExtension = Path.GetExtension(FileDetails!.FileName),

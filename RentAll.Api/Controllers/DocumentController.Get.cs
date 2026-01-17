@@ -34,6 +34,34 @@ namespace RentAll.Api.Controllers
 		}
 
 		/// <summary>
+		/// Get all documents by property and type
+		/// </summary>
+		/// <returns>List of documents by property and type</returns>
+		[HttpGet("property/{propertyId:guid}/type/{id:int}")]
+		public async Task<IActionResult> GetAllByPropertyAndType(Guid propertyId, int id)
+		{
+			try
+			{
+				var documents = await _documentRepository.GetAllByPropertyTypeAsync(CurrentOrganizationId, propertyId, id, CurrentOfficeAccess);
+				var response = new List<DocumentResponseDto>();
+				foreach (var document in documents.Where(d => !d.IsDeleted))
+				{
+					var dto = new DocumentResponseDto(document);
+					if (!string.IsNullOrWhiteSpace(document.DocumentPath))
+						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.DocumentPath);
+
+					response.Add(dto);
+				}
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting all documents");
+				return ServerError("An error occurred while retrieving documents");
+			}
+		}       
+		
+		/// <summary>
 		/// Get document by ID
 		/// </summary>
 		/// <param name="id">Document ID</param>

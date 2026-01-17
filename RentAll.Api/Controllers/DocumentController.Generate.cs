@@ -61,6 +61,8 @@ namespace RentAll.Api.Controllers
 				{
 					OrganizationId = dto.OrganizationId,
 					OfficeId = dto.OfficeId,
+					PropertyId = dto.PropertyId,
+					ReservationId = dto.ReservationId,
 					DocumentTypeId = dto.DocumentTypeId,
 					FileDetails = new Domain.Models.Common.FileDetails
 					{

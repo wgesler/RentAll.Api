@@ -6,6 +6,10 @@ public class DocumentEntity
 	public Guid OrganizationId { get; set; }
 	public int? OfficeId { get; set; }
 	public string OfficeName { get; set; } = string.Empty;
+	public Guid? PropertyId { get; set; }
+	public string PropertyCode { get; set; } = string.Empty;
+	public Guid? ReservationId { get; set; }
+	public string ReservationCode { get; set; } = string.Empty;
 	public int DocumentTypeId { get; set; }
 	public string FileName { get; set; } = string.Empty;
 	public string FileExtension { get; set; } = string.Empty;

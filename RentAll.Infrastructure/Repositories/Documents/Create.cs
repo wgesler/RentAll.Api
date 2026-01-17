@@ -15,6 +15,8 @@ public partial class DocumentRepository : IDocumentRepository
 		{
 			OrganizationId = document.OrganizationId,
 			OfficeId = document.OfficeId,
+			PropertyId = document.PropertyId,
+			ReservationId = document.ReservationId,
 			DocumentTypeId = (int)document.DocumentType,
 			FileName = document.FileName,
 			FileExtension = document.FileExtension,
