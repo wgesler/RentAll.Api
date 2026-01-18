@@ -18,6 +18,7 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 				ContactId = leaseInformation.ContactId,
 				RentalPayment = leaseInformation.RentalPayment,
 				SecurityDeposit = leaseInformation.SecurityDeposit,
+				SecurityDepositWaiver = leaseInformation.SecurityDepositWaiver,
 				CancellationPolicy = leaseInformation.CancellationPolicy,
 				KeyPickUpDropOff = leaseInformation.KeyPickUpDropOff,
 				PartialMonth = leaseInformation.PartialMonth,

@@ -19,11 +19,13 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 		{
 			var response = new LeaseInformation()
 			{
+				LeaseInformationId = e.LeaseInformationId,
 				PropertyId = e.PropertyId,
 				OrganizationId = e.OrganizationId,
 				ContactId = e.ContactId,
 				RentalPayment = e.RentalPayment,
 				SecurityDeposit = e.SecurityDeposit,
+				SecurityDepositWaiver = e.SecurityDepositWaiver,
 				CancellationPolicy = e.CancellationPolicy,
 				KeyPickUpDropOff = e.KeyPickUpDropOff,
 				PartialMonth = e.PartialMonth,

@@ -8,6 +8,7 @@ public class LeaseInformationEntity
 	public Guid? ContactId { get; set; }
 	public string? RentalPayment { get; set; }
 	public string? SecurityDeposit { get; set; }
+	public string? SecurityDepositWaiver { get; set; }
 	public string? CancellationPolicy { get; set; }
 	public string? KeyPickUpDropOff { get; set; }
 	public string? PartialMonth { get; set; }

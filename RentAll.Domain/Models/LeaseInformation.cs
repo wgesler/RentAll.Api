@@ -2,11 +2,13 @@ namespace RentAll.Domain.Models;
 
 public class LeaseInformation
 {
+	public Guid LeaseInformationId { get; set; }
 	public Guid PropertyId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public Guid? ContactId { get; set; }
 	public string? RentalPayment { get; set; }
 	public string? SecurityDeposit { get; set; }
+	public string? SecurityDepositWaiver { get; set; }
 	public string? CancellationPolicy { get; set; }
 	public string? KeyPickUpDropOff { get; set; }
 	public string? PartialMonth { get; set; }

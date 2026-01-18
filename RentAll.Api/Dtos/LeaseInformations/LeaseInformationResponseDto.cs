@@ -4,11 +4,13 @@ namespace RentAll.Api.Dtos.LeaseInformations;
 
 public class LeaseInformationResponseDto
 {
+	public Guid LeaseInformationId { get; set; }
 	public Guid PropertyId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public Guid? ContactId { get; set; }
 	public string? RentalPayment { get; set; }
 	public string? SecurityDeposit { get; set; }
+	public string? SecurityDepositWaiver { get; set; }
 	public string? CancellationPolicy { get; set; }
 	public string? KeyPickUpDropOff { get; set; }
 	public string? PartialMonth { get; set; }
@@ -34,11 +36,13 @@ public class LeaseInformationResponseDto
 
 	public LeaseInformationResponseDto(LeaseInformation leaseInformation)
 	{
+		LeaseInformationId = leaseInformation.LeaseInformationId;
 		PropertyId = leaseInformation.PropertyId;
 		OrganizationId = leaseInformation.OrganizationId;
 		ContactId = leaseInformation.ContactId;
 		RentalPayment = leaseInformation.RentalPayment;
 		SecurityDeposit = leaseInformation.SecurityDeposit;
+		SecurityDepositWaiver = leaseInformation.SecurityDepositWaiver;
 		CancellationPolicy = leaseInformation.CancellationPolicy;
 		KeyPickUpDropOff = leaseInformation.KeyPickUpDropOff;
 		PartialMonth = leaseInformation.PartialMonth;
