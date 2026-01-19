@@ -17,6 +17,10 @@ namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 				OrganizationId = propertyHtml.OrganizationId,
 				WelcomeLetter = propertyHtml.WelcomeLetter,
 				Lease = propertyHtml.Lease,
+				LetterOfResponsibility = propertyHtml.LetterOfResponsibility,
+				NoticeToVacate = propertyHtml.NoticeToVacate,
+				CreditAuthorization = propertyHtml.CreditAuthorization,
+				CreditApplication = propertyHtml.CreditApplication,
 				CreatedBy = propertyHtml.CreatedBy
 			});
 

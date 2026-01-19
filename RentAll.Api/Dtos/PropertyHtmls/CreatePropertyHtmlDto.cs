@@ -8,6 +8,10 @@ public class CreatePropertyHtmlDto
 	public Guid OrganizationId { get; set; }
 	public string WelcomeLetter { get; set; } = string.Empty;
 	public string Lease { get; set; } = string.Empty;
+	public string LetterOfResponsibility { get; set; } = string.Empty;
+	public string NoticeToVacate { get; set; } = string.Empty;
+	public string CreditAuthorization { get; set; } = string.Empty;
+	public string CreditApplication { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -34,6 +38,10 @@ public class CreatePropertyHtmlDto
 			OrganizationId = OrganizationId,
 			WelcomeLetter = WelcomeLetter,
 			Lease = Lease,
+			LetterOfResponsibility = LetterOfResponsibility,
+			NoticeToVacate = NoticeToVacate,
+			CreditAuthorization = CreditAuthorization,
+			CreditApplication = CreditApplication,
 			IsDeleted = false,
 			CreatedBy = currentUser
 		};

@@ -6,6 +6,10 @@ public class PropertyHtmlEntity
 	public Guid OrganizationId { get; set; }
 	public string WelcomeLetter { get; set; } = string.Empty;
 	public string Lease { get; set; } = string.Empty;
+	public string LetterOfResponsibility { get; set; } = string.Empty;
+	public string NoticeToVacate { get; set; } = string.Empty;
+	public string CreditAuthorization { get; set; } = string.Empty;
+	public string CreditApplication { get; set; } = string.Empty;
 	public bool IsDeleted { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
