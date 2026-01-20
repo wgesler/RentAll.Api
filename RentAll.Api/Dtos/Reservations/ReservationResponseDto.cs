@@ -34,6 +34,7 @@ public class ReservationResponseDto
 	public bool MaidService { get; set; }
 	public decimal MaidServiceFee { get; set; }
 	public int FrequencyId { get; set; }
+	public DateTimeOffset MaidStartDate { get; set; }
 	public decimal Taxes { get; set; }
 	public decimal ExtraFee { get; set; }
 	public string ExtraFeeName { get; set; } = string.Empty;
@@ -80,6 +81,7 @@ public class ReservationResponseDto
 		MaidService = reservation.MaidService;
 		MaidServiceFee = reservation.MaidServiceFee;
 		FrequencyId = (int)reservation.Frequency;
+		MaidStartDate = reservation.MaidStartDate;
 		Taxes = reservation.Taxes;
 		ExtraFee = reservation.ExtraFee;
 		ExtraFeeName = reservation.ExtraFeeName;

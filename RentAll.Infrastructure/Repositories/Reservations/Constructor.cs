@@ -50,6 +50,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				MaidService = e.MaidService,
 				MaidServiceFee = e.MaidServiceFee,
 				Frequency = (FrequencyType)e.FrequencyId,
+				MaidStartDate = e.MaidStartDate,
 				Taxes = e.Taxes,
 				ExtraFee = e.ExtraFee,
 				ExtraFeeName = e.ExtraFeeName,

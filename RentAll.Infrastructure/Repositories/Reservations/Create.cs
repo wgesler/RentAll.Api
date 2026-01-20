@@ -39,6 +39,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				MaidService = r.MaidService,
 				MaidServiceFee = r.MaidServiceFee,
 				FrequencyId = (int)r.Frequency,
+				MaidStartDate = r.MaidStartDate,
 				Taxes = r.Taxes,
 				ExtraFee = r.ExtraFee,
 				ExtraFeeName = r.ExtraFeeName,
