@@ -13,7 +13,7 @@ public class PropertyListEntity
 	public decimal Bathrooms { get; set; }
 	public int Accomodates { get; set; }
 	public int SquareFeet { get; set; }
-	public decimal MonthlyRent { get; set; }
+	public decimal MonthlyRate { get; set; }
 	public decimal DailyRate { get; set; }
 	public decimal DepartureFee { get; set; }
 	public decimal PetFee { get; set; }

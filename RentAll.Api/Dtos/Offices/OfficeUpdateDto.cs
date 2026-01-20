@@ -22,6 +22,7 @@ public class OfficeUpdateDto
 	public string? MaintenanceEmail { get; set; }
 	public string? AfterHoursPhone { get; set; }
 	public string? AfterHoursInstructions { get; set; }
+	public int DaysAfterDeparture { get; set; }
 	public decimal DefaultDeposit { get; set; }
 	public decimal DefaultSdw { get; set; }
 	public decimal DefaultKeyFee { get; set; }
@@ -62,6 +63,7 @@ public class OfficeUpdateDto
 			MaintenanceEmail = MaintenanceEmail,
 			AfterHoursPhone = AfterHoursPhone,
 			AfterHoursInstructions = AfterHoursInstructions,
+			DaysAfterDeparture = DaysAfterDeparture,
 			DefaultDeposit = DefaultDeposit,
 			DefaultSdw = DefaultSdw,
 			DefaultKeyFee = DefaultKeyFee,

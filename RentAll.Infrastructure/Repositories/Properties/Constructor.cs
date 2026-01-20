@@ -135,7 +135,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				Bathrooms = e.Bathrooms,
 				Accomodates = e.Accomodates,
 				SquareFeet = e.SquareFeet,
-				MonthlyRent = e.MonthlyRent,
+				MonthlyRate = e.MonthlyRate,
 				DailyRate = e.DailyRate,
 				DepartureFee = e.DepartureFee,
 				PetFee = e.PetFee,

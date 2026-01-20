@@ -29,6 +29,7 @@ public partial class OfficeRepository : IOfficeRepository
 			MaintenanceEmail = office.MaintenanceEmail,
 			AfterHoursPhone = office.AfterHoursPhone,
 			AfterHoursInstructions = office.AfterHoursInstructions,
+			DaysAfterDeparture = office.DaysAfterDeparture,
 			DefaultDeposit = office.DefaultDeposit,
 			DefaultSdw = office.DefaultSdw,
 			DefaultKeyFee = office.DefaultKeyFee,
