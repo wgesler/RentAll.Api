@@ -16,11 +16,13 @@ namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 				PropertyId = propertyHtml.PropertyId,
 				OrganizationId = propertyHtml.OrganizationId,
 				WelcomeLetter = propertyHtml.WelcomeLetter,
+				InspectionChecklist = propertyHtml.InspectionChecklist,
 				Lease = propertyHtml.Lease,
 				LetterOfResponsibility = propertyHtml.LetterOfResponsibility,
 				NoticeToVacate = propertyHtml.NoticeToVacate,
 				CreditAuthorization = propertyHtml.CreditAuthorization,
-				CreditApplication = propertyHtml.CreditApplication,
+				CreditApplicationBusiness = propertyHtml.CreditApplicationBusiness,
+				CreditApplicationIndividual = propertyHtml.CreditApplicationIndividual,
 				CreatedBy = propertyHtml.CreatedBy
 			});
 

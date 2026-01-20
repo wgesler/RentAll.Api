@@ -7,11 +7,13 @@ public class UpdatePropertyHtmlDto
 	public Guid PropertyId { get; set; }
 	public Guid? OrganizationId { get; set; }
 	public string WelcomeLetter { get; set; } = string.Empty;
+	public string InspectionChecklist { get; set; } = string.Empty;
 	public string Lease { get; set; } = string.Empty;
 	public string LetterOfResponsibility { get; set; } = string.Empty;
 	public string NoticeToVacate { get; set; } = string.Empty;
 	public string CreditAuthorization { get; set; } = string.Empty;
-	public string CreditApplication { get; set; } = string.Empty;
+	public string CreditApplicationBusiness { get; set; } = string.Empty;
+	public string CreditApplicationIndividual { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -34,11 +36,13 @@ public class UpdatePropertyHtmlDto
 			PropertyId = PropertyId,
 			OrganizationId = currentOrganization,
 			WelcomeLetter = WelcomeLetter,
+			InspectionChecklist = InspectionChecklist,
 			Lease = Lease,
 			LetterOfResponsibility = LetterOfResponsibility,
 			NoticeToVacate = NoticeToVacate,
 			CreditAuthorization = CreditAuthorization,
-			CreditApplication = CreditApplication,
+			CreditApplicationBusiness = CreditApplicationBusiness,
+			CreditApplicationIndividual = CreditApplicationIndividual,
 			ModifiedBy = currentUser
 		};
 	}
