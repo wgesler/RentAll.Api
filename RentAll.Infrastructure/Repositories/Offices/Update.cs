@@ -30,7 +30,7 @@ public partial class OfficeRepository : IOfficeRepository
 			MaintenanceEmail = office.MaintenanceEmail,
 			AfterHoursPhone = office.AfterHoursPhone,
 			AfterHoursInstructions = office.AfterHoursInstructions,
-			DaysAfterDeparture = office.DaysAfterDeparture,
+			DaysToRefundDeposit = office.DaysToRefundDeposit,
 			DefaultDeposit = office.DefaultDeposit,
 			DefaultSdw = office.DefaultSdw,
 			DefaultKeyFee = office.DefaultKeyFee,
