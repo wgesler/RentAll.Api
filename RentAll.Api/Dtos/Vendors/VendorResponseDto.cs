@@ -11,14 +11,14 @@ public class VendorResponseDto
 	public string OfficeName { get; set; } = string.Empty;
     public string VendorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Address1 { get; set; } = string.Empty;
-    public string? Address2 { get; set; }
-    public string? Suite { get; set; }
-    public string City { get; set; } = string.Empty;
-    public string State { get; set; } = string.Empty;
-    public string Zip { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string? Website { get; set; }
+	public string? Address1 { get; set; }
+	public string? Address2 { get; set; }
+	public string? Suite { get; set; }
+	public string? City { get; set; }
+	public string? State { get; set; }
+	public string? Zip { get; set; }
+	public string? Phone { get; set; }
+	public string? Website { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
