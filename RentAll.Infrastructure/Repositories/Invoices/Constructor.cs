@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
@@ -8,6 +9,11 @@ namespace RentAll.Infrastructure.Repositories.Invoices;
 
 public partial class InvoiceRepository : IInvoiceRepository
 {
+	private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+	{
+		PropertyNameCaseInsensitive = true
+	};
+
 	private readonly string _dbConnectionString;
 
 	public InvoiceRepository(IOptions<AppSettings> appSettings)
@@ -17,6 +23,19 @@ public partial class InvoiceRepository : IInvoiceRepository
 
 	private Invoice ConvertEntityToModel(InvoiceEntity e)
 	{
+		List<LedgerLine> lines = new List<LedgerLine>();
+		if (!string.IsNullOrWhiteSpace(e.Lines))
+		{
+			try
+			{
+				lines = JsonSerializer.Deserialize<List<LedgerLine>>(e.Lines, JsonOptions) ?? new List<LedgerLine>();
+			}
+			catch
+			{
+				lines = new List<LedgerLine>();
+			}
+		}
+
 		return new Invoice
 		{
 			InvoiceId = e.InvoiceId,
@@ -25,18 +44,12 @@ public partial class InvoiceRepository : IInvoiceRepository
 			OfficeName = e.OfficeName,
 			ReservationId = e.ReservationId,
 			ReservationCode = e.ReservationCode,
-			ContactId = e.ContactId,
-			ContactName = e.ContactName,
 			InvoiceDate = e.InvoiceDate,
 			DueDate = e.DueDate,
 			TotalAmount = e.TotalAmount,
 			PaidAmount = e.PaidAmount,
 			Notes = e.Notes,
-			IsActive = e.IsActive,
-			CreatedOn = e.CreatedOn,
-			CreatedBy = e.CreatedBy,
-			ModifiedOn = e.ModifiedOn,
-			ModifiedBy = e.ModifiedBy
+			Lines = lines
 		};
 	}
 }

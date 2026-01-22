@@ -17,14 +17,11 @@ public partial class InvoiceRepository : IInvoiceRepository
 			OrganizationId = invoice.OrganizationId,
 			OfficeId = invoice.OfficeId,
 			ReservationId = invoice.ReservationId,
-			ContactId = invoice.ContactId,
 			InvoiceDate = invoice.InvoiceDate,
 			DueDate = invoice.DueDate,
 			TotalAmount = invoice.TotalAmount,
 			PaidAmount = invoice.PaidAmount,
-			Notes = invoice.Notes,
-			IsActive = invoice.IsActive,
-			ModifiedBy = invoice.ModifiedBy
+			Notes = invoice.Notes
 		});
 
 		if (res == null || !res.Any())
