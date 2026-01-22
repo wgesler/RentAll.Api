@@ -9,7 +9,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task DeleteByIdAsync(int buildingId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		await db.DapperProcExecuteAsync("dbo.Building_DeleteById", new
+		await db.DapperProcExecuteAsync("Organization.Building_DeleteById", new
 		{
 			BuildingId = buildingId
 		});

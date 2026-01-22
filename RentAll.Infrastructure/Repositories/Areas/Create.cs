@@ -11,7 +11,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<Area> CreateAsync(Area area)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_Add", new
+		var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_Add", new
 		{
 			OrganizationId = area.OrganizationId,
 			OfficeId = area.OfficeId,

@@ -9,7 +9,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task DeleteByIdAsync(Guid refreshTokenId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			await db.DapperProcExecuteAsync("dbo.RefreshToken_DeleteById", new
+			await db.DapperProcExecuteAsync("User.RefreshToken_DeleteById", new
 			{
 				RefreshTokenId = refreshTokenId
 			});
@@ -18,7 +18,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task DeleteExpiredAsync()
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			await db.DapperProcExecuteAsync("dbo.RefreshToken_DeleteExpired", null);
+			await db.DapperProcExecuteAsync("User.RefreshToken_DeleteExpired", null);
 		}
 	}
 }

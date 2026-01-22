@@ -9,7 +9,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task DeleteByIdAsync(int areaId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		await db.DapperProcExecuteAsync("dbo.Area_DeleteById", new
+		await db.DapperProcExecuteAsync("Organization.Area_DeleteById", new
 		{
 			AreaId = areaId
 		});

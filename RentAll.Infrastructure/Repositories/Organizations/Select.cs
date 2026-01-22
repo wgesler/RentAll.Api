@@ -11,7 +11,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<IEnumerable<Organization>> GetAllAsync()
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Organization_GetAll", null);
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetAll", null);
 
 		if (res == null || !res.Any())
 			return Enumerable.Empty<Organization>();
@@ -22,7 +22,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<Organization?> GetByIdAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Organization_GetById", new
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetById", new
 		{
 			OrganizationId = organizationId
 		});
@@ -36,7 +36,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<Organization?> GetByOrganizationCodeAsync(string organizationCode)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Organization_GetByOrganizationCode", new
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetByOrganizationCode", new
 		{
 			OrganizationCode = organizationCode
 		});
@@ -50,7 +50,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<bool> ExistsByOrganizationCodeAsync(string organizationCode)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Organization_GetByOrganizationCode", new
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetByOrganizationCode", new
 		{
 			OrganizationCode = organizationCode
 		});

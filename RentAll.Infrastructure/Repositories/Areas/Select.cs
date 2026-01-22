@@ -11,7 +11,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<IEnumerable<Area>> GetAllAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_GetAll", new
+		var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_GetAll", new
 		{
 			OrganizationId = organizationId
 		});
@@ -25,7 +25,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<IEnumerable<Area>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_GetAllByOfficeId", new
+		var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_GetAllByOfficeId", new
 		{
 			OrganizationId = organizationId,
 			Offices = officeAccess
@@ -40,7 +40,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<Area?> GetByIdAsync(int areaId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_GetById", new
+		var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_GetById", new
 		{
 			AreaId = areaId,
 			OrganizationId = organizationId
@@ -55,7 +55,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<Area?> GetByAreaCodeAsync(string areaCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_GetByCode", new
+		var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_GetByCode", new
 		{
 			AreaCode = areaCode,
 			OrganizationId = organizationId,
@@ -71,7 +71,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<bool> ExistsByAreaCodeAsync(string areaCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Area_ExistsByCode", new
+		var result = await db.DapperProcQueryScalarAsync<int>("Organization.Area_ExistsByCode", new
 		{
 			AreaCode = areaCode,
 			OrganizationId = organizationId,

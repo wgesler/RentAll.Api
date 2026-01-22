@@ -11,7 +11,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task<Building> CreateAsync(Building building)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_Add", new
+		var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_Add", new
 		{
 			OrganizationId = building.OrganizationId,
 			OfficeId = building.OfficeId,

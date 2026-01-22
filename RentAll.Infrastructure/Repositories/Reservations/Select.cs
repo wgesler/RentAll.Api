@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 		public async Task<IEnumerable<ReservationList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ReservationListEntity>("dbo.Reservation_GetListByOfficeId", new
+			var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetListByOfficeId", new
 			{
 				OrganizationId = organizationId,
 				Offices = officeAccess
@@ -26,7 +26,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         public async Task<Reservation?> GetByIdAsync(Guid reservationId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetById", new
+            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
             {
 				ReservationId = reservationId,
                 OrganizationId = organizationId
@@ -41,7 +41,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 		public async Task<IEnumerable<Reservation>> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_GetByPropertyId", new
+			var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetByPropertyId", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId

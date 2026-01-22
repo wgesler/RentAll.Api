@@ -11,7 +11,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task<Region> UpdateByIdAsync(Region region)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_UpdateById", new
+		var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_UpdateById", new
 		{
 			RegionId = region.RegionId,
 			OrganizationId = region.OrganizationId,

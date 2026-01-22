@@ -11,7 +11,7 @@ public partial class PropertySelectionRepository : IPropertySelectionRepository
 	public async Task<PropertySelection> UpsertAsync(PropertySelection s)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<PropertySelectionEntity>("dbo.PropertySelection_UpsertByUserId", new
+		var res = await db.DapperProcQueryAsync<PropertySelectionEntity>("Property.PropertySelection_UpsertByUserId", new
 		{
 			UserId = s.UserId,
 			FromBeds = s.FromBeds,

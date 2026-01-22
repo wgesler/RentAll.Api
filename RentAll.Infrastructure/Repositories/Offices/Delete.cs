@@ -9,7 +9,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task DeleteByIdAsync(int officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		await db.DapperProcExecuteAsync("dbo.Office_DeleteById", new
+		await db.DapperProcExecuteAsync("Organization.Office_DeleteById", new
 		{
 			OfficeId = officeId
 		});

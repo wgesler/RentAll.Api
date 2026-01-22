@@ -11,7 +11,7 @@ public partial class PropertySelectionRepository : IPropertySelectionRepository
 	public async Task<PropertySelection?> GetByUserIdAsync(Guid userId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<PropertySelectionEntity>("dbo.PropertySelection_GetByUserId", new
+		var res = await db.DapperProcQueryAsync<PropertySelectionEntity>("Property.PropertySelection_GetByUserId", new
 		{
 			UserId = userId
 		});

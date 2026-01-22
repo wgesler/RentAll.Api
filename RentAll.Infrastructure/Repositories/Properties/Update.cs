@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<Property> UpdateByIdAsync(Property property)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_UpdateById", new
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_UpdateById", new
 			{
 				PropertyId = property.PropertyId,
 				OrganizationId = property.OrganizationId,

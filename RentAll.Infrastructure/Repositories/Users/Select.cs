@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 		public async Task<IEnumerable<User>> GetAllAsync(Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetAll", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("User.User_GetAll", new
 			{
 				OrganizationId = organizationId
 			});
@@ -25,7 +25,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 		public async Task<User?> GetByIdAsync(Guid userId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetById", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("User.User_GetById", new
 			{
 				UserId = userId
 			});
@@ -39,7 +39,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 		public async Task<User?> GetByEmailAsync(string email)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetByEmail", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("User.User_GetByEmail", new
 			{
 				Email = email
 			});
@@ -53,7 +53,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 		public async Task<bool> ExistsByEmailAsync(string email)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_GetByEmail", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("User.User_GetByEmail", new
 			{
 				Email = email
 			});

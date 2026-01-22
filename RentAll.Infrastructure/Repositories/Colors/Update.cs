@@ -11,7 +11,7 @@ public partial class ColorRepository : IColorRepository
 	public async Task UpdateByIdAsync(Colour c)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<ColorEntity>("dbo.Color_UpdateById", new
+		var res = await db.DapperProcQueryAsync<ColorEntity>("Organization.Color_UpdateById", new
 		{
 			ColorId = c.ColorId,
 			OrganizationId = c.OrganizationId,

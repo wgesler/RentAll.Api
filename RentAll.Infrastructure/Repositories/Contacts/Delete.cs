@@ -9,7 +9,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         public async Task DeleteByIdAsync(Guid contactId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            await db.DapperProcExecuteAsync("dbo.Contact_DeleteById", new
+            await db.DapperProcExecuteAsync("Organization.Contact_DeleteById", new
             {
                 ContactId = contactId
             });

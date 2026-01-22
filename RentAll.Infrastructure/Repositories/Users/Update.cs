@@ -21,7 +21,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				? JsonSerializer.Serialize(user.OfficeAccess)
 				: "[]";
 
-			var res = await db.DapperProcQueryAsync<UserEntity>("dbo.User_UpdateById", new
+			var res = await db.DapperProcQueryAsync<UserEntity>("User.User_UpdateById", new
 			{
 				OrganizationId = user.OrganizationId,
 				UserId = user.UserId,

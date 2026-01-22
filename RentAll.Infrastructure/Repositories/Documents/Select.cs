@@ -11,7 +11,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<IEnumerable<Document>> GetAllAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetAll", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAll", new
 		{
 			OrganizationId = organizationId
 		});
@@ -25,7 +25,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<IEnumerable<Document>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetAllByOfficeId", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAllByOfficeId", new
 		{
 			OrganizationId = organizationId,
 			Offices = officeAccess
@@ -40,7 +40,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<IEnumerable<Document>> GetAllByPropertyTypeAsync(Guid organizationId, Guid propertyId, int documentTypeId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetAllByPropertyType", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAllByPropertyType", new
 		{
 			OrganizationId = organizationId,
 			PropertyId = propertyId,
@@ -57,7 +57,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<Document?> GetByIdAsync(Guid documentId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetById", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetById", new
 		{
 			DocumentId = documentId,
 			OrganizationId = organizationId
@@ -72,7 +72,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<IEnumerable<Document>> GetByOfficeIdAsync(int officeId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetByOfficeId", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetByOfficeId", new
 		{
 			OfficeId = officeId,
 			OrganizationId = organizationId
@@ -87,7 +87,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<IEnumerable<Document>> GetByDocumentTypeAsync(int documentType, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_GetByDocumentType", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetByDocumentType", new
 		{
 			DocumentType = documentType,
 			OrganizationId = organizationId

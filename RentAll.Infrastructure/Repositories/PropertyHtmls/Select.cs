@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 		public async Task<PropertyHtml?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("dbo.PropertyHtml_GetByPropertyId", new
+			var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_GetByPropertyId", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId

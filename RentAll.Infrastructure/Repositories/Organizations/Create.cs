@@ -11,7 +11,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<Organization> CreateAsync(Organization organization)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Organization_Add", new
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_Add", new
 		{
 			OrganizationCode = organization.OrganizationCode,
 			Name = organization.Name,

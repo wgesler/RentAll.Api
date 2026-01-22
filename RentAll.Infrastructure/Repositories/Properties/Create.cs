@@ -10,7 +10,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<Property> CreateAsync(Property property)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-			await db.DapperProcExecuteAsync("dbo.Property_Add", new
+			await db.DapperProcExecuteAsync("Property.Property_Add", new
 			{
 				OrganizationId = property.OrganizationId,
 				PropertyCode = property.PropertyCode,

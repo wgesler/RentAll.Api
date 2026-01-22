@@ -11,7 +11,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<IEnumerable<Office>> GetAllAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OfficeEntity>("dbo.Office_GetAll", new
+		var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetAll", new
 		{
 			OrganizationId = organizationId
 		});
@@ -25,7 +25,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<IEnumerable<Office>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OfficeEntity>("dbo.Office_GetAllByOfficeId", new
+		var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetAllByOfficeId", new
 		{
 			OrganizationId = organizationId,
 			Offices = officeAccess
@@ -40,7 +40,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<Office?> GetByIdAsync(int officeId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OfficeEntity>("dbo.Office_GetById", new
+		var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetById", new
 		{
 			OfficeId = officeId,
 			OrganizationId = organizationId
@@ -55,7 +55,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<Office?> GetByOfficeCodeAsync(string officeCode, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OfficeEntity>("dbo.Office_GetByCode", new
+		var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetByCode", new
 		{
 			OfficeCode = officeCode,
 			OrganizationId = organizationId
@@ -70,7 +70,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<bool> ExistsByOfficeCodeAsync(string officeCode, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Office_ExistsByCode", new
+		var result = await db.DapperProcQueryScalarAsync<int>("Organization.Office_ExistsByCode", new
 		{
 			OfficeCode = officeCode,
 			OrganizationId = organizationId

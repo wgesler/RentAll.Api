@@ -12,7 +12,7 @@ public partial class ColorRepository : IColorRepository
 	public async Task<IEnumerable<Colour>> GetAllAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<ColorEntity>("dbo.Color_GetAll", new
+		var res = await db.DapperProcQueryAsync<ColorEntity>("Organization.Color_GetAll", new
 		{
 			OrganizationId = organizationId
 		});
@@ -26,7 +26,7 @@ public partial class ColorRepository : IColorRepository
 	public async Task<Colour?> GetByIdAsync(int colorId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<ColorEntity>("dbo.Color_GetById", new
+		var res = await db.DapperProcQueryAsync<ColorEntity>("Organization.Color_GetById", new
 		{
 			ColorId = colorId,
 			OrganizationId = organizationId

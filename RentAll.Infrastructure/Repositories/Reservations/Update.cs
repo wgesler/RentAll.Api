@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 		public async Task<Reservation> UpdateByIdAsync(Reservation r)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ReservationEntity>("dbo.Reservation_UpdateById", new
+			var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_UpdateById", new
 			{
 				ReservationId = r.ReservationId,
 				OrganizationId = r.OrganizationId,

@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 		public async Task<IEnumerable<Contact>> GetAllAsync(Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetAll", new
+			var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAll", new
 			{
 				OrganizationId = organizationId
 			});
@@ -25,7 +25,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 		public async Task<IEnumerable<Contact>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetAllByOfficeId", new
+			var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAllByOfficeId", new
 			{
 				OrganizationId = organizationId,
                 Offices = officeAccess
@@ -40,7 +40,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         public async Task<Contact?> GetByIdAsync(Guid contactId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetById", new
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetById", new
             {
                 ContactId = contactId,
 				OrganizationId = organizationId
@@ -55,7 +55,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         public async Task<Contact?> GetByContactCodeAsync(string contactCode, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetByCode", new
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByCode", new
             {
                 ContactCode = contactCode,
 				OrganizationId = organizationId
@@ -70,7 +70,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         public async Task<IEnumerable<Contact>> GetByContactTypeIdAsync(int contactTypeId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_GetByContactTypeId", new
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByContactTypeId", new
             {
                 ContactTypeId = contactTypeId,
                 OrganizationId = organizationId
@@ -85,7 +85,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 		public async Task<bool> ExistsByContactCodeAsync(string contactCode, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Contact_ExistsByCode", new
+			var result = await db.DapperProcQueryScalarAsync<int>("Organization.Contact_ExistsByCode", new
 			{
 				ContactCode = contactCode,
 				OrganizationId = organizationId

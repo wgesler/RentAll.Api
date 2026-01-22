@@ -11,7 +11,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task<IEnumerable<Region>> GetAllAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_GetAll", new
+		var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetAll", new
 		{
 			OrganizationId = organizationId
 		});
@@ -25,7 +25,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task<IEnumerable<Region>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_GetAllByOfficeId", new
+		var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetAllByOfficeId", new
 		{
 			OrganizationId = organizationId,
 			Offices = officeAccess
@@ -40,7 +40,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task<Region?> GetByIdAsync(int regionId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_GetById", new
+		var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetById", new
 		{
 			RegionId = regionId,
 			OrganizationId = organizationId
@@ -55,7 +55,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task<Region?> GetByRegionCodeAsync(string regionCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<RegionEntity>("dbo.Region_GetByCode", new
+		var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetByCode", new
 		{
 			RegionCode = regionCode,
 			OrganizationId = organizationId,
@@ -71,7 +71,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task<bool> ExistsByRegionCodeAsync(string regionCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Region_ExistsByCode", new
+		var result = await db.DapperProcQueryScalarAsync<int>("Organization.Region_ExistsByCode", new
 		{
 			RegionCode = regionCode,
 			OrganizationId = organizationId,

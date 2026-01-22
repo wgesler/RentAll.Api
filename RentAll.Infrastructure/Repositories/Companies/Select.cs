@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		public async Task<IEnumerable<Company>> GetAllAsync(Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetAll", new
+			var res = await db.DapperProcQueryAsync<CompanyEntity>("Organization.Company_GetAll", new
 			{
 				OrganizationId = organizationId
 			});
@@ -25,7 +25,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		public async Task<IEnumerable<Company>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetAllByOfficeId", new
+			var res = await db.DapperProcQueryAsync<CompanyEntity>("Organization.Company_GetAllByOfficeId", new
 			{
 				OrganizationId = organizationId,
 				Offices = officeAccess
@@ -40,7 +40,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		public async Task<Company?> GetByIdAsync(Guid companyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetById", new
+			var res = await db.DapperProcQueryAsync<CompanyEntity>("Organization.Company_GetById", new
 			{
 				CompanyId = companyId,
 				OrganizationId = organizationId
@@ -55,7 +55,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		public async Task<Company?> GetByCompanyCodeAsync(string companyCode, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<CompanyEntity>("dbo.Company_GetByCode", new
+			var res = await db.DapperProcQueryAsync<CompanyEntity>("Organization.Company_GetByCode", new
 			{
 				CompanyCode = companyCode,
 				OrganizationId = organizationId
@@ -69,7 +69,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 		public async Task<bool> ExistsByCompanyCodeAsync(string companyCode, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Company_ExistsByCode", new
+			var result = await db.DapperProcQueryScalarAsync<int>("Organization.Company_ExistsByCode", new
 			{
 				CompanyCode = companyCode,
 				OrganizationId = organizationId

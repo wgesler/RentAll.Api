@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task<RefreshToken> CreateAsync(RefreshToken refreshToken)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("dbo.RefreshToken_Add", new
+			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_Add", new
 			{
 				UserId = refreshToken.UserId,
 				TokenHash = refreshToken.TokenHash,

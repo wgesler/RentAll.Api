@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Agents
         public async Task<Agent> CreateAsync(Agent agent)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<AgentEntity>("dbo.Agent_Add", new
+            var res = await db.DapperProcQueryAsync<AgentEntity>("Organization.Agent_Add", new
             {
                 OrganizationId = agent.OrganizationId,
                 OfficeId = agent.OfficeId,

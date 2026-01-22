@@ -9,7 +9,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 		public async Task DeleteByIdAsync(Guid vendorId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			await db.DapperProcExecuteAsync("dbo.Vendor_DeleteById", new
+			await db.DapperProcExecuteAsync("Organization.Vendor_DeleteById", new
 			{
 				VendorId = vendorId
 			});

@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 		public async Task<LeaseInformation?> GetByIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("dbo.LeaseInformation_GetById", new
+			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetById", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId
@@ -26,7 +26,7 @@ namespace RentAll.Infrastructure.Repositories.LeaseInformations
 		public async Task<LeaseInformation?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("dbo.LeaseInformation_GetByPropertyId", new
+			var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetByPropertyId", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId

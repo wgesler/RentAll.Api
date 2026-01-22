@@ -12,7 +12,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 		public async Task<IEnumerable<PropertyList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyListEntity>("dbo.Property_GetListByOfficeId", new
+			var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListByOfficeId", new
 			{
 				OrganizationId = organizationId,
 				Offices = officeAccess
@@ -27,7 +27,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 		public async Task<IEnumerable<PropertyList>> GetListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyListEntity>("dbo.Property_GetListBySelection", new
+			var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListBySelection", new
 			{
 				UserId = userId,
                 OrganizationId = organizationId,
@@ -44,7 +44,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 		public async Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetById", new
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_GetById", new
 			{
 				PropertyId = propertyId,
 				OrganizationId = organizationId
@@ -59,7 +59,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 		public async Task<Property?> GetByPropertyCodeAsync(string propertyCode, Guid organizationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<PropertyEntity>("dbo.Property_GetByCode", new
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_GetByCode", new
 			{
 				PropertyCode = propertyCode,
 				OrganizationId = organizationId
@@ -74,7 +74,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 		public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)
         {
 			await using var db = new SqlConnection(_dbConnectionString);
-			var result = await db.DapperProcQueryScalarAsync<int>("dbo.Property_ExistsByCode", new
+			var result = await db.DapperProcQueryScalarAsync<int>("Property.Property_ExistsByCode", new
 			{
 				PropertyCode = propertyCode,
 				OrganizationId = organizationId

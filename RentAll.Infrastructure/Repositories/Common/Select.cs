@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Common
 		public async Task<IEnumerable<State>> GetAllStatesAsync()
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<StateEntity>("dbo.State_GetAll", null);
+			var res = await db.DapperProcQueryAsync<StateEntity>("Organization.State_GetAll", null);
 
 			if (res == null || !res.Any())
 				return Enumerable.Empty<State>();

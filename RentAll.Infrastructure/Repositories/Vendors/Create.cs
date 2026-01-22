@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 		public async Task<Vendor> CreateAsync(Vendor vendor)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<VendorEntity>("dbo.Vendor_Add", new
+			var res = await db.DapperProcQueryAsync<VendorEntity>("Organization.Vendor_Add", new
 			{
 				OrganizationId = vendor.OrganizationId,
 				OfficeId = vendor.OfficeId,

@@ -9,7 +9,7 @@ public partial class RegionRepository : IRegionRepository
 	public async Task DeleteByIdAsync(int regionId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		await db.DapperProcExecuteAsync("dbo.Region_DeleteById", new
+		await db.DapperProcExecuteAsync("Organization.Region_DeleteById", new
 		{
 			RegionId = regionId
 		});

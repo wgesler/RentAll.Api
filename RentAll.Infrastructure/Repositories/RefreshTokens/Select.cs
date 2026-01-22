@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task<RefreshToken?> GetByTokenHashAsync(string tokenHash)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("dbo.RefreshToken_GetByTokenHash", new
+			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_GetByTokenHash", new
 			{
 				TokenHash = tokenHash
 			});
@@ -25,7 +25,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task<RefreshToken?> GetByIdAsync(Guid refreshTokenId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("dbo.RefreshToken_GetById", new
+			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_GetById", new
 			{
 				RefreshTokenId = refreshTokenId
 			});
@@ -39,7 +39,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task<IEnumerable<RefreshToken>> GetByUserIdAsync(Guid userId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("dbo.RefreshToken_GetByUserId", new
+			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_GetByUserId", new
 			{
 				UserId = userId
 			});
@@ -53,7 +53,7 @@ namespace RentAll.Infrastructure.Repositories.RefreshTokens
 		public async Task<IEnumerable<RefreshToken>> GetActiveByUserIdAsync(Guid userId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("dbo.RefreshToken_GetActiveByUserId", new
+			var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_GetActiveByUserId", new
 			{
 				UserId = userId
 			});

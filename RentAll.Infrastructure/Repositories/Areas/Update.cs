@@ -11,7 +11,7 @@ public partial class AreaRepository : IAreaRepository
 	public async Task<Area> UpdateByIdAsync(Area area)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AreaEntity>("dbo.Area_UpdateById", new
+		var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_UpdateById", new
 		{
 			AreaId = area.AreaId,
 			OrganizationId = area.OrganizationId,

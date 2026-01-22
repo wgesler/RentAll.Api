@@ -11,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         public async Task<Contact> CreateAsync(Contact contact)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("dbo.Contact_Add", new
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_Add", new
             {
                 OrganizationId = contact.OrganizationId,
 				OfficeId = contact.OfficeId,

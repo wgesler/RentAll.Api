@@ -11,7 +11,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<Office> UpdateByIdAsync(Office office)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OfficeEntity>("dbo.Office_UpdateById", new
+		var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_UpdateById", new
 		{
 			OfficeId = office.OfficeId,
 			OrganizationId = office.OrganizationId,

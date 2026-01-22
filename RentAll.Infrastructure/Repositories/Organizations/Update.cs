@@ -11,7 +11,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<Organization> UpdateByIdAsync(Organization organization)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Organization_UpdateById", new
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_UpdateById", new
 		{
 			OrganizationId = organization.OrganizationId,
 			OrganizationCode = organization.OrganizationCode,
@@ -39,7 +39,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 	public async Task<Organization> UpdateColorAsync(Guid organizationId, string rgb, Guid modifiedBy)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OrganizationEntity>("dbo.Color_UpdateById", new
+		var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Color_UpdateById", new
 		{
 			OrganizationId = organizationId,
 			ColorRgb = rgb,

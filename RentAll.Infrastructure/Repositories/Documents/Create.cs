@@ -11,7 +11,7 @@ public partial class DocumentRepository : IDocumentRepository
 	public async Task<Document> CreateAsync(Document document)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("dbo.Document_Add", new
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_Add", new
 		{
 			OrganizationId = document.OrganizationId,
 			OfficeId = document.OfficeId,

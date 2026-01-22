@@ -11,7 +11,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task<IEnumerable<Building>> GetAllAsync(Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_GetAll", new
+		var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_GetAll", new
 		{
 			OrganizationId = organizationId
 		});
@@ -25,7 +25,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task<IEnumerable<Building>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_GetAllByOfficeId", new
+		var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_GetAllByOfficeId", new
 		{
 			OrganizationId = organizationId,
 			Offices = officeAccess
@@ -40,7 +40,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task<Building?> GetByIdAsync(int buildingId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_GetById", new
+		var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_GetById", new
 		{
 			BuildingId = buildingId,
 			OrganizationId = organizationId
@@ -55,7 +55,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task<Building?> GetByBuildingCodeAsync(string buildingCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<BuildingEntity>("dbo.Building_GetByCode", new
+		var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_GetByCode", new
 		{
 			BuildingCode = buildingCode,
 			OrganizationId = organizationId,
@@ -71,7 +71,7 @@ public partial class BuildingRepository : IBuildingRepository
 	public async Task<bool> ExistsByBuildingCodeAsync(string buildingCode, Guid organizationId, int? officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var result = await db.DapperProcQueryScalarAsync<int>("dbo.Building_ExistsByCode", new
+		var result = await db.DapperProcQueryScalarAsync<int>("Organization.Building_ExistsByCode", new
 		{
 			BuildingCode = buildingCode,
 			OrganizationId = organizationId,

@@ -9,7 +9,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 		public async Task DeleteByIdAsync(Guid reservationId)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			await db.DapperProcExecuteAsync("dbo.Reservation_DeleteById", new
+			await db.DapperProcExecuteAsync("Property.Reservation_DeleteById", new
 			{
 				ReservationId = reservationId
 			});

@@ -11,7 +11,7 @@ public partial class OfficeRepository : IOfficeRepository
 	public async Task<Office> CreateAsync(Office office)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<OfficeEntity>("dbo.Office_Add", new
+		var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_Add", new
 		{
 			OrganizationId = office.OrganizationId,
 			OfficeCode = office.OfficeCode,
