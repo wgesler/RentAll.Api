@@ -30,6 +30,10 @@ using RentAll.Infrastructure.Repositories.PropertyLetters;
 using RentAll.Infrastructure.Repositories.PropertyHtmls;
 using RentAll.Infrastructure.Repositories.LeaseInformations;
 using RentAll.Infrastructure.Repositories.Vendors;
+using RentAll.Infrastructure.Repositories.ChartOfAccounts;
+using RentAll.Infrastructure.Repositories.Invoices;
+using RentAll.Infrastructure.Repositories.InvoiceLedgerLines;
+using RentAll.Infrastructure.Repositories.LedgerLines;
 using RentAll.Infrastructure.Services;
 using RentAll.Domain.Interfaces.Managers;
 
@@ -130,6 +134,10 @@ builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IRegionRepository, RegionRepository>();
 builder.Services.AddScoped<ICodeSequenceRepository, CodeSequenceRepository>();
 builder.Services.AddScoped<IColorRepository, ColorRepository>();
+builder.Services.AddScoped<IChartOfAccountRepository, ChartOfAccountRepository>();
+builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+builder.Services.AddScoped<IInvoiceLedgerLineRepository, InvoiceLedgerLineRepository>();
+builder.Services.AddScoped<ILedgerLineRepository, LedgerLineRepository>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>
