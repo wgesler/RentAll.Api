@@ -15,6 +15,7 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 		{
 			ChartOfAccountId = chartOfAccount.ChartOfAccountId,
 			OrganizationId = chartOfAccount.OrganizationId,
+			OfficeId = chartOfAccount.OfficeId,
 			AccountNumber = chartOfAccount.AccountNumber,
 			Description = chartOfAccount.Description,
 			AccountTypeId = (int)chartOfAccount.AccountType

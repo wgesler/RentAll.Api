@@ -14,12 +14,13 @@ public partial class LedgerLineRepository : ILedgerLineRepository
 		var res = await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_UpdateById", new
 		{
 			LedgerLineId = ledgerLine.LedgerLineId,
+			InvoiceId = ledgerLine.InvoiceId,
 			ChartOfAccountId = ledgerLine.ChartOfAccountId,
 			TransactionTypeId = (int)ledgerLine.TransactionType,
-			InvoiceId = ledgerLine.InvoiceId,
 			PropertyId = ledgerLine.PropertyId,
 			ReservationId = ledgerLine.ReservationId,
-			Amount = ledgerLine.Amount
+			Amount = ledgerLine.Amount,
+			Description = ledgerLine.Description
 		});
 
 		if (res == null || !res.Any())

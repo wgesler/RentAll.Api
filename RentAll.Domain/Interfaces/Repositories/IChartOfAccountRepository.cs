@@ -8,14 +8,14 @@ public interface IChartOfAccountRepository
 	Task<ChartOfAccount> CreateAsync(ChartOfAccount chartOfAccount);
 
 	// Selects
-	Task<IEnumerable<ChartOfAccount>> GetAllAsync(Guid organizationId);
-	Task<ChartOfAccount?> GetByIdAsync(int chartOfAccountId, Guid organizationId);
-	Task<ChartOfAccount?> GetByAccountNumberAsync(string accountNumber, Guid organizationId);
-	Task<bool> ExistsByAccountNumberAsync(string accountNumber, Guid organizationId);
+	Task<List<ChartOfAccount>> GetAllByOfficeIdAsync(int officeId, Guid organizationId);
+	Task<ChartOfAccount?> GetByIdAsync(int chartOfAccountId, int officeId, Guid organizationId);
+	Task<ChartOfAccount?> GetByAccountNumberAsync(int accountNumber, int officeId, Guid organizationId);
+	Task<bool> ExistsByAccountNumberAsync(string accountNumber, int officeId, Guid organizationId);
 
 	// Updates
 	Task<ChartOfAccount> UpdateByIdAsync(ChartOfAccount chartOfAccount);
 
 	// Deletes
-	Task DeleteByIdAsync(int chartOfAccountId, Guid organizationId);
+	Task DeleteByIdAsync(int chartOfAccountId, int officeId, Guid organizationId);
 }

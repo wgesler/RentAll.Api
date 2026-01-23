@@ -4,7 +4,7 @@ public enum FrequencyType
 {
     NA = 0,
     Weekly = 1,
-    BiMonthly = 2,
+    EOW = 2,
     Monthly = 3,
     Quarterly = 4,
     BiAnnually = 5,

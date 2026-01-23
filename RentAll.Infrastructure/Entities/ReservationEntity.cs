@@ -40,6 +40,7 @@ public class ReservationEntity
 	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool AllowExtensions { get; set; }
+	public int CurrentInvoiceNumber { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

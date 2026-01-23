@@ -16,13 +16,13 @@ namespace RentAll.Api.Controllers
 			if (dto == null)
 				return BadRequest("Chart of Account data is required");
 
-			var (isValid, errorMessage) = dto.IsValid();
+			var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
 			if (!isValid)
-				return BadRequest(errorMessage ?? "Invalid chart of account data");
+				return BadRequest(errorMessage ?? "Invalid chart of account request");
 
 			try
 			{
-				if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountNumber, CurrentOrganizationId))
+				if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountNumber, dto.OfficeId, CurrentOrganizationId))
 					return Conflict("Account Number already exists");
 
 				var chartOfAccount = dto.ToModel();
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
 				var createdChartOfAccount = await _chartOfAccountRepository.CreateAsync(chartOfAccount);
 
 				var response = new ChartOfAccountResponseDto(createdChartOfAccount);
-				return CreatedAtAction(nameof(GetById), new { chartOfAccountId = createdChartOfAccount.ChartOfAccountId }, response);
+				return CreatedAtAction(nameof(GetByAccountId), new { officeId = createdChartOfAccount.OfficeId, account = createdChartOfAccount.AccountNumber }, response);
 			}
 			catch (Exception ex)
 			{

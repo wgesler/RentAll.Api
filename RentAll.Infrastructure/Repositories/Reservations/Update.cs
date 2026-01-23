@@ -48,6 +48,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				ExtraFee2Name = r.ExtraFee2Name,
 				Notes = r.Notes,
 				AllowExtensions = r.AllowExtensions,
+				CurrentInvoiceNumber = r.CurrentInvoiceNumber,
 				IsActive = r.IsActive,
 				ModifiedBy = r.ModifiedBy
 			});

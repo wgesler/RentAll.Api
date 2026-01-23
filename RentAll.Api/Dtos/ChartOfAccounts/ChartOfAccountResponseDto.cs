@@ -7,6 +7,7 @@ public class ChartOfAccountResponseDto
 {
 	public int ChartOfAccountId { get; set; }
 	public Guid OrganizationId { get; set; }
+	public int OfficeId { get; set; }
 	public string AccountNumber { get; set; } = string.Empty;
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
@@ -15,6 +16,7 @@ public class ChartOfAccountResponseDto
 	{
 		ChartOfAccountId = chartOfAccount.ChartOfAccountId;
 		OrganizationId = chartOfAccount.OrganizationId;
+		OfficeId = chartOfAccount.OfficeId;
 		AccountNumber = chartOfAccount.AccountNumber;
 		Description = chartOfAccount.Description;
 		AccountType = chartOfAccount.AccountType;

@@ -12,30 +12,29 @@ namespace RentAll.Api.Controllers
 		/// <param name="dto">Chart of Account data</param>
 		/// <returns>Updated chart of account</returns>
 		[HttpPut("{chartOfAccountId}")]
-		public async Task<IActionResult> Update(int chartOfAccountId, [FromBody] UpdateChartOfAccountDto dto)
+		public async Task<IActionResult> Update([FromBody] UpdateChartOfAccountDto dto)
 		{
 			if (dto == null)
 				return BadRequest("Chart of Account data is required");
 
-			var (isValid, errorMessage) = dto.IsValid(chartOfAccountId);
+			var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
 			if (!isValid)
-				return BadRequest(errorMessage ?? "Invalid chart of account data");
+				return BadRequest(errorMessage ?? "Invalid chart of account request");
 
 			try
 			{
-				var existingChartOfAccount = await _chartOfAccountRepository.GetByIdAsync(chartOfAccountId, CurrentOrganizationId);
+				var existingChartOfAccount = await _chartOfAccountRepository.GetByIdAsync(dto.ChartOfAccountId, dto.OfficeId, CurrentOrganizationId);
 				if (existingChartOfAccount == null)
 					return NotFound("Chart of Account not found");
 
 				if (existingChartOfAccount.AccountNumber != dto.AccountNumber)
 				{
-					if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountNumber, CurrentOrganizationId))
+					if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountNumber, dto.OfficeId, CurrentOrganizationId))
 						return Conflict("Account Number already exists");
 				}
 
 				var chartOfAccount = dto.ToModel();
 				chartOfAccount.OrganizationId = CurrentOrganizationId;
-
 				var updatedChartOfAccount = await _chartOfAccountRepository.UpdateByIdAsync(chartOfAccount);
 
 				var response = new ChartOfAccountResponseDto(updatedChartOfAccount);
@@ -43,7 +42,7 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating chart of account: {ChartOfAccountId}", chartOfAccountId);
+				_logger.LogError(ex, "Error updating chart of account: {ChartOfAccountId}", dto.ChartOfAccountId);
 				return ServerError("An error occurred while updating the chart of account");
 			}
 		}

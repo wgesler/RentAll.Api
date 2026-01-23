@@ -6,6 +6,7 @@ public class InvoiceEntity
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
 	public string OfficeName { get; set; } = string.Empty;
+	public string InvoiceName { get; set; } = string.Empty;
 	public Guid? ReservationId { get; set; }
 	public string? ReservationCode { get; set; }
 	public DateTimeOffset InvoiceDate { get; set; }

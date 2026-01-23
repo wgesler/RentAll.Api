@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
 using RentAll.Api.Dtos.LedgerLines;
 using RentAll.Domain.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RentAll.Api.Controllers
 {
@@ -132,6 +133,36 @@ namespace RentAll.Api.Controllers
 		#endregion
 
 		#region LedgerLine GET Endpoints
+
+		/// <summary>
+		/// Get initial leger lines
+		/// </summary>
+		/// <param name="reservationId">Reservation ID</param>
+		/// <returns>Ledger Line</returns>
+		[HttpGet("ledgerline/reservation/{reservationId:guid}")]
+		public async Task<IActionResult> GetLedgerLinesByReservationId(Guid reservationId)
+		{
+			if (reservationId == Guid.Empty)
+				return BadRequest("Reservation ID is required");
+
+			try
+			{
+				var reservation = await _reservationRepository.GetByIdAsync(reservationId, CurrentOrganizationId);
+				if (reservation == null)
+					return NotFound("Reservation not found");
+
+				var ledgerLines = _accountingManager.GetLedgerLinesByReservationIdAsync(reservation);
+				var invoice = reservation.ReservationCode + " " + (reservation.CurrentInvoiceNumber + 1).ToString("D3");
+				var data = new InvoiceMonthlyData { Invoice = invoice, ReservationId = reservation.ReservationId, LedgerLines = ledgerLines };
+				var response = new InvoiceMonthlyDataResponseDto(data);
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting ledger lines: {ReservationId}", reservationId);
+				return ServerError("An error occurred while retrieving the ledger line");
+			}
+		}
 
 		/// <summary>
 		/// Get ledger line by ID

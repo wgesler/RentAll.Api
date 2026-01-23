@@ -41,6 +41,7 @@ public class UpdateReservationDto
 	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool AllowExtensions { get; set; }
+	public int CurrentInvoiceNumber { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
@@ -141,6 +142,7 @@ public class UpdateReservationDto
 			ExtraFee2Name = ExtraFee2Name ?? string.Empty,
 			Notes = Notes,
 			AllowExtensions = AllowExtensions,
+			CurrentInvoiceNumber = CurrentInvoiceNumber,
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};

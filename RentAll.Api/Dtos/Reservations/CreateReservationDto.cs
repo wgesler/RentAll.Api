@@ -39,6 +39,7 @@ public class CreateReservationDto
 	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool AllowExtensions { get; set; }
+	public int CurrentInvoiceNumber { get; set; }
 	public bool IsActive { get; set; }
 
 
@@ -130,6 +131,7 @@ public class CreateReservationDto
 			ExtraFee2Name = ExtraFee2Name ?? string.Empty,
 			Notes = Notes,
 			AllowExtensions = AllowExtensions,
+			CurrentInvoiceNumber = CurrentInvoiceNumber,
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};

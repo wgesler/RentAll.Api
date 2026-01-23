@@ -109,6 +109,7 @@ builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
 
 builder.Services.AddScoped<IContactManager, ContactManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
+builder.Services.AddScoped<IAccountingManager, AccountingManager>();
 
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();

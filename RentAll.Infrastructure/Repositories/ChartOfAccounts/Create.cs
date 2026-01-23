@@ -14,6 +14,7 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 		var res = await db.DapperProcQueryAsync<ChartOfAccountEntity>("Accounting.ChartOfAccount_Add", new
 		{
 			OrganizationId = chartOfAccount.OrganizationId,
+			OfficeId = chartOfAccount.OfficeId,
 			AccountNumber = chartOfAccount.AccountNumber,
 			Description = chartOfAccount.Description,
 			AccountTypeId = (int)chartOfAccount.AccountType

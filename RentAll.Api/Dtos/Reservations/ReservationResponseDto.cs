@@ -42,6 +42,7 @@ public class ReservationResponseDto
 	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
 	public bool AllowExtensions { get; set; }
+	public int CurrentInvoiceNumber { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -89,6 +90,7 @@ public class ReservationResponseDto
 		ExtraFee2Name = reservation.ExtraFee2Name;
 		Notes = reservation.Notes;
 		AllowExtensions = reservation.AllowExtensions;
+		CurrentInvoiceNumber = reservation.CurrentInvoiceNumber;
 		IsActive = reservation.IsActive;
 		CreatedOn = reservation.CreatedOn;
 		CreatedBy = reservation.CreatedBy;

@@ -7,26 +7,23 @@ namespace RentAll.Api.Controllers
 		/// <summary>
 		/// Delete a chart of account
 		/// </summary>
+		/// <param name="officeId">Office ID</param>
 		/// <param name="chartOfAccountId">Chart of Account ID</param>
 		/// <returns>No content</returns>
-		[HttpDelete("{chartOfAccountId}")]
-		public async Task<IActionResult> Delete(int chartOfAccountId)
+		[HttpDelete("office/{officeId:int}/account/{chartOfAccountId}")]
+		public async Task<IActionResult> Delete(int officeId, int chartOfAccountId)
 		{
 			if (chartOfAccountId <= 0)
-				return BadRequest("Chart of Account ID is required");
+				return BadRequest("Invalid Chart of Account ID");
 
 			try
 			{
-				var existingChartOfAccount = await _chartOfAccountRepository.GetByIdAsync(chartOfAccountId, CurrentOrganizationId);
-				if (existingChartOfAccount == null)
-					return NotFound("Chart of Account not found");
-
-				await _chartOfAccountRepository.DeleteByIdAsync(chartOfAccountId, CurrentOrganizationId);
+				await _chartOfAccountRepository.DeleteByIdAsync(chartOfAccountId, officeId, CurrentOrganizationId);
 				return NoContent();
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error deleting chart of account: {ChartOfAccountId}", chartOfAccountId);
+				_logger.LogError(ex, "Error deleting chart of account: {chartOfAccountId}", chartOfAccountId);
 				return ServerError("An error occurred while deleting the chart of account");
 			}
 		}
