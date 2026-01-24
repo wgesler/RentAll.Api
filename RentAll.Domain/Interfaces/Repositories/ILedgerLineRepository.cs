@@ -8,11 +8,11 @@ public interface ILedgerLineRepository
 	Task<LedgerLine> CreateAsync(LedgerLine ledgerLine);
 
 	// Selects
-	Task<LedgerLine?> GetByIdAsync(int ledgerLineId);
+	Task<LedgerLine?> GetByIdAsync(Guid ledgerLineId);
 
 	// Updates
 	Task<LedgerLine> UpdateByIdAsync(LedgerLine ledgerLine);
 
 	// Deletes
-	Task DeleteByIdAsync(int ledgerLineId);
+	Task DeleteByIdAsync(Guid ledgerLineId);
 }

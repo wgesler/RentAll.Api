@@ -14,5 +14,6 @@ public class InvoiceEntity
 	public decimal TotalAmount { get; set; }
 	public decimal PaidAmount { get; set; }
 	public string? Notes { get; set; }
-	public string? Lines { get; set; }
+	public bool IsActive { get; set; }
+	public string? LedgerLines { get; set; }
 }

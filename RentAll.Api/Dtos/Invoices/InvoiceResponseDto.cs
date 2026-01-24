@@ -8,7 +8,7 @@ public class InvoiceResponseDto
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
 	public string OfficeName { get; set; } = string.Empty;
-	public string? InvoiceName { get; set; } = string.Empty;
+	public string InvoiceName { get; set; } = string.Empty;
 	public Guid? ReservationId { get; set; }
 	public string? ReservationCode { get; set; }
 	public DateTimeOffset InvoiceDate { get; set; }
@@ -16,7 +16,8 @@ public class InvoiceResponseDto
 	public decimal TotalAmount { get; set; }
 	public decimal PaidAmount { get; set; }
 	public string? Notes { get; set; }
-	public List<LedgerLine> Lines { get; set; } = new List<LedgerLine>();
+	public bool IsActive { get; set; }
+	public List<LedgerLine> LedgerLines { get; set; } = new List<LedgerLine>();
 
 	public InvoiceResponseDto(Invoice invoice)
 	{
@@ -32,6 +33,7 @@ public class InvoiceResponseDto
 		TotalAmount = invoice.TotalAmount;
 		PaidAmount = invoice.PaidAmount;
 		Notes = invoice.Notes;
-		Lines = invoice.Lines;
+		LedgerLines = invoice.LedgerLines;
+		IsActive = invoice.IsActive;
 	}
 }

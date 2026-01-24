@@ -46,45 +46,5 @@ namespace RentAll.Api.Controllers
 		}
 
 		#endregion
-
-		#region LedgerLine PUT Endpoints
-
-		/// <summary>
-		/// Update an existing ledger line
-		/// </summary>
-		/// <param name="ledgerLineId">Ledger Line ID</param>
-		/// <param name="dto">Ledger Line data</param>
-		/// <returns>Updated ledger line</returns>
-		[HttpPut("ledgerline/{ledgerLineId}")]
-		public async Task<IActionResult> UpdateLedgerLine(int ledgerLineId, [FromBody] UpdateLedgerLineDto dto)
-		{
-			if (dto == null)
-				return BadRequest("Ledger Line data is required");
-
-			var (isValid, errorMessage) = dto.IsValid(ledgerLineId);
-			if (!isValid)
-				return BadRequest(errorMessage ?? "Invalid ledger line data");
-
-			try
-			{
-				var existingLedgerLine = await _ledgerLineRepository.GetByIdAsync(ledgerLineId);
-				if (existingLedgerLine == null)
-					return NotFound("Ledger Line not found");
-
-				var ledgerLine = dto.ToModel();
-
-				var updatedLedgerLine = await _ledgerLineRepository.UpdateByIdAsync(ledgerLine);
-
-				var response = new LedgerLineResponseDto(updatedLedgerLine);
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error updating ledger line: {LedgerLineId}", ledgerLineId);
-				return ServerError("An error occurred while updating the ledger line");
-			}
-		}
-
-		#endregion
 	}
 }

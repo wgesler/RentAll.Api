@@ -137,33 +137,6 @@ namespace RentAll.Api.Controllers
 				return ServerError("An error occurred while retrieving the ledger line");
 			}
 		}
-
-		/// <summary>
-		/// Get ledger line by ID
-		/// </summary>
-		/// <param name="ledgerLineId">Ledger Line ID</param>
-		/// <returns>Ledger Line</returns>
-		[HttpGet("ledgerline/{ledgerLineId}")]
-		public async Task<IActionResult> GetLedgerLineById(int ledgerLineId)
-		{
-			if (ledgerLineId <= 0)
-				return BadRequest("Ledger Line ID is required");
-
-			try
-			{
-				var ledgerLine = await _ledgerLineRepository.GetByIdAsync(ledgerLineId);
-				if (ledgerLine == null)
-					return NotFound("Ledger Line not found");
-
-				var response = new LedgerLineResponseDto(ledgerLine);
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting ledger line by ID: {LedgerLineId}", ledgerLineId);
-				return ServerError("An error occurred while retrieving the ledger line");
-			}
-		}
 		#endregion
 	}
 }

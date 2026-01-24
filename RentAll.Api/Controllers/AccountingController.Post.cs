@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
 using RentAll.Api.Dtos.LedgerLines;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -27,7 +28,6 @@ namespace RentAll.Api.Controllers
 			{
 				var invoice = dto.ToModel();
 				invoice.OrganizationId = CurrentOrganizationId;
-
 				var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
 
 				var response = new InvoiceResponseDto(createdInvoice);
@@ -37,41 +37,6 @@ namespace RentAll.Api.Controllers
 			{
 				_logger.LogError(ex, "Error creating invoice");
 				return ServerError("An error occurred while creating the invoice");
-			}
-		}
-
-		#endregion
-
-		#region LedgerLine POST Endpoints
-
-		/// <summary>
-		/// Create a new ledger line
-		/// </summary>
-		/// <param name="dto">Ledger Line data</param>
-		/// <returns>Created ledger line</returns>
-		[HttpPost("ledgerline")]
-		public async Task<IActionResult> CreateLedgerLine([FromBody] CreateLedgerLineDto dto)
-		{
-			if (dto == null)
-				return BadRequest("Ledger Line data is required");
-
-			var (isValid, errorMessage) = dto.IsValid();
-			if (!isValid)
-				return BadRequest(errorMessage ?? "Invalid ledger line data");
-
-			try
-			{
-				var ledgerLine = dto.ToModel();
-
-				var createdLedgerLine = await _ledgerLineRepository.CreateAsync(ledgerLine);
-
-				var response = new LedgerLineResponseDto(createdLedgerLine);
-				return CreatedAtAction(nameof(GetLedgerLineById), new { ledgerLineId = createdLedgerLine.LedgerLineId }, response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error creating ledger line");
-				return ServerError("An error occurred while creating the ledger line");
 			}
 		}
 

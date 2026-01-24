@@ -10,24 +10,21 @@ namespace RentAll.Api.Controllers
 	[Authorize]
 	public partial class AccountingController : BaseController
 	{
-		private readonly IInvoiceRepository _invoiceRepository;
-		private readonly ILedgerLineRepository _ledgerLineRepository;
-		private readonly IReservationRepository _reservationRepository;
-		private readonly IAccountingManager _accountingManager;
-		private readonly ILogger<AccountingController> _logger;
+	private readonly IInvoiceRepository _invoiceRepository;
+	private readonly IReservationRepository _reservationRepository;
+	private readonly IAccountingManager _accountingManager;
+	private readonly ILogger<AccountingController> _logger;
 
-		public AccountingController(
-			IInvoiceRepository invoiceRepository,
-			ILedgerLineRepository ledgerLineRepository,
-			IReservationRepository reservationRepository,
-			IAccountingManager accountingManager,
-			ILogger<AccountingController> logger)
-		{
-			_invoiceRepository = invoiceRepository;
-			_ledgerLineRepository = ledgerLineRepository;
-			_reservationRepository = reservationRepository;
-			_accountingManager = accountingManager;
-			_logger = logger;
-		}
+	public AccountingController(
+		IInvoiceRepository invoiceRepository,
+		IReservationRepository reservationRepository,
+		IAccountingManager accountingManager,
+		ILogger<AccountingController> logger)
+	{
+		_invoiceRepository = invoiceRepository;
+		_reservationRepository = reservationRepository;
+		_accountingManager = accountingManager;
+		_logger = logger;
+	}
 	}
 }

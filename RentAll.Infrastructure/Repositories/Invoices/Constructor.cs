@@ -24,11 +24,11 @@ public partial class InvoiceRepository : IInvoiceRepository
 	private Invoice ConvertEntityToModel(InvoiceEntity e)
 	{
 		List<LedgerLine> lines = new List<LedgerLine>();
-		if (!string.IsNullOrWhiteSpace(e.Lines))
+		if (!string.IsNullOrWhiteSpace(e.LedgerLines))
 		{
 			try
 			{
-				lines = JsonSerializer.Deserialize<List<LedgerLine>>(e.Lines, JsonOptions) ?? new List<LedgerLine>();
+				lines = JsonSerializer.Deserialize<List<LedgerLine>>(e.LedgerLines, JsonOptions) ?? new List<LedgerLine>();
 			}
 			catch
 			{
@@ -50,7 +50,8 @@ public partial class InvoiceRepository : IInvoiceRepository
 			TotalAmount = e.TotalAmount,
 			PaidAmount = e.PaidAmount,
 			Notes = e.Notes,
-			Lines = lines
+			IsActive = e.IsActive,
+			LedgerLines = lines
 		};
 	}
 }
