@@ -10,4 +10,5 @@ public class ChartOfAccount
 	public int AccountId { get; set; }
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
+	public bool IsActive { get; set; }
 }

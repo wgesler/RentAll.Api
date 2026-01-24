@@ -11,6 +11,7 @@ public class ChartOfAccountResponseDto
 	public int AccountId { get; set; }
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
+	public bool IsActive { get; set; }
 
 	public ChartOfAccountResponseDto(ChartOfAccount chartOfAccount)
 	{
@@ -20,5 +21,6 @@ public class ChartOfAccountResponseDto
 		AccountId = chartOfAccount.AccountId;
 		Description = chartOfAccount.Description;
 		AccountType = chartOfAccount.AccountType;
+		IsActive = chartOfAccount.IsActive;
 	}
 }

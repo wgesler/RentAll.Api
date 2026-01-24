@@ -2,38 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
 using RentAll.Api.Dtos.LedgerLines;
 using RentAll.Domain.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RentAll.Api.Controllers
 {
 	public partial class AccountingController
 	{
 		#region Invoice GET Endpoints
-
-		/// <summary>
-		/// Get all invoices
-		/// </summary>
-		/// <returns>List of invoices</returns>
-		[HttpGet("invoice")]
-		public async Task<IActionResult> GetAllInvoices()
-		{
-			try
-			{
-				IEnumerable<Invoice> invoices;
-				if (IsAdmin())
-					invoices = await _invoiceRepository.GetAllAsync(CurrentOrganizationId);
-				else
-					invoices = await _invoiceRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
-
-				var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting all invoices");
-				return ServerError("An error occurred while retrieving invoices");
-			}
-		}
 
 		/// <summary>
 		/// Get all invoices by offices

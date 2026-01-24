@@ -25,7 +25,8 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 			OfficeId = e.OfficeId,
 			AccountId = e.AccountId,
 			Description = e.Description,
-			AccountType = (AccountType)e.AccountTypeId
+			AccountType = (AccountType)e.AccountTypeId,
+			IsActive = e.IsActive
 		};
 	}
 }

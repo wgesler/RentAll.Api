@@ -72,7 +72,7 @@ public partial class InvoiceRepository : IInvoiceRepository
 	public async Task<IEnumerable<Invoice>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByOfficeId", new
+		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByOfficeIds", new
 		{
 			OrganizationId = organizationId,
 			Offices = officeAccess

@@ -39,12 +39,12 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
-	public async Task<ChartOfAccount?> GetByAccountNumberAsync(int accountNumber, int officeId, Guid organizationId)
+	public async Task<ChartOfAccount?> GetByAccountNumberAsync(int accountId, int officeId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<ChartOfAccountEntity>("Accounting.ChartOfAccount_GetByAccountNumber", new
+		var res = await db.DapperProcQueryAsync<ChartOfAccountEntity>("Accounting.ChartOfAccount_GetByAccountId", new
 		{
-			AccountId = accountNumber,
+			AccountId = accountId,
 			OrganizationId = organizationId,
 			OfficeId = officeId
 		});
@@ -58,7 +58,7 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 	public async Task<bool> ExistsByAccountNumberAsync(int accountId, int officeId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var result = await db.DapperProcQueryScalarAsync<int>("Accounting.ChartOfAccount_ExistsByAccountNumber", new
+		var result = await db.DapperProcQueryScalarAsync<int>("Accounting.ChartOfAccount_ExistsByAccountId", new
 		{
 			AccountId = accountId,
 			OrganizationId = organizationId,

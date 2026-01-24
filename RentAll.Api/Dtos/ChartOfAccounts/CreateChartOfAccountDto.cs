@@ -10,6 +10,7 @@ public class CreateChartOfAccountDto
 	public int AccountId { get; set; }
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
+	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(string currentOffices)
 	{
@@ -39,7 +40,8 @@ public class CreateChartOfAccountDto
 			OfficeId = OfficeId,
 			AccountId = AccountId,
 			Description = Description,
-			AccountType = AccountType
+			AccountType = AccountType,
+			IsActive = IsActive
 		};
 	}
 }

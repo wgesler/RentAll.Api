@@ -17,7 +17,8 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 			OfficeId = chartOfAccount.OfficeId,
 			AccountId = chartOfAccount.AccountId,
 			Description = chartOfAccount.Description,
-			AccountTypeId = (int)chartOfAccount.AccountType
+			AccountTypeId = (int)chartOfAccount.AccountType,
+			IsActive = chartOfAccount.IsActive
 		});
 
 		if (res == null || !res.Any())

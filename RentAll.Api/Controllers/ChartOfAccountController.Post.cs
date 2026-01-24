@@ -22,16 +22,16 @@ namespace RentAll.Api.Controllers
 
 			try
 			{
-			if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountId, dto.OfficeId, CurrentOrganizationId))
-				return Conflict("Account Number already exists");
+				if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountId, dto.OfficeId, CurrentOrganizationId))
+					return Conflict("Account Number already exists");
 
-			var chartOfAccount = dto.ToModel();
-			chartOfAccount.OrganizationId = CurrentOrganizationId;
+				var chartOfAccount = dto.ToModel();
+				chartOfAccount.OrganizationId = CurrentOrganizationId;
 
-			var createdChartOfAccount = await _chartOfAccountRepository.CreateAsync(chartOfAccount);
+				var createdChartOfAccount = await _chartOfAccountRepository.CreateAsync(chartOfAccount);
 
-			var response = new ChartOfAccountResponseDto(createdChartOfAccount);
-			return CreatedAtAction(nameof(GetByAccountId), new { officeId = createdChartOfAccount.OfficeId, account = createdChartOfAccount.AccountId }, response);
+				var response = new ChartOfAccountResponseDto(createdChartOfAccount);
+				return CreatedAtAction(nameof(GetByAccountId), new { officeId = createdChartOfAccount.OfficeId, chartOfAccountId = createdChartOfAccount.ChartOfAccountId }, response);
 			}
 			catch (Exception ex)
 			{
