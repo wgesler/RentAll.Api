@@ -5,16 +5,16 @@ namespace RentAll.Api.Dtos.ChartOfAccounts;
 
 public class UpdateChartOfAccountDto
 {
-	public int ChartOfAccountId { get; set; }
+	public Guid ChartOfAccountId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public string AccountNumber { get; set; } = string.Empty;
+	public int AccountId { get; set; }
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(string currentOffices)
 	{
-		if (ChartOfAccountId <= 0)
+		if (ChartOfAccountId == Guid.Empty)
 			return (false, "ChartOfAccount ID is required");
 
 		if (OrganizationId == Guid.Empty)
@@ -26,8 +26,8 @@ public class UpdateChartOfAccountDto
 		if (!currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
 			return (false, "Unauthorized");
 
-		if (string.IsNullOrWhiteSpace(AccountNumber))
-			return (false, "AccountNumber is required");
+		if (AccountId <= 0)
+			return (false, "AccountId is required");
 
 		if (string.IsNullOrWhiteSpace(Description))
 			return (false, "Description is required");
@@ -42,7 +42,7 @@ public class UpdateChartOfAccountDto
 			ChartOfAccountId = ChartOfAccountId,
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
-			AccountNumber = AccountNumber,
+			AccountId = AccountId,
 			Description = Description,
 			AccountType = AccountType
 		};

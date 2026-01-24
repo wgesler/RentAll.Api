@@ -5,10 +5,10 @@ namespace RentAll.Api.Dtos.ChartOfAccounts;
 
 public class ChartOfAccountResponseDto
 {
-	public int ChartOfAccountId { get; set; }
+	public Guid ChartOfAccountId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public string AccountNumber { get; set; } = string.Empty;
+	public int AccountId { get; set; }
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
 
@@ -17,7 +17,7 @@ public class ChartOfAccountResponseDto
 		ChartOfAccountId = chartOfAccount.ChartOfAccountId;
 		OrganizationId = chartOfAccount.OrganizationId;
 		OfficeId = chartOfAccount.OfficeId;
-		AccountNumber = chartOfAccount.AccountNumber;
+		AccountId = chartOfAccount.AccountId;
 		Description = chartOfAccount.Description;
 		AccountType = chartOfAccount.AccountType;
 	}

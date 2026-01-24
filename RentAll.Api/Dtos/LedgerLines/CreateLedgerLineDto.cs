@@ -5,16 +5,17 @@ namespace RentAll.Api.Dtos.LedgerLines;
 
 public class CreateLedgerLineDto
 {
-	public int ChartOfAccountId { get; set; }
+	public Guid ChartOfAccountId { get; set; }
 	public Guid InvoiceId { get; set; }
 	public TransactionType TransactionType { get; set; }
 	public Guid? PropertyId { get; set; }
 	public Guid? ReservationId { get; set; }
 	public decimal Amount { get; set; }
+	public string Description { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (ChartOfAccountId == 0)
+		if (ChartOfAccountId == Guid.Empty)
 			return (false, "ChartOfAccountId is required");
 
 		return (true, null);
@@ -29,7 +30,8 @@ public class CreateLedgerLineDto
 			InvoiceId = InvoiceId,
 			PropertyId = PropertyId,
 			ReservationId = ReservationId,
-			Amount = Amount
+			Amount = Amount,
+			Description = Description
 		};
 	}
 }

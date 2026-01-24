@@ -18,7 +18,8 @@ public partial class LedgerLineRepository : ILedgerLineRepository
 			InvoiceId = ledgerLine.InvoiceId,
 			PropertyId = ledgerLine.PropertyId,
 			ReservationId = ledgerLine.ReservationId,
-			Amount = ledgerLine.Amount
+			Amount = ledgerLine.Amount,
+			Description = ledgerLine.Description
 		});
 
 		if (res == null || !res.Any())

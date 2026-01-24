@@ -23,7 +23,7 @@ public partial class ChartOfAccountRepository : IChartOfAccountRepository
 			ChartOfAccountId = e.ChartOfAccountId,
 			OrganizationId = e.OrganizationId,
 			OfficeId = e.OfficeId,
-			AccountNumber = e.AccountNumber,
+			AccountId = e.AccountId,
 			Description = e.Description,
 			AccountType = (AccountType)e.AccountTypeId
 		};

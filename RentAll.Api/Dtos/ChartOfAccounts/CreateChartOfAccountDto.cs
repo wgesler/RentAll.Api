@@ -7,7 +7,7 @@ public class CreateChartOfAccountDto
 {
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public string AccountNumber { get; set; } = string.Empty;
+	public int AccountId { get; set; }
 	public string Description { get; set; } = string.Empty;
 	public AccountType AccountType { get; set; }
 
@@ -22,8 +22,8 @@ public class CreateChartOfAccountDto
 		if (!currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
 			return (false, "Unauthorized");
 
-		if (string.IsNullOrWhiteSpace(AccountNumber))
-			return (false, "AccountNumber is required");
+		if (AccountId <= 0)
+			return (false, "AccountId is required");
 
 		if (string.IsNullOrWhiteSpace(Description))
 			return (false, "Description is required");
@@ -37,7 +37,7 @@ public class CreateChartOfAccountDto
 		{
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
-			AccountNumber = AccountNumber,
+			AccountId = AccountId,
 			Description = Description,
 			AccountType = AccountType
 		};

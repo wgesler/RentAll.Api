@@ -7,11 +7,12 @@ public class UpdateLedgerLineDto
 {
 	public int LedgerLineId { get; set; }
 	public Guid InvoiceId { get; set; }
-	public int ChartOfAccountId { get; set; }
+	public Guid ChartOfAccountId { get; set; }
 	public TransactionType TransactionType { get; set; }
 	public Guid? PropertyId { get; set; }
 	public Guid? ReservationId { get; set; }
 	public decimal Amount { get; set; }
+	public string Description { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid(int id)
 	{
@@ -21,7 +22,7 @@ public class UpdateLedgerLineDto
 		if (LedgerLineId != id)
 			return (false, "LedgerLine ID mismatch");
 
-		if (ChartOfAccountId == 0)
+		if (ChartOfAccountId == Guid.Empty)
 			return (false, "ChartOfAccountId is required");
 
 		return (true, null);
@@ -37,7 +38,8 @@ public class UpdateLedgerLineDto
 			InvoiceId = InvoiceId,
 			PropertyId = PropertyId,
 			ReservationId = ReservationId,
-			Amount = Amount
+			Amount = Amount,
+			Description = Description
 		};
 	}
 }

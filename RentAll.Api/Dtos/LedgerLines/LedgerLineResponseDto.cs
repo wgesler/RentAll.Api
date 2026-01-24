@@ -5,8 +5,9 @@ namespace RentAll.Api.Dtos.LedgerLines;
 
 public class LedgerLineResponseDto
 {
+	public int LedgerLineId { get; set; }
 	public Guid InvoiceId { get; set; }
-	public int? ChartOfAccountId { get; set; }
+	public Guid? ChartOfAccountId { get; set; }
 	public int TransactionTypeId { get; set; }
 	public Guid? PropertyId { get; set; }
 	public Guid? ReservationId { get; set; }
@@ -15,6 +16,7 @@ public class LedgerLineResponseDto
 
 	public LedgerLineResponseDto(LedgerLine ledgerLine)
 	{
+		LedgerLineId = ledgerLine.LedgerLineId;
 		InvoiceId = ledgerLine.InvoiceId;
 		ChartOfAccountId = ledgerLine.ChartOfAccountId;
 		TransactionTypeId = (int)ledgerLine.TransactionType;

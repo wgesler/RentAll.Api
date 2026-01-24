@@ -20,6 +20,7 @@ public partial class LedgerLineRepository : ILedgerLineRepository
 	{
 		return new LedgerLine
 		{
+			LedgerLineId = e.LedgerLineId,
 			ChartOfAccountId = e.ChartOfAccountId,
 			TransactionType = (TransactionType)e.TransactionTypeId,
 			InvoiceId = e.InvoiceId,

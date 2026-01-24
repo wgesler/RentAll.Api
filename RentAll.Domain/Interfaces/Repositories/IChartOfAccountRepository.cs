@@ -9,13 +9,13 @@ public interface IChartOfAccountRepository
 
 	// Selects
 	Task<List<ChartOfAccount>> GetAllByOfficeIdAsync(int officeId, Guid organizationId);
-	Task<ChartOfAccount?> GetByIdAsync(int chartOfAccountId, int officeId, Guid organizationId);
-	Task<ChartOfAccount?> GetByAccountNumberAsync(int accountNumber, int officeId, Guid organizationId);
-	Task<bool> ExistsByAccountNumberAsync(string accountNumber, int officeId, Guid organizationId);
+	Task<ChartOfAccount?> GetByIdAsync(Guid chartOfAccountId, int officeId, Guid organizationId);
+	Task<ChartOfAccount?> GetByAccountNumberAsync(int accountId, int officeId, Guid organizationId);
+	Task<bool> ExistsByAccountNumberAsync(int accountId, int officeId, Guid organizationId);
 
 	// Updates
 	Task<ChartOfAccount> UpdateByIdAsync(ChartOfAccount chartOfAccount);
 
 	// Deletes
-	Task DeleteByIdAsync(int chartOfAccountId, int officeId, Guid organizationId);
+	Task DeleteByIdAsync(Guid chartOfAccountId, int officeId, Guid organizationId);
 }

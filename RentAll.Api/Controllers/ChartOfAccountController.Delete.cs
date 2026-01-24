@@ -10,10 +10,10 @@ namespace RentAll.Api.Controllers
 		/// <param name="officeId">Office ID</param>
 		/// <param name="chartOfAccountId">Chart of Account ID</param>
 		/// <returns>No content</returns>
-		[HttpDelete("office/{officeId:int}/account/{chartOfAccountId}")]
-		public async Task<IActionResult> Delete(int officeId, int chartOfAccountId)
+		[HttpDelete("office/{officeId:int}/account/{chartOfAccountId:guid}")]
+		public async Task<IActionResult> Delete(int officeId, Guid chartOfAccountId)
 		{
-			if (chartOfAccountId <= 0)
+			if (chartOfAccountId == Guid.Empty)
 				return BadRequest("Invalid Chart of Account ID");
 
 			try

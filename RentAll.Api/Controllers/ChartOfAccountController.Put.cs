@@ -27,11 +27,11 @@ namespace RentAll.Api.Controllers
 				if (existingChartOfAccount == null)
 					return NotFound("Chart of Account not found");
 
-				if (existingChartOfAccount.AccountNumber != dto.AccountNumber)
-				{
-					if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountNumber, dto.OfficeId, CurrentOrganizationId))
-						return Conflict("Account Number already exists");
-				}
+			if (existingChartOfAccount.AccountId != dto.AccountId)
+			{
+				if (await _chartOfAccountRepository.ExistsByAccountNumberAsync(dto.AccountId, dto.OfficeId, CurrentOrganizationId))
+					return Conflict("Account Number already exists");
+			}
 
 				var chartOfAccount = dto.ToModel();
 				chartOfAccount.OrganizationId = CurrentOrganizationId;

@@ -34,13 +34,13 @@ namespace RentAll.Api.Controllers
 		/// <param name="officeId">Office ID</param>
 		/// <param name="chartOfAccountId">Chart of Account ID</param>
 		/// <returns>Chart of Account</returns>
-		[HttpGet("office/{officeId:int}/chartOfAccountId/{chartOfAccountId:int}")]
-		public async Task<IActionResult> GetByAccountId(int officeId, int chartOfAccountId)
+		[HttpGet("office/{officeId:int}/chartOfAccountId/{chartOfAccountId:guid}")]
+		public async Task<IActionResult> GetByAccountId(int officeId, Guid chartOfAccountId)
 		{
 			if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
 				return Unauthorized("You do not have access to this office's chart of acccounts");
 
-			if (chartOfAccountId <= 0)
+			if (chartOfAccountId == Guid.Empty)
 				return BadRequest("Invalid account");
 
 			try

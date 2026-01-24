@@ -6,7 +6,7 @@ public class LedgerLine
 {
 	public int LedgerLineId { get; set; }
 	public Guid InvoiceId { get; set; }
-	public int? ChartOfAccountId { get; set; }
+	public Guid? ChartOfAccountId { get; set; }
 	public TransactionType TransactionType { get; set; }
 	public Guid? PropertyId { get; set; }
 	public Guid? ReservationId { get; set; }
