@@ -43,6 +43,7 @@ public class Reservation
 	public string? Notes { get; set; }
 	public bool AllowExtensions { get; set; }
 	public int CurrentInvoiceNumber { get; set; }
+	public decimal CreditDue { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

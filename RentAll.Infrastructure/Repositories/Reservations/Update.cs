@@ -49,6 +49,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				Notes = r.Notes,
 				AllowExtensions = r.AllowExtensions,
 				CurrentInvoiceNumber = r.CurrentInvoiceNumber,
+				CreditDue = r.CreditDue,
 				IsActive = r.IsActive,
 				ModifiedBy = r.ModifiedBy
 			});
@@ -57,6 +58,22 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				throw new Exception("Reservation not found");
 
 			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+
+		public async Task<Reservation> IncrementCurrentInvoiceAsync(Guid reservationId, Guid organizationId)
+		{
+			await using var db = new SqlConnection(_dbConnectionString);
+			var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_IncrementInvoiceById", new
+			{
+				ReservationId = reservationId,
+				OrganizationId = organizationId
+			});
+
+			if (res == null || !res.Any())
+				throw new Exception("Reservation not found");
+
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+
 		}
 	}
 }

@@ -30,6 +30,8 @@ namespace RentAll.Api.Controllers
 				invoice.OrganizationId = CurrentOrganizationId;
 				var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
 
+				await _accountingManager.ApplyInvoiceToReservationAsync(createdInvoice);
+						
 				var response = new InvoiceResponseDto(createdInvoice);
 				return CreatedAtAction(nameof(GetInvoiceById), new { invoiceId = createdInvoice.InvoiceId }, response);
 			}

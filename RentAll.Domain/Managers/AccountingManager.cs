@@ -2,6 +2,8 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace RentAll.Domain.Managers;
 
@@ -14,6 +16,57 @@ public class AccountingManager : IAccountingManager
 	{
 		_invoiceRepository = invoiceRepository;
 		_reservationRepository = reservationRepository;
+	}
+
+	public async Task<Reservation> ApplyInvoiceToReservationAsync(Invoice i)
+	{
+		if (i.ReservationId == null)
+			throw new Exception("Invoice missing ReservationId");
+
+		return await _reservationRepository.IncrementCurrentInvoiceAsync((Guid)i.ReservationId, i.OrganizationId);
+	}
+
+	public async Task ApplyPaymentToReservationAsync(Guid reservationId, Guid organizationId, string offices, decimal amountPaid)
+	{
+		var reservation = await _reservationRepository.GetByIdAsync(reservationId, organizationId);
+		if (reservation == null)
+			return;
+
+		// Account for previous credits on this account
+		var availableAmount = amountPaid + reservation.CreditDue;
+
+		var invoices = (await _invoiceRepository.GetAllByReservationIdAsync(reservationId, organizationId, offices))
+			.Where(i => i.IsActive).OrderBy(i => i.InvoiceDate).ToList();
+		
+		foreach (var invoice in invoices)
+		{
+			if (availableAmount <= 0)
+				break;
+
+			// Skip over already paid invoices
+			var remainingBalance = invoice.TotalAmount - invoice.PaidAmount;
+			if (remainingBalance <= 0)
+				continue; 
+
+			if (availableAmount >= remainingBalance)
+			{
+				// Full payment for this invoice
+				invoice.PaidAmount = invoice.TotalAmount;
+				availableAmount -= remainingBalance;
+				await _invoiceRepository.UpdateByIdAsync(invoice);
+			}
+			else
+			{
+				// Partial payment
+				invoice.PaidAmount += availableAmount;
+				availableAmount = 0;
+				await _invoiceRepository.UpdateByIdAsync(invoice);
+			}
+		}
+
+		// If we still have remaining funds, add a credit to the reservation
+		if (availableAmount > 0) 
+			reservation.CreditDue = availableAmount;
 	}
 
 	public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation)
@@ -67,6 +120,8 @@ public class AccountingManager : IAccountingManager
 		return lineItems;
 	}
 
+
+	#region Private Methods
 	private void GetFirstMonthLines(Reservation reservation, List<LedgerLine> lines)
 	{
 		if (reservation.DepositType == DepositType.Deposit)
@@ -216,5 +271,5 @@ public class AccountingManager : IAccountingManager
 
 		return count;
 	}
-
+	#endregion
 }

@@ -42,15 +42,13 @@ public class UpdateReservationDto
 	public string? Notes { get; set; }
 	public bool AllowExtensions { get; set; }
 	public int CurrentInvoiceNumber { get; set; }
+	public decimal CreditDue { get; set; }
 	public bool IsActive { get; set; }
 
-	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (id == Guid.Empty)
+		if (ReservationId == Guid.Empty)
 			return (false, "ReservationId is required");
-
-		if (ReservationId != id)
-			return (false, "ReservationId mismatch");
 
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
@@ -143,6 +141,7 @@ public class UpdateReservationDto
 			Notes = Notes,
 			AllowExtensions = AllowExtensions,
 			CurrentInvoiceNumber = CurrentInvoiceNumber,
+			CreditDue = CreditDue,
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};

@@ -59,6 +59,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				Notes = e.Notes,
 				AllowExtensions = e.AllowExtensions,
 				CurrentInvoiceNumber = e.CurrentInvoiceNumber,
+				CreditDue = e.CreditDue,
 				IsActive = e.IsActive,
 				CreatedBy = e.CreatedBy,
 				CreatedOn = e.CreatedOn,
