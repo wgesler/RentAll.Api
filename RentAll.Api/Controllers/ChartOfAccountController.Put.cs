@@ -8,10 +8,9 @@ namespace RentAll.Api.Controllers
 		/// <summary>
 		/// Update an existing chart of account
 		/// </summary>
-		/// <param name="chartOfAccountId">Chart of Account ID</param>
 		/// <param name="dto">Chart of Account data</param>
 		/// <returns>Updated chart of account</returns>
-		[HttpPut("{chartOfAccountId}")]
+		[HttpPut()]
 		public async Task<IActionResult> Update([FromBody] UpdateChartOfAccountDto dto)
 		{
 			if (dto == null)
