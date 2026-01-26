@@ -125,15 +125,15 @@ public class AccountingManager : IAccountingManager
 	private void GetFirstMonthLines(Reservation reservation, List<LedgerLine> lines)
 	{
 		if (reservation.DepositType == DepositType.Deposit)
-			lines.Add(new LedgerLine { TransactionType = TransactionType.Deposit, Description = "Deposit", Amount = reservation.Deposit });
+			lines.Add(new LedgerLine { Description = "Deposit", Amount = reservation.Deposit });
 		if (reservation.DepositType == DepositType.SDW)
-			lines.Add(new LedgerLine { TransactionType = TransactionType.Deposit, Description = "SDW", Amount = reservation.Deposit });
+			lines.Add(new LedgerLine { Description = "SDW", Amount = reservation.Deposit });
 		AddMaidServiceLines(reservation, lines);
 	}
 
 	private List<LedgerLine> GetLastMonthLines(Reservation reservation, List<LedgerLine> lines)
 	{
-		lines.Add(new LedgerLine { TransactionType = TransactionType.Charge, Description = "Departure Fee", Amount = reservation.DepartureFee });
+		lines.Add(new LedgerLine { Description = "Departure Fee", Amount = reservation.DepartureFee });
 		return lines;
 
 	}
@@ -141,9 +141,9 @@ public class AccountingManager : IAccountingManager
 	private void AddRentalLine(int days, Reservation reservation, List<LedgerLine> lines)
 	{
 		if (reservation.BillingType == BillingType.Monthly)
-			lines.Add(new LedgerLine { TransactionType = TransactionType.Charge, Description = "Rent", Amount = reservation.BillingRate });
+			lines.Add(new LedgerLine { Description = "Rent", Amount = reservation.BillingRate });
 		else
-			lines.Add(new LedgerLine { TransactionType = TransactionType.Charge, Description = "Rent", Amount = days * reservation.BillingRate });
+			lines.Add(new LedgerLine { Description = "Rent", Amount = days * reservation.BillingRate });
 	}
 
 	private void AddMaidServiceLines(Reservation reservation, List<LedgerLine> lines)
@@ -167,7 +167,7 @@ public class AccountingManager : IAccountingManager
 		}
 
 		if (maidServices > 0)
-			lines.Add(new LedgerLine { TransactionType = TransactionType.Charge, Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee });
+			lines.Add(new LedgerLine { Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee });
 	}
 
 	private static int CalculateNumberOfDays(DateTimeOffset startDate, DateTimeOffset endDate, BillingType billingType)

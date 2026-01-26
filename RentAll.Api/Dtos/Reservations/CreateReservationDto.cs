@@ -49,6 +49,9 @@ public class CreateReservationDto
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
 
+		if (OfficeId <= 0)
+			return (false, "OfficeId is required");
+
 		if (PropertyId == Guid.Empty)
 			return (false, "PropertyId is required");
 

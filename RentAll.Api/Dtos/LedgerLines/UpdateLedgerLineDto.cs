@@ -1,4 +1,3 @@
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.LedgerLines;
@@ -7,23 +6,21 @@ public class UpdateLedgerLineDto
 {
 	public Guid LedgerLineId { get; set; }
 	public Guid InvoiceId { get; set; }
-	public Guid ChartOfAccountId { get; set; }
-	public int TransactionTypeId { get; set; }
-	public Guid? PropertyId { get; set; }
 	public Guid? ReservationId { get; set; }
+	public int CostCodeId { get; set; }
 	public decimal Amount { get; set; }
 	public string Description { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (LedgerLineId != Guid.Empty)
-			return (false, "LedgerLine ID mismatch");
+		if (LedgerLineId == Guid.Empty)
+			return (false, "LedgerLine ID is required");
 
-		if (ChartOfAccountId == Guid.Empty)
-			return (false, "ChartOfAccountId is required");
+		if (InvoiceId == Guid.Empty)
+			return (false, "InvoiceId is required");
 
-		if (!Enum.IsDefined(typeof(TransactionType), TransactionTypeId))
-			return (false, "Invalid TransactionTypeId");
+		if (CostCodeId <= 0)
+			return (false, "CostCodeId is required");
 
 		if (Amount == 0)
 			return (false, "Amount cannot be zero");
@@ -36,11 +33,9 @@ public class UpdateLedgerLineDto
 		return new LedgerLine
 		{
 			LedgerLineId = LedgerLineId,
-			ChartOfAccountId = ChartOfAccountId,
-			TransactionType = (TransactionType)TransactionTypeId,
 			InvoiceId = InvoiceId,
-			PropertyId = PropertyId,
 			ReservationId = ReservationId,
+			CostCodeId = CostCodeId,
 			Amount = Amount,
 			Description = Description
 		};

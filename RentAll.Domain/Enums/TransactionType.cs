@@ -7,6 +7,7 @@ public enum TransactionType
 	Payment = 2,
 	Refund = 3,
 	Charge = 4,
-	Deposit = 5,
-	Adjustment = 6
+	SecurityDeposit = 5,
+	SecurityDepositWaiver = 6,
+	Adjustment = 7
 }

@@ -5,27 +5,27 @@ using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Entities;
 
-namespace RentAll.Infrastructure.Repositories.ChartOfAccounts;
+namespace RentAll.Infrastructure.Repositories.CostCodes;
 
-public partial class ChartOfAccountRepository : IChartOfAccountRepository
+public partial class CostCodeRepository : ICostCodeRepository
 {
 	private readonly string _dbConnectionString;
 
-	public ChartOfAccountRepository(IOptions<AppSettings> appSettings)
+	public CostCodeRepository(IOptions<AppSettings> appSettings)
 	{
 		_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
 	}
 
-	private ChartOfAccount ConvertEntityToModel(ChartOfAccountEntity e)
+	private CostCode ConvertEntityToModel(CostCodeEntity e)
 	{
-		return new ChartOfAccount
+		return new CostCode
 		{
-			ChartOfAccountId = e.ChartOfAccountId,
+			CostCodeId = e.CostCodeId,
 			OrganizationId = e.OrganizationId,
 			OfficeId = e.OfficeId,
-			AccountId = e.AccountId,
+			Code = e.CostCode,
+			TransactionType = (TransactionType)e.TransactionTypeId,
 			Description = e.Description,
-			AccountType = (AccountType)e.AccountTypeId,
 			IsActive = e.IsActive
 		};
 	}

@@ -2,13 +2,13 @@ using RentAll.Domain.Enums;
 
 namespace RentAll.Domain.Models;
 
-public class ChartOfAccount
+public class CostCode
 {
-	public Guid ChartOfAccountId { get; set; }
+	public int CostCodeId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public int AccountId { get; set; }
+	public string Code { get; set; } = string.Empty;
+	public TransactionType TransactionType { get; set; }
 	public string Description { get; set; } = string.Empty;
-	public AccountType AccountType { get; set; }
 	public bool IsActive { get; set; }
 }

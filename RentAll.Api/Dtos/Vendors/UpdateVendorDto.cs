@@ -33,6 +33,9 @@ public class UpdateVendorDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required");
+
         if (string.IsNullOrWhiteSpace(VendorCode))
             return (false, "Vendor Code is required");
 

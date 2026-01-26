@@ -1,12 +1,12 @@
 namespace RentAll.Infrastructure.Entities;
 
-public class ChartOfAccountEntity
+public class CostCodeEntity
 {
-	public Guid ChartOfAccountId { get; set; }
+	public int CostCodeId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public int AccountId{ get; set; } 
+	public string CostCode{ get; set; } = string.Empty;
+	public int TransactionTypeId { get; set; }
 	public string Description { get; set; } = string.Empty;
-	public int AccountTypeId { get; set; }
 	public bool IsActive { get; set; }
 }

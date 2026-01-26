@@ -26,6 +26,9 @@ public class CreateContactDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required");
+
         if (EntityTypeId <= 0)
             return (false, "Entity Type ID is required");
 

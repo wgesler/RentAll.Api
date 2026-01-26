@@ -24,6 +24,9 @@ public class CreateVendorDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required");
+
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 

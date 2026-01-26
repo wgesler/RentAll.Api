@@ -1,19 +1,23 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
-namespace RentAll.Api.Dtos.ChartOfAccounts;
+namespace RentAll.Api.Dtos.CostCodes;
 
-public class CreateChartOfAccountDto
+public class UpdateCostCodeDto
 {
+	public int CostCodeId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public int AccountId { get; set; }
+	public string CostCode { get; set; } = string.Empty;
+	public int TransactionTypeId { get; set; }
 	public string Description { get; set; } = string.Empty;
-	public AccountType AccountType { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid(string currentOffices)
 	{
+		if (CostCodeId <= 0)
+			return (false, "CostCode ID is required");
+
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
 
@@ -23,8 +27,11 @@ public class CreateChartOfAccountDto
 		if (!currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
 			return (false, "Unauthorized");
 
-		if (AccountId <= 0)
-			return (false, "AccountId is required");
+		if (string.IsNullOrWhiteSpace(CostCode))
+			return (false, "CostCode is required");
+
+		if (!Enum.IsDefined(typeof(TransactionType), TransactionTypeId))
+			return (false, "Invalid TransactionTypeId");
 
 		if (string.IsNullOrWhiteSpace(Description))
 			return (false, "Description is required");
@@ -32,15 +39,16 @@ public class CreateChartOfAccountDto
 		return (true, null);
 	}
 
-	public ChartOfAccount ToModel()
+	public CostCode ToModel()
 	{
-		return new ChartOfAccount
+		return new CostCode
 		{
+			CostCodeId = CostCodeId,
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
-			AccountId = AccountId,
+			Code = CostCode,
+			TransactionType = (TransactionType)TransactionTypeId,
 			Description = Description,
-			AccountType = AccountType,
 			IsActive = IsActive
 		};
 	}

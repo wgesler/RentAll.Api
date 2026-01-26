@@ -34,6 +34,12 @@ public class UpdateInvoiceDto
 		if (OfficeId <= 0)
 			return (false, "OfficeId is required");
 
+		if (string.IsNullOrWhiteSpace(OfficeName))
+			return (false, "OfficeName is required");
+
+		if (string.IsNullOrWhiteSpace(InvoiceName))
+			return (false, "InvoiceName is required");
+
 		if (InvoiceDate == default)
 			return (false, "InvoiceDate is required");
 
