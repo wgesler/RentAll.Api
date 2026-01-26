@@ -28,7 +28,7 @@ public class UpdateLedgerLineDto
 		return (true, null);
 	}
 
-	public LedgerLine ToModel()
+	public LedgerLine ToModel(Guid currentUser)
 	{
 		return new LedgerLine
 		{
@@ -37,7 +37,8 @@ public class UpdateLedgerLineDto
 			ReservationId = ReservationId,
 			CostCodeId = CostCodeId,
 			Amount = Amount,
-			Description = Description
+			Description = Description,
+			ModifiedBy = currentUser
 		};
 	}
 }

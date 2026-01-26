@@ -30,7 +30,7 @@ namespace RentAll.Api.Controllers
 				if (existingInvoice == null)
 					return NotFound("Invoice not found");
 
-				var invoice = dto.ToModel();
+				var invoice = dto.ToModel(CurrentUser);
 				invoice.OrganizationId = CurrentOrganizationId;
 
 				var updatedInvoice = await _invoiceRepository.UpdateByIdAsync(invoice);

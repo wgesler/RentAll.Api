@@ -26,7 +26,7 @@ namespace RentAll.Api.Controllers
 
 			try
 			{
-				var invoice = dto.ToModel();
+				var invoice = dto.ToModel(CurrentUser);
 				invoice.OrganizationId = CurrentOrganizationId;
 				var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
 

@@ -16,5 +16,9 @@ public class Invoice
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 	public List<LedgerLine> LedgerLines { get; set; } = new List<LedgerLine>();
+	public DateTimeOffset CreatedOn { get; set; }
+	public Guid CreatedBy { get; set; }
+	public DateTimeOffset ModifiedOn { get; set; }
+	public Guid ModifiedBy { get; set; }
 
 }

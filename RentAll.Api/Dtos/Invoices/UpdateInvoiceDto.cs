@@ -65,7 +65,7 @@ public class UpdateInvoiceDto
 		return (true, null);
 	}
 
-	public Invoice ToModel()
+	public Invoice ToModel(Guid currentUser)
 	{
 		return new Invoice
 		{
@@ -82,7 +82,8 @@ public class UpdateInvoiceDto
 			PaidAmount = PaidAmount,
 			Notes = Notes,
 			IsActive = IsActive,
-			LedgerLines = LedgerLines?.Select(l => l.ToModel()).ToList() ?? new List<LedgerLine>()
+			LedgerLines = LedgerLines?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<LedgerLine>(),
+			ModifiedBy = currentUser
 		};
 	}
 }

@@ -12,9 +12,6 @@ public class CreateLedgerLineDto
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (InvoiceId == Guid.Empty)
-			return (false, "InvoiceId is required");
-
 		if (CostCodeId <= 0)
 			return (false, "CostCodeId is required");
 
@@ -24,7 +21,7 @@ public class CreateLedgerLineDto
 		return (true, null);
 	}
 
-	public LedgerLine ToModel()
+	public LedgerLine ToModel(Guid currentUser)
 	{
 		return new LedgerLine
 		{
@@ -32,7 +29,8 @@ public class CreateLedgerLineDto
 			ReservationId = ReservationId,
 			CostCodeId = CostCodeId,
 			Amount = Amount,
-			Description = Description
+			Description = Description,
+			CreatedBy = currentUser
 		};
 	}
 }
