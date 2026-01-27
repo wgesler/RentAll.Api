@@ -18,7 +18,7 @@ public class UpdateInvoiceDto
 	public decimal PaidAmount { get; set; }
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
-	public List<CreateLedgerLineDto> LedgerLines { get; set; } = new List<CreateLedgerLineDto>();
+	public List<UpdateLedgerLineDto> LedgerLines { get; set; } = new List<UpdateLedgerLineDto>();
 
 	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
 	{

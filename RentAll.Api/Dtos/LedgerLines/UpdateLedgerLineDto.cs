@@ -13,9 +13,6 @@ public class UpdateLedgerLineDto
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (LedgerLineId == Guid.Empty)
-			return (false, "LedgerLine ID is required");
-
 		if (InvoiceId == Guid.Empty)
 			return (false, "InvoiceId is required");
 

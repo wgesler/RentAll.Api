@@ -72,7 +72,7 @@ public partial class InvoiceRepository : IInvoiceRepository
 				else if (currentLedgerLineIds.Contains(line.LedgerLineId))
 				{
 					// Update existing LedgerLine
-					await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_Update", new
+					await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_UpdateById", new
 					{
 						LedgerLineId = line.LedgerLineId,
 						InvoiceId = invoice.InvoiceId,
