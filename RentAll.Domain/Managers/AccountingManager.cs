@@ -128,7 +128,6 @@ public class AccountingManager : IAccountingManager
 			lines.Add(new LedgerLine { Description = "Deposit", Amount = reservation.Deposit });
 		if (reservation.DepositType == DepositType.SDW)
 			lines.Add(new LedgerLine { Description = "SDW", Amount = reservation.Deposit });
-		AddMaidServiceLines(reservation, lines);
 	}
 
 	private List<LedgerLine> GetLastMonthLines(Reservation reservation, List<LedgerLine> lines)

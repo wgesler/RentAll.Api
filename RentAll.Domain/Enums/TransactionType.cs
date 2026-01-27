@@ -3,11 +3,13 @@ namespace RentAll.Domain.Enums;
 public enum TransactionType
 {
 	Debit = 0,
-	Credit = 1,
-	Payment = 2,
-	Refund = 3,
-	Charge = 4,
-	SecurityDeposit = 5,
-	SecurityDepositWaiver = 6,
-	Adjustment = 7
+	Charge = 1,
+	SecurityDeposit = 2,
+	SecurityDepositWaiver = 3,
+
+	Credit = 10,
+	Payment = 11,
+	Refund = 12,
+	Revenue = 13,
+	Adjustment = 14
 }
