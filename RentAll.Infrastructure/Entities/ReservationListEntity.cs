@@ -18,6 +18,7 @@ public class ReservationListEntity
 	public DateTimeOffset DepartureDate { get; set; }
 	public int ReservationStatusId { get; set; }
 	public int CurrentInvoiceNumber { get; set; }
+	public decimal CreditDue { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 

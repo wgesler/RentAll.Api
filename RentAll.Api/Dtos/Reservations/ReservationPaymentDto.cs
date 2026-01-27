@@ -1,13 +1,11 @@
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Reservations;
 
 public class ReservationPaymentDto
 {
 	public Guid ReservationId { get; set; }
-	public Guid OrganizationId { get; set; }
-	public decimal Payment { get; set; }
+	public int CostCodeId { get; set; }
+	public string Description { get; set; } = string.Empty;
+	public decimal Amount { get; set; }
 
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -15,10 +13,10 @@ public class ReservationPaymentDto
 		if (ReservationId == Guid.Empty)
 			return (false, "ReservationId is required");
 
-		if (OrganizationId == Guid.Empty)
-			return (false, "OrganizationId is required");
+		if (CostCodeId < 0)
+			return (false, "CostCodeId is required");
 
-		if (Payment <= 0)
+		if (Amount <= 0)
 			return (false, "No payment submitted");
 
 		return (true, null);

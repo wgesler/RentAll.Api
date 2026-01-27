@@ -19,6 +19,7 @@ public class ReservationListResponseDto
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public int ReservationStatusId { get; set; }
+	public decimal CreditDue { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 
@@ -39,6 +40,7 @@ public class ReservationListResponseDto
 		ArrivalDate = reservationList.ArrivalDate;
 		DepartureDate = reservationList.DepartureDate;
 		ReservationStatusId = (int)reservationList.ReservationStatus;
+		CreditDue = reservationList.CreditDue;
 		IsActive = reservationList.IsActive;
 		CreatedOn = reservationList.CreatedOn;
 	}

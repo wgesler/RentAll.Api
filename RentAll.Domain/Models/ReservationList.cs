@@ -19,6 +19,7 @@ public class ReservationList
 	public DateTimeOffset ArrivalDate { get; set; }
 	public DateTimeOffset DepartureDate { get; set; }
 	public ReservationStatus ReservationStatus { get; set; }
+	public decimal CreditDue { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 }

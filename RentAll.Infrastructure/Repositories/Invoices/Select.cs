@@ -40,7 +40,7 @@ public partial class InvoiceRepository : IInvoiceRepository
 	public async Task<IEnumerable<Invoice>> GetAllByReservationIdAsync(Guid reservationId, Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByReservationId", new
+		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByReservationAndOfficeIds", new
 		{
 			ReservationId = reservationId,
 			OrganizationId = organizationId,
@@ -56,7 +56,7 @@ public partial class InvoiceRepository : IInvoiceRepository
 	public async Task<IEnumerable<Invoice>> GetAllByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByPropertyId", new
+		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByPropertyAndOfficeIds", new
 		{
 			PropertyId = propertyId,
 			OrganizationId = organizationId,

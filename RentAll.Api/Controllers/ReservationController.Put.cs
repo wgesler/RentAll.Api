@@ -58,7 +58,8 @@ namespace RentAll.Api.Controllers
 				if (existingReservation == null)
 					return NotFound("Reservation not found");
 
-                await _accountingManager.ApplyPaymentToReservationAsync(dto.ReservationId, CurrentOrganizationId, CurrentOfficeAccess, dto.Payment);
+                await _accountingManager.ApplyPaymentToReservationAsync(dto.ReservationId, CurrentOrganizationId, CurrentOfficeAccess, 
+                    dto.CostCodeId, dto.Description, dto.Amount, CurrentUser);
 				return Ok();
 			}
 			catch (Exception ex)
