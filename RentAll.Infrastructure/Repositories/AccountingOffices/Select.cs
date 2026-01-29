@@ -8,12 +8,13 @@ namespace RentAll.Infrastructure.Repositories.AccountingOffices;
 
 public partial class AccountingOfficeRepository : IAccountingOfficeRepository
 {
-	public async Task<IEnumerable<AccountingOffice>> GetAllAsync(Guid organizationId)
+	public async Task<IEnumerable<AccountingOffice>> GetAllByOfficeIdAsync(Guid organizationId, string officeIds)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.AccountingOffice_GetAll", new
+		var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_GetAllByOfficeIds", new
 		{
-			OrganizationId = organizationId
+			OrganizationId = organizationId,
+			Offices = officeIds
 		});
 
 		if (res == null || !res.Any())
@@ -25,7 +26,7 @@ public partial class AccountingOfficeRepository : IAccountingOfficeRepository
 	public async Task<AccountingOffice?> GetByIdAsync(Guid organizationId, int officeId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.AccountingOffice_GetById", new
+		var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_GetById", new
 		{
 			OrganizationId = organizationId,
 			OfficeId = officeId

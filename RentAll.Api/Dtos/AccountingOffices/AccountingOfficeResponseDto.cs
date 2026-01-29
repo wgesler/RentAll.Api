@@ -15,13 +15,14 @@ public class AccountingOfficeResponseDto
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
+	public string? Fax { get; set; }
 	public string BankName { get; set; } = string.Empty;
 	public string BankRouting { get; set; } = string.Empty;
 	public string BankAccount { get; set; } = string.Empty;
 	public string BankSwiftCode { get; set; } = string.Empty;
 	public string BankAddress { get; set; } = string.Empty;
 	public string BankPhone { get; set; } = string.Empty;
-	public string? Website { get; set; }
+	public string Email { get; set; } = string.Empty;
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
@@ -42,13 +43,14 @@ public class AccountingOfficeResponseDto
 		State = accountingOffice.State;
 		Zip = accountingOffice.Zip;
 		Phone = accountingOffice.Phone;
+		Fax = accountingOffice.Fax;
 		BankName = accountingOffice.BankName;
 		BankRouting = accountingOffice.BankRouting;
 		BankAccount = accountingOffice.BankAccount;
 		BankSwiftCode = accountingOffice.BankSwiftCode;
 		BankAddress = accountingOffice.BankAddress;
 		BankPhone = accountingOffice.BankPhone;
-		Website = accountingOffice.Website;
+		Email = accountingOffice.Email;
 		LogoPath = accountingOffice.LogoPath;
 		IsActive = accountingOffice.IsActive;
 		CreatedOn = accountingOffice.CreatedOn;

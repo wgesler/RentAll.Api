@@ -14,7 +14,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				var accountingOffices = await _accountingOfficeRepository.GetAllAsync(CurrentOrganizationId);
+				var accountingOffices = await _accountingOfficeRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
 				var response = new List<AccountingOfficeResponseDto>();
 				foreach (var accountingOffice in accountingOffices)
 				{

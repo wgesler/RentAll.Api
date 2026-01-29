@@ -11,7 +11,7 @@ public partial class AccountingOfficeRepository : IAccountingOfficeRepository
 	public async Task<AccountingOffice> CreateAsync(AccountingOffice accountingOffice)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.AccountingOffice_Add", new
+		var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_Add", new
 		{
 			OrganizationId = accountingOffice.OrganizationId,
 			OfficeId = accountingOffice.OfficeId,
@@ -23,13 +23,14 @@ public partial class AccountingOfficeRepository : IAccountingOfficeRepository
 			State = accountingOffice.State,
 			Zip = accountingOffice.Zip,
 			Phone = accountingOffice.Phone,
+			Fax = accountingOffice.Fax,
 			BankName = accountingOffice.BankName,
 			BankRouting = accountingOffice.BankRouting,
 			BankAccount = accountingOffice.BankAccount,
 			BankSwiftCode = accountingOffice.BankSwiftCode,
 			BankAddress = accountingOffice.BankAddress,
 			BankPhone = accountingOffice.BankPhone,
-			Website = accountingOffice.Website,
+			Email = accountingOffice.Email,
 			LogoPath = accountingOffice.LogoPath,
 			IsActive = accountingOffice.IsActive,
 			CreatedBy = accountingOffice.CreatedBy

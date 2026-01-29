@@ -8,7 +8,7 @@ public interface IAccountingOfficeRepository
 	Task<AccountingOffice> CreateAsync(AccountingOffice accountingOffice);
 
 	// Selects
-	Task<IEnumerable<AccountingOffice>> GetAllAsync(Guid organizationId);
+	Task<IEnumerable<AccountingOffice>> GetAllByOfficeIdAsync(Guid organizationId, string officeIds);
 	Task<AccountingOffice?> GetByIdAsync(Guid organizationId, int officeId);
 
 	// Updates

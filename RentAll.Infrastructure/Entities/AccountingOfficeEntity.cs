@@ -11,15 +11,16 @@ public class AccountingOfficeEntity
     public string City { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
+	public string Phone { get; set; } = string.Empty;
+	public string? Fax { get; set; }
 	public string BankName { get; set; } = string.Empty;
 	public string BankRouting { get; set; } = string.Empty;
 	public string BankAccount { get; set; } = string.Empty;
 	public string BankSwiftCode { get; set; } = string.Empty;
 	public string BankAddress { get; set; } = string.Empty;
 	public string BankPhone { get; set; } = string.Empty;
-	public string? Website { get; set; }
-    public string? LogoPath { get; set; }
+	public string Email { get; set; } = string.Empty;
+	public string? LogoPath { get; set; }
 	public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
