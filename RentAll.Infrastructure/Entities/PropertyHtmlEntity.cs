@@ -7,6 +7,7 @@ public class PropertyHtmlEntity
 	public string WelcomeLetter { get; set; } = string.Empty;
 	public string InspectionChecklist { get; set; } = string.Empty;
 	public string Lease { get; set; } = string.Empty;
+	public string Invoice { get; set; } = string.Empty;
 	public string LetterOfResponsibility { get; set; } = string.Empty;
 	public string NoticeToVacate { get; set; } = string.Empty;
 	public string CreditAuthorization { get; set; } = string.Empty;

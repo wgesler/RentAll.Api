@@ -9,6 +9,7 @@ public class PropertyHtmlResponseDto
 	public string WelcomeLetter { get; set; } = string.Empty;
 	public string InspectionChecklist { get; set; } = string.Empty;
 	public string Lease { get; set; } = string.Empty;
+	public string Invoice { get; set; } = string.Empty;
 	public string LetterOfResponsibility { get; set; } = string.Empty;
 	public string NoticeToVacate { get; set; } = string.Empty;
 	public string CreditAuthorization { get; set; } = string.Empty;
@@ -27,6 +28,7 @@ public class PropertyHtmlResponseDto
 		WelcomeLetter = propertyHtml.WelcomeLetter;
 		InspectionChecklist = propertyHtml.InspectionChecklist;
 		Lease = propertyHtml.Lease;
+		Invoice = propertyHtml.Invoice;
 		LetterOfResponsibility = propertyHtml.LetterOfResponsibility;
 		NoticeToVacate = propertyHtml.NoticeToVacate;
 		CreditAuthorization = propertyHtml.CreditAuthorization;

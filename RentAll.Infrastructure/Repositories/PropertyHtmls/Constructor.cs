@@ -24,6 +24,7 @@ namespace RentAll.Infrastructure.Repositories.PropertyHtmls
 				WelcomeLetter = e.WelcomeLetter,
 				InspectionChecklist = e.InspectionChecklist,
 				Lease = e.Lease,
+				Invoice = e.Invoice,
 				LetterOfResponsibility = e.LetterOfResponsibility,
 				NoticeToVacate = e.NoticeToVacate,
 				CreditAuthorization = e.CreditAuthorization,
