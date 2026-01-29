@@ -15,6 +15,12 @@ public class AccountingOfficeResponseDto
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
+	public string BankName { get; set; } = string.Empty;
+	public string BankRouting { get; set; } = string.Empty;
+	public string BankAccount { get; set; } = string.Empty;
+	public string BankSwiftCode { get; set; } = string.Empty;
+	public string BankAddress { get; set; } = string.Empty;
+	public string BankPhone { get; set; } = string.Empty;
 	public string? Website { get; set; }
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
@@ -36,6 +42,12 @@ public class AccountingOfficeResponseDto
 		State = accountingOffice.State;
 		Zip = accountingOffice.Zip;
 		Phone = accountingOffice.Phone;
+		BankName = accountingOffice.BankName;
+		BankRouting = accountingOffice.BankRouting;
+		BankAccount = accountingOffice.BankAccount;
+		BankSwiftCode = accountingOffice.BankSwiftCode;
+		BankAddress = accountingOffice.BankAddress;
+		BankPhone = accountingOffice.BankPhone;
 		Website = accountingOffice.Website;
 		LogoPath = accountingOffice.LogoPath;
 		IsActive = accountingOffice.IsActive;

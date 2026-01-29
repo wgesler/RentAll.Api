@@ -15,6 +15,12 @@ public class UpdateAccountingOfficeDto
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
+	public string BankName { get; set; } = string.Empty;
+	public string BankRouting { get; set; } = string.Empty;
+	public string BankAccount { get; set; } = string.Empty;
+	public string BankSwiftCode { get; set; } = string.Empty;
+	public string BankAddress { get; set; } = string.Empty;
+	public string BankPhone { get; set; } = string.Empty;
 	public string? Website { get; set; }
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
@@ -46,6 +52,24 @@ public class UpdateAccountingOfficeDto
 		if (string.IsNullOrWhiteSpace(Phone))
 			return (false, "Phone is required");
 
+		if (string.IsNullOrWhiteSpace(BankName))
+			return (false, "BankName is required");
+
+		if (string.IsNullOrWhiteSpace(BankRouting))
+			return (false, "BankRouting is required");
+
+		if (string.IsNullOrWhiteSpace(BankAccount))
+			return (false, "BankAccount is required");
+
+		if (string.IsNullOrWhiteSpace(BankSwiftCode))
+			return (false, "BankSwiftCode is required");
+
+		if (string.IsNullOrWhiteSpace(BankAddress))
+			return (false, "BankAddress is required");
+
+		if (string.IsNullOrWhiteSpace(BankPhone))
+			return (false, "BankPhone is required");
+
 		return (true, null);
 	}
 
@@ -63,6 +87,12 @@ public class UpdateAccountingOfficeDto
 			State = State,
 			Zip = Zip,
 			Phone = Phone,
+			BankName = BankName,
+			BankRouting = BankRouting,
+			BankAccount = BankAccount,
+			BankSwiftCode = BankSwiftCode,
+			BankAddress = BankAddress,
+			BankPhone = BankPhone,
 			Website = Website,
 			LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
 			IsActive = IsActive,

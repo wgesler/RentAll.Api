@@ -12,7 +12,13 @@ public class AccountingOfficeEntity
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
-    public string? Website { get; set; }
+	public string BankName { get; set; } = string.Empty;
+	public string BankRouting { get; set; } = string.Empty;
+	public string BankAccount { get; set; } = string.Empty;
+	public string BankSwiftCode { get; set; } = string.Empty;
+	public string BankAddress { get; set; } = string.Empty;
+	public string BankPhone { get; set; } = string.Empty;
+	public string? Website { get; set; }
     public string? LogoPath { get; set; }
 	public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
