@@ -29,10 +29,10 @@ public partial class AuthController
             if (currentUserId == Guid.Empty)
                 return Unauthorized("User not authenticated");
 
-            var (success, errorMessage) = await _authManager.UpdatePasswordAsync(currentUserId, dto.Password, dto.NewPassword);
+            var (success, updateError) = await _authManager.UpdatePasswordAsync(currentUserId, dto.Password, dto.NewPassword);
 
             if (!success)
-                return BadRequest(errorMessage ?? "Failed to update password");
+                return BadRequest(updateError ?? "Failed to update password");
 
             return Ok(new { message = "Password updated successfully" });
         }
