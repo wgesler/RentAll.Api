@@ -53,14 +53,19 @@ namespace RentAll.Api.Controllers
 						return ServerError("An error occurred while saving the logo file");
 					}
 				}
-				else if (string.IsNullOrWhiteSpace(dto.LogoPath))
+				else if (dto.LogoPath == null)
 				{
-					// If LogoPath is explicitly set to null/empty, delete the old logo
+					// LogoPath is explicitly null - delete the logo
 					if (!string.IsNullOrWhiteSpace(existing.LogoPath))
 					{
 						await _fileService.DeleteLogoAsync(existing.LogoPath);
 						model.LogoPath = null;
 					}
+				}
+				else
+				{
+					// No new file provided and LogoPath is not null - preserve existing logo from database
+					model.LogoPath = existing.LogoPath;
 				}
 
                 var updated = await _organizationRepository.UpdateByIdAsync(model);
