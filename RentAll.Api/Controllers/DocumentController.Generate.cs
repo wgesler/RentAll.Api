@@ -17,8 +17,9 @@ namespace RentAll.Api.Controllers
 			if (dto == null)
 				return BadRequest(new { message = "Document data is required" });
 
-			if (string.IsNullOrWhiteSpace(dto.HtmlContent))
-				return BadRequest(new { message = "HTML content is required" });
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(new { message = errorMessage ?? "Invalid request data" });
 
 			try
 			{
@@ -47,8 +48,9 @@ namespace RentAll.Api.Controllers
 			if (dto == null)
 				return BadRequest(new { message = "Document data is required" });
 
-			if (string.IsNullOrWhiteSpace(dto.HtmlContent))
-				return BadRequest(new { message = "HTML content is required" });
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(new { message = errorMessage ?? "Invalid request data" });
 
 			try
 			{
@@ -72,9 +74,9 @@ namespace RentAll.Api.Controllers
 					}
 				};
 
-				var (isValid, errorMessage) = createDto.IsValid();
-				if (!isValid)
-					return BadRequest(new { message = errorMessage });
+				var (createDtoIsValid, createDtoErrorMessage) = createDto.IsValid();
+				if (!createDtoIsValid)
+					return BadRequest(new { message = createDtoErrorMessage });
 
 				var model = createDto.ToModel(CurrentOrganizationId, CurrentUser);
 

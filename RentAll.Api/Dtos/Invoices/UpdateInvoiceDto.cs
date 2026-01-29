@@ -20,13 +20,10 @@ public class UpdateInvoiceDto
 	public bool IsActive { get; set; }
 	public List<UpdateLedgerLineDto> LedgerLines { get; set; } = new List<UpdateLedgerLineDto>();
 
-	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (id == Guid.Empty)
+		if (InvoiceId == Guid.Empty)
 			return (false, "Invoice ID is required");
-
-		if (InvoiceId != id)
-			return (false, "Invoice ID mismatch");
 
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");

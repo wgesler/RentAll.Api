@@ -1,12 +1,12 @@
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
-namespace RentAll.Api.Dtos.Organizations;
+namespace RentAll.Api.Dtos.AccountingOffices;
 
-public class UpdateOrganizationDto
+public class CreateAccountingOfficeDto
 {
 	public Guid OrganizationId { get; set; }
-	public string OrganizationCode { get; set; } = string.Empty;
+	public int OfficeId { get; set; }
 	public string Name { get; set; } = string.Empty;
 	public string Address1 { get; set; } = string.Empty;
 	public string? Address2 { get; set; }
@@ -15,9 +15,7 @@ public class UpdateOrganizationDto
 	public string State { get; set; } = string.Empty;
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
-	public string? Fax { get; set; }
 	public string? Website { get; set; }
-	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
@@ -26,8 +24,8 @@ public class UpdateOrganizationDto
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
 
-		if (string.IsNullOrWhiteSpace(OrganizationCode))
-			return (false, "OrganizationCode is required");
+		if (OfficeId <= 0)
+			return (false, "OfficeId is required");
 
 		if (string.IsNullOrWhiteSpace(Name))
 			return (false, "Name is required");
@@ -50,12 +48,12 @@ public class UpdateOrganizationDto
 		return (true, null);
 	}
 
-	public Organization ToModel(Guid currentUser)
+	public AccountingOffice ToModel(Guid currentUser)
 	{
-		return new Organization
+		return new AccountingOffice
 		{
 			OrganizationId = OrganizationId,
-			OrganizationCode = OrganizationCode,
+			OfficeId = OfficeId,
 			Name = Name,
 			Address1 = Address1,
 			Address2 = Address2,
@@ -64,16 +62,10 @@ public class UpdateOrganizationDto
 			State = State,
 			Zip = Zip,
 			Phone = Phone,
-			Fax = Fax,
 			Website = Website,
-			LogoPath = LogoPath,
-			FileDetails = FileDetails,
+			LogoPath = null, // Will be set by controller after file save
 			IsActive = IsActive,
-			ModifiedBy = currentUser
+			CreatedBy = currentUser
 		};
 	}
 }
-
-
-
-

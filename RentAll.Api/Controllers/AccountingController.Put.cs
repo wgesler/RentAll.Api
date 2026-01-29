@@ -11,22 +11,21 @@ namespace RentAll.Api.Controllers
 		/// <summary>
 		/// Update an existing invoice
 		/// </summary>
-		/// <param name="invoiceId">Invoice ID</param>
 		/// <param name="dto">Invoice data</param>
 		/// <returns>Updated invoice</returns>
-		[HttpPut("invoice/{invoiceId}")]
-		public async Task<IActionResult> UpdateInvoice(Guid invoiceId, [FromBody] UpdateInvoiceDto dto)
+		[HttpPut("invoice")]
+		public async Task<IActionResult> UpdateInvoice([FromBody] UpdateInvoiceDto dto)
 		{
 			if (dto == null)
 				return BadRequest("Invoice data is required");
 
-			var (isValid, errorMessage) = dto.IsValid(invoiceId);
+			var (isValid, errorMessage) = dto.IsValid();
 			if (!isValid)
 				return BadRequest(errorMessage ?? "Invalid invoice data");
 
 			try
 			{
-				var existingInvoice = await _invoiceRepository.GetByIdAsync(invoiceId, CurrentOrganizationId);
+				var existingInvoice = await _invoiceRepository.GetByIdAsync(dto.InvoiceId, CurrentOrganizationId);
 				if (existingInvoice == null)
 					return NotFound("Invoice not found");
 
@@ -40,7 +39,7 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error updating invoice: {InvoiceId}", invoiceId);
+				_logger.LogError(ex, "Error updating invoice: {InvoiceId}", dto.InvoiceId);
 				return ServerError("An error occurred while updating the invoice");
 			}
 		}

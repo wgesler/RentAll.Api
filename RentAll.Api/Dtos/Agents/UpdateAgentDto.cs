@@ -11,13 +11,10 @@ public class UpdateAgentDto
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+    public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (id == Guid.Empty)
+        if (AgentId == Guid.Empty)
             return (false, "Agent ID is required");
-
-        if (AgentId != id)
-            return (false, "Agent ID mismatch");
 
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");

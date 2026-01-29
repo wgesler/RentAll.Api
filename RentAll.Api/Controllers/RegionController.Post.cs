@@ -17,8 +17,9 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Region data is required");
 
-            if (string.IsNullOrWhiteSpace(dto.RegionCode))
-                return BadRequest("Region Code is required");
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {

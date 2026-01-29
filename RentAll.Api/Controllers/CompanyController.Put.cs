@@ -9,23 +9,22 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing company
         /// </summary>
-        /// <param name="id">Company ID</param>
         /// <param name="dto">Company data</param>
         /// <returns>Updated company</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCompanyDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] UpdateCompanyDto dto)
         {
             if (dto == null)
                 return BadRequest("Company data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(id);
+            var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if company exists
-                var existingCompany = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var existingCompany = await _companyRepository.GetByIdAsync(dto.CompanyId, CurrentOrganizationId);
                 if (existingCompany == null)
                     return NotFound("Company not found");
 
@@ -79,7 +78,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating company: {CompanyId}", id);
+                _logger.LogError(ex, "Error updating company: {CompanyId}", dto.CompanyId);
                 return ServerError("An error occurred while updating the company");
             }
         }

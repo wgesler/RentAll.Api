@@ -17,6 +17,10 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Building data is required");
 
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
             try
             {
                 if (await _buildingRepository.ExistsByBuildingCodeAsync(dto.BuildingCode, CurrentOrganizationId, dto.OfficeId))

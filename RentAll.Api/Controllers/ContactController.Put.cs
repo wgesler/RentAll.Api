@@ -8,23 +8,22 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing contact
         /// </summary>
-        /// <param name="id">Contact ID</param>
         /// <param name="dto">Contact data</param>
         /// <returns>Updated contact</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateContactDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] UpdateContactDto dto)
         {
             if (dto == null)
                 return BadRequest("Contact data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(id);
+            var (isValid, errorMessage) = dto.IsValid();
             if (!isValid || !IsValidEmail(dto.Email))
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
 				// Check if contact exists
-				var existing = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
+				var existing = await _contactRepository.GetByIdAsync(dto.ContactId, CurrentOrganizationId);
 				if (existing == null)
 					return NotFound("Contact not found");
 
@@ -39,7 +38,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating contact: {ContactId}", id);
+                _logger.LogError(ex, "Error updating contact: {ContactId}", dto.ContactId);
                 return ServerError("An error occurred while updating the contact");
             }
         }

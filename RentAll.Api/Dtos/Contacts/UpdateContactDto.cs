@@ -23,13 +23,10 @@ public class UpdateContactDto
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+    public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (id == Guid.Empty)
+        if (ContactId == Guid.Empty)
             return (false, "Contact ID is required");
-
-        if (ContactId != id)
-            return (false, "Contact ID mismatch");
 
 		if (string.IsNullOrWhiteSpace(ContactCode))
 			return (false, "Contact Code is required");

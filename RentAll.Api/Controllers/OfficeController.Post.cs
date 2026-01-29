@@ -18,8 +18,9 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Office data is required");
 
-            if (string.IsNullOrWhiteSpace(dto.OfficeCode))
-                return BadRequest("Office Code is required");
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {

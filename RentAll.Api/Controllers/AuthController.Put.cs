@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Users;
+using RentAll.Api.Dtos.Auth;
 using System.Text;
 using System.Text.Json;
 
@@ -11,19 +11,17 @@ public partial class AuthController
     /// <summary>
     /// Update the current user's password
     /// </summary>
-    /// <param name="dto">UpdateUserDto containing Password (current) and NewPassword</param>
+    /// <param name="dto">UpdatePasswordDto containing Password (current) and NewPassword</param>
     /// <returns>Success message</returns>
     [HttpPut("password")]
-    public async Task<IActionResult> UpdatePassword([FromBody] UpdateUserDto dto)
+    public async Task<IActionResult> UpdatePassword([FromBody] UpdatePasswordDto dto)
     {
         if (dto == null)
             return BadRequest("Password data is required");
 
-        if (string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest("Current password is required");
-
-        if (string.IsNullOrWhiteSpace(dto.NewPassword))
-            return BadRequest("New password is required");
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
 
         try
         {

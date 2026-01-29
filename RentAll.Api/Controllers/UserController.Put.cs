@@ -8,23 +8,22 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing user
         /// </summary>
-        /// <param name="id">User ID</param>
         /// <param name="dto">User data</param>
         /// <returns>Updated user</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] UpdateUserDto dto)
         {
             if (dto == null)
                 return BadRequest("User data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(id);
+            var (isValid, errorMessage) = dto.IsValid();
             if (!isValid || !IsValidEmail(dto.Email))
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if user exists
-                var existingUser = await _userRepository.GetByIdAsync(id);
+                var existingUser = await _userRepository.GetByIdAsync(dto.UserId);
                 if (existingUser == null)
                     return NotFound("User not found");
 
@@ -42,7 +41,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user: {UserId}", id);
+                _logger.LogError(ex, "Error updating user: {UserId}", dto.UserId);
                 return ServerError("An error occurred while updating the user");
             }
         }

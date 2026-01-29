@@ -8,23 +8,22 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing property
         /// </summary>
-        /// <param name="id">Property ID</param>
         /// <param name="dto">Property data</param>
         /// <returns>Updated property</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePropertyDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] UpdatePropertyDto dto)
         {
             if (dto == null)
                 return BadRequest("Property data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(id);
+            var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if property exists
-                var existingProperty = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var existingProperty = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
                 if (existingProperty == null)
                     return NotFound("Property not found");
 
@@ -41,7 +40,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating property: {PropertyId}", id);
+                _logger.LogError(ex, "Error updating property: {PropertyId}", dto.PropertyId);
                 return ServerError("An error occurred while updating the property");
             }
         }

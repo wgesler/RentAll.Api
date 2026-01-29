@@ -23,13 +23,10 @@ public class UpdateCompanyDto
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+    public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (id == Guid.Empty)
+        if (CompanyId == Guid.Empty)
             return (false, "Company ID is required");
-
-        if (CompanyId != id)
-            return (false, "Company ID mismatch");
 
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");

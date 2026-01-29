@@ -9,23 +9,22 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing vendor
         /// </summary>
-        /// <param name="id">Vendor ID</param>
         /// <param name="dto">Vendor data</param>
         /// <returns>Updated vendor</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVendorDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] UpdateVendorDto dto)
         {
             if (dto == null)
                 return BadRequest("Vendor data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(id);
+            var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if vendor exists
-                var existingVendor = await _vendorRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var existingVendor = await _vendorRepository.GetByIdAsync(dto.VendorId, CurrentOrganizationId);
                 if (existingVendor == null)
                     return NotFound("Vendor not found");
 
@@ -79,7 +78,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating vendor: {VendorId}", id);
+                _logger.LogError(ex, "Error updating vendor: {VendorId}", dto.VendorId);
                 return ServerError("An error occurred while updating the vendor");
             }
         }

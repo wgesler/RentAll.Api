@@ -1,4 +1,4 @@
-﻿using RentAll.Domain.Enums;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Properties;
@@ -119,13 +119,13 @@ public class UpdatePropertyDto
 	public string? Notes { get; set; }
 	public bool IsActive { get; set; }
 
-	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
+		if (PropertyId == Guid.Empty)
+			return (false, "Property ID is required");
+
 		if (string.IsNullOrWhiteSpace(PropertyCode))
 			return (false, "Property Code is required");
-
-		if (id != PropertyId)
-			return (false, "Property ID is invalid");
 
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");

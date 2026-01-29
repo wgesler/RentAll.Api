@@ -8,23 +8,22 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing agent
         /// </summary>
-        /// <param name="id">Agent ID</param>
         /// <param name="dto">Agent data</param>
         /// <returns>Updated agent</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAgentDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] UpdateAgentDto dto)
         {
             if (dto == null)
                 return BadRequest("Agent data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(id);
+            var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
                 // Check if agent exists
-                var existingAgent = await _agentRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var existingAgent = await _agentRepository.GetByIdAsync(dto.AgentId, CurrentOrganizationId);
                 if (existingAgent == null)
                     return NotFound("Agent not found");
 
@@ -41,7 +40,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating agent: {AgentId}", id);
+                _logger.LogError(ex, "Error updating agent: {AgentId}", dto.AgentId);
                 return ServerError("An error occurred while updating the agent");
             }
         }

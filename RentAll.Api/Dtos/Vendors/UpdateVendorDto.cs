@@ -22,13 +22,10 @@ public class UpdateVendorDto
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+    public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (id == Guid.Empty)
+        if (VendorId == Guid.Empty)
             return (false, "Vendor ID is required");
-
-        if (VendorId != id)
-            return (false, "Vendor ID mismatch");
 
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");

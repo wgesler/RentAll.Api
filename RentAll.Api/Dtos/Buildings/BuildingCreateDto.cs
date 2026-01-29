@@ -14,6 +14,22 @@ public class BuildingCreateDto
 	public string? HoaEmail { get; set; }
 	public bool IsActive { get; set; }
 
+	public (bool IsValid, string? ErrorMessage) IsValid()
+	{
+		if (OrganizationId == Guid.Empty)
+			return (false, "OrganizationId is required");
+
+		if (string.IsNullOrWhiteSpace(BuildingCode))
+			return (false, "Building Code is required");
+
+		if (string.IsNullOrWhiteSpace(Name))
+			return (false, "Name is required");
+
+		if (string.IsNullOrWhiteSpace(Description))
+			return (false, "Description is required");
+
+		return (true, null);
+	}
 	public Building ToModel()
 	{
 		return new Building

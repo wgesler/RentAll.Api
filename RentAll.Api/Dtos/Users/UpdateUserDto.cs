@@ -15,13 +15,10 @@ public class UpdateUserDto
 	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public bool IsActive { get; set; }
 
-	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (id == Guid.Empty)
+        if (UserId == Guid.Empty)
             return (false, "User ID is required");
-
-        if (UserId != id)
-            return (false, "User ID mismatch");
 
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");

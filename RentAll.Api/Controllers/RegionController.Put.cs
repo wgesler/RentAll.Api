@@ -9,24 +9,21 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update an existing region
         /// </summary>
-        /// <param name="id">Region ID</param>
         /// <param name="dto">Region data</param>
         /// <returns>Updated region</returns>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] RegionUpdateDto dto)
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] RegionUpdateDto dto)
         {
             if (dto == null)
                 return BadRequest("Region data is required");
 
-            if (id != dto.RegionId)
-                return BadRequest("Region ID mismatch");
-
-            if (string.IsNullOrWhiteSpace(dto.RegionCode))
-                return BadRequest("Region Code is required");
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
-                var existingRegion = await _regionRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var existingRegion = await _regionRepository.GetByIdAsync(dto.RegionId, CurrentOrganizationId);
                 if (existingRegion == null)
                     return NotFound("Region not found");
 
@@ -42,7 +39,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating region: {RegionId}", id);
+                _logger.LogError(ex, "Error updating region: {RegionId}", dto.RegionId);
                 return ServerError("An error occurred while updating the region");
             }
         }

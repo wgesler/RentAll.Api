@@ -15,13 +15,10 @@ public class UpdateDocumentDto
 	public FileDetails? FileDetails { get; set; }
 	public bool IsDeleted { get; set; }
 
-	public (bool IsValid, string? ErrorMessage) IsValid(Guid id)
+	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
-		if (id == Guid.Empty)
+		if (DocumentId == Guid.Empty)
 			return (false, "Document ID is required");
-
-		if (DocumentId != id)
-			return (false, "Document ID mismatch");
 
 		if (FileDetails == null || string.IsNullOrWhiteSpace(FileDetails.File))
 			return (false, "File is required");

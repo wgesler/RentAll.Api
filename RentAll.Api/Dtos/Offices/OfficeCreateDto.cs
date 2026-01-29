@@ -40,6 +40,34 @@ public class OfficeCreateDto
 	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
+	public (bool IsValid, string? ErrorMessage) IsValid()
+	{
+		if (OrganizationId == Guid.Empty)
+			return (false, "OrganizationId is required");
+
+		if (string.IsNullOrWhiteSpace(OfficeCode))
+			return (false, "Office Code is required");
+
+		if (string.IsNullOrWhiteSpace(Name))
+			return (false, "Name is required");
+
+		if (string.IsNullOrWhiteSpace(Address1))
+			return (false, "Address1 is required");
+
+		if (string.IsNullOrWhiteSpace(City))
+			return (false, "City is required");
+
+		if (string.IsNullOrWhiteSpace(State))
+			return (false, "State is required");
+
+		if (string.IsNullOrWhiteSpace(Zip))
+			return (false, "Zip is required");
+
+		if (string.IsNullOrWhiteSpace(Phone))
+			return (false, "Phone is required");
+
+		return (true, null);
+	}
 	public Office ToModel()
 	{
 		return new Office
