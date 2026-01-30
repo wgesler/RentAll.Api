@@ -16,13 +16,14 @@ public class UpdateAccountingOfficeDto
 	public string Zip { get; set; } = string.Empty;
 	public string Phone { get; set; } = string.Empty;
 	public string? Fax { get; set; }
+	public string Email { get; set; } = string.Empty;
+	public string Website { get; set; } = string.Empty;
 	public string BankName { get; set; } = string.Empty;
 	public string BankRouting { get; set; } = string.Empty;
 	public string BankAccount { get; set; } = string.Empty;
 	public string BankSwiftCode { get; set; } = string.Empty;
 	public string BankAddress { get; set; } = string.Empty;
 	public string BankPhone { get; set; } = string.Empty;
-	public string Email { get; set; } = string.Empty;
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
@@ -95,13 +96,14 @@ public class UpdateAccountingOfficeDto
 			Zip = Zip,
 			Phone = Phone,
 			Fax = Fax,
+			Email = Email,
+			Website = Website,
 			BankName = BankName,
 			BankRouting = BankRouting,
 			BankAccount = BankAccount,
 			BankSwiftCode = BankSwiftCode,
 			BankAddress = BankAddress,
 			BankPhone = BankPhone,
-			Email = Email,
 			LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
 			IsActive = IsActive,
 			ModifiedBy = currentUser

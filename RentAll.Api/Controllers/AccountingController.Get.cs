@@ -125,7 +125,7 @@ namespace RentAll.Api.Controllers
 					return NotFound("Reservation not found");
 
 				var ledgerLines = _accountingManager.GetLedgerLinesByReservationIdAsync(reservation);
-				var invoice = reservation.ReservationCode + " " + (reservation.CurrentInvoiceNumber + 1).ToString("D3");
+				var invoice = reservation.ReservationCode + "-" + (reservation.CurrentInvoiceNumber + 1).ToString("D3");
 				var data = new InvoiceMonthlyData { Invoice = invoice, ReservationId = reservation.ReservationId, LedgerLines = ledgerLines };
 				var response = new InvoiceMonthlyDataResponseDto(data);
 				return Ok(response);
