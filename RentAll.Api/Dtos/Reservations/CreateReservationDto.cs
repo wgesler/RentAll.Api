@@ -20,6 +20,7 @@ public class CreateReservationDto
 	public int CheckInTimeId { get; set; }
 	public int CheckOutTimeId { get; set; }
 	public int BillingMethodId { get; set; }
+	public int ProrateTypeId { get; set; }
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }
@@ -89,6 +90,9 @@ public class CreateReservationDto
 		if (!Enum.IsDefined(typeof(BillingMethod), BillingMethodId))
 			return (false, $"Invalid BillingMethodId value: {BillingMethodId}");
 
+		if (!Enum.IsDefined(typeof(ProrateType), ProrateTypeId))
+			return (false, $"Invalid ProrateTypeId value: {ProrateTypeId}");
+
 		if (!Enum.IsDefined(typeof(BillingType), BillingTypeId))
 			return (false, $"Invalid BillingTypeId value: {BillingTypeId}");
 
@@ -120,6 +124,7 @@ public class CreateReservationDto
 			CheckInTime = (CheckInTime)CheckInTimeId,
 			CheckOutTime = (CheckOutTime)CheckOutTimeId,
 			BillingMethod = (BillingMethod)BillingMethodId,
+			ProrateType = (ProrateType)ProrateTypeId,
 			BillingType = (BillingType)BillingTypeId,
 			BillingRate = BillingRate,
 			Deposit = Deposit,

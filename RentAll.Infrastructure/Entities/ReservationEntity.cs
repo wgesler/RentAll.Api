@@ -21,6 +21,7 @@ public class ReservationEntity
 	public int CheckInTimeId { get; set; }
 	public int CheckOutTimeId { get; set; }
 	public int BillingMethodId { get; set; }
+	public int ProrateTypeId { get; set; }
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }

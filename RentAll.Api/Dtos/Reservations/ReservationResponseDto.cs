@@ -23,6 +23,7 @@ public class ReservationResponseDto
 	public int CheckInTimeId { get; set; }
 	public int CheckOutTimeId { get; set; }
 	public int BillingMethodId { get; set; }
+	public int ProrateTypeId { get; set; }
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }
@@ -73,6 +74,7 @@ public class ReservationResponseDto
 		CheckInTimeId = (int)reservation.CheckInTime;
 		CheckOutTimeId = (int)reservation.CheckOutTime;
 		BillingMethodId = (int)reservation.BillingMethod;
+		ProrateTypeId = (int)reservation.ProrateType;
 		BillingTypeId = (int)reservation.BillingType;
 		BillingRate = reservation.BillingRate;
 		Deposit = reservation.Deposit;

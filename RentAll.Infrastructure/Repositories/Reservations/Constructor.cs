@@ -39,6 +39,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				CheckInTime = (CheckInTime)e.CheckInTimeId,
 				CheckOutTime = (CheckOutTime)e.CheckOutTimeId,
 				BillingMethod = (BillingMethod)e.BillingMethodId,
+				ProrateType = (ProrateType)e.ProrateTypeId,
 				BillingType = (BillingType)e.BillingTypeId,
 				BillingRate = e.BillingRate,
 				Deposit = e.Deposit,
