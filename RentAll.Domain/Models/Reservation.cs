@@ -22,6 +22,7 @@ public class Reservation
 	public DateTimeOffset DepartureDate { get; set; }
 	public CheckInTime CheckInTime { get; set; }
 	public CheckOutTime CheckOutTime { get; set; }
+	public BillingMethod BillingMethod { get; set; }
 	public BillingType BillingType { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }

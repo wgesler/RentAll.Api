@@ -12,8 +12,8 @@ namespace RentAll.Api.Controllers
 		/// Get all invoices by offices
 		/// </summary>
 		/// <returns>List of invoices</returns>
-		[HttpGet("invoice/office")]
-		public async Task<IActionResult> GetAllInvoicesByOffice()
+		[HttpGet("invoice")]
+		public async Task<IActionResult> GetAllInvoices()
 		{
 			try
 			{
@@ -28,6 +28,29 @@ namespace RentAll.Api.Controllers
 			}
 		}
 
+		/// <summary>
+		/// Get all invoices by offices
+		/// </summary>
+		/// <param name="officeId">Office ID</param>
+		/// <returns>List of invoices</returns>
+		[HttpGet("invoice/office/{officeId:int}")]
+		public async Task<IActionResult> GetAllInvoicesByOffice(int officeId)
+		{
+			try
+			{
+				if(!CurrentOfficeAccess.Contains(officeId.ToString()))
+					return Unauthorized("No access to this office");
+
+				var invoices = await _invoiceRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, officeId.ToString());
+				var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting invoices by office");
+				return ServerError("An error occurred while retrieving invoices");
+			}
+		}
 		/// <summary>
 		/// Get all invoices by reservation ID
 		/// </summary>

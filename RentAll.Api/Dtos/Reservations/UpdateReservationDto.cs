@@ -21,6 +21,7 @@ public class UpdateReservationDto
 	public DateTimeOffset DepartureDate { get; set; }
 	public int CheckInTimeId { get; set; }
 	public int CheckOutTimeId { get; set; }
+	public int BillingMethodId { get; set; }
 	public int BillingTypeId { get; set; }
 	public decimal BillingRate { get; set; }
 	public decimal Deposit { get; set; }
@@ -92,6 +93,9 @@ public class UpdateReservationDto
 		if (!Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId))
 			return (false, $"Invalid CheckOutTimeId value: {CheckOutTimeId}");
 
+		if (!Enum.IsDefined(typeof(BillingMethod), BillingMethodId))
+			return (false, $"Invalid BillingMethodId value: {BillingMethodId}");
+
 		if (!Enum.IsDefined(typeof(BillingType), BillingTypeId))
 			return (false, $"Invalid BillingTypeId value: {BillingTypeId}");
 
@@ -123,6 +127,7 @@ public class UpdateReservationDto
 			DepartureDate = DepartureDate,
 			CheckInTime = (CheckInTime)CheckInTimeId,
 			CheckOutTime = (CheckOutTime)CheckOutTimeId,
+			BillingMethod = (BillingMethod)BillingMethodId,
 			BillingType = (BillingType)BillingTypeId,
 			BillingRate = BillingRate,
 			Deposit = Deposit,

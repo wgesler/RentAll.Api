@@ -28,6 +28,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				DepartureDate = r.DepartureDate,
 				CheckInTimeId = (int)r.CheckInTime,
 				CheckOutTimeId = (int)r.CheckOutTime,
+				BillingMethodId = (int)r.BillingMethod,
 				BillingTypeId = (int)r.BillingType,
 				BillingRate = r.BillingRate,
 				Deposit = r.Deposit,
