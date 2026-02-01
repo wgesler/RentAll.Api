@@ -89,6 +89,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				ArrivalDate = e.ArrivalDate,
 				DepartureDate = e.DepartureDate,
 				ReservationStatus = (ReservationStatus)e.ReservationStatusId,
+				CurrentInvoiceNumber = e.CurrentInvoiceNumber,
 				CreditDue = e.CreditDue,
 				IsActive = e.IsActive,
 				CreatedOn = e.CreatedOn
