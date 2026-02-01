@@ -7,6 +7,7 @@ namespace RentAll.Domain.Managers;
 
 public class AccountingManager : IAccountingManager
 {
+	const int PRORATE_DAYS = 30;
 	private readonly IInvoiceRepository _invoiceRepository;
 	private readonly IReservationRepository _reservationRepository;
 
@@ -72,80 +73,96 @@ public class AccountingManager : IAccountingManager
 		}
 	}
 
-	public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation)
+	public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate)
 	{
 		var lineItems = new List<LedgerLine>();
 
-		var currentDate = DateTime.UtcNow.Date;
-		var currentMonth = DateTime.UtcNow.Month;
+		var requestedDate = startDate.Date;
+		var requestedMonth = startDate.Month;
+
 		var checkInDate = reservation.ArrivalDate.Date;
 		var checkInMonth = reservation.ArrivalDate.Month;
 		var checkOutDate = reservation.DepartureDate.Date;
 		var checkOutMonth = reservation.DepartureDate.Month;
+		var firstMonth = reservation.ArrivalDate.Month;
+		var secondMonth = reservation.ArrivalDate.Month + 1;
 
-		// If your stay is less than a month, you get all charges
-		if (checkInMonth == currentMonth || checkOutMonth == currentMonth)
+		DateTime firstDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, 1);
+		DateTime lastDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, DateTime.DaysInMonth(requestedDate.Year, requestedDate.Month));
+		DateTime firstDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, 1);
+		DateTime lastDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month));
+
+		var isFirstMonth = checkInMonth == firstMonth;
+		var isProratedMonth = (checkInMonth == firstMonth && reservation.ProrateType == ProrateType.FirstMonth ) ||
+							  (checkInMonth == secondMonth && reservation.ProrateType == ProrateType.SecondMonth);
+
+		// Get any first month lines
+		GetFirstMonthLines(reservation, isFirstMonth, lineItems);
+
+		// If you're in and out in the same month
+		if (checkInMonth == requestedMonth && checkOutMonth == requestedMonth)
 		{
 			var days = CalculateNumberOfDays(checkInDate, checkOutDate, reservation.BillingType);
-			GetFirstMonthLines(reservation, lineItems);
-			AddRentalLine(days, reservation, lineItems);
+			AddRentalLine(days, reservation, checkInDate, checkOutDate, lineItems);
 			AddMaidServiceLines(reservation, lineItems);
-			GetLastMonthLines(reservation, lineItems);
-		}
-		// If this is your first month
-		else if (checkInMonth == currentMonth)
-		{
-			DateTime lastDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, DateTime.DaysInMonth(currentDate.Year, currentDate.Month));
-			var days = CalculateNumberOfDays(checkInDate, lastDayOfMonth, reservation.BillingType);
-			GetFirstMonthLines(reservation, lineItems);
-			AddRentalLine(days, reservation, lineItems);
-			AddMaidServiceLines(reservation, lineItems);
-		}
-		// If this is your last month
-		else if (checkOutMonth == currentMonth)
-		{
-			DateTime firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
-			var days = CalculateNumberOfDays(firstDayOfMonth, checkOutDate, reservation.BillingType);
-			AddRentalLine(days, reservation, lineItems);
-			AddMaidServiceLines(reservation, lineItems);
-			GetLastMonthLines(reservation, lineItems);
-		}
-		// This is a mid-month stay
-		else
-		{
-			DateTime firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
-			DateTime lastDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, DateTime.DaysInMonth(currentDate.Year, currentDate.Month));
-			var days = CalculateNumberOfDays(firstDayOfMonth, lastDayOfMonth, reservation.BillingType);
-			AddRentalLine(days, reservation, lineItems);
-			AddMaidServiceLines(reservation, lineItems);
+			return lineItems;
 		}
 
+		// If this is your first month
+		if (checkInMonth == requestedMonth)
+		{	
+			var days = CalculateNumberOfDays(checkInDate, lastDayOfMonth, reservation.BillingType);	
+			var totalDays = isProratedMonth ? days : PRORATE_DAYS; 
+			var lastDate = isProratedMonth ? lastDayOfMonth : checkInDate.AddDays(PRORATE_DAYS - days);
+			AddRentalLine(totalDays, reservation, checkInDate, lastDate, lineItems);
+			AddMaidServiceLines(reservation, lineItems);
+			return lineItems;
+		}
+
+		// If this is your second month
+		if (requestedMonth == secondMonth)
+		{
+			var days = CalculateNumberOfDays(firstDayOfMonth, lastDayOfMonth, reservation.BillingType);
+			var daysInFirstMonth = CalculateNumberOfDays(firstDayOfCheckInMonth, lastDayOfCheckInMonth, reservation.BillingType);
+			var prepaidDays = PRORATE_DAYS - daysInFirstMonth;
+			var totalDays = isProratedMonth ? days - prepaidDays : days; 
+			var firstDate = isProratedMonth ? firstDayOfMonth : firstDayOfMonth.AddDays(prepaidDays);
+			AddRentalLine(totalDays, reservation, firstDate, lastDayOfMonth, lineItems);
+			AddMaidServiceLines(reservation, lineItems);
+			return lineItems;
+		}
+
+		// Otherwise, simply bill for the entire month
+		var checkoutDays = CalculateNumberOfDays(firstDayOfMonth, lastDayOfCheckInMonth, reservation.BillingType);
+		AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfCheckInMonth, lineItems);
+		AddMaidServiceLines(reservation, lineItems);
 		return lineItems;
 	}
 
 
 	#region Private Methods
-	private void GetFirstMonthLines(Reservation reservation, List<LedgerLine> lines)
+	private void GetFirstMonthLines(Reservation reservation, bool isFirstMonth, List<LedgerLine> lines)
 	{
+		if (!isFirstMonth)
+			return;
+
 		if (reservation.DepositType == DepositType.Deposit)
 			lines.Add(new LedgerLine { Description = "Deposit", Amount = reservation.Deposit });
 		if (reservation.DepositType == DepositType.SDW)
-			lines.Add(new LedgerLine { Description = "SDW", Amount = reservation.Deposit });
+			lines.Add(new LedgerLine { Description = "Security Deposit Waiver", Amount = reservation.Deposit });
+		if (reservation.HasPets)
+			lines.Add(new LedgerLine { Description = "Pet Fee", Amount = reservation.PetFee });
+		if (reservation.DepartureFee >= 0)
+			lines.Add(new LedgerLine { Description = "Departure Fee", Amount = reservation.DepartureFee });
 	}
 
-	private List<LedgerLine> GetLastMonthLines(Reservation reservation, List<LedgerLine> lines)
+	private void AddRentalLine(int days, Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate, List<LedgerLine> lines)
 	{
-		lines.Add(new LedgerLine { Description = "Departure Fee", Amount = reservation.DepartureFee });
-		return lines;
-
-	}
-
-	private void AddRentalLine(int days, Reservation reservation, List<LedgerLine> lines)
-	{
+		var rentLine = $"Rental Fee ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
 		if (reservation.BillingType == BillingType.Monthly)
-			lines.Add(new LedgerLine { Description = "Rent", Amount = reservation.BillingRate });
+			lines.Add(new LedgerLine { Description = rentLine, Amount = reservation.BillingRate });
 		else
-			lines.Add(new LedgerLine { Description = "Rent", Amount = days * reservation.BillingRate });
+			lines.Add(new LedgerLine { Description = rentLine, Amount = days * reservation.BillingRate });
 	}
 
 	private void AddMaidServiceLines(Reservation reservation, List<LedgerLine> lines)
@@ -171,7 +188,9 @@ public class AccountingManager : IAccountingManager
 		if (maidServices > 0)
 			lines.Add(new LedgerLine { Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee });
 	}
+	#endregion 
 
+	#region Day Calculation Methods
 	private static int CalculateNumberOfDays(DateTimeOffset startDate, DateTimeOffset endDate, BillingType billingType)
 	{
 		DateTime start = startDate.Date;
@@ -179,10 +198,9 @@ public class AccountingManager : IAccountingManager
 		if (end < start) return 0;
 
 		var days = (end - start).Days;
-		if (billingType == BillingType.Nightly)
-			return days;
-		else // daily or monthly
-			return days + 1;
+		if (billingType != BillingType.Nightly)
+			days++;
+		return days;
 	}
 
 	private static int CountNumberOfWeekDaysInMonth(DateTimeOffset sDate, DateTimeOffset dDate, int currentYear, int currentMonth)

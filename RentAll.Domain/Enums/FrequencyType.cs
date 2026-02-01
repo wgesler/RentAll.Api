@@ -3,12 +3,13 @@ namespace RentAll.Domain.Enums;
 public enum FrequencyType
 {
     NA = 0,
-    Weekly = 1,
-    EOW = 2,
-    Monthly = 3,
-    Quarterly = 4,
-    BiAnnually = 5,
-    Annually = 6
+	OneTime = 1,
+	Weekly = 2,
+	EOW = 3,
+    Monthly = 4,
+    Quarterly = 5,
+    BiAnnually = 6,
+    Annually = 7
 }
 
 

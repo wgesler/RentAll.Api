@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -41,5 +42,37 @@ namespace RentAll.Api.Controllers
 		}
 
 		#endregion
+
+		#region LedgerLine GET Endpoints
+
+		/// <summary>
+		/// Create initial leger lines
+		/// </summary>
+		/// <returns>Ledger Line</returns>
+		[HttpPost("ledger-line/reservation")]
+		public async Task<IActionResult> CreateLedgerLinesByReservationId([FromBody] CreateInvoiceMonthlyDataDto dto)
+		{
+			if (dto == null)
+				return BadRequest("Invoice data is required");
+
+			try
+			{
+				var reservation = await _reservationRepository.GetByIdAsync(dto.ReservationId, CurrentOrganizationId);
+				if (reservation == null)
+					return NotFound("Reservation not found");
+
+				var ledgerLines = _accountingManager.GetLedgerLinesByReservationIdAsync(reservation, dto.StartDate, dto.EndDate);
+				var data = new InvoiceMonthlyData { Invoice = dto.Invoice, ReservationId = dto.ReservationId, LedgerLines = ledgerLines };
+				var response = new InvoiceMonthlyDataResponseDto(data);
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting ledger lines: {ReservationId}", dto.ReservationId);
+				return ServerError("An error occurred while retrieving the ledger line");
+			}
+		}
+		#endregion
+
 	}
 }
