@@ -9,11 +9,13 @@ public class AccountingManager : IAccountingManager
 {
 	const int PRORATE_DAYS = 30;
 	private readonly IInvoiceRepository _invoiceRepository;
+	private readonly ICostCodeRepository _costCodeRepository;
 	private readonly IReservationRepository _reservationRepository;
 
-	public AccountingManager(IInvoiceRepository invoiceRepository, IReservationRepository reservationRepository)
+	public AccountingManager(IInvoiceRepository invoiceRepository, ICostCodeRepository costCodeRepository, IReservationRepository reservationRepository)
 	{
 		_invoiceRepository = invoiceRepository;
+		_costCodeRepository = costCodeRepository;
 		_reservationRepository = reservationRepository;
 	}
 
@@ -73,6 +75,14 @@ public class AccountingManager : IAccountingManager
 		}
 	}
 
+	public async Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate)
+	{
+		var ledgerLines = GetLedgerLinesByReservationIdAsync(reservation, startDate, endDate);
+		await ApplyCostCodesAsync(reservation.OfficeId, reservation.OrganizationId, ledgerLines);
+
+		return ledgerLines;
+	}
+
 	public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate)
 	{
 		var lineItems = new List<LedgerLine>();
@@ -84,17 +94,17 @@ public class AccountingManager : IAccountingManager
 		var checkInMonth = reservation.ArrivalDate.Month;
 		var checkOutDate = reservation.DepartureDate.Date;
 		var checkOutMonth = reservation.DepartureDate.Month;
-		
+
 		// Determine if we have a partial month scenario
 		// Partial month = NO if: check-in is 1st, OR (month has 31 days AND check-in is 1st or 2nd)
 		var daysInCheckInMonth = DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month);
 		var isFirstMonthPartial = !(checkInDate.Day == 1 || (daysInCheckInMonth == 31 && checkInDate.Day <= 2));
-		
+
 		DateTime firstDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, 1);
 		DateTime lastDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, DateTime.DaysInMonth(requestedDate.Year, requestedDate.Month));
 		DateTime firstDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, 1);
 		DateTime lastDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month));
-		
+
 		// Calculate secondMonth based on whether first month was prorated or not
 		// If prorated: billed to end of first month, so second month starts the day after
 		// If not prorated: billed for 30 days from check-in
@@ -102,7 +112,7 @@ public class AccountingManager : IAccountingManager
 		var secondMonth = secondMonthDate.Month;
 
 		var isFirstMonth = requestedMonth == checkInMonth;
-		var isProratedMonth = (requestedMonth == checkInMonth && reservation.ProrateType == ProrateType.FirstMonth ) ||
+		var isProratedMonth = (requestedMonth == checkInMonth && reservation.ProrateType == ProrateType.FirstMonth) ||
 							  (requestedMonth == secondMonth && reservation.ProrateType == ProrateType.SecondMonth);
 
 		// Get any first month lines
@@ -145,6 +155,42 @@ public class AccountingManager : IAccountingManager
 		return lineItems;
 	}
 
+	public async Task ApplyCostCodesAsync(int officeId, Guid organizationId, List<LedgerLine> ledgerLines)
+	{
+		var costCodes = await _costCodeRepository.GetAllByOfficeIdAsync(officeId, organizationId);
+		foreach (var line in ledgerLines)
+		{
+			var costCode = null as CostCode;
+			switch (line.Description)
+			{
+				case string desc when desc.StartsWith("Security Deposit Waiver", StringComparison.OrdinalIgnoreCase):
+					costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Security Deposit Waiver"));
+					if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+					continue;
+				case string desc when desc.StartsWith("Deposit", StringComparison.OrdinalIgnoreCase):
+					costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Deposit"));
+					if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+					continue;
+				case string desc when desc.StartsWith("Rental Fee", StringComparison.OrdinalIgnoreCase):
+					costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Rent Property"));
+					if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+					continue;
+				case string desc when desc.StartsWith("Maid Service", StringComparison.OrdinalIgnoreCase):
+					costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Maid Service"));
+					if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+					continue;
+				case string desc when desc.StartsWith("Pet Fee", StringComparison.OrdinalIgnoreCase):
+					costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Pet Fee"));
+					if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+					continue;
+				case string desc when desc.StartsWith("Departure Fee", StringComparison.OrdinalIgnoreCase):
+					costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Departure Fee"));
+					if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+					continue;
+			}
+
+		}
+	}
 
 	#region Private Methods
 	private void GetFirstMonthLines(Reservation reservation, bool isFirstMonth, List<LedgerLine> lines)

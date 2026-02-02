@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
+using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
@@ -61,7 +62,7 @@ namespace RentAll.Api.Controllers
 				if (reservation == null)
 					return NotFound("Reservation not found");
 
-				var ledgerLines = _accountingManager.GetLedgerLinesByReservationIdAsync(reservation, dto.StartDate, dto.EndDate);
+				var ledgerLines = await _accountingManager.CreateLedgerLinesForReservationIdAsync(reservation, dto.StartDate, dto.EndDate);
 				var data = new InvoiceMonthlyData { Invoice = dto.Invoice, ReservationId = dto.ReservationId, LedgerLines = ledgerLines };
 				var response = new InvoiceMonthlyDataResponseDto(data);
 				return Ok(response);
