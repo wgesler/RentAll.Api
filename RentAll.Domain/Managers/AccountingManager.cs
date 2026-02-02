@@ -84,16 +84,25 @@ public class AccountingManager : IAccountingManager
 		var checkInMonth = reservation.ArrivalDate.Month;
 		var checkOutDate = reservation.DepartureDate.Date;
 		var checkOutMonth = reservation.DepartureDate.Month;
-		var firstMonth = reservation.ArrivalDate.Month;
-		var secondMonth = reservation.ArrivalDate.Month + 1;
-
+		
+		// Determine if we have a partial month scenario
+		// Partial month = NO if: check-in is 1st, OR (month has 31 days AND check-in is 1st or 2nd)
+		var daysInCheckInMonth = DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month);
+		var isFirstMonthPartial = !(checkInDate.Day == 1 || (daysInCheckInMonth == 31 && checkInDate.Day <= 2));
+		
 		DateTime firstDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, 1);
 		DateTime lastDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, DateTime.DaysInMonth(requestedDate.Year, requestedDate.Month));
 		DateTime firstDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, 1);
 		DateTime lastDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month));
+		
+		// Calculate secondMonth based on whether first month was prorated or not
+		// If prorated: billed to end of first month, so second month starts the day after
+		// If not prorated: billed for 30 days from check-in
+		var secondMonthDate = (reservation.ProrateType == ProrateType.FirstMonth) ? lastDayOfCheckInMonth.AddDays(1) : checkInDate.AddDays(PRORATE_DAYS + 1);
+		var secondMonth = secondMonthDate.Month;
 
-		var isFirstMonth = requestedMonth == firstMonth;
-		var isProratedMonth = (requestedMonth == firstMonth && reservation.ProrateType == ProrateType.FirstMonth ) ||
+		var isFirstMonth = requestedMonth == checkInMonth;
+		var isProratedMonth = (requestedMonth == checkInMonth && reservation.ProrateType == ProrateType.FirstMonth ) ||
 							  (requestedMonth == secondMonth && reservation.ProrateType == ProrateType.SecondMonth);
 
 		// Get any first month lines
@@ -105,35 +114,34 @@ public class AccountingManager : IAccountingManager
 		{
 			var days = CalculateNumberOfDays(checkInDate, checkOutDate, reservation.BillingType);
 			AddRentalLine(days, reservation, checkInDate, checkOutDate, isProratedMonth, lineItems);
-			AddMaidServiceLines(reservation, lineItems);
+			AddMaidServiceLines(reservation, requestedDate.Year, requestedMonth, lineItems);
 			return lineItems;
 		}
 
-		// If this is your first month
-		if (checkInMonth == requestedMonth)
-		{	
-			var days = CalculateNumberOfDays(checkInDate, lastDayOfMonth, reservation.BillingType);	
-			var totalDays = isProratedMonth ? days : PRORATE_DAYS; 
-			var lastDate = isProratedMonth ? lastDayOfMonth : checkInDate.AddDays(totalDays);
-			AddRentalLine(totalDays, reservation, checkInDate, lastDate, isProratedMonth, lineItems);
-			AddMaidServiceLines(reservation, lineItems);
+		// If this is your first month (only process special logic if partial month)
+		if (requestedMonth == checkInMonth && isFirstMonthPartial)
+		{
+			var lastDay = isProratedMonth ? lastDayOfMonth : checkInDate.AddDays(PRORATE_DAYS);
+			var days = CalculateNumberOfDays(checkInDate, lastDay, reservation.BillingType);
+			AddRentalLine(days, reservation, checkInDate, lastDay, isProratedMonth, lineItems);
+			AddMaidServiceLines(reservation, requestedDate.Year, requestedMonth, lineItems);
 			return lineItems;
 		}
 
-		// If this is your second month
-		if (requestedMonth == secondMonth)
+		// If this is your second month (only process special logic if partial month)
+		if (requestedMonth == secondMonth && isFirstMonthPartial)
 		{
 			var firstDay = isProratedMonth ? checkInDate.AddDays(PRORATE_DAYS + 1) : firstDayOfMonth;
 			var days = CalculateNumberOfDays(firstDay, lastDayOfMonth, reservation.BillingType);
 			AddRentalLine(days, reservation, firstDay, lastDayOfMonth, isProratedMonth, lineItems);
-			AddMaidServiceLines(reservation, lineItems);
+			AddMaidServiceLines(reservation, requestedDate.Year, requestedMonth, lineItems);
 			return lineItems;
 		}
 
 		// Otherwise, simply bill for the entire month
-		var checkoutDays = CalculateNumberOfDays(firstDayOfMonth, lastDayOfCheckInMonth, reservation.BillingType);
-		AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfCheckInMonth, isProratedMonth, lineItems);
-		AddMaidServiceLines(reservation, lineItems);
+		var checkoutDays = CalculateNumberOfDays(firstDayOfMonth, lastDayOfMonth, reservation.BillingType);
+		AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfMonth, isProratedMonth, lineItems);
+		AddMaidServiceLines(reservation, requestedDate.Year, requestedMonth, lineItems);
 		return lineItems;
 	}
 
@@ -165,23 +173,21 @@ public class AccountingManager : IAccountingManager
 			lines.Add(new LedgerLine { Description = rentLine, Amount = days * reservation.BillingRate });
 	}
 
-	private void AddMaidServiceLines(Reservation reservation, List<LedgerLine> lines)
+	private void AddMaidServiceLines(Reservation reservation, int requestedYear, int requestedMonth, List<LedgerLine> lines)
 	{
 		var startDate = reservation.MaidStartDate;
-		var currentMonth = DateTime.UtcNow.Month;
-		var currentYear = DateTime.UtcNow.Year;
 
 		int maidServices = 0;
 		switch (reservation.Frequency)
 		{
 			case FrequencyType.Weekly:
-				maidServices = CountNumberOfWeekDaysInMonth(startDate, reservation.DepartureDate, currentYear, currentMonth);
+				maidServices = CountNumberOfWeekDaysInMonth(startDate, reservation.DepartureDate, requestedYear, requestedMonth);
 				break;
 			case FrequencyType.EOW:
-				maidServices = CountEowDaysInMonth(startDate, reservation.DepartureDate, currentYear, currentMonth);
+				maidServices = CountEowDaysInMonth(startDate, reservation.DepartureDate, requestedYear, requestedMonth);
 				break;
 			default:
-				maidServices = CountNumberOfMonths(startDate, reservation.DepartureDate, currentYear, currentMonth, reservation.Frequency);
+				maidServices = CountNumberOfMonths(startDate, reservation.DepartureDate, requestedYear, requestedMonth, reservation.Frequency);
 				break;
 		}
 
