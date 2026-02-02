@@ -13,19 +13,19 @@ namespace RentAll.Api.Controllers
 		[HttpPut]
 		public async Task<IActionResult> Update([FromBody] UpdatePropertyHtmlDto dto)
 		{
-		if (dto == null)
-			return BadRequest("Property HTML data is required");
+			if (dto == null)
+				return BadRequest("Property HTML data is required");
 
-		var (isValid, errorMessage) = dto.IsValid();
-		if (!isValid)
-			return BadRequest(errorMessage ?? "Invalid request data");
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
 				// Check if HTML exists
 				var existing = await _propertyHtmlRepository.GetByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId);
-			if (existing == null)
-				return NotFound("Property HTML not found");
+				if (existing == null)
+					return NotFound("Property HTML not found");
 
 				var propertyHtml = dto.ToModel(CurrentUser, CurrentOrganizationId);
 				var updatedPropertyHtml = await _propertyHtmlRepository.UpdateByIdAsync(propertyHtml);
@@ -33,8 +33,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-			_logger.LogError(ex, "Error updating property HTML: {PropertyId}", dto.PropertyId);
-			return ServerError("An error occurred while updating the property HTML");
+				_logger.LogError(ex, "Error updating property HTML: {PropertyId}", dto.PropertyId);
+				return ServerError("An error occurred while updating the property HTML");
 			}
 		}
 	}

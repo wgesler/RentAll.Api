@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Colors;
 
@@ -22,7 +21,7 @@ namespace RentAll.Api.Controllers
 				return BadRequest(errorMessage ?? "Invalid request data");
 
 			var existingColor = dto.ToModel();
-	
+
 			await _colorRepository.UpdateByIdAsync(existingColor);
 			return Ok();
 		}

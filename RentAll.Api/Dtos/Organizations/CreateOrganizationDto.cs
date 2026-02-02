@@ -15,7 +15,7 @@ public class CreateOrganizationDto
 	public string Phone { get; set; } = string.Empty;
 	public string? Fax { get; set; }
 	public string? Website { get; set; }
-	public FileDetails? FileDetails { get; set; } 
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()

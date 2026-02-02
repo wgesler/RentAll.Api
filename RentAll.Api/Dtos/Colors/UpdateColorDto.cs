@@ -1,6 +1,5 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
-using System.Xml.Linq;
 
 namespace RentAll.Api.Dtos.Colors;
 

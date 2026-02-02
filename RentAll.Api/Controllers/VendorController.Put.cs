@@ -4,32 +4,32 @@ using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class VendorController
-    {
-        /// <summary>
-        /// Update an existing vendor
-        /// </summary>
-        /// <param name="dto">Vendor data</param>
-        /// <returns>Updated vendor</returns>
-        [HttpPut]
-        public async Task<IActionResult> Update([FromBody] UpdateVendorDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Vendor data is required");
+	public partial class VendorController
+	{
+		/// <summary>
+		/// Update an existing vendor
+		/// </summary>
+		/// <param name="dto">Vendor data</param>
+		/// <returns>Updated vendor</returns>
+		[HttpPut]
+		public async Task<IActionResult> Update([FromBody] UpdateVendorDto dto)
+		{
+			if (dto == null)
+				return BadRequest("Vendor data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
-            if (!isValid)
-                return BadRequest(errorMessage ?? "Invalid request data");
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(errorMessage ?? "Invalid request data");
 
-            try
-            {
-                // Check if vendor exists
-                var existingVendor = await _vendorRepository.GetByIdAsync(dto.VendorId, CurrentOrganizationId);
-                if (existingVendor == null)
-                    return NotFound("Vendor not found");
+			try
+			{
+				// Check if vendor exists
+				var existingVendor = await _vendorRepository.GetByIdAsync(dto.VendorId, CurrentOrganizationId);
+				if (existingVendor == null)
+					return NotFound("Vendor not found");
 
-                // Check if VendorCode is being changed
-                if (existingVendor.VendorCode != dto.VendorCode)
+				// Check if VendorCode is being changed
+				if (existingVendor.VendorCode != dto.VendorCode)
 					return BadRequest("Vendor Code cannot change");
 
 				var vendor = dto.ToModel(CurrentUser);
@@ -68,21 +68,21 @@ namespace RentAll.Api.Controllers
 					vendor.LogoPath = existingVendor.LogoPath;
 				}
 
-                var updatedVendor = await _vendorRepository.UpdateByIdAsync(vendor);
-                var response = new VendorResponseDto(updatedVendor);
-                if (!string.IsNullOrWhiteSpace(updatedVendor.LogoPath))
-                {
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(updatedVendor.LogoPath);
-                }
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating vendor: {VendorId}", dto.VendorId);
-                return ServerError("An error occurred while updating the vendor");
-            }
-        }
-    }
+				var updatedVendor = await _vendorRepository.UpdateByIdAsync(vendor);
+				var response = new VendorResponseDto(updatedVendor);
+				if (!string.IsNullOrWhiteSpace(updatedVendor.LogoPath))
+				{
+					response.FileDetails = await _fileService.GetFileDetailsAsync(updatedVendor.LogoPath);
+				}
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error updating vendor: {VendorId}", dto.VendorId);
+				return ServerError("An error occurred while updating the vendor");
+			}
+		}
+	}
 }
 
 

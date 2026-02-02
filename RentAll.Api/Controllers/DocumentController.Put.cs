@@ -24,8 +24,8 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				var existing = await _documentRepository.GetByIdAsync(dto.DocumentId, CurrentOrganizationId);
-			if (existing == null || existing.IsDeleted)
-				return NotFound("Document not found");
+				if (existing == null || existing.IsDeleted)
+					return NotFound("Document not found");
 
 				var model = dto.ToModel(CurrentUser);
 
@@ -63,8 +63,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-			_logger.LogError(ex, "Error updating document: {DocumentId}", dto.DocumentId);
-			return ServerError("An error occurred while updating the document");
+				_logger.LogError(ex, "Error updating document: {DocumentId}", dto.DocumentId);
+				return ServerError("An error occurred while updating the document");
 			}
 		}
 	}

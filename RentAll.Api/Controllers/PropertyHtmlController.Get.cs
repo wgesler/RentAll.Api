@@ -31,8 +31,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-			_logger.LogError(ex, "Error getting property HTML by Property ID: {PropertyId}", propertyId);
-			return ServerError("An error occurred while retrieving the property HTML");
+				_logger.LogError(ex, "Error getting property HTML by Property ID: {PropertyId}", propertyId);
+				return ServerError("An error occurred while retrieving the property HTML");
 			}
 		}
 	}

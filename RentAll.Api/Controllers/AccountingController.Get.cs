@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -38,7 +37,7 @@ namespace RentAll.Api.Controllers
 		{
 			try
 			{
-				if(!CurrentOfficeAccess.Contains(officeId.ToString()))
+				if (!CurrentOfficeAccess.Contains(officeId.ToString()))
 					return Unauthorized("No access to this office");
 
 				var invoices = await _invoiceRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, officeId.ToString());

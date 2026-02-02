@@ -3,8 +3,8 @@ using RentAll.Api.Dtos.Properties;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class PropertyController
-    {
+	public partial class PropertyController
+	{
 		/// <summary>
 		/// Get all properties list
 		/// </summary>
@@ -57,51 +57,51 @@ namespace RentAll.Api.Controllers
 		/// <param name="id">Property ID</param>
 		/// <returns>Property</returns>
 		[HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            if (id == Guid.Empty)
-                return BadRequest("Property ID is required");
+		public async Task<IActionResult> GetById(Guid id)
+		{
+			if (id == Guid.Empty)
+				return BadRequest("Property ID is required");
 
-            try
-            {
-                var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
-                if (property == null)
-                    return NotFound("Property not found");
+			try
+			{
+				var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
+				if (property == null)
+					return NotFound("Property not found");
 
-                return Ok(new PropertyResponseDto(property));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting property by ID: {PropertyId}", id);
-                return ServerError("An error occurred while retrieving the property");
-            }
-        }
+				return Ok(new PropertyResponseDto(property));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting property by ID: {PropertyId}", id);
+				return ServerError("An error occurred while retrieving the property");
+			}
+		}
 
-        /// <summary>
-        /// Get property by PropertyCode
-        /// </summary>
-        /// <param name="propertyCode">Property Code</param>
-        /// <returns>Property</returns>
-        [HttpGet("code/{propertyCode}")]
-        public async Task<IActionResult> GetByPropertyCode(string propertyCode)
-        {
-            if (string.IsNullOrWhiteSpace(propertyCode))
-                return BadRequest("Property Code is required");
+		/// <summary>
+		/// Get property by PropertyCode
+		/// </summary>
+		/// <param name="propertyCode">Property Code</param>
+		/// <returns>Property</returns>
+		[HttpGet("code/{propertyCode}")]
+		public async Task<IActionResult> GetByPropertyCode(string propertyCode)
+		{
+			if (string.IsNullOrWhiteSpace(propertyCode))
+				return BadRequest("Property Code is required");
 
-            try
-            {
-                var property = await _propertyRepository.GetByPropertyCodeAsync(propertyCode, CurrentOrganizationId);
-                if (property == null)
-                    return NotFound("Property not found");
+			try
+			{
+				var property = await _propertyRepository.GetByPropertyCodeAsync(propertyCode, CurrentOrganizationId);
+				if (property == null)
+					return NotFound("Property not found");
 
-                return Ok(new PropertyResponseDto(property));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting property by PropertyCode: {PropertyCode}", propertyCode);
-                return ServerError("An error occurred while retrieving the property");
-            }
-        }
+				return Ok(new PropertyResponseDto(property));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting property by PropertyCode: {PropertyCode}", propertyCode);
+				return ServerError("An error occurred while retrieving the property");
+			}
+		}
 
 		/// <summary>
 		/// Get the current user's property selection

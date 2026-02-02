@@ -1,40 +1,40 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Auth;
+using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.HealthChecks;
-using RentAll.Infrastructure.Repositories.Companies;
-using RentAll.Infrastructure.Repositories.Contacts;
-using RentAll.Infrastructure.Repositories.Properties;
-using RentAll.Infrastructure.Repositories.Reservations;
+using RentAll.Infrastructure.Repositories.AccountingOffices;
 using RentAll.Infrastructure.Repositories.Agents;
-using RentAll.Infrastructure.Repositories.RefreshTokens;
-using RentAll.Infrastructure.Repositories.Common;
-using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Infrastructure.Repositories.Areas;
 using RentAll.Infrastructure.Repositories.Buildings;
-using RentAll.Infrastructure.Repositories.Regions;
-using RentAll.Infrastructure.Repositories.Offices;
-using RentAll.Infrastructure.Repositories.Organizations;
-using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.CodeSequences;
 using RentAll.Infrastructure.Repositories.Colors;
-using RentAll.Infrastructure.Repositories.PropertySelections;
-using RentAll.Infrastructure.Repositories.PropertyLetters;
-using RentAll.Infrastructure.Repositories.PropertyHtmls;
-using RentAll.Infrastructure.Repositories.LeaseInformations;
-using RentAll.Infrastructure.Repositories.Vendors;
+using RentAll.Infrastructure.Repositories.Common;
+using RentAll.Infrastructure.Repositories.Companies;
+using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.CostCodes;
+using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.Invoices;
-using RentAll.Infrastructure.Repositories.AccountingOffices;
+using RentAll.Infrastructure.Repositories.LeaseInformations;
+using RentAll.Infrastructure.Repositories.Offices;
+using RentAll.Infrastructure.Repositories.Organizations;
+using RentAll.Infrastructure.Repositories.Properties;
+using RentAll.Infrastructure.Repositories.PropertyHtmls;
+using RentAll.Infrastructure.Repositories.PropertyLetters;
+using RentAll.Infrastructure.Repositories.PropertySelections;
+using RentAll.Infrastructure.Repositories.RefreshTokens;
+using RentAll.Infrastructure.Repositories.Regions;
+using RentAll.Infrastructure.Repositories.Reservations;
+using RentAll.Infrastructure.Repositories.Users;
+using RentAll.Infrastructure.Repositories.Vendors;
 using RentAll.Infrastructure.Services;
-using RentAll.Domain.Interfaces.Managers;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,13 +54,13 @@ builder.Services.AddOpenApi();
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins(allowedHosts)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
-    });
+	options.AddDefaultPolicy(policy =>
+	{
+		policy.WithOrigins(allowedHosts)
+			  .AllowAnyMethod()
+			  .AllowAnyHeader()
+			  .AllowCredentials();
+	});
 });
 
 // Configure Database Connection
@@ -68,7 +68,7 @@ builder.Services.AddScoped<IDatabaseConnectionFactory, DatabaseConnectionFactory
 
 // Configure Health Checks
 builder.Services.AddHealthChecks()
-    .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "sql", "ready" });
+	.AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "sql", "ready" });
 
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -76,21 +76,21 @@ var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException(
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+	options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+	options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
-    };
+	options.TokenValidationParameters = new TokenValidationParameters
+	{
+		ValidateIssuer = true,
+		ValidateAudience = true,
+		ValidateLifetime = true,
+		ValidateIssuerSigningKey = true,
+		ValidIssuer = jwtSettings["Issuer"],
+		ValidAudience = jwtSettings["Audience"],
+		IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+	};
 });
 
 // Register services
@@ -141,29 +141,29 @@ builder.Services.AddScoped<IAccountingOfficeRepository, AccountingOfficeReposito
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "RentAll API", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
+	c.SwaggerDoc("v1", new OpenApiInfo { Title = "RentAll API", Version = "v1" });
+	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+	{
+		Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
+		Name = "Authorization",
+		In = ParameterLocation.Header,
+		Type = SecuritySchemeType.ApiKey,
+		Scheme = "Bearer"
+	});
+	c.AddSecurityRequirement(new OpenApiSecurityRequirement
+	{
+		{
+			new OpenApiSecurityScheme
+			{
+				Reference = new OpenApiReference
+				{
+					Type = ReferenceType.SecurityScheme,
+					Id = "Bearer"
+				}
+			},
+			Array.Empty<string>()
+		}
+	});
 });
 
 var app = builder.Build();
@@ -181,19 +181,19 @@ app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "RentAll API v1");
-    c.DisplayRequestDuration();
+	c.SwaggerEndpoint("/swagger/v1/swagger.json", "RentAll API v1");
+	c.DisplayRequestDuration();
 });
 
 // Map Health Check endpoints
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    Predicate = check => check.Tags.Contains("ready")
+	Predicate = check => check.Tags.Contains("ready")
 });
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    Predicate = _ => false
+	Predicate = _ => false
 });
 
 app.UseAuthentication();

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Colors;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {

@@ -3,42 +3,42 @@ using RentAll.Api.Dtos.Users;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class UserController
-    {
-        /// <summary>
-        /// Create a new user
-        /// </summary>
-        /// <param name="dto">User data</param>
-        /// <returns>Created user</returns>
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
-        {
-            if (dto == null)
-                return BadRequest("User data is required");
+	public partial class UserController
+	{
+		/// <summary>
+		/// Create a new user
+		/// </summary>
+		/// <param name="dto">User data</param>
+		/// <returns>Created user</returns>
+		[HttpPost]
+		public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
+		{
+			if (dto == null)
+				return BadRequest("User data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
-            if (!isValid || !IsValidEmail(dto.Email))
-                return BadRequest(errorMessage ?? "Invalid request data");
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid || !IsValidEmail(dto.Email))
+				return BadRequest(errorMessage ?? "Invalid request data");
 
-            try
-            {
-                // Check if Email already exists
-                if (await _userRepository.ExistsByEmailAsync(dto.Email))
-                    return Conflict("Email already exists");
+			try
+			{
+				// Check if Email already exists
+				if (await _userRepository.ExistsByEmailAsync(dto.Email))
+					return Conflict("Email already exists");
 
-                // Hash the password
-                var passwordHash = _passwordHasher.HashPassword(dto.Password);
-                var user = dto.ToModel(passwordHash, CurrentUser);
-                var createdUser = await _userRepository.CreateAsync(user);
-                return CreatedAtAction(nameof(GetById), new { id = createdUser.UserId }, new UserResponseDto(createdUser));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating user");
-                return ServerError("An error occurred while creating the user");
-            }
-        }
-    }
+				// Hash the password
+				var passwordHash = _passwordHasher.HashPassword(dto.Password);
+				var user = dto.ToModel(passwordHash, CurrentUser);
+				var createdUser = await _userRepository.CreateAsync(user);
+				return CreatedAtAction(nameof(GetById), new { id = createdUser.UserId }, new UserResponseDto(createdUser));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error creating user");
+				return ServerError("An error occurred while creating the user");
+			}
+		}
+	}
 }
 
 

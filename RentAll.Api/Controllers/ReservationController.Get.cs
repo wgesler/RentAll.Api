@@ -3,8 +3,8 @@ using RentAll.Api.Dtos.Reservations;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class ReservationController
-    {
+	public partial class ReservationController
+	{
 		/// <summary>
 		/// Get all reservations
 		/// </summary>
@@ -31,25 +31,25 @@ namespace RentAll.Api.Controllers
 		/// <param name="id">Reservation ID</param>
 		/// <returns>Reservation</returns>
 		[HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            if (id == Guid.Empty)
-                return BadRequest("Reservation ID is required");
+		public async Task<IActionResult> GetById(Guid id)
+		{
+			if (id == Guid.Empty)
+				return BadRequest("Reservation ID is required");
 
-            try
-            {
-                var reservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
-                if (reservation == null)
-                    return NotFound("Reservation not found");
+			try
+			{
+				var reservation = await _reservationRepository.GetByIdAsync(id, CurrentOrganizationId);
+				if (reservation == null)
+					return NotFound("Reservation not found");
 
-                return Ok(new ReservationResponseDto(reservation));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting reservation by ID: {ReservationId}", id);
-                return ServerError("An error occurred while retrieving the reservation");
-            }
-        }
+				return Ok(new ReservationResponseDto(reservation));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting reservation by ID: {ReservationId}", id);
+				return ServerError("An error occurred while retrieving the reservation");
+			}
+		}
 
 		/// <summary>
 		/// Get reservations by Property ID

@@ -4,8 +4,8 @@ namespace RentAll.Api.Dtos.Users;
 
 public class UpdateUserDto
 {
-    public Guid OrganizationId { get; set; }
-    public Guid UserId { get; set; }
+	public Guid OrganizationId { get; set; }
+	public Guid UserId { get; set; }
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
@@ -16,41 +16,41 @@ public class UpdateUserDto
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
-    {
-        if (UserId == Guid.Empty)
-            return (false, "User ID is required");
+	{
+		if (UserId == Guid.Empty)
+			return (false, "User ID is required");
 
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
+		if (OrganizationId == Guid.Empty)
+			return (false, "OrganizationId is required");
 
-        if (string.IsNullOrWhiteSpace(FirstName))
-            return (false, "First Name is required");
+		if (string.IsNullOrWhiteSpace(FirstName))
+			return (false, "First Name is required");
 
-        if (string.IsNullOrWhiteSpace(LastName))
-            return (false, "Last Name is required");
+		if (string.IsNullOrWhiteSpace(LastName))
+			return (false, "Last Name is required");
 
-        if (string.IsNullOrWhiteSpace(Email))
-            return (false, "Email is required");
+		if (string.IsNullOrWhiteSpace(Email))
+			return (false, "Email is required");
 
-        return (true, null);
-    }
+		return (true, null);
+	}
 
-    public User ToModel(UpdateUserDto d, User existingUser, Guid currentUser)
-    {
-        return new User
-        {
-            OrganizationId = d.OrganizationId,
-            UserId = d.UserId,
-            FirstName = d.FirstName,
-            LastName = d.LastName,
-            Email = d.Email,
-            PasswordHash = existingUser.PasswordHash, // Preserve existing password hash
+	public User ToModel(UpdateUserDto d, User existingUser, Guid currentUser)
+	{
+		return new User
+		{
+			OrganizationId = d.OrganizationId,
+			UserId = d.UserId,
+			FirstName = d.FirstName,
+			LastName = d.LastName,
+			Email = d.Email,
+			PasswordHash = existingUser.PasswordHash, // Preserve existing password hash
 			UserGroups = d.UserGroups,
 			OfficeAccess = d.OfficeAccess,
 			IsActive = d.IsActive,
 			ModifiedBy = currentUser
 		};
-    }
+	}
 }
 
 

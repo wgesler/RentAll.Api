@@ -1,5 +1,4 @@
 using RentAll.Domain.Models;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Documents;

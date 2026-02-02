@@ -3,8 +3,8 @@ using RentAll.Api.Dtos.Companies;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class CompanyController
-    {
+	public partial class CompanyController
+	{
 		/// <summary>
 		/// Get all companies
 		/// </summary>
@@ -32,37 +32,37 @@ namespace RentAll.Api.Controllers
 				return ServerError("An error occurred while retrieving companies");
 			}
 		}
-		
+
 		/// <summary>
 		/// Get company by ID
 		/// </summary>
 		/// <param name="id">Company ID</param>
 		/// <returns>Company</returns>
 		[HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            if (id == Guid.Empty)
-                return BadRequest("Company ID is required");
+		public async Task<IActionResult> GetById(Guid id)
+		{
+			if (id == Guid.Empty)
+				return BadRequest("Company ID is required");
 
-            try
-            {
-                var company = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
-                if (company == null)
-                    return NotFound("Company not found");
+			try
+			{
+				var company = await _companyRepository.GetByIdAsync(id, CurrentOrganizationId);
+				if (company == null)
+					return NotFound("Company not found");
 
-                var response = new CompanyResponseDto(company);
-                if (!string.IsNullOrWhiteSpace(company.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(company.LogoPath);
+				var response = new CompanyResponseDto(company);
+				if (!string.IsNullOrWhiteSpace(company.LogoPath))
+					response.FileDetails = await _fileService.GetFileDetailsAsync(company.LogoPath);
 
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting company by ID: {CompanyId}", id);
-                return ServerError("An error occurred while retrieving the company");
-            }
-        }
-    }
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting company by ID: {CompanyId}", id);
+				return ServerError("An error occurred while retrieving the company");
+			}
+		}
+	}
 }
 
 

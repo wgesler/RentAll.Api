@@ -4,18 +4,18 @@ namespace RentAll.Api.Dtos.Auth;
 
 public class JwtUserResponseDto
 {
-    public Guid UserGuid { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public List<string> UserGroups { get; set; } = new List<string>();
+	public Guid UserGuid { get; set; }
+	public string FirstName { get; set; } = string.Empty;
+	public string LastName { get; set; } = string.Empty;
+	public string Email { get; set; } = string.Empty;
+	public List<string> UserGroups { get; set; } = new List<string>();
 
-    public JwtUserResponseDto(User user)
-    {
+	public JwtUserResponseDto(User user)
+	{
 		UserGuid = user.UserId;
-        FirstName = user.FirstName;
-        LastName = user.LastName;
-        Email = user.Email;
-        UserGroups = user.UserGroups;
-    }
+		FirstName = user.FirstName;
+		LastName = user.LastName;
+		Email = user.Email;
+		UserGroups = user.UserGroups;
+	}
 }

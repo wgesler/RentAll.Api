@@ -4,34 +4,34 @@ using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class OrganizationController
-    {
-        /// <summary>
-        /// Update an existing organization
-        /// </summary>
-        /// <param name="dto">Organization data</param>
-        /// <returns>Updated organization</returns>
-        [HttpPut]
-        public async Task<IActionResult> Update([FromBody] UpdateOrganizationDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Organization data is required");
+	public partial class OrganizationController
+	{
+		/// <summary>
+		/// Update an existing organization
+		/// </summary>
+		/// <param name="dto">Organization data</param>
+		/// <returns>Updated organization</returns>
+		[HttpPut]
+		public async Task<IActionResult> Update([FromBody] UpdateOrganizationDto dto)
+		{
+			if (dto == null)
+				return BadRequest("Organization data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
-            if (!isValid)
-                return BadRequest(errorMessage ?? "Invalid request data");
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(errorMessage ?? "Invalid request data");
 
-            try
-            {
-                var existing = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
-                if (existing == null)
-                    return NotFound("Organization not found");
+			try
+			{
+				var existing = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
+				if (existing == null)
+					return NotFound("Organization not found");
 
-                // If OrganizationCode changed, ensure new one is unique
-                if (!string.Equals(existing.OrganizationCode, dto.OrganizationCode, StringComparison.OrdinalIgnoreCase))
-                    return Conflict("OrganizationCode cannot change");
+				// If OrganizationCode changed, ensure new one is unique
+				if (!string.Equals(existing.OrganizationCode, dto.OrganizationCode, StringComparison.OrdinalIgnoreCase))
+					return Conflict("OrganizationCode cannot change");
 
-                var model = dto.ToModel(CurrentUser);
+				var model = dto.ToModel(CurrentUser);
 
 				// Handle logo file upload if provided
 				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
@@ -67,21 +67,21 @@ namespace RentAll.Api.Controllers
 					model.LogoPath = existing.LogoPath;
 				}
 
-                var updated = await _organizationRepository.UpdateByIdAsync(model);
-                var response = new OrganizationResponseDto(updated);
-                if (!string.IsNullOrWhiteSpace(updated.LogoPath))
-                {
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(updated.LogoPath);
-                }
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating organization: {OrganizationId}", dto.OrganizationId);
-                return ServerError("An error occurred while updating the organization");
-            }
-        }
-    }
+				var updated = await _organizationRepository.UpdateByIdAsync(model);
+				var response = new OrganizationResponseDto(updated);
+				if (!string.IsNullOrWhiteSpace(updated.LogoPath))
+				{
+					response.FileDetails = await _fileService.GetFileDetailsAsync(updated.LogoPath);
+				}
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error updating organization: {OrganizationId}", dto.OrganizationId);
+				return ServerError("An error occurred while updating the organization");
+			}
+		}
+	}
 }
 
 

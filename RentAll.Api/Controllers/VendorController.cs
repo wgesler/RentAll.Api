@@ -6,28 +6,28 @@ using RentAll.Domain.Interfaces.Services;
 
 namespace RentAll.Api.Controllers
 {
-    [ApiController]
-    [Route("vendor")]
-    [Authorize]
-    public partial class VendorController : BaseController
-    {
-        private readonly IOrganizationManager _organizationManager;
-        private readonly IVendorRepository _vendorRepository;
-        private readonly IFileService _fileService;
-        private readonly ILogger<VendorController> _logger;
+	[ApiController]
+	[Route("vendor")]
+	[Authorize]
+	public partial class VendorController : BaseController
+	{
+		private readonly IOrganizationManager _organizationManager;
+		private readonly IVendorRepository _vendorRepository;
+		private readonly IFileService _fileService;
+		private readonly ILogger<VendorController> _logger;
 
-        public VendorController(
+		public VendorController(
 			IOrganizationManager organizationManager,
-		    IVendorRepository vendorRepository,
-            IFileService fileService,
-            ILogger<VendorController> logger)
-        {
+			IVendorRepository vendorRepository,
+			IFileService fileService,
+			ILogger<VendorController> logger)
+		{
 			_organizationManager = organizationManager;
 			_vendorRepository = vendorRepository;
-            _fileService = fileService;
-            _logger = logger;
-        }
-    }
+			_fileService = fileService;
+			_logger = logger;
+		}
+	}
 }
 
 

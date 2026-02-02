@@ -4,32 +4,32 @@ using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class CompanyController
-    {
-        /// <summary>
-        /// Update an existing company
-        /// </summary>
-        /// <param name="dto">Company data</param>
-        /// <returns>Updated company</returns>
-        [HttpPut]
-        public async Task<IActionResult> Update([FromBody] UpdateCompanyDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Company data is required");
+	public partial class CompanyController
+	{
+		/// <summary>
+		/// Update an existing company
+		/// </summary>
+		/// <param name="dto">Company data</param>
+		/// <returns>Updated company</returns>
+		[HttpPut]
+		public async Task<IActionResult> Update([FromBody] UpdateCompanyDto dto)
+		{
+			if (dto == null)
+				return BadRequest("Company data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
-            if (!isValid)
-                return BadRequest(errorMessage ?? "Invalid request data");
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(errorMessage ?? "Invalid request data");
 
-            try
-            {
-                // Check if company exists
-                var existingCompany = await _companyRepository.GetByIdAsync(dto.CompanyId, CurrentOrganizationId);
-                if (existingCompany == null)
-                    return NotFound("Company not found");
+			try
+			{
+				// Check if company exists
+				var existingCompany = await _companyRepository.GetByIdAsync(dto.CompanyId, CurrentOrganizationId);
+				if (existingCompany == null)
+					return NotFound("Company not found");
 
-                // Check if CompanyCode is being changed
-                if (existingCompany.CompanyCode != dto.CompanyCode)
+				// Check if CompanyCode is being changed
+				if (existingCompany.CompanyCode != dto.CompanyCode)
 					return BadRequest("Company Code cannot change");
 
 				var company = dto.ToModel(CurrentUser);
@@ -68,21 +68,21 @@ namespace RentAll.Api.Controllers
 					company.LogoPath = existingCompany.LogoPath;
 				}
 
-                var updatedCompany = await _companyRepository.UpdateByIdAsync(company);
-                var response = new CompanyResponseDto(updatedCompany);
-                if (!string.IsNullOrWhiteSpace(updatedCompany.LogoPath))
-                {
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(updatedCompany.LogoPath);
-                }
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating company: {CompanyId}", dto.CompanyId);
-                return ServerError("An error occurred while updating the company");
-            }
-        }
-    }
+				var updatedCompany = await _companyRepository.UpdateByIdAsync(company);
+				var response = new CompanyResponseDto(updatedCompany);
+				if (!string.IsNullOrWhiteSpace(updatedCompany.LogoPath))
+				{
+					response.FileDetails = await _fileService.GetFileDetailsAsync(updatedCompany.LogoPath);
+				}
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error updating company: {CompanyId}", dto.CompanyId);
+				return ServerError("An error occurred while updating the company");
+			}
+		}
+	}
 }
 
 

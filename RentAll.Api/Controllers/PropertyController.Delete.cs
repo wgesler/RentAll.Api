@@ -2,34 +2,34 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class PropertyController
-    {
-        /// <summary>
-        /// Delete a property
-        /// </summary>
-        /// <param name="id">Property ID</param>
-        /// <returns>No content</returns>
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            if (id == Guid.Empty)
-                return BadRequest("Property ID is required");
+	public partial class PropertyController
+	{
+		/// <summary>
+		/// Delete a property
+		/// </summary>
+		/// <param name="id">Property ID</param>
+		/// <returns>No content</returns>
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> Delete(Guid id)
+		{
+			if (id == Guid.Empty)
+				return BadRequest("Property ID is required");
 
-            try
-            {
-                // Check if property exists
-                var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
-                if (property == null)
-                    return NotFound("Property not found");
+			try
+			{
+				// Check if property exists
+				var property = await _propertyRepository.GetByIdAsync(id, CurrentOrganizationId);
+				if (property == null)
+					return NotFound("Property not found");
 
-                await _propertyRepository.DeleteByIdAsync(id);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting property: {PropertyId}", id);
-                return ServerError("An error occurred while deleting the property");
-            }
-        }
-    }
+				await _propertyRepository.DeleteByIdAsync(id);
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error deleting property: {PropertyId}", id);
+				return ServerError("An error occurred while deleting the property");
+			}
+		}
+	}
 }

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Invoices;
-using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
@@ -31,7 +30,7 @@ namespace RentAll.Api.Controllers
 				var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
 
 				await _accountingManager.ApplyInvoiceToReservationAsync(createdInvoice);
-						
+
 				var response = new InvoiceResponseDto(createdInvoice);
 				return CreatedAtAction(nameof(GetInvoiceById), new { invoiceId = createdInvoice.InvoiceId }, response);
 			}

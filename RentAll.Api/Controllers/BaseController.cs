@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
 			var controllerName = this.GetType().Name.Replace("Controller", "");
 			var httpMethod = HttpContext.Request.Method;
 			var actionName = ControllerContext.ActionDescriptor?.ActionName ?? "";
-			
+
 			// Get route - try multiple sources
 			var route = "";
 			var actionDescriptor = ControllerContext.ActionDescriptor;
@@ -28,7 +28,7 @@ namespace RentAll.Api.Controllers
 			{
 				// Try AttributeRouteInfo template first (e.g., "propertyhtml/{propertyId}")
 				route = actionDescriptor.AttributeRouteInfo?.Template ?? "";
-				
+
 				// If no template, build from controller and action route values
 				if (string.IsNullOrEmpty(route))
 				{
@@ -173,7 +173,7 @@ namespace RentAll.Api.Controllers
 
 			// RFC 5322 compliant email regex pattern
 			var emailPattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
-			
+
 			try
 			{
 				return Regex.IsMatch(email, emailPattern, RegexOptions.IgnoreCase);

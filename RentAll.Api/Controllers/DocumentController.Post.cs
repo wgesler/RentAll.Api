@@ -14,12 +14,12 @@ namespace RentAll.Api.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Create([FromBody] CreateDocumentDto dto)
 		{
-		if (dto == null)
-			return BadRequest("Document data is required");
+			if (dto == null)
+				return BadRequest("Document data is required");
 
-		var (isValid, errorMessage) = dto.IsValid();
-		if (!isValid)
-			return BadRequest(errorMessage ?? "Invalid request data");
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
 			{
@@ -41,8 +41,8 @@ namespace RentAll.Api.Controllers
 					}
 					catch (Exception ex)
 					{
-					_logger.LogError(ex, "Error saving document file");
-					return ServerError("An error occurred while saving the document file");
+						_logger.LogError(ex, "Error saving document file");
+						return ServerError("An error occurred while saving the document file");
 					}
 				}
 
@@ -56,8 +56,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-			_logger.LogError(ex, "Error creating document");
-			return ServerError("An error occurred while creating the document");
+				_logger.LogError(ex, "Error creating document");
+				return ServerError("An error occurred while creating the document");
 			}
 		}
 	}

@@ -5,25 +5,25 @@ using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
 {
-    [ApiController]
-    [Route("building")]
-    [Authorize]
-    public partial class BuildingController : BaseController
-    {
+	[ApiController]
+	[Route("building")]
+	[Authorize]
+	public partial class BuildingController : BaseController
+	{
 		private readonly IOrganizationManager _organizationManager;
 		private readonly IBuildingRepository _buildingRepository;
-        private readonly ILogger<BuildingController> _logger;
+		private readonly ILogger<BuildingController> _logger;
 
-        public BuildingController(
+		public BuildingController(
 			IOrganizationManager organizationManager,
 			IBuildingRepository buildingRepository,
-            ILogger<BuildingController> logger)
-        {
+			ILogger<BuildingController> logger)
+		{
 			_organizationManager = organizationManager;
 			_buildingRepository = buildingRepository;
-            _logger = logger;
-        }
-    }
+			_logger = logger;
+		}
+	}
 }
 
 

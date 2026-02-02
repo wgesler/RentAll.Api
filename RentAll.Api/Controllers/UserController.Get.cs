@@ -3,8 +3,8 @@ using RentAll.Api.Dtos.Users;
 
 namespace RentAll.Api.Controllers
 {
-    public partial class UserController
-    {
+	public partial class UserController
+	{
 		/// <summary>
 		/// Get all users
 		/// </summary>
@@ -24,33 +24,33 @@ namespace RentAll.Api.Controllers
 				return ServerError("An error occurred while retrieving users");
 			}
 		}
-		
+
 		/// <summary>
 		/// Get user by ID
 		/// </summary>
 		/// <param name="id">User ID</param>
 		/// <returns>User</returns>
 		[HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            if (id == Guid.Empty)
-                return BadRequest("User ID is required");
+		public async Task<IActionResult> GetById(Guid id)
+		{
+			if (id == Guid.Empty)
+				return BadRequest("User ID is required");
 
-            try
-            {
-                var user = await _userRepository.GetByIdAsync(id);
-                if (user == null)
-                    return NotFound("User not found");
+			try
+			{
+				var user = await _userRepository.GetByIdAsync(id);
+				if (user == null)
+					return NotFound("User not found");
 
-                return Ok(new UserResponseDto(user));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting user by ID: {UserId}", id);
-                return ServerError("An error occurred while retrieving the user");
-            }
-        }
-    }
+				return Ok(new UserResponseDto(user));
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting user by ID: {UserId}", id);
+				return ServerError("An error occurred while retrieving the user");
+			}
+		}
+	}
 }
 
 

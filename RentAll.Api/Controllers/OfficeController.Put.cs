@@ -79,8 +79,8 @@ namespace RentAll.Api.Controllers
 			}
 			catch (Exception ex)
 			{
-			_logger.LogError(ex, "Error updating office: {OfficeId}", dto.OfficeId);
-			return ServerError("An error occurred while updating the office");
+				_logger.LogError(ex, "Error updating office: {OfficeId}", dto.OfficeId);
+				return ServerError("An error occurred while updating the office");
 			}
 		}
 	}

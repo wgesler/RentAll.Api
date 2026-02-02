@@ -5,9 +5,9 @@ namespace RentAll.Api.Dtos.Vendors;
 
 public class CreateVendorDto
 {
-    public Guid OrganizationId { get; set; }
+	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-    public string Name { get; set; } = string.Empty;
+	public string Name { get; set; } = string.Empty;
 	public string? Address1 { get; set; }
 	public string? Address2 { get; set; }
 	public string? Suite { get; set; }
@@ -16,59 +16,59 @@ public class CreateVendorDto
 	public string? Zip { get; set; }
 	public string? Phone { get; set; }
 	public string? Website { get; set; }
-    public FileDetails? FileDetails { get; set; }
-    public bool IsActive { get; set; }
+	public FileDetails? FileDetails { get; set; }
+	public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
-    {
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
+	public (bool IsValid, string? ErrorMessage) IsValid()
+	{
+		if (OrganizationId == Guid.Empty)
+			return (false, "OrganizationId is required");
 
-        if (OfficeId <= 0)
-            return (false, "OfficeId is required");
+		if (OfficeId <= 0)
+			return (false, "OfficeId is required");
 
-        if (string.IsNullOrWhiteSpace(Name))
-            return (false, "Name is required");
+		if (string.IsNullOrWhiteSpace(Name))
+			return (false, "Name is required");
 
-        if (string.IsNullOrWhiteSpace(Address1))
-            return (false, "Address1 is required");
+		if (string.IsNullOrWhiteSpace(Address1))
+			return (false, "Address1 is required");
 
-        if (string.IsNullOrWhiteSpace(City))
-            return (false, "City is required");
+		if (string.IsNullOrWhiteSpace(City))
+			return (false, "City is required");
 
-        if (string.IsNullOrWhiteSpace(State))
-            return (false, "State is required");
+		if (string.IsNullOrWhiteSpace(State))
+			return (false, "State is required");
 
-        if (string.IsNullOrWhiteSpace(Zip))
-            return (false, "Zip is required");
+		if (string.IsNullOrWhiteSpace(Zip))
+			return (false, "Zip is required");
 
-        if (string.IsNullOrWhiteSpace(Phone))
-            return (false, "Phone is required");
+		if (string.IsNullOrWhiteSpace(Phone))
+			return (false, "Phone is required");
 
-        return (true, null);
-    }
+		return (true, null);
+	}
 
-    public Vendor ToModel(string code, Guid currentUser)
-    {
-        return new Vendor
-        {
-            OrganizationId = OrganizationId,
+	public Vendor ToModel(string code, Guid currentUser)
+	{
+		return new Vendor
+		{
+			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
-            VendorCode = code,
-            Name = Name,
-            Address1 = Address1,
-            Address2 = Address2,
-            Suite = Suite,
-            City = City,
-            State = State,
-            Zip = Zip,
-            Phone = Phone,
-            Website = Website,
-            LogoPath = null, // Will be set by controller after file save
-            IsActive = IsActive,
-            CreatedBy = currentUser
-        };
-    }
+			VendorCode = code,
+			Name = Name,
+			Address1 = Address1,
+			Address2 = Address2,
+			Suite = Suite,
+			City = City,
+			State = State,
+			Zip = Zip,
+			Phone = Phone,
+			Website = Website,
+			LogoPath = null, // Will be set by controller after file save
+			IsActive = IsActive,
+			CreatedBy = currentUser
+		};
+	}
 }
 
 
