@@ -92,18 +92,19 @@ public class AccountingManager : IAccountingManager
 		DateTime firstDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, 1);
 		DateTime lastDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month));
 
-		var isFirstMonth = checkInMonth == firstMonth;
-		var isProratedMonth = (checkInMonth == firstMonth && reservation.ProrateType == ProrateType.FirstMonth ) ||
-							  (checkInMonth == secondMonth && reservation.ProrateType == ProrateType.SecondMonth);
+		var isFirstMonth = requestedMonth == firstMonth;
+		var isProratedMonth = (requestedMonth == firstMonth && reservation.ProrateType == ProrateType.FirstMonth ) ||
+							  (requestedMonth == secondMonth && reservation.ProrateType == ProrateType.SecondMonth);
 
 		// Get any first month lines
-		GetFirstMonthLines(reservation, isFirstMonth, lineItems);
+		if (isFirstMonth)
+			GetFirstMonthLines(reservation, isFirstMonth, lineItems);
 
 		// If you're in and out in the same month
 		if (checkInMonth == requestedMonth && checkOutMonth == requestedMonth)
 		{
 			var days = CalculateNumberOfDays(checkInDate, checkOutDate, reservation.BillingType);
-			AddRentalLine(days, reservation, checkInDate, checkOutDate, lineItems);
+			AddRentalLine(days, reservation, checkInDate, checkOutDate, isProratedMonth, lineItems);
 			AddMaidServiceLines(reservation, lineItems);
 			return lineItems;
 		}
@@ -113,8 +114,8 @@ public class AccountingManager : IAccountingManager
 		{	
 			var days = CalculateNumberOfDays(checkInDate, lastDayOfMonth, reservation.BillingType);	
 			var totalDays = isProratedMonth ? days : PRORATE_DAYS; 
-			var lastDate = isProratedMonth ? lastDayOfMonth : checkInDate.AddDays(PRORATE_DAYS - days);
-			AddRentalLine(totalDays, reservation, checkInDate, lastDate, lineItems);
+			var lastDate = isProratedMonth ? lastDayOfMonth : checkInDate.AddDays(totalDays);
+			AddRentalLine(totalDays, reservation, checkInDate, lastDate, isProratedMonth, lineItems);
 			AddMaidServiceLines(reservation, lineItems);
 			return lineItems;
 		}
@@ -122,19 +123,16 @@ public class AccountingManager : IAccountingManager
 		// If this is your second month
 		if (requestedMonth == secondMonth)
 		{
-			var days = CalculateNumberOfDays(firstDayOfMonth, lastDayOfMonth, reservation.BillingType);
-			var daysInFirstMonth = CalculateNumberOfDays(firstDayOfCheckInMonth, lastDayOfCheckInMonth, reservation.BillingType);
-			var prepaidDays = PRORATE_DAYS - daysInFirstMonth;
-			var totalDays = isProratedMonth ? days - prepaidDays : days; 
-			var firstDate = isProratedMonth ? firstDayOfMonth : firstDayOfMonth.AddDays(prepaidDays);
-			AddRentalLine(totalDays, reservation, firstDate, lastDayOfMonth, lineItems);
+			var firstDay = isProratedMonth ? checkInDate.AddDays(PRORATE_DAYS + 1) : firstDayOfMonth;
+			var days = CalculateNumberOfDays(firstDay, lastDayOfMonth, reservation.BillingType);
+			AddRentalLine(days, reservation, firstDay, lastDayOfMonth, isProratedMonth, lineItems);
 			AddMaidServiceLines(reservation, lineItems);
 			return lineItems;
 		}
 
 		// Otherwise, simply bill for the entire month
 		var checkoutDays = CalculateNumberOfDays(firstDayOfMonth, lastDayOfCheckInMonth, reservation.BillingType);
-		AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfCheckInMonth, lineItems);
+		AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfCheckInMonth, isProratedMonth, lineItems);
 		AddMaidServiceLines(reservation, lineItems);
 		return lineItems;
 	}
@@ -143,9 +141,6 @@ public class AccountingManager : IAccountingManager
 	#region Private Methods
 	private void GetFirstMonthLines(Reservation reservation, bool isFirstMonth, List<LedgerLine> lines)
 	{
-		if (!isFirstMonth)
-			return;
-
 		if (reservation.DepositType == DepositType.Deposit)
 			lines.Add(new LedgerLine { Description = "Deposit", Amount = reservation.Deposit });
 		if (reservation.DepositType == DepositType.SDW)
@@ -156,11 +151,16 @@ public class AccountingManager : IAccountingManager
 			lines.Add(new LedgerLine { Description = "Departure Fee", Amount = reservation.DepartureFee });
 	}
 
-	private void AddRentalLine(int days, Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate, List<LedgerLine> lines)
+	private void AddRentalLine(int days, Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate, bool isProratedMonth, List<LedgerLine> lines)
 	{
 		var rentLine = $"Rental Fee ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
 		if (reservation.BillingType == BillingType.Monthly)
-			lines.Add(new LedgerLine { Description = rentLine, Amount = reservation.BillingRate });
+		{
+			if (isProratedMonth)
+				lines.Add(new LedgerLine { Description = rentLine, Amount = (reservation.BillingRate / PRORATE_DAYS) * days });
+			else
+				lines.Add(new LedgerLine { Description = rentLine, Amount = reservation.BillingRate });
+		}
 		else
 			lines.Add(new LedgerLine { Description = rentLine, Amount = days * reservation.BillingRate });
 	}
