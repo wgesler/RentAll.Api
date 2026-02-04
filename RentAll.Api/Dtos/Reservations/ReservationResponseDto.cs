@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.ExtraFeeLines;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Reservations;
@@ -38,11 +39,8 @@ public class ReservationResponseDto
 	public int FrequencyId { get; set; }
 	public DateTimeOffset MaidStartDate { get; set; }
 	public decimal Taxes { get; set; }
-	public decimal ExtraFee { get; set; }
-	public string ExtraFeeName { get; set; } = string.Empty;
-	public decimal ExtraFee2 { get; set; }
-	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
 	public bool AllowExtensions { get; set; }
 	public int CurrentInvoiceNumber { get; set; }
 	public decimal CreditDue { get; set; }
@@ -89,11 +87,8 @@ public class ReservationResponseDto
 		FrequencyId = (int)reservation.Frequency;
 		MaidStartDate = reservation.MaidStartDate;
 		Taxes = reservation.Taxes;
-		ExtraFee = reservation.ExtraFee;
-		ExtraFeeName = reservation.ExtraFeeName;
-		ExtraFee2 = reservation.ExtraFee2;
-		ExtraFee2Name = reservation.ExtraFee2Name;
 		Notes = reservation.Notes;
+		ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();
 		AllowExtensions = reservation.AllowExtensions;
 		CurrentInvoiceNumber = reservation.CurrentInvoiceNumber;
 		CreditDue = reservation.CreditDue;

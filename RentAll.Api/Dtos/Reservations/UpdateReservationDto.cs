@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.ExtraFeeLines;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -37,11 +38,8 @@ public class UpdateReservationDto
 	public int FrequencyId { get; set; }
 	public DateTimeOffset MaidStartDate { get; set; }
 	public decimal Taxes { get; set; }
-	public decimal ExtraFee { get; set; }
-	public string ExtraFeeName { get; set; } = string.Empty;
-	public decimal ExtraFee2 { get; set; }
-	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public List<UpdateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<UpdateExtraFeeLineDto>();
 	public bool AllowExtensions { get; set; }
 	public int CurrentInvoiceNumber { get; set; }
 	public decimal CreditDue { get; set; }
@@ -109,6 +107,21 @@ public class UpdateReservationDto
 		if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
 			return (false, $"Invalid FrequencyId value: {FrequencyId}");
 
+		if (ExtraFeeLines != null)
+		{
+			foreach (var line in ExtraFeeLines)
+			{
+				if (string.IsNullOrWhiteSpace(line.FeeDescription))
+					return (false, "ExtraFeeLine FeeDescription is required");
+
+				if (line.FeeAmount < 0)
+					return (false, "ExtraFeeLine FeeAmount must be greater than 0");
+
+				if (!Enum.IsDefined(typeof(FrequencyType), line.FeeFrequencyId))
+					return (false, $"Invalid ExtraFeeLine FeeFrequencyId value: {line.FeeFrequencyId}");
+			}
+		}
+
 		return (true, null);
 	}
 
@@ -147,11 +160,8 @@ public class UpdateReservationDto
 			Frequency = (FrequencyType)FrequencyId,
 			MaidStartDate = MaidStartDate,
 			Taxes = Taxes,
-			ExtraFee = ExtraFee,
-			ExtraFeeName = ExtraFeeName ?? string.Empty,
-			ExtraFee2 = ExtraFee2,
-			ExtraFee2Name = ExtraFee2Name ?? string.Empty,
 			Notes = Notes,
+			ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
 			AllowExtensions = AllowExtensions,
 			CurrentInvoiceNumber = CurrentInvoiceNumber,
 			CreditDue = CreditDue,

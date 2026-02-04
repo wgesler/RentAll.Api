@@ -1,0 +1,40 @@
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
+
+namespace RentAll.Api.Dtos.ExtraFeeLines;
+
+public class CreateExtraFeeLineDto
+{
+	public Guid ReservationId { get; set; }
+	public string FeeDescription { get; set; } = string.Empty;
+	public decimal FeeAmount { get; set; }
+	public int FeeFrequencyId { get; set; }
+
+	public (bool IsValid, string? ErrorMessage) IsValid()
+	{
+		if (ReservationId == Guid.Empty)
+			return (false, "ReservationId is required");
+
+		if (string.IsNullOrWhiteSpace(FeeDescription))
+			return (false, "FeeDescription is required");
+
+		if (FeeAmount < 0)
+			return (false, "FeeAmount must be zero or greater");
+
+		if (!Enum.IsDefined(typeof(FrequencyType), FeeFrequencyId))
+			return (false, $"Invalid FeeFrequencyId value: {FeeFrequencyId}");
+
+		return (true, null);
+	}
+
+	public ExtraFeeLine ToModel()
+	{
+		return new ExtraFeeLine
+		{
+			ReservationId = ReservationId,
+			FeeDescription = FeeDescription,
+			FeeAmount = FeeAmount,
+			FeeFrequency = (FrequencyType)FeeFrequencyId
+		};
+	}
+}

@@ -136,6 +136,8 @@ public class AccountingManager : IAccountingManager
 			AddRentalLine(days, reservation, checkInDate, lastDay, isProratedMonth, lineItems);
 			GetFirstMonthLines(reservation, isFirstMonth, lineItems);
 			AddMaidServiceLines(reservation, checkInDate, lastDay, requestedDate.Year, requestedMonth, lineItems);
+			foreach(var extraFeeLine in reservation.ExtraFeeLines)
+				AddExtraFeeLines(extraFeeLine, checkInDate, lastDay, requestedDate.Year, requestedMonth, lineItems);
 			return lineItems;
 		}
 
@@ -146,6 +148,8 @@ public class AccountingManager : IAccountingManager
 			var days = CalculateNumberOfDays(firstDay, lastDayOfMonth, reservation.BillingType);
 			AddRentalLine(days, reservation, firstDay, lastDayOfMonth, isProratedMonth, lineItems);
 			AddMaidServiceLines(reservation, firstDay, lastDayOfMonth, requestedDate.Year, requestedMonth, lineItems);
+			foreach (var extraFeeLine in reservation.ExtraFeeLines)
+				AddExtraFeeLines(extraFeeLine, firstDay, lastDayOfMonth, requestedDate.Year, requestedMonth, lineItems);
 			return lineItems;
 		}
 
@@ -154,6 +158,8 @@ public class AccountingManager : IAccountingManager
 		AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfMonth, isProratedMonth, lineItems);
 		GetFirstMonthLines(reservation, isFirstMonth, lineItems);
 		AddMaidServiceLines(reservation, firstDayOfMonth, lastDayOfMonth, requestedDate.Year, requestedMonth, lineItems);
+		foreach (var extraFeeLine in reservation.ExtraFeeLines)
+			AddExtraFeeLines(extraFeeLine, firstDayOfMonth, lastDayOfMonth, requestedDate.Year, requestedMonth, lineItems);
 		return lineItems;
 	}
 
@@ -258,7 +264,28 @@ public class AccountingManager : IAccountingManager
 		if (maidServices > 0)
 			lines.Add(new LedgerLine { Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee });
 	}
-	#endregion 
+
+	private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateTimeOffset startDate, DateTimeOffset endDate, int requestedYear, int requestedMonth, List<LedgerLine> lines)
+	{
+		int fees = 0;
+		switch (extraFeeLine.FeeFrequency)
+		{
+			case FrequencyType.Weekly:
+				fees = CountNumberOfWeekDaysInMonth(startDate, startDate, endDate, requestedYear, requestedMonth);
+				break;
+			case FrequencyType.EOW:
+				fees = CountEowDaysInMonth(startDate, startDate, endDate, requestedYear, requestedMonth);
+				break;
+			default:
+				fees = CountNumberOfMonths(startDate, startDate, endDate, requestedYear, requestedMonth, extraFeeLine.FeeFrequency);
+				break;
+		}
+
+		if (fees > 0)
+			lines.Add(new LedgerLine { Description = $"{extraFeeLine.FeeDescription} ({fees} times)", Amount = fees * extraFeeLine.FeeAmount });
+	}
+
+	#endregion
 
 	#region Day Calculation Methods
 	private static int CalculateNumberOfDays(DateTimeOffset startDate, DateTimeOffset endDate, BillingType billingType)

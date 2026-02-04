@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
@@ -9,6 +10,11 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 {
 	public partial class ReservationRepository : IReservationRepository
 	{
+		private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+		{
+			PropertyNameCaseInsensitive = true
+		};
+
 		private readonly string _dbConnectionString;
 
 		public ReservationRepository(IOptions<AppSettings> appSettings)
@@ -18,6 +24,20 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
 		private Reservation ConvertEntityToModel(ReservationEntity e)
 		{
+			List<ExtraFeeLine> extraFeeLines = new List<ExtraFeeLine>();
+			if (!string.IsNullOrWhiteSpace(e.ExtraFeeLines))
+			{
+				try
+				{
+					var entityLines = JsonSerializer.Deserialize<List<ExtraFeeLineEntity>>(e.ExtraFeeLines, JsonOptions) ?? new List<ExtraFeeLineEntity>();
+					extraFeeLines = entityLines.Select(ConvertExtraFeeLineEntityToModel).ToList();
+				}
+				catch
+				{
+					extraFeeLines = new List<ExtraFeeLine>();
+				}
+			}
+
 			return new Reservation
 			{
 				ReservationId = e.ReservationId,
@@ -54,11 +74,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				Frequency = (FrequencyType)e.FrequencyId,
 				MaidStartDate = e.MaidStartDate,
 				Taxes = e.Taxes,
-				ExtraFee = e.ExtraFee,
-				ExtraFeeName = e.ExtraFeeName,
-				ExtraFee2 = e.ExtraFee2,
-				ExtraFee2Name = e.ExtraFee2Name,
 				Notes = e.Notes,
+				ExtraFeeLines = extraFeeLines,
 				AllowExtensions = e.AllowExtensions,
 				CurrentInvoiceNumber = e.CurrentInvoiceNumber,
 				CreditDue = e.CreditDue,
@@ -67,6 +84,18 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				CreatedOn = e.CreatedOn,
 				ModifiedBy = e.ModifiedBy,
 				ModifiedOn = e.ModifiedOn
+			};
+		}
+
+		private ExtraFeeLine ConvertExtraFeeLineEntityToModel(ExtraFeeLineEntity e)
+		{
+			return new ExtraFeeLine
+			{
+				ExtraFeeLineId = e.ExtraFeeLineId,
+				ReservationId = e.ReservationId,
+				FeeDescription = e.FeeDescription,
+				FeeAmount = e.FeeAmount,
+				FeeFrequency = (FrequencyType)e.FeeFrequencyId
 			};
 		}
 

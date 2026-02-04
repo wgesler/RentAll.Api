@@ -8,10 +8,30 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 {
 	public partial class ReservationRepository : IReservationRepository
 	{
-		public async Task<Reservation> UpdateByIdAsync(Reservation r)
+	public async Task<Reservation> UpdateByIdAsync(Reservation r)
+	{
+		await using var db = new SqlConnection(_dbConnectionString);
+		await db.OpenAsync();
+		await using var transaction = await db.BeginTransactionAsync();
+
+		try
 		{
-			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_UpdateById", new
+			// Get current reservation with ExtraFeeLines
+			var currentReservationResult = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
+			{
+				ReservationId = r.ReservationId,
+				OrganizationId = r.OrganizationId
+			}, transaction: transaction);
+
+			if (currentReservationResult == null || !currentReservationResult.Any())
+				throw new Exception("Reservation not found");
+
+			var currentReservation = ConvertEntityToModel(currentReservationResult.FirstOrDefault()!);
+			var currentExtraFeeLineIds = currentReservation.ExtraFeeLines.Select(efl => efl.ExtraFeeLineId).ToHashSet();
+			var incomingExtraFeeLineIds = r.ExtraFeeLines.Where(efl => efl.ExtraFeeLineId != 0).Select(efl => efl.ExtraFeeLineId).ToHashSet();
+
+			// Update the Reservation
+			var response = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_UpdateById", new
 			{
 				ReservationId = r.ReservationId,
 				OrganizationId = r.OrganizationId,
@@ -44,23 +64,77 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				FrequencyId = (int)r.Frequency,
 				MaidStartDate = r.MaidStartDate,
 				Taxes = r.Taxes,
-				ExtraFee = r.ExtraFee,
-				ExtraFeeName = r.ExtraFeeName,
-				ExtraFee2 = r.ExtraFee2,
-				ExtraFee2Name = r.ExtraFee2Name,
 				Notes = r.Notes,
 				AllowExtensions = r.AllowExtensions,
 				CurrentInvoiceNumber = r.CurrentInvoiceNumber,
 				CreditDue = r.CreditDue,
 				IsActive = r.IsActive,
 				ModifiedBy = r.ModifiedBy
-			});
+			}, transaction: transaction);
 
-			if (res == null || !res.Any())
-				throw new Exception("Reservation not found");
+			if (response == null || !response.Any())
+				throw new Exception("Reservation not updated");
 
-			return ConvertEntityToModel(res.FirstOrDefault()!);
+			// Sync ExtraFeeLines
+			if (r.ExtraFeeLines != null && r.ExtraFeeLines.Any())
+			{
+				foreach (var line in r.ExtraFeeLines)
+				{
+					if (line.ExtraFeeLineId == 0)
+					{
+						// Create new ExtraFeeLine
+						await db.DapperProcQueryAsync<ExtraFeeLineEntity>("Property.ExtraFeeLine_Add", new
+						{
+							ReservationId = r.ReservationId,
+							FeeDescription = line.FeeDescription,
+							FeeAmount = line.FeeAmount,
+							FeeFrequencyId = (int)line.FeeFrequency
+						}, transaction: transaction);
+					}
+					else if (currentExtraFeeLineIds.Contains(line.ExtraFeeLineId))
+					{
+						// Update existing ExtraFeeLine
+						await db.DapperProcQueryAsync<ExtraFeeLineEntity>("Property.ExtraFeeLine_UpdateById", new
+						{
+							ExtraFeeLineId = line.ExtraFeeLineId,
+							ReservationId = r.ReservationId,
+							FeeDescription = line.FeeDescription,
+							FeeAmount = line.FeeAmount,
+							FeeFrequencyId = (int)line.FeeFrequency
+						}, transaction: transaction);
+					}
+				}
+			}
+
+			// Delete ExtraFeeLines that are no longer in the incoming list
+			var extraFeeLinesToDelete = currentExtraFeeLineIds.Except(incomingExtraFeeLineIds).ToList();
+			foreach (var extraFeeLineId in extraFeeLinesToDelete)
+			{
+				await db.DapperProcExecuteAsync("Property.ExtraFeeLine_DeleteById", new
+				{
+					ExtraFeeLineId = extraFeeLineId
+				}, transaction: transaction);
+			}
+
+			// Get fully populated reservation
+			var updatedReservationResult = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
+			{
+				ReservationId = r.ReservationId,
+				OrganizationId = r.OrganizationId
+			}, transaction: transaction);
+
+			if (updatedReservationResult == null || !updatedReservationResult.Any())
+				throw new Exception("Reservation not updated");
+
+			await transaction.CommitAsync();
+			return ConvertEntityToModel(updatedReservationResult.FirstOrDefault()!);
 		}
+		catch
+		{
+			await transaction.RollbackAsync();
+			throw;
+		}
+	}
 
 		public async Task<Reservation> IncrementCurrentInvoiceAsync(Guid reservationId, Guid organizationId)
 		{

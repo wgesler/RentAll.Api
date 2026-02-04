@@ -43,10 +43,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				FrequencyId = (int)r.Frequency,
 				MaidStartDate = r.MaidStartDate,
 				Taxes = r.Taxes,
-				ExtraFee = r.ExtraFee,
-				ExtraFeeName = r.ExtraFeeName,
-				ExtraFee2 = r.ExtraFee2,
-				ExtraFee2Name = r.ExtraFee2Name,
 				Notes = r.Notes,
 				AllowExtensions = r.AllowExtensions,
 				CurrentInvoiceNumber = r.CurrentInvoiceNumber,
@@ -55,10 +51,37 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 				CreatedBy = r.CreatedBy
 			});
 
-			if (res == null || !res.Any())
-				throw new Exception("Reservation not created");
+		if (res == null || !res.Any())
+			throw new Exception("Reservation not created");
 
-			return ConvertEntityToModel(res.FirstOrDefault()!);
+		var reservation = ConvertEntityToModel(res.FirstOrDefault()!);
+		
+		// Create ExtraFeeLines
+		if (r.ExtraFeeLines != null && r.ExtraFeeLines.Any())
+		{
+			foreach (var line in r.ExtraFeeLines)
+			{
+				await db.DapperProcQueryAsync<ExtraFeeLineEntity>("Property.ExtraFeeLine_Add", new
+				{
+					ReservationId = reservation.ReservationId,
+					FeeDescription = line.FeeDescription,
+					FeeAmount = line.FeeAmount,
+					FeeFrequencyId = (int)line.FeeFrequency
+				});
+			}
 		}
+
+		// Get fully populated reservation
+		var populatedRes = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
+		{
+			ReservationId = reservation.ReservationId,
+			OrganizationId = reservation.OrganizationId
+		});
+
+		if (populatedRes == null || !populatedRes.Any())
+			throw new Exception("Reservation not found");
+
+		return ConvertEntityToModel(populatedRes.FirstOrDefault()!);
+	}
 	}
 }

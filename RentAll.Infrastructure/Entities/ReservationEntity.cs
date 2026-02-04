@@ -36,11 +36,8 @@ public class ReservationEntity
 	public int FrequencyId { get; set; }
 	public DateTimeOffset MaidStartDate { get; set; }
 	public decimal Taxes { get; set; }
-	public decimal ExtraFee { get; set; }
-	public string ExtraFeeName { get; set; } = string.Empty;
-	public decimal ExtraFee2 { get; set; }
-	public string ExtraFee2Name { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public string? ExtraFeeLines { get; set; }
 	public bool AllowExtensions { get; set; }
 	public int CurrentInvoiceNumber { get; set; }
 	public decimal CreditDue { get; set; }
