@@ -5,8 +5,6 @@ namespace RentAll.Api.Controllers
 {
 	public partial class AccountingController
 	{
-		#region Invoice PUT Endpoints
-
 		/// <summary>
 		/// Update an existing invoice
 		/// </summary>
@@ -43,6 +41,34 @@ namespace RentAll.Api.Controllers
 			}
 		}
 
-		#endregion
+
+		/// <summary>
+		/// Update an existing reservation
+		/// </summary>
+		/// <param name="dto">Reservation data</param>
+		/// <returns>Updated reservation</returns>
+		[HttpPut("payment")]
+		public async Task<IActionResult> ApplyPayment([FromBody] InvoicePaymentRequestDto dto)
+		{
+			if (dto == null)
+				return BadRequest("Invoice payment data is required");
+
+			var (isValid, errorMessage) = dto.IsValid();
+			if (!isValid)
+				return BadRequest(errorMessage ?? "Invalid request data");
+
+			try
+			{
+				var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
+					dto.CostCodeId, dto.Description, dto.Amount, CurrentUser);
+				var response = new InvoicePaymentResponseDto(invoicePayment);
+				return Ok(response);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error applying payments to invoices");
+				return ServerError("An error occurred while applying payments to invoices");
+			}
+		}
 	}
 }

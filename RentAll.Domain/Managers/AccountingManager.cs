@@ -27,19 +27,21 @@ public class AccountingManager : IAccountingManager
 		return await _reservationRepository.IncrementCurrentInvoiceAsync((Guid)i.ReservationId, i.OrganizationId);
 	}
 
-	public async Task ApplyPaymentToReservationAsync(Guid reservationId, Guid organizationId, string offices, int costCodeId, 
+	public async Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, 
 		string description, decimal amountPaid, Guid currentUser)
 	{
-		var reservation = await _reservationRepository.GetByIdAsync(reservationId, organizationId);
-		if (reservation == null)
-			return;
+		var invoices = new List<Invoice>();
+		foreach (var invoiceGuid in invoiceGuids)
+		{
+			var invoice = await _invoiceRepository.GetByIdAsync(invoiceGuid, organizationId);
+			if (invoice == null) throw new Exception("Invalid Invoice");
+			invoices.Add(invoice);
+		}
 
-		// Account for previous credits on this account
-		var availableAmount = amountPaid + reservation.CreditDue;
+		// Order invoices from the oldest to the newest
+		invoices = invoices.Where(i => i.IsActive).OrderBy(i => i.InvoiceDate).ToList();
 
-		var invoices = (await _invoiceRepository.GetAllByReservationIdAsync(reservationId, organizationId, offices))
-			.Where(i => i.IsActive).OrderBy(i => i.InvoiceDate).ToList();
-		
+		var availableAmount = amountPaid;
 		foreach (var invoice in invoices)
 		{
 			if (availableAmount <= 0)
@@ -50,12 +52,14 @@ public class AccountingManager : IAccountingManager
 			if (remainingBalance <= 0)
 				continue; 
 
+
+
 			if (availableAmount >= remainingBalance)
 			{
 				// Full payment for this invoice
 				invoice.PaidAmount = invoice.TotalAmount;
 				availableAmount -= remainingBalance;
-				invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, ReservationId = reservationId, CostCodeId = costCodeId, Description = description, Amount = amountPaid, CreatedBy = currentUser });
+				invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = invoice.PaidAmount, CreatedBy = currentUser });
 				await _invoiceRepository.UpdateByIdAsync(invoice);
 			}
 			else
@@ -63,16 +67,13 @@ public class AccountingManager : IAccountingManager
 				// Partial payment
 				invoice.PaidAmount += availableAmount;
 				availableAmount = 0;
-				invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, ReservationId = reservationId, CostCodeId = costCodeId, Description = description, Amount = amountPaid, CreatedBy = currentUser });
+				invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = invoice.PaidAmount, CreatedBy = currentUser });
 				await _invoiceRepository.UpdateByIdAsync(invoice);
 			}
 		}
 
-		// If we still have remaining funds, add a credit to the reservation
-		if (availableAmount > 0) {
-			reservation.CreditDue = availableAmount;
-			await _reservationRepository.UpdateByIdAsync(reservation);
-		}
+		var response = new InvoicePayment { Invoices = invoices, CreditRemaining = availableAmount }; 
+		return response;
 	}
 
 	public async Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate)
