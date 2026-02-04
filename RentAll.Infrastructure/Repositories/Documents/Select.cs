@@ -69,6 +69,21 @@ public partial class DocumentRepository : IDocumentRepository
 		return ConvertEntityToModel(res.FirstOrDefault()!);
 	}
 
+	public async Task<Document?> GetByNameAsync(string fileName, Guid organizationId)
+	{
+		await using var db = new SqlConnection(_dbConnectionString);
+		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetByName", new
+		{
+			FileName = fileName,
+			OrganizationId = organizationId
+		});
+
+		if (res == null || !res.Any())
+			return null;
+
+		return ConvertEntityToModel(res.FirstOrDefault()!);
+	}
+
 	public async Task<IEnumerable<Document>> GetByOfficeIdAsync(int officeId, Guid organizationId)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Documents;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -38,10 +39,10 @@ namespace RentAll.Api.Controllers
 		}
 
 		/// <summary>
-		/// Generate PDF from HTML content and save as document
+		/// Generate PDF from HTML content and upsert as document (creates if doesn't exist, updates if it does)
 		/// </summary>
 		/// <param name="dto">Document data with HTML content</param>
-		/// <returns>Created document</returns>
+		/// <returns>Created or updated document</returns>
 		[HttpPost("generate")]
 		public async Task<IActionResult> GenerateFromHtml([FromBody] GenerateDocumentFromHtmlDto dto)
 		{
@@ -58,43 +59,71 @@ namespace RentAll.Api.Controllers
 				var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
 				var pdfBase64 = Convert.ToBase64String(pdfBytes);
 
-				// Create document DTO
-				var createDto = new CreateDocumentDto
+				var fileName = dto.FileName ?? $"document-{Guid.NewGuid()}.pdf";
+				var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+
+				// Check if document exists by name
+				var existing = await _documentRepository.GetByNameAsync(fileNameWithoutExtension, CurrentOrganizationId);
+
+				Document result;
+				if (existing != null)
 				{
-					OrganizationId = dto.OrganizationId,
-					OfficeId = dto.OfficeId,
-					PropertyId = dto.PropertyId,
-					ReservationId = dto.ReservationId,
-					DocumentTypeId = dto.DocumentTypeId,
-					FileDetails = new Domain.Models.Common.FileDetails
+					// Update existing document (including deleted ones - restore them)
+					var model = new Document
 					{
-						FileName = dto.FileName ?? $"document-{Guid.NewGuid()}.pdf",
+						DocumentId = existing.DocumentId,
+						OrganizationId = existing.OrganizationId,
+						OfficeId = dto.OfficeId ?? existing.OfficeId,
+						PropertyId = dto.PropertyId,
+						ReservationId = dto.ReservationId,
+						DocumentType = (DocumentType)dto.DocumentTypeId,
+						FileName = fileNameWithoutExtension,
+						FileExtension = Path.GetExtension(fileName),
 						ContentType = "application/pdf",
-						File = pdfBase64
-					}
-				};
+						DocumentPath = string.Empty, // Will be set when saving file
+						IsDeleted = false, // Always set to not deleted
+						CreatedOn = existing.CreatedOn,
+						CreatedBy = existing.CreatedBy,
+						ModifiedBy = CurrentUser
+					};
 
-				var (createDtoIsValid, createDtoErrorMessage) = createDto.IsValid();
-				if (!createDtoIsValid)
-					return BadRequest(new { message = createDtoErrorMessage });
+					// Delete old document file if it exists
+					if (!string.IsNullOrWhiteSpace(existing.DocumentPath))
+						await _fileService.DeleteDocumentAsync(existing.DocumentPath);
 
-				var model = createDto.ToModel(CurrentOrganizationId, CurrentUser);
-
-				// Save PDF file
-				var documentPath = await _fileService.SaveDocumentAsync(
-					pdfBase64,
-					createDto.FileDetails!.FileName,
-					"application/pdf",
-					(DocumentType)dto.DocumentTypeId);
-				model.DocumentPath = documentPath;
-
-				var created = await _documentRepository.CreateAsync(model);
-				var response = new DocumentResponseDto(created);
-				if (!string.IsNullOrWhiteSpace(created.DocumentPath))
-				{
-					response.FileDetails = await _fileService.GetDocumentDetailsAsync(created.DocumentPath);
+					// Save new PDF file
+					var documentPath = await _fileService.SaveDocumentAsync(pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
+					model.DocumentPath = documentPath;
+					result = await _documentRepository.UpdateByIdAsync(model);
 				}
-				return CreatedAtAction(nameof(GetById), new { id = created.DocumentId }, response);
+				else
+				{
+					// Create new document
+					var model = new Document
+					{
+						OrganizationId = CurrentOrganizationId,
+						OfficeId = dto.OfficeId,
+						PropertyId = dto.PropertyId,
+						ReservationId = dto.ReservationId,
+						DocumentType = (DocumentType)dto.DocumentTypeId,
+						FileName = fileNameWithoutExtension,
+						FileExtension = Path.GetExtension(fileName),
+						ContentType = "application/pdf",
+						DocumentPath = string.Empty,
+						IsDeleted = false,
+						CreatedBy = CurrentUser
+					};
+
+					// Save PDF file
+					var documentPath = await _fileService.SaveDocumentAsync(pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
+					model.DocumentPath = documentPath;
+					result = await _documentRepository.CreateAsync(model);
+				}
+
+				var response = new DocumentResponseDto(result);
+				response.FileDetails = await _fileService.GetDocumentDetailsAsync(result.DocumentPath);
+
+				return Ok(response);
 			}
 			catch (Exception ex)
 			{

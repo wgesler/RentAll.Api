@@ -10,7 +10,7 @@ public class GenerateDocumentFromHtmlDto
 	public Guid ReservationId { get; set; }
 	public int DocumentTypeId { get; set; }
 	public string HtmlContent { get; set; } = string.Empty;
-	public string? FileName { get; set; }
+	public string FileName { get; set; } = string.Empty;
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
