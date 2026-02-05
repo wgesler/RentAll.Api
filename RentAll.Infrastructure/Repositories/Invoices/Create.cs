@@ -18,7 +18,7 @@ public partial class InvoiceRepository : IInvoiceRepository
 			OrganizationId = invoice.OrganizationId,
 			OfficeId = invoice.OfficeId,
 			OfficeName = invoice.OfficeName,
-			InvoiceName = invoice.InvoiceName,
+			InvoiceCode = invoice.InvoiceCode,
 			ReservationId = invoice.ReservationId,
 			ReservationCode = invoice.ReservationCode,
 			InvoiceDate = invoice.InvoiceDate,

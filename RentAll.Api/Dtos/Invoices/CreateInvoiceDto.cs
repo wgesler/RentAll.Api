@@ -8,7 +8,7 @@ public class CreateInvoiceDto
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
 	public string OfficeName { get; set; } = string.Empty;
-	public string InvoiceName { get; set; } = string.Empty;
+	public string InvoiceCode { get; set; } = string.Empty;
 	public Guid? ReservationId { get; set; }
 	public string? ReservationCode { get; set; } = string.Empty;
 	public DateTimeOffset InvoiceDate { get; set; }
@@ -30,8 +30,8 @@ public class CreateInvoiceDto
 		if (string.IsNullOrWhiteSpace(OfficeName))
 			return (false, "OfficeName is required");
 
-		if (string.IsNullOrWhiteSpace(InvoiceName))
-			return (false, "InvoiceName is required");
+		if (string.IsNullOrWhiteSpace(InvoiceCode))
+			return (false, "InvoiceCode is required");
 
 		if (InvoiceDate == default)
 			return (false, "InvoiceDate is required");
@@ -62,7 +62,7 @@ public class CreateInvoiceDto
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
 			OfficeName = OfficeName,
-			InvoiceName = InvoiceName,
+			InvoiceCode = InvoiceCode,
 			ReservationId = ReservationId,
 			ReservationCode = ReservationCode,
 			InvoiceDate = InvoiceDate,
