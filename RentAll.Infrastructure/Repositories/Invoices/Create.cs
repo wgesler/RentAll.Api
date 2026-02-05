@@ -13,50 +13,63 @@ public partial class InvoiceRepository : IInvoiceRepository
 	public async Task<Invoice> CreateAsync(Invoice invoice)
 	{
 		await using var db = new SqlConnection(_dbConnectionString);
-		var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_Add", new
-		{
-			OrganizationId = invoice.OrganizationId,
-			OfficeId = invoice.OfficeId,
-			OfficeName = invoice.OfficeName,
-			InvoiceCode = invoice.InvoiceCode,
-			ReservationId = invoice.ReservationId,
-			ReservationCode = invoice.ReservationCode,
-			InvoiceDate = invoice.InvoiceDate,
-			DueDate = invoice.DueDate,
-			TotalAmount = invoice.TotalAmount,
-			PaidAmount = invoice.PaidAmount,
-			Notes = invoice.Notes,
-			IsActive = invoice.IsActive,
-			CreatedBy = invoice.CreatedBy
-		});
+		await db.OpenAsync();
+		await using var transaction = await db.BeginTransactionAsync();
 
-		if (response == null || !response.Any())
-			throw new Exception("Invoice not created");
-
-		var i = ConvertEntityToModel(response.FirstOrDefault()!);
-		foreach (var line in invoice.LedgerLines)
+		try
 		{
-			var ll = await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_Add", new
+			var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_Add", new
+			{
+				OrganizationId = invoice.OrganizationId,
+				OfficeId = invoice.OfficeId,
+				OfficeName = invoice.OfficeName,
+				InvoiceCode = invoice.InvoiceCode,
+				ReservationId = invoice.ReservationId,
+				ReservationCode = invoice.ReservationCode,
+				InvoiceDate = invoice.InvoiceDate,
+				DueDate = invoice.DueDate,
+				TotalAmount = invoice.TotalAmount,
+				PaidAmount = invoice.PaidAmount,
+				Notes = invoice.Notes,
+				IsActive = invoice.IsActive,
+				CreatedBy = invoice.CreatedBy
+			}, transaction: transaction);
+
+			if (response == null || !response.Any())
+				throw new Exception("Invoice not created");
+
+			var i = ConvertEntityToModel(response.FirstOrDefault()!);
+			foreach (var line in invoice.LedgerLines)
+			{
+				var ll = await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_Add", new
+				{
+					InvoiceId = i.InvoiceId,
+					LineNumber = line.LineNumber,
+					ReservationId = line.ReservationId,
+					CostCodeId = line.CostCodeId,
+					Amount = line.Amount,
+					Description = line.Description,
+					CreatedBy = invoice.CreatedBy
+				}, transaction: transaction);
+			}
+
+			// Get fully populated invoice
+			var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
 			{
 				InvoiceId = i.InvoiceId,
-				ReservationId = line.ReservationId,
-				CostCodeId = line.CostCodeId,
-				Amount = line.Amount,
-				Description = line.Description,
-				CreatedBy = invoice.CreatedBy
-			});
+				OrganizationId = i.OrganizationId
+			}, transaction: transaction);
+
+			if (res == null || !res.Any())
+				throw new Exception("Invoice not found");
+
+			await transaction.CommitAsync();
+			return ConvertEntityToModel(res.FirstOrDefault()!);
 		}
-
-		// Get fully populated invoice
-		var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
+		catch
 		{
-			InvoiceId = i.InvoiceId,
-			OrganizationId = i.OrganizationId
-		});
-
-		if (res == null || !res.Any())
-			throw new Exception("Invoice not found");
-
-		return ConvertEntityToModel(res.FirstOrDefault()!);
+			await transaction.RollbackAsync();
+			throw;
+		}
 	}
 }

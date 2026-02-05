@@ -28,7 +28,8 @@ public partial class InvoiceRepository : IInvoiceRepository
 		{
 			try
 			{
-				lines = JsonSerializer.Deserialize<List<LedgerLine>>(e.LedgerLines, JsonOptions) ?? new List<LedgerLine>();
+				var entityLines = JsonSerializer.Deserialize<List<LedgerLineEntity>>(e.LedgerLines, JsonOptions) ?? new List<LedgerLineEntity>();
+				lines = entityLines.Select(ConvertLedgerLineEntityToModel).ToList();
 			}
 			catch
 			{
@@ -52,6 +53,24 @@ public partial class InvoiceRepository : IInvoiceRepository
 			Notes = e.Notes,
 			IsActive = e.IsActive,
 			LedgerLines = lines
+		};
+	}
+
+	private LedgerLine ConvertLedgerLineEntityToModel(LedgerLineEntity e)
+	{
+		return new LedgerLine
+		{
+			LedgerLineId = e.LedgerLineId,
+			InvoiceId = e.InvoiceId,
+			LineNumber = e.LineNumber,
+			ReservationId = e.ReservationId,
+			CostCodeId = e.CostCodeId,
+			Amount = e.Amount,
+			Description = e.Description,
+			CreatedOn = e.CreatedOn,
+			CreatedBy = e.CreatedBy,
+			ModifiedOn = e.ModifiedOn,
+			ModifiedBy = e.ModifiedBy
 		};
 	}
 }

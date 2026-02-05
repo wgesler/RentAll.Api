@@ -62,11 +62,12 @@ public partial class InvoiceRepository : IInvoiceRepository
 					await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_Add", new
 					{
 						InvoiceId = invoice.InvoiceId,
+						LineNumber = line.LineNumber,
 						ReservationId = line.ReservationId,
 						CostCodeId = line.CostCodeId,
 						Amount = line.Amount,
 						Description = line.Description,
-						CreatedBy = invoice.ModifiedBy
+						CreatedBy = invoice.CreatedBy
 					}, transaction: transaction);
 				}
 				else if (currentLedgerLineIds.Contains(line.LedgerLineId))
@@ -76,6 +77,7 @@ public partial class InvoiceRepository : IInvoiceRepository
 					{
 						LedgerLineId = line.LedgerLineId,
 						InvoiceId = invoice.InvoiceId,
+						LineNumber = line.LineNumber,
 						ReservationId = line.ReservationId,
 						CostCodeId = line.CostCodeId,
 						Amount = line.Amount,

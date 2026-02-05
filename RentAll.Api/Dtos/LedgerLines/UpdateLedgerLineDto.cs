@@ -6,6 +6,7 @@ public class UpdateLedgerLineDto
 {
 	public Guid LedgerLineId { get; set; }
 	public Guid InvoiceId { get; set; }
+	public int LineNumber { get; set; }
 	public Guid? ReservationId { get; set; }
 	public int CostCodeId { get; set; }
 	public decimal Amount { get; set; }
@@ -31,6 +32,7 @@ public class UpdateLedgerLineDto
 		{
 			LedgerLineId = LedgerLineId,
 			InvoiceId = InvoiceId,
+			LineNumber = LineNumber,
 			ReservationId = ReservationId,
 			CostCodeId = CostCodeId,
 			Amount = Amount,

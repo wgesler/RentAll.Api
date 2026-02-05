@@ -5,6 +5,7 @@ namespace RentAll.Api.Dtos.LedgerLines;
 public class CreateLedgerLineDto
 {
 	public Guid InvoiceId { get; set; }
+	public int LineNumber { get; set; }
 	public Guid? ReservationId { get; set; }
 	public int CostCodeId { get; set; }
 	public decimal Amount { get; set; }
@@ -26,6 +27,7 @@ public class CreateLedgerLineDto
 		return new LedgerLine
 		{
 			InvoiceId = InvoiceId,
+			LineNumber = LineNumber,
 			ReservationId = ReservationId,
 			CostCodeId = CostCodeId,
 			Amount = Amount,
