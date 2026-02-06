@@ -9,6 +9,7 @@ public class ExtraFeeLineResponseDto
 	public string FeeDescription { get; set; } = string.Empty;
 	public decimal FeeAmount { get; set; }
 	public int FeeFrequencyId { get; set; }
+	public int CostCodeId { get; set; }
 
 	public ExtraFeeLineResponseDto(ExtraFeeLine extraFeeLine)
 	{
@@ -17,5 +18,6 @@ public class ExtraFeeLineResponseDto
 		FeeDescription = extraFeeLine.FeeDescription;
 		FeeAmount = extraFeeLine.FeeAmount;
 		FeeFrequencyId = (int)extraFeeLine.FeeFrequency;
+		CostCodeId = extraFeeLine.CostCodeId;
 	}
 }

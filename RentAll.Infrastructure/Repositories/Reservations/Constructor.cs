@@ -87,17 +87,18 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 			};
 		}
 
-		private ExtraFeeLine ConvertExtraFeeLineEntityToModel(ExtraFeeLineEntity e)
+	private ExtraFeeLine ConvertExtraFeeLineEntityToModel(ExtraFeeLineEntity e)
+	{
+		return new ExtraFeeLine
 		{
-			return new ExtraFeeLine
-			{
-				ExtraFeeLineId = e.ExtraFeeLineId,
-				ReservationId = e.ReservationId,
-				FeeDescription = e.FeeDescription,
-				FeeAmount = e.FeeAmount,
-				FeeFrequency = (FrequencyType)e.FeeFrequencyId
-			};
-		}
+			ExtraFeeLineId = e.ExtraFeeLineId,
+			ReservationId = e.ReservationId,
+			FeeDescription = e.FeeDescription,
+			FeeAmount = e.FeeAmount,
+			FeeFrequency = (FrequencyType)e.FeeFrequencyId,
+			CostCodeId = e.CostCodeId
+		};
+	}
 
 		private ReservationList ConvertEntityToModel(ReservationListEntity e)
 		{

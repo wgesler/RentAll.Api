@@ -66,7 +66,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 					ReservationId = reservation.ReservationId,
 					FeeDescription = line.FeeDescription,
 					FeeAmount = line.FeeAmount,
-					FeeFrequencyId = (int)line.FeeFrequency
+					FeeFrequencyId = (int)line.FeeFrequency,
+					CostCodeId = line.CostCodeId
 				});
 			}
 		}

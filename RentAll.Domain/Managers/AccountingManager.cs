@@ -220,7 +220,7 @@ public class AccountingManager : IAccountingManager
 		foreach (var extraFeeLine in reservation.ExtraFeeLines)
 		{ 
 			if(extraFeeLine.FeeFrequency == FrequencyType.OneTime)
-				lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription}", Amount = extraFeeLine.FeeAmount });
+				lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription}", Amount = extraFeeLine.FeeAmount, CostCodeId = extraFeeLine.CostCodeId });
 		}
 	}
 
@@ -292,7 +292,7 @@ public class AccountingManager : IAccountingManager
 		}
 
 		if (fees > 0)
-			lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription} ({fees} times)", Amount = fees * extraFeeLine.FeeAmount });
+			lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription} ({fees} times)", Amount = fees * extraFeeLine.FeeAmount, CostCodeId = extraFeeLine.CostCodeId });
 	}
 
 	#endregion

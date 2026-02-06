@@ -104,14 +104,9 @@ public class CreateReservationDto
 		{
 			foreach (var line in ExtraFeeLines)
 			{
-				if (string.IsNullOrWhiteSpace(line.FeeDescription))
-					return (false, "ExtraFeeLine FeeDescription is required");
-
-				if (line.FeeAmount < 0)
-					return (false, "ExtraFeeLine FeeAmount must be greater than 0");
-
-				if (!Enum.IsDefined(typeof(FrequencyType), line.FeeFrequencyId))
-					return (false, $"Invalid ExtraFeeLine FeeFrequencyId value: {line.FeeFrequencyId}");
+				var (isValid, errorMessage) = line.IsValid();
+				if (!isValid)
+					return (false, $"ExtraFeeLine validation failed: {errorMessage}");
 			}
 		}
 

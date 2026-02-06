@@ -88,7 +88,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 							ReservationId = r.ReservationId,
 							FeeDescription = line.FeeDescription,
 							FeeAmount = line.FeeAmount,
-							FeeFrequencyId = (int)line.FeeFrequency
+							FeeFrequencyId = (int)line.FeeFrequency,
+							CostCodeId = line.CostCodeId
 						}, transaction: transaction);
 					}
 					else if (currentExtraFeeLineIds.Contains(line.ExtraFeeLineId))
@@ -100,7 +101,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 							ReservationId = r.ReservationId,
 							FeeDescription = line.FeeDescription,
 							FeeAmount = line.FeeAmount,
-							FeeFrequencyId = (int)line.FeeFrequency
+							FeeFrequencyId = (int)line.FeeFrequency,
+							CostCodeId = line.CostCodeId
 						}, transaction: transaction);
 					}
 				}

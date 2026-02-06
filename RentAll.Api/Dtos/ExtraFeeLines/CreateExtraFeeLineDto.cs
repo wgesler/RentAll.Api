@@ -9,6 +9,7 @@ public class CreateExtraFeeLineDto
 	public string FeeDescription { get; set; } = string.Empty;
 	public decimal FeeAmount { get; set; }
 	public int FeeFrequencyId { get; set; }
+	public int CostCodeId { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
 	{
@@ -24,6 +25,9 @@ public class CreateExtraFeeLineDto
 		if (!Enum.IsDefined(typeof(FrequencyType), FeeFrequencyId))
 			return (false, $"Invalid FeeFrequencyId value: {FeeFrequencyId}");
 
+		if (CostCodeId <= 0)
+			return (false, "CostCodeId is required");
+
 		return (true, null);
 	}
 
@@ -34,7 +38,8 @@ public class CreateExtraFeeLineDto
 			ReservationId = ReservationId,
 			FeeDescription = FeeDescription,
 			FeeAmount = FeeAmount,
-			FeeFrequency = (FrequencyType)FeeFrequencyId
+			FeeFrequency = (FrequencyType)FeeFrequencyId,
+			CostCodeId = CostCodeId
 		};
 	}
 }

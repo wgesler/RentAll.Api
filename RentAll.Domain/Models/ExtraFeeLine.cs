@@ -9,4 +9,5 @@ public class ExtraFeeLine
 	public string FeeDescription { get; set; } = string.Empty;
 	public decimal FeeAmount { get; set; }
 	public FrequencyType FeeFrequency { get; set; }
+	public int CostCodeId { get; set; }
 }
