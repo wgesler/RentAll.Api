@@ -2,6 +2,7 @@ using System.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -10,7 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<Property> CreateAsync(Property property)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-			await db.DapperProcExecuteAsync("Property.Property_Add", new
+			var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_Add", new
 			{
 				OrganizationId = property.OrganizationId,
 				PropertyCode = property.PropertyCode,
@@ -104,12 +105,10 @@ namespace RentAll.Infrastructure.Repositories.Properties
 				CreatedBy = property.CreatedBy
 			});
 
-            // Retrieve the created property by PropertyCode
-            var createdProperty = await GetByPropertyCodeAsync(property.PropertyCode, property.OrganizationId);
-            if (createdProperty == null)
-                throw new Exception("Property not created");
+			if (res == null || !res.Any())
+				throw new Exception("Property not found");
 
-            return createdProperty;
-        }
-    }
+			return ConvertEntityToModel(res.FirstOrDefault()!);
+		}
+	}
 }
