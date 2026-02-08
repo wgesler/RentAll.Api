@@ -7,7 +7,7 @@ using RentAll.Domain.Interfaces.Services;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("organization")]
+	[Route("api/organization")]
 	[Authorize]
 	public partial class OrganizationController : BaseController
 	{

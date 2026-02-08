@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Managers;
@@ -6,7 +6,7 @@ using RentAll.Domain.Managers;
 namespace RentAll.Api.Controllers;
 
 [ApiController]
-[Route("auth")]
+[Route("api/auth")]
 [Authorize]
 public partial class AuthController : ControllerBase
 {

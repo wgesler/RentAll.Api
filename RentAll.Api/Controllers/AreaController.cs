@@ -6,7 +6,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("area")]
+	[Route("api/area")]
 	[Authorize]
 	public partial class AreaController : BaseController
 	{

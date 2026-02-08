@@ -5,7 +5,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("agent")]
+	[Route("api/agent")]
 	[Authorize]
 	public partial class AgentController : BaseController
 	{

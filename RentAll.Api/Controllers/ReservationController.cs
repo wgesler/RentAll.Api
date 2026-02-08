@@ -7,7 +7,7 @@ namespace RentAll.Api.Controllers
 {
 
 	[ApiController]
-	[Route("reservation")]
+	[Route("api/reservation")]
 	[Authorize]
 	public partial class ReservationController : BaseController
 	{
