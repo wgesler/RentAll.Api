@@ -6,7 +6,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("region")]
+	[Route("api/region")]
 	[Authorize]
 	public partial class RegionController : BaseController
 	{

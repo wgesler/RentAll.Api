@@ -5,7 +5,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("costcode")]
+	[Route("api/costcode")]
 	[Authorize]
 	public partial class CostCodeController : BaseController
 	{

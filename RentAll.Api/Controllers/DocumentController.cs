@@ -6,7 +6,7 @@ using RentAll.Domain.Interfaces.Services;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("document")]
+	[Route("api/document")]
 	[Authorize]
 	public partial class DocumentController : BaseController
 	{

@@ -5,7 +5,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("color")]
+	[Route("api/color")]
 	[Authorize]
 	public partial class ColorController : BaseController
 	{

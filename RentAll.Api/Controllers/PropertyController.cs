@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("property")]
+	[Route("api/property")]
 	[Authorize]
 	public partial class PropertyController : BaseController
 	{

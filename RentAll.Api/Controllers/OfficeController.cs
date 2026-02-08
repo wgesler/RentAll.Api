@@ -7,7 +7,7 @@ using RentAll.Domain.Interfaces.Services;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("office")]
+	[Route("api/office")]
 	[Authorize]
 	public partial class OfficeController : BaseController
 	{

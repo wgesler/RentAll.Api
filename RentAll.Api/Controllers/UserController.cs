@@ -5,7 +5,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("user")]
+	[Route("api/user")]
 	//[Authorize]
 	public partial class UserController : BaseController
 	{

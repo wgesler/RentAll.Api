@@ -5,7 +5,7 @@ using RentAll.Domain.Interfaces.Repositories;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("propertyhtml")]
+	[Route("api/propertyhtml")]
 	[Authorize]
 	public partial class PropertyHtmlController : BaseController
 	{

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
@@ -8,7 +8,7 @@ using RentAll.Domain.Interfaces.Services;
 namespace RentAll.Api.Controllers
 {
 	[ApiController]
-	[Route("common")]
+	[Route("api/common")]
 	[AllowAnonymous]
 	public partial class CommonController : BaseController
 	{
