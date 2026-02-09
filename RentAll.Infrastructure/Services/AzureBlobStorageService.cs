@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -26,22 +27,12 @@ public class AzureBlobStorageService : IFileService
 
 	public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
 	{
-		// Handle base64 encoded content
-		byte[] fileBytes;
-		if (fileContent.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-		{
-			// Data URL format: data:image/png;base64,...
-			var base64Data = fileContent.Split(',')[1];
-			fileBytes = Convert.FromBase64String(base64Data);
-		}
-		else
-		{
-			// Assume it's already base64
-			fileBytes = Convert.FromBase64String(fileContent);
-		}
+		var fileBytes = DecodeBase64(fileContent);
 
+		// Create stream and ensure it stays alive during async upload
 		using var stream = new MemoryStream(fileBytes);
-		return await SaveLogoAsync(organizationId, officeId, stream, fileName, contentType, entityType);
+		var result = await SaveLogoAsync(organizationId, officeId, stream, fileName, contentType, entityType);
+		return result;
 	}
 
 	public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType)
@@ -58,36 +49,47 @@ public class AzureBlobStorageService : IFileService
 
 		try
 		{
-			// Use organization GUID and office ID as container name
-			var containerName = (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+			var containerName = BuildContainerName(organizationId, officeId);
 			var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-			await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
-			// Convert EntityType to lowercase string for filename
+			await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 			var typeString = entityType.ToString().ToLowerInvariant();
 
-			// Generate unique filename and store in logos folder
+			// Keep versioned logos (new URL each time)
 			var uniqueFileName = $"{typeString}-{Guid.NewGuid()}{fileExtension}";
 			var blobName = $"logos/{uniqueFileName}";
 			var blobClient = containerClient.GetBlobClient(blobName);
 
-			// Upload file
-			fileStream.Position = 0;
-			await blobClient.UploadAsync(fileStream, new BlobUploadOptions
+			// Read stream into a fresh MemoryStream to avoid disposal issues during async upload
+			MemoryStream uploadStream;
+			if (fileStream is MemoryStream ms && ms.CanRead && ms.CanSeek)
 			{
-				HttpHeaders = new BlobHttpHeaders
-				{
-					ContentType = contentType
-				}
-			});
-
-			// Return URL or path
-			if (!string.IsNullOrEmpty(_storageSettings.AzureBlobBaseUrl))
+				// Reset position and create a new stream from the bytes to avoid disposal issues
+				ms.Position = 0;
+				var bytes = ms.ToArray();
+				uploadStream = new MemoryStream(bytes, false); // writable: false since we won't modify it
+			}
+			else
 			{
-				return $"{_storageSettings.AzureBlobBaseUrl.TrimEnd('/')}/{containerName}/{blobName}";
+				// For other stream types, copy to a new memory stream
+				if (fileStream.CanSeek) fileStream.Position = 0;
+				uploadStream = new MemoryStream();
+				await fileStream.CopyToAsync(uploadStream);
+				uploadStream.Position = 0; // Reset for reading
 			}
 
-			return blobClient.Uri.ToString();
+			try
+			{
+				// Upload using the memory stream - it will be disposed after upload completes
+				await blobClient.UploadAsync(uploadStream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = contentType } });
+			}
+			finally
+			{
+				// Ensure stream is disposed after upload
+				await uploadStream.DisposeAsync();
+			}
+
+			return BuildUrl(containerName, blobName, blobClient.Uri);
 		}
 		catch (Exception ex)
 		{
@@ -103,8 +105,7 @@ public class AzureBlobStorageService : IFileService
 
 		try
 		{
-			// Extract blob name from URL or path
-			var containerName = (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+			var containerName = BuildContainerName(organizationId, officeId);
 			var blobName = ExtractBlobName(filePath, containerName, "logos");
 			if (string.IsNullOrEmpty(blobName))
 				return false;
@@ -128,8 +129,7 @@ public class AzureBlobStorageService : IFileService
 
 		try
 		{
-			// Extract blob name from URL or path
-			var containerName = (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+			var containerName = BuildContainerName(organizationId, officeId);
 			var blobName = ExtractBlobName(filePath, containerName, "logos");
 			if (string.IsNullOrEmpty(blobName))
 				return null;
@@ -140,23 +140,19 @@ public class AzureBlobStorageService : IFileService
 			if (!await blobClient.ExistsAsync())
 				return null;
 
-			// Download blob
 			var downloadResult = await blobClient.DownloadContentAsync();
 			var fileBytes = downloadResult.Value.Content.ToArray();
 			var base64Content = Convert.ToBase64String(fileBytes);
 
-			// Get content type from blob properties
 			var properties = await blobClient.GetPropertiesAsync();
-			var contentType = properties.Value.ContentType ?? "application/octet-stream";
-
-			var fileName = Path.GetFileName(blobName);
+			var ct = properties.Value.ContentType ?? "application/octet-stream";
 
 			return new FileDetails
 			{
-				FileName = fileName,
-				ContentType = contentType,
+				FileName = Path.GetFileName(blobName),
+				ContentType = ct,
 				File = base64Content,
-				DataUrl = $"data:{contentType};base64,{base64Content}"
+				DataUrl = $"data:{ct};base64,{base64Content}"
 			};
 		}
 		catch (Exception ex)
@@ -168,33 +164,21 @@ public class AzureBlobStorageService : IFileService
 
 	public async Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, DocumentType documentType)
 	{
-		// Handle base64 encoded content
-		byte[] fileBytes;
-		if (fileContent.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-		{
-			// Data URL format: data:application/pdf;base64,...
-			var base64Data = fileContent.Split(',')[1];
-			fileBytes = Convert.FromBase64String(base64Data);
-		}
-		else
-		{
-			// Assume it's already base64
-			fileBytes = Convert.FromBase64String(fileContent);
-		}
+		var fileBytes = DecodeBase64(fileContent);
 
+		// Create stream and ensure it stays alive during async upload
 		using var stream = new MemoryStream(fileBytes);
-		return await SaveDocumentAsync(organizationId, officeId, stream, fileName, contentType, documentType);
+		var result = await SaveDocumentAsync(organizationId, officeId, stream, fileName, contentType, documentType);
+		return result;
 	}
 
 	public async Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, DocumentType documentType)
 	{
-		// Validate file type
 		var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt" };
 		var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
 		if (!allowedExtensions.Contains(fileExtension))
 			throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
 
-		// Validate content type
 		var allowedContentTypes = new[]
 		{
 			"application/pdf",
@@ -209,34 +193,46 @@ public class AzureBlobStorageService : IFileService
 
 		try
 		{
-			// Use organization GUID and office ID as container name
-			var containerName = (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+			var containerName = BuildContainerName(organizationId, officeId);
 			var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-			await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
 
-			// Generate unique filename and store in documents/{documentType} folder
+			await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+
 			var documentTypeFolder = documentType.ToString().ToLowerInvariant();
 			var uniqueFileName = $"{documentTypeFolder}-{Guid.NewGuid()}{fileExtension}";
 			var blobName = $"documents/{documentTypeFolder}/{uniqueFileName}";
 			var blobClient = containerClient.GetBlobClient(blobName);
 
-			// Upload file
-			fileStream.Position = 0;
-			await blobClient.UploadAsync(fileStream, new BlobUploadOptions
+			// Read stream into a fresh MemoryStream to avoid disposal issues during async upload
+			MemoryStream uploadStream;
+			if (fileStream is MemoryStream ms && ms.CanRead && ms.CanSeek)
 			{
-				HttpHeaders = new BlobHttpHeaders
-				{
-					ContentType = contentType
-				}
-			});
-
-			// Return URL or path
-			if (!string.IsNullOrEmpty(_storageSettings.AzureBlobBaseUrl))
+				// Reset position and create a new stream from the bytes to avoid disposal issues
+				ms.Position = 0;
+				var bytes = ms.ToArray();
+				uploadStream = new MemoryStream(bytes, false); // writable: false since we won't modify it
+			}
+			else
 			{
-				return $"{_storageSettings.AzureBlobBaseUrl.TrimEnd('/')}/{containerName}/{blobName}";
+				// For other stream types, copy to a new memory stream
+				if (fileStream.CanSeek) fileStream.Position = 0;
+				uploadStream = new MemoryStream();
+				await fileStream.CopyToAsync(uploadStream);
+				uploadStream.Position = 0; // Reset for reading
 			}
 
-			return blobClient.Uri.ToString();
+			try
+			{
+				// Upload using the memory stream - it will be disposed after upload completes
+				await blobClient.UploadAsync(uploadStream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = contentType } });
+			}
+			finally
+			{
+				// Ensure stream is disposed after upload
+				await uploadStream.DisposeAsync();
+			}
+
+			return BuildUrl(containerName, blobName, blobClient.Uri);
 		}
 		catch (Exception ex)
 		{
@@ -252,8 +248,7 @@ public class AzureBlobStorageService : IFileService
 
 		try
 		{
-			// Extract blob name from URL or path
-			var containerName = (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+			var containerName = BuildContainerName(organizationId, officeId);
 			var blobName = ExtractBlobNameFromDocumentPath(filePath, containerName);
 			if (string.IsNullOrEmpty(blobName))
 				return false;
@@ -277,8 +272,7 @@ public class AzureBlobStorageService : IFileService
 
 		try
 		{
-			// Extract blob name from URL or path
-			var containerName = (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+			var containerName = BuildContainerName(organizationId, officeId);
 			var blobName = ExtractBlobNameFromDocumentPath(filePath, containerName);
 			if (string.IsNullOrEmpty(blobName))
 				return null;
@@ -289,23 +283,19 @@ public class AzureBlobStorageService : IFileService
 			if (!await blobClient.ExistsAsync())
 				return null;
 
-			// Download blob
 			var downloadResult = await blobClient.DownloadContentAsync();
 			var fileBytes = downloadResult.Value.Content.ToArray();
 			var base64Content = Convert.ToBase64String(fileBytes);
 
-			// Get content type from blob properties
 			var properties = await blobClient.GetPropertiesAsync();
-			var contentType = properties.Value.ContentType ?? "application/octet-stream";
-
-			var fileName = Path.GetFileName(blobName);
+			var ct = properties.Value.ContentType ?? "application/octet-stream";
 
 			return new FileDetails
 			{
-				FileName = fileName,
-				ContentType = contentType,
+				FileName = Path.GetFileName(blobName),
+				ContentType = ct,
 				File = base64Content,
-				DataUrl = $"data:{contentType};base64,{base64Content}"
+				DataUrl = $"data:{ct};base64,{base64Content}"
 			};
 		}
 		catch (Exception ex)
@@ -315,6 +305,40 @@ public class AzureBlobStorageService : IFileService
 		}
 	}
 
+	private static string BuildContainerName(Guid organizationId, int? officeId)
+		=> (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+
+	private static string BuildUrl(string containerName, string blobName, Uri fallbackUri, string? baseUrl = null)
+	{
+		if (!string.IsNullOrWhiteSpace(baseUrl))
+			return $"{baseUrl.TrimEnd('/')}/{containerName}/{blobName}";
+
+		return fallbackUri.ToString();
+	}
+
+	private string BuildUrl(string containerName, string blobName, Uri fallbackUri)
+		=> BuildUrl(containerName, blobName, fallbackUri, _storageSettings.AzureBlobBaseUrl);
+
+	private static byte[] DecodeBase64(string fileContent)
+	{
+		if (string.IsNullOrWhiteSpace(fileContent))
+			throw new ArgumentException("File content is empty.");
+
+		// Handle: data:<mime>;base64,<data>
+		if (fileContent.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+		{
+			var comma = fileContent.IndexOf(',');
+			if (comma < 0 || comma == fileContent.Length - 1)
+				throw new ArgumentException("Invalid data URL format.");
+
+			var base64Data = fileContent[(comma + 1)..];
+			return Convert.FromBase64String(base64Data);
+		}
+
+		// Assume raw base64
+		return Convert.FromBase64String(fileContent);
+	}
+
 	private string? ExtractBlobName(string filePath, string containerName, string folderName)
 	{
 		if (string.IsNullOrWhiteSpace(filePath))
@@ -322,42 +346,32 @@ public class AzureBlobStorageService : IFileService
 
 		var expectedPrefix = $"{folderName}/";
 
-		// Handle full URL (e.g., https://account.blob.core.windows.net/{containerName}/logos/filename)
 		if (Uri.TryCreate(filePath, UriKind.Absolute, out var uri))
 		{
 			var pathParts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-			
-			// Try exact container name match first
-			if (pathParts.Length >= 3 && pathParts[0].Equals(containerName, StringComparison.OrdinalIgnoreCase) 
+
+			// Exact container match: {containerName}/{folderName}/...
+			if (pathParts.Length >= 3
+				&& pathParts[0].Equals(containerName, StringComparison.OrdinalIgnoreCase)
 				&& pathParts[1].Equals(folderName, StringComparison.OrdinalIgnoreCase))
 			{
-				return string.Join("/", pathParts.Skip(1)); // Return "logos/filename"
+				return string.Join("/", pathParts.Skip(1));
 			}
-			
-			// Fallback: try to find the folder name in the path (in case container name format changed)
-			// Look for the folder name (e.g., "logos") in the path parts
-			for (int i = 0; i < pathParts.Length - 1; i++)
+
+			// Fallback: find folder name somewhere in path
+			for (int i = 0; i < pathParts.Length; i++)
 			{
 				if (pathParts[i].Equals(folderName, StringComparison.OrdinalIgnoreCase))
-				{
-					// Found the folder name, return everything from this point forward
 					return string.Join("/", pathParts.Skip(i));
-				}
 			}
 		}
 
-		// Handle relative path (e.g., /{containerName}/logos/filename)
 		var normalizedPath = filePath.TrimStart('/').TrimEnd('/');
 		if (normalizedPath.StartsWith($"{containerName}/{folderName}/", StringComparison.OrdinalIgnoreCase))
-		{
-			return normalizedPath.Substring(containerName.Length + 1); // Skip container name and leading slash
-		}
+			return normalizedPath.Substring(containerName.Length + 1);
 
-		// Handle path without container name (e.g., logos/filename) - assume it's for this container
 		if (normalizedPath.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
-		{
 			return normalizedPath;
-		}
 
 		return null;
 	}
@@ -367,30 +381,23 @@ public class AzureBlobStorageService : IFileService
 		if (string.IsNullOrWhiteSpace(filePath))
 			return null;
 
-		// Handle full URL (e.g., https://account.blob.core.windows.net/{containerName}/documents/type/filename)
 		if (Uri.TryCreate(filePath, UriKind.Absolute, out var uri))
 		{
 			var pathParts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-			// Path format: {containerName}/documents/{documentType}/{filename}
-			if (pathParts.Length >= 4 && pathParts[0].Equals(containerName, StringComparison.OrdinalIgnoreCase)
+			if (pathParts.Length >= 4
+				&& pathParts[0].Equals(containerName, StringComparison.OrdinalIgnoreCase)
 				&& pathParts[1].Equals("documents", StringComparison.OrdinalIgnoreCase))
 			{
-				return string.Join("/", pathParts.Skip(1)); // Return "documents/{documentType}/{filename}"
+				return string.Join("/", pathParts.Skip(1));
 			}
 		}
 
-		// Handle relative path (e.g., /{containerName}/documents/type/filename)
-		var normalizedPath = filePath.TrimStart('/');
+		var normalizedPath = filePath.TrimStart('/').TrimEnd('/');
 		if (normalizedPath.StartsWith($"{containerName}/documents/", StringComparison.OrdinalIgnoreCase))
-		{
-			return normalizedPath.Substring(containerName.Length + 1); // Skip container name and leading slash
-		}
+			return normalizedPath.Substring(containerName.Length + 1);
 
-		// Handle path without container name (e.g., documents/type/filename) - assume it's for this container
 		if (normalizedPath.StartsWith("documents/", StringComparison.OrdinalIgnoreCase))
-		{
 			return normalizedPath;
-		}
 
 		return null;
 	}

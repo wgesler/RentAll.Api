@@ -75,7 +75,6 @@ namespace RentAll.Api.Controllers
 						catch (Exception deleteEx)
 						{
 							_logger.LogWarning(deleteEx, "Failed to delete logo during update: {LogoPath}", existingOffice.LogoPath);
-							// Continue with setting LogoPath to null even if delete fails
 						}
 						office.LogoPath = null;
 					}

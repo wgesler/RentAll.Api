@@ -116,27 +116,29 @@ if (string.Equals(storageProvider, "AzureBlob", StringComparison.OrdinalIgnoreCa
 	// Read configuration directly to avoid scoped service resolution in singleton factory
 	var connectionString = storageConfig["AzureBlobConnectionString"];
 	var baseUrl = storageConfig["AzureBlobBaseUrl"];
+	var accountName = storageConfig["AzureBlobAccountName"];
 	
 	builder.Services.AddSingleton(sp =>
 	{
-		// Use connection string if provided, otherwise use managed identity
+		// Prefer connection string locally (or whenever provided) - avoids DefaultAzureCredential issues
 		if (!string.IsNullOrWhiteSpace(connectionString))
 		{
-			// Use connection string authentication
-			var blobServiceClient = new BlobServiceClient(connectionString);
-			return blobServiceClient;
+			return new BlobServiceClient(connectionString);
 		}
-		else
-		{
-			// Use managed identity authentication with BaseUrl
-			if (string.IsNullOrWhiteSpace(baseUrl))
-				throw new InvalidOperationException("AzureBlobBaseUrl is required when using managed identity authentication.");
 
-			var blobUri = new Uri(baseUrl);
-			var credential = new DefaultAzureCredential();
-			var blobServiceClient = new BlobServiceClient(blobUri, credential);
-			return blobServiceClient;
+		// Otherwise fall back to managed identity / DefaultAzureCredential
+		// Extract account name from BaseUrl if not explicitly provided
+		if (string.IsNullOrWhiteSpace(accountName) && !string.IsNullOrWhiteSpace(baseUrl))
+		{
+			var uri = new Uri(baseUrl);
+			accountName = uri.Host.Split('.')[0];
 		}
+
+		if (string.IsNullOrWhiteSpace(accountName))
+			throw new InvalidOperationException("AzureBlobAccountName or AzureBlobBaseUrl is required when using managed identity.");
+
+		var blobUri = new Uri($"https://{accountName}.blob.core.windows.net");
+		return new BlobServiceClient(blobUri, new DefaultAzureCredential());
 	});
 
 	// Register Azure Blob Storage Service
