@@ -1,4 +1,4 @@
-﻿using RentAll.Domain.Enums;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Properties;
@@ -66,6 +66,9 @@ public class CreatePropertyDto
 	public bool Security { get; set; }
 	public bool Gated { get; set; }
 	public bool PetsAllowed { get; set; }
+	public bool DogsOkay { get; set; }
+	public bool CatsOkay { get; set; }
+	public string PoundLimit { get; set; } = string.Empty;
 	public bool Smoking { get; set; }
 	public bool Parking { get; set; }
 	public string? ParkingNotes { get; set; }
@@ -214,6 +217,9 @@ public class CreatePropertyDto
 			Security = Security,
 			Gated = Gated,
 			PetsAllowed = PetsAllowed,
+			DogsOkay = DogsOkay,
+			CatsOkay = CatsOkay,
+			PoundLimit = PoundLimit ?? string.Empty,
 			Smoking = Smoking,
 			Parking = Parking,
 			ParkingNotes = ParkingNotes,

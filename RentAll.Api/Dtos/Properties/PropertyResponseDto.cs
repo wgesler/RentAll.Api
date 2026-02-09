@@ -67,6 +67,9 @@ public class PropertyResponseDto
 	public bool Security { get; set; }
 	public bool Gated { get; set; }
 	public bool PetsAllowed { get; set; }
+	public bool DogsOkay { get; set; }
+	public bool CatsOkay { get; set; }
+	public string PoundLimit { get; set; } = string.Empty;
 	public bool Smoking { get; set; }
 	public bool Parking { get; set; }
 	public string? ParkingNotes { get; set; }
@@ -178,6 +181,9 @@ public class PropertyResponseDto
 		Security = property.Security;
 		Gated = property.Gated;
 		PetsAllowed = property.PetsAllowed;
+		DogsOkay = property.DogsOkay;
+		CatsOkay = property.CatsOkay;
+		PoundLimit = property.PoundLimit;
 		Smoking = property.Smoking;
 		Parking = property.Parking;
 		ParkingNotes = property.ParkingNotes;
