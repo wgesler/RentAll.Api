@@ -40,10 +40,10 @@ namespace RentAll.Api.Controllers
 					{
 						// Delete old logo if it exists
 						if (!string.IsNullOrWhiteSpace(existing.LogoPath))
-							await _fileService.DeleteLogoAsync(existing.LogoPath);
+							await _fileService.DeleteLogoAsync(existing.OrganizationId, null, existing.LogoPath);
 
 						// Save new logo
-						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						var logoPath = await _fileService.SaveLogoAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
 						model.LogoPath = logoPath;
 					}
 					catch (Exception ex)
@@ -57,7 +57,7 @@ namespace RentAll.Api.Controllers
 					// LogoPath is explicitly null - delete the logo
 					if (!string.IsNullOrWhiteSpace(existing.LogoPath))
 					{
-						await _fileService.DeleteLogoAsync(existing.LogoPath);
+						await _fileService.DeleteLogoAsync(existing.OrganizationId, null, existing.LogoPath);
 						model.LogoPath = null;
 					}
 				}
@@ -71,7 +71,7 @@ namespace RentAll.Api.Controllers
 				var response = new OrganizationResponseDto(updated);
 				if (!string.IsNullOrWhiteSpace(updated.LogoPath))
 				{
-					response.FileDetails = await _fileService.GetFileDetailsAsync(updated.LogoPath);
+					response.FileDetails = await _fileService.GetFileDetailsAsync(updated.OrganizationId, null, updated.LogoPath);
 				}
 				return Ok(response);
 			}

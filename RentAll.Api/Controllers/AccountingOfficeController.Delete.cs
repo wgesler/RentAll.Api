@@ -25,7 +25,7 @@ namespace RentAll.Api.Controllers
 				// Delete logo if it exists
 				if (!string.IsNullOrWhiteSpace(existingAccountingOffice.LogoPath))
 				{
-					await _fileService.DeleteLogoAsync(existingAccountingOffice.LogoPath);
+					await _fileService.DeleteLogoAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, existingAccountingOffice.LogoPath);
 				}
 
 				await _accountingOfficeRepository.DeleteAsync(CurrentOrganizationId, officeId);

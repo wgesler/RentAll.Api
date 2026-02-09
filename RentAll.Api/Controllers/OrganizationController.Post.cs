@@ -23,16 +23,20 @@ namespace RentAll.Api.Controllers
 
 			try
 			{
+				// Generate OrganizationId first so we can use it for file storage
+				var organizationId = Guid.NewGuid();
+				
 				// Get a new organization code
 				var code = await _organizationManager.GenerateEntityCodeAsync();
 				var model = dto.ToModel(code, CurrentUser);
+				model.OrganizationId = organizationId;
 
 				// Handle logo file upload if provided
 				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
 				{
 					try
 					{
-						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						var logoPath = await _fileService.SaveLogoAsync(organizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
 						model.LogoPath = logoPath;
 					}
 					catch (Exception ex)
@@ -46,7 +50,7 @@ namespace RentAll.Api.Controllers
 				var response = new OrganizationResponseDto(created);
 				if (!string.IsNullOrWhiteSpace(created.LogoPath))
 				{
-					response.FileDetails = await _fileService.GetFileDetailsAsync(created.LogoPath);
+					response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, null, created.LogoPath);
 				}
 				return CreatedAtAction(nameof(GetById), new { id = created.OrganizationId }, response);
 			}

@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new DocumentResponseDto(document);
 					if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.DocumentPath);
+						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
 
 					response.Add(dto);
 				}
@@ -48,7 +48,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new DocumentResponseDto(document);
 					if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.DocumentPath);
+						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
 
 					response.Add(dto);
 				}
@@ -80,7 +80,7 @@ namespace RentAll.Api.Controllers
 
 				var response = new DocumentResponseDto(document);
 				if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-					response.FileDetails = await _fileService.GetDocumentDetailsAsync(document.DocumentPath);
+					response.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
 
 				return Ok(response);
 			}
@@ -110,7 +110,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new DocumentResponseDto(document);
 					if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.DocumentPath);
+						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
 
 					response.Add(dto);
 				}
@@ -139,7 +139,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new DocumentResponseDto(document);
 					if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.DocumentPath);
+						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
 
 					response.Add(dto);
 				}

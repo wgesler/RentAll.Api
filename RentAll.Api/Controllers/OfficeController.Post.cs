@@ -33,7 +33,7 @@ namespace RentAll.Api.Controllers
 				{
 					try
 					{
-						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						var logoPath = await _fileService.SaveLogoAsync(CurrentOrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
 						office.LogoPath = logoPath;
 					}
 					catch (Exception ex)
@@ -47,7 +47,7 @@ namespace RentAll.Api.Controllers
 
 				var response = new OfficeResponseDto(createdOffice);
 				if (!string.IsNullOrWhiteSpace(createdOffice.LogoPath))
-					response.FileDetails = await _fileService.GetFileDetailsAsync(createdOffice.LogoPath);
+					response.FileDetails = await _fileService.GetFileDetailsAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath);
 
 				return CreatedAtAction(nameof(GetById), new { officeId = createdOffice.OfficeId }, response);
 			}

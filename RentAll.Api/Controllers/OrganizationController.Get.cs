@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new OrganizationResponseDto(org);
 					if (!string.IsNullOrWhiteSpace(org.LogoPath))
-						dto.FileDetails = await _fileService.GetFileDetailsAsync(org.LogoPath);
+						dto.FileDetails = await _fileService.GetFileDetailsAsync(org.OrganizationId, null, org.LogoPath);
 
 					response.Add(dto);
 				}
@@ -52,7 +52,7 @@ namespace RentAll.Api.Controllers
 
 				var response = new OrganizationResponseDto(org);
 				if (!string.IsNullOrWhiteSpace(org.LogoPath))
-					response.FileDetails = await _fileService.GetFileDetailsAsync(org.LogoPath);
+					response.FileDetails = await _fileService.GetFileDetailsAsync(org.OrganizationId, null, org.LogoPath);
 
 				return Ok(response);
 			}

@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new AccountingOfficeResponseDto(accountingOffice);
 					if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
-						dto.FileDetails = await _fileService.GetFileDetailsAsync(accountingOffice.LogoPath);
+						dto.FileDetails = await _fileService.GetFileDetailsAsync(accountingOffice.OrganizationId, accountingOffice.OfficeId, accountingOffice.LogoPath);
 
 					response.Add(dto);
 				}
@@ -52,7 +52,7 @@ namespace RentAll.Api.Controllers
 
 				var response = new AccountingOfficeResponseDto(accountingOffice);
 				if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
-					response.FileDetails = await _fileService.GetFileDetailsAsync(accountingOffice.LogoPath);
+					response.FileDetails = await _fileService.GetFileDetailsAsync(accountingOffice.OrganizationId, accountingOffice.OfficeId, accountingOffice.LogoPath);
 
 				return Ok(response);
 			}

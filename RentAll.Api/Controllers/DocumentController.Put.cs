@@ -36,10 +36,12 @@ namespace RentAll.Api.Controllers
 					{
 						// Delete old document if it exists
 						if (!string.IsNullOrWhiteSpace(existing.DocumentPath))
-							await _fileService.DeleteDocumentAsync(existing.DocumentPath);
+							await _fileService.DeleteDocumentAsync(existing.OrganizationId, existing.OfficeId, existing.DocumentPath);
 
 						// Save new document
 						var documentPath = await _fileService.SaveDocumentAsync(
+							existing.OrganizationId,
+							existing.OfficeId,
 							dto.FileDetails.File,
 							dto.FileDetails.FileName,
 							dto.FileDetails.ContentType,
@@ -57,7 +59,7 @@ namespace RentAll.Api.Controllers
 				var response = new DocumentResponseDto(updated);
 				if (!string.IsNullOrWhiteSpace(updated.DocumentPath))
 				{
-					response.FileDetails = await _fileService.GetDocumentDetailsAsync(updated.DocumentPath);
+					response.FileDetails = await _fileService.GetDocumentDetailsAsync(updated.OrganizationId, updated.OfficeId, updated.DocumentPath);
 				}
 				return Ok(response);
 			}

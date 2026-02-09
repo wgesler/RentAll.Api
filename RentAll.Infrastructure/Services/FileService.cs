@@ -16,7 +16,7 @@ public class FileService : IFileService
 		_logger = logger;
 	}
 
-	public async Task<string> SaveLogoAsync(string fileContent, string fileName, string contentType, EntityType entityType)
+	public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
 	{
 		// Handle base64 encoded content
 		byte[] fileBytes;
@@ -33,10 +33,10 @@ public class FileService : IFileService
 		}
 
 		using var stream = new MemoryStream(fileBytes);
-		return await SaveLogoAsync(stream, fileName, contentType, entityType);
+		return await SaveLogoAsync(organizationId, officeId, stream, fileName, contentType, entityType);
 	}
 
-	public async Task<string> SaveLogoAsync(Stream fileStream, string fileName, string contentType, EntityType entityType)
+	public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType)
 	{
 		// Validate file type
 		var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
@@ -48,8 +48,9 @@ public class FileService : IFileService
 		if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
 			throw new ArgumentException("Content type must be an image type");
 
-		// Create directory if it doesn't exist
-		var uploadsPath = Path.Combine(_wwwRootPath, "images", "logos");
+		// Create directory if it doesn't exist - organized by organization GUID and Office ID
+		var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
+		var uploadsPath = Path.Combine(_wwwRootPath, containerName, "logos");
 		Directory.CreateDirectory(uploadsPath);
 
 		// Convert EntityType to lowercase string for filename
@@ -66,18 +67,20 @@ public class FileService : IFileService
 		}
 
 		// Return relative path
-		return $"/images/logos/{uniqueFileName}";
+		return $"/{containerName}/logos/{uniqueFileName}";
 	}
 
-	public Task<bool> DeleteLogoAsync(string filePath)
+	public Task<bool> DeleteLogoAsync(Guid organizationId, int? officeId, string filePath)
 	{
 		if (string.IsNullOrWhiteSpace(filePath))
 			return Task.FromResult(false);
 
-		// Security: Ensure path is within wwwroot/images/logos
-		if (!filePath.StartsWith("/images/logos/", StringComparison.OrdinalIgnoreCase))
+		// Security: Ensure path is within the organization/office's logos directory
+		var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
+		var expectedPathPrefix = $"/{containerName}/logos/";
+		if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
 		{
-			_logger.LogWarning("Attempted to delete file outside allowed directory: {FilePath}", filePath);
+			_logger.LogWarning("Attempted to delete file outside allowed directory: {FilePath} for organization {OrganizationId}, office {OfficeId}", filePath, organizationId, officeId);
 			return Task.FromResult(false);
 		}
 
@@ -102,15 +105,17 @@ public class FileService : IFileService
 		}
 	}
 
-	public async Task<FileDetails?> GetFileDetailsAsync(string filePath)
+	public async Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, int? officeId, string filePath)
 	{
 		if (string.IsNullOrWhiteSpace(filePath))
 			return null;
 
-		// Security: Ensure path is within wwwroot/images/logos
-		if (!filePath.StartsWith("/images/logos/", StringComparison.OrdinalIgnoreCase))
+		// Security: Ensure path is within the organization/office's logos directory
+		var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
+		var expectedPathPrefix = $"/{containerName}/logos/";
+		if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
 		{
-			_logger.LogWarning("Attempted to read file outside allowed directory: {FilePath}", filePath);
+			_logger.LogWarning("Attempted to read file outside allowed directory: {FilePath} for organization {OrganizationId}, office {OfficeId}", filePath, organizationId, officeId);
 			return null;
 		}
 
@@ -153,7 +158,7 @@ public class FileService : IFileService
 		}
 	}
 
-	public async Task<string> SaveDocumentAsync(string fileContent, string fileName, string contentType, DocumentType documentType)
+	public async Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, DocumentType documentType)
 	{
 		// Handle base64 encoded content
 		byte[] fileBytes;
@@ -170,10 +175,10 @@ public class FileService : IFileService
 		}
 
 		using var stream = new MemoryStream(fileBytes);
-		return await SaveDocumentAsync(stream, fileName, contentType, documentType);
+		return await SaveDocumentAsync(organizationId, officeId, stream, fileName, contentType, documentType);
 	}
 
-	public async Task<string> SaveDocumentAsync(Stream fileStream, string fileName, string contentType, DocumentType documentType)
+	public async Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, DocumentType documentType)
 	{
 		// Validate file type
 		var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt" };
@@ -194,12 +199,14 @@ public class FileService : IFileService
 		if (!allowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
 			throw new ArgumentException($"Invalid content type. Allowed types: {string.Join(", ", allowedContentTypes)}");
 
-		// Create directory if it doesn't exist
-		var uploadsPath = Path.Combine(_wwwRootPath, "documents", documentType.ToString().ToLowerInvariant());
+		// Create directory if it doesn't exist - organized by organization GUID and office ID
+		var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
+		var documentTypeFolder = documentType.ToString().ToLowerInvariant();
+		var uploadsPath = Path.Combine(_wwwRootPath, containerName, "documents", documentTypeFolder);
 		Directory.CreateDirectory(uploadsPath);
 
 		// Generate unique filename
-		var uniqueFileName = $"{documentType.ToString().ToLowerInvariant()}-{Guid.NewGuid()}{fileExtension}";
+		var uniqueFileName = $"{documentTypeFolder}-{Guid.NewGuid()}{fileExtension}";
 		var fullPath = Path.Combine(uploadsPath, uniqueFileName);
 
 		// Save file
@@ -209,18 +216,20 @@ public class FileService : IFileService
 		}
 
 		// Return relative path
-		return $"/documents/{documentType.ToString().ToLowerInvariant()}/{uniqueFileName}";
+		return $"/{containerName}/documents/{documentTypeFolder}/{uniqueFileName}";
 	}
 
-	public Task<bool> DeleteDocumentAsync(string filePath)
+	public Task<bool> DeleteDocumentAsync(Guid organizationId, int? officeId, string filePath)
 	{
 		if (string.IsNullOrWhiteSpace(filePath))
 			return Task.FromResult(false);
 
-		// Security: Ensure path is within wwwroot/documents
-		if (!filePath.StartsWith("/documents/", StringComparison.OrdinalIgnoreCase))
+		// Security: Ensure path is within the organization/office's documents directory
+		var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
+		var expectedPathPrefix = $"/{containerName}/documents/";
+		if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
 		{
-			_logger.LogWarning("Attempted to delete file outside allowed directory: {FilePath}", filePath);
+			_logger.LogWarning("Attempted to delete file outside allowed directory: {FilePath} for organization {OrganizationId}, office {OfficeId}", filePath, organizationId, officeId);
 			return Task.FromResult(false);
 		}
 
@@ -245,15 +254,17 @@ public class FileService : IFileService
 		}
 	}
 
-	public async Task<FileDetails?> GetDocumentDetailsAsync(string filePath)
+	public async Task<FileDetails?> GetDocumentDetailsAsync(Guid organizationId, int? officeId, string filePath)
 	{
 		if (string.IsNullOrWhiteSpace(filePath))
 			return null;
 
-		// Security: Ensure path is within wwwroot/documents
-		if (!filePath.StartsWith("/documents/", StringComparison.OrdinalIgnoreCase))
+		// Security: Ensure path is within the organization/office's documents directory
+		var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
+		var expectedPathPrefix = $"/{containerName}/documents/";
+		if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
 		{
-			_logger.LogWarning("Attempted to read file outside allowed directory: {FilePath}", filePath);
+			_logger.LogWarning("Attempted to read file outside allowed directory: {FilePath} for organization {OrganizationId}, office {OfficeId}", filePath, organizationId, officeId);
 			return null;
 		}
 

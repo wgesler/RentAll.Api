@@ -34,6 +34,8 @@ using RentAll.Infrastructure.Repositories.Reservations;
 using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Infrastructure.Repositories.Vendors;
 using RentAll.Infrastructure.Services;
+using Azure.Storage.Blobs;
+using Azure.Identity;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,6 +44,11 @@ var builder = WebApplication.CreateBuilder(args);
 var appSettings = builder.Configuration.GetSection("AppSettings");
 builder.Services.Configure<AppSettings>(appSettings);
 builder.Services.AddScoped<AppSettings>();
+
+// Configure Storage Settings
+var storageSettings = builder.Configuration.GetSection("StorageSettings");
+builder.Services.Configure<StorageSettings>(storageSettings);
+builder.Services.AddScoped<StorageSettings>();
 
 var allowedHosts = appSettings.GetSection("AllowedHostNames").Get<string[]>()!;
 var environment = appSettings.GetSection("Environment").Get<string>()!;
@@ -98,13 +105,55 @@ builder.Services.AddScoped<AuthManager>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
-builder.Services.AddScoped<IFileService>(sp =>
+
+// Configure File Storage Service (FileSystem or AzureBlob)
+var storageConfig = builder.Configuration.GetSection("StorageSettings");
+var storageProvider = storageConfig["Provider"] ?? "FileSystem";
+
+if (string.Equals(storageProvider, "AzureBlob", StringComparison.OrdinalIgnoreCase))
 {
-	var environment = sp.GetRequiredService<IWebHostEnvironment>();
-	var logger = sp.GetRequiredService<ILogger<FileService>>();
-	var wwwRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
-	return new FileService(wwwRootPath, logger);
-});
+	// Register Azure Blob Service Client
+	// Read configuration directly to avoid scoped service resolution in singleton factory
+	var connectionString = storageConfig["AzureBlobConnectionString"];
+	var baseUrl = storageConfig["AzureBlobBaseUrl"];
+	
+	builder.Services.AddSingleton(sp =>
+	{
+		// Use connection string if provided, otherwise use managed identity
+		if (!string.IsNullOrWhiteSpace(connectionString))
+		{
+			// Use connection string authentication
+			var blobServiceClient = new BlobServiceClient(connectionString);
+			return blobServiceClient;
+		}
+		else
+		{
+			// Use managed identity authentication with BaseUrl
+			if (string.IsNullOrWhiteSpace(baseUrl))
+				throw new InvalidOperationException("AzureBlobBaseUrl is required when using managed identity authentication.");
+
+			var blobUri = new Uri(baseUrl);
+			var credential = new DefaultAzureCredential();
+			var blobServiceClient = new BlobServiceClient(blobUri, credential);
+			return blobServiceClient;
+		}
+	});
+
+	// Register Azure Blob Storage Service
+	builder.Services.AddScoped<IFileService, AzureBlobStorageService>();
+}
+else
+{
+	// Register File System Storage Service (default)
+	builder.Services.AddScoped<IFileService>(sp =>
+	{
+		var environment = sp.GetRequiredService<IWebHostEnvironment>();
+		var logger = sp.GetRequiredService<ILogger<FileService>>();
+		var wwwRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
+		return new FileService(wwwRootPath, logger);
+	});
+}
+
 builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
 
 builder.Services.AddScoped<IContactManager, ContactManager>();

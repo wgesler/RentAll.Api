@@ -40,12 +40,21 @@ namespace RentAll.Api.Controllers
 				{
 					try
 					{
-						// Delete old logo if it exists
+						// Delete old logo if it exists (fail silently if delete fails)
 						if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-							await _fileService.DeleteLogoAsync(existingOffice.LogoPath);
+						{
+							try
+							{
+								await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
+							}
+							catch (Exception deleteEx)
+							{
+								_logger.LogWarning(deleteEx, "Failed to delete old logo, continuing with new logo upload: {LogoPath}", existingOffice.LogoPath);
+							}
+						}
 
 						// Save new logo
-						var logoPath = await _fileService.SaveLogoAsync(dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						var logoPath = await _fileService.SaveLogoAsync(existingOffice.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
 						office.LogoPath = logoPath;
 					}
 					catch (Exception ex)
@@ -59,7 +68,15 @@ namespace RentAll.Api.Controllers
 					// LogoPath is explicitly null - delete the logo
 					if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
 					{
-						await _fileService.DeleteLogoAsync(existingOffice.LogoPath);
+						try
+						{
+							await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
+						}
+						catch (Exception deleteEx)
+						{
+							_logger.LogWarning(deleteEx, "Failed to delete logo during update: {LogoPath}", existingOffice.LogoPath);
+							// Continue with setting LogoPath to null even if delete fails
+						}
 						office.LogoPath = null;
 					}
 				}
@@ -73,7 +90,15 @@ namespace RentAll.Api.Controllers
 				var response = new OfficeResponseDto(updatedOffice);
 				if (!string.IsNullOrWhiteSpace(updatedOffice.LogoPath))
 				{
-					response.FileDetails = await _fileService.GetFileDetailsAsync(updatedOffice.LogoPath);
+					try
+					{
+						response.FileDetails = await _fileService.GetFileDetailsAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath);
+					}
+					catch (Exception fileEx)
+					{
+						_logger.LogWarning(fileEx, "Failed to retrieve file details for logo, continuing with response: {LogoPath}", updatedOffice.LogoPath);
+						// Continue without file details if retrieval fails
+					}
 				}
 				return Ok(response);
 			}

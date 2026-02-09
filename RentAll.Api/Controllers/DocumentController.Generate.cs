@@ -89,10 +89,10 @@ namespace RentAll.Api.Controllers
 
 					// Delete old document file if it exists
 					if (!string.IsNullOrWhiteSpace(existing.DocumentPath))
-						await _fileService.DeleteDocumentAsync(existing.DocumentPath);
+						await _fileService.DeleteDocumentAsync(existing.OrganizationId, existing.OfficeId, existing.DocumentPath);
 
 					// Save new PDF file
-					var documentPath = await _fileService.SaveDocumentAsync(pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
+					var documentPath = await _fileService.SaveDocumentAsync(existing.OrganizationId, existing.OfficeId, pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
 					model.DocumentPath = documentPath;
 					result = await _documentRepository.UpdateByIdAsync(model);
 				}
@@ -115,13 +115,13 @@ namespace RentAll.Api.Controllers
 					};
 
 					// Save PDF file
-					var documentPath = await _fileService.SaveDocumentAsync(pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
+					var documentPath = await _fileService.SaveDocumentAsync(CurrentOrganizationId, dto.OfficeId, pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
 					model.DocumentPath = documentPath;
 					result = await _documentRepository.CreateAsync(model);
 				}
 
 				var response = new DocumentResponseDto(result);
-				response.FileDetails = await _fileService.GetDocumentDetailsAsync(result.DocumentPath);
+				response.FileDetails = await _fileService.GetDocumentDetailsAsync(result.OrganizationId, result.OfficeId, result.DocumentPath);
 
 				return Ok(response);
 			}

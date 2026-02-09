@@ -26,7 +26,7 @@ namespace RentAll.Api.Controllers
 				{
 					var dto = new OfficeResponseDto(office);
 					if (!string.IsNullOrWhiteSpace(office.LogoPath))
-						dto.FileDetails = await _fileService.GetFileDetailsAsync(office.LogoPath);
+						dto.FileDetails = await _fileService.GetFileDetailsAsync(office.OrganizationId, null, office.LogoPath);
 
 					response.Add(dto);
 				}
@@ -56,9 +56,9 @@ namespace RentAll.Api.Controllers
 				if (office == null)
 					return NotFound("Office not found");
 
-				var response = new OfficeResponseDto(office);
-				if (!string.IsNullOrWhiteSpace(office.LogoPath))
-					response.FileDetails = await _fileService.GetFileDetailsAsync(office.LogoPath);
+			var response = new OfficeResponseDto(office);
+			if (!string.IsNullOrWhiteSpace(office.LogoPath))
+				response.FileDetails = await _fileService.GetFileDetailsAsync(office.OrganizationId, null, office.LogoPath);
 
 				return Ok(response);
 			}
