@@ -22,6 +22,7 @@ public class ContactResponseDto
 	public string Phone { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -49,6 +50,7 @@ public class ContactResponseDto
 		Phone = contact.Phone;
 		Email = contact.Email;
 		Notes = contact.Notes;
+		IsInternational = contact.IsInternational;
 		IsActive = contact.IsActive;
 		CreatedOn = contact.CreatedOn;
 		CreatedBy = contact.CreatedBy;

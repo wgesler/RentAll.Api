@@ -20,6 +20,7 @@ public class UpdateVendorDto
 	public string? Website { get; set; }
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -38,21 +39,6 @@ public class UpdateVendorDto
 
 		if (string.IsNullOrWhiteSpace(Name))
 			return (false, "Name is required");
-
-		if (string.IsNullOrWhiteSpace(Address1))
-			return (false, "Address1 is required");
-
-		if (string.IsNullOrWhiteSpace(City))
-			return (false, "City is required");
-
-		if (string.IsNullOrWhiteSpace(State))
-			return (false, "State is required");
-
-		if (string.IsNullOrWhiteSpace(Zip))
-			return (false, "Zip is required");
-
-		if (string.IsNullOrWhiteSpace(Phone))
-			return (false, "Phone is required");
 
 		return (true, null);
 	}
@@ -75,6 +61,7 @@ public class UpdateVendorDto
 			Phone = Phone,
 			Website = Website,
 			LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
+			IsInternational = IsInternational,
 			IsActive = IsActive,
 			ModifiedBy = currentUser
 		};

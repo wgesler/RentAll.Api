@@ -47,6 +47,7 @@ public partial class OfficeRepository : IOfficeRepository
 			MaidFourBed = office.MaidFourBed,
 			ParkingLowEnd = office.ParkingLowEnd,
 			ParkingHighEnd = office.ParkingHighEnd,
+			IsInternational = office.IsInternational,
 			IsActive = office.IsActive
 		});
 

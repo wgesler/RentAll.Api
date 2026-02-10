@@ -11,13 +11,14 @@ public class CreateCompanyDto
 	public string Address1 { get; set; } = string.Empty;
 	public string? Address2 { get; set; }
 	public string? Suite { get; set; }
-	public string City { get; set; } = string.Empty;
-	public string State { get; set; } = string.Empty;
-	public string Zip { get; set; } = string.Empty;
+	public string? City { get; set; }
+	public string? State { get; set; }
+	public string? Zip { get; set; }
 	public string Phone { get; set; } = string.Empty;
 	public string? Website { get; set; }
 	public FileDetails? FileDetails { get; set; }
 	public string? Notes { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 
 
@@ -35,14 +36,6 @@ public class CreateCompanyDto
 		if (string.IsNullOrWhiteSpace(Address1))
 			return (false, "Address1 is required");
 
-		if (string.IsNullOrWhiteSpace(City))
-			return (false, "City is required");
-
-		if (string.IsNullOrWhiteSpace(State))
-			return (false, "State is required");
-
-		if (string.IsNullOrWhiteSpace(Zip))
-			return (false, "Zip is required");
 
 		if (string.IsNullOrWhiteSpace(Phone))
 			return (false, "Phone is required");
@@ -68,6 +61,7 @@ public class CreateCompanyDto
 			Website = Website,
 			LogoPath = null, // Will be set by controller after file save
 			Notes = Notes,
+			IsInternational = IsInternational,
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};

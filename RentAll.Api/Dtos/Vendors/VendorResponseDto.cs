@@ -21,6 +21,7 @@ public class VendorResponseDto
 	public string? Website { get; set; }
 	public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -44,6 +45,7 @@ public class VendorResponseDto
 		Phone = vendor.Phone;
 		Website = vendor.Website;
 		LogoPath = vendor.LogoPath;
+		IsInternational = vendor.IsInternational;
 		IsActive = vendor.IsActive;
 		CreatedOn = vendor.CreatedOn;
 		CreatedBy = vendor.CreatedBy;

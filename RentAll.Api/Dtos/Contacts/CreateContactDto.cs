@@ -19,6 +19,7 @@ public class CreateContactDto
 	public string Phone { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
 	public string? Notes { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -70,6 +71,7 @@ public class CreateContactDto
 			Phone = Phone,
 			Email = Email,
 			Notes = Notes,
+			IsInternational = IsInternational,
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};

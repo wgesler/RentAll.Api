@@ -20,6 +20,7 @@ public class Vendor
 	public string? Website { get; set; }
     public string? LogoPath { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

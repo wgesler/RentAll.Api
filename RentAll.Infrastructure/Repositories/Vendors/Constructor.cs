@@ -34,6 +34,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 				Phone = e.Phone,
 				Website = e.Website,
 				LogoPath = e.LogoPath,
+				IsInternational = e.IsInternational,
 				IsActive = e.IsActive,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,

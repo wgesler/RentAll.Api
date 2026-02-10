@@ -12,9 +12,9 @@ public class OfficeResponseDto
 	public string Address1 { get; set; } = string.Empty;
 	public string? Address2 { get; set; }
 	public string? Suite { get; set; }
-	public string City { get; set; } = string.Empty;
-	public string State { get; set; } = string.Empty;
-	public string Zip { get; set; } = string.Empty;
+	public string? City { get; set; }
+	public string? State { get; set; }
+	public string? Zip { get; set; }
 	public string Phone { get; set; } = string.Empty;
 	public string? Fax { get; set; }
 	public string? Website { get; set; }
@@ -40,6 +40,7 @@ public class OfficeResponseDto
 	public decimal ParkingLowEnd { get; set; }
 	public decimal ParkingHighEnd { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 
 	public OfficeResponseDto(Office office)
@@ -79,6 +80,7 @@ public class OfficeResponseDto
 		ParkingLowEnd = office.ParkingLowEnd;
 		ParkingHighEnd = office.ParkingHighEnd;
 		FileDetails = office.FileDetails;
+		IsInternational = office.IsInternational;
 		IsActive = office.IsActive;
 	}
 }

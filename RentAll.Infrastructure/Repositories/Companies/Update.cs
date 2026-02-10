@@ -28,6 +28,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Website = company.Website,
 				LogoPath = company.LogoPath,
 				Notes = company.Notes,
+				IsInternational = company.IsInternational,
 				IsActive = company.IsActive,
 				ModifiedBy = company.ModifiedBy
 			});

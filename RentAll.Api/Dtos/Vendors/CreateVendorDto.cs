@@ -17,6 +17,7 @@ public class CreateVendorDto
 	public string? Phone { get; set; }
 	public string? Website { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -29,21 +30,6 @@ public class CreateVendorDto
 
 		if (string.IsNullOrWhiteSpace(Name))
 			return (false, "Name is required");
-
-		if (string.IsNullOrWhiteSpace(Address1))
-			return (false, "Address1 is required");
-
-		if (string.IsNullOrWhiteSpace(City))
-			return (false, "City is required");
-
-		if (string.IsNullOrWhiteSpace(State))
-			return (false, "State is required");
-
-		if (string.IsNullOrWhiteSpace(Zip))
-			return (false, "Zip is required");
-
-		if (string.IsNullOrWhiteSpace(Phone))
-			return (false, "Phone is required");
 
 		return (true, null);
 	}
@@ -65,6 +51,7 @@ public class CreateVendorDto
 			Phone = Phone,
 			Website = Website,
 			LogoPath = null, // Will be set by controller after file save
+			IsInternational = IsInternational,
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};

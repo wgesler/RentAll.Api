@@ -35,6 +35,7 @@ namespace RentAll.Infrastructure.Repositories.Companies
 				Website = e.Website,
 				LogoPath = e.LogoPath,
 				Notes = e.Notes,
+				IsInternational = e.IsInternational,
 				IsActive = e.IsActive,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,

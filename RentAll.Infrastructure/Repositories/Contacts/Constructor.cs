@@ -38,6 +38,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Phone = e.Phone,
                 Email = e.Email,
                 Notes = e.Notes,
+                IsInternational = e.IsInternational,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,

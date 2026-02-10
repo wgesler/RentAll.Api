@@ -28,6 +28,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Phone = contact.Phone,
                 Email = contact.Email,
                 Notes = contact.Notes,
+                IsInternational = contact.IsInternational,
                 CreatedBy = contact.CreatedBy
             });
 

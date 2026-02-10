@@ -26,6 +26,7 @@ public partial class OrganizationRepository : IOrganizationRepository
 			Fax = organization.Fax,
 			Website = organization.Website,
 			LogoPath = organization.LogoPath,
+			IsInternational = organization.IsInternational,
 			IsActive = organization.IsActive,
 			ModifiedBy = organization.ModifiedBy
 		});

@@ -17,8 +17,9 @@ public class VendorEntity
     public string? Phone { get; set; }
     public string? Website { get; set; }
     public string? LogoPath { get; set; }
-    public bool IsActive { get; set; }
-    public DateTimeOffset CreatedOn { get; set; }
+	public bool IsInternational { get; set; }
+	public bool IsActive { get; set; }
+	public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }

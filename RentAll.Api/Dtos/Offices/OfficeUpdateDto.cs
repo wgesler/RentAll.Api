@@ -12,9 +12,9 @@ public class OfficeUpdateDto
 	public string Address1 { get; set; } = string.Empty;
 	public string? Address2 { get; set; }
 	public string? Suite { get; set; }
-	public string City { get; set; } = string.Empty;
-	public string State { get; set; } = string.Empty;
-	public string Zip { get; set; } = string.Empty;
+	public string? City { get; set; }
+	public string? State { get; set; }
+	public string? Zip { get; set; }
 	public string Phone { get; set; } = string.Empty;
 	public string? Fax { get; set; }
 	public string? Website { get; set; }
@@ -40,6 +40,7 @@ public class OfficeUpdateDto
 	public decimal ParkingLowEnd { get; set; }
 	public decimal ParkingHighEnd { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public bool IsInternational { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -59,14 +60,6 @@ public class OfficeUpdateDto
 		if (string.IsNullOrWhiteSpace(Address1))
 			return (false, "Address1 is required");
 
-		if (string.IsNullOrWhiteSpace(City))
-			return (false, "City is required");
-
-		if (string.IsNullOrWhiteSpace(State))
-			return (false, "State is required");
-
-		if (string.IsNullOrWhiteSpace(Zip))
-			return (false, "Zip is required");
 
 		if (string.IsNullOrWhiteSpace(Phone))
 			return (false, "Phone is required");
@@ -112,6 +105,7 @@ public class OfficeUpdateDto
 			MaidFourBed = MaidFourBed,
 			ParkingLowEnd = ParkingLowEnd,
 			ParkingHighEnd = ParkingHighEnd,
+			IsInternational = IsInternational,
 			IsActive = IsActive
 		};
 	}

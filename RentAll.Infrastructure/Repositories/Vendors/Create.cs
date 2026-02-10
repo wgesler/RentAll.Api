@@ -26,6 +26,7 @@ namespace RentAll.Infrastructure.Repositories.Vendors
 				Phone = vendor.Phone,
 				Website = vendor.Website,
 				LogoPath = vendor.LogoPath,
+				IsInternational = vendor.IsInternational,
 				CreatedBy = vendor.CreatedBy
 			});
 
