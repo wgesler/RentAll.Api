@@ -50,7 +50,8 @@ public class AuthTokenService : IAuthTokenService
 			lastName = user.LastName,
             email = user.Email,
 			userGroups = userGroupsString,
-			officeAccess = officeAccessString
+			officeAccess = officeAccessString,
+			startupPageId = (int)user.StartupPage
 		};
 
         // Serialize and base64 encode the user object

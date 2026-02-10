@@ -9,6 +9,7 @@ public class JwtUserResponseDto
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
+	public int StartupPage { get; set; }
 
 	public JwtUserResponseDto(User user)
 	{
@@ -17,5 +18,6 @@ public class JwtUserResponseDto
 		LastName = user.LastName;
 		Email = user.Email;
 		UserGroups = user.UserGroups;
+		StartupPage = (int)user.StartupPage;
 	}
 }
