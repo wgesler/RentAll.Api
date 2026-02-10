@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Users;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -35,9 +36,55 @@ namespace RentAll.Api.Controllers
 						return Conflict("Email already exists");
 				}
 
-				var user = dto.ToModel(dto, existingUser, CurrentUser);
+				// Only allow password resets here if the user is an Admin
+				string? passwordHash = null;
+				if (CurrentUserGroups.Contains("Admin") && dto.Password != null)
+					passwordHash = _passwordHasher.HashPassword(dto.Password);
+				else
+					passwordHash = existingUser.PasswordHash;
+				var user = dto.ToModel(dto, passwordHash, CurrentUser);
+
+				// Handle profile file upload if provided
+				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+				{
+					try
+					{
+						// Delete old profile if it exists
+						if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
+							await _fileService.DeleteLogoAsync(existingUser.OrganizationId, null, existingUser.ProfilePath);
+
+						// Save new profile
+						var profilePath = await _fileService.SaveLogoAsync(existingUser.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						user.ProfilePath = profilePath;
+					}
+					catch (Exception ex)
+					{
+						_logger.LogError(ex, "Error saving user profile");
+						return ServerError("An error occurred while saving the profile file");
+					}
+				}
+				else if (dto.ProfilePath == null)
+				{
+					// ProfilePath is explicitly null - delete the profile
+					if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
+					{
+						await _fileService.DeleteLogoAsync(existingUser.OrganizationId, null, existingUser.ProfilePath);
+						user.ProfilePath = null;
+					}
+				}
+				else
+				{
+					// No new file provided and ProfilePath is not null - preserve existing profile from database
+					user.ProfilePath = existingUser.ProfilePath;
+				}
+
 				var updatedUser = await _userRepository.UpdateByIdAsync(user);
-				return Ok(new UserResponseDto(updatedUser));
+				var response = new UserResponseDto(updatedUser);
+				if (!string.IsNullOrWhiteSpace(updatedUser.ProfilePath))
+				{
+					response.FileDetails = await _fileService.GetFileDetailsAsync(updatedUser.OrganizationId, null, updatedUser.ProfilePath);
+				}
+				return Ok(response);
 			}
 			catch (Exception ex)
 			{

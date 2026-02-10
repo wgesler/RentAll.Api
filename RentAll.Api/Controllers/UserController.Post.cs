@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Users;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -29,8 +30,29 @@ namespace RentAll.Api.Controllers
 				// Hash the password
 				var passwordHash = _passwordHasher.HashPassword(dto.Password);
 				var user = dto.ToModel(passwordHash, CurrentUser);
+
+				// Handle profile file upload if provided
+				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+				{
+					try
+					{
+						var profilePath = await _fileService.SaveLogoAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+						user.ProfilePath = profilePath;
+					}
+					catch (Exception ex)
+					{
+						_logger.LogError(ex, "Error saving user profile");
+						return ServerError("An error occurred while saving the profile file");
+					}
+				}
+
 				var createdUser = await _userRepository.CreateAsync(user);
-				return CreatedAtAction(nameof(GetById), new { id = createdUser.UserId }, new UserResponseDto(createdUser));
+				var response = new UserResponseDto(createdUser);
+				if (!string.IsNullOrWhiteSpace(createdUser.ProfilePath))
+				{
+					response.FileDetails = await _fileService.GetFileDetailsAsync(createdUser.OrganizationId, null, createdUser.ProfilePath);
+				}
+				return CreatedAtAction(nameof(GetById), new { id = createdUser.UserId }, response);
 			}
 			catch (Exception ex)
 			{

@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -13,6 +14,8 @@ public class UpdateUserDto
 	public string? NewPassword { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
 	public List<int> OfficeAccess { get; set; } = new List<int>();
+	public string? ProfilePath { get; set; }
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -35,7 +38,7 @@ public class UpdateUserDto
 		return (true, null);
 	}
 
-	public User ToModel(UpdateUserDto d, User existingUser, Guid currentUser)
+	public User ToModel(UpdateUserDto d, string passwordHash, Guid currentUser)
 	{
 		return new User
 		{
@@ -44,9 +47,10 @@ public class UpdateUserDto
 			FirstName = d.FirstName,
 			LastName = d.LastName,
 			Email = d.Email,
-			PasswordHash = existingUser.PasswordHash, // Preserve existing password hash
+			PasswordHash = passwordHash, 
 			UserGroups = d.UserGroups,
 			OfficeAccess = d.OfficeAccess,
+			ProfilePath = d.ProfilePath, 
 			IsActive = d.IsActive,
 			ModifiedBy = currentUser
 		};

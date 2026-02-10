@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -11,6 +12,7 @@ public class CreateUserDto
 	public string Password { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
 	public List<int> OfficeAccess { get; set; } = new List<int>();
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 
 
@@ -48,6 +50,7 @@ public class CreateUserDto
 			PasswordHash = passwordHash,
 			UserGroups = UserGroups,
 			OfficeAccess = OfficeAccess,
+			ProfilePath = null, // Will be set by controller after file save
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};

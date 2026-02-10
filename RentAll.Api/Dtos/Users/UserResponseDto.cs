@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -10,9 +11,11 @@ public class UserResponseDto
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
+	public string Password { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
 	public List<int> OfficeAccess { get; set; } = new List<int>();
-
+	public string? ProfilePath { get; set; }
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -29,6 +32,8 @@ public class UserResponseDto
 		Email = user.Email;
 		UserGroups = user.UserGroups;
 		OfficeAccess = user.OfficeAccess;
+		ProfilePath = user.ProfilePath;
+		FileDetails = user.FileDetails;
 		IsActive = user.IsActive;
 		CreatedOn = user.CreatedOn;
 		CreatedBy = user.CreatedBy;

@@ -29,6 +29,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				PasswordHash = user.PasswordHash,
 				UserGroups = userGroupsJson,
 				OfficeAccess = officeAccessJson,
+				ProfilePath = user.ProfilePath,
 				CreatedBy = user.CreatedBy
 			});
 

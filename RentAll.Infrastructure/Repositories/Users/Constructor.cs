@@ -56,6 +56,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				IsActive = e.IsActive,
 				UserGroups = userGroups,
 				OfficeAccess = officeAccess,
+				ProfilePath = e.ProfilePath,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,
 				ModifiedOn = e.ModifiedOn,

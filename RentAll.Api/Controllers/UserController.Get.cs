@@ -15,7 +15,15 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				var users = await _userRepository.GetAllAsync(CurrentOrganizationId);
-				var response = users.Select(u => new UserResponseDto(u));
+				var response = new List<UserResponseDto>();
+				foreach (var user in users)
+				{
+					var dto = new UserResponseDto(user);
+					if (!string.IsNullOrWhiteSpace(user.ProfilePath))
+						dto.FileDetails = await _fileService.GetFileDetailsAsync(user.OrganizationId, null, user.ProfilePath);
+
+					response.Add(dto);
+				}
 				return Ok(response);
 			}
 			catch (Exception ex)
@@ -42,7 +50,11 @@ namespace RentAll.Api.Controllers
 				if (user == null)
 					return NotFound("User not found");
 
-				return Ok(new UserResponseDto(user));
+				var response = new UserResponseDto(user);
+				if (!string.IsNullOrWhiteSpace(user.ProfilePath))
+					response.FileDetails = await _fileService.GetFileDetailsAsync(user.OrganizationId, null, user.ProfilePath);
+
+				return Ok(response);
 			}
 			catch (Exception ex)
 			{

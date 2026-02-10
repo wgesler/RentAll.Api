@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Domain.Models;
 
 public class User
@@ -12,6 +14,8 @@ public class User
 	public string PasswordHash { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
 	public List<int> OfficeAccess { get; set; } = new List<int>();
+	public string? ProfilePath { get; set; }
+	public FileDetails? FileDetails { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
