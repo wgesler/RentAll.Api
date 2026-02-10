@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Domain.Enums;
 using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Users
@@ -57,6 +58,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				UserGroups = userGroups,
 				OfficeAccess = officeAccess,
 				ProfilePath = e.ProfilePath,
+				StartupPage = (StartupPage)e.StartupPageId,
 				CreatedOn = e.CreatedOn,
 				CreatedBy = e.CreatedBy,
 				ModifiedOn = e.ModifiedOn,

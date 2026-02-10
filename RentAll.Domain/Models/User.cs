@@ -1,4 +1,5 @@
 using RentAll.Domain.Models.Common;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Domain.Models;
 
@@ -16,6 +17,7 @@ public class User
 	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public string? ProfilePath { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public StartupPage StartupPage { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }

@@ -1,5 +1,6 @@
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -16,6 +17,7 @@ public class UpdateUserDto
 	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public string? ProfilePath { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public int StartupPageId { get; set; }
 	public bool IsActive { get; set; }
 
 	public (bool IsValid, string? ErrorMessage) IsValid()
@@ -35,6 +37,10 @@ public class UpdateUserDto
 		if (string.IsNullOrWhiteSpace(Email))
 			return (false, "Email is required");
 
+		// Validate enum value
+		if (!Enum.IsDefined(typeof(StartupPage), StartupPageId))
+			return (false, $"Invalid StartupPage value: {StartupPageId}");
+
 		return (true, null);
 	}
 
@@ -51,6 +57,7 @@ public class UpdateUserDto
 			UserGroups = d.UserGroups,
 			OfficeAccess = d.OfficeAccess,
 			ProfilePath = d.ProfilePath, 
+			StartupPage = (StartupPage)d.StartupPageId,
 			IsActive = d.IsActive,
 			ModifiedBy = currentUser
 		};

@@ -1,5 +1,6 @@
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -16,6 +17,7 @@ public class UserResponseDto
 	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public string? ProfilePath { get; set; }
 	public FileDetails? FileDetails { get; set; }
+	public int StartupPageId { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
 	public Guid CreatedBy { get; set; }
@@ -34,6 +36,7 @@ public class UserResponseDto
 		OfficeAccess = user.OfficeAccess;
 		ProfilePath = user.ProfilePath;
 		FileDetails = user.FileDetails;
+		StartupPageId = (int)user.StartupPage;
 		IsActive = user.IsActive;
 		CreatedOn = user.CreatedOn;
 		CreatedBy = user.CreatedBy;

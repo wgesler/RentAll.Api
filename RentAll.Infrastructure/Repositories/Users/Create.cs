@@ -30,6 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				UserGroups = userGroupsJson,
 				OfficeAccess = officeAccessJson,
 				ProfilePath = user.ProfilePath,
+				StartupPageId = (int)user.StartupPage,
 				CreatedBy = user.CreatedBy
 			});
 

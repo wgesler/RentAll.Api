@@ -1,5 +1,6 @@
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -13,6 +14,7 @@ public class CreateUserDto
 	public List<string> UserGroups { get; set; } = new List<string>();
 	public List<int> OfficeAccess { get; set; } = new List<int>();
 	public FileDetails? FileDetails { get; set; }
+	public int StartupPageId { get; set; }
 	public bool IsActive { get; set; }
 
 
@@ -36,6 +38,10 @@ public class CreateUserDto
 		if (Password.Length < 8)
 			return (false, "Password must be at least 8 characters");
 
+		// Validate enum value
+		if (!Enum.IsDefined(typeof(StartupPage), StartupPageId))
+			return (false, $"Invalid StartupPage value: {StartupPageId}");
+
 		return (true, null);
 	}
 
@@ -51,6 +57,7 @@ public class CreateUserDto
 			UserGroups = UserGroups,
 			OfficeAccess = OfficeAccess,
 			ProfilePath = null, // Will be set by controller after file save
+			StartupPage = (StartupPage)StartupPageId,
 			IsActive = IsActive,
 			CreatedBy = currentUser
 		};
