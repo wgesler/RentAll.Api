@@ -51,6 +51,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				OrganizationId = e.OrganizationId,
 				OrganizationName = e.OrganizationName,
 				AgentId = e.AgentId,
+				CommissionRate = e.CommissionRate,
 				FirstName = e.FirstName,
 				LastName = e.LastName,
 				Email = e.Email,

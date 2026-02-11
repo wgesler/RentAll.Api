@@ -9,6 +9,7 @@ public class UpdateUserDto
 	public Guid OrganizationId { get; set; }
 	public Guid UserId { get; set; }
 	public Guid AgentId { get; set; }
+	public decimal CommissionRate { get; set; }
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
@@ -31,6 +32,9 @@ public class UpdateUserDto
 
 		if (AgentId == Guid.Empty)
 			return (false, "AgentId is required");
+
+		if (CommissionRate < 0)
+			return (false, "CommissionRate must be greater than or equal to 0");
 
 		if (string.IsNullOrWhiteSpace(FirstName))
 			return (false, "First Name is required");
@@ -55,6 +59,7 @@ public class UpdateUserDto
 			OrganizationId = d.OrganizationId,
 			UserId = d.UserId,
 			AgentId = d.AgentId,
+			CommissionRate = d.CommissionRate,
 			FirstName = d.FirstName,
 			LastName = d.LastName,
 			Email = d.Email,

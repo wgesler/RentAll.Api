@@ -24,6 +24,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 			{
 				OrganizationId = user.OrganizationId,
 				AgentId = user.AgentId,
+				CommissionRate = user.CommissionRate,
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				Email = user.Email,

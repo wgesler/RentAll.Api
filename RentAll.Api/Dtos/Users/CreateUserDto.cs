@@ -8,6 +8,7 @@ public class CreateUserDto
 {
 	public Guid OrganizationId { get; set; }
 	public Guid AgentId { get; set; }
+	public decimal CommissionRate { get; set; }
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
@@ -26,6 +27,9 @@ public class CreateUserDto
 
 		if (AgentId == Guid.Empty)
 			return (false, "AgentId is required");
+
+		if (CommissionRate < 0)
+			return (false, "CommissionRate must be greater than or equal to 0");
 
 		if (string.IsNullOrWhiteSpace(FirstName))
 			return (false, "First Name is required");
@@ -55,6 +59,7 @@ public class CreateUserDto
 		{
 			OrganizationId = OrganizationId,
 			AgentId = AgentId,
+			CommissionRate = CommissionRate,
 			FirstName = FirstName,
 			LastName = LastName,
 			Email = Email,
