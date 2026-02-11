@@ -23,6 +23,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 			var res = await db.DapperProcQueryAsync<UserEntity>("User.User_Add", new
 			{
 				OrganizationId = user.OrganizationId,
+				AgentId = user.AgentId,
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				Email = user.Email,

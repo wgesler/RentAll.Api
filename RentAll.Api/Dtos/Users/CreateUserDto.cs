@@ -7,6 +7,7 @@ namespace RentAll.Api.Dtos.Users;
 public class CreateUserDto
 {
 	public Guid OrganizationId { get; set; }
+	public Guid AgentId { get; set; }
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
@@ -22,6 +23,9 @@ public class CreateUserDto
 	{
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
+
+		if (AgentId == Guid.Empty)
+			return (false, "AgentId is required");
 
 		if (string.IsNullOrWhiteSpace(FirstName))
 			return (false, "First Name is required");
@@ -50,6 +54,7 @@ public class CreateUserDto
 		return new User
 		{
 			OrganizationId = OrganizationId,
+			AgentId = AgentId,
 			FirstName = FirstName,
 			LastName = LastName,
 			Email = Email,

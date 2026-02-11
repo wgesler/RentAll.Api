@@ -8,6 +8,7 @@ public class UpdateUserDto
 {
 	public Guid OrganizationId { get; set; }
 	public Guid UserId { get; set; }
+	public Guid AgentId { get; set; }
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
@@ -27,6 +28,9 @@ public class UpdateUserDto
 
 		if (OrganizationId == Guid.Empty)
 			return (false, "OrganizationId is required");
+
+		if (AgentId == Guid.Empty)
+			return (false, "AgentId is required");
 
 		if (string.IsNullOrWhiteSpace(FirstName))
 			return (false, "First Name is required");
@@ -50,6 +54,7 @@ public class UpdateUserDto
 		{
 			OrganizationId = d.OrganizationId,
 			UserId = d.UserId,
+			AgentId = d.AgentId,
 			FirstName = d.FirstName,
 			LastName = d.LastName,
 			Email = d.Email,

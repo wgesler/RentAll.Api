@@ -13,6 +13,7 @@ public class UserEntity
 	public string OfficeAccess { get; set; } = string.Empty;
 	public string? ProfilePath { get; set; }
 	public int StartupPageId { get; set; }
+	public Guid AgentId { get; set; }
 	public bool IsActive { get; set; }
 	public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

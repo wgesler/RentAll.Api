@@ -46,6 +46,7 @@ public class AuthTokenService : IAuthTokenService
         {
             userId = user.UserId.ToString(),
 			organizationId = user.OrganizationId.ToString(),
+			agentId = user.AgentId.ToString(),
 			firstName = user.FirstName,
 			lastName = user.LastName,
             email = user.Email,
