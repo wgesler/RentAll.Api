@@ -1,5 +1,5 @@
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace RentAll.Infrastructure.Configuration;
@@ -15,8 +15,37 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
 
     public DatabaseConnectionFactory(IConfiguration configuration)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? throw new InvalidOperationException("DefaultConnection string is not configured");
+        var defaultConnection = configuration.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrWhiteSpace(defaultConnection))
+        {
+            _connectionString = defaultConnection;
+            return;
+        }
+
+        // Backward-compatible fallback for existing appsettings structure.
+        var dbConnections = configuration.GetSection("AppSettings:DbConnections").GetChildren();
+        foreach (var db in dbConnections)
+        {
+            var dbName = db["DbName"];
+            var connectionString = db["ConnectionString"];
+            if (string.Equals(dbName, "RentAll", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(connectionString))
+            {
+                _connectionString = connectionString;
+                return;
+            }
+        }
+
+        foreach (var db in dbConnections)
+        {
+            var connectionString = db["ConnectionString"];
+            if (!string.IsNullOrWhiteSpace(connectionString))
+            {
+                _connectionString = connectionString;
+                return;
+            }
+        }
+
+        throw new InvalidOperationException("No database connection string configured. Set ConnectionStrings:DefaultConnection or AppSettings:DbConnections.");
     }
 
     public IDbConnection CreateConnection()
