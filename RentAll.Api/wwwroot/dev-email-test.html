@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RentAll Dev Email Test</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 760px; }
+    h1 { margin-bottom: 8px; }
+    p { margin-top: 0; opacity: 0.8; }
+    .card { border: 1px solid #8884; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .full { grid-column: 1 / -1; }
+    label { display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.85; }
+    input, textarea, button { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 6px; border: 1px solid #8886; }
+    textarea { min-height: 90px; resize: vertical; font-family: Consolas, monospace; }
+    button { cursor: pointer; font-weight: 600; }
+    .actions { display: flex; gap: 12px; }
+    .status { white-space: pre-wrap; border: 1px dashed #8886; border-radius: 8px; padding: 12px; min-height: 50px; }
+    .ok { color: #1e8e3e; }
+    .err { color: #c62828; }
+  </style>
+</head>
+<body>
+  <h1>RentAll Dev Email Test</h1>
+  <p>Local utility page for testing <code>/api/dev/email/test</code> without Swagger or CLI.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="full">
+        <label for="baseUrl">Base URL</label>
+        <input id="baseUrl" />
+      </div>
+      <div>
+        <label for="username">Username</label>
+        <input id="username" />
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" />
+      </div>
+    </div>
+    <div class="actions" style="margin-top: 12px;">
+      <button id="loginBtn">1) Login</button>
+      <button id="clearTokenBtn" type="button">Clear Token</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="toEmail">To Email</label>
+        <input id="toEmail" />
+      </div>
+      <div>
+        <label for="toName">To Name</label>
+        <input id="toName" />
+      </div>
+      <div class="full">
+        <label for="subject">Subject</label>
+        <input id="subject" value="RentAll SendGrid Local Test" />
+      </div>
+      <div class="full">
+        <label for="plainTextContent">Plain Text Content</label>
+        <textarea id="plainTextContent">This is a test email from RentAll local development.</textarea>
+      </div>
+      <div class="full">
+        <label for="htmlContent">HTML Content</label>
+        <textarea id="htmlContent">&lt;p&gt;This is a test email from &lt;strong&gt;RentAll&lt;/strong&gt; local development.&lt;/p&gt;</textarea>
+      </div>
+    </div>
+    <div class="actions" style="margin-top: 12px;">
+      <button id="sendBtn">2) Send Test Email</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Status</label>
+    <div id="status" class="status">Ready.</div>
+  </div>
+
+  <script>
+    const tokenKey = "rentall.dev.email.test.token";
+    const byId = (id) => document.getElementById(id);
+    const statusEl = byId("status");
+
+    byId("baseUrl").value = window.location.origin;
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle("err", isError);
+      statusEl.classList.toggle("ok", !isError);
+    }
+
+    async function postJson(url, body, token) {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body)
+      });
+      const text = await response.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (_) { }
+      return { response, text, json };
+    }
+
+    byId("loginBtn").addEventListener("click", async () => {
+      const baseUrl = byId("baseUrl").value.trim().replace(/\/$/, "");
+      const username = byId("username").value.trim();
+      const password = byId("password").value;
+
+      if (!baseUrl || !username || !password) {
+        setStatus("Base URL, username, and password are required.", true);
+        return;
+      }
+
+      setStatus("Logging in...");
+      try {
+        const { response, json, text } = await postJson(`${baseUrl}/api/auth/login`, { username, password });
+        if (!response.ok || !json?.accessToken) {
+          setStatus(`Login failed (${response.status}).\n${text}`, true);
+          return;
+        }
+
+        localStorage.setItem(tokenKey, json.accessToken);
+        setStatus("Login successful. Token saved in browser storage.");
+      } catch (error) {
+        setStatus(`Login error: ${error.message}`, true);
+      }
+    });
+
+    byId("clearTokenBtn").addEventListener("click", () => {
+      localStorage.removeItem(tokenKey);
+      setStatus("Stored token cleared.");
+    });
+
+    byId("sendBtn").addEventListener("click", async () => {
+      const token = localStorage.getItem(tokenKey);
+      const baseUrl = byId("baseUrl").value.trim().replace(/\/$/, "");
+
+      if (!token) {
+        setStatus("No token found. Click '1) Login' first.", true);
+        return;
+      }
+
+      const body = {
+        toEmail: byId("toEmail").value.trim(),
+        toName: byId("toName").value.trim(),
+        subject: byId("subject").value,
+        plainTextContent: byId("plainTextContent").value,
+        htmlContent: byId("htmlContent").value
+      };
+
+      setStatus("Sending test email...");
+      try {
+        const { response, json, text } = await postJson(`${baseUrl}/api/dev/email/test`, body, token);
+        if (!response.ok) {
+          setStatus(`Send failed (${response.status}).\n${text}`, true);
+          return;
+        }
+
+        setStatus(`Success.\n${JSON.stringify(json ?? { ok: true }, null, 2)}`);
+      } catch (error) {
+        setStatus(`Send error: ${error.message}`, true);
+      }
+    });
+  </script>
+</body>
+</html>

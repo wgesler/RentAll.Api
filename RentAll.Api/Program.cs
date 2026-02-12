@@ -50,6 +50,10 @@ var storageSettings = builder.Configuration.GetSection("StorageSettings");
 builder.Services.Configure<StorageSettings>(storageSettings);
 builder.Services.AddScoped<StorageSettings>();
 
+// Configure SendGrid settings
+var sendGridSettings = builder.Configuration.GetSection("SendGridSettings");
+builder.Services.Configure<SendGridSettings>(sendGridSettings);
+
 var allowedHosts = appSettings.GetSection("AllowedHostNames").Get<string[]>()!;
 var environment = appSettings.GetSection("Environment").Get<string>()!;
 var isDev = environment.ToLower() == "development";
@@ -105,6 +109,7 @@ builder.Services.AddScoped<AuthManager>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
+builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 
 // Configure File Storage Service (FileSystem or AzureBlob)
 var storageConfig = builder.Configuration.GetSection("StorageSettings");
