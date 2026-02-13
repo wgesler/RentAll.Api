@@ -3,6 +3,7 @@ using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
+using System.Reflection;
 
 namespace RentAll.Domain.Managers;
 
@@ -12,23 +13,39 @@ public class EmailManager : IEmailManager
 
 	private readonly IEmailRepository _emailRepository;
 	private readonly IEmailService _emailService;
+	private readonly IFileService _fileService;
+	private readonly IDocumentRepository _documentRepository;
 
 	public EmailManager(
 		IEmailRepository emailRepository,
-		IEmailService emailService)
+		IEmailService emailService,
+		IFileService fileService,
+		IDocumentRepository documentRepository)
 	{
 		_emailRepository = emailRepository;
 		_emailService = emailService;
+		_fileService = fileService;
+		_documentRepository = documentRepository;
 	}
 
 	public async Task<Email> SendEmail(Email email)
 	{
+		// Translate the email into SendGrid format
 		var originalEmailMessage = email.ToEmailMessage();
-		var createdEmail = await _emailRepository.CreateAsync(email);
+
+		// If there's an attachment, store it in blob storage
+		if (email.FileDetails != null)
+		{
+			var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, email.OfficeId, email.FileDetails.File, email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachment);
+			email.AttachmentPath = documentPath;
+		}
+
+        // Save this email in our database
+        var createdEmail = await _emailRepository.CreateAsync(email);
 		if (createdEmail.EmailStatus != EmailStatus.Attempting)
 			return createdEmail;
 
-		// Preserve actor for audit updates.
+		// Preserve actor for audit updates
 		var modifiedBy = createdEmail.CreatedBy != Guid.Empty ? createdEmail.CreatedBy : email.CreatedBy;
 		var currentEmail = createdEmail;
 

@@ -15,6 +15,7 @@ public class CreateEmailDto
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
+	public string AttachmentPath { get; set; } = string.Empty;
     public FileDetails? FileDetails { get; set; }
 
 
@@ -65,6 +66,7 @@ public class CreateEmailDto
 			Subject = Subject,
 			PlainTextContent = PlainTextContent,
 			HtmlContent = HtmlContent,
+			AttachmentPath = AttachmentPath,
 			FileDetails = FileDetails,
 			EmailStatus = EmailStatus.Attempting,
 			CreatedBy = currentUser

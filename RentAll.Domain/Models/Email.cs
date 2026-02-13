@@ -15,6 +15,7 @@ public class Email
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
+	public string AttachmentPath { get; set; } = string.Empty;
 	public FileDetails? FileDetails { get; set; }
 	public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;
 	public int AttemptCount { get; set; }

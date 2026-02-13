@@ -6,6 +6,7 @@ public enum DocumentType
 	PropertyLetter = 1,
 	ReservationLease = 2,
 	Invoice = 3,
+	Attachment = 4,
 }
 
 

@@ -20,6 +20,7 @@ using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.CostCodes;
 using RentAll.Infrastructure.Repositories.Documents;
+using RentAll.Infrastructure.Repositories.EmailHtmls;
 using RentAll.Infrastructure.Repositories.Emails;
 using RentAll.Infrastructure.Repositories.Invoices;
 using RentAll.Infrastructure.Repositories.LeaseInformations;
@@ -184,6 +185,7 @@ builder.Services.AddScoped<IContactRepository, ContactRepository>();
 builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<IAgentRepository, AgentRepository>();
 builder.Services.AddScoped<ICommonRepository, CommonRepository>();
+builder.Services.AddScoped<IEmailHtmlRepository, EmailHtmlRepository>();
 builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 
 builder.Services.AddScoped<IOfficeRepository, OfficeRepository>();
