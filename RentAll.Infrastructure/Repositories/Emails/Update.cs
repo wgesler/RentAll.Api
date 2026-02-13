@@ -13,6 +13,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 			var res = await db.DapperProcQueryAsync<EmailEntity>("Email.Email_UpdateById", new
 			{
 				EmailId = email.EmailId,
+				OrganizationId = email.OrganizationId,
 				EmailStatusId = (int)email.EmailStatus,
 				AttemptCount = email.AttemptCount,
 				LastError = email.LastError,

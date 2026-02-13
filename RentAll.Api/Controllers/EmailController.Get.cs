@@ -14,7 +14,15 @@ namespace RentAll.Api.Controllers
 			try
 			{
 				var emails = await _emailRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
-				var response = emails.Select(e => new EmailResponseDto(e));
+				var response = new List<EmailResponseDto>();
+				foreach (var email in emails)
+				{
+					var dto = new EmailResponseDto(email);
+					if (!string.IsNullOrWhiteSpace(email.AttachmentPath))
+						dto.FileDetails = await _fileService.GetDocumentDetailsAsync(email.OrganizationId, email.OfficeId, email.AttachmentPath);
+
+					response.Add(dto);
+				}
 				return Ok(response);
 			}
 			catch (Exception ex)
@@ -39,7 +47,11 @@ namespace RentAll.Api.Controllers
 				if (email == null)
 					return NotFound("Email not found");
 
-				return Ok(new EmailResponseDto(email));
+				var response = new EmailResponseDto(email);
+				if (!string.IsNullOrWhiteSpace(email.AttachmentPath))
+					response.FileDetails = await _fileService.GetDocumentDetailsAsync(email.OrganizationId, email.OfficeId, email.AttachmentPath);
+
+				return Ok(response);
 			}
 			catch (Exception ex)
 			{

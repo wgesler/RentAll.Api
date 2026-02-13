@@ -21,6 +21,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
 				Subject = email.Subject,
 				PlainTextContent = email.PlainTextContent,
 				HtmlContent = email.HtmlContent,
+				DocumentId = email.DocumentId,
+				AttachmentName = email.AttachmentName,
 				AttachmentPath = email.AttachmentPath,
 				EmailStatusId = (int)email.EmailStatus,
 				AttemptCount = email.AttemptCount,

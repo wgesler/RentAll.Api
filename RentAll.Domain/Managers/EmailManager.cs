@@ -3,7 +3,6 @@ using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
-using System.Reflection;
 
 namespace RentAll.Domain.Managers;
 
@@ -37,7 +36,33 @@ public class EmailManager : IEmailManager
 		if (email.FileDetails != null)
 		{
 			var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, email.OfficeId, email.FileDetails.File, email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachment);
-			email.AttachmentPath = documentPath;
+
+			try
+			{
+				var createdDocument = await _documentRepository.CreateAsync(new Document
+				{
+					OrganizationId = email.OrganizationId,
+					OfficeId = email.OfficeId,
+					PropertyId = email.PropertyId,
+					ReservationId = email.ReservationId,
+					DocumentType = DocumentType.Attachment,
+					FileName = Path.GetFileNameWithoutExtension(email.FileDetails.FileName),
+					FileExtension = Path.GetExtension(email.FileDetails.FileName),
+					ContentType = email.FileDetails.ContentType,
+					DocumentPath = documentPath,
+					CreatedBy = email.CreatedBy
+				});
+
+				email.DocumentId = createdDocument.DocumentId;
+				email.AttachmentPath = createdDocument.DocumentPath;
+				email.AttachmentName = email.FileDetails.FileName;
+			}
+			catch
+			{
+				// Best effort cleanup so we don't leave orphaned blobs when metadata create fails.
+				await _fileService.DeleteDocumentAsync(email.OrganizationId, email.OfficeId, documentPath);
+				throw;
+			}
 		}
 
         // Save this email in our database

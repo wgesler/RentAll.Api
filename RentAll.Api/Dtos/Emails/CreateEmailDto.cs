@@ -8,14 +8,15 @@ public class CreateEmailDto
 {
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public string FromEmail { get; set; } = string.Empty;
+    public Guid? PropertyId { get; set; }
+    public Guid? ReservationId { get; set; }
+    public string FromEmail { get; set; } = string.Empty;
 	public string FromName { get; set; } = string.Empty;
 	public string ToEmail { get; set; } = string.Empty;
 	public string ToName { get; set; } = string.Empty;
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
-	public string AttachmentPath { get; set; } = string.Empty;
     public FileDetails? FileDetails { get; set; }
 
 
@@ -59,6 +60,8 @@ public class CreateEmailDto
 		{
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
+			PropertyId = PropertyId,
+			ReservationId = ReservationId,
 			FromEmail = FromEmail,
 			FromName = FromName,
 			ToEmail = ToEmail,
@@ -66,7 +69,6 @@ public class CreateEmailDto
 			Subject = Subject,
 			PlainTextContent = PlainTextContent,
 			HtmlContent = HtmlContent,
-			AttachmentPath = AttachmentPath,
 			FileDetails = FileDetails,
 			EmailStatus = EmailStatus.Attempting,
 			CreatedBy = currentUser

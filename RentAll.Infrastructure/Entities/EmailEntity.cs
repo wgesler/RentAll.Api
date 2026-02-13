@@ -12,8 +12,10 @@ public class EmailEntity
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
+	public Guid? DocumentId { get; set; }
+	public string AttachmentName { get; set; } = string.Empty;
 	public string AttachmentPath { get; set; } = string.Empty;
-    public int EmailStatusId { get; set; }
+	public int EmailStatusId { get; set; }
 	public int AttemptCount { get; set; }
 	public string LastError { get; set; } = string.Empty;
 	public DateTimeOffset? LastAttemptedOn { get; set; }

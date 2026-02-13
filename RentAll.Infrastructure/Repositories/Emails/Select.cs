@@ -10,7 +10,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 		public async Task<IEnumerable<Email>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<EmailEntity>("Email.Email_GetAllByOfficeId", new
+			var res = await db.DapperProcQueryAsync<EmailEntity>("Email.Email_GetAllByOfficeIds", new
 			{
 				OrganizationId = organizationId,
 				Offices = officeAccess

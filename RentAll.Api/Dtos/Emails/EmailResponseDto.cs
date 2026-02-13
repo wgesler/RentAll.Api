@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Emails;
 
@@ -14,7 +15,10 @@ public class EmailResponseDto
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
+	public Guid? DocumentId { get; set; }
+	public string AttachmentName { get; set; } = string.Empty;
 	public string AttachmentPath { get; set; } = string.Empty;
+	public FileDetails? FileDetails { get; set; }
 	public int EmailStatusId { get; set; }
 	public int AttemptCount { get; set; }
 	public string LastError { get; set; } = string.Empty;
@@ -37,7 +41,10 @@ public class EmailResponseDto
 		Subject = email.Subject;
 		PlainTextContent = email.PlainTextContent;
 		HtmlContent = email.HtmlContent;
+		DocumentId = email.DocumentId;
+		AttachmentName = email.AttachmentName;
 		AttachmentPath = email.AttachmentPath;
+		FileDetails = email.FileDetails;
 		EmailStatusId = (int)email.EmailStatus;
 		AttemptCount = email.AttemptCount;
 		LastError = email.LastError;
