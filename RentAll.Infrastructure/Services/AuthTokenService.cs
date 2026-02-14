@@ -49,7 +49,8 @@ public class AuthTokenService : IAuthTokenService
 			agentId = user.AgentId.ToString(),
 			firstName = user.FirstName,
 			lastName = user.LastName,
-            email = user.Email,
+			email = user.Email,
+			phone = user.Phone,
 			userGroups = userGroupsString,
 			officeAccess = officeAccessString,
 			startupPageId = (int)user.StartupPage
