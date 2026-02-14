@@ -14,6 +14,7 @@ public class UserResponseDto
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
+	public string Phone { get; set; } = string.Empty;
 	public string Password { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
 	public List<int> OfficeAccess { get; set; } = new List<int>();
@@ -36,6 +37,7 @@ public class UserResponseDto
 		FirstName = user.FirstName;
 		LastName = user.LastName;
 		Email = user.Email;
+		Phone = user.Phone;
 		UserGroups = user.UserGroups;
 		OfficeAccess = user.OfficeAccess;
 		ProfilePath = user.ProfilePath;

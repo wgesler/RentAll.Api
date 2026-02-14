@@ -30,6 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				Email = user.Email,
+				Phone = user.Phone,
 				PasswordHash = user.PasswordHash,
 				UserGroups = userGroupsJson,
 				OfficeAccess = officeAccessJson,

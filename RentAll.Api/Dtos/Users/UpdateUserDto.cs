@@ -13,6 +13,7 @@ public class UpdateUserDto
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; set; } = string.Empty;
+	public string Phone { get; set; } = string.Empty;
 	public string? Password { get; set; } = string.Empty;
 	public string? NewPassword { get; set; } = string.Empty;
 	public List<string> UserGroups { get; set; } = new List<string>();
@@ -45,6 +46,9 @@ public class UpdateUserDto
 		if (string.IsNullOrWhiteSpace(Email))
 			return (false, "Email is required");
 
+		if (string.IsNullOrWhiteSpace(Phone))
+			return (false, "Phone is required");
+
 		// Validate enum value
 		if (!Enum.IsDefined(typeof(StartupPage), StartupPageId))
 			return (false, $"Invalid StartupPage value: {StartupPageId}");
@@ -63,6 +67,7 @@ public class UpdateUserDto
 			FirstName = d.FirstName,
 			LastName = d.LastName,
 			Email = d.Email,
+			Phone = d.Phone,
 			PasswordHash = passwordHash, 
 			UserGroups = d.UserGroups,
 			OfficeAccess = d.OfficeAccess,

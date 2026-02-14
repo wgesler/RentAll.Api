@@ -55,6 +55,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 				FirstName = e.FirstName,
 				LastName = e.LastName,
 				Email = e.Email,
+				Phone = e.Phone,
 				PasswordHash = e.PasswordHash,
 				IsActive = e.IsActive,
 				UserGroups = userGroups,

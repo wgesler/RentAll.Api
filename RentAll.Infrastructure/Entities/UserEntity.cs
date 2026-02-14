@@ -7,7 +7,8 @@ public class UserEntity
     public string? OrganizationName { get; set; }
     public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
-	public string Email { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
 	public string UserGroups { get; set; } = string.Empty;
 	public string OfficeAccess { get; set; } = string.Empty;
