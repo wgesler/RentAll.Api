@@ -16,7 +16,8 @@ public class CreateEmailDto
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
-    public FileDetails? FileDetails { get; set; }
+	public int EmailTypeId { get; set; }
+	public FileDetails? FileDetails { get; set; }
 
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organization, string officeAccess)
@@ -53,6 +54,9 @@ public class CreateEmailDto
 		if (string.IsNullOrWhiteSpace(PlainTextContent) && string.IsNullOrWhiteSpace(HtmlContent))
 			return (false, "Either PlainTextContent or HtmlContent is required");
 
+		if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
+			return (false, $"Invalid EmailType value: {EmailTypeId}");
+
 		return (true, null);
 	}
 
@@ -70,6 +74,7 @@ public class CreateEmailDto
 			Subject = Subject,
 			PlainTextContent = PlainTextContent,
 			HtmlContent = HtmlContent,
+			EmailType = (EmailType)EmailTypeId,
 			FileDetails = FileDetails,
 			EmailStatus = EmailStatus.Attempting,
 			CreatedBy = currentUser

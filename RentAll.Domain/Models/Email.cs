@@ -20,6 +20,7 @@ public class Email
 	public string AttachmentName { get; set; } = string.Empty;
 	public string AttachmentPath { get; set; } = string.Empty;
 	public FileDetails? FileDetails { get; set; }
+	public EmailType EmailType { get; set; } = EmailType.Other;
 	public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;
 	public int AttemptCount { get; set; }
 	public string LastError { get; set; } = string.Empty;

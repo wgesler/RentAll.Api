@@ -36,6 +36,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 				DocumentId = e.DocumentId,
 				AttachmentName = e.AttachmentName,
 				AttachmentPath = e.AttachmentPath,
+				EmailType = (EmailType)e.EmailTypeId,
 				EmailStatus = (EmailStatus)e.EmailStatusId,
 				AttemptCount = e.AttemptCount,
 				LastError = e.LastError,
