@@ -8,6 +8,7 @@ public class CreateEmailDto
 {
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
+	public Guid PropertyId { get; set; }
 	public Guid ReservationId { get; set; }
 	public string FromEmail { get; set; } = string.Empty;
 	public string FromName { get; set; } = string.Empty;
@@ -32,6 +33,9 @@ public class CreateEmailDto
 			.ToHashSet();
 		if (!officeIds.Contains(OfficeId))
 			return (false, "OfficeId not valid");
+
+		if (PropertyId == Guid.Empty)
+			return (false, "PropertyId is required");
 
 		if (ReservationId == Guid.Empty)
 			return (false, "ReservationId is required");
@@ -66,6 +70,7 @@ public class CreateEmailDto
 		{
 			OrganizationId = OrganizationId,
 			OfficeId = OfficeId,
+			PropertyId = PropertyId,
 			ReservationId = ReservationId,
 			FromEmail = FromEmail,
 			FromName = FromName,

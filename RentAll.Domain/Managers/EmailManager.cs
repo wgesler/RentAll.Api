@@ -43,6 +43,7 @@ public class EmailManager : IEmailManager
 				{
 					OrganizationId = email.OrganizationId,
 					OfficeId = email.OfficeId,
+					PropertyId = email.PropertyId,
 					ReservationId = email.ReservationId,
 					DocumentType = DocumentType.Attachment,
 					FileName = Path.GetFileNameWithoutExtension(email.FileDetails.FileName),

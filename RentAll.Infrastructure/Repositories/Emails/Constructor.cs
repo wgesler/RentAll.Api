@@ -25,6 +25,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 				EmailId = e.EmailId,
 				OrganizationId = e.OrganizationId,
 				OfficeId = e.OfficeId,
+				PropertyId = e.PropertyId,
 				ReservationId = e.ReservationId,
 				ToEmail = e.ToEmail,
 				ToName = e.ToName,
