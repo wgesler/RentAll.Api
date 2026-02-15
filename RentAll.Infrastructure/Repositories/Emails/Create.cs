@@ -14,6 +14,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 			{
 				OrganizationId = email.OrganizationId,
 				OfficeId = email.OfficeId,
+				ReservationId = email.ReservationId,
 				FromEmail = email.FromEmail,
 				FromName = email.FromName,
 				ToEmail = email.ToEmail,

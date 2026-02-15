@@ -8,9 +8,8 @@ public class Email
 	public Guid EmailId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-    public Guid? PropertyId { get; set; }
-    public Guid? ReservationId { get; set; }
-    public string ToEmail { get; set; } = string.Empty;
+	public Guid ReservationId { get; set; }
+	public string ToEmail { get; set; } = string.Empty;
 	public string ToName { get; set; } = string.Empty;
 	public string FromEmail { get; set; } = string.Empty;
 	public string FromName { get; set; } = string.Empty;
