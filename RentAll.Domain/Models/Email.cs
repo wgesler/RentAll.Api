@@ -8,8 +8,8 @@ public class Email
 	public Guid EmailId { get; set; }
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public Guid PropertyId { get; set; }
-	public Guid ReservationId { get; set; }
+	public Guid? PropertyId { get; set; }
+	public Guid? ReservationId { get; set; }
 	public List<EmailAddress> ToRecipients { get; set; } = [];
 	public List<EmailAddress> CcRecipients { get; set; } = [];
 	public List<EmailAddress> BccRecipients { get; set; } = [];

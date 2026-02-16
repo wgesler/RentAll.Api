@@ -9,8 +9,8 @@ public class CreateEmailDto
 {
 	public Guid OrganizationId { get; set; }
 	public int OfficeId { get; set; }
-	public Guid PropertyId { get; set; }
-	public Guid ReservationId { get; set; }
+	public Guid? PropertyId { get; set; }
+	public Guid? ReservationId { get; set; }
 	public EmailAddress FromRecipient { get; set; } = new();
 	public List<EmailAddress> ToRecipients { get; set; } = [];
 	public List<EmailAddress> CcRecipients { get; set; } = [];
@@ -39,12 +39,6 @@ public class CreateEmailDto
 			.ToHashSet();
 		if (!officeIds.Contains(OfficeId))
 			return (false, "OfficeId not valid");
-
-		if (PropertyId == Guid.Empty)
-			return (false, "PropertyId is required");
-
-		if (ReservationId == Guid.Empty)
-			return (false, "ReservationId is required");
 
 		if (ToRecipients.Count == 0)
 			return (false, "At least one ToRecipient is required");

@@ -10,7 +10,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 		public async Task<Email> UpdateByIdAsync(Email email)
 		{
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<EmailEntity>("Email.Email_UpdateById", new
+			var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_UpdateById", new
 			{
 				EmailId = email.EmailId,
 				OrganizationId = email.OrganizationId,
@@ -25,7 +25,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 			if (res == null || !res.Any())
 				throw new Exception("Email not found");
 
-			return ConvertEntityToModel(res.FirstOrDefault()!);
+			return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
 		}
 	}
 }

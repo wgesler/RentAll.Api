@@ -9,36 +9,37 @@ namespace RentAll.Infrastructure.Repositories.Emails
 	{
 		public async Task<Email> CreateAsync(Email email)
 		{
+			var entity = ConvertModelToEntity(email);
 			await using var db = new SqlConnection(_dbConnectionString);
-			var res = await db.DapperProcQueryAsync<EmailEntity>("Email.Email_Add", new
+			var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_Add", new
 			{
-				OrganizationId = email.OrganizationId,
-				OfficeId = email.OfficeId,
-				PropertyId = email.PropertyId,
-				ReservationId = email.ReservationId,
-				ToRecipients = SerializeRecipients(email.ToRecipients),
-				CcRecipients = SerializeRecipients(email.CcRecipients),
-				BccRecipients = SerializeRecipients(email.BccRecipients),
-				FromRecipient = SerializeRecipient(email.FromRecipient),
-				Subject = email.Subject,
-				PlainTextContent = email.PlainTextContent,
-				HtmlContent = email.HtmlContent,
-				DocumentId = email.DocumentId,
-				AttachmentName = email.AttachmentName,
-				AttachmentPath = email.AttachmentPath,
-				EmailTypeId = (int)email.EmailType,
-				EmailStatusId = (int)email.EmailStatus,
-				AttemptCount = email.AttemptCount,
-				LastError = email.LastError,
-				LastAttemptedOn = email.LastAttemptedOn,
-				SentOn = email.SentOn,
-				CreatedBy = email.CreatedBy
+				OrganizationId = entity.OrganizationId,
+				OfficeId = entity.OfficeId,
+				PropertyId = entity.PropertyId,
+				ReservationId = entity.ReservationId,
+				ToRecipients = SerializeRecipients(entity.ToRecipients),
+				CcRecipients = SerializeRecipients(entity.CcRecipients),
+				BccRecipients = SerializeRecipients(entity.BccRecipients),
+				FromRecipient = SerializeRecipient(entity.FromRecipient),
+				Subject = entity.Subject,
+				PlainTextContent = entity.PlainTextContent,
+				HtmlContent = entity.HtmlContent,
+				DocumentId = entity.DocumentId,
+				AttachmentName = entity.AttachmentName,
+				AttachmentPath = entity.AttachmentPath,
+				EmailTypeId = entity.EmailTypeId,
+				EmailStatusId = entity.EmailStatusId,
+				AttemptCount = entity.AttemptCount,
+				LastError = entity.LastError,
+				LastAttemptedOn = entity.LastAttemptedOn,
+				SentOn = entity.SentOn,
+				CreatedBy = entity.CreatedBy
 			});
 
 			if (res == null || !res.Any())
 				throw new Exception("Email not created");
 
-			return ConvertEntityToModel(res.FirstOrDefault()!);
+			return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
 		}
 	}
 }
