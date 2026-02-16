@@ -10,10 +10,10 @@ public class EmailResponseDto
 	public int OfficeId { get; set; }
 	public Guid PropertyId { get; set; }
 	public Guid ReservationId { get; set; }
-	public string ToEmail { get; set; } = string.Empty;
-	public string ToName { get; set; } = string.Empty;
-	public string FromEmail { get; set; } = string.Empty;
-	public string FromName { get; set; } = string.Empty;
+	public List<EmailAddress> ToRecipients { get; set; } = [];
+	public List<EmailAddress> CcRecipients { get; set; } = [];
+	public List<EmailAddress> BccRecipients { get; set; } = [];
+	public EmailAddress FromRecipient { get; set; } = new();
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
@@ -39,10 +39,10 @@ public class EmailResponseDto
 		OfficeId = email.OfficeId;
 		PropertyId = email.PropertyId;
 		ReservationId = email.ReservationId;
-		ToEmail = email.ToEmail;
-		ToName = email.ToName;
-		FromEmail = email.FromEmail;
-		FromName = email.FromName;
+		ToRecipients = email.ToRecipients;
+		CcRecipients = email.CcRecipients;
+		BccRecipients = email.BccRecipients;
+		FromRecipient = email.FromRecipient;
 		Subject = email.Subject;
 		PlainTextContent = email.PlainTextContent;
 		HtmlContent = email.HtmlContent;

@@ -3,7 +3,9 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 using RentAll.Infrastructure.Entities;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Emails
 {
@@ -27,10 +29,10 @@ namespace RentAll.Infrastructure.Repositories.Emails
 				OfficeId = e.OfficeId,
 				PropertyId = e.PropertyId,
 				ReservationId = e.ReservationId,
-				ToEmail = e.ToEmail,
-				ToName = e.ToName,
-				FromEmail = e.FromEmail,
-				FromName = e.FromName,
+				ToRecipients = DeserializeRecipients(e.ToRecipients),
+				CcRecipients = DeserializeRecipients(e.CcRecipients),
+				BccRecipients = DeserializeRecipients(e.BccRecipients),
+				FromRecipient = DeserializeRecipient(e.FromRecipient),
 				Subject = e.Subject,
 				PlainTextContent = e.PlainTextContent,
 				HtmlContent = e.HtmlContent,
@@ -48,6 +50,75 @@ namespace RentAll.Infrastructure.Repositories.Emails
 				ModifiedOn = e.ModifiedOn,
 				ModifiedBy = e.ModifiedBy
 			};
+		}
+
+		private static readonly JsonSerializerOptions SerializerOptions = new()
+		{
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+		};
+
+		private static List<EmailAddress> DeserializeRecipients(string recipientsJson)
+		{
+			if (string.IsNullOrWhiteSpace(recipientsJson))
+				return [];
+
+			try
+			{
+				var values = JsonSerializer.Deserialize<List<EmailAddressEntity>>(recipientsJson, SerializerOptions) ?? [];
+				return values
+					.Select(recipient => new EmailAddress
+					{
+						Email = recipient.Email,
+						Name = recipient.Name
+					})
+					.ToList();
+			}
+			catch
+			{
+				return [];
+			}
+		}
+
+		private static EmailAddress DeserializeRecipient(string recipientJson)
+		{
+			if (string.IsNullOrWhiteSpace(recipientJson))
+				return new EmailAddress();
+
+			try
+			{
+				var value = JsonSerializer.Deserialize<EmailAddressEntity>(recipientJson, SerializerOptions);
+				return value == null
+					? new EmailAddress()
+					: new EmailAddress
+					{
+						Email = value.Email,
+						Name = value.Name
+					};
+			}
+			catch
+			{
+				return new EmailAddress();
+			}
+		}
+
+		private static string SerializeRecipients(IEnumerable<EmailAddress>? recipients)
+		{
+			var entityValues = (recipients ?? Enumerable.Empty<EmailAddress>()).Select(recipient => new EmailAddressEntity
+			{
+				Email = recipient.Email,
+				Name = recipient.Name
+			});
+			return JsonSerializer.Serialize(entityValues, SerializerOptions);
+		}
+
+		private static string SerializeRecipient(EmailAddress? recipient)
+		{
+			var entityValue = new EmailAddressEntity
+			{
+				Email = recipient?.Email ?? string.Empty,
+				Name = recipient?.Name ?? string.Empty
+			};
+			return JsonSerializer.Serialize(entityValue, SerializerOptions);
 		}
 	}
 }

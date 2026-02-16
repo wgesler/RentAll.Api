@@ -7,10 +7,10 @@ public class EmailEntity
 	public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
     public Guid ReservationId { get; set; }
-    public string ToEmail { get; set; } = string.Empty;
-	public string ToName { get; set; } = string.Empty;
-	public string FromEmail { get; set; } = string.Empty;
-	public string FromName { get; set; } = string.Empty;
+	public string ToRecipients { get; set; } = "[]";
+	public string CcRecipients { get; set; } = "[]";
+	public string BccRecipients { get; set; } = "[]";
+	public string FromRecipient { get; set; } = "{}";
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;

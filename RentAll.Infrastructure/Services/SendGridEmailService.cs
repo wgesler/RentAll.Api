@@ -5,6 +5,7 @@ using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Common;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using SendGridEmailAddress = SendGrid.Helpers.Mail.EmailAddress;
 
 namespace RentAll.Infrastructure.Services;
 
@@ -26,8 +27,8 @@ public class SendGridEmailService : IEmailService
 		if (string.IsNullOrWhiteSpace(_settings.ApiKey))
 			throw new InvalidOperationException("SendGridSettings:ApiKey is not configured.");
 
-		if (string.IsNullOrWhiteSpace(message.ToEmail))
-			throw new ArgumentException("ToEmail is required.", nameof(message));
+		if (message.ToRecipients.Count == 0 || message.ToRecipients.Any(recipient => string.IsNullOrWhiteSpace(recipient.Email)))
+			throw new ArgumentException("At least one valid ToRecipient is required.", nameof(message));
 
 		if (string.IsNullOrWhiteSpace(message.Subject))
 			throw new ArgumentException("Subject is required.", nameof(message));
@@ -35,18 +36,31 @@ public class SendGridEmailService : IEmailService
 		if (string.IsNullOrWhiteSpace(message.PlainTextContent) && string.IsNullOrWhiteSpace(message.HtmlContent))
 			throw new ArgumentException("Either PlainTextContent or HtmlContent must be provided.", nameof(message));
 
-		var fromEmail = string.IsNullOrWhiteSpace(message.FromEmail) ? _settings.FromEmail : message.FromEmail;
-		var fromName = string.IsNullOrWhiteSpace(message.FromName) ? _settings.FromName : message.FromName;
+		var fromEmail = string.IsNullOrWhiteSpace(message.FromRecipient.Email) ? _settings.FromEmail : message.FromRecipient.Email;
+		var fromName = string.IsNullOrWhiteSpace(message.FromRecipient.Name) ? _settings.FromName : message.FromRecipient.Name;
 		if (string.IsNullOrWhiteSpace(fromEmail))
-			throw new InvalidOperationException("FromEmail is required either in EmailMessage or SendGridSettings.");
+			throw new InvalidOperationException("FromRecipient.Email is required either in EmailMessage or SendGridSettings.");
 
 		var client = new SendGridClient(_settings.ApiKey);
 
-		var from = new EmailAddress(fromEmail, fromName);
-		var to = new EmailAddress(message.ToEmail, message.ToName);
-		var mail = MailHelper.CreateSingleEmail(from, to, message.Subject,
+		var from = new SendGridEmailAddress(fromEmail, fromName);
+		var toRecipients = message.ToRecipients
+			.Select(recipient => new SendGridEmailAddress(recipient.Email, recipient.Name))
+			.ToList();
+		var mail = MailHelper.CreateSingleEmailToMultipleRecipients(from, toRecipients, message.Subject,
 			string.IsNullOrWhiteSpace(message.PlainTextContent) ? null : message.PlainTextContent,
-			string.IsNullOrWhiteSpace(message.HtmlContent) ? null : message.HtmlContent);
+			string.IsNullOrWhiteSpace(message.HtmlContent) ? null : message.HtmlContent,
+			false);
+
+		foreach (var recipient in message.CcRecipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient.Email)))
+		{
+			mail.AddCc(new SendGridEmailAddress(recipient.Email, recipient.Name));
+		}
+
+		foreach (var recipient in message.BccRecipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient.Email)))
+		{
+			mail.AddBcc(new SendGridEmailAddress(recipient.Email, recipient.Name));
+		}
 
 		if (message.FileDetails != null)
 		{

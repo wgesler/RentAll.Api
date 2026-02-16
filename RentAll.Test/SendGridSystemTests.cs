@@ -18,8 +18,14 @@ public class SendGridSystemTests
 		var subject = $"RentAll system test {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
 		var message = new EmailMessage
 		{
-			ToEmail = "w.gesler@gmail.com",
-			ToName = "Will Gesler",
+			ToRecipients =
+			[
+				new EmailAddress
+				{
+					Email = "w.gesler@gmail.com",
+					Name = "Will Gesler"
+				}
+			],
 			Subject = subject,
 			PlainTextContent = "This is a real SendGrid system test email from RentAll.Test.",
 			HtmlContent = $"<p>This is a <strong>real SendGrid system test</strong> email from RentAll.Test.</p><p>Subject: {subject}</p>"

@@ -10,10 +10,10 @@ public class Email
 	public int OfficeId { get; set; }
 	public Guid PropertyId { get; set; }
 	public Guid ReservationId { get; set; }
-	public string ToEmail { get; set; } = string.Empty;
-	public string ToName { get; set; } = string.Empty;
-	public string FromEmail { get; set; } = string.Empty;
-	public string FromName { get; set; } = string.Empty;
+	public List<EmailAddress> ToRecipients { get; set; } = [];
+	public List<EmailAddress> CcRecipients { get; set; } = [];
+	public List<EmailAddress> BccRecipients { get; set; } = [];
+	public EmailAddress FromRecipient { get; set; } = new();
 	public string Subject { get; set; } = string.Empty;
 	public string PlainTextContent { get; set; } = string.Empty;
 	public string HtmlContent { get; set; } = string.Empty;
@@ -36,10 +36,32 @@ public class Email
 	{
 		return new EmailMessage
 		{
-			FromEmail = FromEmail,
-			FromName = FromName,
-			ToEmail = ToEmail,
-			ToName = ToName,
+			FromRecipient = new EmailAddress
+			{
+				Email = FromRecipient.Email,
+				Name = FromRecipient.Name
+			},
+			ToRecipients = ToRecipients
+				.Select(recipient => new EmailAddress
+				{
+					Email = recipient.Email,
+					Name = recipient.Name
+				})
+				.ToList(),
+			CcRecipients = CcRecipients
+				.Select(recipient => new EmailAddress
+				{
+					Email = recipient.Email,
+					Name = recipient.Name
+				})
+				.ToList(),
+			BccRecipients = BccRecipients
+				.Select(recipient => new EmailAddress
+				{
+					Email = recipient.Email,
+					Name = recipient.Name
+				})
+				.ToList(),
 			Subject = Subject,
 			PlainTextContent = PlainTextContent,
 			HtmlContent = HtmlContent,

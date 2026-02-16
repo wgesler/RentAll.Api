@@ -16,7 +16,7 @@ namespace RentAll.Api.Controllers
 				return BadRequest("Email data is required");
 
 			var (isValid, errorMessage) = dto.IsValid(CurrentOrganizationId, CurrentOfficeAccess);
-			if (!isValid || !IsValidEmail(dto.ToEmail))
+			if (!isValid)
 				return BadRequest(errorMessage ?? "Invalid request data");
 
 			try
