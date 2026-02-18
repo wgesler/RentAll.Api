@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Domain.Enums;
+using RentAll.Api.Dtos.Common;
 
 namespace RentAll.Api.Controllers
 {
@@ -9,30 +9,21 @@ namespace RentAll.Api.Controllers
 		/// Get iCal feed for a property.
 		/// </summary>
 		/// <param name="propertyId">Property ID</param>
-		/// <param name="organizationId">Organization ID</param>
-		/// <param name="token">Calendar token</param>
+		/// <param name="dto">Calendar URL request query values</param>
 		/// <returns>iCal text/calendar response</returns>
 		[HttpGet("calendar/property/{propertyId}.ics")]
-		public async Task<IActionResult> GetPropertyCalendar(Guid propertyId, [FromQuery] Guid organizationId, [FromQuery] string token)
+		public async Task<IActionResult> GetPropertyCalendar(Guid propertyId, [FromQuery] CalendarUrlRequestDto dto)
 		{
-			if (propertyId == Guid.Empty)
-				return BadRequest("Property ID is required");
-			if (organizationId == Guid.Empty || string.IsNullOrWhiteSpace(token))
-				return NotFound("Calendar not found");
+			var validation = dto.IsValid(propertyId);
+			if (!validation.IsValid)
+				return BadRequest(validation.ErrorMessage!);
 
 			try
 			{
-				if (!_calendarService.IsValidPropertyCalendarToken(propertyId, organizationId, token))
+				var ics = await _calendarManager.BuildPropertyCalendarFeedAsync(dto.PropertyId, dto.OrganizationId, dto.Token);
+				if (ics == null)
 					return NotFound("Calendar not found");
 
-				var reservations = await _reservationRepository.GetByPropertyIdAsync(propertyId, organizationId);
-				var calendarReservations = reservations
-					.Where(r => r.IsActive)
-					.Where(r => r.ReservationStatus != ReservationStatus.PreBooking)
-					.Where(r => r.DepartureDate > DateTimeOffset.UtcNow.AddYears(-1))
-					.ToList();
-
-				var ics = _calendarService.BuildPropertyCalendar(propertyId, calendarReservations, DateTimeOffset.UtcNow);
 				Response.Headers.CacheControl = "public,max-age=300";
 				return Content(ics, "text/calendar; charset=utf-8");
 			}

@@ -170,6 +170,7 @@ builder.Services.AddScoped<IContactManager, ContactManager>();
 builder.Services.AddScoped<IEmailManager, EmailManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
 builder.Services.AddScoped<IAccountingManager, AccountingManager>();
+builder.Services.AddScoped<ICalendarManager, CalendarManager>();
 
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();

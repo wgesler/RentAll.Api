@@ -1,6 +1,6 @@
 namespace RentAll.Api.Dtos.Common;
 
-public class CalendarSubscriptionResponseDto
+public class CalendarUrlResponseDto
 {
 	public Guid PropertyId { get; set; }
 	public Guid OrganizationId { get; set; }
