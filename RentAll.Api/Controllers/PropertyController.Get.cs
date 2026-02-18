@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RentAll.Api.Dtos.Common;
 using RentAll.Api.Dtos.Properties;
 
 namespace RentAll.Api.Controllers
@@ -48,6 +49,40 @@ namespace RentAll.Api.Controllers
 			{
 				_logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
 				return ServerError("An error occurred while retrieving properties");
+			}
+		}
+
+		/// <summary>
+		/// Get iCal subscription URL for a property.
+		/// </summary>
+		/// <param name="id">Property ID</param>
+		/// <returns>Tokenized iCal subscription URL</returns>
+		[HttpGet("{id}/calendar/subscription-url")]
+		public IActionResult GetCalendarSubscriptionUrl(Guid id)
+		{
+			if (id == Guid.Empty)
+				return BadRequest("Property ID is required");
+
+			try
+			{
+				var organizationId = CurrentOrganizationId;
+				if (organizationId == Guid.Empty)
+					return Unauthorized("Organization ID is missing from token");
+
+				var token = _calendarService.GeneratePropertyCalendarToken(id, organizationId);
+				var subscriptionUrl = $"{Request.Scheme}://{Request.Host}/api/common/calendar/property/{id}.ics?organizationId={organizationId}&token={token}";
+
+				return Ok(new CalendarSubscriptionResponseDto
+				{
+					PropertyId = id,
+					OrganizationId = organizationId,
+					SubscriptionUrl = subscriptionUrl
+				});
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error creating calendar subscription URL for property: {PropertyId}", id);
+				return ServerError("An error occurred while creating calendar subscription URL");
 			}
 		}
 

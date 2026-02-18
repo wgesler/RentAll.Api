@@ -111,6 +111,7 @@ builder.Services.AddScoped<AuthManager>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
+builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 
 // Configure File Storage Service (FileSystem or AzureBlob)
