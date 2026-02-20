@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.EmailHtmls;
+using RentAll.Api.Dtos.Emails.EmailHtmls;
 
 namespace RentAll.Api.Controllers
 {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Emails;
+using RentAll.Api.Dtos.Emails.Emails;
 using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers

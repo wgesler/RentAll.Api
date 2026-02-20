@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Offices;
+using RentAll.Api.Dtos.Organizations.Offices;
 using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers

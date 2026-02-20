@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Reservations;
+using RentAll.Api.Dtos.Reservations.Reservations;
 using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers

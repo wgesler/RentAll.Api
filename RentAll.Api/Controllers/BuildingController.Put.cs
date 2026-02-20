@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Buildings;
+using RentAll.Api.Dtos.Organizations.Buildings;
 
 namespace RentAll.Api.Controllers
 {

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.AccountingOffices;
-using RentAll.Api.Dtos.Invoices;
+using RentAll.Api.Dtos.Organizations.Accounting;
+using RentAll.Api.Dtos.Accounting.Invoices;
 using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers

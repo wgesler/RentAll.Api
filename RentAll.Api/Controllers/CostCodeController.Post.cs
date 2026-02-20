@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.CostCodes;
+using RentAll.Api.Dtos.Accounting.CostCodes;
 
 namespace RentAll.Api.Controllers
 {
