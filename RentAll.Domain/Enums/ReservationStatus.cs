@@ -9,7 +9,8 @@ public enum ReservationStatus
     FirstRightRefusal = 4,
     Maintenance = 5,
     OwnerBlocked = 6,
-    ArrivalDeparture = 7
+    ArrivalDeparture = 7,
+    Offline = 8
 }
 
 

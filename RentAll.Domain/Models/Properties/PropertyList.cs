@@ -11,6 +11,8 @@ public class PropertyList
     public string OfficeName { get; set; } = string.Empty;
     public Guid Owner1Id { get; set; }
     public string OwnerName { get; set; } = string.Empty;
+    public DateTimeOffset? AvailableFrom { get; set; }
+    public DateTimeOffset? AvailableUntil { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }

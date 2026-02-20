@@ -11,6 +11,8 @@ public class PropertyListResponseDto
     public string OfficeName { get; set; } = string.Empty;
     public Guid Owner1Id { get; set; }
     public string OwnerName { get; set; } = string.Empty;
+    public DateTimeOffset? AvailableFrom { get; set; }
+    public DateTimeOffset? AvailableUntil { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }
@@ -32,6 +34,8 @@ public class PropertyListResponseDto
         OfficeName = propertyList.OfficeName;
         Owner1Id = propertyList.Owner1Id;
         OwnerName = propertyList.OwnerName;
+        AvailableFrom = propertyList.AvailableFrom;
+        AvailableUntil = propertyList.AvailableUntil;
         Bedrooms = propertyList.Bedrooms;
         Bathrooms = propertyList.Bathrooms;
         Accomodates = propertyList.Accomodates;

@@ -134,6 +134,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 OfficeName = e.OfficeName,
                 Owner1Id = e.Owner1Id,
                 OwnerName = e.OwnerName,
+                AvailableFrom = e.AvailableFrom,
+                AvailableUntil = e.AvailableUntil,
                 Bedrooms = e.Bedrooms,
                 Bathrooms = e.Bathrooms,
                 Accomodates = e.Accomodates,
