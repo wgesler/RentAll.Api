@@ -45,16 +45,16 @@ public class AuthTokenService : IAuthTokenService
         var userObject = new
         {
             userId = user.UserId.ToString(),
-			organizationId = user.OrganizationId.ToString(),
-			agentId = user.AgentId.ToString(),
-			firstName = user.FirstName,
-			lastName = user.LastName,
-			email = user.Email,
-			phone = user.Phone,
-			userGroups = userGroupsString,
-			officeAccess = officeAccessString,
-			startupPageId = (int)user.StartupPage
-		};
+            organizationId = user.OrganizationId.ToString(),
+            agentId = user.AgentId.ToString(),
+            firstName = user.FirstName,
+            lastName = user.LastName,
+            email = user.Email,
+            phone = user.Phone,
+            userGroups = userGroupsString,
+            officeAccess = officeAccessString,
+            startupPageId = (int)user.StartupPage
+        };
 
         // Serialize and base64 encode the user object
         var userJson = JsonSerializer.Serialize(userObject);

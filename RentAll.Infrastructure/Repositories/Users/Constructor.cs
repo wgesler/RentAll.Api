@@ -8,68 +8,82 @@ using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Users
 {
-	public partial class UserRepository : IUserRepository
-	{
-		private readonly string _dbConnectionString;
+    public partial class UserRepository : IUserRepository
+    {
+        private readonly string _dbConnectionString;
 
-		public UserRepository(IOptions<AppSettings> appSettings)
-		{
-			_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
-		}
+        public UserRepository(IOptions<AppSettings> appSettings)
+        {
+            _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
+        }
 
-		private User ConvertEntityToModel(UserEntity e)
-		{
-			List<string> userGroups = new List<string>();
-			if (!string.IsNullOrWhiteSpace(e.UserGroups))
-			{
-				try
-				{
-					userGroups = JsonSerializer.Deserialize<List<string>>(e.UserGroups) ?? new List<string>();
-				}
-				catch
-				{
-					userGroups = new List<string>();
-				}
-			}
+        private User ConvertEntityToModel(UserEntity e)
+        {
+            List<string> userGroups = new List<string>();
+            if (!string.IsNullOrWhiteSpace(e.UserGroups))
+            {
+                try
+                {
+                    userGroups = JsonSerializer.Deserialize<List<string>>(e.UserGroups) ?? new List<string>();
+                }
+                catch
+                {
+                    userGroups = new List<string>();
+                }
+            }
 
-			List<int> officeAccess = new List<int>();
-			if (!string.IsNullOrWhiteSpace(e.OfficeAccess))
-			{
-				try
-				{
-					officeAccess = JsonSerializer.Deserialize<List<int>>(e.OfficeAccess) ?? new List<int>();
-				}
-				catch
-				{
-					officeAccess = new List<int>();
-				}
-			}
+            List<int> officeAccess = new List<int>();
+            if (!string.IsNullOrWhiteSpace(e.OfficeAccess))
+            {
+                try
+                {
+                    officeAccess = JsonSerializer.Deserialize<List<int>>(e.OfficeAccess) ?? new List<int>();
+                }
+                catch
+                {
+                    officeAccess = new List<int>();
+                }
+            }
 
-			var response = new User()
-			{
-				UserId = e.UserId,
-				OrganizationId = e.OrganizationId,
-				OrganizationName = e.OrganizationName,
-				AgentId = e.AgentId,
-				CommissionRate = e.CommissionRate,
-				FirstName = e.FirstName,
-				LastName = e.LastName,
-				Email = e.Email,
-				Phone = e.Phone,
-				PasswordHash = e.PasswordHash,
-				IsActive = e.IsActive,
-				UserGroups = userGroups,
-				OfficeAccess = officeAccess,
-				ProfilePath = e.ProfilePath,
-				StartupPage = (StartupPage)e.StartupPageId,
-				CreatedOn = e.CreatedOn,
-				CreatedBy = e.CreatedBy,
-				ModifiedOn = e.ModifiedOn,
-				ModifiedBy = e.ModifiedBy
-			};
+            var response = new User()
+            {
+                UserId = e.UserId,
+                OrganizationId = e.OrganizationId,
+                OrganizationName = e.OrganizationName,
+                AgentId = e.AgentId,
+                CommissionRate = e.CommissionRate,
+                FirstName = e.FirstName,
+                LastName = e.LastName,
+                Email = e.Email,
+                Phone = e.Phone,
+                PasswordHash = e.PasswordHash,
+                IsActive = e.IsActive,
+                UserGroups = userGroups,
+                OfficeAccess = officeAccess,
+                ProfilePath = e.ProfilePath,
+                StartupPage = (StartupPage)e.StartupPageId,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy,
+                ModifiedOn = e.ModifiedOn,
+                ModifiedBy = e.ModifiedBy
+            };
 
-			return response;
-		}
-	}
+            return response;
+        }
+
+        private RefreshToken ConvertEntityToModel(RefreshTokenEntity e)
+        {
+            var response = new RefreshToken()
+            {
+                RefreshTokenId = e.RefreshTokenId,
+                UserId = e.UserId,
+                TokenHash = e.TokenHash,
+                ExpiresOn = e.ExpiresOn,
+                CreatedOn = e.CreatedOn
+            };
+
+            return response;
+        }
+    }
 
 }

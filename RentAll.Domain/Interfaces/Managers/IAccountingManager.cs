@@ -4,7 +4,7 @@ namespace RentAll.Domain.Interfaces.Managers;
 
 public interface IAccountingManager
 {
-	Task<Reservation> ApplyInvoiceToReservationAsync(Invoice i);
-	Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, string description, decimal amountPaid, Guid currentUser);
-	Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate);
+    Task<Reservation> ApplyInvoiceToReservationAsync(Invoice i);
+    Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, string description, decimal amountPaid, Guid currentUser);
+    Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate);
 }

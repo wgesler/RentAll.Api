@@ -1,7 +1,7 @@
-﻿namespace RentAll.Domain.Interfaces.Managers
+namespace RentAll.Domain.Interfaces.Managers
 {
-	public interface IContactManager
-	{
-		Task<string> GenerateContactCodeAsync(Guid organizationId, int contactTypeId);
-	}
+    public interface IContactManager
+    {
+        Task<string> GenerateContactCodeAsync(Guid organizationId, int contactTypeId);
+    }
 }

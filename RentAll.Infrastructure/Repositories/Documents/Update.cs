@@ -8,28 +8,28 @@ namespace RentAll.Infrastructure.Repositories.Documents;
 
 public partial class DocumentRepository : IDocumentRepository
 {
-	public async Task<Document> UpdateByIdAsync(Document document)
-	{
-		await using var db = new SqlConnection(_dbConnectionString);
-		var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_UpdateById", new
-		{
-			DocumentId = document.DocumentId,
-			OrganizationId = document.OrganizationId,
-			OfficeId = document.OfficeId,
-			PropertyId = document.PropertyId,
-			ReservationId = document.ReservationId,
-			DocumentTypeId = (int)document.DocumentType,
-			FileName = document.FileName,
-			FileExtension = document.FileExtension,
-			ContentType = document.ContentType,
-			DocumentPath = document.DocumentPath,
-			ModifiedBy = document.ModifiedBy
-		});
+    public async Task<Document> UpdateByIdAsync(Document document)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_UpdateById", new
+        {
+            DocumentId = document.DocumentId,
+            OrganizationId = document.OrganizationId,
+            OfficeId = document.OfficeId,
+            PropertyId = document.PropertyId,
+            ReservationId = document.ReservationId,
+            DocumentTypeId = (int)document.DocumentType,
+            FileName = document.FileName,
+            FileExtension = document.FileExtension,
+            ContentType = document.ContentType,
+            DocumentPath = document.DocumentPath,
+            ModifiedBy = document.ModifiedBy
+        });
 
-		if (res == null || !res.Any())
-			throw new Exception("Document not found");
+        if (res == null || !res.Any())
+            throw new Exception("Document not found");
 
-		return ConvertEntityToModel(res.FirstOrDefault()!);
-	}
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
 }
 

@@ -4,20 +4,20 @@ using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
 {
-	[ApiController]
-	[Route("api/emailhtml")]
-	[Authorize]
-	public partial class EmailHtmlController : BaseController
-	{
-		private readonly IEmailHtmlRepository _emailHtmlRepository;
-		private readonly ILogger<EmailHtmlController> _logger;
+    [ApiController]
+    [Route("api/emailhtml")]
+    [Authorize]
+    public partial class EmailHtmlController : BaseController
+    {
+        private readonly IEmailRepository _emailRepository;
+        private readonly ILogger<EmailHtmlController> _logger;
 
-		public EmailHtmlController(
-			IEmailHtmlRepository emailHtmlRepository,
-			ILogger<EmailHtmlController> logger)
-		{
-			_emailHtmlRepository = emailHtmlRepository;
-			_logger = logger;
-		}
-	}
+        public EmailHtmlController(
+            IEmailRepository emailRepository,
+            ILogger<EmailHtmlController> logger)
+        {
+            _emailRepository = emailRepository;
+            _logger = logger;
+        }
+    }
 }

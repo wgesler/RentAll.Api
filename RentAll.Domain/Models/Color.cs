@@ -2,9 +2,9 @@ namespace RentAll.Domain.Models;
 
 public class Colour
 {
-	public int ColorId { get; set; }
-	public Guid OrganizationId { get; set; }
-	public int ReservationStatusId { get; set; }
-	public string Color { get; set; } = string.Empty;
+    public int ColorId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public int ReservationStatusId { get; set; }
+    public string Color { get; set; } = string.Empty;
 }
 

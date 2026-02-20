@@ -1,0 +1,1 @@
+namespace RentAll.Infrastructure.Entities;

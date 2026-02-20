@@ -1,4 +1,4 @@
-﻿namespace RentAll.Domain.Models.Common;
+namespace RentAll.Domain.Models.Common;
 
 /// <summary>
 /// Represents file upload data from the client.
@@ -6,23 +6,23 @@
 /// </summary>
 public class FileDetails
 {
-	/// <summary>
-	/// Original file name (e.g., "logo.png")
-	/// </summary>
-	public string FileName { get; set; } = string.Empty;
-	
-	/// <summary>
-	/// File content type (e.g., "image/png")
-	/// </summary>
-	public string ContentType { get; set; } = string.Empty;
-	
-	/// <summary>
-	/// Plain base64 encoded file content (without data URL prefix)
-	/// </summary>
-	public string File { get; set; } = string.Empty;
-	
-	/// <summary>
-	/// Data URL format for direct use in HTML/img src (e.g., "data:image/png;base64,iVBORw0KG...")
-	/// </summary>
-	public string DataUrl { get; set; } = string.Empty;
+    /// <summary>
+    /// Original file name (e.g., "logo.png")
+    /// </summary>
+    public string FileName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// File content type (e.g., "image/png")
+    /// </summary>
+    public string ContentType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Plain base64 encoded file content (without data URL prefix)
+    /// </summary>
+    public string File { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Data URL format for direct use in HTML/img src (e.g., "data:image/png;base64,iVBORw0KG...")
+    /// </summary>
+    public string DataUrl { get; set; } = string.Empty;
 }

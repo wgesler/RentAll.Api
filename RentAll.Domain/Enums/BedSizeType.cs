@@ -6,9 +6,9 @@ public enum BedSizeType
     King = 1,
     Queen = 2,
     Double = 3,
-	Twin = 4,
-	TwoTwins = 5,
-	DayBed = 6,
+    Twin = 4,
+    TwoTwins = 5,
+    DayBed = 6,
     SofaBed = 7
 }
 

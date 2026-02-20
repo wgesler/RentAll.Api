@@ -8,29 +8,29 @@ using RentAll.Domain.Interfaces.Services;
 
 namespace RentAll.Api.Controllers
 {
-	[ApiController]
-	[Route("api/common")]
-	[AllowAnonymous]
-	public partial class CommonController : BaseController
-	{
-		private readonly AppSettings _appSettings;
-		private readonly IDailyQuoteService _dailyQuoteService;
-		private readonly ICalendarManager _calendarManager;
-		private readonly ICommonRepository _commonRepository;
-		private readonly ILogger<CommonController> _logger;
+    [ApiController]
+    [Route("api/common")]
+    [AllowAnonymous]
+    public partial class CommonController : BaseController
+    {
+        private readonly AppSettings _appSettings;
+        private readonly IDailyQuoteService _dailyQuoteService;
+        private readonly ICalendarManager _calendarManager;
+        private readonly ICommonRepository _commonRepository;
+        private readonly ILogger<CommonController> _logger;
 
-		public CommonController(
-			IOptions<AppSettings> options,
-			IDailyQuoteService dailyQuoteService,
-			ICommonRepository commonRepository,
-			ICalendarManager calendarManager,
-			ILogger<CommonController> logger)
-		{
-			_appSettings = options.Value;
-			_dailyQuoteService = dailyQuoteService;
-			_commonRepository = commonRepository;
-			_calendarManager = calendarManager;
-			_logger = logger;
-		}
-	}
+        public CommonController(
+            IOptions<AppSettings> options,
+            IDailyQuoteService dailyQuoteService,
+            ICommonRepository commonRepository,
+            ICalendarManager calendarManager,
+            ILogger<CommonController> logger)
+        {
+            _appSettings = options.Value;
+            _dailyQuoteService = dailyQuoteService;
+            _commonRepository = commonRepository;
+            _calendarManager = calendarManager;
+            _logger = logger;
+        }
+    }
 }

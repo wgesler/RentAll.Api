@@ -4,109 +4,109 @@ using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
-	public partial class OfficeController
-	{
-		/// <summary>
-		/// Update an existing office
-		/// </summary>
-		/// <param name="dto">Office data</param>
-		/// <returns>Updated office</returns>
-		[HttpPut]
-		public async Task<IActionResult> Update([FromBody] OfficeUpdateDto dto)
-		{
-			if (dto == null)
-				return BadRequest("Office data is required");
+    public partial class OfficeController
+    {
+        /// <summary>
+        /// Update an existing office
+        /// </summary>
+        /// <param name="dto">Office data</param>
+        /// <returns>Updated office</returns>
+        [HttpPut]
+        public async Task<IActionResult> Update([FromBody] OfficeUpdateDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Office data is required");
 
-			var (isValid, errorMessage) = dto.IsValid();
-			if (!isValid)
-				return BadRequest(errorMessage ?? "Invalid request data");
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
 
-			try
-			{
-				var existingOffice = await _officeRepository.GetByIdAsync(dto.OfficeId, CurrentOrganizationId);
-				if (existingOffice == null)
-					return NotFound("Office not found");
+            try
+            {
+                var existingOffice = await _officeRepository.GetByIdAsync(dto.OfficeId, CurrentOrganizationId);
+                if (existingOffice == null)
+                    return NotFound("Office not found");
 
-				if (existingOffice.OfficeCode != dto.OfficeCode)
-				{
-					if (await _officeRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
-						return Conflict("Office Code already exists");
-				}
+                if (existingOffice.OfficeCode != dto.OfficeCode)
+                {
+                    if (await _officeRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
+                        return Conflict("Office Code already exists");
+                }
 
-				var office = dto.ToModel();
+                var office = dto.ToModel();
 
-				// Handle logo file upload if provided
-				if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-				{
-					try
-					{
-						// Delete old logo if it exists (fail silently if delete fails)
-						if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-						{
-							try
-							{
-								await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
-							}
-							catch (Exception deleteEx)
-							{
-								_logger.LogWarning(deleteEx, "Failed to delete old logo, continuing with new logo upload: {LogoPath}", existingOffice.LogoPath);
-							}
-						}
+                // Handle logo file upload if provided
+                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+                {
+                    try
+                    {
+                        // Delete old logo if it exists (fail silently if delete fails)
+                        if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
+                        {
+                            try
+                            {
+                                await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
+                            }
+                            catch (Exception deleteEx)
+                            {
+                                _logger.LogWarning(deleteEx, "Failed to delete old logo, continuing with new logo upload: {LogoPath}", existingOffice.LogoPath);
+                            }
+                        }
 
-						// Save new logo
-						var logoPath = await _fileService.SaveLogoAsync(existingOffice.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
-						office.LogoPath = logoPath;
-					}
-					catch (Exception ex)
-					{
-						_logger.LogError(ex, "Error saving office logo");
-						return ServerError("An error occurred while saving the logo file");
-					}
-				}
-				else if (dto.LogoPath == null)
-				{
-					// LogoPath is explicitly null - delete the logo
-					if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-					{
-						try
-						{
-							await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
-						}
-						catch (Exception deleteEx)
-						{
-							_logger.LogWarning(deleteEx, "Failed to delete logo during update: {LogoPath}", existingOffice.LogoPath);
-						}
-						office.LogoPath = null;
-					}
-				}
-				else
-				{
-					// No new file provided and LogoPath is not null - preserve existing logo from database
-					office.LogoPath = existingOffice.LogoPath;
-				}
+                        // Save new logo
+                        var logoPath = await _fileService.SaveLogoAsync(existingOffice.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        office.LogoPath = logoPath;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error saving office logo");
+                        return ServerError("An error occurred while saving the logo file");
+                    }
+                }
+                else if (dto.LogoPath == null)
+                {
+                    // LogoPath is explicitly null - delete the logo
+                    if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
+                    {
+                        try
+                        {
+                            await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            _logger.LogWarning(deleteEx, "Failed to delete logo during update: {LogoPath}", existingOffice.LogoPath);
+                        }
+                        office.LogoPath = null;
+                    }
+                }
+                else
+                {
+                    // No new file provided and LogoPath is not null - preserve existing logo from database
+                    office.LogoPath = existingOffice.LogoPath;
+                }
 
-				var updatedOffice = await _officeRepository.UpdateByIdAsync(office);
-				var response = new OfficeResponseDto(updatedOffice);
-				if (!string.IsNullOrWhiteSpace(updatedOffice.LogoPath))
-				{
-					try
-					{
-						response.FileDetails = await _fileService.GetFileDetailsAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath);
-					}
-					catch (Exception fileEx)
-					{
-						_logger.LogWarning(fileEx, "Failed to retrieve file details for logo, continuing with response: {LogoPath}", updatedOffice.LogoPath);
-						// Continue without file details if retrieval fails
-					}
-				}
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error updating office: {OfficeId}", dto.OfficeId);
-				return ServerError("An error occurred while updating the office");
-			}
-		}
-	}
+                var updatedOffice = await _officeRepository.UpdateByIdAsync(office);
+                var response = new OfficeResponseDto(updatedOffice);
+                if (!string.IsNullOrWhiteSpace(updatedOffice.LogoPath))
+                {
+                    try
+                    {
+                        response.FileDetails = await _fileService.GetFileDetailsAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath);
+                    }
+                    catch (Exception fileEx)
+                    {
+                        _logger.LogWarning(fileEx, "Failed to retrieve file details for logo, continuing with response: {LogoPath}", updatedOffice.LogoPath);
+                        // Continue without file details if retrieval fails
+                    }
+                }
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating office: {OfficeId}", dto.OfficeId);
+                return ServerError("An error occurred while updating the office");
+            }
+        }
+    }
 }
 

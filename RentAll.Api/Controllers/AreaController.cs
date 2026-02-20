@@ -5,25 +5,25 @@ using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
 {
-	[ApiController]
-	[Route("api/area")]
-	[Authorize]
-	public partial class AreaController : BaseController
-	{
-		private readonly IOrganizationManager _organizationManager;
-		private readonly IAreaRepository _areaRepository;
-		private readonly ILogger<AreaController> _logger;
+    [ApiController]
+    [Route("api/area")]
+    [Authorize]
+    public partial class AreaController : BaseController
+    {
+        private readonly IOrganizationManager _organizationManager;
+        private readonly IOrganizationRepository _officeRepository;
+        private readonly ILogger<AreaController> _logger;
 
-		public AreaController(
-			IOrganizationManager organizationManager,
-			IAreaRepository areaRepository,
-			ILogger<AreaController> logger)
-		{
-			_organizationManager = organizationManager;
-			_areaRepository = areaRepository;
-			_logger = logger;
-		}
-	}
+        public AreaController(
+            IOrganizationManager organizationManager,
+            IOrganizationRepository officeRepository,
+            ILogger<AreaController> logger)
+        {
+            _organizationManager = organizationManager;
+            _officeRepository = officeRepository;
+            _logger = logger;
+        }
+    }
 }
 
 

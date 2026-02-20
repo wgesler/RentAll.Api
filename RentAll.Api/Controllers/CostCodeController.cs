@@ -4,20 +4,20 @@ using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
 {
-	[ApiController]
-	[Route("api/costcode")]
-	[Authorize]
-	public partial class CostCodeController : BaseController
-	{
-		private readonly ICostCodeRepository _costCodeRepository;
-		private readonly ILogger<CostCodeController> _logger;
+    [ApiController]
+    [Route("api/costcode")]
+    [Authorize]
+    public partial class CostCodeController : BaseController
+    {
+        private readonly IAccountingRepository _accountingRepository;
+        private readonly ILogger<CostCodeController> _logger;
 
-		public CostCodeController(
-			ICostCodeRepository costCodeRepository,
-			ILogger<CostCodeController> logger)
-		{
-			_costCodeRepository = costCodeRepository;
-			_logger = logger;
-		}
-	}
+        public CostCodeController(
+            IAccountingRepository accountingRepository,
+            ILogger<CostCodeController> logger)
+        {
+            _accountingRepository = accountingRepository;
+            _logger = logger;
+        }
+    }
 }

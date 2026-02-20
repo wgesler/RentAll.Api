@@ -4,5 +4,5 @@ namespace RentAll.Domain.Interfaces.Managers;
 
 public interface IEmailManager
 {
-	Task<Email> SendEmail(Email email);
+    Task<Email> SendEmail(Email email);
 }

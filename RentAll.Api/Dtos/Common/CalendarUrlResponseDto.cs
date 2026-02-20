@@ -2,7 +2,7 @@ namespace RentAll.Api.Dtos.Common;
 
 public class CalendarUrlResponseDto
 {
-	public Guid PropertyId { get; set; }
-	public Guid OrganizationId { get; set; }
-	public string SubscriptionUrl { get; set; } = string.Empty;
+    public Guid PropertyId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public string SubscriptionUrl { get; set; } = string.Empty;
 }

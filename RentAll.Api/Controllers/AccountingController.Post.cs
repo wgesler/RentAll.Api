@@ -4,73 +4,73 @@ using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
-	public partial class AccountingController
-	{
-		#region Invoice POST Endpoints
+    public partial class AccountingController
+    {
+        #region Invoice POST Endpoints
 
-		/// <summary>
-		/// Create a new invoice
-		/// </summary>
-		/// <param name="dto">Invoice data</param>
-		/// <returns>Created invoice</returns>
-		[HttpPost("invoice")]
-		public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
-		{
-			if (dto == null)
-				return BadRequest("Invoice data is required");
+        /// <summary>
+        /// Create a new invoice
+        /// </summary>
+        /// <param name="dto">Invoice data</param>
+        /// <returns>Created invoice</returns>
+        [HttpPost("invoice")]
+        public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Invoice data is required");
 
-			var (isValid, errorMessage) = dto.IsValid();
-			if (!isValid)
-				return BadRequest(errorMessage ?? "Invalid invoice data");
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid invoice data");
 
-			try
-			{
-				var invoice = dto.ToModel(CurrentUser);
-				invoice.OrganizationId = CurrentOrganizationId;
-				var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
+            try
+            {
+                var invoice = dto.ToModel(CurrentUser);
+                invoice.OrganizationId = CurrentOrganizationId;
+                var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
-				var response = new InvoiceResponseDto(createdInvoice);
-				return CreatedAtAction(nameof(GetInvoiceById), new { invoiceId = createdInvoice.InvoiceId }, response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error creating invoice");
-				return ServerError("An error occurred while creating the invoice");
-			}
-		}
+                var response = new InvoiceResponseDto(createdInvoice);
+                return CreatedAtAction(nameof(GetInvoiceById), new { invoiceId = createdInvoice.InvoiceId }, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating invoice");
+                return ServerError("An error occurred while creating the invoice");
+            }
+        }
 
-		#endregion
+        #endregion
 
-		#region LedgerLine GET Endpoints
+        #region LedgerLine GET Endpoints
 
-		/// <summary>
-		/// Create initial leger lines
-		/// </summary>
-		/// <returns>Ledger Line</returns>
-		[HttpPost("ledger-line/reservation")]
-		public async Task<IActionResult> CreateLedgerLinesByReservationId([FromBody] CreateInvoiceMonthlyDataDto dto)
-		{
-			if (dto == null)
-				return BadRequest("Invoice data is required");
+        /// <summary>
+        /// Create initial leger lines
+        /// </summary>
+        /// <returns>Ledger Line</returns>
+        [HttpPost("ledger-line/reservation")]
+        public async Task<IActionResult> CreateLedgerLinesByReservationId([FromBody] CreateInvoiceMonthlyDataDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Invoice data is required");
 
-			try
-			{
-				var reservation = await _reservationRepository.GetByIdAsync(dto.ReservationId, CurrentOrganizationId);
-				if (reservation == null)
-					return NotFound("Reservation not found");
+            try
+            {
+                var reservation = await _reservationRepository.GetByIdAsync(dto.ReservationId, CurrentOrganizationId);
+                if (reservation == null)
+                    return NotFound("Reservation not found");
 
-				var ledgerLines = await _accountingManager.CreateLedgerLinesForReservationIdAsync(reservation, dto.StartDate, dto.EndDate);
-				var data = new InvoiceMonthlyData { InvoiceCode = dto.InvoiceCode, ReservationId = dto.ReservationId, LedgerLines = ledgerLines };
-				var response = new InvoiceMonthlyDataResponseDto(data);
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error getting ledger lines: {ReservationId}", dto.ReservationId);
-				return ServerError("An error occurred while retrieving the ledger line");
-			}
-		}
-		#endregion
+                var ledgerLines = await _accountingManager.CreateLedgerLinesForReservationIdAsync(reservation, dto.StartDate, dto.EndDate);
+                var data = new InvoiceMonthlyData { InvoiceCode = dto.InvoiceCode, ReservationId = dto.ReservationId, LedgerLines = ledgerLines };
+                var response = new InvoiceMonthlyDataResponseDto(data);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ledger lines: {ReservationId}", dto.ReservationId);
+                return ServerError("An error occurred while retrieving the ledger line");
+            }
+        }
+        #endregion
 
-	}
+    }
 }

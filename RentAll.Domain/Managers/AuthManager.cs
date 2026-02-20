@@ -9,18 +9,15 @@ namespace RentAll.Domain.Managers;
 public class AuthManager
 {
     private readonly IUserRepository _userRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IAuthTokenService _tokenService;
 
     public AuthManager(
         IUserRepository userRepository,
-        IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         IAuthTokenService tokenService)
     {
         _userRepository = userRepository;
-        _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
     }
@@ -28,19 +25,19 @@ public class AuthManager
     public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken)> LoginAsync(string email, string password)
     {
         var user = await _userRepository.GetByEmailAsync(email);
-        
+
         if (user == null)
             return (false, null, null, null);
 
         if (!_passwordHasher.VerifyPassword(password, user.PasswordHash))
             return (false, null, null, null);
 
-        if(!user.IsActive)
-			return (false, null, null, null);
+        if (!user.IsActive)
+            return (false, null, null, null);
 
-		var accessToken = _tokenService.GenerateToken(user);
+        var accessToken = _tokenService.GenerateToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.UserId);
-        
+
         return (true, user, accessToken, refreshToken);
     }
 
@@ -64,7 +61,7 @@ public class AuthManager
         var createdUser = await _userRepository.CreateAsync(user);
         var accessToken = _tokenService.GenerateToken(createdUser);
         var refreshToken = await CreateRefreshTokenAsync(createdUser.UserId);
-        
+
         return (true, createdUser, accessToken, refreshToken, null);
     }
 
@@ -81,7 +78,7 @@ public class AuthManager
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-        await _refreshTokenRepository.CreateAsync(storedToken);
+        await _userRepository.CreateRefreshTokenAsync(storedToken);
         return refreshToken;
     }
 
@@ -89,9 +86,9 @@ public class AuthManager
     {
         // Hash the provided refresh token to look it up
         var tokenHash = HashRefreshToken(refreshToken);
-        
+
         // Look up the refresh token
-        var storedToken = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash);       
+        var storedToken = await _userRepository.GetRefreshTokenByTokenHashAsync(tokenHash);
         if (storedToken == null || !storedToken.IsActive)
             return (false, null, null, null, "Invalid or expired refresh token");
 
@@ -117,10 +114,10 @@ public class AuthManager
             CreatedOn = DateTimeOffset.UtcNow
         };
 
-        await _refreshTokenRepository.CreateAsync(newStoredToken);
+        await _userRepository.CreateRefreshTokenAsync(newStoredToken);
 
         // Delete the old refresh token
-        await _refreshTokenRepository.DeleteByIdAsync(storedToken.RefreshTokenId);
+        await _userRepository.DeleteRefreshTokenByIdAsync(storedToken.RefreshTokenId);
 
         return (true, user, accessToken, newRefreshToken, null);
     }
@@ -140,14 +137,14 @@ public class AuthManager
 
         // Hash the provided refresh token to look it up
         var tokenHash = HashRefreshToken(refreshToken);
-        
+
         // Look up the refresh token
-        var storedToken = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash);
+        var storedToken = await _userRepository.GetRefreshTokenByTokenHashAsync(tokenHash);
         if (storedToken == null)
             return false; // Token not found, but we'll return success to avoid information leakage
 
         // Delete the refresh token
-        await _refreshTokenRepository.DeleteByIdAsync(storedToken.RefreshTokenId);
+        await _userRepository.DeleteRefreshTokenByIdAsync(storedToken.RefreshTokenId);
         return true;
     }
 

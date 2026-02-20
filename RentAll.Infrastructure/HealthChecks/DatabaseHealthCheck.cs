@@ -21,7 +21,7 @@ public class DatabaseHealthCheck : IHealthCheck
         try
         {
             using var connection = _connectionFactory.CreateConnection();
-            
+
             if (connection is SqlConnection sqlConnection)
             {
                 await sqlConnection.OpenAsync(cancellationToken);

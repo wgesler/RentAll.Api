@@ -9,37 +9,37 @@ namespace RentAll.Infrastructure.Repositories.Documents;
 
 public partial class DocumentRepository : IDocumentRepository
 {
-	private readonly string _dbConnectionString;
+    private readonly string _dbConnectionString;
 
-	public DocumentRepository(IOptions<AppSettings> appSettings)
-	{
-		_dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
-	}
+    public DocumentRepository(IOptions<AppSettings> appSettings)
+    {
+        _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
+    }
 
-	private Document ConvertEntityToModel(DocumentEntity e)
-	{
-		return new Document
-		{
-			DocumentId = e.DocumentId,
-			OrganizationId = e.OrganizationId,
-			OfficeId = e.OfficeId,
-			OfficeName = e.OfficeName,
-			PropertyId = e.PropertyId,
-			PropertyCode = e.PropertyCode,
-			ReservationId = e.ReservationId,
-			ReservationCode = e.ReservationCode,
-			DocumentType = (DocumentType)e.DocumentTypeId,
-			FileName = e.FileName,
-			FileExtension = e.FileExtension,
-			ContentType = e.ContentType,
-			DocumentPath = e.DocumentPath,
-			IsDeleted = e.IsDeleted,
-			CreatedOn = e.CreatedOn,
-			CreatedBy = e.CreatedBy,
-			ModifiedOn = e.ModifiedOn,
-			ModifiedBy = e.ModifiedBy
-		};
-	}
+    private Document ConvertEntityToModel(DocumentEntity e)
+    {
+        return new Document
+        {
+            DocumentId = e.DocumentId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            ReservationId = e.ReservationId,
+            ReservationCode = e.ReservationCode,
+            DocumentType = (DocumentType)e.DocumentTypeId,
+            FileName = e.FileName,
+            FileExtension = e.FileExtension,
+            ContentType = e.ContentType,
+            DocumentPath = e.DocumentPath,
+            IsDeleted = e.IsDeleted,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
 }
 
 

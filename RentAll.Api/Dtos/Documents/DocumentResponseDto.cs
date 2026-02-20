@@ -5,47 +5,47 @@ namespace RentAll.Api.Dtos.Documents;
 
 public class DocumentResponseDto
 {
-	public Guid DocumentId { get; set; }
-	public Guid OrganizationId { get; set; }
-	public int? OfficeId { get; set; }
-	public string OfficeName { get; set; } = string.Empty;
-	public Guid? PropertyId { get; set; }
-	public string PropertyCode { get; set; } = string.Empty;
-	public Guid? ReservationId { get; set; }
-	public string ReservationCode { get; set; } = string.Empty;
-	public int DocumentTypeId { get; set; }
-	public string FileName { get; set; } = string.Empty;
-	public string FileExtension { get; set; } = string.Empty;
-	public string ContentType { get; set; } = string.Empty;
-	public string DocumentPath { get; set; } = string.Empty;
-	public FileDetails? FileDetails { get; set; }
-	public bool IsDeleted { get; set; }
-	public DateTimeOffset CreatedOn { get; set; }
-	public Guid CreatedBy { get; set; }
-	public DateTimeOffset ModifiedOn { get; set; }
-	public Guid ModifiedBy { get; set; }
+    public Guid DocumentId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
+    public string OfficeName { get; set; } = string.Empty;
+    public Guid? PropertyId { get; set; }
+    public string PropertyCode { get; set; } = string.Empty;
+    public Guid? ReservationId { get; set; }
+    public string ReservationCode { get; set; } = string.Empty;
+    public int DocumentTypeId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string FileExtension { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public string DocumentPath { get; set; } = string.Empty;
+    public FileDetails? FileDetails { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
 
-	public DocumentResponseDto(Document document)
-	{
-		DocumentId = document.DocumentId;
-		OrganizationId = document.OrganizationId;
-		OfficeId = document.OfficeId;
-		OfficeName = document.OfficeName;
-		PropertyId = document.PropertyId;
-		PropertyCode = document.PropertyCode;
-		ReservationId = document.ReservationId;
-		ReservationCode = document.ReservationCode;
-		DocumentTypeId = (int)document.DocumentType;
-		FileName = document.FileName;
-		FileExtension = document.FileExtension;
-		ContentType = document.ContentType;
-		DocumentPath = document.DocumentPath;
-		IsDeleted = document.IsDeleted;
-		CreatedOn = document.CreatedOn;
-		CreatedBy = document.CreatedBy;
-		ModifiedOn = document.ModifiedOn;
-		ModifiedBy = document.ModifiedBy;
-	}
+    public DocumentResponseDto(Document document)
+    {
+        DocumentId = document.DocumentId;
+        OrganizationId = document.OrganizationId;
+        OfficeId = document.OfficeId;
+        OfficeName = document.OfficeName;
+        PropertyId = document.PropertyId;
+        PropertyCode = document.PropertyCode;
+        ReservationId = document.ReservationId;
+        ReservationCode = document.ReservationCode;
+        DocumentTypeId = (int)document.DocumentType;
+        FileName = document.FileName;
+        FileExtension = document.FileExtension;
+        ContentType = document.ContentType;
+        DocumentPath = document.DocumentPath;
+        IsDeleted = document.IsDeleted;
+        CreatedOn = document.CreatedOn;
+        CreatedBy = document.CreatedBy;
+        ModifiedOn = document.ModifiedOn;
+        ModifiedBy = document.ModifiedBy;
+    }
 }
 
 

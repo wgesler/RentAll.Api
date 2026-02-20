@@ -7,21 +7,21 @@ namespace RentAll.Domain.Managers;
 public class ContactManager : IContactManager
 {
     private readonly IContactRepository _contactRepository;
-    private readonly ICodeSequenceRepository _codeSequenceRepository;
+    private readonly ICommonRepository _commonRepository;
 
     public ContactManager(
         IContactRepository contactRepository,
-        ICodeSequenceRepository codeSequenceRepository)
+        ICommonRepository commonRepository)
     {
         _contactRepository = contactRepository;
-        _codeSequenceRepository = codeSequenceRepository;
+        _commonRepository = commonRepository;
     }
 
     public async Task<string> GenerateContactCodeAsync(Guid organizationId, int entityTypeId)
     {
         var entityType = (EntityType)entityTypeId;
         var prefix = entityType.ToCode();
-        int nextNumber = await _codeSequenceRepository.GetNextAsync(organizationId, entityTypeId, entityType.ToString());
+        int nextNumber = await _commonRepository.GetNextAsync(organizationId, entityTypeId, entityType.ToString());
         var code = $"C{prefix}-{nextNumber:D6}";
 
         return code;
