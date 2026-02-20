@@ -74,6 +74,7 @@ namespace RentAll.Api.Controllers
         [HttpPost("vendor")]
         public async Task<IActionResult> CreateVendor([FromBody] CreateVendorDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Vendor data is required");
 
@@ -129,6 +130,7 @@ namespace RentAll.Api.Controllers
         [HttpPut("vendor")]
         public async Task<IActionResult> UpdateVendor([FromBody] UpdateVendorDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Vendor data is required");
 
@@ -210,6 +212,7 @@ namespace RentAll.Api.Controllers
         [HttpDelete("vendor/{vendorId}")]
         public async Task<IActionResult> DeleteVendor(Guid vendorId)
         {
+            System.Diagnostics.Debugger.Break();
             if (vendorId == Guid.Empty)
                 return BadRequest("Vendor ID is required");
 

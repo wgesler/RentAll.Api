@@ -34,6 +34,7 @@ namespace RentAll.Api.Controllers
         [HttpGet("building/{BuildingId}")]
         public async Task<IActionResult> GetBuildingById(int BuildingId)
         {
+            System.Diagnostics.Debugger.Break();
             if (BuildingId <= 0)
                 return BadRequest("Building ID is required");
 
@@ -64,6 +65,7 @@ namespace RentAll.Api.Controllers
         [HttpPost("building")]
         public async Task<IActionResult> CreateBuilding([FromBody] BuildingCreateDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Building data is required");
 
@@ -99,6 +101,7 @@ namespace RentAll.Api.Controllers
         [HttpPut("building")]
         public async Task<IActionResult> UpdateBuilding([FromBody] BuildingUpdateDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Building data is required");
 
@@ -142,6 +145,7 @@ namespace RentAll.Api.Controllers
         [HttpDelete("building/{buildingId}")]
         public async Task<IActionResult> DeleteBuilding(int buildingId)
         {
+            System.Diagnostics.Debugger.Break();
             if (buildingId <= 0)
                 return BadRequest("Building ID is required");
 

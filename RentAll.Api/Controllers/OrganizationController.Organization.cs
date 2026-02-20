@@ -75,6 +75,7 @@ namespace RentAll.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOrganization([FromBody] CreateOrganizationDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Organization data is required");
 
@@ -134,6 +135,7 @@ namespace RentAll.Api.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateOrganization([FromBody] UpdateOrganizationDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Organization data is required");
 
@@ -214,6 +216,7 @@ namespace RentAll.Api.Controllers
         [HttpDelete("{organizationId}")]
         public async Task<IActionResult> DeleteOrganization(Guid organizationId)
         {
+            System.Diagnostics.Debugger.Break();
             if (organizationId == Guid.Empty)
                 return BadRequest("OrganizationId is required");
 

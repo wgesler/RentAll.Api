@@ -46,6 +46,7 @@ namespace RentAll.Api.Controllers
         [HttpPost("generate")]
         public async Task<IActionResult> GenerateFromHtml([FromBody] GenerateDocumentFromHtmlDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest(new { message = "Document data is required" });
 

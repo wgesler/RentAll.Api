@@ -34,6 +34,7 @@ namespace RentAll.Api.Controllers
         [HttpGet("area/{areaId}")]
         public async Task<IActionResult> GetAreaById(int areaId)
         {
+            System.Diagnostics.Debugger.Break();
             if (areaId <= 0)
                 return BadRequest("Area ID is required");
 
@@ -64,6 +65,7 @@ namespace RentAll.Api.Controllers
         [HttpPost("area")]
         public async Task<IActionResult> CreateArea([FromBody] AreaCreateDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Area data is required");
 
@@ -99,6 +101,7 @@ namespace RentAll.Api.Controllers
         [HttpPut("area")]
         public async Task<IActionResult> UpdateArea([FromBody] AreaUpdateDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Area data is required");
 
@@ -142,6 +145,7 @@ namespace RentAll.Api.Controllers
         [HttpDelete("area/{areaId}")]
         public async Task<IActionResult> DeleteArea(int areaId)
         {
+            System.Diagnostics.Debugger.Break();
             if (areaId <= 0)
                 return BadRequest("Area ID is required");
 

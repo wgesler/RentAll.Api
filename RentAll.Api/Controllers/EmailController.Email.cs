@@ -70,6 +70,7 @@ namespace RentAll.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEmailDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Email data is required");
 

@@ -34,6 +34,7 @@ namespace RentAll.Api.Controllers
         [HttpGet("region/{regionId}")]
         public async Task<IActionResult> GetRegionById(int regionId)
         {
+            System.Diagnostics.Debugger.Break();
             if (regionId <= 0)
                 return BadRequest("Region ID is required");
 
@@ -64,6 +65,7 @@ namespace RentAll.Api.Controllers
         [HttpPost("region")]
         public async Task<IActionResult> CreateRegion([FromBody] RegionCreateDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Region data is required");
 
@@ -99,6 +101,7 @@ namespace RentAll.Api.Controllers
         [HttpPut("region")]
         public async Task<IActionResult> UpdateRegion([FromBody] RegionUpdateDto dto)
         {
+            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Region data is required");
 
@@ -141,6 +144,7 @@ namespace RentAll.Api.Controllers
         [HttpDelete("region/{regionId}")]
         public async Task<IActionResult> DeleteRegion(int regionId)
         {
+            System.Diagnostics.Debugger.Break();
             if (regionId <= 0)
                 return BadRequest("Region ID is required");
 
