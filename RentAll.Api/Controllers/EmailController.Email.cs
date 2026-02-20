@@ -8,7 +8,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Get all emails.
         /// </summary>
-        [HttpGet("emails")]
+        [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -35,7 +35,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Get email by ID.
         /// </summary>
-        [HttpGet("emails/{emailId}")]
+        [HttpGet("{emailId}")]
         public async Task<IActionResult> GetById(Guid emailId)
         {
             if (emailId == Guid.Empty)
@@ -67,7 +67,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Create a new email.
         /// </summary>
-        [HttpPost("emails")]
+        [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEmailDto dto)
         {
             if (dto == null)

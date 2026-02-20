@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>Property HTML</returns>
-        [HttpGet("property-htmls/{propertyId}")]
+        [HttpGet("property-html/{propertyId}")]
         public async Task<IActionResult> GetPropertyHtmlByPropertyId(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -46,7 +46,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property HTML data</param>
         /// <returns>Created property HTML</returns>
-        [HttpPost("property-htmls")]
+        [HttpPost("property-html")]
         public async Task<IActionResult> Create([FromBody] CreatePropertyHtmlDto dto)
         {
             if (dto == null)
@@ -83,7 +83,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property HTML data</param>
         /// <returns>Updated property HTML</returns>
-        [HttpPut("property-htmls")]
+        [HttpPut("property-html")]
         public async Task<IActionResult> Update([FromBody] UpdatePropertyHtmlDto dto)
         {
             if (dto == null)
@@ -120,7 +120,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("property-htmls/property/{propertyId}")]
+        [HttpDelete("property-html/property/{propertyId}")]
         public async Task<IActionResult> DeletePropertyHtml(Guid propertyId)
         {
             if (propertyId == Guid.Empty)

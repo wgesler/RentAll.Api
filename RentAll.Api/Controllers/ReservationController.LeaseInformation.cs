@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="reservationId">Lease Information ID</param>
         /// <returns>Lease information</returns>
-        [HttpGet("lease-informations/{reservationId}")]
+        [HttpGet("lease-information/{reservationId}")]
         public async Task<IActionResult> GetLeaseInformationById(Guid reservationId)
         {
             if (reservationId == Guid.Empty)
@@ -37,7 +37,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>Lease information</returns>
-        [HttpGet("lease-informations/property/{propertyId}")]
+        [HttpGet("lease-information/property/{propertyId}")]
         public async Task<IActionResult> GetLeaseInformationByPropertyId(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -72,7 +72,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Lease information data</param>
         /// <returns>Created lease information</returns>
-        [HttpPost("lease-informations")]
+        [HttpPost("lease-information")]
         public async Task<IActionResult> CreateLeaseInformation([FromBody] CreateLeaseInformationDto dto)
         {
             if (dto == null)
@@ -117,7 +117,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Lease information data</param>
         /// <returns>Updated lease information</returns>
-        [HttpPut("")]
+        [HttpPut("lease-information")]
         public async Task<IActionResult> UpdateLeaseInformation([FromBody] UpdateLeaseInformationDto dto)
         {
             if (dto == null)
@@ -160,7 +160,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="reservationId">Lease Information ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("lease-informations/{reservationId}")]
+        [HttpDelete("lease-information/{reservationId}")]
         public async Task<IActionResult> DeleteLeaseInformation(Guid reservationId)
         {
             if (reservationId == Guid.Empty)

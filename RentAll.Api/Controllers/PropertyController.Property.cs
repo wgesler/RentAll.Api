@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all properties list
         /// </summary>
         /// <returns>List of properties</returns>
-        [HttpGet("properties/list")]
+        [HttpGet("list")]
         public async Task<IActionResult> GetList()
         {
             try
@@ -33,7 +33,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="userId">User Id</param>
         /// <returns>List of properties by user selection</returns>
-        [HttpGet("properties/user/{userId}")]
+        [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
         {
             if (CurrentUser == Guid.Empty || CurrentUser != userId)
@@ -57,7 +57,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>Tokenized iCal subscription URL</returns>
-        [HttpGet("properties/{propertyId}/calendar/subscription-url")]
+        [HttpGet("{propertyId}/calendar/subscription-url")]
         public IActionResult GetCalendarSubscriptionUrl(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -82,7 +82,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>Property</returns>
-        [HttpGet("properties/{propertyId}")]
+        [HttpGet("{propertyId}")]
         public async Task<IActionResult> GetById(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -108,7 +108,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyCode">Property Code</param>
         /// <returns>Property</returns>
-        [HttpGet("properties/code/{propertyCode}")]
+        [HttpGet("code/{propertyCode}")]
         public async Task<IActionResult> GetByPropertyCode(string propertyCode)
         {
             if (string.IsNullOrWhiteSpace(propertyCode))
@@ -134,7 +134,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="userId">User Id</param>
         /// <returns>Property selection</returns>
-        [HttpGet("properties/selection/{userId}")]
+        [HttpGet("selection/{userId}")]
         public async Task<IActionResult> GetPropertySelection(Guid userId)
         {
             if (CurrentUser == Guid.Empty || CurrentUser != userId)
@@ -164,7 +164,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property data</param>
         /// <returns>Created property</returns>
-        [HttpPost("properties")]
+        [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreatePropertyDto dto)
         {
             if (dto == null)
@@ -185,7 +185,7 @@ namespace RentAll.Api.Controllers
 
                 var property = dto.ToModel(CurrentUser);
                 var createdProperty = await _propertyRepository.CreateAsync(property);
-                return CreatedAtAction(nameof(GetById), new { id = createdProperty.PropertyId }, new PropertyResponseDto(createdProperty));
+                return CreatedAtAction(nameof(GetById), new { propertyId = createdProperty.PropertyId }, new PropertyResponseDto(createdProperty));
             }
             catch (Exception ex)
             {
@@ -203,7 +203,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property data</param>
         /// <returns>Updated property</returns>
-        [HttpPut("properties")]
+        [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdatePropertyDto dto)
         {
             if (dto == null)
@@ -243,7 +243,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property selection data</param>
         /// <returns>Updated property selection</returns>
-        [HttpPut("properties/selection")]
+        [HttpPut("selection")]
         public async Task<IActionResult> PutPropertySelection([FromBody] UpsertPropertySelectionDto dto)
         {
             if (dto == null)
@@ -275,7 +275,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("properties/{propertyId}")]
+        [HttpDelete("{propertyId}")]
         public async Task<IActionResult> Delete(Guid propertyId)
         {
             if (propertyId == Guid.Empty)

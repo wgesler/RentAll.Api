@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>Property letter</returns>
-        [HttpGet("property-letters/{propertyId}")]
+        [HttpGet("property-letter/{propertyId}")]
         public async Task<IActionResult> GetPropertyLetterByPropertyId(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -46,7 +46,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property letter data</param>
         /// <returns>Created property letter</returns>
-        [HttpPost("property-letters")]
+        [HttpPost("property-letter")]
         public async Task<IActionResult> Create([FromBody] CreatePropertyLetterDto dto)
         {
             if (dto == null)
@@ -83,7 +83,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Property letter data</param>
         /// <returns>Updated property letter</returns>
-        [HttpPut("property-letters")]
+        [HttpPut("property-letter")]
         public async Task<IActionResult> Update([FromBody] UpdatePropertyLetterDto dto)
         {
             if (dto == null)
@@ -126,7 +126,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("property-letters/property/{propertyId}")]
+        [HttpDelete("property-letter/property/{propertyId}")]
         public async Task<IActionResult> DeletePropertyLetter(Guid propertyId)
         {
             if (propertyId == Guid.Empty)

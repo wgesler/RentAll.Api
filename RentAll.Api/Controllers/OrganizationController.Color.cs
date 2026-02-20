@@ -9,7 +9,7 @@ namespace RentAll.Api.Controllers
         /// Get all colors for the current organization
         /// </summary>
         /// <returns>List of colors</returns>
-        [HttpGet("colors")]
+        [HttpGet("color")]
         public async Task<IActionResult> GetAllColors()
         {
             try
@@ -30,7 +30,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="ColorId">Color Id</param>
         /// <returns>Color</returns>
-        [HttpGet("colors/{colorId}")]
+        [HttpGet("color/{colorId}")]
         public async Task<IActionResult> GetColorById(int colorId)
         {
             if (colorId < 0)
@@ -53,7 +53,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Color data</param>
         /// <returns>Updated color</returns>
-        [HttpPut("colors")]
+        [HttpPut("color")]
         public async Task<IActionResult> UpdateColor([FromBody] UpdateColorDto dto)
         {
             if (dto == null)

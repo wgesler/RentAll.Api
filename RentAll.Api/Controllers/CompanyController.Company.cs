@@ -10,27 +10,27 @@ namespace RentAll.Api.Controllers
         /// Get all companies
         /// </summary>
         /// <returns>List of companies</returns>
-        [HttpGet("companies")]
+        [HttpGet]
         public async Task<IActionResult> GetAllCompanies()
         {
             try
             {
-        var companies = await _companiesRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
-        var response = new List<CompanyResponseDto>();
-        foreach (var company in companies)
-        {
-            var dto = new CompanyResponseDto(company);
-            if (!string.IsNullOrWhiteSpace(company.LogoPath))
-                dto.FileDetails = await _fileService.GetFileDetailsAsync(company.OrganizationId, company.OfficeId, company.LogoPath);
+                var companies = await _companiesRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = new List<CompanyResponseDto>();
+                foreach (var company in companies)
+                {
+                    var dto = new CompanyResponseDto(company);
+                    if (!string.IsNullOrWhiteSpace(company.LogoPath))
+                        dto.FileDetails = await _fileService.GetFileDetailsAsync(company.OrganizationId, company.OfficeId, company.LogoPath);
 
-            response.Add(dto);
-        }
-        return Ok(response);
+                    response.Add(dto);
+                }
+                return Ok(response);
             }
             catch (Exception ex)
             {
-        _logger.LogError(ex, "Error getting all companies");
-        return ServerError("An error occurred while retrieving companies");
+                _logger.LogError(ex, "Error getting all companies");
+                return ServerError("An error occurred while retrieving companies");
             }
         }
 
@@ -39,28 +39,28 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="companyId">Company ID</param>
         /// <returns>Company</returns>
-        [HttpGet("companies/{companyId}")]
+        [HttpGet("{companyId}")]
         public async Task<IActionResult> GetCompanyById(Guid companyId)
         {
             if (companyId == Guid.Empty)
-        return BadRequest("Company ID is required");
+                return BadRequest("Company ID is required");
 
             try
             {
-        var company = await _companiesRepository.GetByIdAsync(companyId, CurrentOrganizationId);
-        if (company == null)
-            return NotFound("Company not found");
+                var company = await _companiesRepository.GetByIdAsync(companyId, CurrentOrganizationId);
+                if (company == null)
+                    return NotFound("Company not found");
 
-        var response = new CompanyResponseDto(company);
-        if (!string.IsNullOrWhiteSpace(company.LogoPath))
-            response.FileDetails = await _fileService.GetFileDetailsAsync(company.OrganizationId, company.OfficeId, company.LogoPath);
+                var response = new CompanyResponseDto(company);
+                if (!string.IsNullOrWhiteSpace(company.LogoPath))
+                    response.FileDetails = await _fileService.GetFileDetailsAsync(company.OrganizationId, company.OfficeId, company.LogoPath);
 
-        return Ok(response);
+                return Ok(response);
             }
             catch (Exception ex)
             {
-        _logger.LogError(ex, "Error getting company by ID: {CompanyId}", companyId);
-        return ServerError("An error occurred while retrieving the company");
+                _logger.LogError(ex, "Error getting company by ID: {CompanyId}", companyId);
+                return ServerError("An error occurred while retrieving the company");
             }
         }
 
@@ -73,7 +73,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Company data</param>
         /// <returns>Created company</returns>
-        [HttpPost("companies")]
+        [HttpPost]
         public async Task<IActionResult> CreateCompany([FromBody] CreateCompanyDto dto)
         {
             if (dto == null)
@@ -110,7 +110,7 @@ namespace RentAll.Api.Controllers
                 {
                     response.FileDetails = await _fileService.GetFileDetailsAsync(createdCompany.OrganizationId, createdCompany.OfficeId, createdCompany.LogoPath);
                 }
-                return CreatedAtAction(nameof(GetCompanyById), new { id = createdCompany.CompanyId }, response);
+                return CreatedAtAction(nameof(GetCompanyById), new { companyId = createdCompany.CompanyId }, response);
             }
             catch (Exception ex)
             {
@@ -128,7 +128,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Company data</param>
         /// <returns>Updated company</returns>
-        [HttpPut("companies")]
+        [HttpPut]
         public async Task<IActionResult> UpdateCompany([FromBody] UpdateCompanyDto dto)
         {
             if (dto == null)
@@ -209,7 +209,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="companyId">Company ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("companies/{companyId}")]
+        [HttpDelete("{companyId}")]
         public async Task<IActionResult> DeleteCompany(Guid companyId)
         {
             if (companyId == Guid.Empty)

@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all offices
         /// </summary>
         /// <returns>List of offices</returns>
-        [HttpGet("offices")]
+        [HttpGet("office")]
         public async Task<IActionResult> GetAllOffices()
         {
             try
@@ -44,7 +44,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="officeId">Office ID</param>
         /// <returns>Office</returns>
-        [HttpGet("offices/{officeId}")]
+        [HttpGet("office/{officeId}")]
         public async Task<IActionResult> GetOfficeById(int officeId)
         {
             if (officeId <= 0)
@@ -78,7 +78,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Office data</param>
         /// <returns>Created office</returns>
-        [HttpPost("offices")]
+        [HttpPost("office")]
         public async Task<IActionResult> CreateOffice([FromBody] OfficeCreateDto dto)
         {
             if (dto == null)
@@ -134,7 +134,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Office data</param>
         /// <returns>Updated office</returns>
-        [HttpPut("offices")]
+        [HttpPut("office")]
         public async Task<IActionResult> UpdateOffice([FromBody] OfficeUpdateDto dto)
         {
             if (dto == null)
@@ -240,7 +240,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="officeId">Office ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("offices/{officeId}")]
+        [HttpDelete("office/{officeId}")]
         public async Task<IActionResult> DeleteOffice(int officeId)
         {
             if (officeId <= 0)

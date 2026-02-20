@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all areas
         /// </summary>
         /// <returns>List of areas</returns>
-        [HttpGet("areas")]
+        [HttpGet("area")]
         public async Task<IActionResult> GetAllAreas()
         {
             try
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="areaId">Area ID</param>
         /// <returns>Area</returns>
-        [HttpGet("areas/{areaId}")]
+        [HttpGet("area/{areaId}")]
         public async Task<IActionResult> GetAreaById(int areaId)
         {
             if (areaId <= 0)
@@ -61,7 +61,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Area data</param>
         /// <returns>Created area</returns>
-        [HttpPost("areas")]
+        [HttpPost("area")]
         public async Task<IActionResult> CreateArea([FromBody] AreaCreateDto dto)
         {
             if (dto == null)
@@ -96,7 +96,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Area data</param>
         /// <returns>Updated area</returns>
-        [HttpPut("areas")]
+        [HttpPut("area")]
         public async Task<IActionResult> UpdateArea([FromBody] AreaUpdateDto dto)
         {
             if (dto == null)
@@ -139,7 +139,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="areaId">Area ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("areas/{areaId}")]
+        [HttpDelete("area/{areaId}")]
         public async Task<IActionResult> DeleteArea(int areaId)
         {
             if (areaId <= 0)

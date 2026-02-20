@@ -12,7 +12,7 @@ namespace RentAll.Api.Controllers
         /// Get all invoices by offices
         /// </summary>
         /// <returns>List of invoices</returns>
-        [HttpGet("invoices/invoice")]
+        [HttpGet("invoice")]
         public async Task<IActionResult> GetAllInvoices()
         {
             try
@@ -33,7 +33,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="officeId">Office ID</param>
         /// <returns>List of invoices</returns>
-        [HttpGet("invoices/invoice/office/{officeId:int}")]
+        [HttpGet("invoice/office/{officeId:int}")]
         public async Task<IActionResult> GetAllInvoicesByOffice(int officeId)
         {
             try
@@ -57,7 +57,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="reservationId">Reservation ID</param>
         /// <returns>List of invoices</returns>
-        [HttpGet("invoices/invoice/reservation/{reservationId}")]
+        [HttpGet("invoice/reservation/{reservationId}")]
         public async Task<IActionResult> GetAllInvoicesByReservation(Guid reservationId)
         {
             if (reservationId == Guid.Empty)
@@ -81,7 +81,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>List of invoices</returns>
-        [HttpGet("invoices/invoice/property/{propertyId}")]
+        [HttpGet("invoice/property/{propertyId}")]
         public async Task<IActionResult> GetAllInvoicesByProperty(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -105,7 +105,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="invoiceId">Invoice ID</param>
         /// <returns>Invoice</returns>
-        [HttpGet("invoices/invoice/{invoiceId}")]
+        [HttpGet("invoice/{invoiceId}")]
         public async Task<IActionResult> GetInvoiceById(Guid invoiceId)
         {
             if (invoiceId == Guid.Empty)
@@ -136,7 +136,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Invoice data</param>
         /// <returns>Created invoice</returns>
-        [HttpPost("invoices/invoice")]
+        [HttpPost("invoice")]
         public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
         {
             if (dto == null)
@@ -166,7 +166,7 @@ namespace RentAll.Api.Controllers
         /// Create initial leger lines
         /// </summary>
         /// <returns>Ledger Line</returns>
-        [HttpPost("invoices/ledger-line/reservation")]
+        [HttpPost("invoice/ledger-line/reservation")]
         public async Task<IActionResult> CreateLedgerLinesByReservationId([FromBody] CreateInvoiceMonthlyDataDto dto)
         {
             if (dto == null)
@@ -199,7 +199,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Invoice data</param>
         /// <returns>Updated invoice</returns>
-        [HttpPut("invoices/invoice")]
+        [HttpPut("invoice")]
         public async Task<IActionResult> UpdateInvoice([FromBody] UpdateInvoiceDto dto)
         {
             if (dto == null)
@@ -235,7 +235,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Reservation data</param>
         /// <returns>Updated reservation</returns>
-        [HttpPut("invoices/payment")]
+        [HttpPut("invoice/payment")]
         public async Task<IActionResult> ApplyPayment([FromBody] InvoicePaymentRequestDto dto)
         {
             if (dto == null)
@@ -268,7 +268,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="invoiceId">Invoice ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("invoices/invoice/{invoiceId}")]
+        [HttpDelete("invoice/{invoiceId}")]
         public async Task<IActionResult> DeleteInvoice(Guid invoiceId)
         {
             if (invoiceId == Guid.Empty)

@@ -11,7 +11,7 @@ namespace RentAll.Api.Controllers
         /// Get all cost codes
         /// </summary>
         /// <returns>List of cost codes</returns>
-        [HttpGet("cost-codes/office")]
+        [HttpGet("cost-code/office")]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
         /// Get all cost codes
         /// </summary>
         /// <returns>List of cost codes</returns>
-        [HttpGet("cost-codes/office/{officeId:int}")]
+        [HttpGet("cost-code/office/{officeId:int}")]
         public async Task<IActionResult> GetByOfficeId(int officeId)
         {
             try
@@ -56,7 +56,7 @@ namespace RentAll.Api.Controllers
         /// <param name="officeId">Office ID</param>
         /// <param name="costCodeId">Cost Code ID</param>
         /// <returns>Cost Code</returns>
-        [HttpGet("cost-codes/office/{officeId:int}/costCodeId/{costCodeId:int}")]
+        [HttpGet("cost-code/office/{officeId:int}/costCodeId/{costCodeId:int}")]
         public async Task<IActionResult> GetByCostCodeId(int officeId, int costCodeId)
         {
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
@@ -87,7 +87,7 @@ namespace RentAll.Api.Controllers
         /// <param name="officeId">Office ID</param>
         /// <param name="code">Cost Code</param>
         /// <returns>Cost Code</returns>
-        [HttpGet("cost-codes/office/{officeId:int}/code/{code}")]
+        [HttpGet("cost-code/office/{officeId:int}/code/{code}")]
         public async Task<IActionResult> GetByCode(int officeId, string code)
         {
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
@@ -121,7 +121,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Cost Code data</param>
         /// <returns>Created cost code</returns>
-        [HttpPost("cost-codes")]
+        [HttpPost("cost-code")]
         public async Task<IActionResult> Create([FromBody] CreateCostCodeDto dto)
         {
             if (dto == null)
@@ -206,7 +206,7 @@ namespace RentAll.Api.Controllers
         /// <param name="officeId">Office ID</param>
         /// <param name="costCodeId">Cost Code ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("cost-codes/office/{officeId:int}/costcodeid/{costCodeId:int}")]
+        [HttpDelete("cost-code/office/{officeId:int}/costcodeid/{costCodeId:int}")]
         public async Task<IActionResult> Delete(int officeId, int costCodeId)
         {
             if (costCodeId <= 0)

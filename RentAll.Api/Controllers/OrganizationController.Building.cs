@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all buildings
         /// </summary>
         /// <returns>List of buildings</returns>
-        [HttpGet("buildings")]
+        [HttpGet("building")]
         public async Task<IActionResult> GetAllBuildings()
         {
             try
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="BuildingId">Building ID</param>
         /// <returns>Building</returns>
-        [HttpGet("buildings/{BuildingId}")]
+        [HttpGet("building/{BuildingId}")]
         public async Task<IActionResult> GetBuildingById(int BuildingId)
         {
             if (BuildingId <= 0)
@@ -61,7 +61,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Building data</param>
         /// <returns>Created building</returns>
-        [HttpPost("buildings")]
+        [HttpPost("building")]
         public async Task<IActionResult> CreateBuilding([FromBody] BuildingCreateDto dto)
         {
             if (dto == null)
@@ -96,7 +96,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Building data</param>
         /// <returns>Updated building</returns>
-        [HttpPut("buildings")]
+        [HttpPut("building")]
         public async Task<IActionResult> UpdateBuilding([FromBody] BuildingUpdateDto dto)
         {
             if (dto == null)
@@ -139,7 +139,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="buildingId">Building ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("buildings/{buildingId}")]
+        [HttpDelete("building/{buildingId}")]
         public async Task<IActionResult> DeleteBuilding(int buildingId)
         {
             if (buildingId <= 0)

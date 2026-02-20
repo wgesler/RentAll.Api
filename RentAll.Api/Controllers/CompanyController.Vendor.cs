@@ -9,7 +9,7 @@ namespace RentAll.Api.Controllers
         /// Get all vendors
         /// </summary>
         /// <returns>List of vendors</returns>
-        [HttpGet("vendors")]
+        [HttpGet("vendor")]
         public async Task<IActionResult> GetAllVendors()
         {
             try
@@ -38,7 +38,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="vendorId">Vendor ID</param>
         /// <returns>Vendor</returns>
-        [HttpGet("vendors/{vendorId}")]
+        [HttpGet("vendor/{vendorId}")]
         public async Task<IActionResult> GetVendorById(Guid vendorId)
         {
             if (vendorId == Guid.Empty)
@@ -71,7 +71,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Vendor data</param>
         /// <returns>Created vendor</returns>
-        [HttpPost("vendors")]
+        [HttpPost("vendor")]
         public async Task<IActionResult> CreateVendor([FromBody] CreateVendorDto dto)
         {
             if (dto == null)
@@ -126,7 +126,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Vendor data</param>
         /// <returns>Updated vendor</returns>
-        [HttpPut("vendors")]
+        [HttpPut("vendor")]
         public async Task<IActionResult> UpdateVendor([FromBody] UpdateVendorDto dto)
         {
             if (dto == null)
@@ -207,7 +207,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="vendorId">Vendor ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("vendors/{vendorId}")]
+        [HttpDelete("vendor/{vendorId}")]
         public async Task<IActionResult> DeleteVendor(Guid vendorId)
         {
             if (vendorId == Guid.Empty)

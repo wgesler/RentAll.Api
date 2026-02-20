@@ -9,7 +9,7 @@ namespace RentAll.Api.Controllers
         /// Get all organizations
         /// </summary>
         /// <returns>List of organizations</returns>
-        [HttpGet("organizations")]
+        [HttpGet]
         public async Task<IActionResult> GetAllOrganizations()
         {
             try
@@ -38,7 +38,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="organizationId">Organization ID</param>
         /// <returns>Organization</returns>
-        [HttpGet("organizations/{organizationId}")]
+        [HttpGet("{organizationId}")]
         public async Task<IActionResult> GetOrganizationById(Guid organizationId)
         {
             if (organizationId == Guid.Empty)
@@ -72,7 +72,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Organization data</param>
         /// <returns>Created organization</returns>
-        [HttpPost("organizations")]
+        [HttpPost]
         public async Task<IActionResult> CreateOrganization([FromBody] CreateOrganizationDto dto)
         {
             if (dto == null)
@@ -113,7 +113,7 @@ namespace RentAll.Api.Controllers
                 {
                     response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, null, created.LogoPath);
                 }
-                return CreatedAtAction(nameof(GetOrganizationById), new { id = created.OrganizationId }, response);
+                return CreatedAtAction(nameof(GetOrganizationById), new { organizationId = created.OrganizationId }, response);
             }
             catch (Exception ex)
             {
@@ -131,7 +131,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Organization data</param>
         /// <returns>Updated organization</returns>
-        [HttpPut("organizations")]
+        [HttpPut]
         public async Task<IActionResult> UpdateOrganization([FromBody] UpdateOrganizationDto dto)
         {
             if (dto == null)
@@ -211,7 +211,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="organizationId">Organization ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("organizations/{organizationId}")]
+        [HttpDelete("{organizationId}")]
         public async Task<IActionResult> DeleteOrganization(Guid organizationId)
         {
             if (organizationId == Guid.Empty)

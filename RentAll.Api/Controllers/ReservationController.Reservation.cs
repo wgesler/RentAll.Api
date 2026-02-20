@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all reservations
         /// </summary>
         /// <returns>List of reservations</returns>
-        [HttpGet("reservations/list")]
+        [HttpGet("list")]
         public async Task<IActionResult> GetList()
         {
             try
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="reservationId">Reservation ID</param>
         /// <returns>Reservation</returns>
-        [HttpGet("reservations/{reservationId}")]
+        [HttpGet("{reservationId}")]
         public async Task<IActionResult> GetById(Guid reservationId)
         {
             if (reservationId == Guid.Empty)
@@ -57,7 +57,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="propertyId">Property ID</param>
         /// <returns>List of reservations</returns>
-        [HttpGet("reservations/property/{propertyId}")]
+        [HttpGet("property/{propertyId}")]
         public async Task<IActionResult> GetByPropertyId(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
@@ -85,7 +85,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Reservation data</param>
         /// <returns>Created reservation</returns>
-        [HttpPost("reservations")]
+        [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
         {
             if (dto == null)
@@ -102,7 +102,7 @@ namespace RentAll.Api.Controllers
                 var reservation = dto.ToModel(code, CurrentUser);
 
                 var createdReservation = await _reservationRepository.CreateAsync(reservation);
-                return CreatedAtAction(nameof(GetById), new { id = createdReservation.ReservationId }, new ReservationResponseDto(createdReservation));
+                return CreatedAtAction(nameof(GetById), new { reservationId = createdReservation.ReservationId }, new ReservationResponseDto(createdReservation));
             }
             catch (Exception ex)
             {
@@ -120,7 +120,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Reservation data</param>
         /// <returns>Updated reservation</returns>
-        [HttpPut()]
+        [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdateReservationDto dto)
         {
             if (dto == null)
@@ -156,7 +156,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="reservationId">Reservation ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("reservations/{reservationId}")]
+        [HttpDelete("{reservationId}")]
         public async Task<IActionResult> Delete(Guid reservationId)
         {
             if (reservationId == Guid.Empty)

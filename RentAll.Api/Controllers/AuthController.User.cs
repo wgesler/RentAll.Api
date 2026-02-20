@@ -8,7 +8,7 @@ public partial class AuthController
 {
     #region Get
 
-    [HttpGet("users")]
+    [HttpGet("user")]
     public async Task<IActionResult> GetAllUsers()
     {
         try
@@ -32,7 +32,7 @@ public partial class AuthController
         }
     }
 
-    [HttpGet("users/{UserId}")]
+    [HttpGet("user/{UserId}")]
     public async Task<IActionResult> GetUserById(Guid UserId)
     {
         if (UserId == Guid.Empty)
@@ -61,7 +61,7 @@ public partial class AuthController
 
     #region Post
 
-    [HttpPost("users")]
+    [HttpPost("user")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
         if (dto == null)
@@ -111,7 +111,7 @@ public partial class AuthController
 
     #region Put
 
-    [HttpPut("users")]
+    [HttpPut("user")]
     public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto)
     {
         if (dto == null)
@@ -185,7 +185,7 @@ public partial class AuthController
 
     #region Delete
 
-    [HttpDelete("users/{userId}")]
+    [HttpDelete("user/{userId}")]
     public async Task<IActionResult> DeleteUser(Guid userId)
     {
         if (userId == Guid.Empty)

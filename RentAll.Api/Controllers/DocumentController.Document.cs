@@ -1,7 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Documents;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -71,15 +68,15 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="id">Document ID</param>
         /// <returns>Document</returns>
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
+        [HttpGet("{documentId}")]
+        public async Task<IActionResult> GetById(Guid documentId)
         {
-            if (id == Guid.Empty)
+            if (documentId == Guid.Empty)
                 return BadRequest("Document ID is required");
 
             try
             {
-                var document = await _documentRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var document = await _documentRepository.GetByIdAsync(documentId, CurrentOrganizationId);
                 if (document == null || document.IsDeleted)
                     return NotFound("Document not found");
 
@@ -91,7 +88,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting document by ID: {DocumentId}", id);
+                _logger.LogError(ex, "Error getting document by ID: {DocumentId}", documentId);
                 return ServerError("An error occurred while retrieving the document");
             }
         }
@@ -209,7 +206,7 @@ namespace RentAll.Api.Controllers
                 {
                     response.FileDetails = await _fileService.GetDocumentDetailsAsync(created.OrganizationId, created.OfficeId, created.DocumentPath);
                 }
-                return CreatedAtAction(nameof(GetById), new { id = created.DocumentId }, response);
+                return CreatedAtAction(nameof(GetById), new { documentId = created.DocumentId }, response);
             }
             catch (Exception ex)
             {
@@ -382,24 +379,24 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="id">Document ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
+        [HttpDelete("{documentId}")]
+        public async Task<IActionResult> Delete(Guid documentId)
         {
-            if (id == Guid.Empty)
+            if (documentId == Guid.Empty)
                 return BadRequest("Document ID is required");
 
             try
             {
-                var existing = await _documentRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var existing = await _documentRepository.GetByIdAsync(documentId, CurrentOrganizationId);
                 if (existing == null || existing.IsDeleted)
                     return NotFound("Document not found");
 
-                await _documentRepository.DeleteByIdAsync(id, CurrentOrganizationId);
+                await _documentRepository.DeleteByIdAsync(documentId, CurrentOrganizationId);
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting document: {DocumentId}", id);
+                _logger.LogError(ex, "Error deleting document: {DocumentId}", documentId);
                 return ServerError("An error occurred while deleting the document");
             }
         }

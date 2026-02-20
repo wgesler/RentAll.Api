@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all regions
         /// </summary>
         /// <returns>List of regions</returns>
-        [HttpGet("regions")]
+        [HttpGet("region")]
         public async Task<IActionResult> GetAllRegions()
         {
             try
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="regionId">Region ID</param>
         /// <returns>Region</returns>
-        [HttpGet("regions/{regionId}")]
+        [HttpGet("region/{regionId}")]
         public async Task<IActionResult> GetRegionById(int regionId)
         {
             if (regionId <= 0)
@@ -61,7 +61,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Region data</param>
         /// <returns>Created region</returns>
-        [HttpPost("regions")]
+        [HttpPost("region")]
         public async Task<IActionResult> CreateRegion([FromBody] RegionCreateDto dto)
         {
             if (dto == null)
@@ -96,7 +96,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Region data</param>
         /// <returns>Updated region</returns>
-        [HttpPut("regions")]
+        [HttpPut("region")]
         public async Task<IActionResult> UpdateRegion([FromBody] RegionUpdateDto dto)
         {
             if (dto == null)
@@ -138,7 +138,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="regionId">Region ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("regions/{regionId}")]
+        [HttpDelete("region/{regionId}")]
         public async Task<IActionResult> DeleteRegion(int regionId)
         {
             if (regionId <= 0)

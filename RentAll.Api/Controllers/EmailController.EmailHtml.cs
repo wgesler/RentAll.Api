@@ -9,7 +9,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Get email html by organization.
         /// </summary>
-        [HttpGet("email-htmls")]
+        [HttpGet("email-html")]
         public async Task<IActionResult> GetByOrganization()
         {
             try
@@ -34,7 +34,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Create email html for organization.
         /// </summary>
-        [HttpPost("email-htmls")]
+        [HttpPost("email-html")]
         public async Task<IActionResult> Create([FromBody] CreateEmailHtmlDto dto)
         {
             if (dto == null)
@@ -64,7 +64,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Update email html for organization.
         /// </summary>
-        [HttpPut("email-htmls")]
+        [HttpPut("email-html")]
         public async Task<IActionResult> Update([FromBody] UpdateEmailHtmlDto dto)
         {
             if (dto == null)
@@ -98,7 +98,7 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Delete email html for organization.
         /// </summary>
-        [HttpDelete("email-htmls")]
+        [HttpDelete("email-html")]
         public async Task<IActionResult> Delete()
         {
             try

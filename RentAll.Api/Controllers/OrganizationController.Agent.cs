@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers
         /// Get all agents
         /// </summary>
         /// <returns>List of agents</returns>
-        [HttpGet("agents")]
+        [HttpGet("agent")]
         public async Task<IActionResult> GetAllAgents()
         {
             try
@@ -31,7 +31,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="agentId">Agent ID</param>
         /// <returns>Agent</returns>
-        [HttpGet("agents/{agentId}")]
+        [HttpGet("agent/{agentId}")]
         public async Task<IActionResult> GetAgentById(Guid agentId)
         {
             if (agentId == Guid.Empty)
@@ -57,7 +57,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="agentCode">Agent Code</param>
         /// <returns>Boolean indicating if agent exists</returns>
-        [HttpGet("agents/exists/{agentCode}")]
+        [HttpGet("agent/exists/{agentCode}")]
         public async Task<IActionResult> ExistsByCode(string agentCode)
         {
             if (string.IsNullOrWhiteSpace(agentCode))
@@ -84,7 +84,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Agent data</param>
         /// <returns>Created agent</returns>
-        [HttpPost("agents")]
+        [HttpPost("agent")]
         public async Task<IActionResult> CreateAgent([FromBody] CreateAgentDto dto)
         {
             if (dto == null)
@@ -120,7 +120,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Agent data</param>
         /// <returns>Updated agent</returns>
-        [HttpPut("agents")]
+        [HttpPut("agent")]
         public async Task<IActionResult> UpdateAgent([FromBody] UpdateAgentDto dto)
         {
             if (dto == null)
@@ -164,7 +164,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="agentId">Agent ID</param>
         /// <returns>No content</returns>
-        [HttpDelete("agents/{agentId}")]
+        [HttpDelete("agent/{agentId}")]
         public async Task<IActionResult> DeleteAgent(Guid agentId)
         {
             if (agentId == Guid.Empty)
