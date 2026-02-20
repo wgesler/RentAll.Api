@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RentAll.Domain.Interfaces.Auth;
+using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 
 namespace RentAll.Api.Controllers;
@@ -8,21 +10,30 @@ namespace RentAll.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [Authorize]
-public partial class AuthController : ControllerBase
+public partial class AuthController : BaseController
 {
     protected readonly AuthManager _authManager;
     protected readonly IAuthTokenService _tokenService;
+    protected readonly IUserRepository _userRepository;
+    protected readonly IPasswordHasher _passwordHasher;
+    protected readonly IFileService _fileService;
     protected readonly IConfiguration _configuration;
     protected readonly ILogger<AuthController> _logger;
 
     public AuthController(
         AuthManager authManager,
         IAuthTokenService tokenService,
+        IUserRepository userRepository,
+        IPasswordHasher passwordHasher,
+        IFileService fileService,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
         _authManager = authManager;
         _tokenService = tokenService;
+        _userRepository = userRepository;
+        _passwordHasher = passwordHasher;
+        _fileService = fileService;
         _configuration = configuration;
         _logger = logger;
     }
