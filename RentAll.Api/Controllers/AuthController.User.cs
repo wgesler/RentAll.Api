@@ -35,9 +35,6 @@ public partial class AuthController
     [HttpGet("user/{UserId}")]
     public async Task<IActionResult> GetUserById(Guid UserId)
     {
-        if (UserId == Guid.Empty)
-            return BadRequest("User ID is required");
-
         try
         {
             var user = await _userRepository.GetByIdAsync(UserId);
@@ -64,7 +61,6 @@ public partial class AuthController
     [HttpPost("user")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
-        System.Diagnostics.Debugger.Break();
         if (dto == null)
             return BadRequest("User data is required");
 
@@ -115,7 +111,6 @@ public partial class AuthController
     [HttpPut("user")]
     public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto)
     {
-        System.Diagnostics.Debugger.Break();
         if (dto == null)
             return BadRequest("User data is required");
 
@@ -190,7 +185,6 @@ public partial class AuthController
     [HttpDelete("user/{userId}")]
     public async Task<IActionResult> DeleteUser(Guid userId)
     {
-        System.Diagnostics.Debugger.Break();
         if (userId == Guid.Empty)
             return BadRequest("User ID is required");
 

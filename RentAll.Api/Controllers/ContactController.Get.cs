@@ -59,7 +59,6 @@ namespace RentAll.Api.Controllers
         [HttpGet("type/{contactTypeId}")]
         public async Task<IActionResult> GetByContactTypeId(int contactTypeId)
         {
-            System.Diagnostics.Debugger.Break();
             try
             {
                 var contacts = await _contactRepository.GetByContactTypeIdAsync(contactTypeId, CurrentOrganizationId);

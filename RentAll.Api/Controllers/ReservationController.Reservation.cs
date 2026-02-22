@@ -159,7 +159,6 @@ namespace RentAll.Api.Controllers
         [HttpDelete("{reservationId}")]
         public async Task<IActionResult> Delete(Guid reservationId)
         {
-            System.Diagnostics.Debugger.Break();
             if (reservationId == Guid.Empty)
                 return BadRequest("Reservation ID is required");
 

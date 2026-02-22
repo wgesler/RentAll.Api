@@ -101,7 +101,6 @@ namespace RentAll.Api.Controllers
         [HttpGet("office/{officeId}")]
         public async Task<IActionResult> GetByOfficeId(int officeId)
         {
-            System.Diagnostics.Debugger.Break();
             if (officeId <= 0)
                 return BadRequest("Office ID is required");
 
@@ -134,7 +133,6 @@ namespace RentAll.Api.Controllers
         [HttpGet("type/{documentType}")]
         public async Task<IActionResult> GetByDocumentType(int documentType)
         {
-            System.Diagnostics.Debugger.Break();
             try
             {
                 var documents = await _documentRepository.GetByDocumentTypeAsync(documentType, CurrentOrganizationId);
@@ -168,7 +166,6 @@ namespace RentAll.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateDocumentDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Document data is required");
 
@@ -226,7 +223,6 @@ namespace RentAll.Api.Controllers
         [HttpPost("upsert")]
         public async Task<IActionResult> UpsertByName([FromBody] UpsertDocumentDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Document data is required");
 
@@ -318,7 +314,6 @@ namespace RentAll.Api.Controllers
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdateDocumentDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Document data is required");
 
@@ -387,7 +382,6 @@ namespace RentAll.Api.Controllers
         [HttpDelete("{documentId}")]
         public async Task<IActionResult> Delete(Guid documentId)
         {
-            System.Diagnostics.Debugger.Break();
             if (documentId == Guid.Empty)
                 return BadRequest("Document ID is required");
 

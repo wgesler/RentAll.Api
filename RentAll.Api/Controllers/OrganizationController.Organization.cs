@@ -41,9 +41,6 @@ namespace RentAll.Api.Controllers
         [HttpGet("{organizationId}")]
         public async Task<IActionResult> GetOrganizationById(Guid organizationId)
         {
-            if (organizationId == Guid.Empty)
-                return BadRequest("OrganizationId is required");
-
             try
             {
                 var org = await _organizationRepository.GetByIdAsync(organizationId);
@@ -135,7 +132,6 @@ namespace RentAll.Api.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateOrganization([FromBody] UpdateOrganizationDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Organization data is required");
 

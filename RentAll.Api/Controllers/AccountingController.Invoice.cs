@@ -60,7 +60,6 @@ namespace RentAll.Api.Controllers
         [HttpGet("invoice/reservation/{reservationId}")]
         public async Task<IActionResult> GetAllInvoicesByReservation(Guid reservationId)
         {
-            System.Diagnostics.Debugger.Break();
             if (reservationId == Guid.Empty)
                 return BadRequest("Reservation ID is required");
 
@@ -85,7 +84,6 @@ namespace RentAll.Api.Controllers
         [HttpGet("invoice/property/{propertyId}")]
         public async Task<IActionResult> GetAllInvoicesByProperty(Guid propertyId)
         {
-            System.Diagnostics.Debugger.Break();
             if (propertyId == Guid.Empty)
                 return BadRequest("Property ID is required");
 
@@ -141,7 +139,6 @@ namespace RentAll.Api.Controllers
         [HttpPost("invoice")]
         public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Invoice data is required");
 
@@ -172,7 +169,6 @@ namespace RentAll.Api.Controllers
         [HttpPost("invoice/ledger-line/reservation")]
         public async Task<IActionResult> CreateLedgerLinesByReservationId([FromBody] CreateInvoiceMonthlyDataDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Invoice data is required");
 
@@ -206,7 +202,6 @@ namespace RentAll.Api.Controllers
         [HttpPut("invoice")]
         public async Task<IActionResult> UpdateInvoice([FromBody] UpdateInvoiceDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Invoice data is required");
 
@@ -243,7 +238,6 @@ namespace RentAll.Api.Controllers
         [HttpPut("invoice/payment")]
         public async Task<IActionResult> ApplyPayment([FromBody] InvoicePaymentRequestDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Invoice payment data is required");
 
@@ -277,7 +271,6 @@ namespace RentAll.Api.Controllers
         [HttpDelete("invoice/{invoiceId}")]
         public async Task<IActionResult> DeleteInvoice(Guid invoiceId)
         {
-            System.Diagnostics.Debugger.Break();
             if (invoiceId == Guid.Empty)
                 return BadRequest("Invoice ID is required");
 

@@ -24,9 +24,6 @@ public class UpdateOrganizationDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
         if (string.IsNullOrWhiteSpace(OrganizationCode))
             return (false, "OrganizationCode is required");
 
