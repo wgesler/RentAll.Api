@@ -16,9 +16,6 @@ public class UpdateAgentDto
         if (AgentId == Guid.Empty)
             return (false, "Agent ID is required");
 
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
         if (string.IsNullOrWhiteSpace(AgentCode))
             return (false, "Agent Code is required");
 

@@ -184,6 +184,14 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        protected bool IsSuperAdmin()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentUserGroups))
+                return false;
+
+            return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        }
+
         protected bool IsAdmin()
         {
             if (string.IsNullOrWhiteSpace(CurrentUserGroups))
@@ -191,6 +199,7 @@ namespace RentAll.Api.Controllers
 
             return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("Admin", StringComparison.OrdinalIgnoreCase));
         }
+
     }
 }
 

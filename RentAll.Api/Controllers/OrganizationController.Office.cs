@@ -9,14 +9,17 @@ namespace RentAll.Api.Controllers
         /// <summary>
         /// Get all offices
         /// </summary>
+        /// <param name="organizationId">Organization ID</param>
         /// <returns>List of offices</returns>
-        [HttpGet("office")]
-        public async Task<IActionResult> GetAllOffices()
+        [HttpGet("office/{organizationId:guid}")]
+        public async Task<IActionResult> GetAllOffices(Guid organizationId)
         {
             try
             {
                 IEnumerable<Office> offices;
-                if (IsAdmin())
+                if (IsSuperAdmin())
+                    offices = await _organizationRepository.GetAllAsync(organizationId);
+                else if (IsAdmin())
                     offices = await _organizationRepository.GetAllAsync(CurrentOrganizationId);
                 else
                     offices = await _organizationRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);

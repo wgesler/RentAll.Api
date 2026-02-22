@@ -22,9 +22,6 @@ public class UpdateInvoiceDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (InvoiceId == Guid.Empty)
-            return (false, "Invoice ID is required");
-
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 

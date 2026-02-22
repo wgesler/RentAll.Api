@@ -6,5 +6,6 @@ public enum StartupPage
     Boards = 1,
     Reservations = 2,
     Properties = 3,
-    Accounting = 4
+    Accounting = 4,
+    Organizations = 5
 }

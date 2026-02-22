@@ -29,9 +29,6 @@ public class CreateAccountingOfficeDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
@@ -52,9 +49,6 @@ public class CreateAccountingOfficeDto
 
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
-
-        if (string.IsNullOrWhiteSpace(Fax))
-            return (false, "Fax is required");
 
         if (string.IsNullOrWhiteSpace(BankName))
             return (false, "BankName is required");

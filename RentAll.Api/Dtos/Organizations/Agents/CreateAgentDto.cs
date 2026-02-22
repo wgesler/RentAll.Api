@@ -12,9 +12,6 @@ public class CreateAgentDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
         if (string.IsNullOrWhiteSpace(AgentCode))
             return (false, "Agent Code is required");
 

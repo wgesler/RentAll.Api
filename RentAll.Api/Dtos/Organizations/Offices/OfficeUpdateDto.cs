@@ -48,9 +48,6 @@ public class OfficeUpdateDto
         if (OfficeId <= 0)
             return (false, "Office ID is required");
 
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
         if (string.IsNullOrWhiteSpace(OfficeCode))
             return (false, "Office Code is required");
 
