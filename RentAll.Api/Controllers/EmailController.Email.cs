@@ -18,9 +18,6 @@ namespace RentAll.Api.Controllers
                 foreach (var email in emails)
                 {
                     var dto = new EmailResponseDto(email);
-                    if (!string.IsNullOrWhiteSpace(email.AttachmentPath))
-                        dto.FileDetails = await _fileService.GetDocumentDetailsAsync(email.OrganizationId, email.OfficeId, email.AttachmentPath);
-
                     response.Add(dto);
                 }
                 return Ok(response);

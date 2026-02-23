@@ -21,9 +21,6 @@ namespace RentAll.Api.Controllers
                 foreach (var document in documents.Where(d => !d.IsDeleted))
                 {
                     var dto = new DocumentResponseDto(document);
-                    if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-                        dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
-
                     response.Add(dto);
                 }
                 return Ok(response);
@@ -49,9 +46,6 @@ namespace RentAll.Api.Controllers
                 foreach (var document in documents.Where(d => !d.IsDeleted))
                 {
                     var dto = new DocumentResponseDto(document);
-                    if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-                        dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeId, document.DocumentPath);
-
                     response.Add(dto);
                 }
                 return Ok(response);
