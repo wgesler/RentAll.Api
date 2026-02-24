@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Accounting.Invoices;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -186,6 +184,34 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting ledger lines: {ReservationId}", dto.ReservationId);
+                return ServerError("An error occurred while retrieving the ledger line");
+            }
+        }
+
+        /// <summary>
+        /// Create initial leger lines
+        /// </summary>
+        /// <returns>Ledger Line</returns>
+        [HttpPost("invoice/ledger-line/organization")]
+        public async Task<IActionResult> CreateLedgerLinesByOrganizationId([FromBody] CreateBillingMonthlyDataDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Invoice data is required");
+
+            try
+            {
+                var organization = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
+                if (organization == null)
+                    return NotFound("Organization not found");
+
+                var ledgerLines = await _accountingManager.CreateLedgerLinesForOrganizationIdAsync(organization, dto.StartDate, dto.EndDate);
+                var data = new BillingMonthlyData { InvoiceCode = dto.InvoiceCode, OrganizationId = dto.OrganizationId, LedgerLines = ledgerLines };
+                var response = new BillingMonthlyDataResponseDto(data);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ledger lines: {OrganizationId}", dto.OrganizationId);
                 return ServerError("An error occurred while retrieving the ledger line");
             }
         }

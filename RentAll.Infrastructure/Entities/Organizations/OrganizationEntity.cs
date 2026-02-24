@@ -13,9 +13,18 @@ public class OrganizationEntity
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactEmail { get; set; }
     public string? Website { get; set; }
     public string? LogoPath { get; set; }
     public bool IsInternational { get; set; }
+    public int CurrentInvoiceNo { get; set; }
+    public decimal OfficeFee { get; set; }
+    public decimal UserFee { get; set; }
+    public decimal Unit50Fee { get; set; }
+    public decimal Unit100Fee { get; set; }
+    public decimal Unit200Fee { get; set; }
+    public decimal Unit500Fee { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

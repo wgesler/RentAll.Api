@@ -2,7 +2,6 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
-using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 
@@ -30,9 +29,18 @@ public partial class OrganizationRepository : IOrganizationRepository
             Zip = e.Zip,
             Phone = e.Phone,
             Fax = e.Fax,
+            ContactName = e.ContactName,
+            ContactEmail = e.ContactEmail,
             Website = e.Website,
             LogoPath = e.LogoPath,
             IsInternational = e.IsInternational,
+            CurrentInvoiceNo = e.CurrentInvoiceNo,
+            OfficeFee = e.OfficeFee,
+            UserFee = e.UserFee,
+            Unit50Fee = e.Unit50Fee,
+            Unit100Fee = e.Unit100Fee,
+            Unit200Fee = e.Unit200Fee,
+            Unit500Fee = e.Unit500Fee,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,

@@ -13,6 +13,7 @@ public class CreateInvoiceDto
     public string? ReservationCode { get; set; } = string.Empty;
     public DateTimeOffset InvoiceDate { get; set; }
     public DateTimeOffset? DueDate { get; set; }
+    public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
@@ -64,6 +65,7 @@ public class CreateInvoiceDto
             ReservationCode = ReservationCode,
             InvoiceDate = InvoiceDate,
             DueDate = DueDate,
+            InvoicePeriod = InvoicePeriod,
             TotalAmount = TotalAmount,
             PaidAmount = PaidAmount,
             Notes = Notes,

@@ -66,6 +66,7 @@ public partial class AccountingRepository : IAccountingRepository
             ReservationCode = e.ReservationCode,
             InvoiceDate = e.InvoiceDate,
             DueDate = e.DueDate,
+            InvoicePeriod = e.InvoicePeriod,
             TotalAmount = e.TotalAmount,
             PaidAmount = e.PaidAmount,
             Notes = e.Notes,

@@ -16,10 +16,19 @@ public class OrganizationResponseDto
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactEmail { get; set; }
     public string? Website { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
+    public int CurrentInvoiceNo { get; set; }
+    public decimal OfficeFee { get; set; }
+    public decimal UserFee { get; set; }
+    public decimal Unit50Fee { get; set; }
+    public decimal Unit100Fee { get; set; }
+    public decimal Unit200Fee { get; set; }
+    public decimal Unit500Fee { get; set; }
     public bool IsActive { get; set; }
 
 
@@ -36,10 +45,19 @@ public class OrganizationResponseDto
         Zip = org.Zip;
         Phone = org.Phone;
         Fax = org.Fax;
+        ContactName = org.ContactName;
+        ContactEmail = org.ContactEmail;
         Website = org.Website;
         LogoPath = org.LogoPath;
         FileDetails = org.FileDetails;
         IsInternational = org.IsInternational;
+        CurrentInvoiceNo = org.CurrentInvoiceNo;
+        OfficeFee = org.OfficeFee;
+        UserFee = org.UserFee;
+        Unit50Fee = org.Unit50Fee;
+        Unit100Fee = org.Unit100Fee;
+        Unit200Fee = org.Unit200Fee;
+        Unit500Fee = org.Unit500Fee;
         IsActive = org.IsActive;
     }
 }

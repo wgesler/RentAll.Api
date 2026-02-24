@@ -8,15 +8,93 @@ namespace RentAll.Domain.Managers;
 public class AccountingManager : IAccountingManager
 {
     const int PRORATE_DAYS = 30;
+    Guid SystemOrganization = Guid.Empty;
+
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IPropertyRepository _propertyRepository;
     private readonly IAccountingRepository _accountingRepository;
     private readonly IReservationRepository _reservationRepository;
 
-    public AccountingManager(IAccountingRepository accountingRepository, IReservationRepository reservationRepository)
+    public AccountingManager(
+        IOrganizationRepository organizationRepository,
+        IPropertyRepository propertyRepository,
+        IAccountingRepository accountingRepository,
+        IReservationRepository reservationRepository)
     {
+        _organizationRepository = organizationRepository;
+        _propertyRepository = propertyRepository;
         _accountingRepository = accountingRepository;
         _reservationRepository = reservationRepository;
     }
 
+    #region Billing
+    public async Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateTimeOffset startDate, DateTimeOffset endDate)
+    {
+        var lineItems = new List<LedgerLine>();
+        var lineNumber = 1;
+
+        var requestedDate = startDate.Date;
+        var requestedMonth = startDate.Month;
+
+        // Partial month = NO if: check-in is 1st, OR (month has 31 days AND check-in is 1st or 2nd)
+        var daysInMonth = DateTime.DaysInMonth(requestedDate.Year, requestedDate.Month);
+        var isMonthPartial = (requestedDate.Day != 1);
+        var days = CalculateNumberOfBillingDays(startDate, endDate);
+
+
+        // Get the Offices for the Organization
+        IEnumerable<Office> offices = await _organizationRepository.GetAllAsync(organization.OrganizationId);
+
+        foreach (var office in offices)
+        {
+            var officeLine = $"Office Base Fee ({office.Name}): ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
+            lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = officeLine, Amount = organization.OfficeFee });
+
+            var properties = await _propertyRepository.GetListByOfficeIdAsync(office.OrganizationId, Convert.ToString(office.OfficeId ));
+            var units = properties.Count() - 50;
+            switch (properties.Count())
+            {
+                case <= 2:
+                    break;
+                case <= 4:
+                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit50Fee });
+                    break;
+                case <= 6:
+                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit100Fee });
+                    break;
+                case <= 8:
+                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit200Fee });
+                    break;
+                default:
+                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit500Fee });
+                    break;
+            }
+        }
+        await ApplyBillingCostCodesAsync(SystemOrganization, lineItems);
+        return lineItems;
+    }
+    public async Task ApplyBillingCostCodesAsync(Guid organizationId, List<LedgerLine> ledgerLines)
+    {
+        var costCodes = await _accountingRepository.GetAllByOfficeIdAsync(1, organizationId);
+        foreach (var line in ledgerLines)
+        {
+            var costCode = null as CostCode;
+            switch (line.Description)
+            {
+                case string desc when desc.StartsWith("Office Base", StringComparison.OrdinalIgnoreCase):
+                    costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Office Base"));
+                    if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+                    continue;
+                case string desc when desc.StartsWith("Unit Fee", StringComparison.OrdinalIgnoreCase):
+                    costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Unit Fee"));
+                    if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+                    continue;
+            }
+        }
+    }
+    #endregion
+
+    #region Invoices
     public async Task<Reservation> ApplyInvoiceToReservationAsync(Invoice i)
     {
         if (i.ReservationId == null)
@@ -197,9 +275,9 @@ public class AccountingManager : IAccountingManager
                     if (costCode != null) line.CostCodeId = costCode.CostCodeId;
                     continue;
             }
-
         }
     }
+    #endregion
 
     #region Private Methods
     private void GetFirstMonthLines(Reservation reservation, bool isFirstMonth, List<LedgerLine> lines, ref int lineNumber)
@@ -296,6 +374,16 @@ public class AccountingManager : IAccountingManager
     #endregion
 
     #region Day Calculation Methods
+    private static int CalculateNumberOfBillingDays(DateTimeOffset startDate, DateTimeOffset endDate)
+    {
+        DateTime start = startDate.Date;
+        DateTime end = endDate.Date;
+        if (end < start) return 0;
+
+        var days = (end - start).Days;
+        return days;
+    }
+
     private static int CalculateNumberOfDays(DateTimeOffset startDate, DateTimeOffset endDate, BillingType billingType)
     {
         DateTime start = startDate.Date;

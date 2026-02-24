@@ -14,6 +14,7 @@ public class UpdateInvoiceDto
     public string ReservationCode { get; set; } = string.Empty;
     public DateTimeOffset InvoiceDate { get; set; }
     public DateTimeOffset? DueDate { get; set; }
+    public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
@@ -22,9 +23,6 @@ public class UpdateInvoiceDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
@@ -72,6 +70,7 @@ public class UpdateInvoiceDto
             ReservationCode = ReservationCode,
             InvoiceDate = InvoiceDate,
             DueDate = DueDate,
+            InvoicePeriod = InvoicePeriod,
             TotalAmount = TotalAmount,
             PaidAmount = PaidAmount,
             Notes = Notes,
