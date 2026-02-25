@@ -1,6 +1,4 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Users;
 

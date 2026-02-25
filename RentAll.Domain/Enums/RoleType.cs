@@ -19,7 +19,9 @@ public enum RoleType
     CorporationAdmin = 14,
     Vendor = 15,
     VendorAdmin = 16,
-    Client = 17
+    Tenants = 17,
+    Owner = 18,
+    Client = 19
 }
 
 

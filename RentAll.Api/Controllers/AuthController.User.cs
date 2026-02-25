@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Users;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers;
 
