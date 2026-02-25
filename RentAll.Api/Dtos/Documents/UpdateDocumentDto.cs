@@ -20,6 +20,9 @@ public class UpdateDocumentDto
         if (DocumentId == Guid.Empty)
             return (false, "Document ID is required");
 
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (FileDetails == null || string.IsNullOrWhiteSpace(FileDetails.File))
             return (false, "File is required");
 

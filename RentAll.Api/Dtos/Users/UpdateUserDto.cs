@@ -25,6 +25,9 @@ public class UpdateUserDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (CommissionRate < 0)
             return (false, "CommissionRate must be greater than or equal to 0");
 

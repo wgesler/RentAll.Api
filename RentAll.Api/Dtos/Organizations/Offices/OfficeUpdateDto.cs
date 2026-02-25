@@ -45,6 +45,9 @@ public class OfficeUpdateDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (OfficeId <= 0)
             return (false, "Office ID is required");
 

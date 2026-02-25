@@ -18,6 +18,9 @@ public class UpdateCostCodeDto
         if (CostCodeId <= 0)
             return (false, "CostCode ID is required");
 
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 

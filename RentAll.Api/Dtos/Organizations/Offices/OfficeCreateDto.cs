@@ -43,6 +43,9 @@ public class OfficeCreateDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (string.IsNullOrWhiteSpace(OfficeCode))
             return (false, "Office Code is required");
 
