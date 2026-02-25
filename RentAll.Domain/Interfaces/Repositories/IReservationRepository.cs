@@ -14,7 +14,6 @@ public interface IReservationRepository
 
     // Reservation Updates
     Task<Reservation> UpdateByIdAsync(Reservation reservation);
-    Task<Reservation> IncrementCurrentInvoiceAsync(Guid reservationId, Guid organizationId);
 
     // Reservation Deletes
     Task DeleteByIdAsync(Guid reservationId);

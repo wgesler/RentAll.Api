@@ -8,7 +8,7 @@ namespace RentAll.Domain.Managers;
 public class AccountingManager : IAccountingManager
 {
     const int PRORATE_DAYS = 30;
-    Guid SystemOrganization = Guid.Empty;
+    Guid SystemOrganization = Guid.Parse("99999999-9999-9999-9999-999999999999");
 
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IPropertyRepository _propertyRepository;
@@ -95,14 +95,6 @@ public class AccountingManager : IAccountingManager
     #endregion
 
     #region Invoices
-    public async Task<Reservation> ApplyInvoiceToReservationAsync(Invoice i)
-    {
-        if (i.ReservationId == null)
-            throw new Exception("Invoice missing ReservationId");
-
-        return await _reservationRepository.IncrementCurrentInvoiceAsync((Guid)i.ReservationId, i.OrganizationId);
-    }
-
     public async Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId,
         string description, decimal amountPaid, Guid currentUser)
     {

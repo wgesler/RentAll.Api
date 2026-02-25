@@ -52,16 +52,6 @@ public partial class AccountingRepository
                 }, transaction: transaction);
             }
 
-            // Increment reservation invoice number if ReservationId is present
-            if (invoice.ReservationId.HasValue)
-            {
-                await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_IncrementInvoiceById", new
-                {
-                    ReservationId = invoice.ReservationId.Value,
-                    OrganizationId = invoice.OrganizationId
-                }, transaction: transaction);
-            }
-
             // Get fully populated invoice
             var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
             {

@@ -159,7 +159,7 @@ namespace RentAll.Api.Controllers
         /// </summary>
         /// <param name="dto">Cost Code data</param>
         /// <returns>Updated cost code</returns>
-        [HttpPut()]
+        [HttpPut("cost-code")]
         public async Task<IActionResult> Update([FromBody] UpdateCostCodeDto dto)
         {
             if (dto == null)
