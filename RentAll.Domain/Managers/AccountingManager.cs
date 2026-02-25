@@ -50,7 +50,7 @@ public class AccountingManager : IAccountingManager
             var officeLine = $"Office Base Fee ({office.Name}): ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
             lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = officeLine, Amount = organization.OfficeFee });
 
-            var properties = await _propertyRepository.GetListByOfficeIdAsync(office.OrganizationId, Convert.ToString(office.OfficeId ));
+            var properties = await _propertyRepository.GetListByOfficeIdAsync(office.OrganizationId, Convert.ToString(office.OfficeId));
             var units = properties.Count() - 50;
             switch (properties.Count())
             {
