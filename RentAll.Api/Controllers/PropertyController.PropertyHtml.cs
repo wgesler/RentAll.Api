@@ -65,7 +65,9 @@ namespace RentAll.Api.Controllers
 
                 var propertyHtml = dto.ToModel(CurrentUser);
                 var createdPropertyHtml = await _propertyRepository.CreatePropertyHtmlAsync(propertyHtml);
-                return CreatedAtAction(nameof(GetPropertyHtmlByPropertyId), new { propertyId = createdPropertyHtml.PropertyId }, new PropertyHtmlResponseDto(createdPropertyHtml));
+
+                var response = new PropertyHtmlResponseDto(createdPropertyHtml);
+                return Ok(response);
             }
             catch (Exception ex)
             {

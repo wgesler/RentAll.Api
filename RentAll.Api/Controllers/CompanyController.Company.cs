@@ -107,10 +107,9 @@ namespace RentAll.Api.Controllers
                 var createdCompany = await _companiesRepository.CreateAsync(company);
                 var response = new CompanyResponseDto(createdCompany);
                 if (!string.IsNullOrWhiteSpace(createdCompany.LogoPath))
-                {
                     response.FileDetails = await _fileService.GetFileDetailsAsync(createdCompany.OrganizationId, createdCompany.OfficeId, createdCompany.LogoPath);
-                }
-                return CreatedAtAction(nameof(GetCompanyById), new { companyId = createdCompany.CompanyId }, response);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {

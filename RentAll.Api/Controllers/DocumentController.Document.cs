@@ -197,10 +197,9 @@ namespace RentAll.Api.Controllers
                 var created = await _documentRepository.CreateAsync(model);
                 var response = new DocumentResponseDto(created);
                 if (!string.IsNullOrWhiteSpace(created.DocumentPath))
-                {
                     response.FileDetails = await _fileService.GetDocumentDetailsAsync(created.OrganizationId, created.OfficeId, created.DocumentPath);
-                }
-                return CreatedAtAction(nameof(GetById), new { documentId = created.DocumentId }, response);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {

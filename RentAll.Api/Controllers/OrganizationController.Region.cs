@@ -78,7 +78,9 @@ namespace RentAll.Api.Controllers
 
                 var region = dto.ToModel();
                 var createdRegion = await _organizationRepository.CreateRegionAsync(region);
-                return CreatedAtAction(nameof(GetRegionById), new { id = createdRegion.RegionId }, new RegionResponseDto(createdRegion));
+
+                var response = new RegionResponseDto(createdRegion);
+                return Ok(response);
             }
             catch (Exception ex)
             {

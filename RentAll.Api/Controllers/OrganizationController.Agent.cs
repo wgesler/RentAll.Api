@@ -102,7 +102,9 @@ namespace RentAll.Api.Controllers
 
                 var agent = dto.ToModel(CurrentUser);
                 var createdAgent = await _organizationRepository.CreateAgentAsync(agent);
-                return CreatedAtAction(nameof(GetAgentById), new { id = createdAgent.AgentId }, new AgentResponseDto(createdAgent));
+
+                var response = new AgentResponseDto(createdAgent);
+                return Ok(response);
             }
             catch (Exception ex)
             {

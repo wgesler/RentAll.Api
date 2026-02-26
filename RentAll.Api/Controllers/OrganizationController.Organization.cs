@@ -108,10 +108,9 @@ namespace RentAll.Api.Controllers
                 var created = await _organizationRepository.CreateAsync(model);
                 var response = new OrganizationResponseDto(created);
                 if (!string.IsNullOrWhiteSpace(created.LogoPath))
-                {
                     response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, null, created.LogoPath);
-                }
-                return CreatedAtAction(nameof(GetOrganizationById), new { organizationId = created.OrganizationId }, response);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {

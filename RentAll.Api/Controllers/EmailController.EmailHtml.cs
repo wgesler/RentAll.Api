@@ -48,7 +48,9 @@ namespace RentAll.Api.Controllers
             {
                 var emailHtml = dto.ToModel(CurrentUser);
                 var created = await _emailRepository.CreateEmailHtmlAsync(emailHtml);
-                return CreatedAtAction(nameof(GetByOrganization), new EmailHtmlResponseDto(created));
+
+                var response = new EmailHtmlResponseDto(created);
+                return Ok(response);
             }
             catch (Exception ex)
             {

@@ -93,7 +93,7 @@ public partial class AuthController
             if (!string.IsNullOrWhiteSpace(createdUser.ProfilePath))
                 response.FileDetails = await _fileService.GetFileDetailsAsync(createdUser.OrganizationId, null, createdUser.ProfilePath);
 
-            return CreatedAtAction(nameof(GetUserById), new { id = createdUser.UserId }, response);
+            return Ok(response);
         }
         catch (Exception ex)
         {

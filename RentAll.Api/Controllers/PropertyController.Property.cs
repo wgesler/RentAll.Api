@@ -218,7 +218,9 @@ namespace RentAll.Api.Controllers
 
                 var property = dto.ToModel(CurrentUser);
                 var createdProperty = await _propertyRepository.CreateAsync(property);
-                return CreatedAtAction(nameof(GetById), new { propertyId = createdProperty.PropertyId }, new PropertyResponseDto(createdProperty));
+
+                var response = new PropertyResponseDto(createdProperty);
+                return Ok(response);
             }
             catch (Exception ex)
             {

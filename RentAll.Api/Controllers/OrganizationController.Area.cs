@@ -78,7 +78,9 @@ namespace RentAll.Api.Controllers
 
                 var area = dto.ToModel();
                 var createdArea = await _organizationRepository.CreateAreaAsync(area);
-                return CreatedAtAction(nameof(GetAreaById), new { id = createdArea.AreaId }, new AreaResponseDto(createdArea));
+
+                var response = new AreaResponseDto(createdArea);
+                return Ok(response);
             }
             catch (Exception ex)
             {

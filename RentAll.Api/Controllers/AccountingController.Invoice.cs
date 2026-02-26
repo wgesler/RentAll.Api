@@ -151,7 +151,7 @@ namespace RentAll.Api.Controllers
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
                 var response = new InvoiceResponseDto(createdInvoice);
-                return CreatedAtAction(nameof(GetInvoiceById), new { invoiceId = createdInvoice.InvoiceId }, response);
+                return Ok(response);
             }
             catch (Exception ex)
             {

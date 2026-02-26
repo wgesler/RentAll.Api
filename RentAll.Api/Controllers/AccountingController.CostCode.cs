@@ -137,11 +137,10 @@ namespace RentAll.Api.Controllers
 
                 var costCode = dto.ToModel();
                 costCode.OrganizationId = CurrentOrganizationId;
-
                 var createdCostCode = await _accountingRepository.CreateAsync(costCode);
 
                 var response = new CostCodeResponseDto(createdCostCode);
-                return CreatedAtAction(nameof(GetByCostCodeId), new { officeId = createdCostCode.OfficeId, costCodeId = createdCostCode.CostCodeId }, response);
+                return Ok(response);
             }
             catch (Exception ex)
             {

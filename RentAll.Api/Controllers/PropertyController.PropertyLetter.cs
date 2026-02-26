@@ -65,7 +65,9 @@ namespace RentAll.Api.Controllers
 
                 var propertyLetter = dto.ToModel(CurrentUser);
                 var createdPropertyLetter = await _propertyRepository.CreatePropertyLetterAsync(propertyLetter);
-                return CreatedAtAction(nameof(GetPropertyLetterByPropertyId), new { propertyId = createdPropertyLetter.PropertyId }, new PropertyLetterResponseDto(createdPropertyLetter));
+
+                var response = new PropertyLetterResponseDto(createdPropertyLetter);
+                return Ok(response);
             }
             catch (Exception ex)
             {

@@ -88,7 +88,7 @@ namespace RentAll.Api.Controllers
                 // Check if accounting office already exists
                 var existing = await _organizationRepository.GetAccountingByIdAsync(dto.OrganizationId, dto.OfficeId);
                 if (existing != null)
-                    return Conflict("Accounting office already exists");
+                    return Conflict("Accounting office code already exists");
 
                 var accountingOffice = dto.ToModel(CurrentUser);
                 accountingOffice.OrganizationId = CurrentOrganizationId;
@@ -114,7 +114,7 @@ namespace RentAll.Api.Controllers
                 if (!string.IsNullOrWhiteSpace(createdAccountingOffice.LogoPath))
                     response.FileDetails = await _fileService.GetFileDetailsAsync(createdAccountingOffice.OrganizationId, createdAccountingOffice.OfficeId, createdAccountingOffice.LogoPath);
 
-                return CreatedAtAction(nameof(GetAccountingOfficeById), new { officeId = createdAccountingOffice.OfficeId }, response);
+                return Ok(response);
             }
             catch (Exception ex)
             {

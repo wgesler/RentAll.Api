@@ -119,7 +119,7 @@ namespace RentAll.Api.Controllers
                 if (!string.IsNullOrWhiteSpace(createdOffice.LogoPath))
                     response.FileDetails = await _fileService.GetFileDetailsAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath);
 
-                return CreatedAtAction(nameof(GetOfficeById), new { officeId = createdOffice.OfficeId }, response);
+                return Ok(response);
             }
             catch (Exception ex)
             {

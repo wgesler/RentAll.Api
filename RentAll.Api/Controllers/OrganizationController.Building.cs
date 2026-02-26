@@ -78,7 +78,9 @@ namespace RentAll.Api.Controllers
 
                 var building = dto.ToModel();
                 var createdBuilding = await _organizationRepository.CreateBuildingAsync(building);
-                return CreatedAtAction(nameof(GetBuildingById), new { id = createdBuilding.BuildingId }, new BuildingResponseDto(createdBuilding));
+
+                var response = new BuildingResponseDto(createdBuilding);
+                return Ok(response);
             }
             catch (Exception ex)
             {

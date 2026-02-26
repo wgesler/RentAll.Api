@@ -40,7 +40,7 @@ public partial class AuthController
 
         var expiresIn = GetExpiresInSeconds();
         var response = new AuthResponseDto(accessToken, refreshToken, expiresIn);
-        return CreatedAtAction(nameof(Login), response);
+        return Ok(response);
     }
 
     [HttpPost("refresh")]

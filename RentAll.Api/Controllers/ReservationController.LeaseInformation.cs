@@ -99,7 +99,9 @@ namespace RentAll.Api.Controllers
 
                 var leaseInformation = dto.ToModel(CurrentUser);
                 var createdLeaseInformation = await _reservationRepository.CreateLeaseInformationAsync(leaseInformation);
-                return CreatedAtAction(nameof(GetLeaseInformationById), new { id = createdLeaseInformation.PropertyId }, new LeaseInformationResponseDto(createdLeaseInformation));
+
+                var response = new LeaseInformationResponseDto(createdLeaseInformation);
+                return Ok(response);
             }
             catch (Exception ex)
             {

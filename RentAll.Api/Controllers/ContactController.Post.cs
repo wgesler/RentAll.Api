@@ -27,7 +27,9 @@ namespace RentAll.Api.Controllers
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
                 await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
-                return CreatedAtAction(nameof(GetById), new { id = createdContact.ContactId }, new ContactResponseDto(createdContact));
+
+                var response = new ContactResponseDto(createdContact);
+                return Ok(response);
             }
             catch (Exception ex)
             {

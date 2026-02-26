@@ -100,9 +100,10 @@ namespace RentAll.Api.Controllers
                 // Get a new Contact code
                 var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Reservation);
                 var reservation = dto.ToModel(code, CurrentUser);
-
                 var createdReservation = await _reservationRepository.CreateAsync(reservation);
-                return CreatedAtAction(nameof(GetById), new { reservationId = createdReservation.ReservationId }, new ReservationResponseDto(createdReservation));
+
+                var response = new ReservationResponseDto(createdReservation);
+                return Ok(response);
             }
             catch (Exception ex)
             {
