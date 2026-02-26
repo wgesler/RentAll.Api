@@ -5,8 +5,6 @@ namespace RentAll.Api.Dtos.Users;
 public class CreateUserDto
 {
     public Guid OrganizationId { get; set; }
-    public Guid AgentId { get; set; }
-    public decimal CommissionRate { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
@@ -16,6 +14,8 @@ public class CreateUserDto
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public Guid? AgentId { get; set; }
+    public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
 
 

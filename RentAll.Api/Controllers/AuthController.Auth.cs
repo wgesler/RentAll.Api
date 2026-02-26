@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Auth;
 
 namespace RentAll.Api.Controllers;

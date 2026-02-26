@@ -4,5 +4,5 @@ namespace RentAll.Domain.Interfaces.Services;
 
 public interface IEmailService
 {
-    Task SendEmailAsync(EmailMessage message, CancellationToken cancellationToken = default);
+    Task SendEmailAsync(Guid? organizationId, EmailMessage message, CancellationToken cancellationToken = default);
 }

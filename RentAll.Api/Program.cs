@@ -1,3 +1,5 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -9,10 +11,10 @@ using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.HealthChecks;
+using RentAll.Infrastructure.Repositories.Accounting;
 using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
-using RentAll.Infrastructure.Repositories.Accounting;
 using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.Emails;
 using RentAll.Infrastructure.Repositories.Organizations;
@@ -20,8 +22,6 @@ using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
 using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Infrastructure.Services;
-using Azure.Storage.Blobs;
-using Azure.Identity;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);

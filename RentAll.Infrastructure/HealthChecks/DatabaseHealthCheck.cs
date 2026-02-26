@@ -1,7 +1,6 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RentAll.Infrastructure.Configuration;
-using System.Data;
-using Microsoft.Data.SqlClient;
 
 namespace RentAll.Infrastructure.HealthChecks;
 

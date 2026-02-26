@@ -1,5 +1,5 @@
-using RentAll.Domain.Models.Common;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Domain.Models;
 
@@ -13,7 +13,7 @@ public class User
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
-    public Guid AgentId { get; set; }
+    public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();

@@ -1,3 +1,5 @@
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
@@ -20,7 +22,7 @@ public class SendGridEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    public async Task SendEmailAsync(Guid? organizationId, EmailMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
 
@@ -44,13 +46,12 @@ public class SendGridEmailService : IEmailService
         var client = new SendGridClient(_settings.ApiKey);
 
         var from = new SendGridEmailAddress(fromEmail, fromName);
-        var toRecipients = message.ToRecipients
-            .Select(recipient => new SendGridEmailAddress(recipient.Email, recipient.Name))
-            .ToList();
+        var toRecipients = message.ToRecipients.Select(recipient => new SendGridEmailAddress(recipient.Email, recipient.Name)).ToList();
         var mail = MailHelper.CreateSingleEmailToMultipleRecipients(from, toRecipients, message.Subject,
             string.IsNullOrWhiteSpace(message.PlainTextContent) ? null : message.PlainTextContent,
             string.IsNullOrWhiteSpace(message.HtmlContent) ? null : message.HtmlContent,
             false);
+        mail.SetReplyTo(new SendGridEmailAddress(fromEmail, fromName));
 
         foreach (var recipient in message.CcRecipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient.Email)))
         {
@@ -94,6 +95,8 @@ public class SendGridEmailService : IEmailService
         var errorBody = await response.Body.ReadAsStringAsync(cancellationToken);
         _logger.LogError("SendGrid email send failed. StatusCode: {StatusCode}; Response: {ResponseBody}", response.StatusCode, errorBody);
 
-        throw new InvalidOperationException($"SendGrid email send failed with status code {(int)response.StatusCode}.");
+        throw new InvalidOperationException(
+            $"SendGrid email send failed with status code {(int)response.StatusCode}. " +
+            $"Response body: {errorBody}");
     }
 }

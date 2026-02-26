@@ -1,14 +1,16 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Models.Common;
 using RentAll.Infrastructure.Services;
+using System.Text.Json;
 
 namespace RentAll.Test;
 
 public class SendGridSystemTests
 {
+    Guid SystemOrganization = Guid.Parse("99999999-9999-9999-9999-999999999999");
+
     [Fact]
     public async Task SendGrid_Should_Send_Real_Email_To_User()
     {
@@ -23,7 +25,7 @@ public class SendGridSystemTests
                 new EmailAddress
                 {
                     Email = "w.gesler@gmail.com",
-                    Name = "Will Gesler"
+                    Name = "Wendy Gesler"
                 }
             ],
             Subject = subject,
@@ -32,16 +34,16 @@ public class SendGridSystemTests
         };
 
         // If SendGrid rejects the request, SendGridEmailService throws and this test fails.
-        await service.SendEmailAsync(message, CancellationToken.None);
+        await service.SendEmailAsync(SystemOrganization, message, CancellationToken.None);
     }
 
     private static SendGridSettings LoadSendGridSettings()
     {
         var settings = new SendGridSettings
         {
-            ApiKey = Environment.GetEnvironmentVariable("SendGridSettings__ApiKey") ?? string.Empty,
-            FromEmail = Environment.GetEnvironmentVariable("SendGridSettings__FromEmail") ?? string.Empty,
-            FromName = Environment.GetEnvironmentVariable("SendGridSettings__FromName") ?? string.Empty
+            ApiKey = Environment.GetEnvironmentVariable("SendGrid__ApiKey") ?? string.Empty,
+            FromEmail = Environment.GetEnvironmentVariable("SendGrid__FromEmail") ?? string.Empty,
+            FromName = Environment.GetEnvironmentVariable("SendGrid__FromName") ?? string.Empty
         };
 
         if (!string.IsNullOrWhiteSpace(settings.ApiKey) &&

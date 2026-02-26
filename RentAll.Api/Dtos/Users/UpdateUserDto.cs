@@ -1,6 +1,4 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -8,8 +6,6 @@ public class UpdateUserDto
 {
     public Guid OrganizationId { get; set; }
     public Guid UserId { get; set; }
-    public Guid AgentId { get; set; }
-    public decimal CommissionRate { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
@@ -21,6 +17,8 @@ public class UpdateUserDto
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public Guid? AgentId { get; set; }
+    public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()

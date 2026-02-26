@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Organizations.Areas;
 
 public class AreaResponseDto

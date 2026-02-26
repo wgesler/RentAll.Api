@@ -28,6 +28,7 @@ public class Organization
     public decimal Unit100Fee { get; set; }
     public decimal Unit200Fee { get; set; }
     public decimal Unit500Fee { get; set; }
+    public string? SendGridName { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

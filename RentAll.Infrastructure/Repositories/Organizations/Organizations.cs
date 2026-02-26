@@ -1,7 +1,6 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 
@@ -35,6 +34,7 @@ public partial class OrganizationRepository
             Unit100Fee = organization.Unit100Fee,
             Unit200Fee = organization.Unit200Fee,
             Unit500Fee = organization.Unit500Fee,
+            SendGridName = organization.SendGridName,
             IsActive = organization.IsActive,
             CreatedBy = organization.CreatedBy
         });
@@ -127,6 +127,7 @@ public partial class OrganizationRepository
             Unit100Fee = organization.Unit100Fee,
             Unit200Fee = organization.Unit200Fee,
             Unit500Fee = organization.Unit500Fee,
+            SendGridName = organization.SendGridName,
             IsActive = organization.IsActive,
             ModifiedBy = organization.ModifiedBy
         });

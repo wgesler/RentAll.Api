@@ -1,4 +1,3 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Emails.Emails;

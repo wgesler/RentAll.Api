@@ -1,4 +1,3 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations.Organizations;
@@ -26,6 +25,7 @@ public class CreateOrganizationDto
     public decimal Unit100Fee { get; set; }
     public decimal Unit200Fee { get; set; }
     public decimal Unit500Fee { get; set; }
+    public string? SendGridName { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -69,6 +69,7 @@ public class CreateOrganizationDto
             Unit100Fee = Unit100Fee,
             Unit200Fee = Unit200Fee,
             Unit500Fee = Unit500Fee,
+            SendGridName = SendGridName,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

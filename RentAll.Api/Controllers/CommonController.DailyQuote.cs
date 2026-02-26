@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Common;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers

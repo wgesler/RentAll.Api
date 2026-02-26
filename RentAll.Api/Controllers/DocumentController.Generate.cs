@@ -1,7 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Documents;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {

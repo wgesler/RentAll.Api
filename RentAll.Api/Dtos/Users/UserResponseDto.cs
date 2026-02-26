@@ -1,6 +1,4 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Users;
 
@@ -9,7 +7,7 @@ public class UserResponseDto
     public Guid UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public string? OrganizationName { get; set; }
-    public Guid AgentId { get; set; }
+    public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;

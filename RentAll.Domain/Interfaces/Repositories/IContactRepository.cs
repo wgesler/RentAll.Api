@@ -19,7 +19,7 @@ public interface IContactRepository
     Task<Contact> UpdateByIdAsync(Contact contact);
 
     // Deletes
-    Task DeleteByIdAsync(Guid contactId);
+    Task DeleteByIdAsync(Guid contactId, Guid modifiedBy);
 }
 
 

@@ -1,9 +1,8 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
-using RentAll.Domain.Enums;
-using RentAll.Infrastructure.Entities;
 
 namespace RentAll.Infrastructure.Repositories.Documents;
 

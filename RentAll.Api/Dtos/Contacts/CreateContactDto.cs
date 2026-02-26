@@ -1,6 +1,3 @@
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Contacts;
 
 public class CreateContactDto

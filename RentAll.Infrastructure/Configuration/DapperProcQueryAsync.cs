@@ -1,6 +1,6 @@
-using System.Data;
-using Microsoft.Data.SqlClient;
 using Dapper;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace RentAll.Infrastructure.Configuration;
 

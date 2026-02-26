@@ -1,8 +1,7 @@
 using Microsoft.Data.SqlClient;
-using System.Text.Json;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Users
 {
@@ -19,28 +18,37 @@ namespace RentAll.Infrastructure.Repositories.Users
                 ? JsonSerializer.Serialize(user.OfficeAccess)
                 : "[]";
 
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<UserEntity>("User.User_Add", new
+            try
             {
-                OrganizationId = user.OrganizationId,
-                AgentId = user.AgentId,
-                CommissionRate = user.CommissionRate,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Phone = user.Phone,
-                PasswordHash = user.PasswordHash,
-                UserGroups = userGroupsJson,
-                OfficeAccess = officeAccessJson,
-                ProfilePath = user.ProfilePath,
-                StartupPageId = (int)user.StartupPage,
-                CreatedBy = user.CreatedBy
-            });
+                await using var db = new SqlConnection(_dbConnectionString);
+                var res = await db.DapperProcQueryAsync<UserEntity>("User.User_Add", new
+                {
+                    OrganizationId = user.OrganizationId,
+                    AgentId = user.AgentId,
+                    CommissionRate = user.CommissionRate,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email,
+                    Phone = user.Phone,
+                    PasswordHash = user.PasswordHash,
+                    UserGroups = userGroupsJson,
+                    OfficeAccess = officeAccessJson,
+                    ProfilePath = user.ProfilePath,
+                    StartupPageId = (int)user.StartupPage,
+                    CreatedBy = user.CreatedBy
+                });
 
-            if (res == null || !res.Any())
-                throw new Exception("User not found");
+                if (res == null || !res.Any())
+                    throw new Exception("User not found");
 
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+                return ConvertEntityToModel(res.FirstOrDefault()!);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+            return new User();
+
         }
         #endregion
 

@@ -1,6 +1,3 @@
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Organizations.Colors;
 
 public class UpdateColorDto

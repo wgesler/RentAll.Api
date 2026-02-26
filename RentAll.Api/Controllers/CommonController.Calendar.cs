@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using RentAll.Api.Dtos.Common;
-
 namespace RentAll.Api.Controllers
 {
     public partial class CommonController

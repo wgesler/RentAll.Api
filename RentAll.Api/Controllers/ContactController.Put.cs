@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Dtos.Contacts;
 
 namespace RentAll.Api.Controllers

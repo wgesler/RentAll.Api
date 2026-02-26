@@ -1,6 +1,6 @@
-using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using System.Data;
 
 namespace RentAll.Infrastructure.Configuration;
 

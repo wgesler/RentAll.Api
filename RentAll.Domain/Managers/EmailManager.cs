@@ -85,7 +85,7 @@ public class EmailManager : IEmailManager
 
             try
             {
-                await _emailService.SendEmailAsync(originalEmailMessage);
+                await _emailService.SendEmailAsync(email.OrganizationId, originalEmailMessage);
                 currentEmail.EmailStatus = EmailStatus.Succeeded;
                 currentEmail.SentOn = DateTimeOffset.UtcNow;
                 currentEmail.LastError = "Accepted by SendGrid.";

@@ -10,15 +10,18 @@ public class ContactManager : IContactManager
 {
     private readonly IContactRepository _contactRepository;
     private readonly ICommonRepository _commonRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
 
     public ContactManager(
         IContactRepository contactRepository,
         ICommonRepository commonRepository,
+        IUserRepository userRepository,
         IPasswordHasher passwordHasher)
     {
         _contactRepository = contactRepository;
         _commonRepository = commonRepository;
+        _userRepository = userRepository;
         _passwordHasher = passwordHasher;
     }
 
@@ -36,10 +39,9 @@ public class ContactManager : IContactManager
     {
         if (contact.EntityType == EntityType.Owner)
         {
-            var user = new User
+            var newUser = new User
             {
                 OrganizationId = contact.OrganizationId,
-                CommissionRate = 0,
                 FirstName = contact.FirstName,
                 LastName = contact.LastName,
                 Email = contact.Email,
@@ -49,8 +51,11 @@ public class ContactManager : IContactManager
                 OfficeAccess = new List<int>() { contact.OfficeId },
                 ProfilePath = null,
                 StartupPage = StartupPage.Dashboard,
+                AgentId = null,
+                CommissionRate = 0,
                 CreatedBy = contact.CreatedBy
             };
+            await _userRepository.CreateAsync(newUser);
         }
     }
 }

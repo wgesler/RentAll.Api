@@ -1,8 +1,8 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Configuration;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace RentAll.Infrastructure.Services;
 

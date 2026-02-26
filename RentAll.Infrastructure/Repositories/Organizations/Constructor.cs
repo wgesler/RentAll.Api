@@ -41,6 +41,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             Unit100Fee = e.Unit100Fee,
             Unit200Fee = e.Unit200Fee,
             Unit500Fee = e.Unit500Fee,
+            SendGridName = e.SendGridName,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
