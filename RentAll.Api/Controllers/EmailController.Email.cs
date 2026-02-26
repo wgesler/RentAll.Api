@@ -76,8 +76,9 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var org = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
                 var email = dto.ToModel(CurrentUser);
-                var result = await _emailManager.SendEmail(email);
+                var result = await _emailManager.SendEmail(org?.SendGridName, email);
 
                 if (result.EmailStatus == EmailStatus.Succeeded)
                     return Ok(new EmailResponseDto(result));

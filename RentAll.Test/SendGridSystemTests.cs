@@ -9,7 +9,7 @@ namespace RentAll.Test;
 
 public class SendGridSystemTests
 {
-    Guid SystemOrganization = Guid.Parse("99999999-9999-9999-9999-999999999999");
+    string DefaultSendGridName = "sendgrid-api-key--default";
 
     [Fact]
     public async Task SendGrid_Should_Send_Real_Email_To_User()
@@ -34,20 +34,20 @@ public class SendGridSystemTests
         };
 
         // If SendGrid rejects the request, SendGridEmailService throws and this test fails.
-        await service.SendEmailAsync(SystemOrganization, message, CancellationToken.None);
+        await service.SendEmailAsync(DefaultSendGridName, message, CancellationToken.None);
     }
 
     private static SendGridSettings LoadSendGridSettings()
     {
         var settings = new SendGridSettings
         {
-            ApiKey = Environment.GetEnvironmentVariable("SendGrid__ApiKey") ?? string.Empty,
-            FromEmail = Environment.GetEnvironmentVariable("SendGrid__FromEmail") ?? string.Empty,
-            FromName = Environment.GetEnvironmentVariable("SendGrid__FromName") ?? string.Empty
+            ApiKey = Environment.GetEnvironmentVariable("SendGridSettings__ApiKey") ?? string.Empty,
+            FromEmail = Environment.GetEnvironmentVariable("SendGridSettings__FromEmail") ?? string.Empty,
+            FromName = Environment.GetEnvironmentVariable("SendGridSettings__FromName") ?? string.Empty,
+            KeyVaultUri = Environment.GetEnvironmentVariable("SendGridSettings__KeyVaultUri") ?? string.Empty
         };
 
-        if (!string.IsNullOrWhiteSpace(settings.ApiKey) &&
-            !string.IsNullOrWhiteSpace(settings.FromEmail))
+        if (!string.IsNullOrWhiteSpace(settings.ApiKey) && !string.IsNullOrWhiteSpace(settings.FromEmail))
         {
             return settings;
         }
@@ -74,12 +74,20 @@ public class SendGridSystemTests
             ? (sg.TryGetProperty("FromName", out var fromName) ? fromName.GetString() ?? string.Empty : string.Empty)
             : settings.FromName;
 
+        settings.KeyVaultUri = string.IsNullOrWhiteSpace(settings.KeyVaultUri)
+            ? (sg.TryGetProperty("KeyVaultUri", out var kv) ? kv.GetString() ?? string.Empty : string.Empty)
+            : settings.KeyVaultUri;
+
         if (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.FromEmail))
         {
             throw new InvalidOperationException(
                 "SendGrid settings are not configured. Set SendGridSettings.ApiKey and SendGridSettings.FromEmail " +
                 "in appsettings.Development.json or environment variables.");
         }
+
+        Assert.False(string.IsNullOrWhiteSpace(settings.KeyVaultUri),
+"KeyVaultUri was not loaded. Check SendGridSettings:KeyVaultUri in appsettings.Development.json or env vars.");
+
 
         return settings;
     }

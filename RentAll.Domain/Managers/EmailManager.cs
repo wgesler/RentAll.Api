@@ -27,7 +27,7 @@ public class EmailManager : IEmailManager
         _documentRepository = documentRepository;
     }
 
-    public async Task<Email> SendEmail(Email email)
+    public async Task<Email> SendEmail(string? sendGridName, Email email)
     {
         // Translate the email into SendGrid format
         var originalEmailMessage = email.ToEmailMessage();
@@ -85,7 +85,7 @@ public class EmailManager : IEmailManager
 
             try
             {
-                await _emailService.SendEmailAsync(email.OrganizationId, originalEmailMessage);
+                await _emailService.SendEmailAsync(sendGridName, originalEmailMessage);
                 currentEmail.EmailStatus = EmailStatus.Succeeded;
                 currentEmail.SentOn = DateTimeOffset.UtcNow;
                 currentEmail.LastError = "Accepted by SendGrid.";

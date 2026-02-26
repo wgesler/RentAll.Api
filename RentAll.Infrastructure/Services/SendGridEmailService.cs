@@ -22,11 +22,11 @@ public class SendGridEmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(Guid? organizationId, EmailMessage message, CancellationToken cancellationToken = default)
+    public async Task SendEmailAsync(string? sendGridName, EmailMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+        if (string.IsNullOrWhiteSpace(sendGridName))
             throw new InvalidOperationException("SendGridSettings:ApiKey is not configured.");
 
         if (message.ToRecipients.Count == 0 || message.ToRecipients.Any(recipient => string.IsNullOrWhiteSpace(recipient.Email)))
@@ -43,7 +43,8 @@ public class SendGridEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(fromEmail))
             throw new InvalidOperationException("FromRecipient.Email is required either in EmailMessage or SendGridSettings.");
 
-        var client = new SendGridClient(_settings.ApiKey);
+        var apiKey = await GetApiKeyFromKeyVaultAsync(sendGridName, cancellationToken);
+        var client = new SendGridClient(apiKey);
 
         var from = new SendGridEmailAddress(fromEmail, fromName);
         var toRecipients = message.ToRecipients.Select(recipient => new SendGridEmailAddress(recipient.Email, recipient.Name)).ToList();
@@ -98,5 +99,16 @@ public class SendGridEmailService : IEmailService
         throw new InvalidOperationException(
             $"SendGrid email send failed with status code {(int)response.StatusCode}. " +
             $"Response body: {errorBody}");
+    }
+
+    private async Task<string> GetApiKeyFromKeyVaultAsync(string? sendGridName, CancellationToken cancellationToken = default)
+    {
+        var kvUri = _settings.KeyVaultUri;
+        if (string.IsNullOrWhiteSpace(kvUri))
+            throw new InvalidOperationException("SendGridSettings:KeyVaultUri is not set.");
+
+        var client = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
+        var secret = await client.GetSecretAsync(sendGridName, cancellationToken: cancellationToken);
+        return secret.Value.Value;
     }
 }
