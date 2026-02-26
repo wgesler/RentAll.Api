@@ -41,7 +41,7 @@ public class Reservation
     public string? Notes { get; set; }
     public List<ExtraFeeLine> ExtraFeeLines { get; set; } = new List<ExtraFeeLine>();
     public bool AllowExtensions { get; set; }
-    public int CurrentInvoiceNumber { get; set; }
+    public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

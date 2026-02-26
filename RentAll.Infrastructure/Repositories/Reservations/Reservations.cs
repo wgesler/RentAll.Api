@@ -44,7 +44,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 Taxes = reservation.Taxes,
                 Notes = reservation.Notes,
                 AllowExtensions = reservation.AllowExtensions,
-                CurrentInvoiceNumber = reservation.CurrentInvoiceNumber,
+                CurrentInvoiceNo = reservation.CurrentInvoiceNo,
                 CreditDue = reservation.CreditDue,
                 IsActive = reservation.IsActive,
                 CreatedBy = reservation.CreatedBy
@@ -187,7 +187,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     Taxes = reservation.Taxes,
                     Notes = reservation.Notes,
                     AllowExtensions = reservation.AllowExtensions,
-                    CurrentInvoiceNumber = reservation.CurrentInvoiceNumber,
+                    CurrentInvoiceNo = reservation.CurrentInvoiceNo,
                     CreditDue = reservation.CreditDue,
                     IsActive = reservation.IsActive,
                     ModifiedBy = reservation.ModifiedBy

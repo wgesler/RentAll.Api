@@ -41,7 +41,7 @@ public class ReservationResponseDto
     public string? Notes { get; set; }
     public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
     public bool AllowExtensions { get; set; }
-    public int CurrentInvoiceNumber { get; set; }
+    public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -89,7 +89,7 @@ public class ReservationResponseDto
         Notes = reservation.Notes;
         ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();
         AllowExtensions = reservation.AllowExtensions;
-        CurrentInvoiceNumber = reservation.CurrentInvoiceNumber;
+        CurrentInvoiceNo = reservation.CurrentInvoiceNo;
         CreditDue = reservation.CreditDue;
         IsActive = reservation.IsActive;
         CreatedOn = reservation.CreatedOn;

@@ -146,6 +146,22 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<PropertyList>> GetListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListByOwnerId", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess,
+                OwnerId = ownerId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<PropertyList>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);

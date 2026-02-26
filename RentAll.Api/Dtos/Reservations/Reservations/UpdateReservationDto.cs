@@ -39,7 +39,7 @@ public class UpdateReservationDto
     public string? Notes { get; set; }
     public List<UpdateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<UpdateExtraFeeLineDto>();
     public bool AllowExtensions { get; set; }
-    public int CurrentInvoiceNumber { get; set; }
+    public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
 
@@ -156,7 +156,7 @@ public class UpdateReservationDto
             Notes = Notes,
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
             AllowExtensions = AllowExtensions,
-            CurrentInvoiceNumber = CurrentInvoiceNumber,
+            CurrentInvoiceNo = CurrentInvoiceNo,
             CreditDue = CreditDue,
             IsActive = IsActive,
             ModifiedBy = currentUser

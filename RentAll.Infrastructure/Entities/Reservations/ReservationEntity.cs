@@ -32,14 +32,14 @@ public class ReservationEntity
     public int NumberOfPets { get; set; }
     public string? PetDescription { get; set; }
     public bool MaidService { get; set; }
-    public decimal MaidServiceFee { get; set; }
+    public decimal MaidServiceFee { get; set; } 
     public int FrequencyId { get; set; }
     public DateTimeOffset MaidStartDate { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public string? ExtraFeeLines { get; set; }
     public bool AllowExtensions { get; set; }
-    public int CurrentInvoiceNumber { get; set; }
+    public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

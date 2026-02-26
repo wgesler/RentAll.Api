@@ -76,7 +76,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 Notes = e.Notes,
                 ExtraFeeLines = extraFeeLines,
                 AllowExtensions = e.AllowExtensions,
-                CurrentInvoiceNumber = e.CurrentInvoiceNumber,
+                CurrentInvoiceNo = e.CurrentInvoiceNo,
                 CreditDue = e.CreditDue,
                 IsActive = e.IsActive,
                 CreatedBy = e.CreatedBy,
@@ -118,7 +118,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
                 ReservationStatus = (ReservationStatus)e.ReservationStatusId,
-                CurrentInvoiceNumber = e.CurrentInvoiceNumber,
+                CurrentInvoiceNo = e.CurrentInvoiceNo,
                 CreditDue = e.CreditDue,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn

@@ -53,6 +53,39 @@ namespace RentAll.Api.Controllers
         }
 
         /// <summary>
+        /// Get properties associated with the given owner
+        /// </summary>
+        /// <param name="ownerId">User Id</param>
+        /// <returns>List of properties by user selection</returns>
+        [HttpGet("owner/{ownerId}")]
+        public async Task<IActionResult> GetPropertiesByOwnerId(Guid ownerId)
+        {
+            if (CurrentUser == Guid.Empty || CurrentUser != ownerId)
+                return Unauthorized();
+
+            try
+            {
+                var user = await _userRepository.GetByIdAsync(CurrentUser);
+                if (user == null)
+                    return NotFound("User not found");
+
+                var contact = await _contactRepository.GetByEmailAsync(user.Email, CurrentOrganizationId);
+                if (contact == null)
+                    return NotFound("Owner not found");
+
+                var properties = await _propertyRepository.GetListByOwnerIdAsync(contact.ContactId, CurrentOrganizationId, CurrentOfficeAccess);
+                var response = properties.Select(p => new PropertyListResponseDto(p));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
+                return ServerError("An error occurred while retrieving properties");
+            }
+        }
+
+
+        /// <summary>
         /// Get iCal subscription URL for a property.
         /// </summary>
         /// <param name="propertyId">Property ID</param>
