@@ -4,6 +4,7 @@ global using RentAll.Infrastructure.Entities.Companies;
 global using RentAll.Infrastructure.Entities.Contacts;
 global using RentAll.Infrastructure.Entities.Documents;
 global using RentAll.Infrastructure.Entities.Emails;
+global using RentAll.Infrastructure.Entities.Maintenances;
 global using RentAll.Infrastructure.Entities.Organizations;
 global using RentAll.Infrastructure.Entities.Properties;
 global using RentAll.Infrastructure.Entities.Reservations;

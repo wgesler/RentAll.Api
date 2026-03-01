@@ -17,6 +17,7 @@ using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.Emails;
+using RentAll.Infrastructure.Repositories.Maintenances;
 using RentAll.Infrastructure.Repositories.Organizations;
 using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
@@ -154,6 +155,7 @@ builder.Services.AddScoped<IContactManager, ContactManager>();
 builder.Services.AddScoped<IEmailManager, EmailManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
 builder.Services.AddScoped<IAccountingManager, AccountingManager>();
+builder.Services.AddScoped<IMaintenanceManager, MaintenanceManager>();
 builder.Services.AddScoped<ICalendarManager, CalendarManager>();
 
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
@@ -168,6 +170,7 @@ builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IAccountingRepository, AccountingRepository>();
+builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>

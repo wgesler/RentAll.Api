@@ -27,7 +27,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-
         /// <summary>
         /// Get properties by the current user's selection criteria
         /// </summary>
@@ -84,32 +83,26 @@ namespace RentAll.Api.Controllers
             }
         }
 
-
         /// <summary>
-        /// Get iCal subscription URL for a property.
+        /// Get properties for inventory
         /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>Tokenized iCal subscription URL</returns>
-        [HttpGet("{propertyId}/calendar/subscription-url")]
-        public IActionResult GetCalendarSubscriptionUrl(Guid propertyId)
+        /// <returns>List of properties for inventory</returns>
+        [HttpGet("inventory")]
+        public async Task<IActionResult> GetPropertiesforInventory()
         {
-            if (propertyId == Guid.Empty)
-                return BadRequest("Property ID is required");
-
             try
             {
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId, CurrentOrganizationId, baseUrl);
-
-                return Ok(new CalendarUrlResponseDto { PropertyId = propertyId, OrganizationId = CurrentOrganizationId, SubscriptionUrl = subscriptionUrl });
+                // Get the property summary for the list of properties
+                var list = await _propertyRepository.GetListForInventoryAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(p => new PropertyListResponseDto(p));
+                return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating calendar subscription URL for property: {PropertyId}", propertyId);
-                return ServerError("An error occurred while creating calendar subscription URL");
+                _logger.LogError(ex, "Error getting properties list");
+                return ServerError("An error occurred while retrieving properties list");
             }
         }
-
         /// <summary>
         /// Get property by ID
         /// </summary>
@@ -188,6 +181,30 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Get iCal subscription URL for a property.
+        /// </summary>
+        /// <param name="propertyId">Property ID</param>
+        /// <returns>Tokenized iCal subscription URL</returns>
+        [HttpGet("{propertyId}/calendar/subscription-url")]
+        public IActionResult GetCalendarSubscriptionUrl(Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("Property ID is required");
+
+            try
+            {
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId, CurrentOrganizationId, baseUrl);
+
+                return Ok(new CalendarUrlResponseDto { PropertyId = propertyId, OrganizationId = CurrentOrganizationId, SubscriptionUrl = subscriptionUrl });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating calendar subscription URL for property: {PropertyId}", propertyId);
+                return ServerError("An error occurred while creating calendar subscription URL");
+            }
+        }
         #endregion
 
         #region Post

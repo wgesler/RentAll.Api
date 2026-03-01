@@ -11,6 +11,7 @@ public interface IPropertyRepository
     Task<IEnumerable<PropertyList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyList>> GetListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyList>> GetListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess);
+    Task<IEnumerable<PropertyList>> GetListForInventoryAsync(Guid organizationId, string officeAccess);
 
     Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId);
     Task<Property?> GetByPropertyCodeAsync(string propertyCode, Guid organizationId);

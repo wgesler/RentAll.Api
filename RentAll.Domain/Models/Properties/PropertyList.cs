@@ -23,6 +23,7 @@ public class PropertyList
     public decimal PetFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public PropertyStatus PropertyStatus { get; set; }
+    public MaintenanceStatus MaintenanceStatus { get; set; }
     public bool IsActive { get; set; }
 }
 

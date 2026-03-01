@@ -5,7 +5,6 @@ public class PropertyHtmlResponseDto
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
-    public string InspectionChecklist { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
     public string LetterOfResponsibility { get; set; } = string.Empty;
@@ -24,7 +23,6 @@ public class PropertyHtmlResponseDto
         PropertyId = propertyHtml.PropertyId;
         OrganizationId = propertyHtml.OrganizationId;
         WelcomeLetter = propertyHtml.WelcomeLetter;
-        InspectionChecklist = propertyHtml.InspectionChecklist;
         Lease = propertyHtml.Lease;
         Invoice = propertyHtml.Invoice;
         LetterOfResponsibility = propertyHtml.LetterOfResponsibility;

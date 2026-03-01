@@ -26,6 +26,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyStyleId = (int)property.PropertyStyle,
                 PropertyTypeId = (int)property.PropertyType,
                 PropertyStatusId = (int)property.PropertyStatus,
+                MaintenanceStatusId = (int)property.MaintenanceStatus,
                 OfficeId = property.OfficeId,
                 BuildingId = property.BuildingId,
                 RegionId = property.RegionId,
@@ -162,6 +163,21 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<PropertyList>> GetListForInventoryAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListForInventory", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<PropertyList>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<Property?> GetByIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -226,6 +242,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyStyleId = (int)property.PropertyStyle,
                 PropertyTypeId = (int)property.PropertyType,
                 PropertyStatusId = (int)property.PropertyStatus,
+                MaintenanceStatusId = (int)property.MaintenanceStatus,
                 OfficeId = property.OfficeId,
                 BuildingId = property.BuildingId,
                 RegionId = property.RegionId,

@@ -34,6 +34,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyStyle = (PropertyStyle)e.PropertyStyleId,
                 PropertyType = (PropertyType)e.PropertyTypeId,
                 PropertyStatus = (PropertyStatus)e.PropertyStatusId,
+                MaintenanceStatus = (MaintenanceStatus)e.MaintenanceStatusId,
                 OfficeId = e.OfficeId,
                 OfficeName = e.OfficeName,
                 BuildingId = e.BuildingId,
@@ -145,6 +146,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PetFee = e.PetFee,
                 MaidServiceFee = e.MaidServiceFee,
                 PropertyStatus = (PropertyStatus)e.PropertyStatusId,
+                MaintenanceStatus = (MaintenanceStatus)e.MaintenanceStatusId,
                 IsActive = e.IsActive
             };
         }
@@ -156,7 +158,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyId = e.PropertyId,
                 OrganizationId = e.OrganizationId,
                 WelcomeLetter = e.WelcomeLetter,
-                InspectionChecklist = e.InspectionChecklist,
                 Lease = e.Lease,
                 Invoice = e.Invoice,
                 LetterOfResponsibility = e.LetterOfResponsibility,

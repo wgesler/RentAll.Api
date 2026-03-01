@@ -21,6 +21,7 @@ public class PropertyListResponseDto
     public decimal PetFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public int PropertyStatusId { get; set; }
+    public int MaintenanceStatusId {  get; set; }
     public bool IsActive { get; set; }
 
     public PropertyListResponseDto(PropertyList propertyList)
@@ -44,6 +45,7 @@ public class PropertyListResponseDto
         PetFee = propertyList.PetFee;
         MaidServiceFee = propertyList.MaidServiceFee;
         PropertyStatusId = (int)propertyList.PropertyStatus;
+        MaintenanceStatusId = (int)propertyList.MaintenanceStatus;
         IsActive = propertyList.IsActive;
     }
 }

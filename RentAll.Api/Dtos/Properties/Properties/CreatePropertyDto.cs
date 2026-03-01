@@ -20,6 +20,7 @@ public class CreatePropertyDto
     public int PropertyStyleId { get; set; }
     public int PropertyTypeId { get; set; }
     public int PropertyStatusId { get; set; }
+    public int MaintenanceStatusId { get; set; }
     public int OfficeId { get; set; }
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
@@ -156,6 +157,9 @@ public class CreatePropertyDto
         if (!Enum.IsDefined(typeof(PropertyStatus), PropertyStatusId))
             return (false, $"Invalid PropertyStatus value: {PropertyStatusId}");
 
+        if (!Enum.IsDefined(typeof(MaintenanceStatus), MaintenanceStatusId))
+            return (false, $"Invalid MaintenanceStatus value: {MaintenanceStatusId}");
+
         return (true, null);
     }
 
@@ -177,6 +181,7 @@ public class CreatePropertyDto
             PropertyStyle = (PropertyStyle)PropertyStyleId,
             PropertyType = (PropertyType)PropertyTypeId,
             PropertyStatus = (PropertyStatus)PropertyStatusId,
+            MaintenanceStatus = (MaintenanceStatus)MaintenanceStatusId,
             OfficeId = OfficeId,
             BuildingId = BuildingId,
             RegionId = RegionId,
