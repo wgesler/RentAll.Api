@@ -45,6 +45,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             PropertyId = e.PropertyId,
             MaintenanceId = e.MaintenanceId,
             InventoryCheckList = e.InventoryCheckList,
+            DocumentPath = e.DocumentPath,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
@@ -63,6 +64,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             PropertyId = e.PropertyId,
             MaintenanceId = e.MaintenanceId,
             InspectionCheckList = e.InspectionCheckList,
+            DocumentPath = e.DocumentPath,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
@@ -70,4 +72,43 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ModifiedBy = e.ModifiedBy
         };
     }
+
+    private static Inventory ConvertEntityToModel(InventoryListEntity e)
+    {
+        return new Inventory
+        {
+            InventoryId = e.InventoryId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            MaintenanceId = e.MaintenanceId,
+            InventoryCheckList = e.InventoryCheckList,
+            DocumentPath = e.DocumentPath,
+            IsActive = e.IsActive,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static Inspection ConvertEntityToModel(InspectionListEntity e)
+    {
+        return new Inspection
+        {
+            InspectionId = e.InspectionId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            MaintenanceId = e.MaintenanceId,
+            InspectionCheckList = e.InspectionCheckList,
+            DocumentPath = e.DocumentPath,
+            IsActive = e.IsActive,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
+
 }

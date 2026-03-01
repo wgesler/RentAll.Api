@@ -10,6 +10,7 @@ public class UpdateInventoryDto
     public Guid PropertyId { get; set; }
     public Guid MaintenanceId { get; set; }
     public string? InventoryCheckList { get; set; }
+    public string? DocumentPath { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -42,6 +43,7 @@ public class UpdateInventoryDto
             PropertyId = PropertyId,
             MaintenanceId = MaintenanceId,
             InventoryCheckList = InventoryCheckList,
+            DocumentPath = DocumentPath,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

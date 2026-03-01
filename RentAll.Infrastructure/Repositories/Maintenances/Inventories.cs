@@ -17,6 +17,7 @@ public partial class MaintenanceRepository
             PropertyId = inventory.PropertyId,
             MaintenanceId = inventory.MaintenanceId,
             InventoryCheckList = inventory.InventoryCheckList,
+            DocumentPath = inventory.DocumentPath,
             IsActive = inventory.IsActive,
             CreatedBy = inventory.CreatedBy
         });
@@ -31,7 +32,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inventory>> GetInventoriesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_GetListByPropertyId", new
+        var res = await db.DapperProcQueryAsync<InventoryListEntity>("Maintenance.Inventory_GetListByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
@@ -47,7 +48,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inventory>> GetInventoriesByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_GetListByMaintenanceId", new
+        var res = await db.DapperProcQueryAsync<InventoryListEntity>("Maintenance.Inventory_GetListByMaintenanceId", new
         {
             MaintenanceId = maintenanceId,
             OrganizationId = organizationId,
@@ -87,6 +88,7 @@ public partial class MaintenanceRepository
             PropertyId = inventory.PropertyId,
             MaintenanceId = inventory.MaintenanceId,
             InventoryCheckList = inventory.InventoryCheckList,
+            DocumentPath = inventory.DocumentPath,
             IsActive = inventory.IsActive,
             ModifiedBy = inventory.ModifiedBy
         });

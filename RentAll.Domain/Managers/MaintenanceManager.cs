@@ -17,7 +17,8 @@ public class MaintenanceManager : IMaintenanceManager
     {
         // Business logic: If there are associated inventories with the maintenance record, we cannot
         // update it directly. Instead, we will retire the old record and create a new one with the updated details.
-        if (! await HasAssociatedInventories(maintenance.MaintenanceId, maintenance.OrganizationId, officeAccess))
+        if (!await HasAssociatedInventories(maintenance.MaintenanceId, maintenance.OrganizationId, officeAccess) &&
+            !await HasAssociatedInspections(maintenance.MaintenanceId, maintenance.OrganizationId, officeAccess))
             return await _maintenanceRepository.UpdateByIdAsync(maintenance);
 
         // Retire the old maintenance record
@@ -37,6 +38,13 @@ public class MaintenanceManager : IMaintenanceManager
         var inventories = await _maintenanceRepository.GetInventoriesByMaintenanceIdAsync(maintenanceId, organizationId, officeAccess);
         return inventories.Any();
     }
+
+    public async Task<bool> HasAssociatedInspections(Guid maintenanceId, Guid organizationId, string officeAccess)
+    {
+        var inspections = await _maintenanceRepository.GetInspectionsByMaintenanceIdAsync(maintenanceId, organizationId, officeAccess);
+        return inspections.Any();
+    }
+
 
     public async Task<bool> CurrentInventoryAlreadyExistsForProperty(Guid propertyId, Guid organizationId, string officeAccess)
     {

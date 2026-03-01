@@ -8,6 +8,7 @@ public class InspectionEntity
     public Guid PropertyId { get; set; }
     public Guid MaintenanceId { get; set; }
     public string? InspectionCheckList { get; set; }
+    public string? DocumentPath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

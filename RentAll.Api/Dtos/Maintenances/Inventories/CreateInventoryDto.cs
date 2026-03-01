@@ -9,6 +9,7 @@ public class CreateInventoryDto
     public Guid PropertyId { get; set; }
     public Guid MaintenanceId { get; set; }
     public string? InventoryCheckList { get; set; }
+    public string? DocumentPath { get; set; }
     public bool IsActive { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -37,6 +38,7 @@ public class CreateInventoryDto
             PropertyId = PropertyId,
             MaintenanceId = MaintenanceId,
             InventoryCheckList = InventoryCheckList,
+            DocumentPath = DocumentPath,
             IsActive = IsActive,
             CreatedBy = currentUser
         };
