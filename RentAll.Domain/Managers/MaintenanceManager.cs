@@ -44,4 +44,10 @@ public class MaintenanceManager : IMaintenanceManager
         return inventories.Any(o => o.IsActive);
     }
 
+    public async Task<bool> CurrentInspectionAlreadyExistsForProperty(Guid propertyId, Guid organizationId, string officeAccess)
+    {
+        var inspections = await _maintenanceRepository.GetInspectionsByPropertyIdAsync(propertyId, organizationId, officeAccess);
+        return inspections.Any(o => o.IsActive);
+    }
+
 }

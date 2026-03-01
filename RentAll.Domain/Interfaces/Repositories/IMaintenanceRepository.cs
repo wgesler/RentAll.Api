@@ -36,4 +36,20 @@ public interface IMaintenanceRepository
     Task DeleteInventoryByIdAsync(int inventoryId, Guid organizationId);
     #endregion
 
+    #region Inspection
+    // Creates
+    Task<Inspection> CreateInspectionAsync(Inspection inspection);
+
+    // Selects
+    Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
+    Task<IEnumerable<Inspection>> GetInspectionsByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess);
+    Task<Inspection?> GetInspectionByIdAsync(int inspectionId, Guid organizationId);
+
+    // Updates
+    Task<Inspection> UpdateInspectionByIdAsync(Inspection inspection);
+
+    // Deletes
+    Task DeleteInspectionByIdAsync(int inspectionId, Guid organizationId);
+    #endregion
+
 }

@@ -52,4 +52,22 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ModifiedBy = e.ModifiedBy
         };
     }
+
+    private static Inspection ConvertEntityToModel(InspectionEntity e)
+    {
+        return new Inspection
+        {
+            InspectionId = e.InspectionId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            PropertyId = e.PropertyId,
+            MaintenanceId = e.MaintenanceId,
+            InspectionCheckList = e.InspectionCheckList,
+            IsActive = e.IsActive,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
 }
