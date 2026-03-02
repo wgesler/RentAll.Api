@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all regions
-        /// </summary>
-        /// <returns>List of regions</returns>
         [HttpGet("region")]
         public async Task<IActionResult> GetAllRegions()
         {
             try
             {
-                var regions = await _organizationRepository.GetAllRegionsByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var regions = await _organizationRepository.GetRegionsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = regions.Select(r => new RegionResponseDto(r));
                 return Ok(response);
             }
@@ -26,11 +22,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get region by ID
-        /// </summary>
-        /// <param name="regionId">Region ID</param>
-        /// <returns>Region</returns>
         [HttpGet("region/{regionId}")]
         public async Task<IActionResult> GetRegionById(int regionId)
         {
@@ -56,11 +47,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new region
-        /// </summary>
-        /// <param name="dto">Region data</param>
-        /// <returns>Created region</returns>
         [HttpPost("region")]
         public async Task<IActionResult> CreateRegion([FromBody] RegionCreateDto dto)
         {
@@ -93,11 +79,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing region
-        /// </summary>
-        /// <param name="dto">Region data</param>
-        /// <returns>Updated region</returns>
         [HttpPut("region")]
         public async Task<IActionResult> UpdateRegion([FromBody] RegionUpdateDto dto)
         {
@@ -135,13 +116,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a region
-        /// </summary>
-        /// <param name="regionId">Region ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("region/{regionId}")]
-        public async Task<IActionResult> DeleteRegion(int regionId)
+        public async Task<IActionResult> DeleteRegionByIdAsync(int regionId)
         {
             if (regionId <= 0)
                 return BadRequest("Region ID is required");

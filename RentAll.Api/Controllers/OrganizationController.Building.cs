@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all buildings
-        /// </summary>
-        /// <returns>List of buildings</returns>
         [HttpGet("building")]
-        public async Task<IActionResult> GetAllBuildings()
+        public async Task<IActionResult> GetBuildingsByOfficeIdsAsync()
         {
             try
             {
-                var buildings = await _organizationRepository.GetAllBuildingsByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var buildings = await _organizationRepository.GetBuildingsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = buildings.Select(b => new BuildingResponseDto(b));
                 return Ok(response);
             }
@@ -26,11 +22,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get building by ID
-        /// </summary>
-        /// <param name="BuildingId">Building ID</param>
-        /// <returns>Building</returns>
         [HttpGet("building/{BuildingId}")]
         public async Task<IActionResult> GetBuildingById(int BuildingId)
         {
@@ -56,11 +47,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new building
-        /// </summary>
-        /// <param name="dto">Building data</param>
-        /// <returns>Created building</returns>
         [HttpPost("building")]
         public async Task<IActionResult> CreateBuilding([FromBody] BuildingCreateDto dto)
         {
@@ -93,11 +79,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing building
-        /// </summary>
-        /// <param name="dto">Building data</param>
-        /// <returns>Updated building</returns>
         [HttpPut("building")]
         public async Task<IActionResult> UpdateBuilding([FromBody] BuildingUpdateDto dto)
         {
@@ -136,13 +117,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a building
-        /// </summary>
-        /// <param name="buildingId">Building ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("building/{buildingId}")]
-        public async Task<IActionResult> DeleteBuilding(int buildingId)
+        public async Task<IActionResult> DeleteBuildingByIdAsync(int buildingId)
         {
             if (buildingId <= 0)
                 return BadRequest("Building ID is required");

@@ -6,8 +6,25 @@ namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository
     {
-        #region Create
-        public async Task<PropertyHtml> CreatePropertyHtmlAsync(PropertyHtml propertyHtml)
+        #region Selects
+    public async Task<PropertyHtml?> GetPropertyHtmlByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_GetByPropertyId", new
+            {
+                PropertyId = propertyId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+#region Creates
+    public async Task<PropertyHtml> CreatePropertyHtmlAsync(PropertyHtml propertyHtml)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_UpsertByPropertyId", new
@@ -32,25 +49,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-        #region Select
-        public async Task<PropertyHtml?> GetPropertyHtmlByPropertyIdAsync(Guid propertyId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_GetByPropertyId", new
-            {
-                PropertyId = propertyId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-        #endregion
-
-        #region Update
-        public async Task<PropertyHtml> UpdatePropertyHtmlByIdAsync(PropertyHtml propertyHtml)
+#region Updates
+    public async Task<PropertyHtml> UpdatePropertyHtmlByIdAsync(PropertyHtml propertyHtml)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_UpsertByPropertyId", new
@@ -75,8 +75,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-        #region Delete
-        public async Task DeletePropertyHtmlByPropertyIdAsync(Guid propertyId)
+#region Deletes
+    public async Task DeletePropertyHtmlByPropertyIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.PropertyHtml_DeleteByPropertyId", new

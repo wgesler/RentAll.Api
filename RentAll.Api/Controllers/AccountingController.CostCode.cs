@@ -5,17 +5,12 @@ namespace RentAll.Api.Controllers
     public partial class AccountingController
     {
         #region Get
-
-        /// <summary>
-        /// Get all cost codes
-        /// </summary>
-        /// <returns>List of cost codes</returns>
         [HttpGet("cost-code/office")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetCostCodesByOfficeIdsAsync()
         {
             try
             {
-                var costCodes = await _accountingRepository.GetAllAsync(CurrentOfficeAccess, CurrentOrganizationId);
+                var costCodes = await _accountingRepository.GetCostCodesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = costCodes.Select(c => new CostCodeResponseDto(c)).ToList();
                 return Ok(response);
             }
@@ -26,19 +21,15 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all cost codes
-        /// </summary>
-        /// <returns>List of cost codes</returns>
         [HttpGet("cost-code/office/{officeId:int}")]
-        public async Task<IActionResult> GetByOfficeId(int officeId)
+        public async Task<IActionResult> GetCostCodesByOfficeIdAsync(int officeId)
         {
             try
             {
                 if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
                     return Unauthorized("You do not have access to this office's cost codes");
 
-                var costCodes = await _accountingRepository.GetAllByOfficeIdAsync(officeId, CurrentOrganizationId);
+                var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(CurrentOrganizationId, officeId);
                 var response = costCodes.Select(c => new CostCodeResponseDto(c)).ToList();
                 return Ok(response);
             }
@@ -49,14 +40,8 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get cost code by ID
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <param name="costCodeId">Cost Code ID</param>
-        /// <returns>Cost Code</returns>
         [HttpGet("cost-code/office/{officeId:int}/costCodeId/{costCodeId:int}")]
-        public async Task<IActionResult> GetByCostCodeId(int officeId, int costCodeId)
+        public async Task<IActionResult> GetCostCodeByIdAsync(int officeId, int costCodeId)
         {
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
                 return Unauthorized("You do not have access to this office's cost codes");
@@ -66,7 +51,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var costCode = await _accountingRepository.GetByIdAsync(costCodeId, officeId, CurrentOrganizationId);
+                var costCode = await _accountingRepository.GetCostCodeByIdAsync(costCodeId, CurrentOrganizationId, officeId);
                 if (costCode == null)
                     return NotFound("Cost Code not found");
 
@@ -80,14 +65,8 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get cost code by code
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <param name="code">Cost Code</param>
-        /// <returns>Cost Code</returns>
         [HttpGet("cost-code/office/{officeId:int}/code/{code}")]
-        public async Task<IActionResult> GetByCode(int officeId, string code)
+        public async Task<IActionResult> GetByCostCodeAsync(int officeId, string code)
         {
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
                 return Unauthorized("You do not have access to this office's cost codes");
@@ -97,7 +76,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var costCode = await _accountingRepository.GetByCostCodeAsync(code, officeId, CurrentOrganizationId);
+                var costCode = await _accountingRepository.GetByCostCodeAsync(code, CurrentOrganizationId, officeId);
                 if (costCode == null)
                     return NotFound("Cost Code not found");
 
@@ -115,11 +94,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new cost code
-        /// </summary>
-        /// <param name="dto">Cost Code data</param>
-        /// <returns>Created cost code</returns>
         [HttpPost("cost-code")]
         public async Task<IActionResult> Create([FromBody] CreateCostCodeDto dto)
         {
@@ -132,7 +106,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                if (await _accountingRepository.ExistsByCostCodeAsync(dto.CostCode, dto.OfficeId, CurrentOrganizationId))
+                if (await _accountingRepository.ExistsByCostCodeAsync(dto.CostCode, CurrentOrganizationId, dto.OfficeId))
                     return Conflict("Cost Code already exists");
 
                 var costCode = dto.ToModel();
@@ -148,16 +122,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while creating the cost code");
             }
         }
-
         #endregion
 
         #region Put
-
-        /// <summary>
-        /// Update an existing cost code
-        /// </summary>
-        /// <param name="dto">Cost Code data</param>
-        /// <returns>Updated cost code</returns>
         [HttpPut("cost-code")]
         public async Task<IActionResult> Update([FromBody] UpdateCostCodeDto dto)
         {
@@ -170,13 +137,13 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existingCostCode = await _accountingRepository.GetByIdAsync(dto.CostCodeId, dto.OfficeId, CurrentOrganizationId);
+                var existingCostCode = await _accountingRepository.GetCostCodeByIdAsync(dto.CostCodeId, CurrentOrganizationId, dto.OfficeId);
                 if (existingCostCode == null)
                     return NotFound("Cost Code not found");
 
                 if (existingCostCode.Code != dto.CostCode)
                 {
-                    if (await _accountingRepository.ExistsByCostCodeAsync(dto.CostCode, dto.OfficeId, CurrentOrganizationId))
+                    if (await _accountingRepository.ExistsByCostCodeAsync(dto.CostCode, CurrentOrganizationId, dto.OfficeId))
                         return Conflict("Cost Code already exists");
                 }
 
@@ -193,26 +160,18 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the cost code");
             }
         }
-
         #endregion
 
         #region Delete
-
-        /// <summary>
-        /// Delete a cost code
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <param name="costCodeId">Cost Code ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("cost-code/office/{officeId:int}/costcodeid/{costCodeId:int}")]
-        public async Task<IActionResult> Delete(int officeId, int costCodeId)
+        public async Task<IActionResult> DeleteCostCodeByIdAsync(int officeId, int costCodeId)
         {
             if (costCodeId <= 0)
                 return BadRequest("Invalid Cost Code ID");
 
             try
             {
-                await _accountingRepository.DeleteByIdAsync(costCodeId, officeId, CurrentOrganizationId);
+                await _accountingRepository.DeleteCostCodeByIdAsync(costCodeId, CurrentOrganizationId, officeId);
                 return NoContent();
             }
             catch (Exception ex)

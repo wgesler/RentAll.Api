@@ -6,17 +6,13 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all properties list
-        /// </summary>
-        /// <returns>List of properties</returns>
         [HttpGet("list")]
         public async Task<IActionResult> GetList()
         {
             try
             {
                 // Get the property summary for the list of properties
-                var list = await _propertyRepository.GetListByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var list = await _propertyRepository.GetPropertyListByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = list.Select(p => new PropertyListResponseDto(p));
                 return Ok(response);
             }
@@ -27,11 +23,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get properties by the current user's selection criteria
-        /// </summary>
-        /// <param name="userId">User Id</param>
-        /// <returns>List of properties by user selection</returns>
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
         {
@@ -40,7 +31,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var properties = await _propertyRepository.GetListBySelectionCriteriaAsync(CurrentUser, CurrentOrganizationId, CurrentOfficeAccess);
+                var properties = await _propertyRepository.GetPropertyListBySelectionCriteriaAsync(CurrentUser, CurrentOrganizationId, CurrentOfficeAccess);
                 var response = properties.Select(p => new PropertyListResponseDto(p));
                 return Ok(response);
             }
@@ -51,11 +42,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get properties associated with the given owner
-        /// </summary>
-        /// <param name="ownerId">User Id</param>
-        /// <returns>List of properties by user selection</returns>
         [HttpGet("owner/{ownerId}")]
         public async Task<IActionResult> GetPropertiesByOwnerId(Guid ownerId)
         {
@@ -64,15 +50,15 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var user = await _userRepository.GetByIdAsync(CurrentUser);
+                var user = await _userRepository.GetUserByIdAsync(CurrentUser);
                 if (user == null)
                     return NotFound("User not found");
 
-                var contact = await _contactRepository.GetByEmailAsync(user.Email, CurrentOrganizationId);
+                var contact = await _contactRepository.GetContactByEmailAsync(user.Email, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound("Owner not found");
 
-                var properties = await _propertyRepository.GetListByOwnerIdAsync(contact.ContactId, CurrentOrganizationId, CurrentOfficeAccess);
+                var properties = await _propertyRepository.GetPropertyListByOwnerIdAsync(contact.ContactId, CurrentOrganizationId, CurrentOfficeAccess);
                 var response = properties.Select(p => new PropertyListResponseDto(p));
                 return Ok(response);
             }
@@ -83,31 +69,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get properties for inventory
-        /// </summary>
-        /// <returns>List of properties for inventory</returns>
-        [HttpGet("inventory")]
-        public async Task<IActionResult> GetPropertiesforInventory()
-        {
-            try
-            {
-                // Get the property summary for the list of properties
-                var list = await _propertyRepository.GetListForInventoryAsync(CurrentOrganizationId, CurrentOfficeAccess);
-                var response = list.Select(p => new PropertyListResponseDto(p));
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting properties list");
-                return ServerError("An error occurred while retrieving properties list");
-            }
-        }
-        /// <summary>
-        /// Get property by ID
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>Property</returns>
         [HttpGet("{propertyId}")]
         public async Task<IActionResult> GetById(Guid propertyId)
         {
@@ -116,7 +77,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
@@ -129,37 +90,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get property by PropertyCode
-        /// </summary>
-        /// <param name="propertyCode">Property Code</param>
-        /// <returns>Property</returns>
-        [HttpGet("code/{propertyCode}")]
-        public async Task<IActionResult> GetByPropertyCode(string propertyCode)
-        {
-            if (string.IsNullOrWhiteSpace(propertyCode))
-                return BadRequest("Property Code is required");
-
-            try
-            {
-                var property = await _propertyRepository.GetByPropertyCodeAsync(propertyCode, CurrentOrganizationId);
-                if (property == null)
-                    return NotFound("Property not found");
-
-                return Ok(new PropertyResponseDto(property));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting property by PropertyCode: {PropertyCode}", propertyCode);
-                return ServerError("An error occurred while retrieving the property");
-            }
-        }
-
-        /// <summary>
-        /// Get the current user's property selection
-        /// </summary>
-        /// <param name="userId">User Id</param>
-        /// <returns>Property selection</returns>
         [HttpGet("selection/{userId}")]
         public async Task<IActionResult> GetPropertySelection(Guid userId)
         {
@@ -181,11 +111,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get iCal subscription URL for a property.
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>Tokenized iCal subscription URL</returns>
         [HttpGet("{propertyId}/calendar/subscription-url")]
         public IActionResult GetCalendarSubscriptionUrl(Guid propertyId)
         {
@@ -209,11 +134,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new property
-        /// </summary>
-        /// <param name="dto">Property data</param>
-        /// <returns>Created property</returns>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreatePropertyDto dto)
         {
@@ -250,11 +170,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing property
-        /// </summary>
-        /// <param name="dto">Property data</param>
-        /// <returns>Updated property</returns>
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdatePropertyDto dto)
         {
@@ -268,7 +183,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if property exists
-                var existingProperty = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
+                var existingProperty = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
                 if (existingProperty == null)
                     return NotFound("Property not found");
 
@@ -290,11 +205,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Upsert the current user's property selection
-        /// </summary>
-        /// <param name="dto">Property selection data</param>
-        /// <returns>Updated property selection</returns>
         [HttpPut("selection")]
         public async Task<IActionResult> PutPropertySelection([FromBody] UpsertPropertySelectionDto dto)
         {
@@ -322,25 +232,14 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a property
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("{propertyId}")]
-        public async Task<IActionResult> Delete(Guid propertyId)
+        public async Task<IActionResult> DeletePropertyByIdAsync(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
                 return BadRequest("Property ID is required");
 
             try
-            {
-                // Check if property exists
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
-                if (property == null)
-                    return NotFound("Property not found");
-
-                await _propertyRepository.DeleteByIdAsync(propertyId);
+            {                await _propertyRepository.DeletePropertyByIdAsync(propertyId);
                 return NoContent();
             }
             catch (Exception ex)

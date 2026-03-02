@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all reservations
-        /// </summary>
-        /// <returns>List of reservations</returns>
         [HttpGet("list")]
-        public async Task<IActionResult> GetList()
+        public async Task<IActionResult> GetReservationListByOfficeIdAsync()
         {
             try
             {
-                var list = await _reservationRepository.GetListByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var list = await _reservationRepository.GetReservationListByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = list.Select(r => new ReservationListResponseDto(r));
                 return Ok(response);
             }
@@ -26,20 +22,34 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get reservation by ID
-        /// </summary>
-        /// <param name="reservationId">Reservation ID</param>
-        /// <returns>Reservation</returns>
+        [HttpGet("property/{propertyId}")]
+        public async Task<IActionResult> GetReservationListByPropertyIdAsync(Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("Property ID is required");
+
+            try
+            {
+                var reservations = await _reservationRepository.GetReservationListByPropertyIdAsync(propertyId, CurrentOrganizationId);
+                var response = reservations.Select(r => new ReservationResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reservations by PropertyId: {PropertyId}", propertyId);
+                return ServerError("An error occurred while retrieving reservations");
+            }
+        }
+
         [HttpGet("{reservationId}")]
-        public async Task<IActionResult> GetById(Guid reservationId)
+        public async Task<IActionResult> GetReservationByIdAsync(Guid reservationId)
         {
             if (reservationId == Guid.Empty)
                 return BadRequest("Reservation ID is required");
 
             try
             {
-                var reservation = await _reservationRepository.GetByIdAsync(reservationId, CurrentOrganizationId);
+                var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, CurrentOrganizationId);
                 if (reservation == null)
                     return NotFound("Reservation not found");
 
@@ -51,40 +61,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the reservation");
             }
         }
-
-        /// <summary>
-        /// Get reservations by Property ID
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>List of reservations</returns>
-        [HttpGet("property/{propertyId}")]
-        public async Task<IActionResult> GetByPropertyId(Guid propertyId)
-        {
-            if (propertyId == Guid.Empty)
-                return BadRequest("Property ID is required");
-
-            try
-            {
-                var reservations = await _reservationRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
-                var response = reservations.Select(r => new ReservationResponseDto(r));
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting reservations by PropertyId: {PropertyId}", propertyId);
-                return ServerError("An error occurred while retrieving reservations");
-            }
-        }
-
         #endregion
 
         #region Post
-
-        /// <summary>
-        /// Create a new reservation
-        /// </summary>
-        /// <param name="dto">Reservation data</param>
-        /// <returns>Created reservation</returns>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
         {
@@ -111,16 +90,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while creating the reservation");
             }
         }
-
         #endregion
 
         #region Put
-
-        /// <summary>
-        /// Update an existing reservation
-        /// </summary>
-        /// <param name="dto">Reservation data</param>
-        /// <returns>Updated reservation</returns>
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdateReservationDto dto)
         {
@@ -133,7 +105,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existingReservation = await _reservationRepository.GetByIdAsync(dto.ReservationId, CurrentOrganizationId);
+                var existingReservation = await _reservationRepository.GetReservationByIdAsync(dto.ReservationId, CurrentOrganizationId);
                 if (existingReservation == null)
                     return NotFound("Reservation not found");
 
@@ -147,30 +119,18 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the reservation");
             }
         }
-
         #endregion
 
         #region Delete
-
-        /// <summary>
-        /// Delete a reservation
-        /// </summary>
-        /// <param name="reservationId">Reservation ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("{reservationId}")]
-        public async Task<IActionResult> Delete(Guid reservationId)
+        public async Task<IActionResult> DeleteReservationByIdAsync(Guid reservationId)
         {
             if (reservationId == Guid.Empty)
                 return BadRequest("Reservation ID is required");
 
             try
             {
-                // Check if reservation exists
-                var reservation = await _reservationRepository.GetByIdAsync(reservationId, CurrentOrganizationId);
-                if (reservation == null)
-                    return NotFound("Reservation not found");
-
-                await _reservationRepository.DeleteByIdAsync(reservationId);
+                await _reservationRepository.DeleteReservationByIdAsync(reservationId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -181,6 +141,5 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
-
     }
 }

@@ -6,7 +6,39 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 {
     public partial class ReservationRepository
     {
-        #region Create
+        #region Selects
+    public async Task<LeaseInformation?> GetLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetById", new
+            {
+                PropertyId = leaseInformationId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
+        public async Task<LeaseInformation?> GetLeaseInformationByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetByPropertyId", new
+            {
+                PropertyId = propertyId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+        #region Creates
         public async Task<LeaseInformation> CreateLeaseInformationAsync(LeaseInformation leaseInformation)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -50,39 +82,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         }
         #endregion
 
-        #region Select
-        public async Task<LeaseInformation?> GetLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetById", new
-            {
-                PropertyId = leaseInformationId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<LeaseInformation?> GetLeaseInformationByPropertyIdAsync(Guid propertyId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetByPropertyId", new
-            {
-                PropertyId = propertyId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-        #endregion
-
-        #region Update
+        #region Updates
         public async Task<LeaseInformation> UpdateLeaseInformationByIdAsync(LeaseInformation leaseInformation)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -126,7 +126,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         }
         #endregion
 
-        #region Delete
+        #region Deletes
         public async Task DeleteLeaseInformationByIdAsync(Guid leaseInformationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);

@@ -6,43 +6,8 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Create
-    public async Task<Area> CreateAreaAsync(Area area)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_Add", new
-        {
-            OrganizationId = area.OrganizationId,
-            OfficeId = area.OfficeId,
-            AreaCode = area.AreaCode,
-            Name = area.Name,
-            Description = area.Description,
-            IsActive = area.IsActive
-        });
-
-        if (res == null || !res.Any())
-            throw new Exception("Area not created");
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-    #endregion
-
-    #region Select
-    public async Task<IEnumerable<Area>> GetAllAreasAsync(Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_GetAll", new
-        {
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Area>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Area>> GetAllAreasByOfficeIdAsync(Guid organizationId, string officeAccess)
+    #region Selects
+    public async Task<IEnumerable<Area>> GetAreasByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_GetAllByOfficeId", new
@@ -102,7 +67,28 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Update
+    #region Creates
+    public async Task<Area> CreateAreaAsync(Area area)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<AreaEntity>("Organization.Area_Add", new
+        {
+            OrganizationId = area.OrganizationId,
+            OfficeId = area.OfficeId,
+            AreaCode = area.AreaCode,
+            Name = area.Name,
+            Description = area.Description,
+            IsActive = area.IsActive
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("Area not created");
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+    #endregion
+
+    #region Updates
     public async Task<Area> UpdateAreaByIdAsync(Area area)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -124,7 +110,7 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Delete
+    #region Deletes
     public async Task DeleteAreaByIdAsync(int areaId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

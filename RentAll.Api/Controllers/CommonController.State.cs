@@ -2,10 +2,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class CommonController
     {
-        /// <summary>
-        /// Get all states
-        /// </summary>        
-        /// <returns>List of states with two-digit code and name</returns>
         [HttpGet("state")]
         public async Task<IActionResult> GetStates()
         {

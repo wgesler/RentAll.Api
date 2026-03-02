@@ -111,4 +111,41 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         };
     }
 
+    private static Contractor ConvertEntityToModel(ContractorEntity e)
+    {
+        return new Contractor
+        {
+            ContractorId = e.ContractorId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            VendorCode = e.VendorCode,
+            Name = e.Name,
+            Phone = e.Phone,
+            Website = e.Website,
+            Rating = e.Rating,
+            Notes = e.Notes,
+            IsActive = e.IsActive,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+
+    private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)
+    {
+        return new WorkOrder
+        {
+            WorkOrderId = e.WorkOrderId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            Description = e.Description,
+            DocumentPath = e.DocumentPath
+        };
+    }
+
 }

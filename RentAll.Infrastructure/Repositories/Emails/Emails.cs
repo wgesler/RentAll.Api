@@ -6,7 +6,39 @@ namespace RentAll.Infrastructure.Repositories.Emails
 {
     public partial class EmailRepository
     {
-        #region Create
+        #region Selects
+     public async Task<IEnumerable<Email>> GetEmailsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_GetAllByOfficeIds", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Email>();
+
+            return res.Select(ConvertStoredProcRowToModel);
+        }
+
+        public async Task<Email?> GetEmailByIdAsync(Guid emailId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_GetById", new
+            {
+                EmailId = emailId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+        #region Creates
         public async Task<Email> CreateAsync(Email email)
         {
             var entity = ConvertModelToEntity(email);
@@ -43,39 +75,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
         }
         #endregion
 
-        #region Select
-        public async Task<IEnumerable<Email>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_GetAllByOfficeIds", new
-            {
-                OrganizationId = organizationId,
-                Offices = officeAccess
-            });
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Email>();
-
-            return res.Select(ConvertStoredProcRowToModel);
-        }
-
-        public async Task<Email?> GetByIdAsync(Guid emailId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_GetById", new
-            {
-                EmailId = emailId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
-        }
-        #endregion
-
-        #region Update
+        #region Updates
         public async Task<Email> UpdateByIdAsync(Email email)
         {
             await using var db = new SqlConnection(_dbConnectionString);

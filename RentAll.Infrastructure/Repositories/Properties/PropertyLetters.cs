@@ -6,8 +6,25 @@ namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository
     {
-        #region Create
-        public async Task<PropertyLetter> CreatePropertyLetterAsync(PropertyLetter propertyLetter)
+        #region Selects
+    public async Task<PropertyLetter?> GetPropertyLetterByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_GetByPropertyId", new
+            {
+                PropertyId = propertyId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+#region Creates
+    public async Task<PropertyLetter> CreatePropertyLetterAsync(PropertyLetter propertyLetter)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_Add", new
@@ -40,25 +57,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-        #region Select
-        public async Task<PropertyLetter?> GetPropertyLetterByPropertyIdAsync(Guid propertyId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_GetByPropertyId", new
-            {
-                PropertyId = propertyId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-        #endregion
-
-        #region Update
-        public async Task<PropertyLetter> UpdatePropertyLetterByIdAsync(PropertyLetter propertyLetter)
+#region Updates
+    public async Task<PropertyLetter> UpdatePropertyLetterByIdAsync(PropertyLetter propertyLetter)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_UpdateByPropertyId", new
@@ -91,8 +91,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-        #region Delete
-        public async Task DeletePropertyLetterByPropertyIdAsync(Guid propertyId)
+#region Deletes
+    public async Task DeletePropertyLetterByPropertyIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.PropertyInformation_DeleteByPropertyId", new

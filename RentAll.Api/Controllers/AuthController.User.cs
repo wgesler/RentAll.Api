@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Accounting.CostCodes;
 using RentAll.Api.Dtos.Users;
 
 namespace RentAll.Api.Controllers;
@@ -5,22 +6,13 @@ namespace RentAll.Api.Controllers;
 public partial class AuthController
 {
     #region Get
-
     [HttpGet("user")]
-    public async Task<IActionResult> GetAllUsers()
+    public async Task<IActionResult> GetUsersByOrganizationIdAsync()
     {
         try
         {
-            var users = await _userRepository.GetAllAsync(CurrentOrganizationId);
-            var response = new List<UserResponseDto>();
-            foreach (var user in users)
-            {
-                var dto = new UserResponseDto(user);
-                if (!string.IsNullOrWhiteSpace(user.ProfilePath))
-                    dto.FileDetails = await _fileService.GetFileDetailsAsync(user.OrganizationId, null, user.ProfilePath);
-
-                response.Add(dto);
-            }
+            var users = await _userRepository.GetUsersByOrganizationIdAsync(CurrentOrganizationId);
+            var response = users.Select(u => new UserResponseDto(u)).ToList();
             return Ok(response);
         }
         catch (Exception ex)
@@ -31,11 +23,11 @@ public partial class AuthController
     }
 
     [HttpGet("user/{UserId}")]
-    public async Task<IActionResult> GetUserById(Guid UserId)
+    public async Task<IActionResult> GetUserByIdAsync(Guid UserId)
     {
         try
         {
-            var user = await _userRepository.GetByIdAsync(UserId);
+            var user = await _userRepository.GetUserByIdAsync(UserId);
             if (user == null)
                 return NotFound("User not found");
 
@@ -51,11 +43,9 @@ public partial class AuthController
             return ServerError("An error occurred while retrieving the user");
         }
     }
-
     #endregion
 
     #region Post
-
     [HttpPost("user")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
@@ -101,11 +91,9 @@ public partial class AuthController
             return ServerError("An error occurred while creating the user");
         }
     }
-
     #endregion
 
     #region Put
-
     [HttpPut("user")]
     public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto)
     {
@@ -118,7 +106,7 @@ public partial class AuthController
 
         try
         {
-            var existingUser = await _userRepository.GetByIdAsync(dto.UserId);
+            var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
             if (existingUser == null)
                 return NotFound("User not found");
 
@@ -175,24 +163,23 @@ public partial class AuthController
             return ServerError("An error occurred while updating the user");
         }
     }
-
     #endregion
 
     #region Delete
-
     [HttpDelete("user/{userId}")]
-    public async Task<IActionResult> DeleteUser(Guid userId)
+    public async Task<IActionResult> DeleteUserByIdAsync(Guid userId)
     {
         if (userId == Guid.Empty)
             return BadRequest("User ID is required");
 
         try
         {
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null)
-                return NotFound("User not found");
+            // Check if user exists then check/delete logo
+            var existingUser = await _userRepository.GetUserByIdAsync(userId);
+            if (existingUser != null && !string.IsNullOrWhiteSpace(existingUser.ProfilePath))
+                await _fileService.DeleteLogoAsync(existingUser.OrganizationId, null, existingUser.ProfilePath);
 
-            await _userRepository.DeleteByIdAsync(userId);
+            await _userRepository.DeleteUserByIdAsync(userId);
             return NoContent();
         }
         catch (Exception ex)

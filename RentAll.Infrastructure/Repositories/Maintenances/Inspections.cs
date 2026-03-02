@@ -6,29 +6,7 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 
 public partial class MaintenanceRepository
 {
-    // Inspection - Creates
-    public async Task<Inspection> CreateInspectionAsync(Inspection inspection)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_Add", new
-        {
-            OrganizationId = inspection.OrganizationId,
-            OfficeId = inspection.OfficeId,
-            PropertyId = inspection.PropertyId,
-            MaintenanceId = inspection.MaintenanceId,
-            InspectionCheckList = inspection.InspectionCheckList,
-            DocumentPath = inspection.DocumentPath,
-            IsActive = inspection.IsActive,
-            CreatedBy = inspection.CreatedBy
-        });
-
-        if (res == null || !res.Any())
-            throw new Exception("Inspection record not created");
-
-        return ConvertEntityToModel(res.First());
-    }
-
-    // Inspection - Selects
+    #region Selects
     public async Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -75,8 +53,32 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.First());
     }
+    #endregion
 
-    // Inspection - Updates
+    #region Creates
+    public async Task<Inspection> CreateInspectionAsync(Inspection inspection)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_Add", new
+        {
+            OrganizationId = inspection.OrganizationId,
+            OfficeId = inspection.OfficeId,
+            PropertyId = inspection.PropertyId,
+            MaintenanceId = inspection.MaintenanceId,
+            InspectionCheckList = inspection.InspectionCheckList,
+            DocumentPath = inspection.DocumentPath,
+            IsActive = inspection.IsActive,
+            CreatedBy = inspection.CreatedBy
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("Inspection record not created");
+
+        return ConvertEntityToModel(res.First());
+    }
+    #endregion
+
+    #region Updates
     public async Task<Inspection> UpdateInspectionByIdAsync(Inspection inspection)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -98,8 +100,9 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.First());
     }
+    #endregion
 
-    // Inspection - Deletes
+    #region Deletes
     public async Task DeleteInspectionByIdAsync(int inspectionId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -109,4 +112,5 @@ public partial class MaintenanceRepository
             OrganizationId = organizationId
         });
     }
+    #endregion
 }

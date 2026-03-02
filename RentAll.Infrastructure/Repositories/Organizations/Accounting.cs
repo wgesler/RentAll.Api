@@ -6,11 +6,43 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Create
+    #region Selects
+    public async Task<IEnumerable<AccountingOffice>> GetAccountingOfficesByOfficeIdsAsync(Guid organizationId, string officeIds)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeIds
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<AccountingOffice>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<AccountingOffice?> GetAccountingOfficeByIdAsync(Guid organizationId, int officeId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_GetById", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+    #endregion
+
+    #region Creates
     public async Task<AccountingOffice> CreateAccountingAsync(AccountingOffice accountingOffice)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_Add", new
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_Add", new
         {
             OrganizationId = accountingOffice.OrganizationId,
             OfficeId = accountingOffice.OfficeId,
@@ -43,43 +75,11 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Select
-    public async Task<IEnumerable<AccountingOffice>> GetAllAccountingByOfficeIdAsync(Guid organizationId, string officeIds)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_GetAllByOfficeIds", new
-        {
-            OrganizationId = organizationId,
-            Offices = officeIds
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<AccountingOffice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<AccountingOffice?> GetAccountingByIdAsync(Guid organizationId, int officeId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_GetById", new
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-    #endregion
-
-    #region Update
+    #region Updates
     public async Task<AccountingOffice> UpdateAccountingAsync(AccountingOffice accountingOffice)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Accounting.Office_UpdateById", new
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_UpdateById", new
         {
             OrganizationId = accountingOffice.OrganizationId,
             OfficeId = accountingOffice.OfficeId,
@@ -112,11 +112,11 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Delete
-    public async Task DeleteAccountingAsync(Guid organizationId, int officeId)
+    #region Deletes
+    public async Task DeleteAccountingOfficeByIdAsync(Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.Office_Delete", new
+        await db.DapperProcExecuteAsync("Organization.AccountingOffice_DeleteById", new
         {
             OrganizationId = organizationId,
             OfficeId = officeId

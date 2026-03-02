@@ -5,8 +5,8 @@ namespace RentAll.Infrastructure.Repositories.Common
 {
     public partial class CommonRepository
     {
-        #region Select
-        public async Task<int> GetNextAsync(Guid organizationId, int entityTypeId, string entityType)
+        #region Selects
+        public async Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var result = await db.DapperProcQueryScalarAsync<int>("Organization.CodeSequence_GetNext", new

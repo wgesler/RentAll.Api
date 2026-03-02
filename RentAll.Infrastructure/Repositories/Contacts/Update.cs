@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 {
     public partial class ContactRepository : IContactRepository
     {
-        public async Task<Contact> UpdateByIdAsync(Contact contact)
+         public async Task<Contact> UpdateByIdAsync(Contact contact)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_UpdateById", new

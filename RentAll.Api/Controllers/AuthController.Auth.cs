@@ -79,9 +79,6 @@ public partial class AuthController
 
     #region Put
 
-    /// <summary>
-    /// Update the current user's password.
-    /// </summary>
     [HttpPut("password")]
     public async Task<IActionResult> UpdatePassword([FromBody] UpdatePasswordDto dto)
     {

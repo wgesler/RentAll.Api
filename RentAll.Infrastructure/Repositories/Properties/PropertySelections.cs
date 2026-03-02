@@ -6,7 +6,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository
     {
-        #region Select
+        #region Selects
         public async Task<PropertySelection?> GetPropertySelectionByUserIdAsync(Guid userId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -22,7 +22,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-        #region Upsert
+        #region Creates
         public async Task<PropertySelection> UpsertPropertySelectionAsync(PropertySelection selection)
         {
             await using var db = new SqlConnection(_dbConnectionString);

@@ -2,12 +2,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class CommonController
     {
-        /// <summary>
-        /// Get iCal feed for a property.
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <param name="dto">Calendar URL request query values</param>
-        /// <returns>iCal text/calendar response</returns>
         [HttpGet("calendar/property/{propertyId}.ics")]
         public async Task<IActionResult> GetPropertyCalendar(Guid propertyId, [FromQuery] CalendarUrlRequestDto dto)
         {

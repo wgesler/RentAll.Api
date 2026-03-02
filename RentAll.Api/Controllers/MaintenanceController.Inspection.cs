@@ -101,7 +101,7 @@ public partial class MaintenanceController
 
         try
         {
-            var maintenance = await _maintenanceRepository.GetByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
+            var maintenance = await _maintenanceRepository.GetMaintenanceByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
             if (maintenance == null || !maintenance.IsActive)
                 return NotFound("Maintenance record not valid");
 
@@ -127,17 +127,13 @@ public partial class MaintenanceController
     #region Delete
 
     [HttpDelete("inspection/{inspectionId:int}")]
-    public async Task<IActionResult> DeleteInspection(int inspectionId)
+    public async Task<IActionResult> DeleteInspectionByIdAsync(int inspectionId)
     {
         if (inspectionId <= 0)
             return BadRequest("InspectionId is required");
 
         try
         {
-            var existing = await _maintenanceRepository.GetInspectionByIdAsync(inspectionId, CurrentOrganizationId);
-            if (existing == null)
-                return NotFound("Inspection record not found");
-
             await _maintenanceRepository.DeleteInspectionByIdAsync(inspectionId, CurrentOrganizationId);
             return NoContent();
         }

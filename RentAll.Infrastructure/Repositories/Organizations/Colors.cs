@@ -6,8 +6,8 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Select
-    public async Task<IEnumerable<Colour>> GetAllColorsAsync(Guid organizationId)
+    #region Selects
+    public async Task<IEnumerable<Colour>> GetColorsByOrganizationIdAsync(Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ColorEntity>("Organization.Color_GetAll", new
@@ -37,7 +37,7 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Update
+    #region Updates
     public async Task UpdateColorByIdAsync(Colour color)
     {
         await using var db = new SqlConnection(_dbConnectionString);

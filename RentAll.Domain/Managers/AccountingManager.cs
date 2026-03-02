@@ -43,14 +43,14 @@ public class AccountingManager : IAccountingManager
 
 
         // Get the Offices for the Organization
-        IEnumerable<Office> offices = await _organizationRepository.GetAllAsync(organization.OrganizationId);
+        IEnumerable<Office> offices = await _organizationRepository.GetOfficesByOrganizationIdAsync(organization.OrganizationId);
 
         foreach (var office in offices)
         {
             var officeLine = $"Office Base Fee ({office.Name}): ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
             lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = officeLine, Amount = organization.OfficeFee });
 
-            var properties = await _propertyRepository.GetListByOfficeIdAsync(office.OrganizationId, Convert.ToString(office.OfficeId));
+            var properties = await _propertyRepository.GetPropertyListByOfficeIdsAsync(office.OrganizationId, Convert.ToString(office.OfficeId));
             var units = properties.Count() - 50;
             switch (properties.Count())
             {
@@ -75,7 +75,7 @@ public class AccountingManager : IAccountingManager
     }
     public async Task ApplyBillingCostCodesAsync(Guid organizationId, List<LedgerLine> ledgerLines)
     {
-        var costCodes = await _accountingRepository.GetAllByOfficeIdAsync(1, organizationId);
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, 1);
         foreach (var line in ledgerLines)
         {
             var costCode = null as CostCode;
@@ -101,7 +101,7 @@ public class AccountingManager : IAccountingManager
         var invoices = new List<Invoice>();
         foreach (var invoiceGuid in invoiceGuids)
         {
-            var invoice = await _accountingRepository.GetByIdAsync(invoiceGuid, organizationId);
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceGuid, organizationId);
             if (invoice == null) throw new Exception("Invalid Invoice");
             invoices.Add(invoice);
         }
@@ -236,7 +236,7 @@ public class AccountingManager : IAccountingManager
 
     public async Task ApplyCostCodesAsync(int officeId, Guid organizationId, List<LedgerLine> ledgerLines)
     {
-        var costCodes = await _accountingRepository.GetAllByOfficeIdAsync(officeId, organizationId);
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, officeId);
         foreach (var line in ledgerLines)
         {
             var costCode = null as CostCode;

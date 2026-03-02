@@ -5,17 +5,12 @@ namespace RentAll.Api.Controllers
     {
 
         #region Get
-
-        /// <summary>
-        /// Get all companies
-        /// </summary>
-        /// <returns>List of companies</returns>
         [HttpGet]
-        public async Task<IActionResult> GetAllCompanies()
+        public async Task<IActionResult> GetCompaniesByOfficeIdsAsync()
         {
             try
             {
-                var companies = await _companiesRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var companies = await _companiesRepository.GetCompaniesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = new List<CompanyResponseDto>();
                 foreach (var company in companies)
                 {
@@ -34,20 +29,15 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get company by ID
-        /// </summary>
-        /// <param name="companyId">Company ID</param>
-        /// <returns>Company</returns>
         [HttpGet("{companyId}")]
-        public async Task<IActionResult> GetCompanyById(Guid companyId)
+        public async Task<IActionResult> GetCompanyByOfficeIdsAsync(Guid companyId)
         {
             if (companyId == Guid.Empty)
                 return BadRequest("Company ID is required");
 
             try
             {
-                var company = await _companiesRepository.GetByIdAsync(companyId, CurrentOrganizationId);
+                var company = await _companiesRepository.GetCompanyByIdAsync(companyId, CurrentOrganizationId);
                 if (company == null)
                     return NotFound("Company not found");
 
@@ -63,16 +53,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the company");
             }
         }
-
         #endregion
 
         #region Post
-
-        /// <summary>
-        /// Create a new company
-        /// </summary>
-        /// <param name="dto">Company data</param>
-        /// <returns>Created company</returns>
         [HttpPost]
         public async Task<IActionResult> CreateCompany([FromBody] CreateCompanyDto dto)
         {
@@ -117,16 +100,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while creating the company");
             }
         }
-
         #endregion
 
         #region Put
-
-        /// <summary>
-        /// Update an existing company
-        /// </summary>
-        /// <param name="dto">Company data</param>
-        /// <returns>Updated company</returns>
         [HttpPut]
         public async Task<IActionResult> UpdateCompany([FromBody] UpdateCompanyDto dto)
         {
@@ -140,7 +116,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if company exists
-                var existingCompany = await _companiesRepository.GetByIdAsync(dto.CompanyId, CurrentOrganizationId);
+                var existingCompany = await _companiesRepository.GetCompanyByIdAsync(dto.CompanyId, CurrentOrganizationId);
                 if (existingCompany == null)
                     return NotFound("Company not found");
 
@@ -198,30 +174,23 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the company");
             }
         }
-
         #endregion
 
         #region Delete
-
-        /// <summary>
-        /// Delete a company
-        /// </summary>
-        /// <param name="companyId">Company ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("{companyId}")]
-        public async Task<IActionResult> DeleteCompany(Guid companyId)
+        public async Task<IActionResult> DeleteCompanyByIdAsync(Guid companyId)
         {
             if (companyId == Guid.Empty)
                 return BadRequest("Company ID is required");
 
             try
             {
-                // Check if company exists
-                var company = await _companiesRepository.GetByIdAsync(companyId, CurrentOrganizationId);
-                if (company == null)
-                    return NotFound("Company not found");
+                // Check if company exists then check/delete logo
+                var existingCompany = await _companiesRepository.GetCompanyByIdAsync(companyId, CurrentOrganizationId);
+                if (existingCompany != null && !string.IsNullOrWhiteSpace(existingCompany.LogoPath))
+                    await _fileService.DeleteLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath);
 
-                await _companiesRepository.DeleteByIdAsync(companyId);
+                await _companiesRepository.DeleteCompanyByIdAsync(companyId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -230,8 +199,6 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while deleting the company");
             }
         }
-
         #endregion
-
     }
 }

@@ -5,51 +5,51 @@ namespace RentAll.Domain.Interfaces.Repositories;
 public interface IMaintenanceRepository
 {
     #region Maintenance
-    // Creates
+    Task<Maintenance?> GetMaintenanceByPropertyIdAsync(Guid propertyId, Guid organizationId, Guid? maintenanceId = null);
+    Task<Maintenance?> GetMaintenanceByIdAsync(Guid maintenanceId, Guid organizationId);
+
     Task<Maintenance> CreateAsync(Maintenance maintenanceRecord);
-
-    // Selects
-    Task<Maintenance?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId, Guid? maintenanceId = null);
-    Task<Maintenance?> GetByIdAsync(Guid maintenanceId, Guid organizationId);
-
-    // Updates
     Task<Maintenance> UpdateByIdAsync(Maintenance maintenanceRecord);
-
-    // Deletes
-    Task DeleteByIdAsync(Guid maintenanceId, Guid organizationId, Guid modifiedBy);
+    Task DeleteMaintenanceByIdAsync(Guid maintenanceId, Guid organizationId, Guid modifiedBy);
     #endregion
 
-
     #region Inventory
-    // Creates
-    Task<Inventory> CreateInventoryAsync(Inventory inventory);
-
-    // Selects
     Task<IEnumerable<Inventory>> GetInventoriesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<IEnumerable<Inventory>> GetInventoriesByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess);
+    Task<Inventory?> GetLatestInventoryByPropertyId(Guid propertyId, Guid organizationId, string officeAccess);
     Task<Inventory?> GetInventoryByIdAsync(int inventoryId, Guid organizationId);
 
-    // Updates
-    Task<Inventory> UpdateInventoryByIdAsync(Inventory inventory);
-
-    // Deletes
+    Task<Inventory> CreateInventoryAsync(Inventory inventory);
+    Task<Inventory> UpdateInventoryAsync(Inventory inventory);
     Task DeleteInventoryByIdAsync(int inventoryId, Guid organizationId);
     #endregion
 
     #region Inspection
-    // Creates
-    Task<Inspection> CreateInspectionAsync(Inspection inspection);
-
-    // Selects
     Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<IEnumerable<Inspection>> GetInspectionsByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess);
     Task<Inspection?> GetInspectionByIdAsync(int inspectionId, Guid organizationId);
 
-    // Updates
+    Task<Inspection> CreateInspectionAsync(Inspection inspection);
     Task<Inspection> UpdateInspectionByIdAsync(Inspection inspection);
-
-    // Deletes
     Task DeleteInspectionByIdAsync(int inspectionId, Guid organizationId);
     #endregion
 
+    #region Contractor
+    Task<IEnumerable<Contractor>> GetContractorsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<Contractor?> GetContractorByIdAsync(Guid vendorId, Guid organizationId);
+
+    Task<Contractor> CreateContractorAsync(Contractor contractor);
+    Task<Contractor> UpdateContractorAsync(Contractor contractor);
+    Task DeleteContractorByIdAsync(Guid vendorId, Guid organizationId);
+    #endregion
+
+    #region WorkOrder
+    Task<IEnumerable<WorkOrder>> GetWorkOrdersByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<WorkOrder>> GetWorkOrdersByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
+    Task<WorkOrder?> GetWorkOrderByIdAsync(int workOrderId, Guid organizationId);
+
+    Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder);
+    Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder);
+    Task DeleteWorkOrderByIdAsync(int workOrderId, Guid organizationId);
+    #endregion
 }

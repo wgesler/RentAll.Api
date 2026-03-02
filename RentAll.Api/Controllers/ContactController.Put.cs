@@ -4,11 +4,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class ContactController
     {
-        /// <summary>
-        /// Update an existing contact
-        /// </summary>
-        /// <param name="dto">Contact data</param>
-        /// <returns>Updated contact</returns>
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdateContactDto dto)
         {
@@ -22,7 +17,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if contact exists
-                var existing = await _contactRepository.GetByIdAsync(dto.ContactId, CurrentOrganizationId);
+                var existing = await _contactRepository.GetContactByIdAsync(dto.ContactId, CurrentOrganizationId);
                 if (existing == null)
                     return NotFound("Contact not found");
 

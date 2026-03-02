@@ -6,9 +6,6 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get email html by organization.
-        /// </summary>
         [HttpGet("email-html")]
         public async Task<IActionResult> GetByOrganization()
         {
@@ -31,9 +28,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create email html for organization.
-        /// </summary>
         [HttpPost("email-html")]
         public async Task<IActionResult> Create([FromBody] CreateEmailHtmlDto dto)
         {
@@ -63,9 +57,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update email html for organization.
-        /// </summary>
         [HttpPut("email-html")]
         public async Task<IActionResult> Update([FromBody] UpdateEmailHtmlDto dto)
         {
@@ -97,18 +88,11 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete email html for organization.
-        /// </summary>
         [HttpDelete("email-html")]
-        public async Task<IActionResult> Delete()
+        public async Task<IActionResult> DeleteEmailHtmlByOrganizationIdAsync()
         {
             try
             {
-                var existing = await _emailRepository.GetEmailHtmlByOrganizationIdAsync(CurrentOrganizationId);
-                if (existing == null)
-                    return NotFound("EmailHtml not found");
-
                 await _emailRepository.DeleteEmailHtmlByOrganizationIdAsync(CurrentOrganizationId);
                 return NoContent();
             }

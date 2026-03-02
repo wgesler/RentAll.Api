@@ -6,7 +6,7 @@ namespace RentAll.Infrastructure.Repositories.Documents;
 
 public partial class DocumentRepository : IDocumentRepository
 {
-    public async Task DeleteByIdAsync(Guid documentId, Guid organizationId)
+    public async Task DeleteDocumentByIdAsync(Guid documentId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Organization.Document_DeleteById", new
@@ -16,4 +16,3 @@ public partial class DocumentRepository : IDocumentRepository
         });
     }
 }
-

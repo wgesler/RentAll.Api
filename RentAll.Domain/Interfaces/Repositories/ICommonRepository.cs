@@ -4,10 +4,11 @@ namespace RentAll.Domain.Interfaces.Repositories;
 
 public interface ICommonRepository
 {
-    // Common Selects
+    #region States
     Task<IEnumerable<State>> GetAllStatesAsync();
+    #endregion
 
-    // CodeSequence Selects
-    Task<int> GetNextAsync(Guid organizationId, int entityTypeId, string entityType);
+    #region Code Sequence
+    Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType);
+    #endregion
 }
-

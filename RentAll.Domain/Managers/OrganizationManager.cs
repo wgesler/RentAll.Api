@@ -21,15 +21,16 @@ public class OrganizationManager : IOrganizationManager
         int entityTypeId = (int)entityType;
 
         var prefix = entityType.ToCode();
-        int nextNumber = await _commonRepository.GetNextAsync(systemOrganizationId, entityTypeId, entityType.ToString());
+        int nextNumber = await _commonRepository.GetNextCodeAsync(systemOrganizationId, entityTypeId, entityType.ToString());
         var code = $"{prefix}-{nextNumber:D6}";
 
         return code;
     }
+
     public async Task<string> GenerateEntityCodeAsync(Guid organizationId, EntityType entityType)
     {
         var prefix = entityType.ToCode();
-        int nextNumber = await _commonRepository.GetNextAsync(organizationId, (int)entityType, entityType.ToString());
+        int nextNumber = await _commonRepository.GetNextCodeAsync(organizationId, (int)entityType, entityType.ToString());
         var code = $"{prefix}-{nextNumber:D6}";
 
         return code;

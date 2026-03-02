@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
-        /// <summary>
-        /// Get all invoices by offices
-        /// </summary>
-        /// <returns>List of invoices</returns>
         [HttpGet("invoice")]
         public async Task<IActionResult> GetAllInvoices()
         {
             try
             {
-                var invoices = await _accountingRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var invoices = await _accountingRepository.GetInvoicesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
                 return Ok(response);
             }
@@ -26,11 +22,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all invoices by offices
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <returns>List of invoices</returns>
         [HttpGet("invoice/office/{officeId:int}")]
         public async Task<IActionResult> GetAllInvoicesByOffice(int officeId)
         {
@@ -39,7 +30,7 @@ namespace RentAll.Api.Controllers
                 if (!CurrentOfficeAccess.Contains(officeId.ToString()))
                     return Unauthorized("No access to this office");
 
-                var invoices = await _accountingRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, officeId.ToString());
+                var invoices = await _accountingRepository.GetInvoicesByOfficeIdsAsync(CurrentOrganizationId, officeId.ToString());
                 var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
                 return Ok(response);
             }
@@ -50,11 +41,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all invoices by reservation ID
-        /// </summary>
-        /// <param name="reservationId">Reservation ID</param>
-        /// <returns>List of invoices</returns>
         [HttpGet("invoice/reservation/{reservationId}")]
         public async Task<IActionResult> GetAllInvoicesByReservation(Guid reservationId)
         {
@@ -63,7 +49,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var invoices = await _accountingRepository.GetAllByReservationIdAsync(reservationId, CurrentOrganizationId, CurrentOfficeAccess);
+                var invoices = await _accountingRepository.GetInvoicesByReservationIdAsync(reservationId, CurrentOrganizationId, CurrentOfficeAccess);
                 var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
                 return Ok(response);
             }
@@ -74,11 +60,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all invoices by property ID
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>List of invoices</returns>
         [HttpGet("invoice/property/{propertyId}")]
         public async Task<IActionResult> GetAllInvoicesByProperty(Guid propertyId)
         {
@@ -87,7 +68,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var invoices = await _accountingRepository.GetAllByPropertyIdAsync(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
+                var invoices = await _accountingRepository.GetInvoicesByPropertyIdAsync(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
                 var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
                 return Ok(response);
             }
@@ -98,11 +79,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get invoice by ID
-        /// </summary>
-        /// <param name="invoiceId">Invoice ID</param>
-        /// <returns>Invoice</returns>
         [HttpGet("invoice/{invoiceId}")]
         public async Task<IActionResult> GetInvoiceById(Guid invoiceId)
         {
@@ -111,7 +87,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var invoice = await _accountingRepository.GetByIdAsync(invoiceId, CurrentOrganizationId);
+                var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
                 if (invoice == null)
                     return NotFound("Invoice not found");
 
@@ -129,11 +105,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new invoice
-        /// </summary>
-        /// <param name="dto">Invoice data</param>
-        /// <returns>Created invoice</returns>
         [HttpPost("invoice")]
         public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
         {
@@ -160,10 +131,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Create initial leger lines
-        /// </summary>
-        /// <returns>Ledger Line</returns>
         [HttpPost("invoice/ledger-line/reservation")]
         public async Task<IActionResult> CreateLedgerLinesByReservationId([FromBody] CreateInvoiceMonthlyDataDto dto)
         {
@@ -172,7 +139,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reservation = await _reservationRepository.GetByIdAsync(dto.ReservationId, CurrentOrganizationId);
+                var reservation = await _reservationRepository.GetReservationByIdAsync(dto.ReservationId, CurrentOrganizationId);
                 if (reservation == null)
                     return NotFound("Reservation not found");
 
@@ -188,10 +155,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Create initial leger lines
-        /// </summary>
-        /// <returns>Ledger Line</returns>
         [HttpPost("invoice/ledger-line/organization")]
         public async Task<IActionResult> CreateLedgerLinesByOrganizationId([FromBody] CreateBillingMonthlyDataDto dto)
         {
@@ -200,7 +163,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var organization = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
+                var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
                 if (organization == null)
                     return NotFound("Organization not found");
 
@@ -220,11 +183,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing invoice
-        /// </summary>
-        /// <param name="dto">Invoice data</param>
-        /// <returns>Updated invoice</returns>
         [HttpPut("invoice")]
         public async Task<IActionResult> UpdateInvoice([FromBody] UpdateInvoiceDto dto)
         {
@@ -237,7 +195,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existingInvoice = await _accountingRepository.GetByIdAsync(dto.InvoiceId, CurrentOrganizationId);
+                var existingInvoice = await _accountingRepository.GetInvoiceByIdAsync(dto.InvoiceId, CurrentOrganizationId);
                 if (existingInvoice == null)
                     return NotFound("Invoice not found");
 
@@ -256,11 +214,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Update an existing reservation
-        /// </summary>
-        /// <param name="dto">Reservation data</param>
-        /// <returns>Updated reservation</returns>
         [HttpPut("invoice/payment")]
         public async Task<IActionResult> ApplyPayment([FromBody] InvoicePaymentRequestDto dto)
         {
@@ -289,24 +242,15 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete an invoice
-        /// </summary>
-        /// <param name="invoiceId">Invoice ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("invoice/{invoiceId}")]
-        public async Task<IActionResult> DeleteInvoice(Guid invoiceId)
+        public async Task<IActionResult> DeleteInvoiceByIdAsync(Guid invoiceId)
         {
             if (invoiceId == Guid.Empty)
                 return BadRequest("Invoice ID is required");
 
             try
             {
-                var existingInvoice = await _accountingRepository.GetByIdAsync(invoiceId, CurrentOrganizationId);
-                if (existingInvoice == null)
-                    return NotFound("Invoice not found");
-
-                await _accountingRepository.DeleteByIdAsync(invoiceId, CurrentOrganizationId);
+                await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
                 return NoContent();
             }
             catch (Exception ex)

@@ -6,7 +6,59 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Create
+    #region Selects
+    public async Task<IEnumerable<Organization>> GetOrganizationsAsync()
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetAll", null);
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Organization>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<Organization?> GetOrganizationByIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetById", new
+        {
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<Organization?> GetByOrganizationCodeAsync(string organizationCode)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetByCode", new
+        {
+            OrganizationCode = organizationCode
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<bool> ExistsByOrganizationCodeAsync(string organizationCode)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetByCode", new
+        {
+            OrganizationCode = organizationCode
+        });
+
+        return res != null && res.Any();
+    }
+    #endregion
+
+    #region Creates
     public async Task<Organization> CreateAsync(Organization organization)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -46,59 +98,7 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Select
-    public async Task<IEnumerable<Organization>> GetAllAsync()
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetAll", null);
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Organization>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<Organization?> GetByIdAsync(Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetById", new
-        {
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<Organization?> GetByOrganizationCodeAsync(string organizationCode)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetByOrganizationCode", new
-        {
-            OrganizationCode = organizationCode
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<bool> ExistsByOrganizationCodeAsync(string organizationCode)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_GetByOrganizationCode", new
-        {
-            OrganizationCode = organizationCode
-        });
-
-        return res != null && res.Any();
-    }
-    #endregion
-
-    #region Update
+    #region Updates
     public async Task<Organization> UpdateByIdAsync(Organization organization)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -137,26 +137,10 @@ public partial class OrganizationRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
-
-    public async Task<Organization> UpdateColorAsync(Guid organizationId, string rgb, Guid modifiedBy)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Color_UpdateById", new
-        {
-            OrganizationId = organizationId,
-            ColorRgb = rgb,
-            ModifiedBy = modifiedBy
-        });
-
-        if (res == null || !res.Any())
-            throw new Exception("Organization not found");
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
     #endregion
 
-    #region Delete
-    public async Task DeleteByIdAsync(Guid organizationId)
+    #region Deletes
+    public async Task DeleteOrganizationByIdAsync(Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Organization.Organization_DeleteById", new

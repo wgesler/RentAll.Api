@@ -5,12 +5,6 @@ namespace RentAll.Api.Controllers
     {
 
         #region Get
-
-        /// <summary>
-        /// Get all offices
-        /// </summary>
-        /// <param name="organizationId">Organization ID</param>
-        /// <returns>List of offices</returns>
         [HttpGet("office/{organizationId:guid}")]
         public async Task<IActionResult> GetAllOffices(Guid organizationId)
         {
@@ -18,11 +12,11 @@ namespace RentAll.Api.Controllers
             {
                 IEnumerable<Office> offices;
                 if (IsSuperAdmin())
-                    offices = await _organizationRepository.GetAllAsync(organizationId);
+                    offices = await _organizationRepository.GetOfficesByOrganizationIdAsync(organizationId);
                 else if (IsAdmin())
-                    offices = await _organizationRepository.GetAllAsync(CurrentOrganizationId);
+                    offices = await _organizationRepository.GetOfficesByOrganizationIdAsync(CurrentOrganizationId);
                 else
-                    offices = await _organizationRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                    offices = await _organizationRepository.GetOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
 
                 var response = new List<OfficeResponseDto>();
                 foreach (var office in offices)
@@ -42,11 +36,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get office by ID
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <returns>Office</returns>
         [HttpGet("office/{officeId}")]
         public async Task<IActionResult> GetOfficeById(int officeId)
         {
@@ -55,7 +44,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var office = await _organizationRepository.GetByIdAsync(officeId, CurrentOrganizationId);
+                var office = await _organizationRepository.GetOfficeByIdAsync(officeId, CurrentOrganizationId);
                 if (office == null)
                     return NotFound("Office not found");
 
@@ -71,16 +60,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the office");
             }
         }
-
         #endregion
 
         #region Post
-
-        /// <summary>
-        /// Create a new office
-        /// </summary>
-        /// <param name="dto">Office data</param>
-        /// <returns>Created office</returns>
         [HttpPost("office")]
         public async Task<IActionResult> CreateOffice([FromBody] OfficeCreateDto dto)
         {
@@ -127,16 +109,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while creating the office");
             }
         }
-
         #endregion
 
         #region Put
-
-        /// <summary>
-        /// Update an existing office
-        /// </summary>
-        /// <param name="dto">Office data</param>
-        /// <returns>Updated office</returns>
         [HttpPut("office")]
         public async Task<IActionResult> UpdateOffice([FromBody] OfficeUpdateDto dto)
         {
@@ -149,7 +124,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existingOffice = await _organizationRepository.GetByIdAsync(dto.OfficeId, CurrentOrganizationId);
+                var existingOffice = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
                 if (existingOffice == null)
                     return NotFound("Office not found");
 
@@ -233,25 +208,23 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the office");
             }
         }
-
         #endregion
 
         #region Delete
-
-        /// <summary>
-        /// Delete an office
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("office/{officeId}")]
-        public async Task<IActionResult> DeleteOffice(int officeId)
+        public async Task<IActionResult> DeleteOfficeByIdAsync(int officeId)
         {
             if (officeId <= 0)
                 return BadRequest("Office ID is required");
 
             try
             {
-                await _organizationRepository.DeleteByIdAsync(officeId);
+                // Check if office exists check/delete logo before deleting office
+                var existingOffice = await _organizationRepository.GetOfficeByIdAsync(officeId, CurrentOrganizationId);
+                if (existingOffice != null && !string.IsNullOrWhiteSpace(existingOffice.LogoPath))
+                    await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, existingOffice.OfficeId, existingOffice.LogoPath);
+
+                await _organizationRepository.DeleteOfficeByIdAsync(officeId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -260,8 +233,6 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while deleting the office");
             }
         }
-
         #endregion
-
     }
 }

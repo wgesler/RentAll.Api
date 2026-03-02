@@ -4,32 +4,26 @@ namespace RentAll.Domain.Interfaces.Repositories
 {
     public interface IUserRepository
     {
-        // User Creates
-        Task<User> CreateAsync(User user);
-
-        // User Selects
-        Task<IEnumerable<User>> GetAllAsync(Guid organizationId);
-        Task<User?> GetByIdAsync(Guid userId);
-        Task<User?> GetByEmailAsync(string email);
+        #region Users
+        Task<IEnumerable<User>> GetUsersByOrganizationIdAsync(Guid organizationId);
+        Task<User?> GetUserByIdAsync(Guid userId);
+        Task<User?> GetUserByEmailAsync(string email);
         Task<bool> ExistsByEmailAsync(string email);
-
-        // User Updates
+  
+        Task<User> CreateAsync(User user);
         Task<User> UpdateByIdAsync(User user);
+        Task DeleteUserByIdAsync(Guid userId);
+        #endregion
 
-        // User Deletes
-        Task DeleteByIdAsync(Guid userId);
-
-        // RefreshToken Creates
-        Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken);
-
-        // RefreshToken Selects
+        #region Refresh Tokens
         Task<RefreshToken?> GetRefreshTokenByTokenHashAsync(string tokenHash);
         Task<RefreshToken?> GetRefreshTokenByIdAsync(Guid refreshTokenId);
         Task<IEnumerable<RefreshToken>> GetRefreshTokensByUserIdAsync(Guid userId);
         Task<IEnumerable<RefreshToken>> GetActiveRefreshTokensByUserIdAsync(Guid userId);
 
-        // RefreshToken Deletes
+        Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken);
         Task DeleteRefreshTokenByIdAsync(Guid refreshTokenId);
         Task DeleteExpiredRefreshTokensAsync();
+        #endregion
     }
 }

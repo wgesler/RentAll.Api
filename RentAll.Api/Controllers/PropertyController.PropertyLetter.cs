@@ -6,11 +6,6 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get property letter by Property ID
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>Property letter</returns>
         [HttpGet("property-letter/{propertyId}")]
         public async Task<IActionResult> GetPropertyLetterByPropertyId(Guid propertyId)
         {
@@ -20,8 +15,8 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
-                if (property == null)
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
+                if (property == null)   
                     return NotFound("Property not found");
 
                 var propertyLetter = await _propertyRepository.GetPropertyLetterByPropertyIdAsync(propertyId, CurrentOrganizationId);
@@ -41,11 +36,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new property letter
-        /// </summary>
-        /// <param name="dto">Property letter data</param>
-        /// <returns>Created property letter</returns>
         [HttpPost("property-letter")]
         public async Task<IActionResult> Create([FromBody] CreatePropertyLetterDto dto)
         {
@@ -59,7 +49,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
@@ -80,11 +70,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing property letter
-        /// </summary>
-        /// <param name="dto">Property letter data</param>
-        /// <returns>Updated property letter</returns>
         [HttpPut("property-letter")]
         public async Task<IActionResult> Update([FromBody] UpdatePropertyLetterDto dto)
         {
@@ -123,13 +108,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a property letter
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("property-letter/property/{propertyId}")]
-        public async Task<IActionResult> DeletePropertyLetter(Guid propertyId)
+        public async Task<IActionResult> GetPropertyLetterByPropertyIdAsync(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
                 return BadRequest("Property ID is required");
@@ -137,7 +117,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 

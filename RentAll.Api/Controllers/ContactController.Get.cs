@@ -4,16 +4,12 @@ namespace RentAll.Api.Controllers
 {
     public partial class ContactController
     {
-        /// <summary>
-        /// Get all contacts
-        /// </summary>
-        /// <returns>List of contacts</returns>
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetContactsByOfficeIdAsync()
         {
             try
             {
-                var contacts = await _contactRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var contacts = await _contactRepository.GetContactsByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = contacts.Select(c => new ContactResponseDto(c));
                 return Ok(response);
             }
@@ -24,20 +20,31 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get contact by ID
-        /// </summary>
-        /// <param name="id">Contact ID</param>
-        /// <returns>Contact</returns>
+        [HttpGet("type/{contactTypeId}")]
+        public async Task<IActionResult> GetContactsByContactTypeIdAsync(int contactTypeId)
+        {
+            try
+            {
+                var contacts = await _contactRepository.GetContactsByContactTypeIdAsync(contactTypeId, CurrentOrganizationId);
+                var response = contacts.Select(c => new ContactResponseDto(c));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting contacts by ContactTypeId: {ContactTypeId}", contactTypeId);
+                return ServerError("An error occurred while retrieving contacts");
+            }
+        }
+
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetContactById(Guid id)
         {
             if (id == Guid.Empty)
                 return BadRequest("Contact ID is required");
 
             try
             {
-                var contact = await _contactRepository.GetByIdAsync(id, CurrentOrganizationId);
+                var contact = await _contactRepository.GetContactByIdAsync(id, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound("Contact not found");
 
@@ -47,27 +54,6 @@ namespace RentAll.Api.Controllers
             {
                 _logger.LogError(ex, "Error getting contact by ID: {ContactId}", id);
                 return ServerError("An error occurred while retrieving the contact");
-            }
-        }
-
-        /// <summary>
-        /// Get contacts by ContactTypeId
-        /// </summary>
-        /// <param name="contactTypeId">Contact Type ID</param>
-        /// <returns>List of contacts</returns>
-        [HttpGet("type/{contactTypeId}")]
-        public async Task<IActionResult> GetByContactTypeId(int contactTypeId)
-        {
-            try
-            {
-                var contacts = await _contactRepository.GetByContactTypeIdAsync(contactTypeId, CurrentOrganizationId);
-                var response = contacts.Select(c => new ContactResponseDto(c));
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting contacts by ContactTypeId: {ContactTypeId}", contactTypeId);
-                return ServerError("An error occurred while retrieving contacts");
             }
         }
     }

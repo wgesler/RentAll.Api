@@ -30,7 +30,7 @@ public class CalendarManager : ICalendarManager
         if (!_calendarService.IsValidPropertyCalendarToken(propertyId, organizationId, token))
             return null;
 
-        var reservations = await _reservationRepository.GetByPropertyIdAsync(propertyId, organizationId);
+        var reservations = await _reservationRepository.GetReservationListByPropertyIdAsync(propertyId, organizationId);
         var calendarReservations = reservations
             .Where(r => r.IsActive)
             .Where(r => r.ReservationStatus != ReservationStatus.PreBooking)

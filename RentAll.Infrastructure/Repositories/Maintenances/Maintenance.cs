@@ -6,7 +6,40 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 
 public partial class MaintenanceRepository
 {
-    // Creates
+    #region Selects
+    public async Task<Maintenance?> GetMaintenanceByPropertyIdAsync(Guid propertyId, Guid organizationId, Guid? maintenanceId = null)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<MaintenanceEntity>("Maintenance.Maintenance_GetByPropertyId", new
+        {
+            MaintenanceId = maintenanceId,
+            PropertyId = propertyId,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<Maintenance?> GetMaintenanceByIdAsync(Guid maintenanceId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<MaintenanceEntity>("Maintenance.Maintenance_GetById", new
+        {
+            MaintenanceId = maintenanceId,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+    #endregion
+
+    #region Creates
     public async Task<Maintenance> CreateAsync(Maintenance maintenanceRecord)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -27,41 +60,9 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+    #endregion
 
-    // Selects
-
-    public async Task<Maintenance?> GetByPropertyIdAsync(Guid propertyId, Guid organizationId, Guid? maintenanceId = null)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<MaintenanceEntity>("Maintenance.Maintenance_GetByPropertyId", new
-        {
-            MaintenanceId = maintenanceId,
-            PropertyId = propertyId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<Maintenance?> GetByIdAsync(Guid maintenanceId, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<MaintenanceEntity>("Maintenance.Maintenance_GetById", new
-        {
-            MaintenanceId = maintenanceId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    // Updates
+    #region Updates
     public async Task<Maintenance> UpdateByIdAsync(Maintenance maintenanceRecord)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -83,9 +84,10 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+    #endregion
 
-    // Deletes
-    public async Task DeleteByIdAsync(Guid maintenanceId, Guid propertyId, Guid organizationId)
+    #region Deletes
+    public async Task DeleteMaintenanceByIdAsync(Guid maintenanceId, Guid propertyId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.Maintenance_DeleteById", new
@@ -95,4 +97,5 @@ public partial class MaintenanceRepository
             OrganizationId = organizationId
         });
     }
+    #endregion
 }

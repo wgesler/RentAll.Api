@@ -6,46 +6,8 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Create
-    public async Task<Building> CreateBuildingAsync(Building building)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_Add", new
-        {
-            OrganizationId = building.OrganizationId,
-            OfficeId = building.OfficeId,
-            BuildingCode = building.BuildingCode,
-            Name = building.Name,
-            Description = building.Description,
-            HoaName = building.HoaName,
-            HoaPhone = building.HoaPhone,
-            HoaEmail = building.HoaEmail,
-            IsActive = building.IsActive
-        });
-
-        if (res == null || !res.Any())
-            throw new Exception("Building not created");
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-    #endregion
-
-    #region Select
-    public async Task<IEnumerable<Building>> GetAllBuildingsAsync(Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_GetAll", new
-        {
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Building>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Building>> GetAllBuildingsByOfficeIdAsync(Guid organizationId, string officeAccess)
+    #region Selects
+    public async Task<IEnumerable<Building>> GetBuildingsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_GetAllByOfficeId", new
@@ -105,7 +67,31 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Update
+    #region Creates
+    public async Task<Building> CreateBuildingAsync(Building building)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<BuildingEntity>("Organization.Building_Add", new
+        {
+            OrganizationId = building.OrganizationId,
+            OfficeId = building.OfficeId,
+            BuildingCode = building.BuildingCode,
+            Name = building.Name,
+            Description = building.Description,
+            HoaName = building.HoaName,
+            HoaPhone = building.HoaPhone,
+            HoaEmail = building.HoaEmail,
+            IsActive = building.IsActive
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("Building not created");
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+    #endregion
+
+    #region Updates
     public async Task<Building> UpdateBuildingByIdAsync(Building building)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -130,7 +116,7 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Delete
+    #region Deletes
     public async Task DeleteBuildingByIdAsync(int buildingId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

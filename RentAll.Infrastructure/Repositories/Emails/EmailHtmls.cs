@@ -6,8 +6,24 @@ namespace RentAll.Infrastructure.Repositories.Emails
 {
     public partial class EmailRepository
     {
-        #region Create
-        public async Task<EmailHtml> CreateEmailHtmlAsync(EmailHtml emailHtml)
+        #region Selects
+    public async Task<EmailHtml?> GetEmailHtmlByOrganizationIdAsync(Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_GetById", new
+            {
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+#region Creates
+    public async Task<EmailHtml> CreateEmailHtmlAsync(EmailHtml emailHtml)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_Add", new
@@ -30,24 +46,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
         }
         #endregion
 
-        #region Select
-        public async Task<EmailHtml?> GetEmailHtmlByOrganizationIdAsync(Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_GetById", new
-            {
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-        #endregion
-
-        #region Update
-        public async Task<EmailHtml> UpdateEmailHtmlByOrganizationIdAsync(EmailHtml emailHtml)
+#region Updates
+    public async Task<EmailHtml> UpdateEmailHtmlByOrganizationIdAsync(EmailHtml emailHtml)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_UpdateById", new
@@ -70,8 +70,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
         }
         #endregion
 
-        #region Delete
-        public async Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId)
+#region Deletes
+    public async Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Email.EmailHtml_DeleteById", new

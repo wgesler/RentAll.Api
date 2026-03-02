@@ -6,7 +6,71 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 
 public partial class AccountingRepository
 {
-    #region Create
+    #region Selects
+    public async Task<IEnumerable<Invoice>> GetInvoicesByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Invoice>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<IEnumerable<Invoice>> GetInvoicesByReservationIdAsync(Guid reservationId, Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByReservationAndOfficeIds", new
+        {
+            ReservationId = reservationId,
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Invoice>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<IEnumerable<Invoice>> GetInvoicesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByPropertyAndOfficeIds", new
+        {
+            PropertyId = propertyId,
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Invoice>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
+        {
+            InvoiceId = invoiceId,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+    #endregion
+
+    #region Creates
     public async Task<Invoice> CreateAsync(Invoice invoice)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -72,115 +136,7 @@ public partial class AccountingRepository
     }
     #endregion
 
-    #region Select
-    public async Task<IEnumerable<Invoice>> GetAllAsync(Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAll", new
-        {
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetAllByOfficeIdsAsync(Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByOfficeIds", new
-        {
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetAllByReservationIdAsync(Guid reservationId, Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByReservationAndOfficeIds", new
-        {
-            ReservationId = reservationId,
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetAllByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByPropertyAndOfficeIds", new
-        {
-            PropertyId = propertyId,
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByOfficeIds", new
-        {
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<Invoice?> GetByIdAsync(Guid invoiceId, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-        {
-            InvoiceId = invoiceId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetByReservationIdAsync(Guid reservationId, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetByReservationId", new
-        {
-            ReservationId = reservationId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-    #endregion
-
-    #region Update
+    #region Updates
     public async Task<Invoice> UpdateByIdAsync(Invoice invoice)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -291,8 +247,8 @@ public partial class AccountingRepository
     }
     #endregion
 
-    #region Delete
-    public async Task DeleteByIdAsync(Guid invoiceId, Guid organizationId)
+    #region Deletes
+    public async Task DeleteInvoiceByIdAsync(Guid invoiceId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Accounting.Invoice_DeleteById", new

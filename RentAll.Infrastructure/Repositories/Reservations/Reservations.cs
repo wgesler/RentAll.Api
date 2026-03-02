@@ -6,7 +6,54 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 {
     public partial class ReservationRepository
     {
-        #region Create
+        #region Selects
+        public async Task<IEnumerable<ReservationList>> GetReservationListByOfficeIdAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetListByOfficeId", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<ReservationList>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
+        public async Task<IEnumerable<Reservation>> GetReservationListByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetListByPropertyId", new
+            {
+                PropertyId = propertyId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Reservation>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
+        public async Task<Reservation?> GetReservationByIdAsync(Guid reservationId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
+            {
+                ReservationId = reservationId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+        #region Creates
         public async Task<Reservation> CreateAsync(Reservation reservation)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -83,56 +130,9 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         }
         #endregion
 
-        #region Select
-        public async Task<IEnumerable<ReservationList>> GetListByOfficeIdAsync(Guid organizationId, string officeAccess)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetListByOfficeId", new
-            {
-                OrganizationId = organizationId,
-                Offices = officeAccess
-            });
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<ReservationList>();
-
-            return res.Select(ConvertEntityToModel);
-        }
-
-        public async Task<Reservation?> GetByIdAsync(Guid reservationId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
-            {
-                ReservationId = reservationId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<IEnumerable<Reservation>> GetByPropertyIdAsync(Guid propertyId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetByPropertyId", new
-            {
-                PropertyId = propertyId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Reservation>();
-
-            return res.Select(ConvertEntityToModel);
-        }
-        #endregion
-
-        #region Update
+        #region Updates
         public async Task<Reservation> UpdateByIdAsync(Reservation reservation)
-        {
+            {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.OpenAsync();
             await using var transaction = await db.BeginTransactionAsync();
@@ -270,8 +270,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         }
         #endregion
 
-        #region Delete
-        public async Task DeleteByIdAsync(Guid reservationId)
+        #region Deletes
+        public async Task DeleteReservationByIdAsync(Guid reservationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.Reservation_DeleteById", new

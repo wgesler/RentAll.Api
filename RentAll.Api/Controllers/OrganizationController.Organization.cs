@@ -5,16 +5,12 @@ namespace RentAll.Api.Controllers
     {
 
         #region Get
-        /// <summary>
-        /// Get all organizations
-        /// </summary>
-        /// <returns>List of organizations</returns>
         [HttpGet]
-        public async Task<IActionResult> GetAllOrganizations()
+        public async Task<IActionResult> GetOrganizationsAsync()
         {
             try
             {
-                var orgs = await _organizationRepository.GetAllAsync();
+                var orgs = await _organizationRepository.GetOrganizationsAsync();
                 var response = new List<OrganizationResponseDto>();
                 foreach (var org in orgs)
                 {
@@ -33,17 +29,12 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get organization by ID
-        /// </summary>
-        /// <param name="organizationId">Organization ID</param>
-        /// <returns>Organization</returns>
         [HttpGet("{organizationId}")]
-        public async Task<IActionResult> GetOrganizationById(Guid organizationId)
+        public async Task<IActionResult> GetOrganizationByIdAsync(Guid organizationId)
         {
             try
             {
-                var org = await _organizationRepository.GetByIdAsync(organizationId);
+                var org = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
                 if (org == null)
                     return NotFound("Organization not found");
 
@@ -64,15 +55,9 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new organization
-        /// </summary>
-        /// <param name="dto">Organization data</param>
-        /// <returns>Created organization</returns>
         [HttpPost]
         public async Task<IActionResult> CreateOrganization([FromBody] CreateOrganizationDto dto)
         {
-            System.Diagnostics.Debugger.Break();
             if (dto == null)
                 return BadRequest("Organization data is required");
 
@@ -123,11 +108,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing organization
-        /// </summary>
-        /// <param name="dto">Organization data</param>
-        /// <returns>Updated organization</returns>
         [HttpPut]
         public async Task<IActionResult> UpdateOrganization([FromBody] UpdateOrganizationDto dto)
         {
@@ -140,7 +120,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existing = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
+                var existing = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
                 if (existing == null)
                     return NotFound("Organization not found");
 
@@ -203,29 +183,25 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete an organization
-        /// </summary>
-        /// <param name="organizationId">Organization ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("{organizationId}")]
-        public async Task<IActionResult> DeleteOrganization(Guid organizationId)
+        public async Task<IActionResult> DeleteOrganizationByIdAsync(Guid organizationId)
         {
-            System.Diagnostics.Debugger.Break();
             if (organizationId == Guid.Empty)
                 return BadRequest("OrganizationId is required");
 
             try
             {
-                var existing = await _organizationRepository.GetByIdAsync(organizationId);
-                if (existing == null)
-                    return NotFound("Organization not found");
-
-                var users = await _userRepository.GetAllAsync(existing.OrganizationId);
+                var users = await _userRepository.GetUsersByOrganizationIdAsync(organizationId);
                 if (users != null)
                     return BadRequest("Unable to delete an organization that still has users");
 
-                await _organizationRepository.DeleteByIdAsync(organizationId);
+                // Check if organization exists then check/delete logo
+                var existing = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
+                if (existing != null && !string.IsNullOrWhiteSpace(existing.LogoPath))
+                    await _fileService.DeleteLogoAsync(existing.OrganizationId, null, existing.LogoPath);
+
+
+                await _organizationRepository.DeleteOrganizationByIdAsync(organizationId);
                 return NoContent();
             }
             catch (Exception ex)

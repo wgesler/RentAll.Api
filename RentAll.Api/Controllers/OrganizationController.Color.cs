@@ -5,16 +5,12 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
-        /// <summary>
-        /// Get all colors for the current organization
-        /// </summary>
-        /// <returns>List of colors</returns>
         [HttpGet("color")]
         public async Task<IActionResult> GetAllColors()
         {
             try
             {
-                var colors = await _organizationRepository.GetAllColorsAsync(CurrentOrganizationId);
+                var colors = await _organizationRepository.GetColorsByOrganizationIdAsync(CurrentOrganizationId);
                 var response = colors.Select(c => new ColorResponseDto(c));
                 return Ok(response);
             }
@@ -25,11 +21,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get color by ColorId
-        /// </summary>
-        /// <param name="ColorId">Color Id</param>
-        /// <returns>Color</returns>
         [HttpGet("color/{colorId}")]
         public async Task<IActionResult> GetColorById(int colorId)
         {
@@ -48,11 +39,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update color for organization and reservation status
-        /// </summary>
-        /// <param name="dto">Color data</param>
-        /// <returns>Updated color</returns>
         [HttpPut("color")]
         public async Task<IActionResult> UpdateColor([FromBody] UpdateColorDto dto)
         {

@@ -1,12 +1,86 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using System.ComponentModel.Design;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Create
+    #region Selects
+    public async Task<IEnumerable<Office>> GetOfficesByOrganizationIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetAll", new
+        {
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Office>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+    public async Task<IEnumerable<Office>> GetOfficesByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Office>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<Office?> GetOfficeByIdAsync(int officeId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetById", new
+        {
+            OfficeId = officeId,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<Office?> GetOfficeByOfficeCodeAsync(string officeCode, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetByCode", new
+        {
+            OfficeCode = officeCode,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<bool> ExistsByOfficeCodeAsync(string officeCode, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryScalarAsync<int>("Organization.Office_ExistsByCode", new
+        {
+            OfficeCode = officeCode,
+            OrganizationId = organizationId
+        });
+
+        return result == 1;
+    }
+    #endregion
+
+    #region Creates
     public async Task<Office> CreateAsync(Office office)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -56,80 +130,7 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Select
-    public async Task<IEnumerable<Office>> GetAllAsync(Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetAll", new
-        {
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Office>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Office>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetAllByOfficeId", new
-        {
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Office>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<Office?> GetByIdAsync(int officeId, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetById", new
-        {
-            OfficeId = officeId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<Office?> GetByOfficeCodeAsync(string officeCode, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OfficeEntity>("Organization.Office_GetByCode", new
-        {
-            OfficeCode = officeCode,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<bool> ExistsByOfficeCodeAsync(string officeCode, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var result = await db.DapperProcQueryScalarAsync<int>("Organization.Office_ExistsByCode", new
-        {
-            OfficeCode = officeCode,
-            OrganizationId = organizationId
-        });
-
-        return result == 1;
-    }
-    #endregion
-
-    #region Update
+    #region Updates
     public async Task<Office> UpdateByIdAsync(Office office)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -180,8 +181,8 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Delete
-    public async Task DeleteByIdAsync(int officeId)
+    #region Deletes
+    public async Task DeleteOfficeByIdAsync(int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Organization.Office_DeleteById", new

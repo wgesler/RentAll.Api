@@ -6,11 +6,6 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get lease information by ID
-        /// </summary>
-        /// <param name="reservationId">Lease Information ID</param>
-        /// <returns>Lease information</returns>
         [HttpGet("lease-information/{reservationId}")]
         public async Task<IActionResult> GetLeaseInformationById(Guid reservationId)
         {
@@ -32,11 +27,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get lease information by Property ID
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>Lease information</returns>
         [HttpGet("lease-information/property/{propertyId}")]
         public async Task<IActionResult> GetLeaseInformationByPropertyId(Guid propertyId)
         {
@@ -46,7 +36,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
@@ -67,11 +57,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new lease information
-        /// </summary>
-        /// <param name="dto">Lease information data</param>
-        /// <returns>Created lease information</returns>
         [HttpPost("lease-information")]
         public async Task<IActionResult> CreateLeaseInformation([FromBody] CreateLeaseInformationDto dto)
         {
@@ -85,14 +70,14 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
                 // Verify contact belongs to organization if ContactId is provided
                 if (dto.ContactId.HasValue)
                 {
-                    var contact = await _contactRepository.GetByIdAsync(dto.ContactId.Value, CurrentOrganizationId);
+                    var contact = await _contactRepository.GetContactByIdAsync(dto.ContactId.Value, CurrentOrganizationId);
                     if (contact == null)
                         return NotFound("Contact not found");
                 }
@@ -114,11 +99,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing lease information
-        /// </summary>
-        /// <param name="dto">Lease information data</param>
-        /// <returns>Updated lease information</returns>
         [HttpPut("lease-information")]
         public async Task<IActionResult> UpdateLeaseInformation([FromBody] UpdateLeaseInformationDto dto)
         {
@@ -157,13 +137,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a lease information
-        /// </summary>
-        /// <param name="reservationId">Lease Information ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("lease-information/{reservationId}")]
-        public async Task<IActionResult> DeleteLeaseInformation(Guid reservationId)
+        public async Task<IActionResult> DeleteLeaseInformationByIdAsync(Guid reservationId)
         {
             if (reservationId == Guid.Empty)
                 return BadRequest("Lease Information ID is required");

@@ -6,11 +6,6 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get property HTML by Property ID
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>Property HTML</returns>
         [HttpGet("property-html/{propertyId}")]
         public async Task<IActionResult> GetPropertyHtmlByPropertyId(Guid propertyId)
         {
@@ -20,7 +15,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
@@ -41,11 +36,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new property HTML
-        /// </summary>
-        /// <param name="dto">Property HTML data</param>
-        /// <returns>Created property HTML</returns>
         [HttpPost("property-html")]
         public async Task<IActionResult> Create([FromBody] CreatePropertyHtmlDto dto)
         {
@@ -59,7 +49,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
@@ -80,11 +70,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing property HTML
-        /// </summary>
-        /// <param name="dto">Property HTML data</param>
-        /// <returns>Updated property HTML</returns>
         [HttpPut("property-html")]
         public async Task<IActionResult> Update([FromBody] UpdatePropertyHtmlDto dto)
         {
@@ -117,13 +102,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a property HTML
-        /// </summary>
-        /// <param name="propertyId">Property ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("property-html/property/{propertyId}")]
-        public async Task<IActionResult> DeletePropertyHtml(Guid propertyId)
+        public async Task<IActionResult> GetPropertyHtmlByPropertyIdAsync(Guid propertyId)
         {
             if (propertyId == Guid.Empty)
                 return BadRequest("Property ID is required");
@@ -131,11 +111,11 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Verify property belongs to organization
-                var property = await _propertyRepository.GetByIdAsync(propertyId, CurrentOrganizationId);
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
                 if (property == null)
                     return NotFound("Property not found");
 
-                // Check if HTML exists
+                // Check if HTML exists 
                 var propertyHtml = await _propertyRepository.GetPropertyHtmlByPropertyIdAsync(propertyId, CurrentOrganizationId);
                 if (propertyHtml == null)
                     return NotFound("Property HTML not found");

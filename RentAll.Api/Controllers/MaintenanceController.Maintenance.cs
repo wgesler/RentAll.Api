@@ -6,19 +6,15 @@ public partial class MaintenanceController
 {
     #region Get
 
-    /// <summary>
-    /// Get all maintenance records for a property.
-    /// <param name="propertyId">Property ID</param>
-    /// </summary>
     [HttpGet("property/{propertyId:guid}")]
-    public async Task<IActionResult> GetByPropertyId(Guid propertyId)
+    public async Task<IActionResult> GetMaintenanceByPropertyIdAsync(Guid propertyId)
     {
         if (propertyId == Guid.Empty)
             return BadRequest("PropertyId is required");
 
         try
         {
-            var record = await _maintenanceRepository.GetByPropertyIdAsync(propertyId, CurrentOrganizationId);
+            var record = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(propertyId, CurrentOrganizationId);
             if (record == null || record.IsDeleted)
                 return Ok(); // This is not an error, the UI will default to blank form
 
@@ -32,20 +28,15 @@ public partial class MaintenanceController
         }
     }
 
-    /// <summary>
-    /// Get all maintenance records for a property.
-    /// <param name="maintenanceId">Maintenance ID</param>
-    /// <param name="propertyId">Property ID</param>
-    /// </summary>
     [HttpGet("{maintenanceId:guid}/property/{propertyId:guid}")]
-    public async Task<IActionResult> GetByPropertyId(Guid maintenanceId, Guid propertyId)
+    public async Task<IActionResult> GetMaintenanceByIdAsync(Guid maintenanceId, Guid propertyId)
     {
         if (propertyId == Guid.Empty)
             return BadRequest("PropertyId is required");
 
         try
         {
-            var record = await _maintenanceRepository.GetByPropertyIdAsync(maintenanceId, propertyId, CurrentOrganizationId);
+            var record = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(propertyId, CurrentOrganizationId, maintenanceId);
             if (record == null || record.IsDeleted)
                 return NotFound("Maintenance record not found");
 
@@ -59,19 +50,15 @@ public partial class MaintenanceController
         }
     }
 
-    /// <summary>
-    /// Get a maintenance record by ID.
-    /// <param name="maintenanceId">Maintenance ID</param>
-    /// </summary>
     [HttpGet("{maintenanceId:guid}")]
-    public async Task<IActionResult> GetById(Guid maintenanceId)
+    public async Task<IActionResult> GetMaintenanceByIdAsync(Guid maintenanceId)
     {
         if (maintenanceId == Guid.Empty)
             return BadRequest("MaintenanceId is required");
 
         try
         {
-            var record = await _maintenanceRepository.GetByIdAsync(maintenanceId, CurrentOrganizationId);
+            var record = await _maintenanceRepository.GetMaintenanceByIdAsync(maintenanceId, CurrentOrganizationId);
             if (record == null || record.IsDeleted)
                 return NotFound("Maintenance record not found");
 
@@ -89,9 +76,6 @@ public partial class MaintenanceController
 
     #region Post
 
-    /// <summary>
-    /// Create a new maintenance record.
-    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateMaintenanceDto dto)
     {
@@ -107,7 +91,7 @@ public partial class MaintenanceController
 
         try
         {
-            var property = await _propertyRepository.GetByIdAsync(dto.PropertyId, CurrentOrganizationId);
+            var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
             if (property == null)
                 return NotFound("Property not found");
 
@@ -128,9 +112,6 @@ public partial class MaintenanceController
 
     #region Put
 
-    /// <summary>
-    /// Update an existing maintenance record.
-    /// </summary>
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] UpdateMaintenanceDto dto)
     {
@@ -163,9 +144,6 @@ public partial class MaintenanceController
 
     #region Delete
 
-    /// <summary>
-    /// Delete a maintenance record (soft delete).
-    /// </summary>
     [HttpDelete("{maintenanceId:guid}")]
     public async Task<IActionResult> Delete(Guid maintenanceId, Guid propertyId)
     {
@@ -174,11 +152,7 @@ public partial class MaintenanceController
 
         try
         {
-            var existing = await _maintenanceRepository.GetByIdAsync(maintenanceId, CurrentOrganizationId);
-            if (existing == null || existing.IsDeleted)
-                return NotFound("Maintenance record not found");
-
-            await _maintenanceRepository.DeleteByIdAsync(maintenanceId, propertyId, CurrentOrganizationId);
+            await _maintenanceRepository.DeleteMaintenanceByIdAsync(maintenanceId, propertyId, CurrentOrganizationId);
             return NoContent();
         }
         catch (Exception ex)

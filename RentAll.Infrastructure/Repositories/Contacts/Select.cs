@@ -7,21 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 {
     public partial class ContactRepository : IContactRepository
     {
-        public async Task<IEnumerable<Contact>> GetAllAsync(Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAll", new
-            {
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Contact>();
-
-            return res.Select(ConvertEntityToModel);
-        }
-
-        public async Task<IEnumerable<Contact>> GetAllByOfficeIdAsync(Guid organizationId, string officeAccess)
+        public async Task<IEnumerable<Contact>> GetContactsByOfficeIdAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAllByOfficeId", new
@@ -36,7 +22,22 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<Contact?> GetByIdAsync(Guid contactId, Guid organizationId)
+        public async Task<IEnumerable<Contact>> GetContactsByContactTypeIdAsync(int contactTypeId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByContactTypeId", new
+            {
+                ContactTypeId = contactTypeId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Contact>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
+        public async Task<Contact?> GetContactByIdAsync(Guid contactId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetById", new
@@ -50,7 +51,8 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
-        public async Task<Contact?> GetByEmailAsync(string email, Guid organizationId)
+
+        public async Task<Contact?> GetContactByEmailAsync(string email, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByEmail", new
@@ -65,7 +67,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
-        public async Task<Contact?> GetByContactCodeAsync(string contactCode, Guid organizationId)
+        public async Task<Contact?> GetContactByContactCodeAsync(string contactCode, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByCode", new
@@ -78,21 +80,6 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 return null;
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-
-        public async Task<IEnumerable<Contact>> GetByContactTypeIdAsync(int contactTypeId, Guid organizationId)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByContactTypeId", new
-            {
-                ContactTypeId = contactTypeId,
-                OrganizationId = organizationId
-            });
-
-            if (res == null || !res.Any())
-                return Enumerable.Empty<Contact>();
-
-            return res.Select(ConvertEntityToModel);
         }
 
         public async Task<bool> ExistsByContactCodeAsync(string contactCode, Guid organizationId)

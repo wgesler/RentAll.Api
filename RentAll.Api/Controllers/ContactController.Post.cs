@@ -4,11 +4,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class ContactController
     {
-        /// <summary>
-        /// Create a new contact
-        /// </summary>
-        /// <param name="dto">Contact data</param>
-        /// <returns>Created contact</returns>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateContactDto dto)
         {

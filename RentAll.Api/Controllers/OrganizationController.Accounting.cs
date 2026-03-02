@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all accounting offices
-        /// </summary>
-        /// <returns>List of accounting offices</returns>
         [HttpGet("accounting-office")]
-        public async Task<IActionResult> GetAllAccountingOffices()
+        public async Task<IActionResult> GetAccountingOfficesByOfficeIdAsync()
         {
             try
             {
-                var accountingOffices = await _organizationRepository.GetAllAccountingByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var accountingOffices = await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = new List<AccountingOfficeResponseDto>();
                 foreach (var accountingOffice in accountingOffices)
                 {
@@ -34,20 +30,15 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get accounting office by ID
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <returns>Accounting office</returns>
         [HttpGet("accounting-office/{officeId}")]
-        public async Task<IActionResult> GetAccountingOfficeById(int officeId)
+        public async Task<IActionResult> GetAccountingOfficeByIdAsync(int officeId)
         {
             if (officeId <= 0)
                 return BadRequest("Office ID is required");
 
             try
             {
-                var accountingOffice = await _organizationRepository.GetAccountingByIdAsync(CurrentOrganizationId, officeId);
+                var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 if (accountingOffice == null)
                     return NotFound("Accounting office not found");
 
@@ -63,16 +54,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the accounting office");
             }
         }
-
         #endregion
 
         #region Post
-
-        /// <summary>
-        /// Create a new accounting office
-        /// </summary>
-        /// <param name="dto">Accounting office data</param>
-        /// <returns>Created accounting office</returns>
         [HttpPost("accounting-office")]
         public async Task<IActionResult> CreateAccountingOffice([FromBody] CreateAccountingOfficeDto dto)
         {
@@ -86,7 +70,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if accounting office already exists
-                var existing = await _organizationRepository.GetAccountingByIdAsync(dto.OrganizationId, dto.OfficeId);
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(dto.OrganizationId, dto.OfficeId);
                 if (existing != null)
                     return Conflict("Accounting office code already exists");
 
@@ -126,12 +110,6 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Put
-
-        /// <summary>
-        /// Update an existing accounting office
-        /// </summary>
-        /// <param name="dto">Accounting office data</param>
-        /// <returns>Updated accounting office</returns>
         [HttpPut("accounting-office")]
         public async Task<IActionResult> UpdateAccountingOffice([FromBody] UpdateAccountingOfficeDto dto)
         {
@@ -145,7 +123,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if accounting office exists
-                var existingAccountingOffice = await _organizationRepository.GetAccountingByIdAsync(CurrentOrganizationId, dto.OfficeId);
+                var existingAccountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, dto.OfficeId);
                 if (existingAccountingOffice == null)
                     return NotFound("Accounting office not found");
 
@@ -200,36 +178,23 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the accounting office");
             }
         }
-
         #endregion
 
         #region Delete
-
-        /// <summary>
-        /// Delete an accounting office
-        /// </summary>
-        /// <param name="officeId">Office ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("accounting-office/{officeId}")]
-        public async Task<IActionResult> DeleteAccountingOffice(int officeId)
+        public async Task<IActionResult> DeleteAccountingOfficeByIdAsync(int officeId)
         {
             if (officeId <= 0)
                 return BadRequest("Office ID is required");
 
             try
             {
-                // Check if accounting office exists
-                var existingAccountingOffice = await _organizationRepository.GetAccountingByIdAsync(CurrentOrganizationId, officeId);
-                if (existingAccountingOffice == null)
-                    return NotFound("Accounting office not found");
+                // Check if accounting office exists and be sure to delete the logo file 
+                var existingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+                if (existingOffice != null && !string.IsNullOrWhiteSpace(existingOffice.LogoPath))
+                    await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, existingOffice.OfficeId, existingOffice.LogoPath);
 
-                // Delete logo if it exists
-                if (!string.IsNullOrWhiteSpace(existingAccountingOffice.LogoPath))
-                {
-                    await _fileService.DeleteLogoAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, existingAccountingOffice.LogoPath);
-                }
-
-                await _organizationRepository.DeleteAccountingAsync(CurrentOrganizationId, officeId);
+                await _organizationRepository.DeleteAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 return NoContent();
             }
             catch (Exception ex)

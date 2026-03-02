@@ -6,29 +6,7 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 
 public partial class MaintenanceRepository
 {
-    // Inventory - Creates
-    public async Task<Inventory> CreateInventoryAsync(Inventory inventory)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_Add", new
-        {
-            OrganizationId = inventory.OrganizationId,
-            OfficeId = inventory.OfficeId,
-            PropertyId = inventory.PropertyId,
-            MaintenanceId = inventory.MaintenanceId,
-            InventoryCheckList = inventory.InventoryCheckList,
-            DocumentPath = inventory.DocumentPath,
-            IsActive = inventory.IsActive,
-            CreatedBy = inventory.CreatedBy
-        });
-
-        if (res == null || !res.Any())
-            throw new Exception("Inventory record not created");
-
-        return ConvertEntityToModel(res.First());
-    }
-
-    // Inventory - Selects
+    #region Selects
     public async Task<IEnumerable<Inventory>> GetInventoriesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -61,6 +39,22 @@ public partial class MaintenanceRepository
         return res.Select(ConvertEntityToModel);
     }
 
+    public async Task<Inventory?> GetLatestInventoryByPropertyId(Guid propertyId, Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InventoryListEntity>("Maintenance.Inventory_GetLatestByPropertyId", new
+        {
+            PropertyId = propertyId,
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.First());
+    }
+
     public async Task<Inventory?> GetInventoryByIdAsync(int inventoryId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -75,9 +69,33 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.First());
     }
+    #endregion
 
-    // Inventory - Updates
-    public async Task<Inventory> UpdateInventoryByIdAsync(Inventory inventory)
+    #region Creates
+    public async Task<Inventory> CreateInventoryAsync(Inventory inventory)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_Add", new
+        {
+            OrganizationId = inventory.OrganizationId,
+            OfficeId = inventory.OfficeId,
+            PropertyId = inventory.PropertyId,
+            MaintenanceId = inventory.MaintenanceId,
+            InventoryCheckList = inventory.InventoryCheckList,
+            DocumentPath = inventory.DocumentPath,
+            IsActive = inventory.IsActive,
+            CreatedBy = inventory.CreatedBy
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("Inventory record not created");
+
+        return ConvertEntityToModel(res.First());
+    }
+    #endregion
+
+    #region Updates
+    public async Task<Inventory> UpdateInventoryAsync(Inventory inventory)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_UpdateById", new
@@ -98,8 +116,9 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.First());
     }
+    #endregion
 
-    // Inventory - Deletes
+    #region Deletes
     public async Task DeleteInventoryByIdAsync(int inventoryId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -109,4 +128,5 @@ public partial class MaintenanceRepository
             OrganizationId = organizationId
         });
     }
+    #endregion
 }

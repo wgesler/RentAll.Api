@@ -22,7 +22,7 @@ public class MaintenanceManager : IMaintenanceManager
             return await _maintenanceRepository.UpdateByIdAsync(maintenance);
 
         // Retire the old maintenance record
-        var existing = await _maintenanceRepository.GetByIdAsync(maintenance.MaintenanceId, maintenance.OrganizationId);
+        var existing = await _maintenanceRepository.GetMaintenanceByIdAsync(maintenance.MaintenanceId, maintenance.OrganizationId);
         if (existing == null)
             throw new Exception($"Maintenance with ID {maintenance.MaintenanceId} not found.");
 

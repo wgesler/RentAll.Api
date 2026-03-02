@@ -24,7 +24,7 @@ public class AuthManager
 
     public async Task<(bool Success, User? User, string? AccessToken, string? RefreshToken)> LoginAsync(string email, string password)
     {
-        var user = await _userRepository.GetByEmailAsync(email);
+        var user = await _userRepository.GetUserByEmailAsync(email);
 
         if (user == null)
             return (false, null, null, null);
@@ -93,7 +93,7 @@ public class AuthManager
             return (false, null, null, null, "Invalid or expired refresh token");
 
         // Get the user
-        var user = await _userRepository.GetByIdAsync(storedToken.UserId);
+        var user = await _userRepository.GetUserByIdAsync(storedToken.UserId);
         if (user == null)
             return (false, null, null, null, "User not found");
 
@@ -156,7 +156,7 @@ public class AuthManager
         if (string.IsNullOrWhiteSpace(newPassword))
             return (false, "New password is required");
 
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetUserByIdAsync(userId);
         if (user == null)
             return (false, "User not found");
 

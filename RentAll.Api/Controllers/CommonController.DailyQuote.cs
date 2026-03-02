@@ -4,10 +4,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class CommonController
     {
-        /// <summary>
-        /// Get daily quote
-        /// </summary>        
-        /// <returns>Daily Quote</returns>
         [HttpGet("daily-quote")]
         public async Task<IActionResult> GetDailyQuote()
         {

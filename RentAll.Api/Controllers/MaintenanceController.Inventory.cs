@@ -25,6 +25,28 @@ public partial class MaintenanceController
         }
     }
 
+    [HttpGet("inventory/latest/{propertyId:guid}")]
+    public async Task<IActionResult> GetLatestInventoryByPropertyId(Guid propertyId)
+    {
+        if (propertyId == Guid.Empty)
+            return BadRequest("PropertyId is required");
+
+        try
+        {
+            var record = await _maintenanceRepository.GetLatestInventoryByPropertyId(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
+            if (record == null)
+                return NotFound("Inventory record not found");
+
+            var response = new InventoryResponseDto(record);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting latest inventory record for property: {PropertyId}", propertyId);
+            return ServerError("An error occurred while retrieving the latest inventory record");
+        }
+    }
+
     [HttpGet("inventory/{inventoryId:int}")]
     public async Task<IActionResult> GetInventoryById(int inventoryId)
     {
@@ -101,7 +123,7 @@ public partial class MaintenanceController
 
         try
         {
-            var maintenance = await _maintenanceRepository.GetByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
+            var maintenance = await _maintenanceRepository.GetMaintenanceByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
             if (maintenance == null || !maintenance.IsActive)
                 return NotFound("Maintenance record not valid");
 
@@ -110,7 +132,7 @@ public partial class MaintenanceController
                 return NotFound("Inventory record not found");
 
             var model = dto.ToModel(CurrentUser);
-            var updated = await _maintenanceRepository.UpdateInventoryByIdAsync(model);
+            var updated = await _maintenanceRepository.UpdateInventoryAsync(model);
 
             var response = new InventoryResponseDto(updated);
             return Ok(response);
@@ -134,10 +156,6 @@ public partial class MaintenanceController
 
         try
         {
-            var existing = await _maintenanceRepository.GetInventoryByIdAsync(inventoryId, CurrentOrganizationId);
-            if (existing == null)
-                return NotFound("Inventory record not found");
-
             await _maintenanceRepository.DeleteInventoryByIdAsync(inventoryId, CurrentOrganizationId);
             return NoContent();
         }

@@ -6,7 +6,7 @@ namespace RentAll.Infrastructure.Repositories.Common
 {
     public partial class CommonRepository
     {
-        #region Select
+        #region Selects
         public async Task<IEnumerable<State>> GetAllStatesAsync()
         {
             await using var db = new SqlConnection(_dbConnectionString);

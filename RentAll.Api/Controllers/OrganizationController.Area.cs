@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all areas
-        /// </summary>
-        /// <returns>List of areas</returns>
         [HttpGet("area")]
         public async Task<IActionResult> GetAllAreas()
         {
             try
             {
-                var areas = await _organizationRepository.GetAllAreasByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var areas = await _organizationRepository.GetAreasByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = areas.Select(a => new AreaResponseDto(a));
                 return Ok(response);
             }
@@ -26,11 +22,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get area by ID
-        /// </summary>
-        /// <param name="areaId">Area ID</param>
-        /// <returns>Area</returns>
         [HttpGet("area/{areaId}")]
         public async Task<IActionResult> GetAreaById(int areaId)
         {
@@ -56,11 +47,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new area
-        /// </summary>
-        /// <param name="dto">Area data</param>
-        /// <returns>Created area</returns>
         [HttpPost("area")]
         public async Task<IActionResult> CreateArea([FromBody] AreaCreateDto dto)
         {
@@ -93,11 +79,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing area
-        /// </summary>
-        /// <param name="dto">Area data</param>
-        /// <returns>Updated area</returns>
         [HttpPut("area")]
         public async Task<IActionResult> UpdateArea([FromBody] AreaUpdateDto dto)
         {
@@ -136,13 +117,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete an area
-        /// </summary>
-        /// <param name="areaId">Area ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("area/{areaId}")]
-        public async Task<IActionResult> DeleteArea(int areaId)
+        public async Task<IActionResult> DeleteAreaByIdAsync(int areaId)
         {
             if (areaId <= 0)
                 return BadRequest("Area ID is required");

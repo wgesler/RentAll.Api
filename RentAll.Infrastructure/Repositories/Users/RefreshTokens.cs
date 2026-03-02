@@ -6,26 +6,8 @@ namespace RentAll.Infrastructure.Repositories.Users
 {
     public partial class UserRepository
     {
-        #region Create
-        public async Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken)
-        {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_Add", new
-            {
-                UserId = refreshToken.UserId,
-                TokenHash = refreshToken.TokenHash,
-                ExpiresOn = refreshToken.ExpiresOn
-            });
-
-            if (res == null || !res.Any())
-                throw new Exception("RefreshToken not created");
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-        #endregion
-
-        #region Select
-        public async Task<RefreshToken?> GetRefreshTokenByTokenHashAsync(string tokenHash)
+        #region Selects
+    public async Task<RefreshToken?> GetRefreshTokenByTokenHashAsync(string tokenHash)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_GetByTokenHash", new
@@ -82,8 +64,26 @@ namespace RentAll.Infrastructure.Repositories.Users
         }
         #endregion
 
-        #region Delete
-        public async Task DeleteRefreshTokenByIdAsync(Guid refreshTokenId)
+#region Creates
+    public async Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_Add", new
+            {
+                UserId = refreshToken.UserId,
+                TokenHash = refreshToken.TokenHash,
+                ExpiresOn = refreshToken.ExpiresOn
+            });
+
+            if (res == null || !res.Any())
+                throw new Exception("RefreshToken not created");
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+#region Deletes
+    public async Task DeleteRefreshTokenByIdAsync(Guid refreshTokenId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("User.RefreshToken_DeleteById", new

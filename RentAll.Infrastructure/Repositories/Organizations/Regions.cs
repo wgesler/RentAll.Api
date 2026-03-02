@@ -6,43 +6,8 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 
 public partial class OrganizationRepository
 {
-    #region Create
-    public async Task<Region> CreateRegionAsync(Region region)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_Add", new
-        {
-            OrganizationId = region.OrganizationId,
-            OfficeId = region.OfficeId,
-            RegionCode = region.RegionCode,
-            Name = region.Name,
-            Description = region.Description,
-            IsActive = region.IsActive
-        });
-
-        if (res == null || !res.Any())
-            throw new Exception("Region not created");
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-    #endregion
-
-    #region Select
-    public async Task<IEnumerable<Region>> GetAllRegionsAsync(Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetAll", new
-        {
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Region>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Region>> GetAllRegionsByOfficeIdAsync(Guid organizationId, string officeAccess)
+    #region Selects
+    public async Task<IEnumerable<Region>> GetRegionsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetAllByOfficeId", new
@@ -102,7 +67,28 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Update
+    #region Creates
+    public async Task<Region> CreateRegionAsync(Region region)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_Add", new
+        {
+            OrganizationId = region.OrganizationId,
+            OfficeId = region.OfficeId,
+            RegionCode = region.RegionCode,
+            Name = region.Name,
+            Description = region.Description,
+            IsActive = region.IsActive
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("Region not created");
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+    #endregion
+
+    #region Updates
     public async Task<Region> UpdateRegionByIdAsync(Region region)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -124,7 +110,7 @@ public partial class OrganizationRepository
     }
     #endregion
 
-    #region Delete
+    #region Deletes
     public async Task DeleteRegionByIdAsync(int regionId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

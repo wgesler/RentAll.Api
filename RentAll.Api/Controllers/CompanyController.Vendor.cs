@@ -1,20 +1,18 @@
 
+using System.ComponentModel.Design;
+
 namespace RentAll.Api.Controllers
 {
     public partial class CompanyController
     {
         #region Get
 
-        /// <summary>
-        /// Get all vendors
-        /// </summary>
-        /// <returns>List of vendors</returns>
         [HttpGet("vendor")]
         public async Task<IActionResult> GetAllVendors()
         {
             try
             {
-                var vendors = await _companiesRepository.GetAllVendorsByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var vendors = await _companiesRepository.GetVendorsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = new List<VendorResponseDto>();
                 foreach (var vendor in vendors)
                 {
@@ -33,11 +31,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get vendor by ID
-        /// </summary>
-        /// <param name="vendorId">Vendor ID</param>
-        /// <returns>Vendor</returns>
         [HttpGet("vendor/{vendorId}")]
         public async Task<IActionResult> GetVendorById(Guid vendorId)
         {
@@ -66,11 +59,6 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Post
-        /// <summary>
-        /// Create a new vendor
-        /// </summary>
-        /// <param name="dto">Vendor data</param>
-        /// <returns>Created vendor</returns>
         [HttpPost("vendor")]
         public async Task<IActionResult> CreateVendor([FromBody] CreateVendorDto dto)
         {
@@ -120,11 +108,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing vendor
-        /// </summary>
-        /// <param name="dto">Vendor data</param>
-        /// <returns>Updated vendor</returns>
         [HttpPut("vendor")]
         public async Task<IActionResult> UpdateVendor([FromBody] UpdateVendorDto dto)
         {
@@ -201,23 +184,18 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete a vendor
-        /// </summary>
-        /// <param name="vendorId">Vendor ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("vendor/{vendorId}")]
-        public async Task<IActionResult> DeleteVendor(Guid vendorId)
+        public async Task<IActionResult> DeleteVendorByIdAsync(Guid vendorId)
         {
             if (vendorId == Guid.Empty)
                 return BadRequest("Vendor ID is required");
 
             try
             {
-                // Check if vendor exists
-                var vendor = await _companiesRepository.GetVendorByIdAsync(vendorId, CurrentOrganizationId);
-                if (vendor == null)
-                    return NotFound("Vendor not found");
+                // Check if vendor exists then check/delete logo
+                var existingCompany = await _companiesRepository.GetCompanyByIdAsync(vendorId, CurrentOrganizationId);
+                if (existingCompany != null && !string.IsNullOrWhiteSpace(existingCompany.LogoPath))
+                    await _fileService.DeleteLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath);
 
                 await _companiesRepository.DeleteVendorByIdAsync(vendorId);
                 return NoContent();

@@ -5,15 +5,12 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
-        /// <summary>
-        /// Get all emails.
-        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetEmailsByOfficeIdsAsync()
         {
             try
             {
-                var emails = await _emailRepository.GetAllByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var emails = await _emailRepository.GetEmailsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var response = new List<EmailResponseDto>();
                 foreach (var email in emails)
                 {
@@ -29,18 +26,15 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get email by ID.
-        /// </summary>
         [HttpGet("{emailId}")]
-        public async Task<IActionResult> GetById(Guid emailId)
+        public async Task<IActionResult> GetEmailByIdAsync(Guid emailId)
         {
             if (emailId == Guid.Empty)
                 return BadRequest("Email ID is required");
 
             try
             {
-                var email = await _emailRepository.GetByIdAsync(emailId, CurrentOrganizationId);
+                var email = await _emailRepository.GetEmailByIdAsync(emailId, CurrentOrganizationId);
                 if (email == null)
                     return NotFound("Email not found");
 
@@ -61,9 +55,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new email.
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEmailDto dto)
         {
@@ -76,7 +67,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var org = await _organizationRepository.GetByIdAsync(dto.OrganizationId);
+                var org = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
                 var email = dto.ToModel(CurrentUser);
                 var result = await _emailManager.SendEmail(org?.SendGridName, email);
 

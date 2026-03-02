@@ -29,7 +29,7 @@ public class ContactManager : IContactManager
     {
         var entityType = (EntityType)entityTypeId;
         var prefix = entityType.ToCode();
-        int nextNumber = await _commonRepository.GetNextAsync(organizationId, entityTypeId, entityType.ToString());
+        int nextNumber = await _commonRepository.GetNextCodeAsync(organizationId, entityTypeId, entityType.ToString());
         var code = $"C{prefix}-{nextNumber:D6}";
 
         return code;

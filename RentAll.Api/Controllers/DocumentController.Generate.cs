@@ -4,11 +4,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class DocumentController
     {
-        /// <summary>
-        /// Generate PDF from HTML content and return as file download (does not save to server)
-        /// </summary>
-        /// <param name="dto">Document data with HTML content</param>
-        /// <returns>PDF file download</returns>
         [HttpPost("generate-download")]
         public async Task<IActionResult> GeneratePdfDownload([FromBody] GenerateDocumentFromHtmlDto dto)
         {
@@ -35,11 +30,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Generate PDF from HTML content and upsert as document (creates if doesn't exist, updates if it does)
-        /// </summary>
-        /// <param name="dto">Document data with HTML content</param>
-        /// <returns>Created or updated document</returns>
         [HttpPost("generate")]
         public async Task<IActionResult> GenerateFromHtml([FromBody] GenerateDocumentFromHtmlDto dto)
         {
@@ -60,7 +50,7 @@ namespace RentAll.Api.Controllers
                 var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
 
                 // Check if document exists by name
-                var existing = await _documentRepository.GetByNameAsync(fileNameWithoutExtension, CurrentOrganizationId);
+                var existing = await _documentRepository.GetDocumentByNameAsync(fileNameWithoutExtension, CurrentOrganizationId);
 
                 Document result;
                 if (existing != null)

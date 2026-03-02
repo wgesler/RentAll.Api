@@ -6,16 +6,12 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        /// <summary>
-        /// Get all agents
-        /// </summary>
-        /// <returns>List of agents</returns>
         [HttpGet("agent")]
         public async Task<IActionResult> GetAllAgents()
         {
             try
             {
-                var agents = await _organizationRepository.GetAllAgentsAsync(CurrentOrganizationId);
+                var agents = await _organizationRepository.GetAgentsByOrganizationIdAsync(CurrentOrganizationId);
                 var response = agents.Select(a => new AgentResponseDto(a));
                 return Ok(response);
             }
@@ -26,11 +22,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Get agent by ID
-        /// </summary>
-        /// <param name="agentId">Agent ID</param>
-        /// <returns>Agent</returns>
         [HttpGet("agent/{agentId}")]
         public async Task<IActionResult> GetAgentById(Guid agentId)
         {
@@ -52,11 +43,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Check if agent exists by code
-        /// </summary>
-        /// <param name="agentCode">Agent Code</param>
-        /// <returns>Boolean indicating if agent exists</returns>
         [HttpGet("agent/exists/{agentCode}")]
         public async Task<IActionResult> ExistsByCode(string agentCode)
         {
@@ -79,11 +65,6 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        /// <summary>
-        /// Create a new agent
-        /// </summary>
-        /// <param name="dto">Agent data</param>
-        /// <returns>Created agent</returns>
         [HttpPost("agent")]
         public async Task<IActionResult> CreateAgent([FromBody] CreateAgentDto dto)
         {
@@ -117,11 +98,6 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        /// <summary>
-        /// Update an existing agent
-        /// </summary>
-        /// <param name="dto">Agent data</param>
-        /// <returns>Updated agent</returns>
         [HttpPut("agent")]
         public async Task<IActionResult> UpdateAgent([FromBody] UpdateAgentDto dto)
         {
@@ -161,13 +137,8 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        /// <summary>
-        /// Delete an agent
-        /// </summary>
-        /// <param name="agentId">Agent ID</param>
-        /// <returns>No content</returns>
         [HttpDelete("agent/{agentId}")]
-        public async Task<IActionResult> DeleteAgent(Guid agentId)
+        public async Task<IActionResult> DeleteAgentByIdAsync(Guid agentId)
         {
             if (agentId == Guid.Empty)
                 return BadRequest("Agent ID is required");

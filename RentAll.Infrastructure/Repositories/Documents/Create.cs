@@ -30,4 +30,3 @@ public partial class DocumentRepository : IDocumentRepository
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
 }
-

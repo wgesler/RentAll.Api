@@ -4,15 +4,19 @@ namespace RentAll.Domain.Interfaces.Repositories;
 
 public interface ILedgerLineRepository
 {
-    // Creates
-    Task<LedgerLine> CreateAsync(LedgerLine ledgerLine);
-
-    // Selects
+    #region Selects
     Task<LedgerLine?> GetByIdAsync(Guid ledgerLineId);
+    #endregion
 
-    // Updates
+    #region Creates
+    Task<LedgerLine> CreateAsync(LedgerLine ledgerLine);
+    #endregion
+
+    #region Updates
     Task<LedgerLine> UpdateByIdAsync(LedgerLine ledgerLine);
+    #endregion
 
-    // Deletes
-    Task DeleteByIdAsync(Guid ledgerLineId);
+    #region Deletes
+    Task DeleteLedgerLineByIdAsync(Guid ledgerLineId);
+    #endregion
 }
