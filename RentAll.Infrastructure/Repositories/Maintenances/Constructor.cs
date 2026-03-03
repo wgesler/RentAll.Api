@@ -119,7 +119,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             OfficeName = e.OfficeName,
-            VendorCode = e.VendorCode,
+            ContractorCode = e.ContractorCode,
             Name = e.Name,
             Phone = e.Phone,
             Website = e.Website,
@@ -144,8 +144,13 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             PropertyId = e.PropertyId,
             PropertyCode = e.PropertyCode,
             Description = e.Description,
-            DocumentPath = e.DocumentPath
+            ReceiptPath = e.ReceiptPath,
+            IsActive = e.IsActive,
+            CreatedBy = e.CreatedBy,
+            CreatedOn = e.CreatedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
         };
     }
-
 }

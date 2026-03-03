@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Domain.Models.Maintenances;
 
 public class WorkOrder
@@ -9,9 +11,12 @@ public class WorkOrder
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? DocumentPath { get; set; }
+    public string? ReceiptPath { get; set; }
+    public FileDetails? FileDetails { get; set; }
+    public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
+    public string ModifiedByName { get; set; } = string.Empty;
 }

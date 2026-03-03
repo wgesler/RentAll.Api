@@ -53,6 +53,9 @@ public partial class MaintenanceController
                 return NotFound("Work order record not found");
 
             var response = new WorkOrderResponseDto(record);
+            if (!string.IsNullOrWhiteSpace(record.ReceiptPath))
+                response.FileDetails = await _fileService.GetFileDetailsAsync(record.OrganizationId, null, record.ReceiptPath);
+
             return Ok(response);
         }
         catch (Exception ex)
@@ -79,10 +82,26 @@ public partial class MaintenanceController
 
         try
         {
-            var model = dto.ToModel();
-            var created = await _maintenanceRepository.CreateWorkOrderAsync(model);
+            var workOrder = dto.ToModel(CurrentUser);
+            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+            {
+                try
+                {
+                    var receiptPath = await _fileService.SaveLogoAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    workOrder.ReceiptPath = receiptPath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving user profile");
+                    return ServerError("An error occurred while saving the profile file");
+                }
+            }
 
+            var created = await _maintenanceRepository.CreateWorkOrderAsync(workOrder);
             var response = new WorkOrderResponseDto(created);
+            if (!string.IsNullOrWhiteSpace(created.ReceiptPath))
+                response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, null, created.ReceiptPath);
+
             return Ok(response);
         }
         catch (Exception ex)
@@ -113,8 +132,37 @@ public partial class MaintenanceController
             if (existing == null)
                 return NotFound("Work order record not found");
 
-            var model = dto.ToModel();
-            var updated = await _maintenanceRepository.UpdateWorkOrderAsync(model);
+            var workOrder = dto.ToModel(CurrentUser);
+            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Logos);
+
+                    var receiptPath = await _fileService.SaveLogoAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    workOrder.ReceiptPath = receiptPath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving user profile");
+                    return ServerError("An error occurred while saving the profile file");
+                }
+            }
+            else if (dto.ReceiptPath == null)
+            {
+                if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
+                {
+                    await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Receipts);
+                    workOrder.ReceiptPath = null;
+                }
+            }
+            else
+            {
+                workOrder.ReceiptPath = existing.ReceiptPath;
+            }
+
+            var updated = await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
 
             var response = new WorkOrderResponseDto(updated);
             return Ok(response);
@@ -136,7 +184,8 @@ public partial class MaintenanceController
 
         try
         {
-            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, CurrentOrganizationId);
+            // We never really "delete" work-orders. So don't remove the receipt
+            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)

@@ -8,7 +8,7 @@ public class ContractorResponseDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
-    public string VendorCode { get; set; } = string.Empty;
+    public string ContractorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Website { get; set; }
@@ -26,7 +26,7 @@ public class ContractorResponseDto
         OrganizationId = contractor.OrganizationId;
         OfficeId = contractor.OfficeId;
         OfficeName = contractor.OfficeName;
-        VendorCode = contractor.VendorCode;
+        ContractorCode = contractor.ContractorCode;
         Name = contractor.Name;
         Phone = contractor.Phone;
         Website = contractor.Website;

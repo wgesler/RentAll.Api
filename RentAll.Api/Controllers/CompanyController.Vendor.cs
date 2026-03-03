@@ -138,7 +138,7 @@ namespace RentAll.Api.Controllers
                     {
                         // Delete old logo if it exists
                         if (!string.IsNullOrWhiteSpace(existingVendor.LogoPath))
-                            await _fileService.DeleteLogoAsync(existingVendor.OrganizationId, existingVendor.OfficeId, existingVendor.LogoPath);
+                            await _fileService.DeleteImageAsync(existingVendor.OrganizationId, existingVendor.OfficeId, existingVendor.LogoPath, ImageType.Logos);
 
                         // Save new logo
                         var logoPath = await _fileService.SaveLogoAsync(existingVendor.OrganizationId, existingVendor.OfficeId, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Vendor);
@@ -155,7 +155,7 @@ namespace RentAll.Api.Controllers
                     // LogoPath is explicitly null - delete the logo
                     if (!string.IsNullOrWhiteSpace(existingVendor.LogoPath))
                     {
-                        await _fileService.DeleteLogoAsync(existingVendor.OrganizationId, existingVendor.OfficeId, existingVendor.LogoPath);
+                        await _fileService.DeleteImageAsync(existingVendor.OrganizationId, existingVendor.OfficeId, existingVendor.LogoPath, ImageType.Logos);
                         vendor.LogoPath = null;
                     }
                 }
@@ -195,7 +195,7 @@ namespace RentAll.Api.Controllers
                 // Check if vendor exists then check/delete logo
                 var existingCompany = await _companiesRepository.GetCompanyByIdAsync(vendorId, CurrentOrganizationId);
                 if (existingCompany != null && !string.IsNullOrWhiteSpace(existingCompany.LogoPath))
-                    await _fileService.DeleteLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath);
+                    await _fileService.DeleteImageAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath, ImageType.Logos);
 
                 await _companiesRepository.DeleteVendorByIdAsync(vendorId);
                 return NoContent();

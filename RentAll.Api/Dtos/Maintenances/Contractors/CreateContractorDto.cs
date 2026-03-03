@@ -6,7 +6,6 @@ public class CreateContractorDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public string VendorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Website { get; set; }
@@ -22,9 +21,6 @@ public class CreateContractorDto
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
-        if (string.IsNullOrWhiteSpace(VendorCode))
-            return (false, "VendorCode is required");
-
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 
@@ -34,14 +30,14 @@ public class CreateContractorDto
         return (true, null);
     }
 
-    public Contractor ToModel(Guid currentUser)
+    public Contractor ToModel(string code, Guid currentUser)
     {
         return new Contractor
         {
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
-            VendorCode = VendorCode.Trim(),
-            Name = Name.Trim(),
+            ContractorCode = code,
+            Name = Name,
             Phone = Phone,
             Website = Website,
             Rating = Rating,

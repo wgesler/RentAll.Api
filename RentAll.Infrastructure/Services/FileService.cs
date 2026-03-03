@@ -16,6 +16,27 @@ public class FileService : IFileService
         _logger = logger;
     }
 
+    #region Images
+    public async Task<string> SaveReceiptAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
+    {
+        // Handle base64 encoded content
+        byte[] fileBytes;
+        if (fileContent.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            // Data URL format: data:image/png;base64,...
+            var base64Data = fileContent.Split(',')[1];
+            fileBytes = Convert.FromBase64String(base64Data);
+        }
+        else
+        {
+            // Assume it's already base64
+            fileBytes = Convert.FromBase64String(fileContent);
+        }
+
+        using var stream = new MemoryStream(fileBytes);
+        return await SaveImageAsync(organizationId, officeId, stream, fileName, contentType, entityType, ImageType.Receipts);
+    }
+
     public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
     {
         // Handle base64 encoded content
@@ -33,10 +54,10 @@ public class FileService : IFileService
         }
 
         using var stream = new MemoryStream(fileBytes);
-        return await SaveLogoAsync(organizationId, officeId, stream, fileName, contentType, entityType);
+        return await SaveImageAsync(organizationId, officeId, stream, fileName, contentType, entityType, ImageType.Logos);
     }
 
-    public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType)
+    public async Task<string> SaveImageAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType, ImageType imageType)
     {
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
@@ -67,17 +88,17 @@ public class FileService : IFileService
         }
 
         // Return relative path
-        return $"/{containerName}/logos/{uniqueFileName}";
+        return $"/{containerName}/{imageType.ToString()}/{uniqueFileName}";
     }
 
-    public Task<bool> DeleteLogoAsync(Guid organizationId, int? officeId, string filePath)
+    public Task<bool> DeleteImageAsync(Guid organizationId, int? officeId, string filePath, ImageType imageType)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return Task.FromResult(false);
 
         // Security: Ensure path is within the organization/office's logos directory
         var containerName = officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0";
-        var expectedPathPrefix = $"/{containerName}/logos/";
+        var expectedPathPrefix = $"/{containerName}/{imageType.ToString()}/";
         if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Attempted to delete file outside allowed directory: {FilePath} for organization {OrganizationId}, office {OfficeId}", filePath, organizationId, officeId);
@@ -100,11 +121,13 @@ public class FileService : IFileService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting logo file: {FilePath}", filePath);
+            _logger.LogError(ex, "Error deleting image file: {FilePath}", filePath);
             return Task.FromResult(false);
         }
     }
+    #endregion
 
+    #region Documents
     public async Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, int? officeId, string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -308,5 +331,5 @@ public class FileService : IFileService
             return null;
         }
     }
+    #endregion
 }
-

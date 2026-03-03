@@ -137,7 +137,7 @@ namespace RentAll.Api.Controllers
                     {
                         // Delete old logo if it exists
                         if (!string.IsNullOrWhiteSpace(existing.LogoPath))
-                            await _fileService.DeleteLogoAsync(existing.OrganizationId, null, existing.LogoPath);
+                            await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.LogoPath, ImageType.Logos);
 
                         // Save new logo
                         var logoPath = await _fileService.SaveLogoAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
@@ -154,7 +154,7 @@ namespace RentAll.Api.Controllers
                     // LogoPath is explicitly null - delete the logo
                     if (!string.IsNullOrWhiteSpace(existing.LogoPath))
                     {
-                        await _fileService.DeleteLogoAsync(existing.OrganizationId, null, existing.LogoPath);
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.LogoPath, ImageType.Logos);
                         model.LogoPath = null;
                     }
                 }
@@ -198,8 +198,9 @@ namespace RentAll.Api.Controllers
                 // Check if organization exists then check/delete logo
                 var existing = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
                 if (existing != null && !string.IsNullOrWhiteSpace(existing.LogoPath))
-                    await _fileService.DeleteLogoAsync(existing.OrganizationId, null, existing.LogoPath);
+                    await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.LogoPath, ImageType.Logos);
 
+                // Delete all documents/receipts as well (TBD)
 
                 await _organizationRepository.DeleteOrganizationByIdAsync(organizationId);
                 return NoContent();

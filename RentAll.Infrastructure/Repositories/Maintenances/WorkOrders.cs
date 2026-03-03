@@ -10,7 +10,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<WorkOrder>> GetWorkOrdersByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<WorkOrderEntity>("Property.Property_GetListByOfficeIds", new
+        var res = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
@@ -64,7 +64,9 @@ public partial class MaintenanceRepository
             OfficeId = workOrder.OfficeId,
             PropertyId = workOrder.PropertyId,
             Description = workOrder.Description,
-            DocumentPath = workOrder.DocumentPath
+            ReceiptPath = workOrder.ReceiptPath,
+            IsActive = workOrder.IsActive,
+            CreatedBy = workOrder.CreatedBy
         });
 
         if (res == null || !res.Any())
@@ -85,7 +87,9 @@ public partial class MaintenanceRepository
             OfficeId = workOrder.OfficeId,
             PropertyId = workOrder.PropertyId,
             Description = workOrder.Description,
-            DocumentPath = workOrder.DocumentPath
+            ReceiptPath = workOrder.ReceiptPath,
+            IsActive = workOrder.IsActive,
+            ModifiedBy = workOrder.ModifiedBy
         });
 
         if (res == null || !res.Any())
@@ -96,13 +100,14 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Deletes
-    public async Task DeleteWorkOrderByIdAsync(int workOrderId, Guid organizationId)
+    public async Task DeleteWorkOrderByIdAsync(int workOrderId, Guid organizationId, Guid currentUser)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.WorkOrder_DeleteById", new
         {
             WorkOrderId = workOrderId,
-            OrganizationId = organizationId
+            OrganizationId = organizationId,
+            ModifiedBy = currentUser
         });
     }
     #endregion

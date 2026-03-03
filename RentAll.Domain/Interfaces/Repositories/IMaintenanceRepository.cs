@@ -50,6 +50,6 @@ public interface IMaintenanceRepository
 
     Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder);
-    Task DeleteWorkOrderByIdAsync(int workOrderId, Guid organizationId);
+    Task DeleteWorkOrderByIdAsync(int workOrderId, Guid organizationId, Guid currentUser);
     #endregion
 }

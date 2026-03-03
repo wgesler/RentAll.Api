@@ -137,7 +137,7 @@ namespace RentAll.Api.Controllers
                     {
                         // Delete old logo if it exists
                         if (!string.IsNullOrWhiteSpace(existingAccountingOffice.LogoPath))
-                            await _fileService.DeleteLogoAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, existingAccountingOffice.LogoPath);
+                            await _fileService.DeleteImageAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, existingAccountingOffice.LogoPath, ImageType.Logos);
 
                         // Save new logo
                         var logoPath = await _fileService.SaveLogoAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
@@ -154,7 +154,7 @@ namespace RentAll.Api.Controllers
                     // LogoPath is explicitly null - delete the logo
                     if (!string.IsNullOrWhiteSpace(existingAccountingOffice.LogoPath))
                     {
-                        await _fileService.DeleteLogoAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, existingAccountingOffice.LogoPath);
+                        await _fileService.DeleteImageAsync(existingAccountingOffice.OrganizationId, existingAccountingOffice.OfficeId, existingAccountingOffice.LogoPath, ImageType.Logos);
                         accountingOffice.LogoPath = null;
                     }
                 }
@@ -192,7 +192,7 @@ namespace RentAll.Api.Controllers
                 // Check if accounting office exists and be sure to delete the logo file 
                 var existingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 if (existingOffice != null && !string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-                    await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, existingOffice.OfficeId, existingOffice.LogoPath);
+                    await _fileService.DeleteImageAsync(existingOffice.OrganizationId, existingOffice.OfficeId, existingOffice.LogoPath, ImageType.Logos);
 
                 await _organizationRepository.DeleteAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 return NoContent();

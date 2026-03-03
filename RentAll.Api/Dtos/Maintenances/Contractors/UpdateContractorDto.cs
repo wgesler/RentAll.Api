@@ -7,7 +7,7 @@ public class UpdateContractorDto
     public Guid ContractorId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public string VendorCode { get; set; } = string.Empty;
+    public string ContractorCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Website { get; set; }
@@ -26,8 +26,8 @@ public class UpdateContractorDto
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
-        if (string.IsNullOrWhiteSpace(VendorCode))
-            return (false, "VendorCode is required");
+        if (string.IsNullOrWhiteSpace(ContractorCode))
+            return (false, "ContractorCode is required");
 
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
@@ -45,8 +45,8 @@ public class UpdateContractorDto
             ContractorId = ContractorId,
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
-            VendorCode = VendorCode.Trim(),
-            Name = Name.Trim(),
+            ContractorCode = ContractorCode,
+            Name = Name,
             Phone = Phone,
             Website = Website,
             Rating = Rating,

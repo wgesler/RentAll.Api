@@ -126,7 +126,7 @@ public partial class AuthController
                 try
                 {
                     if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                        await _fileService.DeleteLogoAsync(existingUser.OrganizationId, null, existingUser.ProfilePath);
+                        await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Logos);
 
                     var profilePath = await _fileService.SaveLogoAsync(existingUser.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
                     user.ProfilePath = profilePath;
@@ -141,7 +141,7 @@ public partial class AuthController
             {
                 if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
                 {
-                    await _fileService.DeleteLogoAsync(existingUser.OrganizationId, null, existingUser.ProfilePath);
+                    await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Logos);
                     user.ProfilePath = null;
                 }
             }
@@ -177,7 +177,7 @@ public partial class AuthController
             // Check if user exists then check/delete logo
             var existingUser = await _userRepository.GetUserByIdAsync(userId);
             if (existingUser != null && !string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                await _fileService.DeleteLogoAsync(existingUser.OrganizationId, null, existingUser.ProfilePath);
+                await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Logos);
 
             await _userRepository.DeleteUserByIdAsync(userId);
             return NoContent();

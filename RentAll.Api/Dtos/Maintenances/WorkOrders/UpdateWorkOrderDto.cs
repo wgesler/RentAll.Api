@@ -1,3 +1,4 @@
+using RentAll.Domain.Models.Common;
 using RentAll.Domain.Models.Maintenances;
 
 namespace RentAll.Api.Dtos.Maintenances.WorkOrders;
@@ -9,7 +10,9 @@ public class UpdateWorkOrderDto
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
     public string? Description { get; set; }
-    public string? DocumentPath { get; set; }
+    public string? ReceiptPath { get; set; }
+    public FileDetails? FileDetails { get; set; }
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -28,7 +31,7 @@ public class UpdateWorkOrderDto
         return (true, null);
     }
 
-    public WorkOrder ToModel()
+    public WorkOrder ToModel(Guid currentUser)
     {
         return new WorkOrder
         {
@@ -37,7 +40,9 @@ public class UpdateWorkOrderDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             Description = Description,
-            DocumentPath = DocumentPath
+            ReceiptPath = ReceiptPath,
+            IsActive = IsActive,
+            ModifiedBy = currentUser
         };
     }
 }

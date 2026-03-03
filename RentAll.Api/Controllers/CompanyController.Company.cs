@@ -133,7 +133,7 @@ namespace RentAll.Api.Controllers
                     {
                         // Delete old logo if it exists
                         if (!string.IsNullOrWhiteSpace(existingCompany.LogoPath))
-                            await _fileService.DeleteLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath);
+                            await _fileService.DeleteImageAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath, ImageType.Logos);
 
                         // Save new logo
                         var logoPath = await _fileService.SaveLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Company);
@@ -150,7 +150,7 @@ namespace RentAll.Api.Controllers
                     // LogoPath is explicitly null - delete the logo
                     if (!string.IsNullOrWhiteSpace(existingCompany.LogoPath))
                     {
-                        await _fileService.DeleteLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath);
+                        await _fileService.DeleteImageAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath, ImageType.Logos);
                         company.LogoPath = null;
                     }
                 }
@@ -188,7 +188,7 @@ namespace RentAll.Api.Controllers
                 // Check if company exists then check/delete logo
                 var existingCompany = await _companiesRepository.GetCompanyByIdAsync(companyId, CurrentOrganizationId);
                 if (existingCompany != null && !string.IsNullOrWhiteSpace(existingCompany.LogoPath))
-                    await _fileService.DeleteLogoAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath);
+                    await _fileService.DeleteImageAsync(existingCompany.OrganizationId, existingCompany.OfficeId, existingCompany.LogoPath, ImageType.Logos);
 
                 await _companiesRepository.DeleteCompanyByIdAsync(companyId);
                 return NoContent();

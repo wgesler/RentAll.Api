@@ -24,17 +24,28 @@ public class AzureBlobStorageService : IFileService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #region Images
+    public async Task<string> SaveReceiptAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
+    {
+        var fileBytes = DecodeBase64(fileContent);
+
+        // Create stream and ensure it stays alive during async upload
+        using var stream = new MemoryStream(fileBytes);
+        var result = await SaveImageAsync(organizationId, officeId, stream, fileName, contentType, entityType, ImageType.Receipts);
+        return result;
+    }
+
     public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
     {
         var fileBytes = DecodeBase64(fileContent);
 
         // Create stream and ensure it stays alive during async upload
         using var stream = new MemoryStream(fileBytes);
-        var result = await SaveLogoAsync(organizationId, officeId, stream, fileName, contentType, entityType);
+        var result = await SaveImageAsync(organizationId, officeId, stream, fileName, contentType, entityType, ImageType.Logos);
         return result;
     }
 
-    public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType)
+    public async Task<string> SaveImageAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType, ImageType imageType)
     {
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
@@ -56,7 +67,7 @@ public class AzureBlobStorageService : IFileService
 
             // Keep versioned logos (new URL each time)
             var uniqueFileName = $"{typeString}-{Guid.NewGuid()}{fileExtension}";
-            var blobName = $"logos/{uniqueFileName}";
+            var blobName = $"{imageType.ToString()}/{uniqueFileName}";
             var blobClient = containerClient.GetBlobClient(blobName);
 
             // Read stream into a fresh MemoryStream to avoid disposal issues during async upload
@@ -92,12 +103,12 @@ public class AzureBlobStorageService : IFileService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving logo to Azure Blob Storage: {FileName}", fileName);
+            _logger.LogError(ex, "Error saving image to Azure Blob Storage: {FileName}", fileName);
             throw;
         }
     }
 
-    public async Task<bool> DeleteLogoAsync(Guid organizationId, int? officeId, string filePath)
+    public async Task<bool> DeleteImageAsync(Guid organizationId, int? officeId, string filePath, ImageType imageType)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return false;
@@ -105,7 +116,7 @@ public class AzureBlobStorageService : IFileService
         try
         {
             var containerName = BuildContainerName(organizationId, officeId);
-            var blobName = ExtractBlobName(filePath, containerName, "logos");
+            var blobName = ExtractBlobName(filePath, containerName, imageType.ToString());
             if (string.IsNullOrEmpty(blobName))
                 return false;
 
@@ -116,11 +127,13 @@ public class AzureBlobStorageService : IFileService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting logo from Azure Blob Storage: {FilePath}", filePath);
+            _logger.LogError(ex, "Error deleting image from Azure Blob Storage: {FilePath}", filePath);
             return false;
         }
     }
+    #endregion
 
+    #region Documents
     public async Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, int? officeId, string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -303,6 +316,7 @@ public class AzureBlobStorageService : IFileService
             return null;
         }
     }
+    #endregion
 
     private static string BuildContainerName(Guid organizationId, int? officeId)
         => (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();

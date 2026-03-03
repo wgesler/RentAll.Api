@@ -10,7 +10,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Contractor>> GetContractorsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ContractorEntity>("Maintenance.Contractor_GetList", new
+        var res = await db.DapperProcQueryAsync<ContractorEntity>("Maintenance.Contractor_GetAllByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
@@ -22,12 +22,12 @@ public partial class MaintenanceRepository
         return res.Select(ConvertEntityToModel);
     }
 
-    public async Task<Contractor?> GetContractorByIdAsync(Guid vendorId, Guid organizationId)
+    public async Task<Contractor?> GetContractorByIdAsync(Guid contractorId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ContractorEntity>("Maintenance.Contractor_GetById", new
         {
-            VendorId = vendorId,
+            ContractorId = contractorId,
             OrganizationId = organizationId
         });
 
@@ -46,7 +46,7 @@ public partial class MaintenanceRepository
         {
             OrganizationId = contractor.OrganizationId,
             OfficeId = contractor.OfficeId,
-            VendorCode = contractor.VendorCode,
+            ContractorCode = contractor.ContractorCode,
             Name = contractor.Name,
             Phone = contractor.Phone,
             Website = contractor.Website,
@@ -72,7 +72,7 @@ public partial class MaintenanceRepository
             ContractorId = contractor.ContractorId,
             OrganizationId = contractor.OrganizationId,
             OfficeId = contractor.OfficeId,
-            VendorCode = contractor.VendorCode,
+            ContractorCode = contractor.ContractorCode,
             Name = contractor.Name,
             Phone = contractor.Phone,
             Website = contractor.Website,
@@ -90,12 +90,12 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Deletes
-    public async Task DeleteContractorByIdAsync(Guid vendorId, Guid organizationId)
+    public async Task DeleteContractorByIdAsync(Guid contractorId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.Contractor_DeleteById", new
         {
-            VendorId = vendorId,
+            ContractorId = contractorId,
             OrganizationId = organizationId
         });
     }

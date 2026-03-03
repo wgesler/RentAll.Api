@@ -1,3 +1,4 @@
+using RentAll.Domain.Models.Common;
 using RentAll.Domain.Models.Maintenances;
 
 namespace RentAll.Api.Dtos.Maintenances.WorkOrders;
@@ -11,8 +12,11 @@ public class WorkOrderResponseDto
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? DocumentPath { get; set; }
-
+    public string? ReceiptPath { get; set; }
+    public FileDetails? FileDetails { get; set; }
+    public bool IsActive { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public string ModifiedBy { get; set; }
     public WorkOrderResponseDto(WorkOrder workOrder)
     {
         WorkOrderId = workOrder.WorkOrderId;
@@ -22,6 +26,10 @@ public class WorkOrderResponseDto
         PropertyId = workOrder.PropertyId;
         PropertyCode = workOrder.PropertyCode;
         Description = workOrder.Description;
-        DocumentPath = workOrder.DocumentPath;
+        ReceiptPath = workOrder.ReceiptPath;
+        FileDetails = workOrder.FileDetails;
+        IsActive = workOrder.IsActive;
+        ModifiedOn = workOrder.ModifiedOn;
+        ModifiedBy = workOrder.ModifiedByName;
     }
 }

@@ -146,7 +146,7 @@ namespace RentAll.Api.Controllers
                         {
                             try
                             {
-                                await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
+                                await _fileService.DeleteImageAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath, ImageType.Logos);
                             }
                             catch (Exception deleteEx)
                             {
@@ -171,7 +171,7 @@ namespace RentAll.Api.Controllers
                     {
                         try
                         {
-                            await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath);
+                            await _fileService.DeleteImageAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath, ImageType.Logos);
                         }
                         catch (Exception deleteEx)
                         {
@@ -222,7 +222,7 @@ namespace RentAll.Api.Controllers
                 // Check if office exists check/delete logo before deleting office
                 var existingOffice = await _organizationRepository.GetOfficeByIdAsync(officeId, CurrentOrganizationId);
                 if (existingOffice != null && !string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-                    await _fileService.DeleteLogoAsync(existingOffice.OrganizationId, existingOffice.OfficeId, existingOffice.LogoPath);
+                    await _fileService.DeleteImageAsync(existingOffice.OrganizationId, existingOffice.OfficeId, existingOffice.LogoPath, ImageType.Logos);
 
                 await _organizationRepository.DeleteOfficeByIdAsync(officeId);
                 return NoContent();

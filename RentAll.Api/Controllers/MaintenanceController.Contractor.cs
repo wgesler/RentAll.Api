@@ -60,8 +60,10 @@ public partial class MaintenanceController
 
         try
         {
-            var model = dto.ToModel(CurrentUser);
-            var created = await _maintenanceRepository.CreateContractorAsync(model);
+            // Get a new Contact code
+            var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Contractor);
+            var contractor = dto.ToModel(code, CurrentUser);
+            var created = await _maintenanceRepository.CreateContractorAsync(contractor);
 
             var response = new ContractorResponseDto(created);
             return Ok(response);

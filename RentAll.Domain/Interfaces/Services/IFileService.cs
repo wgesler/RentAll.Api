@@ -5,9 +5,10 @@ namespace RentAll.Domain.Interfaces.Services;
 
 public interface IFileService
 {
+    Task<string> SaveReceiptAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType);
     Task<string> SaveLogoAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType);
-    Task<string> SaveLogoAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType);
-    Task<bool> DeleteLogoAsync(Guid organizationId, int? officeId, string filePath);
+    Task<string> SaveImageAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType, ImageType imageType);
+    Task<bool> DeleteImageAsync(Guid organizationId, int? officeId, string filePath, ImageType imageType);
     Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, int? officeId, string filePath);
 
     Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, DocumentType documentType);
