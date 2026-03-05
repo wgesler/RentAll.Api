@@ -10,7 +10,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
         public async Task<IEnumerable<Contact>> GetContactsByOfficeIdAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAllByOfficeId", new
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAllByOfficeIds", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
