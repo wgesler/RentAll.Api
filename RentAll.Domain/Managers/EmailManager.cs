@@ -35,7 +35,7 @@ public class EmailManager : IEmailManager
         // If there's an attachment, store it in blob storage
         if (email.FileDetails != null)
         {
-            var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, email.OfficeId, email.FileDetails.File, email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachment);
+            var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, email.OfficeName, email.FileDetails.File, email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachment);
 
             try
             {
@@ -60,7 +60,7 @@ public class EmailManager : IEmailManager
             catch
             {
                 // Best effort cleanup so we don't leave orphaned blobs when metadata create fails.
-                await _fileService.DeleteDocumentAsync(email.OrganizationId, email.OfficeId, documentPath);
+                await _fileService.DeleteDocumentAsync(email.OrganizationId, email.OfficeName, documentPath);
                 throw;
             }
         }

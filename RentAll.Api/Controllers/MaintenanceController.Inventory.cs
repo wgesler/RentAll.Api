@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Maintenances.Inspections;
 using RentAll.Api.Dtos.Maintenances.Inventories;
 
 namespace RentAll.Api.Controllers;
@@ -25,25 +26,22 @@ public partial class MaintenanceController
         }
     }
 
-    [HttpGet("inventory/latest/{propertyId:guid}")]
-    public async Task<IActionResult> GetLatestInventoryByPropertyId(Guid propertyId)
+    [HttpGet("inventory/maintenance/{maitenanceId:guid}")]
+    public async Task<IActionResult> GetInventoriesByMaintenanceId(Guid maintenanceId, Guid maitenanceId)
     {
-        if (propertyId == Guid.Empty)
+        if (maitenanceId == Guid.Empty)
             return BadRequest("PropertyId is required");
 
         try
         {
-            var record = await _maintenanceRepository.GetLatestInventoryByPropertyId(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
-            if (record == null)
-                return NotFound("Inventory record not found");
-
-            var response = new InventoryResponseDto(record);
+            var records = await _maintenanceRepository.GetInventoriesByMaintenanceIdAsync(maitenanceId, CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new InventoryResponseDto(o));
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting latest inventory record for property: {PropertyId}", propertyId);
-            return ServerError("An error occurred while retrieving the latest inventory record");
+            _logger.LogError(ex, "Error getting inventory records for property: {maitenanceId}", maitenanceId);
+            return ServerError("An error occurred while retrieving inventory records");
         }
     }
 

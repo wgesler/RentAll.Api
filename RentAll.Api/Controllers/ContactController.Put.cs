@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
                 if (existing == null)
                     return NotFound("Contact not found");
 
-                // Check if CompanyCode is being changed
+                // Check if ContactCode is being changed
                 if (existing.ContactCode != dto.ContactCode)
                     return BadRequest("Contact Code cannot change");
 

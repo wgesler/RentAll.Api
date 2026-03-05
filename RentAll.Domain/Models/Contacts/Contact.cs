@@ -11,6 +11,7 @@ public class Contact
     public string ContactCode { get; set; } = string.Empty;
     public EntityType EntityType { get; set; }
     public Guid? EntityId { get; set; }
+    public string? CompanyName { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;

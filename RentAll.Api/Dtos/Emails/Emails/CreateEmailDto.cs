@@ -7,6 +7,7 @@ public class CreateEmailDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
+    public string? OfficeName { get; set; }
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
     public EmailAddress FromRecipient { get; set; } = new();

@@ -13,9 +13,9 @@ using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.HealthChecks;
 using RentAll.Infrastructure.Repositories.Accounting;
 using RentAll.Infrastructure.Repositories.Common;
-using RentAll.Infrastructure.Repositories.Companies;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Documents;
+using RentAll.Infrastructure.Repositories.Photos;
 using RentAll.Infrastructure.Repositories.Emails;
 using RentAll.Infrastructure.Repositories.Maintenances;
 using RentAll.Infrastructure.Repositories.Organizations;
@@ -142,10 +142,11 @@ else
     // Register File System Storage Service (default)
     builder.Services.AddScoped<IFileService>(sp =>
     {
-        var environment = sp.GetRequiredService<IWebHostEnvironment>();
+        var hostEnv = sp.GetRequiredService<IWebHostEnvironment>();
+        var appSettings = sp.GetRequiredService<AppSettings>();
         var logger = sp.GetRequiredService<ILogger<FileService>>();
-        var wwwRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
-        return new FileService(wwwRootPath, logger);
+        var wwwRootPath = hostEnv.WebRootPath ?? Path.Combine(hostEnv.ContentRootPath, "wwwroot");
+        return new FileService(wwwRootPath, appSettings, logger);
     });
 }
 
@@ -162,13 +163,13 @@ builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
-builder.Services.AddScoped<ICompaniesRepository, CompanyRepository>();
 builder.Services.AddScoped<IContactRepository, ContactRepository>();
 builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<ICommonRepository, CommonRepository>();
 builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
 builder.Services.AddScoped<IAccountingRepository, AccountingRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 

@@ -40,7 +40,7 @@ namespace RentAll.Api.Controllers
 
                 var response = new EmailResponseDto(email);
                 if (!string.IsNullOrWhiteSpace(email.AttachmentPath))
-                    response.FileDetails = await _fileService.GetDocumentDetailsAsync(email.OrganizationId, email.OfficeId, email.AttachmentPath);
+                    response.FileDetails = await _fileService.GetDocumentDetailsAsync(email.OrganizationId, email.OfficeName, email.AttachmentPath);
 
                 return Ok(response);
             }

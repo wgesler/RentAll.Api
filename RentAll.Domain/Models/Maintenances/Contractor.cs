@@ -1,4 +1,4 @@
-namespace RentAll.Domain.Models.Maintenances;
+namespace RentAll.Domain.Models;
 
 public class Contractor
 {

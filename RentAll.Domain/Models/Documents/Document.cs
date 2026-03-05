@@ -7,7 +7,7 @@ public class Document
     public Guid DocumentId { get; set; }
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
-    public string OfficeName { get; set; } = string.Empty;
+    public string? OfficeName { get; set; }
     public Guid? PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public Guid? ReservationId { get; set; }

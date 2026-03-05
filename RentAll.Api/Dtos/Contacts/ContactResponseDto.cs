@@ -9,6 +9,7 @@ public class ContactResponseDto
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
+    public string? CompanyName { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
@@ -37,6 +38,7 @@ public class ContactResponseDto
         ContactCode = contact.ContactCode;
         EntityTypeId = (int)contact.EntityType;
         EntityId = contact.EntityId;
+        CompanyName = contact.CompanyName;
         FirstName = contact.FirstName;
         LastName = contact.LastName;
         FullName = contact.FullName;

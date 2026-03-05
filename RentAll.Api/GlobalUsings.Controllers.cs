@@ -1,7 +1,5 @@
 global using Microsoft.AspNetCore.Mvc;
 global using RentAll.Api.Dtos.Common;
-global using RentAll.Api.Dtos.Companies;
-global using RentAll.Api.Dtos.Companies.Vendors;
 global using RentAll.Api.Dtos.Emails.EmailHtmls;
 global using RentAll.Api.Dtos.Emails.Emails;
 global using RentAll.Api.Dtos.Organizations.Accounting;

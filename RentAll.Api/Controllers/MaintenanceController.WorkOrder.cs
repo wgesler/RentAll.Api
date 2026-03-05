@@ -87,7 +87,7 @@ public partial class MaintenanceController
             {
                 try
                 {
-                    var receiptPath = await _fileService.SaveLogoAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    var receiptPath = await _fileService.SaveReceiptAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
                     workOrder.ReceiptPath = receiptPath;
                 }
                 catch (Exception ex)
@@ -140,7 +140,7 @@ public partial class MaintenanceController
                     if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
                         await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Logos);
 
-                    var receiptPath = await _fileService.SaveLogoAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    var receiptPath = await _fileService.SaveReceiptAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
                     workOrder.ReceiptPath = receiptPath;
                 }
                 catch (Exception ex)

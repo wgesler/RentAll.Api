@@ -28,28 +28,6 @@ public partial class MaintenanceController
         }
     }
 
-    [HttpGet("{maintenanceId:guid}/property/{propertyId:guid}")]
-    public async Task<IActionResult> GetMaintenanceByIdAsync(Guid maintenanceId, Guid propertyId)
-    {
-        if (propertyId == Guid.Empty)
-            return BadRequest("PropertyId is required");
-
-        try
-        {
-            var record = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(propertyId, CurrentOrganizationId, maintenanceId);
-            if (record == null || record.IsDeleted)
-                return NotFound("Maintenance record not found");
-
-            var response = new MaintenanceResponseDto(record);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting maintenance records for property: {PropertyId}", propertyId);
-            return ServerError("An error occurred while retrieving maintenance records");
-        }
-    }
-
     [HttpGet("{maintenanceId:guid}")]
     public async Task<IActionResult> GetMaintenanceByIdAsync(Guid maintenanceId)
     {

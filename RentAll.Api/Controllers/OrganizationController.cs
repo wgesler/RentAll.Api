@@ -29,6 +29,14 @@ namespace RentAll.Api.Controllers
             _fileService = fileService;
             _logger = logger;
         }
+
+        private string? GetOfficeName(int? officeId)
+        {
+            if (!officeId.HasValue)
+                return null;
+            var office = _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId).GetAwaiter().GetResult();
+            return office?.Name;
+        }
     }
 }
 

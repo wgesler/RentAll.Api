@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Domain.Models.Maintenances;
+using RentAll.Domain.Models;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;
 
@@ -10,7 +10,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InspectionListEntity>("Maintenance.Inspection_GetListByPropertyId", new
+        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_GetListByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
@@ -26,7 +26,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inspection>> GetInspectionsByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InspectionListEntity>("Maintenance.Inspection_GetListByMaintenanceId", new
+        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_GetListByMaintenanceId", new
         {
             MaintenanceId = maintenanceId,
             OrganizationId = organizationId,

@@ -1,6 +1,6 @@
 using RentAll.Domain.Models.Common;
 
-namespace RentAll.Domain.Models.Maintenances;
+namespace RentAll.Domain.Models;
 
 public class WorkOrder
 {

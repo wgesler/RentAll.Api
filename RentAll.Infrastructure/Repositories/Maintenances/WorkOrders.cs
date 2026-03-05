@@ -1,5 +1,5 @@
 using Microsoft.Data.SqlClient;
-using RentAll.Domain.Models.Maintenances;
+using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;

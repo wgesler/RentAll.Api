@@ -25,6 +25,25 @@ public partial class MaintenanceController
         }
     }
 
+    [HttpGet("inspection/maintenance/{maitenanceId:guid}")]
+    public async Task<IActionResult> GetInspectionByMaintenanceId(Guid maintenanceId, Guid maitenanceId)
+    {
+        if (maitenanceId == Guid.Empty)
+            return BadRequest("PropertyId is required");
+
+        try
+        {
+            var records = await _maintenanceRepository.GetInspectionsByMaintenanceIdAsync(maitenanceId, CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new InspectionResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting inspection records for property: {maitenanceId}", maitenanceId);
+            return ServerError("An error occurred while retrieving inspection records");
+        }
+    }
+
     [HttpGet("inspection/{inspectionId:int}")]
     public async Task<IActionResult> GetInspectionById(int inspectionId)
     {
@@ -46,6 +65,7 @@ public partial class MaintenanceController
             return ServerError("An error occurred while retrieving the inspection record");
         }
     }
+
 
     #endregion
 

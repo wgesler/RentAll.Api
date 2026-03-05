@@ -12,40 +12,53 @@ public class AzureBlobStorageService : IFileService
 {
     private readonly BlobServiceClient _blobServiceClient;
     private readonly StorageSettings _storageSettings;
+    private readonly AppSettings _appSettings;
     private readonly ILogger<AzureBlobStorageService> _logger;
 
     public AzureBlobStorageService(
         BlobServiceClient blobServiceClient,
         StorageSettings storageSettings,
+        AppSettings appSettings,
         ILogger<AzureBlobStorageService> logger)
     {
         _blobServiceClient = blobServiceClient ?? throw new ArgumentNullException(nameof(blobServiceClient));
         _storageSettings = storageSettings ?? throw new ArgumentNullException(nameof(storageSettings));
+        _appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     #region Images
-    public async Task<string> SaveReceiptAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
+    public async Task<string> SavePhotoAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, EntityType entityType)
     {
         var fileBytes = DecodeBase64(fileContent);
 
         // Create stream and ensure it stays alive during async upload
         using var stream = new MemoryStream(fileBytes);
-        var result = await SaveImageAsync(organizationId, officeId, stream, fileName, contentType, entityType, ImageType.Receipts);
+        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, entityType, ImageType.Photos);
         return result;
     }
 
-    public async Task<string> SaveLogoAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, EntityType entityType)
+    public async Task<string> SaveReceiptAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, EntityType entityType)
     {
         var fileBytes = DecodeBase64(fileContent);
 
         // Create stream and ensure it stays alive during async upload
         using var stream = new MemoryStream(fileBytes);
-        var result = await SaveImageAsync(organizationId, officeId, stream, fileName, contentType, entityType, ImageType.Logos);
+        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, entityType, ImageType.Receipts);
         return result;
     }
 
-    public async Task<string> SaveImageAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, EntityType entityType, ImageType imageType)
+    public async Task<string> SaveLogoAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, EntityType entityType)
+    {
+        var fileBytes = DecodeBase64(fileContent);
+
+        // Create stream and ensure it stays alive during async upload
+        using var stream = new MemoryStream(fileBytes);
+        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, entityType, ImageType.Logos);
+        return result;
+    }
+
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, EntityType entityType, ImageType imageType)
     {
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
@@ -59,7 +72,7 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeId);
+            var containerName = BuildContainerName(organizationId, officeName);
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
@@ -108,14 +121,14 @@ public class AzureBlobStorageService : IFileService
         }
     }
 
-    public async Task<bool> DeleteImageAsync(Guid organizationId, int? officeId, string filePath, ImageType imageType)
+    public async Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return false;
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeId);
+            var containerName = BuildContainerName(organizationId, officeName);
             var blobName = ExtractBlobName(filePath, containerName, imageType.ToString());
             if (string.IsNullOrEmpty(blobName))
                 return false;
@@ -134,14 +147,14 @@ public class AzureBlobStorageService : IFileService
     #endregion
 
     #region Documents
-    public async Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, int? officeId, string filePath)
+    public async Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, string? officeName, string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return null;
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeId);
+            var containerName = BuildContainerName(organizationId, officeName);
             var blobName = ExtractBlobName(filePath, containerName, "logos");
             if (string.IsNullOrEmpty(blobName))
                 return null;
@@ -174,17 +187,17 @@ public class AzureBlobStorageService : IFileService
         }
     }
 
-    public async Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, string fileContent, string fileName, string contentType, DocumentType documentType)
+    public async Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, DocumentType documentType)
     {
         var fileBytes = DecodeBase64(fileContent);
 
         // Create stream and ensure it stays alive during async upload
         using var stream = new MemoryStream(fileBytes);
-        var result = await SaveDocumentAsync(organizationId, officeId, stream, fileName, contentType, documentType);
+        var result = await SaveDocumentAsync(organizationId, officeName, stream, fileName, contentType, documentType);
         return result;
     }
 
-    public async Task<string> SaveDocumentAsync(Guid organizationId, int? officeId, Stream fileStream, string fileName, string contentType, DocumentType documentType)
+    public async Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, DocumentType documentType)
     {
         var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt" };
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -205,7 +218,7 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeId);
+            var containerName = BuildContainerName(organizationId, officeName);
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
@@ -253,14 +266,14 @@ public class AzureBlobStorageService : IFileService
         }
     }
 
-    public async Task<bool> DeleteDocumentAsync(Guid organizationId, int? officeId, string filePath)
+    public async Task<bool> DeleteDocumentAsync(Guid organizationId, string? officeName, string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return false;
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeId);
+            var containerName = BuildContainerName(organizationId, officeName);
             var blobName = ExtractBlobNameFromDocumentPath(filePath, containerName);
             if (string.IsNullOrEmpty(blobName))
                 return false;
@@ -277,14 +290,14 @@ public class AzureBlobStorageService : IFileService
         }
     }
 
-    public async Task<FileDetails?> GetDocumentDetailsAsync(Guid organizationId, int? officeId, string filePath)
+    public async Task<FileDetails?> GetDocumentDetailsAsync(Guid organizationId, string? officeName, string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return null;
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeId);
+            var containerName = BuildContainerName(organizationId, officeName);
             var blobName = ExtractBlobNameFromDocumentPath(filePath, containerName);
             if (string.IsNullOrEmpty(blobName))
                 return null;
@@ -318,8 +331,14 @@ public class AzureBlobStorageService : IFileService
     }
     #endregion
 
-    private static string BuildContainerName(Guid organizationId, int? officeId)
-        => (officeId.HasValue ? $"{organizationId}-{officeId.Value}" : $"{organizationId}-0").ToLowerInvariant();
+    private string BuildContainerName(Guid organizationId, string? officeName)
+    {
+        var env = (string.IsNullOrWhiteSpace(_appSettings.Environment) ? "development" : _appSettings.Environment).ToLowerInvariant();
+        var orgOffice = !string.IsNullOrWhiteSpace(officeName)
+            ? $"org{organizationId}/{officeName}"
+            : $"org{organizationId}";
+        return $"{env}/{orgOffice}".ToLowerInvariant();
+    }
 
     private static string BuildUrl(string containerName, string blobName, Uri fallbackUri, string? baseUrl = null)
     {

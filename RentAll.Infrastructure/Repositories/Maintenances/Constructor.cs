@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Maintenances;
+using RentAll.Domain.Models;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;
 
@@ -50,7 +50,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
-            ModifiedBy = e.ModifiedBy
+            ModifiedBy = e.ModifiedBy,
+            ModifiedByName = e.ModifiedByName
         };
     }
 
@@ -69,44 +70,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
-            ModifiedBy = e.ModifiedBy
-        };
-    }
-
-    private static Inventory ConvertEntityToModel(InventoryListEntity e)
-    {
-        return new Inventory
-        {
-            InventoryId = e.InventoryId,
-            OrganizationId = e.OrganizationId,
-            OfficeId = e.OfficeId,
-            OfficeName = e.OfficeName,
-            PropertyId = e.PropertyId,
-            PropertyCode = e.PropertyCode,
-            MaintenanceId = e.MaintenanceId,
-            InventoryCheckList = e.InventoryCheckList,
-            DocumentPath = e.DocumentPath,
-            IsActive = e.IsActive,
-            ModifiedOn = e.ModifiedOn,
-            ModifiedByName = e.ModifiedByName
-        };
-    }
-
-    private static Inspection ConvertEntityToModel(InspectionListEntity e)
-    {
-        return new Inspection
-        {
-            InspectionId = e.InspectionId,
-            OrganizationId = e.OrganizationId,
-            OfficeId = e.OfficeId,
-            OfficeName = e.OfficeName,
-            PropertyId = e.PropertyId,
-            PropertyCode = e.PropertyCode,
-            MaintenanceId = e.MaintenanceId,
-            InspectionCheckList = e.InspectionCheckList,
-            DocumentPath = e.DocumentPath,
-            IsActive = e.IsActive,
-            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy,
             ModifiedByName = e.ModifiedByName
         };
     }

@@ -1,6 +1,6 @@
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models.Maintenances;
+using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
 

@@ -1,6 +1,5 @@
 global using RentAll.Infrastructure.Entities.Accounting;
 global using RentAll.Infrastructure.Entities.Common;
-global using RentAll.Infrastructure.Entities.Companies;
 global using RentAll.Infrastructure.Entities.Contacts;
 global using RentAll.Infrastructure.Entities.Documents;
 global using RentAll.Infrastructure.Entities.Emails;

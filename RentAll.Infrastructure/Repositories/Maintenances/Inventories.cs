@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Domain.Models.Maintenances;
+using RentAll.Domain.Models;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;
 
@@ -10,7 +10,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inventory>> GetInventoriesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InventoryListEntity>("Maintenance.Inventory_GetListByPropertyId", new
+        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_GetListByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
@@ -26,7 +26,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inventory>> GetInventoriesByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InventoryListEntity>("Maintenance.Inventory_GetListByMaintenanceId", new
+        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_GetListByMaintenanceId", new
         {
             MaintenanceId = maintenanceId,
             OrganizationId = organizationId,
@@ -42,7 +42,7 @@ public partial class MaintenanceRepository
     public async Task<Inventory?> GetLatestInventoryByPropertyId(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InventoryListEntity>("Maintenance.Inventory_GetLatestByPropertyId", new
+        var res = await db.DapperProcQueryAsync<InventoryEntity>("Maintenance.Inventory_GetLatestByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
