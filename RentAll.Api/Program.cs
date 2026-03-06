@@ -1,6 +1,7 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using RentAll.Domain.Configuration;
@@ -27,10 +28,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//get some app settings
-var appSettings = builder.Configuration.GetSection("AppSettings");
-builder.Services.Configure<AppSettings>(appSettings);
-builder.Services.AddScoped<AppSettings>();
+// Get some app settings and bind to IOptions<AppSettings>
+var appSettingsSection = builder.Configuration.GetSection("AppSettings");
+builder.Services.Configure<AppSettings>(appSettingsSection);
+// Resolve AppSettings from configured options so injected AppSettings has Environment, etc.
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AppSettings>>().Value);
 
 // Configure Storage Settings
 var storageSettings = builder.Configuration.GetSection("StorageSettings");
@@ -41,8 +43,8 @@ builder.Services.AddScoped<StorageSettings>();
 var sendGridSettings = builder.Configuration.GetSection("SendGridSettings");
 builder.Services.Configure<SendGridSettings>(sendGridSettings);
 
-var allowedHosts = appSettings.GetSection("AllowedHostNames").Get<string[]>()!;
-var environment = appSettings.GetSection("Environment").Get<string>()!;
+var allowedHosts = appSettingsSection.GetSection("AllowedHostNames").Get<string[]>()!;
+var environment = appSettingsSection.GetSection("Environment").Get<string>()!;
 var isDev = environment.ToLower() == "development";
 
 // Add services to the container.

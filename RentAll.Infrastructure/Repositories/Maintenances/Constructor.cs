@@ -75,28 +75,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         };
     }
 
-    private static Contractor ConvertEntityToModel(ContractorEntity e)
-    {
-        return new Contractor
-        {
-            ContractorId = e.ContractorId,
-            OrganizationId = e.OrganizationId,
-            OfficeId = e.OfficeId,
-            OfficeName = e.OfficeName,
-            ContractorCode = e.ContractorCode,
-            Name = e.Name,
-            Phone = e.Phone,
-            Website = e.Website,
-            Rating = e.Rating,
-            Notes = e.Notes,
-            IsActive = e.IsActive,
-            CreatedOn = e.CreatedOn,
-            CreatedBy = e.CreatedBy,
-            ModifiedOn = e.ModifiedOn,
-            ModifiedBy = e.ModifiedBy
-        };
-    }
-
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)
     {
         return new WorkOrder

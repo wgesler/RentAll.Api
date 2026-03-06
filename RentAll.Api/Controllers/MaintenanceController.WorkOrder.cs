@@ -54,7 +54,7 @@ public partial class MaintenanceController
 
             var response = new WorkOrderResponseDto(record);
             if (!string.IsNullOrWhiteSpace(record.ReceiptPath))
-                response.FileDetails = await _fileService.GetFileDetailsAsync(record.OrganizationId, null, record.ReceiptPath);
+                response.FileDetails = await _fileService.GetImageDetailsAsync(record.OrganizationId, null, record.ReceiptPath, ImageType.Receipts);
 
             return Ok(response);
         }
@@ -83,11 +83,12 @@ public partial class MaintenanceController
         try
         {
             var workOrder = dto.ToModel(CurrentUser);
+            var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
             if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
             {
                 try
                 {
-                    var receiptPath = await _fileService.SaveReceiptAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    var receiptPath = await _fileService.SaveImageAsync(dto.OrganizationId, office?.Name, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Receipts);
                     workOrder.ReceiptPath = receiptPath;
                 }
                 catch (Exception ex)
@@ -100,7 +101,7 @@ public partial class MaintenanceController
             var created = await _maintenanceRepository.CreateWorkOrderAsync(workOrder);
             var response = new WorkOrderResponseDto(created);
             if (!string.IsNullOrWhiteSpace(created.ReceiptPath))
-                response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, null, created.ReceiptPath);
+                response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
 
             return Ok(response);
         }
@@ -138,9 +139,9 @@ public partial class MaintenanceController
                 try
                 {
                     if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
-                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Logos);
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Receipts);
 
-                    var receiptPath = await _fileService.SaveReceiptAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    var receiptPath = await _fileService.SaveImageAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Receipts);
                     workOrder.ReceiptPath = receiptPath;
                 }
                 catch (Exception ex)

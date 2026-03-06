@@ -34,15 +34,6 @@ public interface IMaintenanceRepository
     Task DeleteInspectionByIdAsync(int inspectionId, Guid organizationId);
     #endregion
 
-    #region Contractor
-    Task<IEnumerable<Contractor>> GetContractorsByOfficeIdsAsync(Guid organizationId, string officeAccess);
-    Task<Contractor?> GetContractorByIdAsync(Guid vendorId, Guid organizationId);
-
-    Task<Contractor> CreateContractorAsync(Contractor contractor);
-    Task<Contractor> UpdateContractorAsync(Contractor contractor);
-    Task DeleteContractorByIdAsync(Guid vendorId, Guid organizationId);
-    #endregion
-
     #region WorkOrder
     Task<IEnumerable<WorkOrder>> GetWorkOrdersByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<WorkOrder>> GetWorkOrdersByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);

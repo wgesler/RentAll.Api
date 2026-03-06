@@ -37,6 +37,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Zip = e.Zip,
                 Phone = e.Phone,
                 Email = e.Email,
+                Rating = e.Rating,
                 Notes = e.Notes,
                 IsInternational = e.IsInternational,
                 IsActive = e.IsActive,

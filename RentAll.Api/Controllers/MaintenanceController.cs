@@ -10,7 +10,7 @@ namespace RentAll.Api.Controllers;
 [Authorize]
 public partial class MaintenanceController : BaseController
 {
-    private readonly IOrganizationManager _organizationManager;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IMaintenanceManager _maintenanceManager;
     private readonly IMaintenanceRepository _maintenanceRepository;
     private readonly IPropertyRepository _propertyRepository;
@@ -18,14 +18,14 @@ public partial class MaintenanceController : BaseController
     private readonly ILogger<MaintenanceController> _logger;
 
     public MaintenanceController(
-        IOrganizationManager organizationManager,
+        IOrganizationRepository organizationRepository,
         IMaintenanceManager maintenanceManager,
         IMaintenanceRepository maintenanceRepository,
         IPropertyRepository propertyRepository,
         IFileService fileService,
         ILogger<MaintenanceController> logger)
     {
-        _organizationManager = organizationManager;
+        _organizationRepository = organizationRepository;
         _maintenanceManager = maintenanceManager;
         _maintenanceRepository = maintenanceRepository;
         _propertyRepository = propertyRepository;

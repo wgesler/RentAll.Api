@@ -7,8 +7,8 @@ public enum DocumentType
     ReservationLease = 2,
     Invoice = 3,
     Attachment = 4,
-    InspectionPhoto = 5,
-    InventoryPhoto = 6
+    Inspection = 5,
+    Inventory = 6
 }
 
 

@@ -17,7 +17,7 @@ namespace RentAll.Api.Controllers
                 {
                     var dto = new AccountingOfficeResponseDto(accountingOffice);
                     if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
-                        dto.FileDetails = await _fileService.GetFileDetailsAsync(accountingOffice.OrganizationId, GetOfficeName(accountingOffice.OfficeId), accountingOffice.LogoPath);
+                        dto.FileDetails = await _fileService.GetImageDetailsAsync(accountingOffice.OrganizationId, GetOfficeName(accountingOffice.OfficeId), accountingOffice.LogoPath, ImageType.Logos);
 
                     response.Add(dto);
                 }
@@ -44,7 +44,7 @@ namespace RentAll.Api.Controllers
 
                 var response = new AccountingOfficeResponseDto(accountingOffice);
                 if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(accountingOffice.OrganizationId, GetOfficeName(officeId), accountingOffice.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(accountingOffice.OrganizationId, GetOfficeName(officeId), accountingOffice.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -82,7 +82,7 @@ namespace RentAll.Api.Controllers
                 {
                     try
                     {
-                        var logoPath = await _fileService.SaveLogoAsync(CurrentOrganizationId, GetOfficeName(dto.OfficeId), dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        var logoPath = await _fileService.SaveImageAsync(CurrentOrganizationId, GetOfficeName(dto.OfficeId), dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
                         accountingOffice.LogoPath = logoPath;
                     }
                     catch (Exception ex)
@@ -95,7 +95,7 @@ namespace RentAll.Api.Controllers
                 var created = await _organizationRepository.CreateAccountingAsync(accountingOffice);
                 var response = new AccountingOfficeResponseDto(created);
                 if (!string.IsNullOrWhiteSpace(created.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, GetOfficeName(created.OfficeId), created.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, GetOfficeName(created.OfficeId), created.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -140,7 +140,7 @@ namespace RentAll.Api.Controllers
                             await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.LogoPath, ImageType.Logos);
 
                         // Save new logo
-                        var logoPath = await _fileService.SaveLogoAsync(existing.OrganizationId, officeName, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        var logoPath = await _fileService.SaveImageAsync(existing.OrganizationId, officeName, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
                         accountingOffice.LogoPath = logoPath;
                     }
                     catch (Exception ex)
@@ -168,7 +168,7 @@ namespace RentAll.Api.Controllers
                 var response = new AccountingOfficeResponseDto(updated);
                 if (!string.IsNullOrWhiteSpace(updated.LogoPath))
                 {
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(updated.OrganizationId, officeName, updated.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(updated.OrganizationId, officeName, updated.LogoPath, ImageType.Logos);
                 }
                 return Ok(response);
             }

@@ -4,6 +4,7 @@ namespace RentAll.Api.Configuration
     {
         public string[] AllowedHostNames { get; set; } = Array.Empty<string>();
         public string Environment { get; set; } = string.Empty;
+        public string Container { get; set; } = string.Empty;
         public List<DbConnection> DbConnections { get; set; } = new List<DbConnection>();
         public List<EmailRecipient> EmailRecipients { get; set; } = new List<EmailRecipient>();
         public List<ServiceConnection> ServiceConnections { get; set; } = new List<ServiceConnection>();

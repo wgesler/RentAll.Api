@@ -4,6 +4,7 @@ public enum ImageType
 {
     Logos = 0,
     Receipts = 1,
-    Photos = 2
+    Photos = 2,
+    Profiles = 3
 }
 

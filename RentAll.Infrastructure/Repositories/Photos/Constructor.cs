@@ -22,6 +22,7 @@ public partial class PhotoRepository : IPhotoRepository
             PhotoId = e.PhotoId,
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
             MaintenanceId = e.MaintenanceId,
             PhotoPath = e.PhotoPath,
             CreatedBy = e.CreatedBy,

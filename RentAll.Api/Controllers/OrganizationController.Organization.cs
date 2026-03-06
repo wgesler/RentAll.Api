@@ -16,7 +16,7 @@ namespace RentAll.Api.Controllers
                 {
                     var dto = new OrganizationResponseDto(org);
                     if (!string.IsNullOrWhiteSpace(org.LogoPath))
-                        dto.FileDetails = await _fileService.GetFileDetailsAsync(org.OrganizationId, null, org.LogoPath);
+                        dto.FileDetails = await _fileService.GetImageDetailsAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
 
                     response.Add(dto);
                 }
@@ -40,7 +40,7 @@ namespace RentAll.Api.Controllers
 
                 var response = new OrganizationResponseDto(org);
                 if (!string.IsNullOrWhiteSpace(org.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(org.OrganizationId, null, org.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -80,7 +80,7 @@ namespace RentAll.Api.Controllers
                 {
                     try
                     {
-                        var logoPath = await _fileService.SaveLogoAsync(organizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        var logoPath = await _fileService.SaveImageAsync(organizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
                         model.LogoPath = logoPath;
                     }
                     catch (Exception ex)
@@ -93,7 +93,7 @@ namespace RentAll.Api.Controllers
                 var created = await _organizationRepository.CreateAsync(model);
                 var response = new OrganizationResponseDto(created);
                 if (!string.IsNullOrWhiteSpace(created.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, null, created.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, null, created.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -140,7 +140,7 @@ namespace RentAll.Api.Controllers
                             await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.LogoPath, ImageType.Logos);
 
                         // Save new logo
-                        var logoPath = await _fileService.SaveLogoAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        var logoPath = await _fileService.SaveImageAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
                         model.LogoPath = logoPath;
                     }
                     catch (Exception ex)
@@ -168,7 +168,7 @@ namespace RentAll.Api.Controllers
                 var response = new OrganizationResponseDto(updated);
                 if (!string.IsNullOrWhiteSpace(updated.LogoPath))
                 {
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(updated.OrganizationId, null, updated.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(updated.OrganizationId, null, updated.LogoPath, ImageType.Logos);
                 }
                 return Ok(response);
             }

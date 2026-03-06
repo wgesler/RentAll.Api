@@ -33,7 +33,7 @@ public partial class AuthController
 
             var response = new UserResponseDto(user);
             if (!string.IsNullOrWhiteSpace(user.ProfilePath))
-                response.FileDetails = await _fileService.GetFileDetailsAsync(user.OrganizationId, null, user.ProfilePath);
+                response.FileDetails = await _fileService.GetImageDetailsAsync(user.OrganizationId, null, user.ProfilePath, ImageType.Profiles);
 
             return Ok(response);
         }
@@ -68,7 +68,7 @@ public partial class AuthController
             {
                 try
                 {
-                    var profilePath = await _fileService.SaveLogoAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    var profilePath = await _fileService.SaveImageAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Profiles);
                     user.ProfilePath = profilePath;
                 }
                 catch (Exception ex)
@@ -81,7 +81,7 @@ public partial class AuthController
             var createdUser = await _userRepository.CreateAsync(user);
             var response = new UserResponseDto(createdUser);
             if (!string.IsNullOrWhiteSpace(createdUser.ProfilePath))
-                response.FileDetails = await _fileService.GetFileDetailsAsync(createdUser.OrganizationId, null, createdUser.ProfilePath);
+                response.FileDetails = await _fileService.GetImageDetailsAsync(createdUser.OrganizationId, null, createdUser.ProfilePath, ImageType.Profiles);
 
             return Ok(response);
         }
@@ -126,9 +126,9 @@ public partial class AuthController
                 try
                 {
                     if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                        await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Logos);
+                        await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
 
-                    var profilePath = await _fileService.SaveLogoAsync(existingUser.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                    var profilePath = await _fileService.SaveImageAsync(existingUser.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Profiles);
                     user.ProfilePath = profilePath;
                 }
                 catch (Exception ex)
@@ -141,7 +141,7 @@ public partial class AuthController
             {
                 if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
                 {
-                    await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Logos);
+                    await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
                     user.ProfilePath = null;
                 }
             }
@@ -153,7 +153,7 @@ public partial class AuthController
             var updatedUser = await _userRepository.UpdateByIdAsync(user);
             var response = new UserResponseDto(updatedUser);
             if (!string.IsNullOrWhiteSpace(updatedUser.ProfilePath))
-                response.FileDetails = await _fileService.GetFileDetailsAsync(updatedUser.OrganizationId, null, updatedUser.ProfilePath);
+                response.FileDetails = await _fileService.GetImageDetailsAsync(updatedUser.OrganizationId, null, updatedUser.ProfilePath, ImageType.Profiles);
 
             return Ok(response);
         }
@@ -177,7 +177,7 @@ public partial class AuthController
             // Check if user exists then check/delete logo
             var existingUser = await _userRepository.GetUserByIdAsync(userId);
             if (existingUser != null && !string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Logos);
+                await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
 
             await _userRepository.DeleteUserByIdAsync(userId);
             return NoContent();

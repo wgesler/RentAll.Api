@@ -23,7 +23,7 @@ namespace RentAll.Api.Controllers
                 {
                     var dto = new OfficeResponseDto(office);
                     if (!string.IsNullOrWhiteSpace(office.LogoPath))
-                        dto.FileDetails = await _fileService.GetFileDetailsAsync(office.OrganizationId, null, office.LogoPath);
+                        dto.FileDetails = await _fileService.GetImageDetailsAsync(office.OrganizationId, null, office.LogoPath, ImageType.Logos);
 
                     response.Add(dto);
                 }
@@ -50,7 +50,7 @@ namespace RentAll.Api.Controllers
 
                 var response = new OfficeResponseDto(office);
                 if (!string.IsNullOrWhiteSpace(office.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(office.OrganizationId, null, office.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(office.OrganizationId, null, office.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -85,7 +85,7 @@ namespace RentAll.Api.Controllers
                 {
                     try
                     {
-                        var logoPath = await _fileService.SaveLogoAsync(CurrentOrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        var logoPath = await _fileService.SaveImageAsync(CurrentOrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
                         office.LogoPath = logoPath;
                     }
                     catch (Exception ex)
@@ -99,7 +99,7 @@ namespace RentAll.Api.Controllers
 
                 var response = new OfficeResponseDto(createdOffice);
                 if (!string.IsNullOrWhiteSpace(createdOffice.LogoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -146,7 +146,7 @@ namespace RentAll.Api.Controllers
                         {
                             try
                             {
-                                await _fileService.DeleteImageAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath, ImageType.Logos);
+                                await _fileService.DeleteImageAsync(existingOffice.OrganizationId, existingOffice.Name, existingOffice.LogoPath, ImageType.Logos);
                             }
                             catch (Exception deleteEx)
                             {
@@ -155,7 +155,7 @@ namespace RentAll.Api.Controllers
                         }
 
                         // Save new logo
-                        var logoPath = await _fileService.SaveLogoAsync(existingOffice.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Organization);
+                        var logoPath = await _fileService.SaveImageAsync(existingOffice.OrganizationId, existingOffice.Name, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
                         office.LogoPath = logoPath;
                     }
                     catch (Exception ex)
@@ -192,7 +192,7 @@ namespace RentAll.Api.Controllers
                 {
                     try
                     {
-                        response.FileDetails = await _fileService.GetFileDetailsAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath);
+                        response.FileDetails = await _fileService.GetImageDetailsAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath, ImageType.Logos);
                     }
                     catch (Exception fileEx)
                     {

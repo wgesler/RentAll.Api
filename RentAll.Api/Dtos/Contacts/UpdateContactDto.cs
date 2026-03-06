@@ -18,6 +18,7 @@ public class UpdateContactDto
     public string? Zip { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }
@@ -78,6 +79,7 @@ public class UpdateContactDto
             Zip = Zip,
             Phone = Phone,
             Email = Email,
+            Rating = Rating,
             Notes = Notes,
             IsInternational = IsInternational,
             IsActive = IsActive,

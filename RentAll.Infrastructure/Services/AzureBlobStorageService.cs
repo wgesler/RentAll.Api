@@ -28,40 +28,21 @@ public class AzureBlobStorageService : IFileService
     }
 
     #region Images
-    public async Task<string> SavePhotoAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, EntityType entityType)
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType)
     {
         var fileBytes = DecodeBase64(fileContent);
 
         // Create stream and ensure it stays alive during async upload
         using var stream = new MemoryStream(fileBytes);
-        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, entityType, ImageType.Photos);
+        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, imageType);
         return result;
     }
 
-    public async Task<string> SaveReceiptAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, EntityType entityType)
-    {
-        var fileBytes = DecodeBase64(fileContent);
-
-        // Create stream and ensure it stays alive during async upload
-        using var stream = new MemoryStream(fileBytes);
-        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, entityType, ImageType.Receipts);
-        return result;
-    }
-
-    public async Task<string> SaveLogoAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, EntityType entityType)
-    {
-        var fileBytes = DecodeBase64(fileContent);
-
-        // Create stream and ensure it stays alive during async upload
-        using var stream = new MemoryStream(fileBytes);
-        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, entityType, ImageType.Logos);
-        return result;
-    }
-
-    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, EntityType entityType, ImageType imageType)
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType)
     {
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
+        var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
             throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
@@ -72,15 +53,16 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeName);
+            var containerName = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
-            var typeString = entityType.ToString().ToLowerInvariant();
+            var typeString = imageType.ToString().ToLowerInvariant();
 
-            // Keep versioned logos (new URL each time)
-            var uniqueFileName = $"{typeString}-{Guid.NewGuid()}{fileExtension}";
-            var blobName = $"{imageType.ToString()}/{uniqueFileName}";
+            // Keep versioned logos (new URL each time). Folders: org/office/Photos|Receipts|Logos/file
+            var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
+            var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
+            var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
             var blobClient = containerClient.GetBlobClient(blobName);
 
             // Read stream into a fresh MemoryStream to avoid disposal issues during async upload
@@ -128,11 +110,11 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeName);
-            var blobName = ExtractBlobName(filePath, containerName, imageType.ToString());
-            if (string.IsNullOrEmpty(blobName))
+            var parsed = ParseStoragePath(filePath);
+            if (parsed == null)
                 return false;
 
+            var (containerName, blobName) = parsed.Value;
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
@@ -144,21 +126,19 @@ public class AzureBlobStorageService : IFileService
             return false;
         }
     }
-    #endregion
 
-    #region Documents
-    public async Task<FileDetails?> GetFileDetailsAsync(Guid organizationId, string? officeName, string filePath)
+    public async Task<FileDetails?> GetImageDetailsAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return null;
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeName);
-            var blobName = ExtractBlobName(filePath, containerName, "logos");
-            if (string.IsNullOrEmpty(blobName))
+            var parsed = ParseStoragePath(filePath);
+            if (parsed == null)
                 return null;
 
+            var (containerName, blobName) = parsed.Value;
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
@@ -186,7 +166,9 @@ public class AzureBlobStorageService : IFileService
             return null;
         }
     }
+    #endregion
 
+    #region Documents
     public async Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, DocumentType documentType)
     {
         var fileBytes = DecodeBase64(fileContent);
@@ -200,6 +182,7 @@ public class AzureBlobStorageService : IFileService
     public async Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, DocumentType documentType)
     {
         var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt" };
+        var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
             throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
@@ -218,15 +201,16 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeName);
+            var containerName = BuildContainerName();
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
-            var documentTypeFolder = documentType.ToString().ToLowerInvariant();
-            var uniqueFileName = $"{documentTypeFolder}-{Guid.NewGuid()}{fileExtension}";
-            var blobName = $"documents/{documentTypeFolder}/{uniqueFileName}";
+            var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
+            var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
+            var blobName = $"{blobPathPrefix}/documents/{uniqueFileName}";
             var blobClient = containerClient.GetBlobClient(blobName);
+
 
             // Read stream into a fresh MemoryStream to avoid disposal issues during async upload
             MemoryStream uploadStream;
@@ -273,11 +257,11 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeName);
-            var blobName = ExtractBlobNameFromDocumentPath(filePath, containerName);
-            if (string.IsNullOrEmpty(blobName))
+            var parsed = ParseStoragePath(filePath);
+            if (parsed == null)
                 return false;
 
+            var (containerName, blobName) = parsed.Value;
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
@@ -297,11 +281,11 @@ public class AzureBlobStorageService : IFileService
 
         try
         {
-            var containerName = BuildContainerName(organizationId, officeName);
-            var blobName = ExtractBlobNameFromDocumentPath(filePath, containerName);
-            if (string.IsNullOrEmpty(blobName))
+            var parsed = ParseStoragePath(filePath);
+            if (parsed == null)
                 return null;
 
+            var (containerName, blobName) = parsed.Value;
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
@@ -331,13 +315,45 @@ public class AzureBlobStorageService : IFileService
     }
     #endregion
 
-    private string BuildContainerName(Guid organizationId, string? officeName)
+    #region Private Helpers
+    private string BuildContainerName()
     {
-        var env = (string.IsNullOrWhiteSpace(_appSettings.Environment) ? "development" : _appSettings.Environment).ToLowerInvariant();
-        var orgOffice = !string.IsNullOrWhiteSpace(officeName)
-            ? $"org{organizationId}/{officeName}"
-            : $"org{organizationId}";
-        return $"{env}/{orgOffice}".ToLowerInvariant();
+        var env = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
+        return SanitizeContainerSegment(env);
+    }
+
+    private string GetBlobPathPrefix(Guid organizationId, string? officeName)
+    {
+        var orgSegment = $"{organizationId:N}".ToLowerInvariant();
+        var officeSegment = !string.IsNullOrWhiteSpace(officeName) ? officeName.Trim().ToLower() : "global";
+        return $"{orgSegment}/{officeSegment}";
+    }
+
+    private static string SanitizeContainerSegment(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "development";
+        var normalized = value.ToLowerInvariant().Trim();
+        var allowed = new char[normalized.Length];
+        for (int i = 0; i < normalized.Length; i++)
+        {
+            var c = normalized[i];
+            allowed[i] = (char.IsLetterOrDigit(c) || c == '-') ? c : '-';
+        }
+        var result = new string(allowed).Trim('-');
+        return string.IsNullOrEmpty(result) ? "development" : result.Length <= 63 ? result : result.Substring(0, 63);
+    }
+
+    private static (string containerName, string blobName)? ParseStoragePath(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return null;
+        var path = Uri.TryCreate(filePath, UriKind.Absolute, out var uri) && uri.IsAbsoluteUri
+            ? uri.AbsolutePath
+            : filePath;
+        path = path.TrimStart('/').TrimEnd('/');
+        if (string.IsNullOrEmpty(path)) return null;
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2) return null;
+        return (parts[0], string.Join("/", parts.Skip(1)));
     }
 
     private static string BuildUrl(string containerName, string blobName, Uri fallbackUri, string? baseUrl = null)
@@ -370,67 +386,5 @@ public class AzureBlobStorageService : IFileService
         // Assume raw base64
         return Convert.FromBase64String(fileContent);
     }
-
-    private string? ExtractBlobName(string filePath, string containerName, string folderName)
-    {
-        if (string.IsNullOrWhiteSpace(filePath))
-            return null;
-
-        var expectedPrefix = $"{folderName}/";
-
-        if (Uri.TryCreate(filePath, UriKind.Absolute, out var uri))
-        {
-            var pathParts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            // Exact container match: {containerName}/{folderName}/...
-            if (pathParts.Length >= 3
-                && pathParts[0].Equals(containerName, StringComparison.OrdinalIgnoreCase)
-                && pathParts[1].Equals(folderName, StringComparison.OrdinalIgnoreCase))
-            {
-                return string.Join("/", pathParts.Skip(1));
-            }
-
-            // Fallback: find folder name somewhere in path
-            for (int i = 0; i < pathParts.Length; i++)
-            {
-                if (pathParts[i].Equals(folderName, StringComparison.OrdinalIgnoreCase))
-                    return string.Join("/", pathParts.Skip(i));
-            }
-        }
-
-        var normalizedPath = filePath.TrimStart('/').TrimEnd('/');
-        if (normalizedPath.StartsWith($"{containerName}/{folderName}/", StringComparison.OrdinalIgnoreCase))
-            return normalizedPath.Substring(containerName.Length + 1);
-
-        if (normalizedPath.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
-            return normalizedPath;
-
-        return null;
-    }
-
-    private string? ExtractBlobNameFromDocumentPath(string filePath, string containerName)
-    {
-        if (string.IsNullOrWhiteSpace(filePath))
-            return null;
-
-        if (Uri.TryCreate(filePath, UriKind.Absolute, out var uri))
-        {
-            var pathParts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (pathParts.Length >= 4
-                && pathParts[0].Equals(containerName, StringComparison.OrdinalIgnoreCase)
-                && pathParts[1].Equals("documents", StringComparison.OrdinalIgnoreCase))
-            {
-                return string.Join("/", pathParts.Skip(1));
-            }
-        }
-
-        var normalizedPath = filePath.TrimStart('/').TrimEnd('/');
-        if (normalizedPath.StartsWith($"{containerName}/documents/", StringComparison.OrdinalIgnoreCase))
-            return normalizedPath.Substring(containerName.Length + 1);
-
-        if (normalizedPath.StartsWith("documents/", StringComparison.OrdinalIgnoreCase))
-            return normalizedPath;
-
-        return null;
-    }
+    #endregion
 }

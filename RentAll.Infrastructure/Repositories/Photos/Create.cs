@@ -11,7 +11,7 @@ public partial class PhotoRepository : IPhotoRepository
     public async Task<Photo> CreateAsync(Photo photo)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<PhotoEntity>("Organization.Photo_Add", new
+        var res = await db.DapperProcQueryAsync<PhotoEntity>("Maintenance.Photo_Add", new
         {
             OrganizationId = photo.OrganizationId,
             OfficeId = photo.OfficeId,

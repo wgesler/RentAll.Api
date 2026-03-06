@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using RentAll.Api.Dtos.Photos;
 
 namespace RentAll.Api.Controllers
@@ -15,6 +14,11 @@ namespace RentAll.Api.Controllers
             var photo = await _photoRepository.GetByIdAsync(photoId, CurrentOrganizationId);
             if (photo == null)
                 return NotFound();
+
+            var response = new PhotoResponseDto(photo);
+
+            if (!string.IsNullOrWhiteSpace(photo.PhotoPath))
+                response.FileDetails = await _fileService.GetImageDetailsAsync(photo.OrganizationId, photo.OfficeName, photo.PhotoPath, ImageType.Photos);
 
             return Ok(new PhotoResponseDto(photo));
         }
@@ -41,7 +45,7 @@ namespace RentAll.Api.Controllers
                 {
                     try
                     {
-                        var photoPath = await _fileService.SavePhotoAsync(dto.OrganizationId, officeName, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, EntityType.Property);
+                        var photoPath = await _fileService.SaveImageAsync(dto.OrganizationId, officeName, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Photos);
                         model.PhotoPath = photoPath;
                     }
                     catch (Exception ex)
@@ -55,7 +59,7 @@ namespace RentAll.Api.Controllers
                 var created = await _photoRepository.CreateAsync(model);
                 var response = new PhotoResponseDto(created);
                 if (!string.IsNullOrWhiteSpace(created.PhotoPath))
-                    response.FileDetails = await _fileService.GetFileDetailsAsync(created.OrganizationId, officeName, created.PhotoPath);
+                    response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, officeName, created.PhotoPath, ImageType.Photos);
 
                 return Ok(response);
             }
