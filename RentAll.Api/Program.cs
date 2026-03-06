@@ -152,6 +152,7 @@ else
     });
 }
 
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
 
 builder.Services.AddScoped<IContactManager, ContactManager>();

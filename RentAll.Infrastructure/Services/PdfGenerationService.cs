@@ -1,18 +1,30 @@
 using Microsoft.Extensions.Logging;
 using PuppeteerSharp;
 using RentAll.Domain.Interfaces.Services;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Infrastructure.Services;
 
 public class PdfGenerationService : IPdfGenerationService, IDisposable
 {
     private readonly ILogger<PdfGenerationService> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
     private IBrowser? _browser;
     private readonly SemaphoreSlim _browserSemaphore = new SemaphoreSlim(1, 1);
 
-    public PdfGenerationService(ILogger<PdfGenerationService> logger)
+    /// <summary>
+    /// Matches img tags and captures the src attribute value (supports single and double quotes; src in any order).
+    /// </summary>
+    private static readonly Regex ImgSrcRegex = new(
+        @"<img\s[^>]*?src\s*=\s*[""']([^""']+)[""'][^>]*>",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public PdfGenerationService(
+        ILogger<PdfGenerationService> logger,
+        IHttpClientFactory httpClientFactory)
     {
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     private async Task<IBrowser> GetBrowserAsync()
@@ -53,12 +65,16 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         if (string.IsNullOrWhiteSpace(htmlContent))
             throw new ArgumentException("HTML content cannot be null or empty", nameof(htmlContent));
 
+        options ??= new Domain.Interfaces.Services.PdfOptions();
+        if (options.InlineExternalImages)
+            htmlContent = await InlineExternalImagesAsync(htmlContent, options.BaseUrl).ConfigureAwait(false);
+
         try
         {
             var browser = await GetBrowserAsync();
             await using var page = await browser.NewPageAsync();
 
-            // Set content
+            // Set content (HTML is now self-contained; no external image refs)
             await page.SetContentAsync(htmlContent, new NavigationOptions { WaitUntil = new[] { WaitUntilNavigation.Networkidle0 } });
 
             // Configure PDF options
@@ -112,6 +128,81 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
     {
         var pdfBytes = await ConvertHtmlToPdfAsync(htmlContent);
         return Convert.ToBase64String(pdfBytes);
+    }
+
+    /// <summary>
+    /// Fetches external image URLs (http/https) and relative URLs (if baseUrl is set),
+    /// converts them to data URLs, and replaces src attributes so the HTML has no external refs.
+    /// </summary>
+    private async Task<string> InlineExternalImagesAsync(string html, string? baseUrl)
+    {
+        var matches = ImgSrcRegex.Matches(html).Cast<Match>().ToList();
+        if (matches.Count == 0)
+            return html;
+
+        var urlToDataUrl = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        using var client = _httpClientFactory.CreateClient();
+
+        foreach (Match m in matches)
+        {
+            var url = m.Groups[1].Value.Trim();
+            if (string.IsNullOrEmpty(url) || url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (urlToDataUrl.ContainsKey(url))
+                continue;
+
+            var absoluteUrl = ResolveUrl(url, baseUrl);
+            if (absoluteUrl == null)
+                continue;
+
+            try
+            {
+                var dataUrl = await FetchAsDataUrlAsync(client, absoluteUrl).ConfigureAwait(false);
+                if (dataUrl != null)
+                    urlToDataUrl[url] = dataUrl;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not inline image {Url}", absoluteUrl);
+            }
+        }
+
+        if (urlToDataUrl.Count == 0)
+            return html;
+
+        var sb = new System.Text.StringBuilder(html.Length);
+        var lastEnd = 0;
+        foreach (Match m in matches)
+        {
+            var url = m.Groups[1].Value.Trim();
+            sb.Append(html, lastEnd, m.Groups[1].Index - lastEnd);
+            sb.Append(urlToDataUrl.TryGetValue(url, out var dataUrl) ? dataUrl : url);
+            lastEnd = m.Groups[1].Index + m.Groups[1].Length;
+        }
+        sb.Append(html, lastEnd, html.Length - lastEnd);
+        return sb.ToString();
+    }
+
+    private static string? ResolveUrl(string url, string? baseUrl)
+    {
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return url;
+        if (string.IsNullOrEmpty(baseUrl))
+            return null;
+        baseUrl = baseUrl.TrimEnd('/');
+        var relative = url.TrimStart('/');
+        return $"{baseUrl}/{relative}";
+    }
+
+    private static async Task<string?> FetchAsDataUrlAsync(HttpClient client, string url)
+    {
+        using var response = await client.GetAsync(url).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var base64 = Convert.ToBase64String(bytes);
+        return $"data:{contentType};base64,{base64}";
     }
 
     private PuppeteerSharp.Media.PaperFormat ParsePaperFormat(string format)

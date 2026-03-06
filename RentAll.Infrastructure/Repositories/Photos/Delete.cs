@@ -9,7 +9,7 @@ public partial class PhotoRepository : IPhotoRepository
     public async Task DeleteByIdAsync(Guid photoId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Organization.Photo_DeleteById", new
+        await db.DapperProcExecuteAsync("Maintenance.Photo_DeleteById", new
         {
             PhotoId = photoId,
             OrganizationId = organizationId

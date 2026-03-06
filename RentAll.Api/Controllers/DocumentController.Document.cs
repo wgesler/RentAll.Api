@@ -6,7 +6,6 @@ namespace RentAll.Api.Controllers
     {
 
         #region Get
-
         [HttpGet]
         public async Task<IActionResult> GetDocumentsByOfficeIdsAsync()
         {
@@ -127,7 +126,6 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Post
-
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateDocumentDto dto)
         {
@@ -264,7 +262,6 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Put
-
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] UpdateDocumentDto dto)
         {
@@ -335,6 +332,10 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var document = await _documentRepository.GetDocumentByIdAsync(documentId, CurrentOrganizationId);
+                if (document != null && document.DocumentPath != null)
+                    await _fileService.DeleteDocumentAsync(document.OrganizationId, GetOfficeName(document.OfficeId), document.DocumentPath);
+
                 await _documentRepository.DeleteDocumentByIdAsync(documentId, CurrentOrganizationId);
                 return NoContent();
             }

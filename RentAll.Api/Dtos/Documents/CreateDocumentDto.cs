@@ -10,6 +10,7 @@ public class CreateDocumentDto
     public Guid? ReservationId { get; set; }
     public int DocumentTypeId { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public bool? EnableUpdates { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {

@@ -43,4 +43,14 @@ public interface IMaintenanceRepository
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder);
     Task DeleteWorkOrderByIdAsync(int workOrderId, Guid organizationId, Guid currentUser);
     #endregion
+
+    #region Receipt
+    Task<IEnumerable<Receipt>> GetReceiptsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Receipt>> GetReceiptsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
+    Task<Receipt?> GetReceiptByIdAsync(int receiptId, Guid organizationId);
+
+    Task<Receipt> CreateReceiptAsync(Receipt receipt);
+    Task<Receipt> UpdateReceiptAsync(Receipt receipt);
+    Task DeleteReceiptByIdAsync(int receiptId, Guid organizationId, Guid currentUser);
+    #endregion
 }

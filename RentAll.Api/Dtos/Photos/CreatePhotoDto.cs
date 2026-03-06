@@ -7,7 +7,7 @@ public class CreatePhotoDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid MaintenanceId { get; set; }
-    public FileDetails? FileDetails { get; set; }
+    public FileDetails FileDetails { get; set; } = new FileDetails();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -39,6 +39,9 @@ public class CreatePhotoDto
             OrganizationId = organizationId,
             OfficeId = OfficeId,
             MaintenanceId = MaintenanceId,
+            FileName = Path.GetFileNameWithoutExtension(FileDetails.FileName),
+            FileExtension = Path.GetExtension(FileDetails.FileName),
+            ContentType = FileDetails.ContentType,
             PhotoPath = null, // Will be set by controller after file save
             CreatedBy = currentUser
         };

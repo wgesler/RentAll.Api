@@ -95,4 +95,25 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ModifiedByName = e.ModifiedByName
         };
     }
+
+    private static Receipt ConvertEntityToModel(ReceiptEntity e)
+    {
+        return new Receipt
+        {
+            ReceiptId = e.ReceiptId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            Description = e.Description,
+            ReceiptPath = e.ReceiptPath,
+            IsActive = e.IsActive,
+            CreatedBy = e.CreatedBy,
+            CreatedOn = e.CreatedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
 }

@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
             if (!string.IsNullOrWhiteSpace(photo.PhotoPath))
                 response.FileDetails = await _fileService.GetImageDetailsAsync(photo.OrganizationId, photo.OfficeName, photo.PhotoPath, ImageType.Photos);
 
-            return Ok(new PhotoResponseDto(photo));
+            return Ok(response);
         }
         #endregion
 
