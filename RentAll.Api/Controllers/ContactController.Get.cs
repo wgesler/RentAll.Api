@@ -48,7 +48,18 @@ namespace RentAll.Api.Controllers
                 if (contact == null)
                     return NotFound("Contact not found");
 
-                return Ok(new ContactResponseDto(contact));
+                // Get the office name for file storage path
+                var office = await _organizationRepository.GetOfficeByIdAsync(contact.OfficeId, contact.OrganizationId);
+                var officeName = office != null ? office.Name : null;
+
+                // Get W9 and Insurance file details if paths are available
+                var response = new ContactResponseDto(contact);
+                if (!string.IsNullOrWhiteSpace(contact.W9Path))
+                    response.W9FileDetails = await _fileService.GetImageDetailsAsync(contact.OrganizationId, officeName, contact.W9Path, ImageType.W9Forms);
+                if (!string.IsNullOrWhiteSpace(contact.InsurancePath))
+                    response.InsuranceFileDetails = await _fileService.GetImageDetailsAsync(contact.OrganizationId, officeName, contact.InsurancePath, ImageType.Insurances);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {

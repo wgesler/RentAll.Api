@@ -30,6 +30,8 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Rating = contact.Rating,
                 Notes = contact.Notes,
                 IsInternational = contact.IsInternational,
+                W9Path = contact.W9Path,
+                InsurancePath = contact.InsurancePath,
                 CreatedBy = contact.CreatedBy
             });
 

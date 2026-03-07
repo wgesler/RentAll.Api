@@ -1,4 +1,5 @@
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Domain.Models;
 
@@ -25,6 +26,10 @@ public class Contact
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
+    public string? W9Path { get; set; }
+    public FileDetails? W9FileDetails { get; set; }
+    public string? InsurancePath { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

@@ -23,6 +23,8 @@ public class ContactEntity
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
+    public string? W9Path { get; set; }
+	public string? InsurancePath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

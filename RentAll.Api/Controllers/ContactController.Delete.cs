@@ -10,6 +10,20 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                // Check if contact exists then check/delete w9 and insurance files
+                var existing = await _contactRepository.GetContactByIdAsync(contactId, CurrentOrganizationId);
+                if (existing != null)
+                {
+                    // Get the office name for file storage path
+                    var office = await _organizationRepository.GetOfficeByIdAsync(existing.OfficeId, existing.OrganizationId);
+                    var officeName = office != null ? office.Name : null;
+
+                    if (!string.IsNullOrWhiteSpace(existing.W9Path))
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.W9Path, ImageType.W9Forms);
+                    if(!string.IsNullOrEmpty(existing.InsurancePath))
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.InsurancePath, ImageType.Insurances);
+                }
+
                 await _contactRepository.DeleteContactByIdAsync(contactId, CurrentUser);
                 return NoContent();
             }

@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Api.Dtos.Contacts;
 
 public class ContactResponseDto
@@ -23,6 +25,10 @@ public class ContactResponseDto
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
+    public string? W9Path { get; set; }
+    public FileDetails? W9FileDetails { get; set; }
+    public string? InsurancePath { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -53,6 +59,10 @@ public class ContactResponseDto
         Rating = contact.Rating;
         Notes = contact.Notes;
         IsInternational = contact.IsInternational;
+        W9Path = contact.W9Path;
+        W9FileDetails = contact.W9FileDetails;
+        InsurancePath = contact.InsurancePath;
+        InsuranceFileDetails = contact.InsuranceFileDetails;
         IsActive = contact.IsActive;
         CreatedOn = contact.CreatedOn;
         CreatedBy = contact.CreatedBy;

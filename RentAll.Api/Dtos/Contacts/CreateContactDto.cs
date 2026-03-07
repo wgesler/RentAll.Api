@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Api.Dtos.Contacts;
 
 public class CreateContactDto
@@ -19,6 +21,8 @@ public class CreateContactDto
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
+    public FileDetails? W9FileDetails { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -73,6 +77,8 @@ public class CreateContactDto
             Rating = Rating,
             Notes = Notes,
             IsInternational = IsInternational,
+            W9Path = null, // Will be set by controller after file save
+            InsurancePath = null,// Will be set by controller after file save
             IsActive = IsActive,
             CreatedBy = currentUser
         };

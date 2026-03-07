@@ -1,4 +1,3 @@
-using RentAll.Api.Dtos.Accounting.CostCodes;
 using RentAll.Api.Dtos.Users;
 
 namespace RentAll.Api.Controllers;

@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Api.Dtos.Contacts;
 
 public class UpdateContactDto
@@ -21,6 +23,10 @@ public class UpdateContactDto
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
+    public string? W9Path { get; set; }
+    public FileDetails? W9FileDetails { get; set; }
+    public string? InsurancePath { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -82,6 +88,8 @@ public class UpdateContactDto
             Rating = Rating,
             Notes = Notes,
             IsInternational = IsInternational,
+            W9Path = W9Path,
+            InsurancePath = InsurancePath,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

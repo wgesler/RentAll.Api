@@ -40,6 +40,8 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Rating = e.Rating,
                 Notes = e.Notes,
                 IsInternational = e.IsInternational,
+                W9Path = e.W9Path,
+                InsurancePath = e.InsurancePath,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,
