@@ -43,6 +43,8 @@ public class AzureBlobStorageService : IFileService
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
         var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
+        if (!string.IsNullOrEmpty(fileNameOnly))
+            fileNameOnly = Uri.UnescapeDataString(fileNameOnly);
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
             throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
@@ -59,7 +61,7 @@ public class AzureBlobStorageService : IFileService
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
             var typeString = imageType.ToString().ToLowerInvariant();
 
-            // Keep versioned logos (new URL each time). Folders: org/office/Photos|Receipts|Logos/file
+            // Keep versioned logos (new URL each time). Folders: org/office/Photos|Receipts|Logos/file. Decode filename so blob name matches URL decoding on retrieve.
             var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
             var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
             var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
@@ -94,7 +96,7 @@ public class AzureBlobStorageService : IFileService
                 await uploadStream.DisposeAsync();
             }
 
-            return BuildUrl(containerName, blobName, blobClient.Uri);
+            return blobClient.Uri.ToString();
         }
         catch (Exception ex)
         {
@@ -343,12 +345,35 @@ public class AzureBlobStorageService : IFileService
         return string.IsNullOrEmpty(result) ? "development" : result.Length <= 63 ? result : result.Substring(0, 63);
     }
 
-    private static (string containerName, string blobName)? ParseStoragePath(string? filePath)
+    /// <summary>
+    /// Parses a full blob URL or path into (containerName, blobName).
+    /// For http(s) URLs, extracts the path segment so URLs with spaces (e.g. "AW Primary Logo")
+    /// are parsed correctly; Uri.TryCreate can fail on spaces and would use the full URL otherwise.
+    /// </summary>
+    private (string containerName, string blobName)? ParseStoragePath(string? filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath)) return null;
-        var path = Uri.TryCreate(filePath, UriKind.Absolute, out var uri) && uri.IsAbsoluteUri
-            ? uri.AbsolutePath
-            : filePath;
+
+        string path;
+        if (filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || filePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            var schemeEnd = filePath.IndexOf("://", StringComparison.OrdinalIgnoreCase) + 3;
+            var pathStart = filePath.IndexOf('/', schemeEnd);
+            if (pathStart < 0) return null;
+            var pathEnd = filePath.Length;
+            var q = filePath.IndexOf('?', pathStart);
+            var h = filePath.IndexOf('#', pathStart);
+            if (q >= 0) pathEnd = Math.Min(pathEnd, q);
+            if (h >= 0) pathEnd = Math.Min(pathEnd, h);
+            path = Uri.UnescapeDataString(filePath.Substring(pathStart, pathEnd - pathStart));
+        }
+        else
+        {
+            path = Uri.TryCreate(filePath, UriKind.Absolute, out var uri) && uri.IsAbsoluteUri
+                ? uri.AbsolutePath
+                : filePath;
+        }
+
         path = path.TrimStart('/').TrimEnd('/');
         if (string.IsNullOrEmpty(path)) return null;
         var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);

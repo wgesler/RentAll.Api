@@ -53,8 +53,7 @@ public partial class MaintenanceController
                 return NotFound("Work order record not found");
 
             var response = new WorkOrderResponseDto(record);
-            if (!string.IsNullOrWhiteSpace(record.ReceiptPath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(record.OrganizationId, null, record.ReceiptPath, ImageType.Receipts);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(record.OrganizationId, null, record.ReceiptPath, ImageType.Receipts);
 
             return Ok(response);
         }
@@ -84,24 +83,11 @@ public partial class MaintenanceController
         {
             var workOrder = dto.ToModel(CurrentUser);
             var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
-            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-            {
-                try
-                {
-                    var receiptPath = await _fileService.SaveImageAsync(dto.OrganizationId, office?.Name, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Receipts);
-                    workOrder.ReceiptPath = receiptPath;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving user profile");
-                    return ServerError("An error occurred while saving the profile file");
-                }
-            }
+            workOrder.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
 
             var created = await _maintenanceRepository.CreateWorkOrderAsync(workOrder);
             var response = new WorkOrderResponseDto(created);
-            if (!string.IsNullOrWhiteSpace(created.ReceiptPath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
 
             return Ok(response);
         }
@@ -134,38 +120,13 @@ public partial class MaintenanceController
                 return NotFound("Work order record not found");
 
             var workOrder = dto.ToModel(CurrentUser);
-            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-            {
-                try
-                {
-                    if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
-                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Receipts);
-
-                    var receiptPath = await _fileService.SaveImageAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Receipts);
-                    workOrder.ReceiptPath = receiptPath;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving user profile");
-                    return ServerError("An error occurred while saving the profile file");
-                }
-            }
-            else if (dto.ReceiptPath == null)
-            {
-                if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
-                {
-                    await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Receipts);
-                    workOrder.ReceiptPath = null;
-                }
-            }
-            else
-            {
-                workOrder.ReceiptPath = existing.ReceiptPath;
-            }
+            workOrder.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
 
             var updated = await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
 
             var response = new WorkOrderResponseDto(updated);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
             return Ok(response);
         }
         catch (Exception ex)

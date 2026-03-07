@@ -54,8 +54,7 @@ public partial class MaintenanceController
                 return NotFound("Receipt record not found");
 
             var response = new ReceiptResponseDto(record);
-            if (!string.IsNullOrWhiteSpace(record.ReceiptPath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(record.OrganizationId, null, record.ReceiptPath, ImageType.Receipts);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(record.OrganizationId, null, record.ReceiptPath, ImageType.Receipts);
 
             return Ok(response);
         }
@@ -85,24 +84,11 @@ public partial class MaintenanceController
         {
             var receipt = dto.ToModel(CurrentUser);
             var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
-            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-            {
-                try
-                {
-                    var receiptPath = await _fileService.SaveImageAsync(dto.OrganizationId, office?.Name, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Receipts);
-                    receipt.ReceiptPath = receiptPath;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving receipt file");
-                    return ServerError("An error occurred while saving the receipt file");
-                }
-            }
+            receipt.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
 
             var created = await _maintenanceRepository.CreateReceiptAsync(receipt);
             var response = new ReceiptResponseDto(created);
-            if (!string.IsNullOrWhiteSpace(created.ReceiptPath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
 
             return Ok(response);
         }
@@ -135,38 +121,13 @@ public partial class MaintenanceController
                 return NotFound("Receipt record not found");
 
             var receipt = dto.ToModel(CurrentUser);
-            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-            {
-                try
-                {
-                    if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
-                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Receipts);
-
-                    var receiptPath = await _fileService.SaveImageAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Receipts);
-                    receipt.ReceiptPath = receiptPath;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving receipt file");
-                    return ServerError("An error occurred while saving the receipt file");
-                }
-            }
-            else if (dto.ReceiptPath == null)
-            {
-                if (!string.IsNullOrWhiteSpace(existing.ReceiptPath))
-                {
-                    await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.ReceiptPath, ImageType.Receipts);
-                    receipt.ReceiptPath = null;
-                }
-            }
-            else
-            {
-                receipt.ReceiptPath = existing.ReceiptPath;
-            }
+            receipt.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
 
             var updated = await _maintenanceRepository.UpdateReceiptAsync(receipt);
 
             var response = new ReceiptResponseDto(updated);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
             return Ok(response);
         }
         catch (Exception ex)

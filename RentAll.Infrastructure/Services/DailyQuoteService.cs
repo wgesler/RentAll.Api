@@ -36,9 +36,9 @@ public class DailyQuoteService : IDailyQuoteService
 
             return _dailyQuote;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine(ex);
+            // Fall through to default quote
         }
 
         return _defaultQuote;
@@ -68,9 +68,9 @@ public class DailyQuoteService : IDailyQuoteService
 
             return _dailyQuote;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine(ex);
+            // Fall through to default quote
         }
 
         return _defaultQuote;

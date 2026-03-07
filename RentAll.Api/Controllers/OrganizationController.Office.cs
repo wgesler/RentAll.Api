@@ -22,9 +22,7 @@ namespace RentAll.Api.Controllers
                 foreach (var office in offices)
                 {
                     var dto = new OfficeResponseDto(office);
-                    if (!string.IsNullOrWhiteSpace(office.LogoPath))
-                        dto.FileDetails = await _fileService.GetImageDetailsAsync(office.OrganizationId, null, office.LogoPath, ImageType.Logos);
-
+                    dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(office.OrganizationId, null, office.LogoPath, ImageType.Logos);
                     response.Add(dto);
                 }
                 return Ok(response);
@@ -49,8 +47,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Office not found");
 
                 var response = new OfficeResponseDto(office);
-                if (!string.IsNullOrWhiteSpace(office.LogoPath))
-                    response.FileDetails = await _fileService.GetImageDetailsAsync(office.OrganizationId, null, office.LogoPath, ImageType.Logos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(office.OrganizationId, null, office.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -80,26 +77,12 @@ namespace RentAll.Api.Controllers
 
                 var office = dto.ToModel();
 
-                // Handle logo file upload if provided
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        var logoPath = await _fileService.SaveImageAsync(CurrentOrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
-                        office.LogoPath = logoPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving office logo");
-                        return ServerError("An error occurred while saving the logo file");
-                    }
-                }
+                office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, null, dto.FileDetails, ImageType.Logos);
 
                 var createdOffice = await _organizationRepository.CreateAsync(office);
 
                 var response = new OfficeResponseDto(createdOffice);
-                if (!string.IsNullOrWhiteSpace(createdOffice.LogoPath))
-                    response.FileDetails = await _fileService.GetImageDetailsAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath, ImageType.Logos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -136,70 +119,12 @@ namespace RentAll.Api.Controllers
 
                 var office = dto.ToModel();
 
-                // Handle logo file upload if provided
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        // Delete old logo if it exists (fail silently if delete fails)
-                        if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-                        {
-                            try
-                            {
-                                await _fileService.DeleteImageAsync(existingOffice.OrganizationId, existingOffice.Name, existingOffice.LogoPath, ImageType.Logos);
-                            }
-                            catch (Exception deleteEx)
-                            {
-                                _logger.LogWarning(deleteEx, "Failed to delete old logo, continuing with new logo upload: {LogoPath}", existingOffice.LogoPath);
-                            }
-                        }
-
-                        // Save new logo
-                        var logoPath = await _fileService.SaveImageAsync(existingOffice.OrganizationId, existingOffice.Name, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
-                        office.LogoPath = logoPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving office logo");
-                        return ServerError("An error occurred while saving the logo file");
-                    }
-                }
-                else if (dto.LogoPath == null)
-                {
-                    // LogoPath is explicitly null - delete the logo
-                    if (!string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-                    {
-                        try
-                        {
-                            await _fileService.DeleteImageAsync(existingOffice.OrganizationId, null, existingOffice.LogoPath, ImageType.Logos);
-                        }
-                        catch (Exception deleteEx)
-                        {
-                            _logger.LogWarning(deleteEx, "Failed to delete logo during update: {LogoPath}", existingOffice.LogoPath);
-                        }
-                        office.LogoPath = null;
-                    }
-                }
-                else
-                {
-                    // No new file provided and LogoPath is not null - preserve existing logo from database
-                    office.LogoPath = existingOffice.LogoPath;
-                }
+                office.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                    existingOffice.OrganizationId, existingOffice.Name, dto.FileDetails, ImageType.Logos, existingOffice.LogoPath, dto.LogoPath);
 
                 var updatedOffice = await _organizationRepository.UpdateByIdAsync(office);
                 var response = new OfficeResponseDto(updatedOffice);
-                if (!string.IsNullOrWhiteSpace(updatedOffice.LogoPath))
-                {
-                    try
-                    {
-                        response.FileDetails = await _fileService.GetImageDetailsAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath, ImageType.Logos);
-                    }
-                    catch (Exception fileEx)
-                    {
-                        _logger.LogWarning(fileEx, "Failed to retrieve file details for logo, continuing with response: {LogoPath}", updatedOffice.LogoPath);
-                        // Continue without file details if retrieval fails
-                    }
-                }
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedOffice.OrganizationId, null, updatedOffice.LogoPath, ImageType.Logos);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -222,7 +147,7 @@ namespace RentAll.Api.Controllers
                 // Check if office exists check/delete logo before deleting office
                 var existingOffice = await _organizationRepository.GetOfficeByIdAsync(officeId, CurrentOrganizationId);
                 if (existingOffice != null && !string.IsNullOrWhiteSpace(existingOffice.LogoPath))
-                    await _fileService.DeleteImageAsync(existingOffice.OrganizationId, GetOfficeName(officeId), existingOffice.LogoPath, ImageType.Logos);
+                    await _fileService.DeleteImageAsync(existingOffice.OrganizationId, await GetOfficeNameAsync(officeId), existingOffice.LogoPath, ImageType.Logos);
 
                 await _organizationRepository.DeleteOfficeByIdAsync(officeId);
                 return NoContent();

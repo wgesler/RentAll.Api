@@ -61,9 +61,7 @@ namespace RentAll.Api.Controllers
                 foreach (var document in documents.Where(d => !d.IsDeleted))
                 {
                     var dto = new DocumentResponseDto(document);
-                    if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-                        dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
-
+                    dto.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
                     response.Add(dto);
                 }
                 return Ok(response);
@@ -85,9 +83,7 @@ namespace RentAll.Api.Controllers
                 foreach (var document in documents.Where(d => !d.IsDeleted))
                 {
                     var dto = new DocumentResponseDto(document);
-                    if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-                        dto.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
-
+                    dto.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
                     response.Add(dto);
                 }
                 return Ok(response);
@@ -112,8 +108,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Document not found");
 
                 var response = new DocumentResponseDto(document);
-                if (!string.IsNullOrWhiteSpace(document.DocumentPath))
-                    response.FileDetails = await _fileService.GetDocumentDetailsAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
+                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
 
                 return Ok(response);
             }
@@ -140,33 +135,11 @@ namespace RentAll.Api.Controllers
             {
                 var model = dto.ToModel(CurrentOrganizationId, CurrentUser);
 
-                // Handle file upload if provided
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        // Save document file - we'll need to extend FileService for documents
-                        // For now, using a similar pattern to logos
-                        var documentPath = await _fileService.SaveDocumentAsync(
-                            CurrentOrganizationId,
-                            GetOfficeName(dto.OfficeId),
-                            dto.FileDetails.File,
-                            dto.FileDetails.FileName,
-                            dto.FileDetails.ContentType,
-                            (DocumentType)dto.DocumentTypeId);
-                        model.DocumentPath = documentPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving document file");
-                        return ServerError("An error occurred while saving the document file");
-                    }
-                }
+                model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, (DocumentType)dto.DocumentTypeId);
 
                 var created = await _documentRepository.CreateAsync(model);
                 var response = new DocumentResponseDto(created);
-                if (!string.IsNullOrWhiteSpace(created.DocumentPath))
-                    response.FileDetails = await _fileService.GetDocumentDetailsAsync(created.OrganizationId, created.OfficeName, created.DocumentPath);
+                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(created.OrganizationId, created.OfficeName, created.DocumentPath);
 
                 return Ok(response);
             }
@@ -199,56 +172,22 @@ namespace RentAll.Api.Controllers
                     var model = dto.ToModelForUpdate(existing, CurrentUser);
                     model.IsDeleted = false; // Always set to not deleted
 
-                    // Handle file upload (replacing existing file)
-                    if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                    {
-                        try
-                        {
-                            // Delete old document file if it exists
-                            if (!string.IsNullOrWhiteSpace(existing.DocumentPath))
-                                await _fileService.DeleteDocumentAsync(existing.OrganizationId, existing.OfficeName, existing.DocumentPath);
-
-                            // Save new document file
-                            var documentPath = await _fileService.SaveDocumentAsync(existing.OrganizationId, existing.OfficeName, dto.FileDetails.File, dto.FileDetails.FileName,
-                                dto.FileDetails.ContentType, (DocumentType)dto.DocumentTypeId);
-                            model.DocumentPath = documentPath;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error saving document file during upsert");
-                            return ServerError("An error occurred while saving the document file");
-                        }
-                    }
+                    model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(
+                        existing.OrganizationId, existing.OfficeName, dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null);
 
                     result = await _documentRepository.UpdateByIdAsync(model);
                 }
                 else
                 {
-                    // Create new document
                     var model = dto.ToModel(CurrentOrganizationId, CurrentUser);
 
-                    // Handle file upload if provided
-                    if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                    {
-                        try
-                        {
-                            // Save document file
-                            var documentPath = await _fileService.SaveDocumentAsync(CurrentOrganizationId, GetOfficeName(dto.OfficeId), dto.FileDetails.File, dto.FileDetails.FileName,
-                                dto.FileDetails.ContentType, (DocumentType)dto.DocumentTypeId);
-                            model.DocumentPath = documentPath;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error saving document file during upsert");
-                            return ServerError("An error occurred while saving the document file");
-                        }
-                    }
+                    model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, (DocumentType)dto.DocumentTypeId);
 
                     result = await _documentRepository.CreateAsync(model);
                 }
 
                 var response = new DocumentResponseDto(result);
-                response.FileDetails = await _fileService.GetDocumentDetailsAsync(result.OrganizationId, result.OfficeName, result.DocumentPath);
+                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(result.OrganizationId, result.OfficeName, result.DocumentPath);
 
                 return Ok(response);
             }
@@ -280,36 +219,12 @@ namespace RentAll.Api.Controllers
 
                 var model = dto.ToModel(CurrentUser);
 
-                // Handle file upload if provided (replacing existing file)
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        // Delete old document if it exists
-                        if (!string.IsNullOrWhiteSpace(existing.DocumentPath))
-                            await _fileService.DeleteDocumentAsync(existing.OrganizationId, existing.OfficeName, existing.DocumentPath);
-
-                        // Save new document
-                        var documentPath = await _fileService.SaveDocumentAsync(
-                            existing.OrganizationId,
-                            existing.OfficeName,
-                            dto.FileDetails.File,
-                            dto.FileDetails.FileName,
-                            dto.FileDetails.ContentType,
-                            (DocumentType)dto.DocumentTypeId);
-                        model.DocumentPath = documentPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving document file");
-                        return ServerError("An error occurred while saving the document file");
-                    }
-                }
+                model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(
+                    existing.OrganizationId, existing.OfficeName, dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null);
 
                 var updated = await _documentRepository.UpdateByIdAsync(model);
                 var response = new DocumentResponseDto(updated);
-                if (!string.IsNullOrWhiteSpace(updated.DocumentPath))
-                    response.FileDetails = await _fileService.GetDocumentDetailsAsync(updated.OrganizationId, existing.OfficeName, updated.DocumentPath);
+                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(updated.OrganizationId, existing.OfficeName, updated.DocumentPath);
 
                 return Ok(response);
             }
@@ -334,7 +249,7 @@ namespace RentAll.Api.Controllers
             {
                 var document = await _documentRepository.GetDocumentByIdAsync(documentId, CurrentOrganizationId);
                 if (document != null && document.DocumentPath != null)
-                    await _fileService.DeleteDocumentAsync(document.OrganizationId, GetOfficeName(document.OfficeId), document.DocumentPath);
+                    await _fileService.DeleteDocumentAsync(document.OrganizationId, await GetOfficeNameAsync(document.OfficeId), document.DocumentPath);
 
                 await _documentRepository.DeleteDocumentByIdAsync(documentId, CurrentOrganizationId);
                 return NoContent();

@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Documents;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
 {
@@ -48,6 +49,7 @@ namespace RentAll.Api.Controllers
 
                 var fileName = dto.FileName ?? $"document-{Guid.NewGuid()}.pdf";
                 var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+                var pdfFileDetails = new FileDetails { File = pdfBase64, FileName = fileName, ContentType = "application/pdf" };
 
                 // Check if document exists by name
                 var existing = await _documentRepository.GetDocumentByNameAsync(fileNameWithoutExtension, CurrentOrganizationId);
@@ -74,18 +76,12 @@ namespace RentAll.Api.Controllers
                         ModifiedBy = CurrentUser
                     };
 
-                    // Delete old document file if it exists
-                    if (!string.IsNullOrWhiteSpace(existing.DocumentPath))
-                        await _fileService.DeleteDocumentAsync(existing.OrganizationId, existing.OfficeName, existing.DocumentPath);
-
-                    // Save new PDF file
-                    var documentPath = await _fileService.SaveDocumentAsync(existing.OrganizationId, existing.OfficeName, pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
-                    model.DocumentPath = documentPath;
+                    model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(
+                        existing.OrganizationId, existing.OfficeName, pdfFileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, existing.DocumentPath);
                     result = await _documentRepository.UpdateByIdAsync(model);
                 }
                 else
                 {
-                    // Create new document
                     var model = new Document
                     {
                         OrganizationId = CurrentOrganizationId,
@@ -101,14 +97,12 @@ namespace RentAll.Api.Controllers
                         CreatedBy = CurrentUser
                     };
 
-                    // Save PDF file
-                    var documentPath = await _fileService.SaveDocumentAsync(CurrentOrganizationId, GetOfficeName(dto.OfficeId), pdfBase64, fileName, "application/pdf", (DocumentType)dto.DocumentTypeId);
-                    model.DocumentPath = documentPath;
+                    model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), pdfFileDetails, (DocumentType)dto.DocumentTypeId);
                     result = await _documentRepository.CreateAsync(model);
                 }
 
                 var response = new DocumentResponseDto(result);
-                response.FileDetails = await _fileService.GetDocumentDetailsAsync(result.OrganizationId, result.OfficeName, result.DocumentPath);
+                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(result.OrganizationId, result.OfficeName, result.DocumentPath);
 
                 return Ok(response);
             }

@@ -13,20 +13,20 @@ namespace RentAll.Api.Controllers
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IEmailRepository _emailRepository;
         private readonly IEmailManager _emailManager;
-        private readonly IFileService _fileService;
+        private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly ILogger<EmailController> _logger;
 
         public EmailController(
             IOrganizationRepository organizationRepository,
             IEmailRepository emailRepository,
             IEmailManager emailManager,
-            IFileService fileService,
+            IFileAttachmentHelper fileAttachmentHelper,
             ILogger<EmailController> logger)
         {
             _organizationRepository = organizationRepository;
             _emailRepository = emailRepository;
             _emailManager = emailManager;
-            _fileService = fileService;
+            _fileAttachmentHelper = fileAttachmentHelper;
             _logger = logger;
         }
     }

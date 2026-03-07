@@ -13,6 +13,7 @@ namespace RentAll.Api.Controllers
         private readonly IPhotoRepository _photoRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IFileService _fileService;
+        private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly IPdfGenerationService _pdfGenerationService;
         private readonly ILogger<DocumentController> _logger;
 
@@ -21,6 +22,7 @@ namespace RentAll.Api.Controllers
             IPhotoRepository photoRepository,
             IOrganizationRepository organizationRepository,
             IFileService fileService,
+            IFileAttachmentHelper fileAttachmentHelper,
             IPdfGenerationService pdfGenerationService,
             ILogger<DocumentController> logger)
         {
@@ -28,15 +30,16 @@ namespace RentAll.Api.Controllers
             _photoRepository = photoRepository;
             _organizationRepository = organizationRepository;
             _fileService = fileService;
+            _fileAttachmentHelper = fileAttachmentHelper;
             _pdfGenerationService = pdfGenerationService;
             _logger = logger;
         }
 
-        private string? GetOfficeName(int? officeId)
+        private async Task<string?> GetOfficeNameAsync(int? officeId)
         {
             if (!officeId.HasValue)
                 return null;
-            var office = _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId).GetAwaiter().GetResult();
+            var office = await _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId);
             return office?.Name;
         }
     }

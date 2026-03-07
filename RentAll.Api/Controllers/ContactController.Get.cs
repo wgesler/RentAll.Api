@@ -54,10 +54,8 @@ namespace RentAll.Api.Controllers
 
                 // Get W9 and Insurance file details if paths are available
                 var response = new ContactResponseDto(contact);
-                if (!string.IsNullOrWhiteSpace(contact.W9Path))
-                    response.W9FileDetails = await _fileService.GetImageDetailsAsync(contact.OrganizationId, officeName, contact.W9Path, ImageType.W9Forms);
-                if (!string.IsNullOrWhiteSpace(contact.InsurancePath))
-                    response.InsuranceFileDetails = await _fileService.GetImageDetailsAsync(contact.OrganizationId, officeName, contact.InsurancePath, ImageType.Insurances);
+                response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.W9Path, ImageType.W9Forms);
+                response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.InsurancePath, ImageType.Insurances);
 
                 return Ok(response);
             }

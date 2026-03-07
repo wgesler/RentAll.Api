@@ -39,8 +39,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Email not found");
 
                 var response = new EmailResponseDto(email);
-                if (!string.IsNullOrWhiteSpace(email.AttachmentPath))
-                    response.FileDetails = await _fileService.GetDocumentDetailsAsync(email.OrganizationId, email.OfficeName, email.AttachmentPath);
+                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(email.OrganizationId, email.OfficeName, email.AttachmentPath);
 
                 return Ok(response);
             }

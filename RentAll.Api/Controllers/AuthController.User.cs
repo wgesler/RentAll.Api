@@ -31,8 +31,7 @@ public partial class AuthController
                 return NotFound("User not found");
 
             var response = new UserResponseDto(user);
-            if (!string.IsNullOrWhiteSpace(user.ProfilePath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(user.OrganizationId, null, user.ProfilePath, ImageType.Profiles);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(user.OrganizationId, null, user.ProfilePath, ImageType.Profiles);
 
             return Ok(response);
         }
@@ -63,24 +62,11 @@ public partial class AuthController
             var passwordHash = _passwordHasher.HashPassword(dto.Password);
             var user = dto.ToModel(passwordHash, CurrentUser);
 
-            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-            {
-                try
-                {
-                    var profilePath = await _fileService.SaveImageAsync(dto.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Profiles);
-                    user.ProfilePath = profilePath;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving user profile");
-                    return ServerError("An error occurred while saving the profile file");
-                }
-            }
+            user.ProfilePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, null, dto.FileDetails, ImageType.Profiles);
 
             var createdUser = await _userRepository.CreateAsync(user);
             var response = new UserResponseDto(createdUser);
-            if (!string.IsNullOrWhiteSpace(createdUser.ProfilePath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(createdUser.OrganizationId, null, createdUser.ProfilePath, ImageType.Profiles);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdUser.OrganizationId, null, createdUser.ProfilePath, ImageType.Profiles);
 
             return Ok(response);
         }
@@ -120,39 +106,12 @@ public partial class AuthController
 
             var user = dto.ToModel(dto, passwordHash, CurrentUser);
 
-            if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-            {
-                try
-                {
-                    if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                        await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
-
-                    var profilePath = await _fileService.SaveImageAsync(existingUser.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Profiles);
-                    user.ProfilePath = profilePath;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error saving user profile");
-                    return ServerError("An error occurred while saving the profile file");
-                }
-            }
-            else if (dto.ProfilePath == null)
-            {
-                if (!string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                {
-                    await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
-                    user.ProfilePath = null;
-                }
-            }
-            else
-            {
-                user.ProfilePath = existingUser.ProfilePath;
-            }
+            user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                existingUser.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
 
             var updatedUser = await _userRepository.UpdateByIdAsync(user);
             var response = new UserResponseDto(updatedUser);
-            if (!string.IsNullOrWhiteSpace(updatedUser.ProfilePath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(updatedUser.OrganizationId, null, updatedUser.ProfilePath, ImageType.Profiles);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedUser.OrganizationId, null, updatedUser.ProfilePath, ImageType.Profiles);
 
             return Ok(response);
         }

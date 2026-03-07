@@ -16,6 +16,7 @@ public partial class AuthController : BaseController
     protected readonly IUserRepository _userRepository;
     protected readonly IPasswordHasher _passwordHasher;
     protected readonly IFileService _fileService;
+    protected readonly IFileAttachmentHelper _fileAttachmentHelper;
     protected readonly IConfiguration _configuration;
     protected readonly ILogger<AuthController> _logger;
 
@@ -25,6 +26,7 @@ public partial class AuthController : BaseController
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IFileService fileService,
+        IFileAttachmentHelper fileAttachmentHelper,
         IConfiguration configuration,
         ILogger<AuthController> logger)
     {
@@ -33,6 +35,7 @@ public partial class AuthController : BaseController
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _fileService = fileService;
+        _fileAttachmentHelper = fileAttachmentHelper;
         _configuration = configuration;
         _logger = logger;
     }

@@ -14,6 +14,7 @@ namespace RentAll.Api.Controllers
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IUserRepository _userRepository;
         private readonly IFileService _fileService;
+        private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly ILogger<OrganizationController> _logger;
 
         public OrganizationController(
@@ -21,20 +22,22 @@ namespace RentAll.Api.Controllers
             IOrganizationRepository organizationRepository,
             IUserRepository userRepository,
             IFileService fileService,
+            IFileAttachmentHelper fileAttachmentHelper,
             ILogger<OrganizationController> logger)
         {
             _organizationManager = organizationManager;
             _organizationRepository = organizationRepository;
             _userRepository = userRepository;
             _fileService = fileService;
+            _fileAttachmentHelper = fileAttachmentHelper;
             _logger = logger;
         }
 
-        private string? GetOfficeName(int? officeId)
+        private async Task<string?> GetOfficeNameAsync(int? officeId)
         {
             if (!officeId.HasValue)
                 return null;
-            var office = _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId).GetAwaiter().GetResult();
+            var office = await _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId);
             return office?.Name;
         }
     }

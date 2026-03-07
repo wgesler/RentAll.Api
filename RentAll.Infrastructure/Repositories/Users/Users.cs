@@ -100,9 +100,9 @@ namespace RentAll.Infrastructure.Repositories.Users
 
                 return ConvertEntityToModel(res.FirstOrDefault()!);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine(ex);
+                // Return empty user on failure
             }
             return new User();
 

@@ -15,9 +15,7 @@ namespace RentAll.Api.Controllers
                 foreach (var org in orgs)
                 {
                     var dto = new OrganizationResponseDto(org);
-                    if (!string.IsNullOrWhiteSpace(org.LogoPath))
-                        dto.FileDetails = await _fileService.GetImageDetailsAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
-
+                    dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
                     response.Add(dto);
                 }
                 return Ok(response);
@@ -39,8 +37,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Organization not found");
 
                 var response = new OrganizationResponseDto(org);
-                if (!string.IsNullOrWhiteSpace(org.LogoPath))
-                    response.FileDetails = await _fileService.GetImageDetailsAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -75,25 +72,11 @@ namespace RentAll.Api.Controllers
                 var model = dto.ToModel(code, CurrentUser);
                 model.OrganizationId = organizationId;
 
-                // Handle logo file upload if provided
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        var logoPath = await _fileService.SaveImageAsync(organizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
-                        model.LogoPath = logoPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving organization logo");
-                        return ServerError("An error occurred while saving the logo file");
-                    }
-                }
+                model.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, null, dto.FileDetails, ImageType.Logos);
 
                 var created = await _organizationRepository.CreateAsync(model);
                 var response = new OrganizationResponseDto(created);
-                if (!string.IsNullOrWhiteSpace(created.LogoPath))
-                    response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, null, created.LogoPath, ImageType.Logos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, null, created.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -130,46 +113,12 @@ namespace RentAll.Api.Controllers
 
                 var model = dto.ToModel(CurrentUser);
 
-                // Handle logo file upload if provided
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        // Delete old logo if it exists
-                        if (!string.IsNullOrWhiteSpace(existing.LogoPath))
-                            await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.LogoPath, ImageType.Logos);
-
-                        // Save new logo
-                        var logoPath = await _fileService.SaveImageAsync(existing.OrganizationId, null, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Logos);
-                        model.LogoPath = logoPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving organization logo");
-                        return ServerError("An error occurred while saving the logo file");
-                    }
-                }
-                else if (dto.LogoPath == null)
-                {
-                    // LogoPath is explicitly null - delete the logo
-                    if (!string.IsNullOrWhiteSpace(existing.LogoPath))
-                    {
-                        await _fileService.DeleteImageAsync(existing.OrganizationId, null, existing.LogoPath, ImageType.Logos);
-                        model.LogoPath = null;
-                    }
-                }
-                else
-                {
-                    // No new file provided and LogoPath is not null - preserve existing logo from database
-                    model.LogoPath = existing.LogoPath;
-                }
+                model.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                    existing.OrganizationId, null, dto.FileDetails, ImageType.Logos, existing.LogoPath, dto.LogoPath);
 
                 var updated = await _organizationRepository.UpdateByIdAsync(model);
                 var response = new OrganizationResponseDto(updated);
-                if (!string.IsNullOrWhiteSpace(updated.LogoPath))
-                {
-                    response.FileDetails = await _fileService.GetImageDetailsAsync(updated.OrganizationId, null, updated.LogoPath, ImageType.Logos);
-                }
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.LogoPath, ImageType.Logos);
                 return Ok(response);
             }
             catch (Exception ex)

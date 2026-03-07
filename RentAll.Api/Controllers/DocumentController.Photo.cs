@@ -16,9 +16,7 @@ namespace RentAll.Api.Controllers
                 return NotFound();
 
             var response = new PhotoResponseDto(photo);
-
-            if (!string.IsNullOrWhiteSpace(photo.PhotoPath))
-                response.FileDetails = await _fileService.GetImageDetailsAsync(photo.OrganizationId, photo.OfficeName, photo.PhotoPath, ImageType.Photos);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(photo.OrganizationId, photo.OfficeName, photo.PhotoPath, ImageType.Photos);
 
             return Ok(response);
         }
@@ -38,28 +36,13 @@ namespace RentAll.Api.Controllers
             try
             {
                 var model = dto.ToModel(CurrentOrganizationId, CurrentUser);
-                var officeName = GetOfficeName(dto.OfficeId);
+                var officeName = await GetOfficeNameAsync(dto.OfficeId);
 
-                // Handle photo file upload if provided
-                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
-                {
-                    try
-                    {
-                        var photoPath = await _fileService.SaveImageAsync(dto.OrganizationId, officeName, dto.FileDetails.File, dto.FileDetails.FileName, dto.FileDetails.ContentType, ImageType.Photos);
-                        model.PhotoPath = photoPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error saving photo");
-                        return ServerError("An error occurred while saving the photo file");
-                    }
-                }
-
+                model.PhotoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.FileDetails, ImageType.Photos);
 
                 var created = await _photoRepository.CreateAsync(model);
                 var response = new PhotoResponseDto(created);
-                if (!string.IsNullOrWhiteSpace(created.PhotoPath))
-                    response.FileDetails = await _fileService.GetImageDetailsAsync(created.OrganizationId, officeName, created.PhotoPath, ImageType.Photos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, officeName, created.PhotoPath, ImageType.Photos);
 
                 return Ok(response);
             }
@@ -82,7 +65,7 @@ namespace RentAll.Api.Controllers
             {
                 var photo = await _photoRepository.GetByIdAsync(photoId, CurrentOrganizationId);
                 if (photo != null && photo.PhotoPath != null)
-                    await _fileService.DeleteImageAsync(photo.OrganizationId, GetOfficeName(photo.OfficeId), photo.PhotoPath, ImageType.Photos);
+                    await _fileService.DeleteImageAsync(photo.OrganizationId, await GetOfficeNameAsync(photo.OfficeId), photo.PhotoPath, ImageType.Photos);
 
                 await _photoRepository.DeleteByIdAsync(photoId, CurrentOrganizationId);
                 return NoContent();

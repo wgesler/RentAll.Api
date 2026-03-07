@@ -72,8 +72,9 @@ public class FileService : IFileService
             await fileStream.CopyToAsync(fileStreamOut);
         }
 
-        // Return relative path
-        return fullPath;
+        // Return relative path in the format expected by GetImageDetailsAsync/DeleteImageAsync: /containerPath/type/filename
+        var relativePath = "/" + containerPath + "/" + typeString + "/" + uniqueFileName;
+        return relativePath;
     }
 
     public Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)
@@ -81,11 +82,8 @@ public class FileService : IFileService
         if (string.IsNullOrWhiteSpace(filePath))
             return Task.FromResult(false);
 
-        // Use same directory structure as SaveImageAsync: containerPath + lowercase type folder + filename
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
-
-        // Security: Ensure path is within the organization/office's image directory for this type
         var expectedPathPrefix = $"/{containerPath}/{typeString}/";
         if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
         {
@@ -93,14 +91,14 @@ public class FileService : IFileService
             return Task.FromResult(false);
         }
 
+        var fileName = Path.GetFileName(filePath);
+        if (string.IsNullOrEmpty(fileName))
+            return Task.FromResult(false);
+
+        var fullPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName);
+
         try
         {
-            // Build full path the same way SaveImageAsync writes: wwwRoot + containerPath + typeString (lowercase) + fileName
-            var fileName = Path.GetFileName(filePath);
-            if (string.IsNullOrEmpty(fileName))
-                return Task.FromResult(false);
-
-            var fullPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName);
             if (File.Exists(fullPath))
             {
                 File.Delete(fullPath);
@@ -121,11 +119,8 @@ public class FileService : IFileService
         if (string.IsNullOrWhiteSpace(filePath))
             return null;
 
-        // Same directory structure as SaveImageAsync/DeleteImageAsync: containerPath + lowercase type folder
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
-
-        // Security: Ensure path is within the organization/office's image directory for this type
         var expectedPathPrefix = $"/{containerPath}/{typeString}/";
         if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
         {
@@ -133,14 +128,14 @@ public class FileService : IFileService
             return null;
         }
 
+        var fileName = Path.GetFileName(filePath);
+        if (string.IsNullOrEmpty(fileName))
+            return null;
+
+        var fullPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName);
+
         try
         {
-            // Build full path the same way SaveImageAsync writes: wwwRoot + containerPath + typeString + fileName
-            var fileName = Path.GetFileName(filePath);
-            if (string.IsNullOrEmpty(fileName))
-                return null;
-
-            var fullPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName);
             if (!File.Exists(fullPath))
                 return null;
 
