@@ -135,7 +135,8 @@ namespace RentAll.Api.Controllers
             {
                 var model = dto.ToModel(CurrentOrganizationId, CurrentUser);
 
-                model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, (DocumentType)dto.DocumentTypeId);
+                model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails,
+                    (DocumentType)dto.DocumentTypeId) ?? string.Empty;
 
                 var created = await _documentRepository.CreateAsync(model);
                 var response = new DocumentResponseDto(created);
@@ -170,18 +171,17 @@ namespace RentAll.Api.Controllers
                 {
                     // Update existing document (including deleted ones - restore them)
                     var model = dto.ToModelForUpdate(existing, CurrentUser);
-                    model.IsDeleted = false; // Always set to not deleted
-
-                    model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(
-                        existing.OrganizationId, existing.OfficeName, dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null);
+                    model.IsDeleted = false; 
+                    model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(existing.OrganizationId, existing.OfficeName,
+                        dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null) ?? string.Empty;
 
                     result = await _documentRepository.UpdateByIdAsync(model);
                 }
                 else
                 {
                     var model = dto.ToModel(CurrentOrganizationId, CurrentUser);
-
-                    model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, (DocumentType)dto.DocumentTypeId);
+                    model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId),
+                        dto.FileDetails, (DocumentType)dto.DocumentTypeId) ?? string.Empty;
 
                     result = await _documentRepository.CreateAsync(model);
                 }
@@ -219,8 +219,8 @@ namespace RentAll.Api.Controllers
 
                 var model = dto.ToModel(CurrentUser);
 
-                model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(
-                    existing.OrganizationId, existing.OfficeName, dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null);
+                model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(existing.OrganizationId, existing.OfficeName,
+                    dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null) ?? string.Empty;
 
                 var updated = await _documentRepository.UpdateByIdAsync(model);
                 var response = new DocumentResponseDto(updated);

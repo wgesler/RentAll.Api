@@ -24,7 +24,9 @@ public class ContactEntity
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
-	public string? InsurancePath { get; set; }
+    public DateTimeOffset? W9Expiration { get; set; }
+    public string? InsurancePath { get; set; }
+    public DateTimeOffset? InsuranceExpiration { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

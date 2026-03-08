@@ -1,3 +1,4 @@
+using System.Reflection.Metadata;
 
 namespace RentAll.Api.Controllers
 {
@@ -49,11 +50,9 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving the email");
             }
         }
-
         #endregion
 
         #region Post
-
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEmailDto dto)
         {
@@ -87,5 +86,27 @@ namespace RentAll.Api.Controllers
 
         #endregion
 
+        #region Delete
+        [HttpDelete("{emailId}")]
+        public async Task<IActionResult> DeleteEmailByIdAsync(Guid emailId)
+        {
+            try
+            {
+                // Check if user exists then check/delete logo
+                var email = await _emailRepository.GetEmailByIdAsync(emailId, CurrentOrganizationId);
+                if (email != null && !string.IsNullOrWhiteSpace(email.AttachmentPath))
+                    await _fileService.DeleteDocumentAsync(email.OrganizationId, email.OfficeName, email.AttachmentPath);
+
+
+                await _emailRepository.DeleteEmailByIdAsync(emailId, CurrentOrganizationId);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting EmailHtml for organization: {OrganizationId}", CurrentOrganizationId);
+                return ServerError("An error occurred while deleting EmailHtml");
+            }
+        }
+        #endregion
     }
 }

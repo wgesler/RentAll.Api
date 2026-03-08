@@ -14,6 +14,7 @@ namespace RentAll.Api.Controllers
         private readonly IEmailRepository _emailRepository;
         private readonly IEmailManager _emailManager;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
+        private readonly IFileService _fileService;
         private readonly ILogger<EmailController> _logger;
 
         public EmailController(
@@ -21,12 +22,14 @@ namespace RentAll.Api.Controllers
             IEmailRepository emailRepository,
             IEmailManager emailManager,
             IFileAttachmentHelper fileAttachmentHelper,
+            IFileService fileService,
             ILogger<EmailController> logger)
         {
             _organizationRepository = organizationRepository;
             _emailRepository = emailRepository;
             _emailManager = emailManager;
             _fileAttachmentHelper = fileAttachmentHelper;
+            _fileService = fileService;
             _logger = logger;
         }
     }

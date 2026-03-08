@@ -16,7 +16,6 @@ using RentAll.Infrastructure.Repositories.Accounting;
 using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Documents;
-using RentAll.Infrastructure.Repositories.Photos;
 using RentAll.Infrastructure.Repositories.Emails;
 using RentAll.Infrastructure.Repositories.Maintenances;
 using RentAll.Infrastructure.Repositories.Organizations;

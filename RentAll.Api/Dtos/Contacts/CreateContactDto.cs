@@ -22,7 +22,9 @@ public class CreateContactDto
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public FileDetails? W9FileDetails { get; set; }
+    public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
+    public DateTimeOffset? InsuranceExpiration { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -78,7 +80,9 @@ public class CreateContactDto
             Notes = Notes,
             IsInternational = IsInternational,
             W9Path = null, // Will be set by controller after file save
+            W9Expiration = W9Expiration,
             InsurancePath = null,// Will be set by controller after file save
+            InsuranceExpiration = InsuranceExpiration,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

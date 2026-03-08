@@ -3,12 +3,12 @@ namespace RentAll.Domain.Enums;
 public enum DocumentType
 {
     Other = 0,
-    PropertyLetter = 1,
-    ReservationLease = 2,
-    Invoice = 3,
-    Attachment = 4,
-    Inspection = 5,
-    Inventory = 6
+    PropertyLetters = 1,
+    ReservationLeases = 2,
+    Invoices = 3,
+    Attachments = 4,
+    Inspections = 5,
+    Inventories = 6
 }
 
 

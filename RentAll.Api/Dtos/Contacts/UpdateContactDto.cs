@@ -24,8 +24,10 @@ public class UpdateContactDto
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
+    public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
+    public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -89,7 +91,9 @@ public class UpdateContactDto
             Notes = Notes,
             IsInternational = IsInternational,
             W9Path = W9Path,
+            W9Expiration = W9Expiration,
             InsurancePath = InsurancePath,
+            InsuranceExpiration = InsuranceExpiration,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

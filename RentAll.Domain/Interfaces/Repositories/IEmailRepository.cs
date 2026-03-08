@@ -7,8 +7,9 @@ public interface IEmailRepository
     #region Emails
     Task<IEnumerable<Email>> GetEmailsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<Email?> GetEmailByIdAsync(Guid emailId, Guid organizationId);
-    Task<Email> CreateAsync(Email email);
-    Task<Email> UpdateByIdAsync(Email email);
+    Task<Email> CreateEmailAsync(Email email);
+    Task<Email> UpdateEmailByIdAsync(Email email);
+    Task DeleteEmailByIdAsync(Guid emailId, Guid organizationId);
     #endregion
 
     #region EmailHtml

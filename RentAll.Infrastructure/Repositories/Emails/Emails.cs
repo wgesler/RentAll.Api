@@ -6,8 +6,9 @@ namespace RentAll.Infrastructure.Repositories.Emails
 {
     public partial class EmailRepository
     {
+
         #region Selects
-     public async Task<IEnumerable<Email>> GetEmailsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        public async Task<IEnumerable<Email>> GetEmailsByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_GetAllByOfficeIds", new
@@ -39,7 +40,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
         #endregion
 
         #region Creates
-        public async Task<Email> CreateAsync(Email email)
+        public async Task<Email> CreateEmailAsync(Email email)
         {
             var entity = ConvertModelToEntity(email);
             await using var db = new SqlConnection(_dbConnectionString);
@@ -76,7 +77,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
         #endregion
 
         #region Updates
-        public async Task<Email> UpdateByIdAsync(Email email)
+        public async Task<Email> UpdateEmailByIdAsync(Email email)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<EmailStoredProcRow>("Email.Email_UpdateById", new
@@ -95,6 +96,18 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 throw new Exception("Email not found");
 
             return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
+        }
+        #endregion
+
+        #region Deletes
+        public async Task DeleteEmailByIdAsync(Guid emailId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Email.Email_DeleteById", new
+            {
+                EmailId = emailId,
+                OrganizationId = organizationId
+            });
         }
         #endregion
     }

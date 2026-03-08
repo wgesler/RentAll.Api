@@ -205,12 +205,13 @@ public class AzureBlobStorageService : IFileService
         {
             var containerName = BuildContainerName();
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
             var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
+            var typeString = documentType.ToString().ToLowerInvariant();
+
             var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
-            var blobName = $"{blobPathPrefix}/documents/{uniqueFileName}";
+            var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
             var blobClient = containerClient.GetBlobClient(blobName);
 
 

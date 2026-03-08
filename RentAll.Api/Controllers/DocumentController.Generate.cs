@@ -76,8 +76,8 @@ namespace RentAll.Api.Controllers
                         ModifiedBy = CurrentUser
                     };
 
-                    model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(
-                        existing.OrganizationId, existing.OfficeName, pdfFileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, existing.DocumentPath);
+                    model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(existing.OrganizationId, existing.OfficeName,
+                        pdfFileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, existing.DocumentPath) ?? string.Empty;
                     result = await _documentRepository.UpdateByIdAsync(model);
                 }
                 else
@@ -97,7 +97,8 @@ namespace RentAll.Api.Controllers
                         CreatedBy = CurrentUser
                     };
 
-                    model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), pdfFileDetails, (DocumentType)dto.DocumentTypeId);
+                    model.DocumentPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId),
+                        pdfFileDetails, (DocumentType)dto.DocumentTypeId) ?? string.Empty;
                     result = await _documentRepository.CreateAsync(model);
                 }
 

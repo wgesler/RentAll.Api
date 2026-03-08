@@ -32,7 +32,9 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Notes = contact.Notes,
                 IsInternational = contact.IsInternational,
                 W9Path = contact.W9Path,
+                W9Expiration = contact.W9Expiration,
                 InsurancePath = contact.InsurancePath,
+                InsuranceExpiration = contact.InsuranceExpiration,
                 IsActive = contact.IsActive,
                 ModifiedBy = contact.ModifiedBy
             });

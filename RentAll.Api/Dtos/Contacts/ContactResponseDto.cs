@@ -26,8 +26,10 @@ public class ContactResponseDto
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
+    public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
+    public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -60,8 +62,10 @@ public class ContactResponseDto
         Notes = contact.Notes;
         IsInternational = contact.IsInternational;
         W9Path = contact.W9Path;
+        W9Expiration = contact.W9Expiration;
         W9FileDetails = contact.W9FileDetails;
         InsurancePath = contact.InsurancePath;
+        InsuranceExpiration = contact.InsuranceExpiration;
         InsuranceFileDetails = contact.InsuranceFileDetails;
         IsActive = contact.IsActive;
         CreatedOn = contact.CreatedOn;

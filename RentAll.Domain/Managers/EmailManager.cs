@@ -14,17 +14,20 @@ public class EmailManager : IEmailManager
     private readonly IEmailService _emailService;
     private readonly IFileService _fileService;
     private readonly IDocumentRepository _documentRepository;
+    private readonly IOrganizationRepository _organizationRepository;
 
     public EmailManager(
         IEmailRepository emailRepository,
         IEmailService emailService,
         IFileService fileService,
-        IDocumentRepository documentRepository)
+        IDocumentRepository documentRepository,
+        IOrganizationRepository organziationRepository)
     {
         _emailRepository = emailRepository;
         _emailService = emailService;
         _fileService = fileService;
         _documentRepository = documentRepository;
+        _organizationRepository = organziationRepository;
     }
 
     public async Task<Email> SendEmail(string? sendGridName, Email email)
@@ -32,10 +35,15 @@ public class EmailManager : IEmailManager
         // Translate the email into SendGrid format
         var originalEmailMessage = email.ToEmailMessage();
 
+        // Get the officeName for blob storage pathing. If it's not provided, attempt to look it up based on the officeId.
+        var office = await _organizationRepository.GetOfficeByIdAsync(email.OfficeId, email.OrganizationId);
+        var officeName = email.OfficeName ?? office?.Name;
+
         // If there's an attachment, store it in blob storage
         if (email.FileDetails != null)
         {
-            var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, email.OfficeName, email.FileDetails.File, email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachment);
+            var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, officeName, email.FileDetails.File,
+                email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachments);
 
             try
             {
@@ -45,7 +53,7 @@ public class EmailManager : IEmailManager
                     OfficeId = email.OfficeId,
                     PropertyId = email.PropertyId,
                     ReservationId = email.ReservationId,
-                    DocumentType = DocumentType.Attachment,
+                    DocumentType = DocumentType.Attachments,
                     FileName = Path.GetFileNameWithoutExtension(email.FileDetails.FileName),
                     FileExtension = Path.GetExtension(email.FileDetails.FileName),
                     ContentType = email.FileDetails.ContentType,
@@ -66,7 +74,7 @@ public class EmailManager : IEmailManager
         }
 
         // Save this email in our database
-        var createdEmail = await _emailRepository.CreateAsync(email);
+        var createdEmail = await _emailRepository.CreateEmailAsync(email);
         if (createdEmail.EmailStatus != EmailStatus.Attempting)
             return createdEmail;
 
@@ -81,7 +89,7 @@ public class EmailManager : IEmailManager
             currentEmail.LastAttemptedOn = DateTimeOffset.UtcNow;
             currentEmail.LastError = $"Attempt {attempt} of {MaxRetryAttempts}";
             currentEmail.ModifiedBy = modifiedBy;
-            currentEmail = await _emailRepository.UpdateByIdAsync(currentEmail);
+            currentEmail = await _emailRepository.UpdateEmailByIdAsync(currentEmail);
 
             try
             {
@@ -90,14 +98,14 @@ public class EmailManager : IEmailManager
                 currentEmail.SentOn = DateTimeOffset.UtcNow;
                 currentEmail.LastError = "Accepted by SendGrid.";
                 currentEmail.ModifiedBy = modifiedBy;
-                return await _emailRepository.UpdateByIdAsync(currentEmail);
+                return await _emailRepository.UpdateEmailByIdAsync(currentEmail);
             }
             catch (Exception ex)
             {
                 currentEmail.EmailStatus = EmailStatus.Failed;
                 currentEmail.LastError = ex.Message;
                 currentEmail.ModifiedBy = modifiedBy;
-                currentEmail = await _emailRepository.UpdateByIdAsync(currentEmail);
+                currentEmail = await _emailRepository.UpdateEmailByIdAsync(currentEmail);
 
                 if (!IsUnreachable(ex) || attempt >= MaxRetryAttempts)
                     return currentEmail;
