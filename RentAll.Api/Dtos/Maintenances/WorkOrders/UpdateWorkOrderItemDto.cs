@@ -12,14 +12,8 @@ public class UpdateWorkOrderItemDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (WorkOrderItemId == Guid.Empty)
-            return (false, "WorkOrderItemId is required");
-
         if (WorkOrderId == Guid.Empty)
             return (false, "WorkOrderId is required");
-
-        if (ReceiptId.HasValue && ReceiptId.Value <= 0)
-            return (false, "ReceiptId must be positive when provided");
 
         if (ItemAmount <= 0)
             return (false, "ItemAmount is required");
