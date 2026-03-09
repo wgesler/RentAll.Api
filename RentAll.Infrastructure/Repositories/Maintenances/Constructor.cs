@@ -1,12 +1,15 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;
 
 public partial class MaintenanceRepository : IMaintenanceRepository
 {
+    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions{ PropertyNameCaseInsensitive = true };
     private readonly string _dbConnectionString;
 
     public MaintenanceRepository(IOptions<AppSettings> appSettings)
@@ -75,27 +78,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         };
     }
 
-    private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)
-    {
-        return new WorkOrder
-        {
-            WorkOrderId = e.WorkOrderId,
-            OrganizationId = e.OrganizationId,
-            OfficeId = e.OfficeId,
-            OfficeName = e.OfficeName,
-            PropertyId = e.PropertyId,
-            PropertyCode = e.PropertyCode,
-            Description = e.Description,
-            ReceiptPath = e.ReceiptPath,
-            IsActive = e.IsActive,
-            CreatedBy = e.CreatedBy,
-            CreatedOn = e.CreatedOn,
-            ModifiedBy = e.ModifiedBy,
-            ModifiedOn = e.ModifiedOn,
-            ModifiedByName = e.ModifiedByName
-        };
-    }
-
     private static Receipt ConvertEntityToModel(ReceiptEntity e)
     {
         return new Receipt
@@ -107,6 +89,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             PropertyId = e.PropertyId,
             PropertyCode = e.PropertyCode,
             Description = e.Description,
+            Amount = e.Amount,
             ReceiptPath = e.ReceiptPath,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,
@@ -114,6 +97,56 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ModifiedBy = e.ModifiedBy,
             ModifiedOn = e.ModifiedOn,
             ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)
+    {
+        List<WorkOrderItem> items = new List<WorkOrderItem>();
+        if (!string.IsNullOrWhiteSpace(e.WorkOrderItems))
+        {
+            try
+            {
+                var entityItems = JsonSerializer.Deserialize<List<WorkOrderItemEntity>>(e.WorkOrderItems, JsonOptions) ?? new List<WorkOrderItemEntity>();
+                items = entityItems.Select(ConvertWorkOrderItemEntityToModel).ToList();
+            }
+            catch
+            {
+                items = new List<WorkOrderItem>();
+            }
+        }
+
+        return new WorkOrder
+        {
+            WorkOrderId = e.WorkOrderId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            Description = e.Description,
+            WorkOrderType = (WorkOrderType)e.WorkOrderTypeId,
+            WorkOrderItems = items,
+            IsActive = e.IsActive,
+            CreatedBy = e.CreatedBy,
+            CreatedOn = e.CreatedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static WorkOrderItem ConvertWorkOrderItemEntityToModel(WorkOrderItemEntity e)
+    {
+        return new WorkOrderItem
+        {
+            WorkOrderItemId = e.WorkOrderItemId,
+            WorkOrderId = e.WorkOrderId,
+            Description = e.Description,
+            ReceiptId = e.ReceiptId,
+            LaborHours = e.LaborHours,
+            LaborCost = e.LaborCost,
+            ItemAmount = e.ItemAmount
         };
     }
 }

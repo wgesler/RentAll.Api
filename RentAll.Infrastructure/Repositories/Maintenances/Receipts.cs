@@ -64,6 +64,7 @@ public partial class MaintenanceRepository
             OfficeId = receipt.OfficeId,
             PropertyId = receipt.PropertyId,
             Description = receipt.Description,
+            Amount = receipt.Amount,
             ReceiptPath = receipt.ReceiptPath,
             IsActive = receipt.IsActive,
             CreatedBy = receipt.CreatedBy
@@ -87,6 +88,7 @@ public partial class MaintenanceRepository
             OfficeId = receipt.OfficeId,
             PropertyId = receipt.PropertyId,
             Description = receipt.Description,
+            Amount = receipt.Amount,
             ReceiptPath = receipt.ReceiptPath,
             IsActive = receipt.IsActive,
             ModifiedBy = receipt.ModifiedBy

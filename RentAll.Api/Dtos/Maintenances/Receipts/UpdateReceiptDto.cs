@@ -10,6 +10,7 @@ public class UpdateReceiptDto
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
     public string? Description { get; set; }
+    public decimal Amount { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -40,6 +41,7 @@ public class UpdateReceiptDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             Description = Description,
+            Amount = Amount,
             ReceiptPath = ReceiptPath,
             IsActive = IsActive,
             ModifiedBy = currentUser

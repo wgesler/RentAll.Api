@@ -12,6 +12,7 @@ public class ReceiptResponseDto
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public decimal Amount { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -27,6 +28,7 @@ public class ReceiptResponseDto
         PropertyId = receipt.PropertyId;
         PropertyCode = receipt.PropertyCode;
         Description = receipt.Description;
+        Amount = receipt.Amount;
         ReceiptPath = receipt.ReceiptPath;
         FileDetails = receipt.FileDetails;
         IsActive = receipt.IsActive;

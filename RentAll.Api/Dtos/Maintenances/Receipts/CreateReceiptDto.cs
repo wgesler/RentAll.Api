@@ -9,6 +9,7 @@ public class CreateReceiptDto
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
     public string? Description { get; set; }
+    public decimal Amount { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -35,6 +36,7 @@ public class CreateReceiptDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             Description = Description,
+            Amount = Amount,
             ReceiptPath = null, // Will be set by controller after file save
             IsActive = true,
             CreatedBy = currentUser

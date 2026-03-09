@@ -9,11 +9,7 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 
 public partial class AccountingRepository : IAccountingRepository
 {
-    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
+    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
     private readonly string _dbConnectionString;
 
     public AccountingRepository(IOptions<AppSettings> appSettings)

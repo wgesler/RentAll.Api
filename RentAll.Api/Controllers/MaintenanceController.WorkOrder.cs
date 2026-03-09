@@ -40,10 +40,10 @@ public partial class MaintenanceController
         }
     }
 
-    [HttpGet("work-order/{workOrderId:int}")]
-    public async Task<IActionResult> GetWorkOrderById(int workOrderId)
+    [HttpGet("work-order/{workOrderId:guid}")]
+    public async Task<IActionResult> GetWorkOrderById(Guid workOrderId)
     {
-        if (workOrderId <= 0)
+        if (workOrderId == Guid.Empty)
             return BadRequest("WorkOrderId is required");
 
         try
@@ -52,10 +52,7 @@ public partial class MaintenanceController
             if (record == null)
                 return NotFound("Work order record not found");
 
-            var response = new WorkOrderResponseDto(record);
-            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(record.OrganizationId, null, record.ReceiptPath, ImageType.Receipts);
-
-            return Ok(response);
+            return Ok(new WorkOrderResponseDto(record));
         }
         catch (Exception ex)
         {
@@ -72,9 +69,6 @@ public partial class MaintenanceController
         if (dto == null)
             return BadRequest("Work order data is required");
 
-        if (dto.OrganizationId != CurrentOrganizationId)
-            return Unauthorized("Invalid organization Id");
-
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
@@ -82,14 +76,8 @@ public partial class MaintenanceController
         try
         {
             var workOrder = dto.ToModel(CurrentUser);
-            var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
-            workOrder.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
-
             var created = await _maintenanceRepository.CreateWorkOrderAsync(workOrder);
-            var response = new WorkOrderResponseDto(created);
-            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
-
-            return Ok(response);
+            return Ok(new WorkOrderResponseDto(created));
         }
         catch (Exception ex)
         {
@@ -106,28 +94,15 @@ public partial class MaintenanceController
         if (dto == null)
             return BadRequest("Work order data is required");
 
-        if (dto.OrganizationId != CurrentOrganizationId)
-            return Unauthorized("Invalid organization Id");
-
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
         try
         {
-            var existing = await _maintenanceRepository.GetWorkOrderByIdAsync(dto.WorkOrderId, CurrentOrganizationId);
-            if (existing == null)
-                return NotFound("Work order record not found");
-
             var workOrder = dto.ToModel(CurrentUser);
-            workOrder.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
-
             var updated = await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
-
-            var response = new WorkOrderResponseDto(updated);
-            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
-            return Ok(response);
+            return Ok(new WorkOrderResponseDto(updated));
         }
         catch (Exception ex)
         {
@@ -138,16 +113,15 @@ public partial class MaintenanceController
     #endregion
 
     #region Delete
-    [HttpDelete("work-order/{workOrderId:int}")]
-    public async Task<IActionResult> DeleteWorkOrderByIdAsync(int workOrderId)
+    [HttpDelete("work-order/{workOrderId:guid}")]
+    public async Task<IActionResult> DeleteWorkOrderByIdAsync(Guid workOrderId)
     {
-        if (workOrderId <= 0)
+        if (workOrderId == Guid.Empty)
             return BadRequest("WorkOrderId is required");
 
         try
         {
-            // We never really "delete" work-orders. So don't remove the receipt
-            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, CurrentOrganizationId, CurrentUser);
+            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId);
             return NoContent();
         }
         catch (Exception ex)
