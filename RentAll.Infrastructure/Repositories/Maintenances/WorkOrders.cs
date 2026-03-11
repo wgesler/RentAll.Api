@@ -68,6 +68,9 @@ public partial class MaintenanceRepository
                 OrganizationId = workOrder.OrganizationId,
                 OfficeId = workOrder.OfficeId,
                 PropertyId = workOrder.PropertyId,
+                ReservationId = workOrder.ReservationId,
+                ReservationCode = workOrder.ReservationCode,
+                WorkOrderCode = workOrder.WorkOrderCode,
                 Description = workOrder.Description,
                 WorkOrderTypeId = (int)workOrder.WorkOrderType,
                 IsActive = workOrder.IsActive,
@@ -143,6 +146,9 @@ public partial class MaintenanceRepository
                 OrganizationId = workOrder.OrganizationId,
                 OfficeId = workOrder.OfficeId,
                 PropertyId = workOrder.PropertyId,
+                ReservationId = workOrder.ReservationId,
+                ReservationCode = workOrder.ReservationCode,
+                WorkOrderCode = workOrder.WorkOrderCode,
                 Description = workOrder.Description,
                 WorkOrderTypeId = (int)workOrder.WorkOrderType,
                 IsActive = workOrder.IsActive,
@@ -218,12 +224,14 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Deletes
-    public async Task DeleteWorkOrderByIdAsync(Guid workOrderId)
+    public async Task DeleteWorkOrderByIdAsync(Guid workOrderId, Guid organizationId, Guid modifiedBy)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.WorkOrder_DeleteById", new
         {
-            WorkOrderId = workOrderId
+            WorkOrderId = workOrderId,
+            OrganizationId = organizationId,
+            modifiedBy = modifiedBy
         });
     }
     #endregion

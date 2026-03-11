@@ -63,6 +63,7 @@ public partial class OrganizationRepository
             BankSwiftCode = accountingOffice.BankSwiftCode,
             BankAddress = accountingOffice.BankAddress,
             BankPhone = accountingOffice.BankPhone,
+            WorkOrderNo = accountingOffice.WorkOrderNo,
             LogoPath = accountingOffice.LogoPath,
             IsActive = accountingOffice.IsActive,
             CreatedBy = accountingOffice.CreatedBy
@@ -100,6 +101,7 @@ public partial class OrganizationRepository
             BankSwiftCode = accountingOffice.BankSwiftCode,
             BankAddress = accountingOffice.BankAddress,
             BankPhone = accountingOffice.BankPhone,
+            WorkOrderNo = accountingOffice.WorkOrderNo,
             LogoPath = accountingOffice.LogoPath,
             IsActive = accountingOffice.IsActive,
             ModifiedBy = accountingOffice.ModifiedBy

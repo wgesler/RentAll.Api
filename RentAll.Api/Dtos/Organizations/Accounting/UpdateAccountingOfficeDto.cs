@@ -23,6 +23,7 @@ public class UpdateAccountingOfficeDto
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int WorkOrderNo { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -100,6 +101,7 @@ public class UpdateAccountingOfficeDto
             BankSwiftCode = BankSwiftCode,
             BankAddress = BankAddress,
             BankPhone = BankPhone,
+            WorkOrderNo = WorkOrderNo,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             IsActive = IsActive,
             ModifiedBy = currentUser

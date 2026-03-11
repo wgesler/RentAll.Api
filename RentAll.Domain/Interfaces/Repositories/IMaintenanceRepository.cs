@@ -41,7 +41,7 @@ public interface IMaintenanceRepository
 
     Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder);
-    Task DeleteWorkOrderByIdAsync(Guid workOrderId);
+    Task DeleteWorkOrderByIdAsync(Guid workOrderId, Guid organizationId, Guid modifiedBy);
     #endregion
 
     #region Receipt

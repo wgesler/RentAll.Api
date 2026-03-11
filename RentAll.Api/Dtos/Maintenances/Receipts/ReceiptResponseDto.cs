@@ -14,6 +14,7 @@ public class ReceiptResponseDto
     public string? Description { get; set; }
     public decimal Amount { get; set; }
     public string? ReceiptPath { get; set; }
+    public string? WorkOrderCode { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -30,6 +31,7 @@ public class ReceiptResponseDto
         Description = receipt.Description;
         Amount = receipt.Amount;
         ReceiptPath = receipt.ReceiptPath;
+        WorkOrderCode = receipt.WorkOrderCode;
         FileDetails = receipt.FileDetails;
         IsActive = receipt.IsActive;
         ModifiedOn = receipt.ModifiedOn;

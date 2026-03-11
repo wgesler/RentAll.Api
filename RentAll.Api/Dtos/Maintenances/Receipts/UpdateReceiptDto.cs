@@ -12,6 +12,7 @@ public class UpdateReceiptDto
     public string? Description { get; set; }
     public decimal Amount { get; set; }
     public string? ReceiptPath { get; set; }
+    public string? WorkOrderCode { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -43,6 +44,7 @@ public class UpdateReceiptDto
             Description = Description,
             Amount = Amount,
             ReceiptPath = ReceiptPath,
+            WorkOrderCode = WorkOrderCode,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

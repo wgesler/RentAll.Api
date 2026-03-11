@@ -6,7 +6,10 @@ public class UpdateWorkOrderDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
-    public string? Description { get; set; }
+    public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
+    public string WorkOrderCode { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
     public int WorkOrderTypeId { get; set; }
     public List<UpdateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<UpdateWorkOrderItemDto>();
     public bool IsActive { get; set; }
@@ -24,6 +27,12 @@ public class UpdateWorkOrderDto
 
         if (PropertyId == Guid.Empty)
             return (false, "PropertyId is required");
+
+        if (string.IsNullOrWhiteSpace(WorkOrderCode))
+            return (false, "WorkOrderCode is required");
+
+        if (string.IsNullOrWhiteSpace(Description))
+            return (false, "Description is required");
 
         if (!Enum.IsDefined(typeof(WorkOrderType), WorkOrderTypeId))
             return (false, $"Invalid Work Order value: {WorkOrderTypeId}");
@@ -49,7 +58,10 @@ public class UpdateWorkOrderDto
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PropertyId = PropertyId,
-            Description = Description ?? string.Empty,
+            ReservationId = ReservationId,
+            ReservationCode = ReservationCode,
+            WorkOrderCode = WorkOrderCode,
+            Description = Description,
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = true,

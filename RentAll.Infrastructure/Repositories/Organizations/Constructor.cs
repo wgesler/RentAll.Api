@@ -119,6 +119,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             BankSwiftCode = e.BankSwiftCode,
             BankAddress = e.BankAddress,
             BankPhone = e.BankPhone,
+            WorkOrderNo = e.WorkOrderNo,
             LogoPath = e.LogoPath,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,

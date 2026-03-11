@@ -21,6 +21,7 @@ public class AccountingOfficeEntity
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int WorkOrderNo { get; set; }
     public string? LogoPath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

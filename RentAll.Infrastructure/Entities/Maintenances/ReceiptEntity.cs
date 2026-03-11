@@ -11,6 +11,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string? Description { get; set; }
         public decimal Amount { get; set; }
         public string? ReceiptPath { get; set; }
+        public string? WorkOrderCode { get; set; }
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }

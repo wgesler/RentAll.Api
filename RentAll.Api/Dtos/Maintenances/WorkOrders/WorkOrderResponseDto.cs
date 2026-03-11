@@ -8,6 +8,9 @@ public class WorkOrderResponseDto
     public string OfficeName { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
+    public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
+    public string WorkOrderCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int WorkOrderTypeId { get; set; }
     public List<WorkOrderItem> WorkOrderItems { get; set; } = new List<WorkOrderItem>();
@@ -24,6 +27,9 @@ public class WorkOrderResponseDto
         OfficeName = workOrder.OfficeName;
         PropertyId = workOrder.PropertyId;
         PropertyCode = workOrder.PropertyCode;
+        ReservationId = workOrder.ReservationId;
+        ReservationCode = workOrder.ReservationCode;
+        WorkOrderCode = workOrder.WorkOrderCode;
         Description = workOrder.Description;
         WorkOrderTypeId = (int)workOrder.WorkOrderType;
         WorkOrderItems = workOrder.WorkOrderItems;

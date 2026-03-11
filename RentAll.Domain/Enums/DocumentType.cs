@@ -8,7 +8,8 @@ public enum DocumentType
     Invoices = 3,
     Attachments = 4,
     Inspections = 5,
-    Inventories = 6
+    Inventories = 6,
+    WorkOrder = 7
 }
 
 

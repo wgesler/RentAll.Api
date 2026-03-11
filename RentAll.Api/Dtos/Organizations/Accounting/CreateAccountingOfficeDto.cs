@@ -23,6 +23,7 @@ public class CreateAccountingOfficeDto
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int WorkOrderNo { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -99,6 +100,7 @@ public class CreateAccountingOfficeDto
             BankSwiftCode = BankSwiftCode,
             BankAddress = BankAddress,
             BankPhone = BankPhone,
+            WorkOrderNo = WorkOrderNo,
             LogoPath = null, // Will be set by controller after file save
             IsActive = IsActive,
             CreatedBy = currentUser

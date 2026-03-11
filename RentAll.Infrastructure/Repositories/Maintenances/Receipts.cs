@@ -66,6 +66,7 @@ public partial class MaintenanceRepository
             Description = receipt.Description,
             Amount = receipt.Amount,
             ReceiptPath = receipt.ReceiptPath,
+            WorkOrderCode = receipt.WorkOrderCode,
             IsActive = receipt.IsActive,
             CreatedBy = receipt.CreatedBy
         });
@@ -90,6 +91,7 @@ public partial class MaintenanceRepository
             Description = receipt.Description,
             Amount = receipt.Amount,
             ReceiptPath = receipt.ReceiptPath,
+            WorkOrderCode = receipt.WorkOrderCode,
             IsActive = receipt.IsActive,
             ModifiedBy = receipt.ModifiedBy
         });

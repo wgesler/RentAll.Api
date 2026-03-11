@@ -11,6 +11,7 @@ public class CreateReceiptDto
     public string? Description { get; set; }
     public decimal Amount { get; set; }
     public string? ReceiptPath { get; set; }
+    public string? WorkOrderCode { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -38,6 +39,7 @@ public class CreateReceiptDto
             Description = Description,
             Amount = Amount,
             ReceiptPath = null, // Will be set by controller after file save
+            WorkOrderCode = WorkOrderCode,
             IsActive = true,
             CreatedBy = currentUser
         };

@@ -121,7 +121,7 @@ public partial class MaintenanceController
 
         try
         {
-            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId);
+            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)

@@ -23,6 +23,7 @@ public class AccountingOfficeResponseDto
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int WorkOrderNo { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -52,6 +53,7 @@ public class AccountingOfficeResponseDto
         BankSwiftCode = accountingOffice.BankSwiftCode;
         BankAddress = accountingOffice.BankAddress;
         BankPhone = accountingOffice.BankPhone;
+        WorkOrderNo = accountingOffice.WorkOrderNo;
         LogoPath = accountingOffice.LogoPath;
         IsActive = accountingOffice.IsActive;
         CreatedOn = accountingOffice.CreatedOn;

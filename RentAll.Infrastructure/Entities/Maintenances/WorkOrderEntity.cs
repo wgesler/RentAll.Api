@@ -8,7 +8,10 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string OfficeName { get; set; } = string.Empty;
         public Guid PropertyId { get; set; }
         public string PropertyCode { get; set; } = string.Empty;
+        public Guid? ReservationId { get; set; }
+        public string? ReservationCode { get; set; }
         public int WorkOrderTypeId { get; set; }
+        public string WorkOrderCode { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string? WorkOrderItems { get; set; }
         public bool IsActive { get; set; }

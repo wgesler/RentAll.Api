@@ -5,6 +5,7 @@ public enum EmailType
     Other = 0,
     PropertyLetter = 1,
     ReservationLease = 2,
-    Invoice = 3
+    Invoice = 3,
+    WorkOrder = 4
 }
 
