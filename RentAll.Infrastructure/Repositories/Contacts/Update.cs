@@ -35,6 +35,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 W9Expiration = contact.W9Expiration,
                 InsurancePath = contact.InsurancePath,
                 InsuranceExpiration = contact.InsuranceExpiration,
+                Markup = contact.Markup,
                 IsActive = contact.IsActive,
                 ModifiedBy = contact.ModifiedBy
             });

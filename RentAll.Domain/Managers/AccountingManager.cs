@@ -8,6 +8,7 @@ namespace RentAll.Domain.Managers;
 public class AccountingManager : IAccountingManager
 {
     const int PRORATE_DAYS = 30;
+    const string DEFAULT_CODE = "4100";
     Guid SystemOrganization = Guid.Parse("99999999-9999-9999-9999-999999999999");
 
     private readonly IOrganizationRepository _organizationRepository;
@@ -91,6 +92,26 @@ public class AccountingManager : IAccountingManager
                     continue;
             }
         }
+    }
+    #endregion
+
+    #region Cost Codes
+    public async Task CreateDefaultCostCodeAsync(Guid organizationId, int officeId)
+    {
+        if (await _accountingRepository.ExistsByCostCodeAsync(DEFAULT_CODE, organizationId, officeId))
+            return;
+
+        var defaultCostCode = new CostCode()
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            Code = DEFAULT_CODE,
+            TransactionType = TransactionType.Charge,
+            Description = "Insidentals",
+            IsActive = true
+        };
+
+        var createdCostCode = await _accountingRepository.CreateAsync(defaultCostCode);
     }
     #endregion
 

@@ -32,6 +32,7 @@ public class Contact
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
+    public int Markup { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

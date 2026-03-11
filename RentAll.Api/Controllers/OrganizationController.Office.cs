@@ -75,11 +75,13 @@ namespace RentAll.Api.Controllers
                 if (await _organizationRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
                     return Conflict("Office Code already exists");
 
+                // Create requested office
                 var office = dto.ToModel();
-
                 office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, null, dto.FileDetails, ImageType.Logos);
-
                 var createdOffice = await _organizationRepository.CreateAsync(office);
+
+                // Create default cost codes for the office
+                await _accountingManager.CreateDefaultCostCodeAsync(createdOffice.OrganizationId, createdOffice.OfficeId);
 
                 var response = new OfficeResponseDto(createdOffice);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdOffice.OrganizationId, null, createdOffice.LogoPath, ImageType.Logos);

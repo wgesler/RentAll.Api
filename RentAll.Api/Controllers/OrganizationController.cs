@@ -11,6 +11,7 @@ namespace RentAll.Api.Controllers
     public partial class OrganizationController : BaseController
     {
         private readonly IOrganizationManager _organizationManager;
+        private readonly IAccountingManager _accountingManager;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IUserRepository _userRepository;
         private readonly IFileService _fileService;
@@ -19,6 +20,7 @@ namespace RentAll.Api.Controllers
 
         public OrganizationController(
             IOrganizationManager organizationManager,
+            IAccountingManager accountingManager,
             IOrganizationRepository organizationRepository,
             IUserRepository userRepository,
             IFileService fileService,
@@ -26,6 +28,7 @@ namespace RentAll.Api.Controllers
             ILogger<OrganizationController> logger)
         {
             _organizationManager = organizationManager;
+            _accountingManager = accountingManager;
             _organizationRepository = organizationRepository;
             _userRepository = userRepository;
             _fileService = fileService;

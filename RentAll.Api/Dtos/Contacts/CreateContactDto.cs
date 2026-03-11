@@ -25,6 +25,7 @@ public class CreateContactDto
     public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
+    public int Markup { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -83,6 +84,7 @@ public class CreateContactDto
             W9Expiration = W9Expiration,
             InsurancePath = null,// Will be set by controller after file save
             InsuranceExpiration = InsuranceExpiration,
+            Markup = Markup,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

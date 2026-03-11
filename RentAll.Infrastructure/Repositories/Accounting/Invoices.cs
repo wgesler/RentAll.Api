@@ -68,6 +68,21 @@ public partial class AccountingRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+
+    public async Task<Invoice?> GetInvoiceByCodeAsync(string invoiceCode, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetByCode", new
+        {
+            InvoiceCode = invoiceCode,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
     #endregion
 
     #region Creates

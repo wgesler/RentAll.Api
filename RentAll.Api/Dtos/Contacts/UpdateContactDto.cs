@@ -29,6 +29,7 @@ public class UpdateContactDto
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
+    public int Markup { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -94,6 +95,7 @@ public class UpdateContactDto
             W9Expiration = W9Expiration,
             InsurancePath = InsurancePath,
             InsuranceExpiration = InsuranceExpiration,
+            Markup = Markup,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

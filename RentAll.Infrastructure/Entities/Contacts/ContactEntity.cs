@@ -27,6 +27,7 @@ public class ContactEntity
     public DateTimeOffset? W9Expiration { get; set; }
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
+    public int Markup { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

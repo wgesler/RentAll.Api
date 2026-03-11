@@ -101,10 +101,31 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("invoice-code/{invoiceCode}")]
+        public async Task<IActionResult> GetInvoiceByCode(string invoiceCode)
+        {
+            if (string.IsNullOrEmpty(invoiceCode))
+                return BadRequest("Invoice Code is required");
+
+            try
+            {
+                var invoice = await _accountingRepository.GetInvoiceByCodeAsync(invoiceCode, CurrentOrganizationId);
+                if (invoice == null)
+                    return Ok();
+
+                var response = new InvoiceResponseDto(invoice);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting invoice by Code: {InvoiceCode}", invoiceCode);
+                return ServerError("An error occurred while retrieving the invoice");
+            }
+        }
+
         #endregion
 
         #region Post
-
         [HttpPost("invoice")]
         public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
         {

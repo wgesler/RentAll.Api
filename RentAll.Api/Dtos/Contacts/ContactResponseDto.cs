@@ -31,6 +31,7 @@ public class ContactResponseDto
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
+    public int Markup { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -67,6 +68,7 @@ public class ContactResponseDto
         InsurancePath = contact.InsurancePath;
         InsuranceExpiration = contact.InsuranceExpiration;
         InsuranceFileDetails = contact.InsuranceFileDetails;
+        Markup = contact.Markup;
         IsActive = contact.IsActive;
         CreatedOn = contact.CreatedOn;
         CreatedBy = contact.CreatedBy;
