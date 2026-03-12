@@ -9,14 +9,14 @@ public class CreateContactDto
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
     public string? CompanyName { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
-    public string Phone { get; set; } = string.Empty;
+    public string? Phone { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
@@ -38,15 +38,6 @@ public class CreateContactDto
 
         if (EntityTypeId <= 0)
             return (false, "Entity Type ID is required");
-
-        if (string.IsNullOrWhiteSpace(FirstName))
-            return (false, "First Name is required");
-
-        if (string.IsNullOrWhiteSpace(LastName))
-            return (false, "Last Name is required");
-
-        if (string.IsNullOrWhiteSpace(Phone))
-            return (false, "Phone is required");
 
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
