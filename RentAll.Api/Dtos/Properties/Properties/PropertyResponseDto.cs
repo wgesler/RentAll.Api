@@ -27,6 +27,8 @@ public class PropertyResponseDto
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
     public int? AreaId { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }
@@ -149,6 +151,8 @@ public class PropertyResponseDto
         BuildingId = property.BuildingId;
         RegionId = property.RegionId;
         AreaId = property.AreaId;
+        Latitude = property.Latitude;
+        Longitude = property.Longitude;
         MonthlyRate = property.MonthlyRate;
         DailyRate = property.DailyRate;
         DepartureFee = property.DepartureFee;

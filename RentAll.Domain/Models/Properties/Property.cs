@@ -29,6 +29,8 @@ public class Property
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
     public int? AreaId { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }

@@ -40,6 +40,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 BuildingId = e.BuildingId,
                 RegionId = e.RegionId,
                 AreaId = e.AreaId,
+                Latitude = e.Latitude,
+                Longitude = e.Longitude,
                 MonthlyRate = e.MonthlyRate,
                 DailyRate = e.DailyRate,
                 DepartureFee = e.DepartureFee,
