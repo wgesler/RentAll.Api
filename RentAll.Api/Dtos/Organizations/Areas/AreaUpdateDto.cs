@@ -7,7 +7,7 @@ public class AreaUpdateDto
     public int OfficeId { get; set; }
     public string AreaCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -23,9 +23,6 @@ public class AreaUpdateDto
 
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
-
-        if (string.IsNullOrWhiteSpace(Description))
-            return (false, "Description is required");
 
         return (true, null);
     }

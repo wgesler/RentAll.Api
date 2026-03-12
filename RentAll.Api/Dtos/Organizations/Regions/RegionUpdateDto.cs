@@ -7,7 +7,7 @@ public class RegionUpdateDto
     public int OfficeId { get; set; }
     public string RegionCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -26,9 +26,6 @@ public class RegionUpdateDto
 
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
-
-        if (string.IsNullOrWhiteSpace(Description))
-            return (false, "Description is required");
 
         return (true, null);
     }

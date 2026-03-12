@@ -3,10 +3,10 @@ namespace RentAll.Api.Dtos.Organizations.Buildings;
 public class BuildingCreateDto
 {
     public Guid OrganizationId { get; set; }
-    public int? OfficeId { get; set; }
+    public int OfficeId { get; set; }
     public string BuildingCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public string? HoaName { get; set; }
     public string? HoaPhone { get; set; }
     public string? HoaEmail { get; set; }
@@ -17,14 +17,14 @@ public class BuildingCreateDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required");
+
         if (string.IsNullOrWhiteSpace(BuildingCode))
             return (false, "Building Code is required");
 
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
-
-        if (string.IsNullOrWhiteSpace(Description))
-            return (false, "Description is required");
 
         return (true, null);
     }
