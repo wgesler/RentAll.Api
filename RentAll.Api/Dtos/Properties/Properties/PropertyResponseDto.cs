@@ -44,6 +44,7 @@ public class PropertyResponseDto
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+    public int Sofabed { get; set; }
 
     // Address Section
     public string Address1 { get; set; } = string.Empty;
@@ -85,8 +86,8 @@ public class PropertyResponseDto
     public bool Microwave { get; set; }
     public bool Dishwasher { get; set; }
     public bool Bathtub { get; set; }
-    public bool WasherDryer { get; set; }
-    public bool Sofabeds { get; set; }
+    public bool WasherDryerInUnit { get; set; }
+    public bool WasherDryerInBldg { get; set; }
 
     // Electronics Section
     public bool Tv { get; set; }
@@ -163,6 +164,7 @@ public class PropertyResponseDto
         BedroomId2 = (int)property.Bedroom2;
         BedroomId3 = (int)property.Bedroom3;
         BedroomId4 = (int)property.Bedroom4;
+        Sofabed = (int)property.Sofabed;
         Address1 = property.Address1;
         Address2 = property.Address2;
         Suite = property.Suite;
@@ -198,8 +200,8 @@ public class PropertyResponseDto
         Microwave = property.Microwave;
         Dishwasher = property.Dishwasher;
         Bathtub = property.Bathtub;
-        WasherDryer = property.WasherDryer;
-        Sofabeds = property.Sofabeds;
+        WasherDryerInUnit = property.WasherDryerInUnit;
+        WasherDryerInBldg = property.WasherDryerInBldg;
         Tv = property.Tv;
         Cable = property.Cable;
         Dvd = property.Dvd;

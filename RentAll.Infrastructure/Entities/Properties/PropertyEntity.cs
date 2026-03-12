@@ -45,6 +45,7 @@ public class PropertyEntity
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+    public int Sofabed { get; set; }
 
     // Address Section
     public string Address1 { get; set; } = string.Empty;
@@ -86,8 +87,8 @@ public class PropertyEntity
     public bool Microwave { get; set; }
     public bool Dishwasher { get; set; }
     public bool Bathtub { get; set; }
-    public bool WasherDryer { get; set; }
-    public bool Sofabeds { get; set; }
+    public bool WasherDryerInUnit { get; set; }
+    public bool WasherDryerInBldg { get; set; }
 
     // Electronics Section
     public bool Tv { get; set; }

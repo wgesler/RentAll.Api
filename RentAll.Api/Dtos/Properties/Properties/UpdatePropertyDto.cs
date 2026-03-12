@@ -44,6 +44,7 @@ public class UpdatePropertyDto
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+    public int Sofabed { get; set; }
 
     // Address Section
     public string Address1 { get; set; } = string.Empty;
@@ -85,8 +86,8 @@ public class UpdatePropertyDto
     public bool Microwave { get; set; }
     public bool Dishwasher { get; set; }
     public bool Bathtub { get; set; }
-    public bool WasherDryer { get; set; }
-    public bool Sofabeds { get; set; }
+    public bool WasherDryerInUnit { get; set; }
+    public bool WasherDryerInBldg { get; set; }
 
     // Electronics Section
     public bool Tv { get; set; }
@@ -207,6 +208,7 @@ public class UpdatePropertyDto
             Bedroom2 = (BedSizeType)BedroomId2,
             Bedroom3 = (BedSizeType)BedroomId3,
             Bedroom4 = (BedSizeType)BedroomId4,
+            Sofabed = (BedSizeType)Sofabed,
             Address1 = Address1,
             Address2 = Address2,
             Suite = Suite,
@@ -242,8 +244,8 @@ public class UpdatePropertyDto
             Microwave = Microwave,
             Dishwasher = Dishwasher,
             Bathtub = Bathtub,
-            WasherDryer = WasherDryer,
-            Sofabeds = Sofabeds,
+            WasherDryerInUnit = WasherDryerInUnit,
+            WasherDryerInBldg = WasherDryerInBldg,
             Tv = Tv,
             Cable = Cable,
             Dvd = Dvd,
