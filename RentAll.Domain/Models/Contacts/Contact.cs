@@ -13,6 +13,7 @@ public class Contact
     public EntityType EntityType { get; set; }
     public Guid? EntityId { get; set; }
     public string? CompanyName { get; set; }
+    public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? FullName { get; set; }

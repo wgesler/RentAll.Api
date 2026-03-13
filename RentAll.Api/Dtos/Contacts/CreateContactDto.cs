@@ -9,6 +9,7 @@ public class CreateContactDto
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
     public string? CompanyName { get; set; }
+    public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Address1 { get; set; }
@@ -59,6 +60,7 @@ public class CreateContactDto
             EntityType = (EntityType)EntityTypeId,
             EntityId = EntityId,
             CompanyName = CompanyName,
+            DisplayName = DisplayName,
             FirstName = FirstName,
             LastName = LastName,
             Address1 = Address1,
