@@ -17,6 +17,7 @@ public class UpdateUserDto
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public int? DefaultOffice { get; set; }
     public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
@@ -65,6 +66,7 @@ public class UpdateUserDto
             OfficeAccess = d.OfficeAccess,
             ProfilePath = d.ProfilePath,
             StartupPage = (StartupPage)d.StartupPageId,
+            DefaultOffice = d.DefaultOffice,
             IsActive = d.IsActive,
             ModifiedBy = currentUser
         };

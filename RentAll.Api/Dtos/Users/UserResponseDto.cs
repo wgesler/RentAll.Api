@@ -19,6 +19,7 @@ public class UserResponseDto
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public int? DefaultOffice { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -41,6 +42,7 @@ public class UserResponseDto
         ProfilePath = user.ProfilePath;
         FileDetails = user.FileDetails;
         StartupPageId = (int)user.StartupPage;
+        DefaultOffice = user.DefaultOffice;
         IsActive = user.IsActive;
         CreatedOn = user.CreatedOn;
         CreatedBy = user.CreatedBy;

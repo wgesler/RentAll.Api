@@ -14,6 +14,7 @@ public class CreateUserDto
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public int? DefaultOffice { get; set; }
     public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
@@ -71,6 +72,7 @@ public class CreateUserDto
             OfficeAccess = OfficeAccess,
             ProfilePath = null, // Will be set by controller after file save
             StartupPage = (StartupPage)StartupPageId,
+            DefaultOffice = DefaultOffice,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

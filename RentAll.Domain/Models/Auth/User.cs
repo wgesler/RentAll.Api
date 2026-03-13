@@ -21,6 +21,7 @@ public class User
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public StartupPage StartupPage { get; set; }
+    public int? DefaultOffice { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

@@ -9,6 +9,7 @@ public class JwtUserResponseDto
     public string Phone { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
     public int StartupPage { get; set; }
+    public int? DefaultOffice { get; set; }
 
     public JwtUserResponseDto(User user)
     {
@@ -19,5 +20,6 @@ public class JwtUserResponseDto
         Phone = user.Phone;
         UserGroups = user.UserGroups;
         StartupPage = (int)user.StartupPage;
+        DefaultOffice = user.DefaultOffice;
     }
 }

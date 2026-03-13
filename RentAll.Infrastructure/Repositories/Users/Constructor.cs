@@ -61,6 +61,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 OfficeAccess = officeAccess,
                 ProfilePath = e.ProfilePath,
                 StartupPage = (StartupPage)e.StartupPageId,
+                DefaultOffice = e.DefaultOffice,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,
                 ModifiedOn = e.ModifiedOn,
