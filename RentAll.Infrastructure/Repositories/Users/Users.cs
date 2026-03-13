@@ -92,7 +92,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                     OfficeAccess = officeAccessJson,
                     ProfilePath = user.ProfilePath,
                     StartupPageId = (int)user.StartupPage,
-                    DefaultOffice = user.DefaultOffice,
+                    DefaultOfficeId = user.DefaultOfficeId,
                     CreatedBy = user.CreatedBy
                 });
 
@@ -138,7 +138,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 OfficeAccess = officeAccessJson,
                 ProfilePath = user.ProfilePath,
                 StartupPageId = (int)user.StartupPage,
-                DefaultOffice = user.DefaultOffice,
+                DefaultOfficeId = user.DefaultOfficeId,
                 IsActive = user.IsActive,
                 ModifiedBy = user.ModifiedBy
             });
