@@ -150,7 +150,7 @@ namespace RentAll.Api.Controllers
                 if (leaseInformation == null)
                     return NotFound("Lease information not found");
 
-                await _reservationRepository.DeleteLeaseInformationByIdAsync(reservationId);
+                await _reservationRepository.DeleteLeaseInformationByIdAsync(reservationId, CurrentOrganizationId, CurrentUser);
                 return NoContent();
             }
             catch (Exception ex)

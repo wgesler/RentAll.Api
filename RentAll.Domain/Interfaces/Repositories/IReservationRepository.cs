@@ -11,7 +11,7 @@ public interface IReservationRepository
 
     Task<Reservation> CreateAsync(Reservation reservation);
     Task<Reservation> UpdateByIdAsync(Reservation reservation);
-    Task DeleteReservationByIdAsync(Guid reservationId);
+    Task DeleteReservationByIdAsync(Guid reservationId, Guid organizationId);
     #endregion
 
     #region Lease Information
@@ -20,6 +20,6 @@ public interface IReservationRepository
 
     Task<LeaseInformation> CreateLeaseInformationAsync(LeaseInformation leaseInformation);
     Task<LeaseInformation> UpdateLeaseInformationByIdAsync(LeaseInformation leaseInformation);
-    Task DeleteLeaseInformationByIdAsync(Guid leaseInformationId);
+    Task DeleteLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId, Guid modifiedBy);
     #endregion
 }

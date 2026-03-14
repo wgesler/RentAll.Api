@@ -130,7 +130,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                await _reservationRepository.DeleteReservationByIdAsync(reservationId);
+                await _reservationRepository.DeleteReservationByIdAsync(reservationId, CurrentOrganizationId);
                 return NoContent();
             }
             catch (Exception ex)

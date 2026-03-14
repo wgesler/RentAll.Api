@@ -127,12 +127,14 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         #endregion
 
         #region Deletes
-        public async Task DeleteLeaseInformationByIdAsync(Guid leaseInformationId)
+        public async Task DeleteLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId, Guid modifiedBy)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.LeaseInformation_DeleteById", new
             {
-                LeaseInformationId = leaseInformationId
+                LeaseInformationId = leaseInformationId,
+                OrganizationId = organizationId,
+                ModifiedBy = modifiedBy
             });
         }
         #endregion
