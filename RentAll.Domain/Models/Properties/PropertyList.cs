@@ -17,6 +17,7 @@ public class PropertyList
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }
     public int SquareFeet { get; set; }
+    public PropertyType PropertyType { get; set; }
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
     public decimal DepartureFee { get; set; }

@@ -15,6 +15,7 @@ public class PropertyListResponseDto
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }
     public int SquareFeet { get; set; }
+    public int PropertyTypeId { get; set; }
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
     public decimal DepartureFee { get; set; }
@@ -39,6 +40,7 @@ public class PropertyListResponseDto
         Bathrooms = propertyList.Bathrooms;
         Accomodates = propertyList.Accomodates;
         SquareFeet = propertyList.SquareFeet;
+        PropertyTypeId = (int)propertyList.PropertyType;
         MonthlyRate = propertyList.MonthlyRate;
         DailyRate = propertyList.DailyRate;
         DepartureFee = propertyList.DepartureFee;
