@@ -11,6 +11,7 @@ public class CreateContactDto
     public Guid? EntityId { get; set; }
     public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
+    public string? Properties { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -66,6 +67,7 @@ public class CreateContactDto
             EntityId = EntityId,
             OwnerType = (OwnerType?)OwnerTypeId,
             CompanyName = CompanyName,
+            Properties = Properties,
             DisplayName = DisplayName,
             FirstName = FirstName,
             LastName = LastName,

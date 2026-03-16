@@ -13,6 +13,7 @@ public class ContactResponseDto
     public Guid? EntityId { get; set; }
     public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
+    public string? Properties { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -52,6 +53,7 @@ public class ContactResponseDto
         EntityId = contact.EntityId;
         OwnerTypeId = (int?)contact.OwnerType;
         CompanyName = contact.CompanyName;
+        Properties = contact.Properties;
         DisplayName = contact.DisplayName;
         FirstName = contact.FirstName;
         LastName = contact.LastName;

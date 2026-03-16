@@ -14,6 +14,7 @@ public class Contact
     public Guid? EntityId { get; set; }
     public OwnerType? OwnerType { get; set; }
     public string? CompanyName { get; set; }
+    public string? Properties { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
