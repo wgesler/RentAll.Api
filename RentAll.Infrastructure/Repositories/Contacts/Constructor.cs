@@ -3,6 +3,7 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Contacts
 {
@@ -17,6 +18,19 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 
         private Contact ConvertEntityToModel(ContactEntity e)
         {
+            var properties = new List<string>();
+            if (!string.IsNullOrWhiteSpace(e.Properties))
+            {
+                try
+                {
+                    properties = JsonSerializer.Deserialize<List<string>>(e.Properties) ?? new List<string>();
+                }
+                catch
+                {
+                    properties = new List<string>();
+                }
+            }
+
             var response = new Contact()
             {
                 ContactId = e.ContactId,
@@ -28,7 +42,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 EntityId = e.EntityId,
                 OwnerType = (OwnerType?)e.OwnerTypeId,
                 CompanyName = e.CompanyName,
-                Properties = e.Properties,
+                Properties = properties,
                 DisplayName = e.DisplayName,
                 FirstName = e.FirstName,
                 LastName = e.LastName,

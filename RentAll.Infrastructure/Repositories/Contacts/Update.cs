@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Contacts
 {
@@ -9,6 +10,10 @@ namespace RentAll.Infrastructure.Repositories.Contacts
     {
          public async Task<Contact> UpdateByIdAsync(Contact contact)
         {
+            var propertiesJson = contact.Properties != null && contact.Properties.Any()
+                ? JsonSerializer.Serialize(contact.Properties)
+                : "[]";
+
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_UpdateById", new
             {
@@ -20,7 +25,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 EntityId = contact.EntityId,
                 OwnerTypeId = (int?)contact.OwnerType,
                 CompanyName = contact.CompanyName,
-                Properties = contact.Properties,
+                Properties = propertiesJson,
                 DisplayName = contact.DisplayName,
                 FirstName = contact.FirstName,
                 LastName = contact.LastName,

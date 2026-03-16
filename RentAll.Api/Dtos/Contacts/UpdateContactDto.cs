@@ -13,7 +13,7 @@ public class UpdateContactDto
     public Guid? EntityId { get; set; }
     public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
-    public string? Properties { get; set; }
+    public List<string> Properties { get; set; } = new List<string>();
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -78,7 +78,7 @@ public class UpdateContactDto
             EntityId = EntityId,
             OwnerType = (OwnerType?)OwnerTypeId,
             CompanyName = CompanyName,
-            Properties = Properties,
+            Properties = Properties ?? new List<string>(),
             DisplayName = DisplayName,
             FirstName = FirstName,
             LastName = LastName,
