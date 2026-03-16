@@ -9,6 +9,7 @@ public class ContactEntity
     public string OfficeName { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
+    public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }

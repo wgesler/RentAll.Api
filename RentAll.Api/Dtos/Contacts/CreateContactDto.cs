@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Contacts;
@@ -8,6 +9,7 @@ public class CreateContactDto
     public int OfficeId { get; set; }
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
+    public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
@@ -43,9 +45,12 @@ public class CreateContactDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
-        // Validate enum value
+        // Validate enum values
         if (!Enum.IsDefined(typeof(EntityType), EntityTypeId))
             return (false, $"Invalid EntityType value: {EntityTypeId}");
+
+        if (OwnerTypeId.HasValue && !Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
+            return (false, $"Invalid OwnerType value: {OwnerTypeId}");
 
         return (true, null);
     }
@@ -59,6 +64,7 @@ public class CreateContactDto
             ContactCode = code,
             EntityType = (EntityType)EntityTypeId,
             EntityId = EntityId,
+            OwnerType = (OwnerType?)OwnerTypeId,
             CompanyName = CompanyName,
             DisplayName = DisplayName,
             FirstName = FirstName,

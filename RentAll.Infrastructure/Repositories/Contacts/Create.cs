@@ -17,6 +17,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 ContactCode = contact.ContactCode,
                 EntityTypeId = (int)contact.EntityType,
                 EntityId = contact.EntityId,
+                OwnerTypeId = (int?)contact.OwnerType,
                 CompanyName = contact.CompanyName,
                 DisplayName = contact.DisplayName,
                 FirstName = contact.FirstName,

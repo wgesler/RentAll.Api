@@ -11,6 +11,7 @@ public class ContactResponseDto
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public Guid? EntityId { get; set; }
+    public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
@@ -49,6 +50,7 @@ public class ContactResponseDto
         ContactCode = contact.ContactCode;
         EntityTypeId = (int)contact.EntityType;
         EntityId = contact.EntityId;
+        OwnerTypeId = (int?)contact.OwnerType;
         CompanyName = contact.CompanyName;
         DisplayName = contact.DisplayName;
         FirstName = contact.FirstName;

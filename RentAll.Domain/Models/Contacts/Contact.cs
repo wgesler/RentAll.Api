@@ -12,6 +12,7 @@ public class Contact
     public string ContactCode { get; set; } = string.Empty;
     public EntityType EntityType { get; set; }
     public Guid? EntityId { get; set; }
+    public OwnerType? OwnerType { get; set; }
     public string? CompanyName { get; set; }
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
