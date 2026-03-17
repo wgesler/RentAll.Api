@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -25,6 +26,16 @@ namespace RentAll.Infrastructure.Repositories.Properties
         #region Creates
         public async Task<PropertySelection> UpsertPropertySelectionAsync(PropertySelection selection)
         {
+            var buildingCodesJson = selection.BuildingCodes != null && selection.BuildingCodes.Any()
+                ? JsonSerializer.Serialize(selection.BuildingCodes)
+                : "[]";
+            var regionCodesJson = selection.RegionCodes != null && selection.RegionCodes.Any()
+                ? JsonSerializer.Serialize(selection.RegionCodes)
+                : "[]";
+            var areaCodesJson = selection.AreaCodes != null && selection.AreaCodes.Any()
+                ? JsonSerializer.Serialize(selection.AreaCodes)
+                : "[]";
+
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertySelectionEntity>("Property.PropertySelection_UpsertByUserId", new
             {
@@ -48,9 +59,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 HighSpeedInternet = selection.HighSpeedInternet,
                 PropertyStatusId = selection.PropertyStatusId,
                 OfficeCode = selection.OfficeCode,
-                BuildingCode = selection.BuildingCode,
-                RegionCode = selection.RegionCode,
-                AreaCode = selection.AreaCode
+                BuildingCodes = buildingCodesJson,
+                RegionCodes = regionCodesJson,
+                AreaCodes = areaCodesJson
             });
 
             if (res == null || !res.Any())

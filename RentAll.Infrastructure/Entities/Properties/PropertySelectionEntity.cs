@@ -22,9 +22,9 @@ public class PropertySelectionEntity
     public bool HighSpeedInternet { get; set; }
     public int PropertyStatusId { get; set; }
     public string? OfficeCode { get; set; }
-    public string? BuildingCode { get; set; }
-    public string? RegionCode { get; set; }
-    public string? AreaCode { get; set; }
+    public string BuildingCodes { get; set; } = string.Empty;
+    public string RegionCodes { get; set; } = string.Empty;
+    public string AreaCodes { get; set; } = string.Empty;
 }
 
 

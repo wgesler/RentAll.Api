@@ -22,9 +22,9 @@ public class UpsertPropertySelectionDto
     public bool HighSpeedInternet { get; set; }
     public int PropertyStatusId { get; set; }
     public string? OfficeCode { get; set; }
-    public string? BuildingCode { get; set; }
-    public string? RegionCode { get; set; }
-    public string? AreaCode { get; set; }
+    public List<string> BuildingCodes { get; set; } = new List<string>();
+    public List<string> RegionCodes { get; set; } = new List<string>();
+    public List<string> AreaCodes { get; set; } = new List<string>();
 
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid currentUser)
@@ -74,9 +74,9 @@ public class UpsertPropertySelectionDto
             HighSpeedInternet = HighSpeedInternet,
             PropertyStatusId = PropertyStatusId,
             OfficeCode = OfficeCode,
-            BuildingCode = BuildingCode,
-            RegionCode = RegionCode,
-            AreaCode = AreaCode
+            BuildingCodes = BuildingCodes ?? new List<string>(),
+            RegionCodes = RegionCodes ?? new List<string>(),
+            AreaCodes = AreaCodes ?? new List<string>()
         };
     }
 }

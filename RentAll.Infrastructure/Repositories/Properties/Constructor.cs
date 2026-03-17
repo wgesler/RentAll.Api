@@ -3,6 +3,7 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -212,6 +213,45 @@ namespace RentAll.Infrastructure.Repositories.Properties
 
         private static PropertySelection ConvertEntityToModel(PropertySelectionEntity e)
         {
+            var buildingCodes = new List<string>();
+            if (!string.IsNullOrWhiteSpace(e.BuildingCodes))
+            {
+                try
+                {
+                    buildingCodes = JsonSerializer.Deserialize<List<string>>(e.BuildingCodes) ?? new List<string>();
+                }
+                catch
+                {
+                    buildingCodes = new List<string>();
+                }
+            }
+
+            var regionCodes = new List<string>();
+            if (!string.IsNullOrWhiteSpace(e.RegionCodes))
+            {
+                try
+                {
+                    regionCodes = JsonSerializer.Deserialize<List<string>>(e.RegionCodes) ?? new List<string>();
+                }
+                catch
+                {
+                    regionCodes = new List<string>();
+                }
+            }
+
+            var areaCodes = new List<string>();
+            if (!string.IsNullOrWhiteSpace(e.AreaCodes))
+            {
+                try
+                {
+                    areaCodes = JsonSerializer.Deserialize<List<string>>(e.AreaCodes) ?? new List<string>();
+                }
+                catch
+                {
+                    areaCodes = new List<string>();
+                }
+            }
+
             return new PropertySelection
             {
                 UserId = e.UserId,
@@ -234,9 +274,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 HighSpeedInternet = e.HighSpeedInternet,
                 PropertyStatusId = e.PropertyStatusId,
                 OfficeCode = e.OfficeCode,
-                BuildingCode = e.BuildingCode,
-                RegionCode = e.RegionCode,
-                AreaCode = e.AreaCode
+                BuildingCodes = buildingCodes,
+                RegionCodes = regionCodes,
+                AreaCodes = areaCodes
             };
         }
     }
