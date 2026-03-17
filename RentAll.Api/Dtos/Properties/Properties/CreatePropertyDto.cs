@@ -73,11 +73,13 @@ public class CreatePropertyDto
     public bool Smoking { get; set; }
     public bool Parking { get; set; }
     public string? ParkingNotes { get; set; }
-    public bool Alarm { get; set; }
     public string? AlarmCode { get; set; }
-    public bool KeypadAccess { get; set; }
-    public string? MasterKeyCode { get; set; }
-    public string? TenantKeyCode { get; set; }
+    public string? UnitMstrCode { get; set; }
+    public string? UnitTenantCode { get; set; }
+    public string? BldgMstrCode { get; set; }
+    public string? BldgTenantCode { get; set; }
+    public string? MailRoomCode { get; set; }
+    public string? GarageCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
@@ -231,11 +233,13 @@ public class CreatePropertyDto
             Smoking = Smoking,
             Parking = Parking,
             ParkingNotes = ParkingNotes,
-            Alarm = Alarm,
             AlarmCode = AlarmCode,
-            KeypadAccess = KeypadAccess,
-            MasterKeyCode = MasterKeyCode,
-            TenantKeyCode = TenantKeyCode,
+            UnitMstrCode = UnitMstrCode,
+            UnitTenantCode = UnitTenantCode,
+            BldgMstrCode = BldgMstrCode,
+            BldgTenantCode = BldgTenantCode,
+            MailRoomCode = MailRoomCode,
+            GarageCode = GarageCode,
             Kitchen = Kitchen,
             Oven = Oven,
             Refrigerator = Refrigerator,

@@ -75,11 +75,13 @@ public class PropertyResponseDto
     public bool Smoking { get; set; }
     public bool Parking { get; set; }
     public string? ParkingNotes { get; set; }
-    public bool Alarm { get; set; }
     public string? AlarmCode { get; set; }
-    public bool KeypadAccess { get; set; }
-    public string? MasterKeyCode { get; set; }
-    public string? TenantKeyCode { get; set; }
+    public string? UnitMstrCode { get; set; }
+    public string? UnitTenantCode { get; set; }
+    public string? BldgMstrCode { get; set; }
+    public string? BldgTenantCode { get; set; }
+    public string? MailRoomCode { get; set; }
+    public string? GarageCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
@@ -193,11 +195,13 @@ public class PropertyResponseDto
         Smoking = property.Smoking;
         Parking = property.Parking;
         ParkingNotes = property.ParkingNotes;
-        Alarm = property.Alarm;
         AlarmCode = property.AlarmCode;
-        KeypadAccess = property.KeypadAccess;
-        MasterKeyCode = property.MasterKeyCode;
-        TenantKeyCode = property.TenantKeyCode;
+        UnitMstrCode = property.UnitMstrCode;
+        UnitTenantCode = property.UnitTenantCode;
+        BldgMstrCode = property.BldgMstrCode;
+        BldgTenantCode = property.BldgTenantCode;
+        MailRoomCode = property.MailRoomCode;
+        GarageCode = property.GarageCode;
         Kitchen = property.Kitchen;
         Oven = property.Oven;
         Refrigerator = property.Refrigerator;
