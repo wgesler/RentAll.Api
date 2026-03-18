@@ -23,6 +23,9 @@ public class PropertyListResponseDto
     public decimal MaidServiceFee { get; set; }
     public int PropertyStatusId { get; set; }
     public int MaintenanceStatusId {  get; set; }
+    public DateTimeOffset LastFilterChangeDate { get; set; }
+    public DateTimeOffset LastSmokeChangeDate { get; set; }
+    public DateTimeOffset LicenseDate { get; set; }
     public bool IsActive { get; set; }
 
     public PropertyListResponseDto(PropertyList propertyList)
@@ -48,6 +51,9 @@ public class PropertyListResponseDto
         MaidServiceFee = propertyList.MaidServiceFee;
         PropertyStatusId = (int)propertyList.PropertyStatus;
         MaintenanceStatusId = (int)propertyList.MaintenanceStatus;
+        LastFilterChangeDate = propertyList.LastFilterChangeDate;
+        LastSmokeChangeDate = propertyList.LastSmokeChangeDate;
+        LicenseDate = propertyList.LicenseDate;
         IsActive = propertyList.IsActive;
     }
 }

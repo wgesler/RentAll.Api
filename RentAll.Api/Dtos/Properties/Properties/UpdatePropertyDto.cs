@@ -82,6 +82,9 @@ public class UpdatePropertyDto
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }
     public string? GarageCode { get; set; }
+    public string? GateCode { get; set; }
+    public string? TrashCode { get; set; }
+    public string? MailCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
@@ -118,6 +121,13 @@ public class UpdatePropertyDto
     // Trash Section
     public int TrashPickupId { get; set; }
     public string? TrashRemoval { get; set; }
+
+    // Maintenance Section
+    public string? FilterDescription { get; set; }
+    public DateTimeOffset LastFilterChangeDate { get; set; }
+    public string? SmokeDetectors { get; set; }
+    public DateTimeOffset LastSmokeChangeDate { get; set; }
+    public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section
     public string? Amenities { get; set; }
@@ -246,6 +256,9 @@ public class UpdatePropertyDto
             BldgTenantCode = BldgTenantCode,
             MailRoomCode = MailRoomCode,
             GarageCode = GarageCode,
+            GateCode = GateCode,
+            TrashCode = TrashCode,
+            MailCode = MailCode,
             Kitchen = Kitchen,
             Oven = Oven,
             Refrigerator = Refrigerator,
@@ -272,6 +285,11 @@ public class UpdatePropertyDto
             Gym = Gym,
             TrashPickupId = TrashPickupId,
             TrashRemoval = TrashRemoval,
+            FilterDescription = FilterDescription,
+            LastFilterChangeDate = LastFilterChangeDate,
+            SmokeDetectors = SmokeDetectors,
+            LastSmokeChangeDate = LastSmokeChangeDate,
+            MaintenanceNotes = MaintenanceNotes,
             Amenities = Amenities,
             Description = Description,
             Notes = Notes,

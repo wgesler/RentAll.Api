@@ -90,6 +90,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 BldgTenantCode = e.BldgTenantCode,
                 MailRoomCode = e.MailRoomCode,
                 GarageCode = e.GarageCode,
+                GateCode = e.GateCode,
+                TrashCode = e.TrashCode,
+                MailCode = e.MailCode,
                 Kitchen = e.Kitchen,
                 Oven = e.Oven,
                 Refrigerator = e.Refrigerator,
@@ -116,6 +119,11 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Gym = e.Gym,
                 TrashPickupId = e.TrashPickupId,
                 TrashRemoval = e.TrashRemoval,
+                FilterDescription = e.FilterDescription,
+                LastFilterChangeDate = e.LastFilterChangeDate,
+                SmokeDetectors = e.SmokeDetectors,
+                LastSmokeChangeDate = e.LastSmokeChangeDate,
+                MaintenanceNotes = e.MaintenanceNotes,
                 Amenities = e.Amenities,
                 Description = e.Description,
                 Notes = e.Notes,
@@ -154,6 +162,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 MaidServiceFee = e.MaidServiceFee,
                 PropertyStatus = (PropertyStatus)e.PropertyStatusId,
                 MaintenanceStatus = (MaintenanceStatus)e.MaintenanceStatusId,
+                LastFilterChangeDate = e.LastFilterChangeDate,
+                LastSmokeChangeDate = e.LastSmokeChangeDate,
+                LicenseDate = e.LicenseDate,
                 IsActive = e.IsActive
             };
         }

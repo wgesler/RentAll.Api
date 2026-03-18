@@ -82,6 +82,9 @@ public class PropertyResponseDto
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }
     public string? GarageCode { get; set; }
+    public string? GateCode { get; set; }
+    public string? TrashCode { get; set; }
+    public string? MailCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
@@ -118,6 +121,13 @@ public class PropertyResponseDto
     // Trash Section
     public int TrashPickupId { get; set; }
     public string? TrashRemoval { get; set; }
+
+    // Maintenance Section
+    public string? FilterDescription { get; set; }
+    public DateTimeOffset LastFilterChangeDate { get; set; }
+    public string? SmokeDetectors { get; set; }
+    public DateTimeOffset LastSmokeChangeDate { get; set; }
+    public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section
     public string? Amenities { get; set; }
@@ -202,6 +212,9 @@ public class PropertyResponseDto
         BldgTenantCode = property.BldgTenantCode;
         MailRoomCode = property.MailRoomCode;
         GarageCode = property.GarageCode;
+        GateCode = property.GateCode;
+        TrashCode = property.TrashCode;
+        MailCode = property.MailCode;
         Kitchen = property.Kitchen;
         Oven = property.Oven;
         Refrigerator = property.Refrigerator;
@@ -228,6 +241,11 @@ public class PropertyResponseDto
         Gym = property.Gym;
         TrashPickupId = property.TrashPickupId;
         TrashRemoval = property.TrashRemoval;
+        FilterDescription = property.FilterDescription;
+        LastFilterChangeDate = property.LastFilterChangeDate;
+        SmokeDetectors = property.SmokeDetectors;
+        LastSmokeChangeDate = property.LastSmokeChangeDate;
+        MaintenanceNotes = property.MaintenanceNotes;
         Amenities = property.Amenities;
         Description = property.Description;
         Notes = property.Notes;
