@@ -84,7 +84,7 @@ public class PropertyResponseDto
     public string? GarageCode { get; set; }
     public string? GateCode { get; set; }
     public string? TrashCode { get; set; }
-    public string? MailCode { get; set; }
+    public string? StorageCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
@@ -127,6 +127,8 @@ public class PropertyResponseDto
     public DateTimeOffset LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
     public DateTimeOffset LastSmokeChangeDate { get; set; }
+    public string? LicenseNo { get; set; }
+    public DateTimeOffset LicenseDate { get; set; }
     public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section
@@ -214,7 +216,7 @@ public class PropertyResponseDto
         GarageCode = property.GarageCode;
         GateCode = property.GateCode;
         TrashCode = property.TrashCode;
-        MailCode = property.MailCode;
+        StorageCode = property.StorageCode;
         Kitchen = property.Kitchen;
         Oven = property.Oven;
         Refrigerator = property.Refrigerator;
@@ -245,6 +247,8 @@ public class PropertyResponseDto
         LastFilterChangeDate = property.LastFilterChangeDate;
         SmokeDetectors = property.SmokeDetectors;
         LastSmokeChangeDate = property.LastSmokeChangeDate;
+        LicenseNo = property.LicenseNo;
+        LicenseDate = property.LicenseDate;
         MaintenanceNotes = property.MaintenanceNotes;
         Amenities = property.Amenities;
         Description = property.Description;

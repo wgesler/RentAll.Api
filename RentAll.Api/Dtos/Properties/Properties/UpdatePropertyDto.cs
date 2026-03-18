@@ -84,7 +84,7 @@ public class UpdatePropertyDto
     public string? GarageCode { get; set; }
     public string? GateCode { get; set; }
     public string? TrashCode { get; set; }
-    public string? MailCode { get; set; }
+    public string? StorageCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
@@ -127,6 +127,8 @@ public class UpdatePropertyDto
     public DateTimeOffset LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
     public DateTimeOffset LastSmokeChangeDate { get; set; }
+    public string? LicenseNo { get; set; }
+    public DateTimeOffset LicenseDate { get; set; }
     public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section
@@ -258,7 +260,7 @@ public class UpdatePropertyDto
             GarageCode = GarageCode,
             GateCode = GateCode,
             TrashCode = TrashCode,
-            MailCode = MailCode,
+            StorageCode = StorageCode,
             Kitchen = Kitchen,
             Oven = Oven,
             Refrigerator = Refrigerator,
@@ -289,6 +291,8 @@ public class UpdatePropertyDto
             LastFilterChangeDate = LastFilterChangeDate,
             SmokeDetectors = SmokeDetectors,
             LastSmokeChangeDate = LastSmokeChangeDate,
+            LicenseNo = LicenseNo,
+            LicenseDate = LicenseDate,
             MaintenanceNotes = MaintenanceNotes,
             Amenities = Amenities,
             Description = Description,

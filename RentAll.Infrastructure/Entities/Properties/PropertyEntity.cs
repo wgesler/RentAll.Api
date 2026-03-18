@@ -85,7 +85,7 @@ public class PropertyEntity
     public string? GarageCode { get; set; }
     public string? GateCode { get; set; }
     public string? TrashCode { get; set; }
-    public string? MailCode { get; set; }
+    public string? StorageCode { get; set; }
 
     // Kitchen & Bath
     public bool Kitchen { get; set; }
