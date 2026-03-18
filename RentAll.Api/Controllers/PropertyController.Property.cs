@@ -194,7 +194,11 @@ namespace RentAll.Api.Controllers
                         return Conflict("Property Code already exists");
                 }
 
+                // Check if PropertyOffice is being changed and update associated owners if necessary
                 var property = dto.ToModel(CurrentUser);
+                if (existingProperty.OfficeId != dto.OfficeId)
+                    await _propertyManager.UpdatePropertyOfficeAsync(property, CurrentUser);
+
                 var updatedProperty = await _propertyRepository.UpdateByIdAsync(property);
                 return Ok(new PropertyResponseDto(updatedProperty));
             }

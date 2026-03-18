@@ -9,6 +9,7 @@ namespace RentAll.Api.Controllers
     [Authorize]
     public partial class PropertyController : BaseController
     {
+        private readonly IPropertyManager _propertyManager;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
         private readonly IUserRepository _userRepository;
@@ -16,12 +17,14 @@ namespace RentAll.Api.Controllers
         private readonly ILogger<PropertyController> _logger;
 
         public PropertyController(
+            IPropertyManager propertyManager,
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
             IUserRepository userRepository,
             ICalendarManager calendarManager,
             ILogger<PropertyController> logger)
         {
+            _propertyManager = propertyManager;
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;
             _userRepository = userRepository;

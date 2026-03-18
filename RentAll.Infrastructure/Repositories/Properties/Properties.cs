@@ -82,7 +82,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Creates
+    #region Creates
     public async Task<Property> CreateAsync(Property property)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -206,8 +206,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Updates
-    public async Task<Property> UpdateByIdAsync(Property property)
+        #region Updates
+        public async Task<Property> UpdateByIdAsync(Property property)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_UpdateById", new
@@ -331,8 +331,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Deletes
-    public async Task DeletePropertyByIdAsync(Guid propertyId)
+        #region Deletes
+        public async Task DeletePropertyByIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.Property_DeleteById", new

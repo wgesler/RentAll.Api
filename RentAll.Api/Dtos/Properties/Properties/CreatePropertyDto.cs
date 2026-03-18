@@ -122,11 +122,11 @@ public class CreatePropertyDto
 
     // Maintenance Section
     public string? FilterDescription { get; set; }
-    public DateTimeOffset LastFilterChangeDate { get; set; }
+    public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
-    public DateTimeOffset LastSmokeChangeDate { get; set; }
+    public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? LicenseNo { get; set; }
-    public DateTimeOffset LicenseDate { get; set; }
+    public DateTimeOffset? LicenseDate { get; set; }
     public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section

@@ -25,9 +25,9 @@ public class PropertyList
     public decimal MaidServiceFee { get; set; }
     public PropertyStatus PropertyStatus { get; set; }
     public MaintenanceStatus MaintenanceStatus { get; set; }
-    public DateTimeOffset LastFilterChangeDate { get; set; }
-    public DateTimeOffset LastSmokeChangeDate { get; set; }
-    public DateTimeOffset LicenseDate { get; set; }
+    public DateTimeOffset? LastFilterChangeDate { get; set; }
+    public DateTimeOffset? LastSmokeChangeDate { get; set; }
+    public DateTimeOffset? LicenseDate { get; set; }
     public bool IsActive { get; set; }
 }
 

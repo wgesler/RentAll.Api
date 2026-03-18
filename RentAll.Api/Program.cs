@@ -156,6 +156,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
 
 builder.Services.AddScoped<IContactManager, ContactManager>();
+builder.Services.AddScoped<IPropertyManager, PropertyManager>();
 builder.Services.AddScoped<IEmailManager, EmailManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
 builder.Services.AddScoped<IAccountingManager, AccountingManager>();

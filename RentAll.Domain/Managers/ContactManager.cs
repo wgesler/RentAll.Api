@@ -42,10 +42,10 @@ public class ContactManager : IContactManager
             var newUser = new User
             {
                 OrganizationId = contact.OrganizationId,
-                FirstName = contact.FirstName,
-                LastName = contact.LastName,
+                FirstName = contact.FirstName ?? string.Empty,
+                LastName = contact.LastName ?? string.Empty,
                 Email = contact.Email,
-                Phone = contact.Phone,
+                Phone = contact.Phone ?? string.Empty,
                 PasswordHash = _passwordHasher.HashPassword(contact.ContactCode),
                 UserGroups = new List<string>() { "Owner" },
                 OfficeAccess = new List<int>() { contact.OfficeId },
