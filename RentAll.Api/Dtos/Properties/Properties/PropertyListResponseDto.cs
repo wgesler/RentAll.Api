@@ -26,6 +26,8 @@ public class PropertyListResponseDto
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
+    public DateTimeOffset? HvacServiced { get; set; }
+    public DateTimeOffset? FireplaceServiced { get; set; }
     public bool IsActive { get; set; }
 
     public PropertyListResponseDto(PropertyList propertyList)
@@ -54,6 +56,8 @@ public class PropertyListResponseDto
         LastFilterChangeDate = propertyList.LastFilterChangeDate;
         LastSmokeChangeDate = propertyList.LastSmokeChangeDate;
         LicenseDate = propertyList.LicenseDate;
+        HvacServiced = propertyList.HvacServiced;
+        FireplaceServiced = propertyList.FireplaceServiced;
         IsActive = propertyList.IsActive;
     }
 }

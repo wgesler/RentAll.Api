@@ -125,6 +125,10 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 LastSmokeChangeDate = e.LastSmokeChangeDate,
                 LicenseNo = e.LicenseNo,
                 LicenseDate = e.LicenseDate,
+                HvacNotes = e.HvacNotes,
+                HvacServiced = e.HvacServiced,
+                FireplaceNotes = e.FireplaceNotes,
+                FireplaceServiced = e.FireplaceServiced,
                 MaintenanceNotes = e.MaintenanceNotes,
                 Amenities = e.Amenities,
                 Description = e.Description,
@@ -167,6 +171,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 LastFilterChangeDate = e.LastFilterChangeDate,
                 LastSmokeChangeDate = e.LastSmokeChangeDate,
                 LicenseDate = e.LicenseDate,
+                HvacServiced = e.HvacServiced,
+                FireplaceServiced = e.FireplaceServiced,
                 IsActive = e.IsActive
             };
         }

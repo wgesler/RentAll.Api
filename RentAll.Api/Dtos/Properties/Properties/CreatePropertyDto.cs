@@ -127,6 +127,10 @@ public class CreatePropertyDto
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? LicenseNo { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
+    public string? HvacNotes { get; set; }
+    public DateTimeOffset? HvacServiced { get; set; }
+    public string? FireplaceNotes { get; set; }
+    public DateTimeOffset? FireplaceServiced { get; set; }
     public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section
@@ -287,6 +291,10 @@ public class CreatePropertyDto
             LastSmokeChangeDate = LastSmokeChangeDate,
             LicenseNo = LicenseNo,
             LicenseDate = LicenseDate,
+            HvacNotes = HvacNotes,
+            HvacServiced = HvacServiced,
+            FireplaceNotes = FireplaceNotes,
+            FireplaceServiced = FireplaceServiced,
             MaintenanceNotes = MaintenanceNotes,
             Amenities = Amenities,
             Description = Description,

@@ -26,5 +26,7 @@ public class PropertyListEntity
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
+    public DateTimeOffset? HvacServiced { get; set; }
+    public DateTimeOffset? FireplaceServiced { get; set; }
     public bool IsActive { get; set; }
 }

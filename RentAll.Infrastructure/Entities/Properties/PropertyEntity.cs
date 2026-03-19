@@ -130,6 +130,10 @@ public class PropertyEntity
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? LicenseNo { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
+    public string? HvacNotes { get; set; }
+    public DateTimeOffset? HvacServiced { get; set; }
+    public string? FireplaceNotes { get; set; }
+    public DateTimeOffset? FireplaceServiced { get; set; }
     public string? MaintenanceNotes { get; set; }
 
     // Additional Amenities Section
