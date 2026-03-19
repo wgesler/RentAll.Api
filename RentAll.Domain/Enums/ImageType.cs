@@ -7,6 +7,7 @@ public enum ImageType
     Photos = 2,
     Profiles = 3,
     W9Forms = 4,
-    Insurances = 5
+    Insurances = 5,
+    Agreements = 6,
 }
 

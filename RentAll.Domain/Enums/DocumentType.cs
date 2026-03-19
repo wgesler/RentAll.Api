@@ -10,7 +10,6 @@ public enum DocumentType
     Inspections = 5,
     Inventories = 6,
     WorkOrder = 7,
-    OwnerAgreement = 8,
 }
 
 
