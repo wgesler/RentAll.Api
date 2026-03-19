@@ -26,10 +26,17 @@ public class CreateContactDto
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public FileDetails? W9FileDetails { get; set; }
-    public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
-    public int Markup { get; set; }
+    public string? AgreementPath { get; set; }
+    public int? Markup { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
+    public decimal? WorkingCapitalBalance { get; set; }
+    public decimal? LinenAndTowelFee { get; set; }
+    public string? BankName { get; set; }
+    public string? RoutingNumber { get; set; }
+    public string? AccountNumber { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -82,10 +89,17 @@ public class CreateContactDto
             Notes = Notes,
             IsInternational = IsInternational,
             W9Path = null, // Will be set by controller after file save
-            W9Expiration = W9Expiration,
             InsurancePath = null,// Will be set by controller after file save
             InsuranceExpiration = InsuranceExpiration,
+            AgreementPath = AgreementPath,
             Markup = Markup,
+            RevenueSplitOwner = RevenueSplitOwner,
+            RevenueSplitOffice = RevenueSplitOffice,
+            WorkingCapitalBalance = WorkingCapitalBalance,
+            LinenAndTowelFee = LinenAndTowelFee,
+            BankName = BankName,
+            RoutingNumber = RoutingNumber,
+            AccountNumber = AccountNumber,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

@@ -30,12 +30,19 @@ public class Contact
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
-    public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public int Markup { get; set; }
+    public string? AgreementPath { get; set; }
+    public int? Markup { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
+    public decimal? WorkingCapitalBalance { get; set; }
+    public decimal? LinenAndTowelFee { get; set; }
+    public string? BankName { get; set; }
+    public string? RoutingNumber { get; set; }
+    public string? AccountNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

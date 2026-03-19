@@ -39,10 +39,17 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 Notes = contact.Notes,
                 IsInternational = contact.IsInternational,
                 W9Path = contact.W9Path,
-                W9Expiration = contact.W9Expiration,
                 InsurancePath = contact.InsurancePath,
                 InsuranceExpiration = contact.InsuranceExpiration,
+                AgreementPath = contact.AgreementPath,
                 Markup = contact.Markup,
+                RevenueSplitOwner = contact.RevenueSplitOwner,
+                RevenueSplitOffice = contact.RevenueSplitOffice,
+                WorkingCapitalBalance = contact.WorkingCapitalBalance,
+                LinenAndTowelFee = contact.LinenAndTowelFee,
+                BankName = contact.BankName,
+                RoutingNumber = contact.RoutingNumber,
+                AccountNumber = contact.AccountNumber,
                 CreatedBy = contact.CreatedBy
             });
 

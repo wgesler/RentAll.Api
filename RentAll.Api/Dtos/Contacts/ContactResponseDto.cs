@@ -29,12 +29,19 @@ public class ContactResponseDto
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
-    public DateTimeOffset? W9Expiration { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public int Markup { get; set; }
+    public string? AgreementPath { get; set; }
+    public int? Markup { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
+    public decimal? WorkingCapitalBalance { get; set; }
+    public decimal? LinenAndTowelFee { get; set; }
+    public string? BankName { get; set; }
+    public string? RoutingNumber { get; set; }
+    public string? AccountNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -69,12 +76,19 @@ public class ContactResponseDto
         Notes = contact.Notes;
         IsInternational = contact.IsInternational;
         W9Path = contact.W9Path;
-        W9Expiration = contact.W9Expiration;
         W9FileDetails = contact.W9FileDetails;
         InsurancePath = contact.InsurancePath;
         InsuranceExpiration = contact.InsuranceExpiration;
         InsuranceFileDetails = contact.InsuranceFileDetails;
+        AgreementPath = contact.AgreementPath;
         Markup = contact.Markup;
+        RevenueSplitOwner = contact.RevenueSplitOwner;
+        RevenueSplitOffice = contact.RevenueSplitOffice;
+        WorkingCapitalBalance = contact.WorkingCapitalBalance;
+        LinenAndTowelFee = contact.LinenAndTowelFee;
+        BankName = contact.BankName;
+        RoutingNumber = contact.RoutingNumber;
+        AccountNumber = contact.AccountNumber;
         IsActive = contact.IsActive;
         CreatedOn = contact.CreatedOn;
         CreatedBy = contact.CreatedBy;
