@@ -29,6 +29,7 @@ public class CreateContactDto
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public string? AgreementPath { get; set; }
+    public FileDetails? AgreementFileDetails { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }

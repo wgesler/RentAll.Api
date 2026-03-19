@@ -41,7 +41,7 @@ public class AzureBlobStorageService : IFileService
     public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType)
     {
         // Validate file type
-        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg" };
+        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf" };
         var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
         if (!string.IsNullOrEmpty(fileNameOnly))
             fileNameOnly = Uri.UnescapeDataString(fileNameOnly);
@@ -49,9 +49,11 @@ public class AzureBlobStorageService : IFileService
         if (!allowedExtensions.Contains(fileExtension))
             throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
 
-        // Validate content type
-        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Content type must be an image type");
+        // Validate content type (images or PDF)
+        var allowedContentType = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(contentType, "application/pdf", StringComparison.OrdinalIgnoreCase);
+        if (!allowedContentType)
+            throw new ArgumentException("Content type must be an image type or application/pdf.");
 
         try
         {

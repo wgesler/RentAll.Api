@@ -52,10 +52,11 @@ namespace RentAll.Api.Controllers
                 var office = await _organizationRepository.GetOfficeByIdAsync(contact.OfficeId, contact.OrganizationId);
                 var officeName = office != null ? office.Name : null;
 
-                // Get W9 and Insurance file details if paths are available
+                // Get W9, Insurance, and Agreement file details if paths are available
                 var response = new ContactResponseDto(contact);
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.InsurancePath, ImageType.Insurances);
+                response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.AgreementPath, ImageType.Agreements);
 
                 return Ok(response);
             }

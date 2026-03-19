@@ -26,7 +26,7 @@ namespace RentAll.Api.Controllers
 
                 contact.W9Path = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms);
                 contact.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
-                contact.AgreementPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Agreements);
+                contact.AgreementPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.AgreementFileDetails, ImageType.Agreements);
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
                 await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
@@ -34,7 +34,7 @@ namespace RentAll.Api.Controllers
 
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdContact.OrganizationId, null, createdContact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdContact.OrganizationId, null, createdContact.InsurancePath, ImageType.Insurances);
-                response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdContact.OrganizationId, null, createdContact.InsurancePath, ImageType.Agreements);
+                response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdContact.OrganizationId, null, createdContact.AgreementPath, ImageType.Agreements);
 
                 return Ok(response);
             }
