@@ -1,6 +1,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Services;
@@ -13,17 +14,20 @@ public class AzureBlobStorageService : IFileService
     private readonly BlobServiceClient _blobServiceClient;
     private readonly StorageSettings _storageSettings;
     private readonly AppSettings _appSettings;
+    private readonly ImageUploadSettings _imageUploadSettings;
     private readonly ILogger<AzureBlobStorageService> _logger;
 
     public AzureBlobStorageService(
         BlobServiceClient blobServiceClient,
         StorageSettings storageSettings,
         AppSettings appSettings,
+        IOptions<ImageUploadSettings> imageUploadOptions,
         ILogger<AzureBlobStorageService> logger)
     {
         _blobServiceClient = blobServiceClient ?? throw new ArgumentNullException(nameof(blobServiceClient));
         _storageSettings = storageSettings ?? throw new ArgumentNullException(nameof(storageSettings));
         _appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+        _imageUploadSettings = imageUploadOptions?.Value ?? throw new ArgumentNullException(nameof(imageUploadOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -31,20 +35,30 @@ public class AzureBlobStorageService : IFileService
     public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType)
     {
         var fileBytes = DecodeBase64(fileContent);
-
-        // Create stream and ensure it stays alive during async upload
-        using var stream = new MemoryStream(fileBytes);
-        var result = await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, imageType);
-        return result;
+        ImageUploadLimits.ThrowIfExceedsMaxBytes(fileBytes.Length, _imageUploadSettings);
+        var buffer = new MemoryStream(fileBytes);
+        var (streamToUpload, effectiveExtension, uploadContentType) = await ImagePersistencePreparer.PrepareForSaveAsync(
+            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+        try
+        {
+            return await UploadPreparedImageBlobAsync(
+                organizationId, officeName, streamToUpload, fileName, effectiveExtension, uploadContentType, imageType).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving image to Azure Blob Storage: {FileName}", fileName);
+            throw;
+        }
+        finally
+        {
+            await streamToUpload.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType)
     {
         // Validate file type
-        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf" };
-        var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
-        if (!string.IsNullOrEmpty(fileNameOnly))
-            fileNameOnly = Uri.UnescapeDataString(fileNameOnly);
+        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf", ".heic", ".heif" };
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
             throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
@@ -55,56 +69,53 @@ public class AzureBlobStorageService : IFileService
         if (!allowedContentType)
             throw new ArgumentException("Content type must be an image type or application/pdf.");
 
+        var buffer = await ImageUploadLimits.ReadImageStreamWithSizeCapAsync(fileStream, _imageUploadSettings).ConfigureAwait(false);
+        var (streamToUpload, effectiveExtension, uploadContentType) = await ImagePersistencePreparer.PrepareForSaveAsync(
+            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
         try
         {
-            var containerName = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
-            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-
-            await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
-            var typeString = imageType.ToString().ToLowerInvariant();
-
-            // Keep versioned logos (new URL each time). Folders: org/office/Photos|Receipts|Logos/file. Decode filename so blob name matches URL decoding on retrieve.
-            var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
-            var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
-            var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
-            var blobClient = containerClient.GetBlobClient(blobName);
-
-            // Read stream into a fresh MemoryStream to avoid disposal issues during async upload
-            MemoryStream uploadStream;
-            if (fileStream is MemoryStream ms && ms.CanRead && ms.CanSeek)
-            {
-                // Reset position and create a new stream from the bytes to avoid disposal issues
-                ms.Position = 0;
-                var bytes = ms.ToArray();
-                uploadStream = new MemoryStream(bytes, false); // writable: false since we won't modify it
-            }
-            else
-            {
-                // For other stream types, copy to a new memory stream
-                if (fileStream.CanSeek) fileStream.Position = 0;
-                uploadStream = new MemoryStream();
-                await fileStream.CopyToAsync(uploadStream);
-                uploadStream.Position = 0; // Reset for reading
-            }
-
-            try
-            {
-                // Upload using the memory stream - it will be disposed after upload completes
-                await blobClient.UploadAsync(uploadStream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = contentType } });
-            }
-            finally
-            {
-                // Ensure stream is disposed after upload
-                await uploadStream.DisposeAsync();
-            }
-
-            return blobClient.Uri.ToString();
+            return await UploadPreparedImageBlobAsync(
+                organizationId, officeName, streamToUpload, fileName, effectiveExtension, uploadContentType, imageType).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving image to Azure Blob Storage: {FileName}", fileName);
             throw;
         }
+        finally
+        {
+            await streamToUpload.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task<string> UploadPreparedImageBlobAsync(
+        Guid organizationId,
+        string? officeName,
+        MemoryStream uploadStream,
+        string originalFileName,
+        string effectiveExtension,
+        string uploadContentType,
+        ImageType imageType)
+    {
+        var containerName = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.None).ConfigureAwait(false);
+        var typeString = imageType.ToString().ToLowerInvariant();
+
+        var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
+        if (!string.IsNullOrEmpty(fileNameOnly))
+            fileNameOnly = Uri.UnescapeDataString(fileNameOnly);
+
+        var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
+        var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
+        var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        uploadStream.Position = 0;
+        await blobClient.UploadAsync(uploadStream, new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = uploadContentType } }).ConfigureAwait(false);
+
+        return blobClient.Uri.ToString();
     }
 
     public async Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)

@@ -42,6 +42,8 @@ builder.Services.AddScoped<StorageSettings>();
 var sendGridSettings = builder.Configuration.GetSection("SendGridSettings");
 builder.Services.Configure<SendGridSettings>(sendGridSettings);
 
+builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
+
 var allowedHosts = appSettingsSection.GetSection("AllowedHostNames").Get<string[]>()!;
 var environment = appSettingsSection.GetSection("Environment").Get<string>()!;
 var isDev = environment.ToLower() == "development";
@@ -147,7 +149,7 @@ else
         var appSettings = sp.GetRequiredService<AppSettings>();
         var logger = sp.GetRequiredService<ILogger<FileService>>();
         var wwwRootPath = hostEnv.WebRootPath ?? Path.Combine(hostEnv.ContentRootPath, "wwwroot");
-        return new FileService(wwwRootPath, appSettings, logger);
+        return new FileService(wwwRootPath, appSettings, sp.GetRequiredService<IOptions<ImageUploadSettings>>(), logger);
     });
 }
 

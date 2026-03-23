@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Services;
@@ -10,15 +11,18 @@ public class FileService : IFileService
 {
     private readonly string _wwwRootPath;
     private readonly AppSettings _appSettings;
+    private readonly ImageUploadSettings _imageUploadSettings;
     private readonly ILogger<FileService> _logger;
 
     public FileService(
         string wwwRootPath,
         AppSettings appSettings,
+        IOptions<ImageUploadSettings> imageUploadOptions,
         ILogger<FileService> logger)
     {
         _wwwRootPath = wwwRootPath ?? throw new ArgumentNullException(nameof(wwwRootPath));
         _appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+        _imageUploadSettings = imageUploadOptions?.Value ?? throw new ArgumentNullException(nameof(imageUploadOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -39,15 +43,24 @@ public class FileService : IFileService
             fileBytes = Convert.FromBase64String(fileContent);
         }
 
-        using var stream = new MemoryStream(fileBytes);
-        return await SaveImageAsync(organizationId, officeName, stream, fileName, contentType, imageType);
+        ImageUploadLimits.ThrowIfExceedsMaxBytes(fileBytes.Length, _imageUploadSettings);
+        var buffer = new MemoryStream(fileBytes);
+        var (streamToSave, effectiveExtension, _) = await ImagePersistencePreparer.PrepareForSaveAsync(
+            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+        try
+        {
+            return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType).ConfigureAwait(false);
+        }
+        finally
+        {
+            await streamToSave.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType)
     {
         // Validate file type
-        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf" };
-        var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
+        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf", ".heic", ".heif" };
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
             throw new ArgumentException($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
@@ -58,25 +71,42 @@ public class FileService : IFileService
         if (!allowedContentType)
             throw new ArgumentException("Content type must be an image type or application/pdf.");
 
-        // Create directory if it doesn't exist - organized by environment and org/office
+        var buffer = await ImageUploadLimits.ReadImageStreamWithSizeCapAsync(fileStream, _imageUploadSettings).ConfigureAwait(false);
+        var (streamToSave, effectiveExtension, _) = await ImagePersistencePreparer.PrepareForSaveAsync(
+            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+        try
+        {
+            return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType).ConfigureAwait(false);
+        }
+        finally
+        {
+            await streamToSave.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task<string> SavePreparedImageToDiskAsync(
+        Guid organizationId,
+        string? officeName,
+        Stream streamToSave,
+        string originalFileName,
+        string effectiveExtension,
+        ImageType imageType)
+    {
+        var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
         var uploadsPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString);
         Directory.CreateDirectory(uploadsPath);
 
-        // Generate unique filename
-        var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
+        var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
         var fullPath = Path.Combine(uploadsPath, uniqueFileName);
 
-        // Save file
-        using (var fileStreamOut = new FileStream(fullPath, FileMode.Create))
+        await using (var fileStreamOut = new FileStream(fullPath, FileMode.Create))
         {
-            await fileStream.CopyToAsync(fileStreamOut);
+            await streamToSave.CopyToAsync(fileStreamOut).ConfigureAwait(false);
         }
 
-        // Return relative path in the format expected by GetImageDetailsAsync/DeleteImageAsync: /containerPath/type/filename
-        var relativePath = "/" + containerPath + "/" + typeString + "/" + uniqueFileName;
-        return relativePath;
+        return "/" + containerPath + "/" + typeString + "/" + uniqueFileName;
     }
 
     public Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)
@@ -151,6 +181,7 @@ public class FileService : IFileService
                 ".jpg" or ".jpeg" => "image/jpeg",
                 ".gif" => "image/gif",
                 ".svg" => "image/svg+xml",
+                ".webp" => "image/webp",
                 ".pdf" => "application/pdf",
                 _ => "application/octet-stream"
             };
