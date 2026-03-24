@@ -34,14 +34,30 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         {
             if (_browser == null || !_browser.IsConnected)
             {
-                // Download browser if not already downloaded
-                var browserFetcher = new BrowserFetcher();
-                await browserFetcher.DownloadAsync();
+                var homeExpanded =
+                    Environment.GetEnvironmentVariable("HOME_EXPANDED") ??
+                    Environment.GetEnvironmentVariable("HOME") ??
+                    Path.GetTempPath();
+
+                var downloadPath = Path.Combine(homeExpanded, "Chrome");
+
+                var browserFetcher = new BrowserFetcher(new BrowserFetcherOptions
+                {
+                    Path = downloadPath
+                });
+
+                var installedBrowser = await browserFetcher.DownloadAsync();
+                var executablePath = installedBrowser.GetExecutablePath();
 
                 var launchOptions = new LaunchOptions
                 {
                     Headless = true,
-                    Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" } // For Linux/Docker compatibility
+                    ExecutablePath = executablePath,
+                    Args = new[]
+                    {
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
+                }
                 };
 
                 _browser = await Puppeteer.LaunchAsync(launchOptions);
