@@ -22,7 +22,10 @@ public class PropertyListResponseDto
     public decimal PetFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public int PropertyStatusId { get; set; }
-    public int MaintenanceStatusId {  get; set; }
+    public int BedroomId1 { get; set; }
+    public int BedroomId2 { get; set; }
+    public int BedroomId3 { get; set; }
+    public int BedroomId4 { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
@@ -52,7 +55,10 @@ public class PropertyListResponseDto
         PetFee = propertyList.PetFee;
         MaidServiceFee = propertyList.MaidServiceFee;
         PropertyStatusId = (int)propertyList.PropertyStatus;
-        MaintenanceStatusId = (int)propertyList.MaintenanceStatus;
+        BedroomId1 = (int)propertyList.Bedroom1;
+        BedroomId2 = (int)propertyList.Bedroom2;
+        BedroomId3 = (int)propertyList.Bedroom3;
+        BedroomId4 = (int)propertyList.Bedroom4;
         LastFilterChangeDate = propertyList.LastFilterChangeDate;
         LastSmokeChangeDate = propertyList.LastSmokeChangeDate;
         LicenseDate = propertyList.LicenseDate;
