@@ -21,7 +21,8 @@ public enum RoleType
     VendorAdmin = 16,
     Tenants = 17,
     Owner = 18,
-    Client = 19
+    Client = 19,
+    Inspector = 20,
 }
 
 

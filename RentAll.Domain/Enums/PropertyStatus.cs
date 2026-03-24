@@ -2,7 +2,7 @@ namespace RentAll.Domain.Enums;
 
 public enum PropertyStatus
 {
-    NotProcessed = 0,
+    Vacant = 0,
     Cleaned = 1,
     Inspected = 2,
     Ready = 3,
