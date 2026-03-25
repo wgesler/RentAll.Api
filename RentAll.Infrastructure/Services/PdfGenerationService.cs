@@ -83,19 +83,38 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         if (string.IsNullOrWhiteSpace(htmlContent))
             throw new ArgumentException("HTML content cannot be null or empty", nameof(htmlContent));
 
+        var totalStart = DateTime.UtcNow;
+
         options ??= new Domain.Interfaces.Services.PdfOptions();
+
         if (options.InlineExternalImages)
+        {
+            var inlineStart = DateTime.UtcNow;
             htmlContent = await InlineExternalImagesAsync(htmlContent, options.BaseUrl).ConfigureAwait(false);
+            _logger.LogInformation("PDF timing: InlineExternalImagesAsync = {ElapsedMs} ms",
+                (DateTime.UtcNow - inlineStart).TotalMilliseconds);
+        }
 
         try
         {
+            var browserStart = DateTime.UtcNow;
             var browser = await GetBrowserAsync();
+            _logger.LogInformation("PDF timing: GetBrowserAsync = {ElapsedMs} ms",
+                (DateTime.UtcNow - browserStart).TotalMilliseconds);
+
+            var newPageStart = DateTime.UtcNow;
             await using var page = await browser.NewPageAsync();
+            _logger.LogInformation("PDF timing: NewPageAsync = {ElapsedMs} ms",
+                (DateTime.UtcNow - newPageStart).TotalMilliseconds);
 
-            // Set content (HTML is now self-contained; no external image refs)
-            await page.SetContentAsync(htmlContent, new NavigationOptions { WaitUntil = new[] { WaitUntilNavigation.Load } });
+            var setContentStart = DateTime.UtcNow;
+            await page.SetContentAsync(htmlContent, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Load }
+            });
+            _logger.LogInformation("PDF timing: SetContentAsync = {ElapsedMs} ms",
+                (DateTime.UtcNow - setContentStart).TotalMilliseconds);
 
-            // Configure PDF options
             var pdfOptions = new PuppeteerSharp.PdfOptions
             {
                 Format = ParsePaperFormat(options?.Format ?? "Letter"),
@@ -130,8 +149,13 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 pdfOptions.Height = $"{options.Height}px";
             }
 
-            // Generate PDF
+            var pdfStart = DateTime.UtcNow;
             var pdfBytes = await page.PdfDataAsync(pdfOptions);
+            _logger.LogInformation("PDF timing: PdfDataAsync = {ElapsedMs} ms",
+                (DateTime.UtcNow - pdfStart).TotalMilliseconds);
+
+            _logger.LogInformation("PDF timing: TOTAL = {ElapsedMs} ms",
+                (DateTime.UtcNow - totalStart).TotalMilliseconds);
 
             return pdfBytes;
         }
@@ -141,7 +165,6 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             throw;
         }
     }
-
     public async Task<string> ConvertHtmlToPdfBase64Async(string htmlContent)
     {
         var pdfBytes = await ConvertHtmlToPdfAsync(htmlContent);
