@@ -154,7 +154,7 @@ else
 
 builder.Services.AddScoped<IFileAttachmentHelper, FileAttachmentHelper>();
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
+builder.Services.AddSingleton<IPdfGenerationService, PdfGenerationService>();
 
 builder.Services.AddScoped<IContactManager, ContactManager>();
 builder.Services.AddScoped<IPropertyManager, PropertyManager>();
