@@ -34,11 +34,14 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         {
             if (_browser == null || !_browser.IsConnected)
             {
-                var executablePath = Environment.GetEnvironmentVariable("CHROME_BIN");
+                var executablePath = ResolveChromeExecutablePath();
+
+                _logger.LogInformation("Launching browser from path: {ExecutablePath}", executablePath);
 
                 var launchOptions = new LaunchOptions
                 {
                     Headless = true,
+                    ExecutablePath = executablePath,
                     Args = new[]
                     {
                     "--no-sandbox",
@@ -47,11 +50,6 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                     "--disable-gpu"
                 }
                 };
-
-                if (!string.IsNullOrWhiteSpace(executablePath))
-                {
-                    launchOptions.ExecutablePath = executablePath;
-                }
 
                 _browser = await Puppeteer.LaunchAsync(launchOptions);
             }
@@ -62,6 +60,30 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         {
             _browserSemaphore.Release();
         }
+    }
+
+    private static string ResolveChromeExecutablePath()
+    {
+        var envPath = Environment.GetEnvironmentVariable("CHROME_BIN");
+        if (!string.IsNullOrWhiteSpace(envPath) && File.Exists(envPath))
+            return envPath;
+
+        // Playwright Docker images keep browsers under /ms-playwright
+        var msPlaywright = "/ms-playwright";
+        if (Directory.Exists(msPlaywright))
+        {
+            var candidates = Directory.GetFiles(msPlaywright, "chrome", SearchOption.AllDirectories)
+                .Concat(Directory.GetFiles(msPlaywright, "chrome-headless-shell", SearchOption.AllDirectories))
+                .OrderBy(p => p)
+                .ToList();
+
+            var match = candidates.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(match))
+                return match;
+        }
+
+        throw new FileNotFoundException(
+            "Could not find a Chrome/Chromium executable. Checked CHROME_BIN and /ms-playwright.");
     }
 
     public async Task<byte[]> ConvertHtmlToPdfAsync(string htmlContent)
