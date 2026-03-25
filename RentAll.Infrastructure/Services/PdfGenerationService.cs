@@ -34,20 +34,9 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         {
             if (_browser == null || !_browser.IsConnected)
             {
-                var homeExpanded =
-                    Environment.GetEnvironmentVariable("HOME_EXPANDED") ??
-                    Environment.GetEnvironmentVariable("HOME") ??
-                    Path.GetTempPath();
-
-                var downloadPath = Path.Combine(homeExpanded, "Chrome");
-
-                var browserFetcher = new BrowserFetcher(new BrowserFetcherOptions
-                {
-                    Path = downloadPath
-                });
-
-                var installedBrowser = await browserFetcher.DownloadAsync();
-                var executablePath = installedBrowser.GetExecutablePath();
+                var executablePath =
+                    Environment.GetEnvironmentVariable("CHROME_BIN") ??
+                    "/usr/bin/chromium";
 
                 var launchOptions = new LaunchOptions
                 {
@@ -55,11 +44,11 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                     ExecutablePath = executablePath,
                     Args = new[]
                     {
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu"
-                }
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu"
+                    }
                 };
 
                 _browser = await Puppeteer.LaunchAsync(launchOptions);
@@ -165,6 +154,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             throw;
         }
     }
+
     public async Task<string> ConvertHtmlToPdfBase64Async(string htmlContent)
     {
         var pdfBytes = await ConvertHtmlToPdfAsync(htmlContent);
@@ -229,8 +219,10 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             return url;
+
         if (string.IsNullOrEmpty(baseUrl))
             return null;
+
         baseUrl = baseUrl.TrimEnd('/');
         var relative = url.TrimStart('/');
         return $"{baseUrl}/{relative}";
@@ -240,9 +232,11 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
     {
         using var response = await client.GetAsync(url).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
+
         var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
         var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         var base64 = Convert.ToBase64String(bytes);
+
         return $"data:{contentType};base64,{base64}";
     }
 
@@ -271,4 +265,3 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         _browserSemaphore?.Dispose();
     }
 }
-
