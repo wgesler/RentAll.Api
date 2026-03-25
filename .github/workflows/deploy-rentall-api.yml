@@ -23,7 +23,7 @@ jobs:
           az acr build \
             --registry rentallacr7918 \
             --image rentall-api:latest \
-            --file RentAll.Api/Dockerfile \
+            --file Dockerfile \
             .
 
       - name: Configure App Service to use image
