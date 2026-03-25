@@ -93,7 +93,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             await using var page = await browser.NewPageAsync();
 
             // Set content (HTML is now self-contained; no external image refs)
-            await page.SetContentAsync(htmlContent, new NavigationOptions { WaitUntil = new[] { WaitUntilNavigation.Networkidle0 } });
+            await page.SetContentAsync(htmlContent, new NavigationOptions { WaitUntil = new[] { WaitUntilNavigation.Load } });
 
             // Configure PDF options
             var pdfOptions = new PuppeteerSharp.PdfOptions
