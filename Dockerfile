@@ -35,7 +35,6 @@ WORKDIR /src
 COPY ["RentAll.Api/RentAll.Api.csproj", "RentAll.Api/"]
 COPY ["RentAll.Infrastructure/RentAll.Infrastructure.csproj", "RentAll.Infrastructure/"]
 COPY ["RentAll.Domain/RentAll.Domain.csproj", "RentAll.Domain/"]
-COPY ["RentAll.Application/RentAll.Application.csproj", "RentAll.Application/"]
 
 RUN dotnet restore "RentAll.Api/RentAll.Api.csproj"
 
