@@ -9,6 +9,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      AZURE_WEBAPP_NAME: rentall-api-linux
+      AZURE_RESOURCE_GROUP: rentall-api-linux_group
+      ACR_NAME: rentallacr7918
+      IMAGE_NAME: rentall-api
+      IMAGE_TAG: latest
+      SUBSCRIPTION_ID: 3ff60d51-9b1d-4cbd-ac89-6a02df0da443
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,20 +29,36 @@ jobs:
       - name: Build and Push Image to ACR
         run: |
           az acr build \
-            --registry rentallacr7918 \
-            --image rentall-api:latest \
+            --registry $ACR_NAME \
+            --image $IMAGE_NAME:$IMAGE_TAG \
             --file Dockerfile \
             .
 
-      - name: Configure App Service to use image
+      - name: Point App Service to image
         run: |
           az webapp config container set \
-            --name rentall-api-linux \
-            --resource-group rentall-api-linux_group \
-            --docker-custom-image-name rentallacr7918.azurecr.io/rentall-api:latest
+            --name $AZURE_WEBAPP_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --container-image-name $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG \
+            --container-registry-url https://$ACR_NAME.azurecr.io
+
+      - name: Enable managed identity pull from ACR
+        run: |
+          az resource update \
+            --ids /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AZURE_RESOURCE_GROUP/providers/Microsoft.Web/sites/$AZURE_WEBAPP_NAME/config/web \
+            --set properties.acrUseManagedIdentityCreds=true
+
+      - name: Enforce required app settings
+        run: |
+          az webapp config appsettings set \
+            --name $AZURE_WEBAPP_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --settings \
+              WEBSITES_PORT=8080 \
+              ASPNETCORE_URLS=http://0.0.0.0:8080
 
       - name: Restart App Service
         run: |
           az webapp restart \
-            --name rentall-api-linux \
-            --resource-group rentall-api-linux_group
+            --name $AZURE_WEBAPP_NAME \
+            --resource-group $AZURE_RESOURCE_GROUP
