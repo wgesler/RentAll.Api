@@ -56,7 +56,9 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                     Args = new[]
                     {
                     "--no-sandbox",
-                    "--disable-setuid-sandbox"
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu"
                 }
                 };
 
