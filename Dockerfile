@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/playwright/dotnet:v1.44.0-jammy AS base
 WORKDIR /app
 EXPOSE 8080
 
