@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/playwright/dotnet:v1.44.0-jammy AS base
 WORKDIR /app
 EXPOSE 8080
 
@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     libxi6 \
     libxtst6 \
+    && which chromium || true \
+    && ls -l /usr/bin/chromium* || true \
+    && dpkg -l | grep chromium || true \
     && rm -rf /var/lib/apt/lists/*
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
