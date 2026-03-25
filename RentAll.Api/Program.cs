@@ -197,7 +197,7 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // Enable static files (for images, logos, etc.)
 app.UseStaticFiles();
