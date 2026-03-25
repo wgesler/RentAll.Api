@@ -36,7 +36,14 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             {
                 var executablePath =
                     Environment.GetEnvironmentVariable("CHROME_BIN") ??
-                    "/usr/bin/chromium";
+                    new[]
+                    {
+                    "/usr/bin/chromium",
+                    "/usr/bin/chromium-browser",
+                    "/usr/bin/google-chrome",
+                    "/usr/bin/google-chrome-stable"
+                    }.FirstOrDefault(File.Exists)
+                    ?? throw new FileNotFoundException("Could not find a Chrome/Chromium executable in the container.");
 
                 var launchOptions = new LaunchOptions
                 {
@@ -44,11 +51,11 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                     ExecutablePath = executablePath,
                     Args = new[]
                     {
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu"
-                    }
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu"
+                }
                 };
 
                 _browser = await Puppeteer.LaunchAsync(launchOptions);
