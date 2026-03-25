@@ -36,7 +36,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             {
                 var executablePath = ResolveChromeExecutablePath();
 
-                _logger.LogInformation("Launching browser from path: {ExecutablePath}", executablePath);
+                _logger.LogDebug("Launching browser from path: {ExecutablePath}", executablePath);
 
                 var launchOptions = new LaunchOptions
                 {
@@ -106,8 +106,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         {
             var inlineStart = DateTime.UtcNow;
             htmlContent = await InlineExternalImagesAsync(htmlContent, options.BaseUrl).ConfigureAwait(false);
-            _logger.LogInformation("PDF timing: InlineExternalImagesAsync = {ElapsedMs} ms",
-                (DateTime.UtcNow - inlineStart).TotalMilliseconds);
+            _logger.LogDebug("PDF timing: InlineExternalImagesAsync = {ElapsedMs} ms", (DateTime.UtcNow - inlineStart).TotalMilliseconds);
         }
 
         try
@@ -167,8 +166,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             var totalMs = (DateTime.UtcNow - pdfStart).TotalMilliseconds;
 
             _logger.LogDebug("PDF timing: PdfDataAsync = {ElapsedMs} ms", (DateTime.UtcNow - pdfStart).TotalMilliseconds);
-            if (totalMs > 4000)
-                _logger.LogInformation("SLOW PDF: Total={TotalMs}ms", totalMs);
+            if (totalMs > 4000) _logger.LogInformation("SLOW PDF: Total={TotalMs}ms", totalMs);
 
             return pdfBytes;
         }
