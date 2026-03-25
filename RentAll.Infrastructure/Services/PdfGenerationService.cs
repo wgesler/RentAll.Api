@@ -114,13 +114,11 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
         {
             var browserStart = DateTime.UtcNow;
             var browser = await GetBrowserAsync();
-            _logger.LogInformation("PDF timing: GetBrowserAsync = {ElapsedMs} ms",
-                (DateTime.UtcNow - browserStart).TotalMilliseconds);
+            _logger.LogDebug("PDF timing: GetBrowserAsync = {ElapsedMs} ms", (DateTime.UtcNow - browserStart).TotalMilliseconds);
 
             var newPageStart = DateTime.UtcNow;
             await using var page = await browser.NewPageAsync();
-            _logger.LogInformation("PDF timing: NewPageAsync = {ElapsedMs} ms",
-                (DateTime.UtcNow - newPageStart).TotalMilliseconds);
+            _logger.LogDebug("PDF timing: NewPageAsync = {ElapsedMs} ms", (DateTime.UtcNow - newPageStart).TotalMilliseconds);
 
             var setContentStart = DateTime.UtcNow;
             await page.SetContentAsync(htmlContent, new NavigationOptions
@@ -128,8 +126,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 Timeout = 60000,
                 WaitUntil = new[] { WaitUntilNavigation.Load }
             });
-            _logger.LogInformation("PDF timing: SetContentAsync = {ElapsedMs} ms",
-                (DateTime.UtcNow - setContentStart).TotalMilliseconds);
+            _logger.LogDebug("PDF timing: SetContentAsync = {ElapsedMs} ms", (DateTime.UtcNow - setContentStart).TotalMilliseconds);
 
             var pdfOptions = new PuppeteerSharp.PdfOptions
             {
@@ -167,11 +164,11 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
 
             var pdfStart = DateTime.UtcNow;
             var pdfBytes = await page.PdfDataAsync(pdfOptions);
-            _logger.LogInformation("PDF timing: PdfDataAsync = {ElapsedMs} ms",
-                (DateTime.UtcNow - pdfStart).TotalMilliseconds);
+            var totalMs = (DateTime.UtcNow - pdfStart).TotalMilliseconds;
 
-            _logger.LogInformation("PDF timing: TOTAL = {ElapsedMs} ms",
-                (DateTime.UtcNow - totalStart).TotalMilliseconds);
+            _logger.LogDebug("PDF timing: PdfDataAsync = {ElapsedMs} ms", (DateTime.UtcNow - pdfStart).TotalMilliseconds);
+            if (totalMs > 4000)
+                _logger.LogInformation("SLOW PDF: Total={TotalMs}ms", totalMs);
 
             return pdfBytes;
         }
