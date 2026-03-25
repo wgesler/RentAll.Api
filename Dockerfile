@@ -5,11 +5,12 @@ EXPOSE 8080
 # Install Chromium + required dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
-    libnspr4 \
+    chromium-common \
+    chromium-sandbox \
     libnss3 \
-    libatk1.0-0t64 \
-    libatk-bridge2.0-0t64 \
-    libcups2t64 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
     libdrm2 \
     libxkbcommon0 \
     libxcomposite1 \
@@ -17,11 +18,11 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxrandr2 \
     libgbm1 \
-    libasound2t64 \
+    libasound2 \
     libpangocairo-1.0-0 \
     libpango-1.0-0 \
     libcairo2 \
-    libatspi2.0-0t64 \
+    libatspi2.0-0 \
     libx11-6 \
     libx11-xcb1 \
     libxcb1 \
