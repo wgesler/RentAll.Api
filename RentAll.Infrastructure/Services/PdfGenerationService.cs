@@ -42,7 +42,9 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 {
                     Headless = true,
                     ExecutablePath = executablePath,
+                    Timeout = 60000, 
                     Args = new[]
+
                     {
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
@@ -123,6 +125,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
             var setContentStart = DateTime.UtcNow;
             await page.SetContentAsync(htmlContent, new NavigationOptions
             {
+                Timeout = 60000,
                 WaitUntil = new[] { WaitUntilNavigation.Load }
             });
             _logger.LogInformation("PDF timing: SetContentAsync = {ElapsedMs} ms",
