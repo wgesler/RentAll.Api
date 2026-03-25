@@ -25,9 +25,9 @@ public class PropertyManager : IPropertyManager
             if (contact == null)
                 return;
 
-            contact?.OfficeId = p.OfficeId;
-            contact?.ModifiedBy = currentUser;
-            _ = await _contactRepository.UpdateByIdAsync(contact!);
+            contact.OfficeId = p.OfficeId;
+            contact.ModifiedBy = currentUser;
+            _ = await _contactRepository.UpdateByIdAsync(contact);
         }
 
         if (p.Owner2Id is { } owner2Id && owner2Id != Guid.Empty)
@@ -36,9 +36,9 @@ public class PropertyManager : IPropertyManager
             if (contact == null)
                 return;
 
-            contact?.OfficeId = p.OfficeId;
-            contact?.ModifiedBy = currentUser;
-            _ = await _contactRepository.UpdateByIdAsync(contact!);
+            contact.OfficeId = p.OfficeId;
+            contact.ModifiedBy = currentUser;
+            _ = await _contactRepository.UpdateByIdAsync(contact);
         }
 
         if (p.Owner3Id != null && p.Owner3Id != Guid.Empty)
@@ -47,9 +47,9 @@ public class PropertyManager : IPropertyManager
             if (contact == null)
                 return;
 
-            contact?.OfficeId = p.OfficeId;
-            contact?.ModifiedBy = currentUser;
-            _ = await _contactRepository.UpdateByIdAsync(contact!);
+            contact.OfficeId = p.OfficeId;
+            contact.ModifiedBy = currentUser;
+            _ = await _contactRepository.UpdateByIdAsync(contact);
         }
     }
 }

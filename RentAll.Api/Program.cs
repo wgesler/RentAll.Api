@@ -3,7 +3,7 @@ using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Managers;
@@ -50,7 +50,6 @@ var isDev = environment.ToLower() == "development";
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
 
 // Configure CORS
 builder.Services.AddCors(options =>
