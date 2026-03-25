@@ -1,4 +1,4 @@
-name: Deploy rentall-api
+name: Deploy rentall-api (Docker)
 
 on:
   push:
@@ -6,30 +6,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    runs-on: windows-latest
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          dotnet-version: "10.0.x"
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # ⬇️ CHANGE THIS PATH IF YOUR API IS IN A SUBFOLDER
-      - name: Restore
-        run: dotnet restore
+      - name: Build and Push Image to ACR
+        run: |
+          az acr build \
+            --registry rentallacr7918 \
+            --image rentall-api:latest \
+            --file RentAll.Api/Dockerfile \
+            .
 
-      - name: Build
-        run: dotnet build -c Release --no-restore
+      - name: Configure App Service to use image
+        run: |
+          az webapp config container set \
+            --name rentall-api-linux \
+            --resource-group rentall-api-linux_group \
+            --docker-custom-image-name rentallacr7918.azurecr.io/rentall-api:latest
 
-      - name: Publish
-        run: dotnet publish -c Release -o publish --no-build
-
-      - name: Deploy to Azure
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: rentall-api-linux
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_LINUX }}
-          package: publish
+      - name: Restart App Service
+        run: |
+          az webapp restart \
+            --name rentall-api-linux \
+            --resource-group rentall-api-linux_group
