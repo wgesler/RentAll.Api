@@ -60,6 +60,25 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("user/{userId}/active")]
+        public async Task<IActionResult> GetActivePropertiesByUserSelection(Guid userId)
+        {
+            if (CurrentUser == Guid.Empty || CurrentUser != userId)
+                return Unauthorized();
+
+            try
+            {
+                var properties = await _propertyRepository.GetActivePropertyListBySelectionCriteriaAsync(CurrentUser, CurrentOrganizationId, CurrentOfficeAccess);
+                var response = properties.Select(p => new PropertyListResponseDto(p));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting properties by selection criteria for user: {UserId}", CurrentUser);
+                return ServerError("An error occurred while retrieving properties");
+            }
+        }
+
         [HttpGet("owner/{ownerId}")]
         public async Task<IActionResult> GetPropertiesByOwnerId(Guid ownerId)
         {
