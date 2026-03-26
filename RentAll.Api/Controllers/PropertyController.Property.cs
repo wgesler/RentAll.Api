@@ -23,6 +23,24 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("active-list")]
+        public async Task<IActionResult> GetActiveList()
+        {
+            try
+            {
+                // Get the property summary for the list of properties
+                var list = await _propertyRepository.GetPropertyActiveListByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(p => new PropertyListResponseDto(p));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting properties list");
+                return ServerError("An error occurred while retrieving properties list");
+            }
+        }
+
+
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
         {

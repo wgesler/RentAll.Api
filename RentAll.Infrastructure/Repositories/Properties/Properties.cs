@@ -22,6 +22,21 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<PropertyList>> GetPropertyActiveListByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetActiveListByOfficeIds", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<PropertyList>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<IEnumerable<PropertyList>> GetPropertyListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);

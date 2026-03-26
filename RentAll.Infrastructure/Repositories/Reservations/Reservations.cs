@@ -22,10 +22,40 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<ReservationList>> GetReservationActiveListByOfficeIdAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetActiveListByOfficeId", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<ReservationList>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<IEnumerable<Reservation>> GetReservationListByPropertyIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetListByPropertyId", new
+            {
+                PropertyId = propertyId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Reservation>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
+        public async Task<IEnumerable<Reservation>> GetReservationActiveListByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetActiveListByPropertyId", new
             {
                 PropertyId = propertyId,
                 OrganizationId = organizationId

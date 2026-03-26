@@ -22,6 +22,22 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("active-list")]
+        public async Task<IActionResult> GetReservationActiveListByOfficeIdAsync()
+        {
+            try
+            {
+                var list = await _reservationRepository.GetReservationActiveListByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(r => new ReservationListResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reservations");
+                return ServerError("An error occurred while retrieving reservations");
+            }
+        }
+
         [HttpGet("property/{propertyId}")]
         public async Task<IActionResult> GetReservationListByPropertyIdAsync(Guid propertyId)
         {
@@ -31,6 +47,25 @@ namespace RentAll.Api.Controllers
             try
             {
                 var reservations = await _reservationRepository.GetReservationListByPropertyIdAsync(propertyId, CurrentOrganizationId);
+                var response = reservations.Select(r => new ReservationResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reservations by PropertyId: {PropertyId}", propertyId);
+                return ServerError("An error occurred while retrieving reservations");
+            }
+        }
+
+        [HttpGet("property/{propertyId}/active")]
+        public async Task<IActionResult> GetReservationActiveListByPropertyIdAsync(Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("Property ID is required");
+
+            try
+            {
+                var reservations = await _reservationRepository.GetReservationActiveListByPropertyIdAsync(propertyId, CurrentOrganizationId);
                 var response = reservations.Select(r => new ReservationResponseDto(r));
                 return Ok(response);
             }

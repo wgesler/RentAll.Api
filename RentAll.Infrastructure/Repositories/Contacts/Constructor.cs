@@ -42,6 +42,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 EntityId = e.EntityId,
                 OwnerType = (OwnerType?)e.OwnerTypeId,
                 CompanyName = e.CompanyName,
+                CompanyEmail = e.CompanyEmail,
                 Properties = properties,
                 DisplayName = e.DisplayName,
                 FirstName = e.FirstName,
