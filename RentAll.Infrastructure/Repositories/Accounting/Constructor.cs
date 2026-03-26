@@ -59,6 +59,8 @@ public partial class AccountingRepository : IAccountingRepository
             InvoiceCode = e.InvoiceCode,
             ReservationId = e.ReservationId,
             ReservationCode = e.ReservationCode,
+            ContactId = e.ContactId,
+            ResponsibleParty = e.ResponsibleParty,
             InvoiceDate = e.InvoiceDate,
             DueDate = e.DueDate,
             InvoicePeriod = e.InvoicePeriod,

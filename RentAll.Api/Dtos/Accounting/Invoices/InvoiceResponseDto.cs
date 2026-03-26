@@ -9,6 +9,8 @@ public class InvoiceResponseDto
     public string InvoiceCode { get; set; } = string.Empty;
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public Guid? ContactId { get; set; }
+    public string? ResponsibleParty { get; set; }
     public DateTimeOffset InvoiceDate { get; set; }
     public DateTimeOffset? DueDate { get; set; }
     public string? InvoicePeriod { get; set; }
@@ -27,6 +29,8 @@ public class InvoiceResponseDto
         InvoiceCode = invoice.InvoiceCode;
         ReservationId = invoice.ReservationId;
         ReservationCode = invoice.ReservationCode;
+        ContactId = invoice.ContactId;
+        ResponsibleParty = invoice.ResponsibleParty;
         InvoiceDate = invoice.InvoiceDate;
         DueDate = invoice.DueDate;
         InvoicePeriod = invoice.InvoicePeriod;
