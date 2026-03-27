@@ -6,12 +6,13 @@ namespace RentAll.Api.Controllers
 {
     public class BaseController : ControllerBase
     {
-        private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups)? _cachedUserInfo;
+        private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups, string Properties)? _cachedUserInfo;
 
         protected Guid CurrentUser => GetUserInfoFromJwt().UserId;
         protected Guid CurrentOrganizationId => GetUserInfoFromJwt().OrganizationId;
         protected string CurrentOfficeAccess => GetUserInfoFromJwt().OfficeAccess;
         protected string CurrentUserGroups => GetUserInfoFromJwt().UserGroups;
+        protected string CurrentUserProperties => GetUserInfoFromJwt().Properties;
 
         protected ErrorResponseDto ErrorResponse(string message)
         {
@@ -79,13 +80,13 @@ namespace RentAll.Api.Controllers
             return StatusCode(500, ErrorResponse(message));
         }
 
-        private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups) GetUserInfoFromJwt()
+        private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups, string Properties) GetUserInfoFromJwt()
         {
             // Return cached value if available
             if (_cachedUserInfo.HasValue)
                 return _cachedUserInfo.Value;
 
-            var result = (UserId: Guid.Empty, OrganizationId: Guid.Empty, OfficeAccess: string.Empty, UserGroups: string.Empty);
+            var result = (UserId: Guid.Empty, OrganizationId: Guid.Empty, OfficeAccess: string.Empty, UserGroups: string.Empty, Properties: string.Empty);
 
             if (User?.Identity?.IsAuthenticated != true)
             {
@@ -153,6 +154,36 @@ namespace RentAll.Api.Controllers
                             result.UserGroups = userGroupsString;
                         break;
                     }
+                }
+
+                // Extract Properties (usually comma-delimited string, but also support JSON array for compatibility).
+                string[] possiblePropertiesPropertyNames = ["properties", "Properties"];
+                foreach (var propName in possiblePropertiesPropertyNames)
+                {
+                    if (!userObject.TryGetProperty(propName, out var propertiesElement))
+                        continue;
+
+                    if (propertiesElement.ValueKind == JsonValueKind.String)
+                    {
+                        var propertiesString = propertiesElement.GetString();
+                        if (!string.IsNullOrWhiteSpace(propertiesString))
+                            result.Properties = propertiesString;
+                    }
+                    else if (propertiesElement.ValueKind == JsonValueKind.Array)
+                    {
+                        var propertiesValues = propertiesElement
+                            .EnumerateArray()
+                            .Where(v => v.ValueKind == JsonValueKind.String)
+                            .Select(v => v.GetString())
+                            .Where(v => !string.IsNullOrWhiteSpace(v))
+                            .Cast<string>()
+                            .ToList();
+
+                        if (propertiesValues.Any())
+                            result.Properties = string.Join(",", propertiesValues);
+                    }
+
+                    break;
                 }
             }
             catch

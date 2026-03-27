@@ -14,6 +14,7 @@ public class UpdateUserDto
     public string? NewPassword { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
     public List<int> OfficeAccess { get; set; } = new List<int>();
+    public List<string> Properties { get; set; } = new List<string>();
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
@@ -64,6 +65,7 @@ public class UpdateUserDto
             PasswordHash = passwordHash,
             UserGroups = d.UserGroups,
             OfficeAccess = d.OfficeAccess,
+            Properties = d.Properties ?? new List<string>(),
             ProfilePath = d.ProfilePath,
             StartupPage = (StartupPage)d.StartupPageId,
             DefaultOfficeId = d.DefaultOfficeId,

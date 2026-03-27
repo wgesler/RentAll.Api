@@ -12,6 +12,7 @@ public class UserEntity
     public string PasswordHash { get; set; } = string.Empty;
     public string UserGroups { get; set; } = string.Empty;
     public string OfficeAccess { get; set; } = string.Empty;
+    public string Properties { get; set; } = string.Empty;
     public string? ProfilePath { get; set; }
     public int StartupPageId { get; set; }
     public int? DefaultOfficeId { get; set; }

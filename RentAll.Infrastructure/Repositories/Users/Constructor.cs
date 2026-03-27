@@ -44,6 +44,19 @@ namespace RentAll.Infrastructure.Repositories.Users
                 }
             }
 
+            List<string> properties = new List<string>();
+            if (!string.IsNullOrWhiteSpace(e.Properties))
+            {
+                try
+                {
+                    properties = JsonSerializer.Deserialize<List<string>>(e.Properties) ?? new List<string>();
+                }
+                catch
+                {
+                    properties = new List<string>();
+                }
+            }
+
             var response = new User()
             {
                 UserId = e.UserId,
@@ -59,6 +72,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 IsActive = e.IsActive,
                 UserGroups = userGroups,
                 OfficeAccess = officeAccess,
+                Properties = properties,
                 ProfilePath = e.ProfilePath,
                 StartupPage = (StartupPage)e.StartupPageId,
                 DefaultOfficeId = e.DefaultOfficeId,

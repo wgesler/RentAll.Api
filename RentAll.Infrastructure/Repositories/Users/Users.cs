@@ -75,6 +75,10 @@ namespace RentAll.Infrastructure.Repositories.Users
                 ? JsonSerializer.Serialize(user.OfficeAccess)
                 : "[]";
 
+            var propertiesJson = user.Properties != null && user.Properties.Any()
+                ? JsonSerializer.Serialize(user.Properties)
+                : "[]";
+
             try
             {
                 await using var db = new SqlConnection(_dbConnectionString);
@@ -90,6 +94,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                     PasswordHash = user.PasswordHash,
                     UserGroups = userGroupsJson,
                     OfficeAccess = officeAccessJson,
+                    Properties = propertiesJson,
                     ProfilePath = user.ProfilePath,
                     StartupPageId = (int)user.StartupPage,
                     DefaultOfficeId = user.DefaultOfficeId,
@@ -123,6 +128,10 @@ namespace RentAll.Infrastructure.Repositories.Users
                 ? JsonSerializer.Serialize(user.OfficeAccess)
                 : "[]";
 
+            var propertiesJson = user.Properties != null && user.Properties.Any()
+                ? JsonSerializer.Serialize(user.Properties)
+                : "[]";
+
             var res = await db.DapperProcQueryAsync<UserEntity>("User.User_UpdateById", new
             {
                 OrganizationId = user.OrganizationId,
@@ -136,6 +145,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 PasswordHash = user.PasswordHash,
                 UserGroups = userGroupsJson,
                 OfficeAccess = officeAccessJson,
+                Properties = propertiesJson,
                 ProfilePath = user.ProfilePath,
                 StartupPageId = (int)user.StartupPage,
                 DefaultOfficeId = user.DefaultOfficeId,

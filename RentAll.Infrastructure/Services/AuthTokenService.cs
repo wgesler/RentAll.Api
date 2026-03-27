@@ -42,6 +42,11 @@ public class AuthTokenService : IAuthTokenService
             ? string.Join(",", user.OfficeAccess)
             : string.Empty;
 
+        // Convert Properties List<string> to comma-delimited string.
+        var propertiesString = user.Properties != null && user.Properties.Any()
+            ? string.Join(",", user.Properties)
+            : string.Empty;
+
         var userObject = new
         {
             userId = user.UserId.ToString(),
@@ -53,6 +58,7 @@ public class AuthTokenService : IAuthTokenService
             phone = user.Phone,
             userGroups = userGroupsString,
             officeAccess = officeAccessString,
+            properties = propertiesString,
             startupPageId = (int)user.StartupPage
         };
 

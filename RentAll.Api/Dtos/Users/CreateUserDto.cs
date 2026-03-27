@@ -12,6 +12,7 @@ public class CreateUserDto
     public string Password { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
     public List<int> OfficeAccess { get; set; } = new List<int>();
+    public List<string> Properties { get; set; } = new List<string>();
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
     public int? DefaultOfficeId { get; set; }
@@ -70,6 +71,7 @@ public class CreateUserDto
             PasswordHash = passwordHash,
             UserGroups = UserGroups,
             OfficeAccess = OfficeAccess,
+            Properties = Properties ?? new List<string>(),
             ProfilePath = null, // Will be set by controller after file save
             StartupPage = (StartupPage)StartupPageId,
             DefaultOfficeId = DefaultOfficeId,

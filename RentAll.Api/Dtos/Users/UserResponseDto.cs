@@ -16,6 +16,7 @@ public class UserResponseDto
     public string Password { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
     public List<int> OfficeAccess { get; set; } = new List<int>();
+    public List<string> Properties { get; set; } = new List<string>();
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
@@ -39,6 +40,7 @@ public class UserResponseDto
         Phone = user.Phone;
         UserGroups = user.UserGroups;
         OfficeAccess = user.OfficeAccess;
+        Properties = user.Properties;
         ProfilePath = user.ProfilePath;
         FileDetails = user.FileDetails;
         StartupPageId = (int)user.StartupPage;

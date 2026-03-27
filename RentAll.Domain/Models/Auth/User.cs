@@ -18,6 +18,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
     public List<int> OfficeAccess { get; set; } = new List<int>();
+    public List<string> Properties { get; set; } = new List<string>();
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public StartupPage StartupPage { get; set; }
