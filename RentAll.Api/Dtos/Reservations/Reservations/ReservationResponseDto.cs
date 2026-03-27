@@ -18,6 +18,7 @@ public class ReservationResponseDto
     public int ReservationNoticeId { get; set; }
     public int NumberOfPeople { get; set; }
     public string? TenantName { get; set; }
+    public string? ReferenceNo { get; set; }
     public DateTimeOffset ArrivalDate { get; set; }
     public DateTimeOffset DepartureDate { get; set; }
     public int CheckInTimeId { get; set; }
@@ -66,6 +67,7 @@ public class ReservationResponseDto
         ReservationNoticeId = (int)reservation.ReservationNotice;
         NumberOfPeople = reservation.NumberOfPeople;
         TenantName = reservation.TenantName;
+        ReferenceNo = reservation.ReferenceNo;
         ArrivalDate = reservation.ArrivalDate;
         DepartureDate = reservation.DepartureDate;
         CheckInTimeId = (int)reservation.CheckInTime;

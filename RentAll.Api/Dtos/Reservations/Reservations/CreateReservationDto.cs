@@ -14,6 +14,7 @@ public class CreateReservationDto
     public int ReservationNoticeId { get; set; }
     public int NumberOfPeople { get; set; }
     public string? TenantName { get; set; }
+    public string? ReferenceNo { get; set; }
     public DateTimeOffset ArrivalDate { get; set; }
     public DateTimeOffset DepartureDate { get; set; }
     public int CheckInTimeId { get; set; }
@@ -125,6 +126,7 @@ public class CreateReservationDto
             ReservationNotice = (ReservationNotice)ReservationNoticeId,
             NumberOfPeople = NumberOfPeople,
             TenantName = TenantName,
+            ReferenceNo = ReferenceNo,
             ArrivalDate = ArrivalDate,
             DepartureDate = DepartureDate,
             CheckInTime = (CheckInTime)CheckInTimeId,

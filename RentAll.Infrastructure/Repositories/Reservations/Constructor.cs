@@ -53,6 +53,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ReservationNotice = (ReservationNotice)e.ReservationNoticeId,
                 NumberOfPeople = e.NumberOfPeople,
                 TenantName = e.TenantName,
+                ReferenceNo = e.ReferenceNo,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
                 CheckInTime = (CheckInTime)e.CheckInTimeId,

@@ -18,6 +18,7 @@ public class Reservation
     public ReservationNotice ReservationNotice { get; set; }
     public int NumberOfPeople { get; set; }
     public string? TenantName { get; set; }
+    public string? ReferenceNo { get; set; }
     public DateTimeOffset ArrivalDate { get; set; }
     public DateTimeOffset DepartureDate { get; set; }
     public CheckInTime CheckInTime { get; set; }
