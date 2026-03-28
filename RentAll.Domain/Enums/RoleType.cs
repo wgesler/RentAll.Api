@@ -12,17 +12,12 @@ public enum RoleType
     PropertyManager = 7,
     PropertyManagerAdmin = 8,
     Facilities = 9,
-    FacilitiesAdmin = 10,
-    Housekeeping = 11,
-    HousekeepingAdmin = 12,
-    Corporation = 13,
-    CorporationAdmin = 14,
-    Vendor = 15,
-    VendorAdmin = 16,
-    Tenants = 17,
-    Owner = 18,
-    Client = 19,
-    Inspector = 20,
+    Housekeeping = 10,
+    Company = 11,
+    Vendor = 12,
+    Tenants = 13,
+    Owner = 14,
+    Inspector = 15,
 }
 
 
