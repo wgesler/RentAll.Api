@@ -1,5 +1,3 @@
-using RentAll.Domain.Enums;
-
 namespace RentAll.Infrastructure.Entities.Maintenances;
 
 public class MaintenanceListEntity
@@ -15,10 +13,10 @@ public class MaintenanceListEntity
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
-    public BedSizeType Bedroom1 { get; set; }
-    public BedSizeType Bedroom2 { get; set; }
-    public BedSizeType Bedroom3 { get; set; }
-    public BedSizeType Bedroom4 { get; set; }
+    public int Bedroom1 { get; set; }
+    public int Bedroom2 { get; set; }
+    public int Bedroom3 { get; set; }
+    public int Bedroom4 { get; set; }
 
     // Maintenance Section
     public string? FilterDescription { get; set; }

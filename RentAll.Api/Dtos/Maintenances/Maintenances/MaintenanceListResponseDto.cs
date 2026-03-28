@@ -13,10 +13,10 @@ public class MaintenanceListResponseDto
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
-    public int BedroomId1 { get; set; }
-    public int BedroomId2 { get; set; }
-    public int BedroomId3 { get; set; }
-    public int BedroomId4 { get; set; }
+    public int Bedroom1 { get; set; }
+    public int Bedroom2 { get; set; }
+    public int Bedroom3 { get; set; }
+    public int Bedroom4 { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
@@ -50,10 +50,10 @@ public class MaintenanceListResponseDto
         CleaningDate = maintenance.CleaningDate;
         InspectorUserId = maintenance.InspectorUserId;
         InspectingDate = maintenance.InspectingDate;
-        BedroomId1 = (int)maintenance.Bedroom1;
-        BedroomId2 = (int)maintenance.Bedroom2;
-        BedroomId3 = (int)maintenance.Bedroom3;
-        BedroomId4 = (int)maintenance.Bedroom4;
+        Bedroom1 = (int)maintenance.Bedroom1;
+        Bedroom2 = (int)maintenance.Bedroom2;
+        Bedroom3 = (int)maintenance.Bedroom3;
+        Bedroom4 = (int)maintenance.Bedroom4;
         FilterDescription = maintenance.FilterDescription;
         LastFilterChangeDate = maintenance.LastFilterChangeDate;
         SmokeDetectors = maintenance.SmokeDetectors;
