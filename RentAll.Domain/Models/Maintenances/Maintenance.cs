@@ -10,7 +10,9 @@ public class Maintenance
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
     public Guid? CleanerUserId { get; set; }
+    public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
+    public DateTimeOffset? InspectingDate { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }

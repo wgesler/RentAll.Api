@@ -9,7 +9,9 @@ public class CreateMaintenanceDto
     public Guid PropertyId { get; set; }
     public string InspectionCheckList { get; set; } = string.Empty;
     public Guid? CleanerUserId { get; set; }
+    public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
+    public DateTimeOffset? InspectingDate { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
@@ -51,7 +53,9 @@ public class CreateMaintenanceDto
             PropertyId = PropertyId,
             InspectionCheckList = InspectionCheckList,
             CleanerUserId = CleanerUserId,
+            CleaningDate = CleaningDate,
             InspectorUserId = InspectorUserId,
+            InspectingDate = InspectingDate,
             FilterDescription = FilterDescription,
             LastFilterChangeDate = LastFilterChangeDate,
             SmokeDetectors = SmokeDetectors,
