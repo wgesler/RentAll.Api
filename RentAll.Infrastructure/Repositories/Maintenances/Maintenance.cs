@@ -7,14 +7,29 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 public partial class MaintenanceRepository
 {
     #region Selects
-    public async Task<Maintenance?> GetMaintenanceByPropertyIdAsync(Guid propertyId, Guid organizationId, Guid? maintenanceId = null)
+    public async Task<IEnumerable<MaintenanceList>> GetMaintenanceListByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<MaintenanceListEntity>("Maintenance.Maintenance_GetActiveListByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<MaintenanceList>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<Maintenance?> GetMaintenanceByPropertyIdAsync(Guid propertyId, Guid organizationId, string offices)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<MaintenanceEntity>("Maintenance.Maintenance_GetByPropertyId", new
         {
-            MaintenanceId = maintenanceId,
             PropertyId = propertyId,
-            OrganizationId = organizationId
+            OrganizationId = organizationId,
+            Offices = offices
         });
 
         if (res == null || !res.Any())
@@ -49,7 +64,18 @@ public partial class MaintenanceRepository
             OfficeId = maintenanceRecord.OfficeId,
             PropertyId = maintenanceRecord.PropertyId,
             InspectionCheckList = maintenanceRecord.InspectionCheckList,
-            InventoryCheckList = maintenanceRecord.InventoryCheckList,
+            FilterDescription = maintenanceRecord.FilterDescription,
+            LastFilterChangeDate = maintenanceRecord.LastFilterChangeDate,
+            SmokeDetectors = maintenanceRecord.SmokeDetectors,
+            LastSmokeChangeDate = maintenanceRecord.LastSmokeChangeDate,
+            SmokeDetectorBatteries = maintenanceRecord.SmokeDetectorBatteries,
+            LastDetectorChangeDate = maintenanceRecord.LastDetectorChangeDate,
+            LicenseNo = maintenanceRecord.LicenseNo,
+            LicenseDate = maintenanceRecord.LicenseDate,
+            HvacNotes = maintenanceRecord.HvacNotes,
+            HvacServiced = maintenanceRecord.HvacServiced,
+            FireplaceNotes = maintenanceRecord.FireplaceNotes,
+            FireplaceServiced = maintenanceRecord.FireplaceServiced,
             Notes = maintenanceRecord.Notes,
             IsActive = maintenanceRecord.IsActive,
             CreatedBy = maintenanceRecord.CreatedBy
@@ -73,7 +99,18 @@ public partial class MaintenanceRepository
             OfficeId = maintenanceRecord.OfficeId,
             PropertyId = maintenanceRecord.PropertyId,
             InspectionCheckList = maintenanceRecord.InspectionCheckList,
-            InventoryCheckList = maintenanceRecord.InventoryCheckList,
+            FilterDescription = maintenanceRecord.FilterDescription,
+            LastFilterChangeDate = maintenanceRecord.LastFilterChangeDate,
+            SmokeDetectors = maintenanceRecord.SmokeDetectors,
+            LastSmokeChangeDate = maintenanceRecord.LastSmokeChangeDate,
+            SmokeDetectorBatteries = maintenanceRecord.SmokeDetectorBatteries,
+            LastDetectorChangeDate = maintenanceRecord.LastDetectorChangeDate,
+            LicenseNo = maintenanceRecord.LicenseNo,
+            LicenseDate = maintenanceRecord.LicenseDate,
+            HvacNotes = maintenanceRecord.HvacNotes,
+            HvacServiced = maintenanceRecord.HvacServiced,
+            FireplaceNotes = maintenanceRecord.FireplaceNotes,
+            FireplaceServiced = maintenanceRecord.FireplaceServiced,
             Notes = maintenanceRecord.Notes,
             IsActive = maintenanceRecord.IsActive,
             ModifiedBy = maintenanceRecord.ModifiedBy

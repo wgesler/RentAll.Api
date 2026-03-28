@@ -5,12 +5,22 @@ namespace RentAll.Domain.Interfaces.Repositories;
 public interface IMaintenanceRepository
 {
     #region Maintenance
-    Task<Maintenance?> GetMaintenanceByPropertyIdAsync(Guid propertyId, Guid organizationId, Guid? maintenanceId = null);
+    Task<IEnumerable<MaintenanceList>> GetMaintenanceListByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<Maintenance?> GetMaintenanceByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<Maintenance?> GetMaintenanceByIdAsync(Guid maintenanceId, Guid organizationId);
 
     Task<Maintenance> CreateAsync(Maintenance maintenanceRecord);
     Task<Maintenance> UpdateByIdAsync(Maintenance maintenanceRecord);
     Task DeleteMaintenanceByIdAsync(Guid maintenanceId, Guid organizationId, Guid modifiedBy);
+    #endregion
+
+    #region Appliance
+    Task<IEnumerable<Appliance>> GetAppliancesByPropertyIdAsync(Guid propertyId);
+    Task<Appliance?> GetApplianceByIdAsync(Guid applianceId);
+
+    Task<Appliance> CreateApplianceAsync(Appliance appliance);
+    Task<Appliance> UpdateApplianceAsync(Appliance appliance);
+    Task DeleteApplianceByIdAsync(Guid applianceId);
     #endregion
 
     #region Inventory

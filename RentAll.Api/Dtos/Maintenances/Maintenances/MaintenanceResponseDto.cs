@@ -9,8 +9,20 @@ public class MaintenanceResponseDto
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
+    public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
-    public string InventoryCheckList { get; set; } = string.Empty;
+    public string? FilterDescription { get; set; }
+    public DateTimeOffset? LastFilterChangeDate { get; set; }
+    public string? SmokeDetectors { get; set; }
+    public DateTimeOffset? LastSmokeChangeDate { get; set; }
+    public string? SmokeDetectorBatteries { get; set; }
+    public DateTimeOffset? LastDetectorChangeDate { get; set; }
+    public string? LicenseNo { get; set; }
+    public DateTimeOffset? LicenseDate { get; set; }
+    public string? HvacNotes { get; set; }
+    public DateTimeOffset? HvacServiced { get; set; }
+    public string? FireplaceNotes { get; set; }
+    public DateTimeOffset? FireplaceServiced { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -25,8 +37,20 @@ public class MaintenanceResponseDto
         OfficeId = maintenanceRecord.OfficeId;
         OfficeName = maintenanceRecord.OfficeName;
         PropertyId = maintenanceRecord.PropertyId;
+        PropertyCode = maintenanceRecord.PropertyCode;
         InspectionCheckList = maintenanceRecord.InspectionCheckList;
-        InventoryCheckList = maintenanceRecord.InventoryCheckList;
+        FilterDescription = maintenanceRecord.FilterDescription;
+        LastFilterChangeDate = maintenanceRecord.LastFilterChangeDate;
+        SmokeDetectors = maintenanceRecord.SmokeDetectors;
+        LastSmokeChangeDate = maintenanceRecord.LastSmokeChangeDate;
+        SmokeDetectorBatteries = maintenanceRecord.SmokeDetectorBatteries;
+        LastDetectorChangeDate = maintenanceRecord.LastDetectorChangeDate;
+        LicenseNo = maintenanceRecord.LicenseNo;
+        LicenseDate = maintenanceRecord.LicenseDate;
+        HvacNotes = maintenanceRecord.HvacNotes;
+        HvacServiced = maintenanceRecord.HvacServiced;
+        FireplaceNotes = maintenanceRecord.FireplaceNotes;
+        FireplaceServiced = maintenanceRecord.FireplaceServiced;
         Notes = maintenanceRecord.Notes;
         IsActive = maintenanceRecord.IsActive;
         CreatedOn = maintenanceRecord.CreatedOn;

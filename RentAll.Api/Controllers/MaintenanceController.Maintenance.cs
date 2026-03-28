@@ -6,6 +6,22 @@ public partial class MaintenanceController
 {
     #region Get
 
+    [HttpGet("list")]
+    public async Task<IActionResult> GetMaintenanceListByOfficeIdsAsync()
+    {
+        try
+        {
+            var records = await _maintenanceRepository.GetMaintenanceListByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new MaintenanceListResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting maintenance list by office access");
+            return ServerError("An error occurred while retrieving maintenance list");
+        }
+    }
+
     [HttpGet("property/{propertyId:guid}")]
     public async Task<IActionResult> GetMaintenanceByPropertyIdAsync(Guid propertyId)
     {
@@ -14,7 +30,7 @@ public partial class MaintenanceController
 
         try
         {
-            var record = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(propertyId, CurrentOrganizationId);
+            var record = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
             if (record == null || record.IsDeleted)
                 return Ok(); // This is not an error, the UI will default to blank form
 

@@ -24,15 +24,6 @@ public class PropertyList
     public decimal PetFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public PropertyStatus PropertyStatus { get; set; }
-    public BedSizeType Bedroom1 { get; set; }
-    public BedSizeType Bedroom2 { get; set; }
-    public BedSizeType Bedroom3 { get; set; }
-    public BedSizeType Bedroom4 { get; set; }
-    public DateTimeOffset? LastFilterChangeDate { get; set; }
-    public DateTimeOffset? LastSmokeChangeDate { get; set; }
-    public DateTimeOffset? LicenseDate { get; set; }
-    public DateTimeOffset? HvacServiced { get; set; }
-    public DateTimeOffset? FireplaceServiced { get; set; }
     public bool IsActive { get; set; }
 }
 

@@ -1,6 +1,8 @@
+using RentAll.Domain.Enums;
+
 namespace RentAll.Domain.Models;
 
-public class Maintenance
+public class MaintenanceList
 {
     public Guid MaintenanceId { get; set; }
     public Guid OrganizationId { get; set; }
@@ -9,6 +11,10 @@ public class Maintenance
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
+    public BedSizeType Bedroom1 { get; set; }
+    public BedSizeType Bedroom2 { get; set; }
+    public BedSizeType Bedroom3 { get; set; }
+    public BedSizeType Bedroom4 { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }

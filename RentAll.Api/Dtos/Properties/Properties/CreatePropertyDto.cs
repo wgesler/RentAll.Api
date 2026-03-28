@@ -119,19 +119,6 @@ public class CreatePropertyDto
     public int TrashPickupId { get; set; }
     public string? TrashRemoval { get; set; }
 
-    // Maintenance Section
-    public string? FilterDescription { get; set; }
-    public DateTimeOffset? LastFilterChangeDate { get; set; }
-    public string? SmokeDetectors { get; set; }
-    public DateTimeOffset? LastSmokeChangeDate { get; set; }
-    public string? LicenseNo { get; set; }
-    public DateTimeOffset? LicenseDate { get; set; }
-    public string? HvacNotes { get; set; }
-    public DateTimeOffset? HvacServiced { get; set; }
-    public string? FireplaceNotes { get; set; }
-    public DateTimeOffset? FireplaceServiced { get; set; }
-    public string? MaintenanceNotes { get; set; }
-
     // Additional Amenities Section
     public string? Amenities { get; set; }
     public string? Description { get; set; }
@@ -280,17 +267,6 @@ public class CreatePropertyDto
             Gym = Gym,
             TrashPickupId = TrashPickupId,
             TrashRemoval = TrashRemoval,
-            FilterDescription = FilterDescription,
-            LastFilterChangeDate = LastFilterChangeDate,
-            SmokeDetectors = SmokeDetectors,
-            LastSmokeChangeDate = LastSmokeChangeDate,
-            LicenseNo = LicenseNo,
-            LicenseDate = LicenseDate,
-            HvacNotes = HvacNotes,
-            HvacServiced = HvacServiced,
-            FireplaceNotes = FireplaceNotes,
-            FireplaceServiced = FireplaceServiced,
-            MaintenanceNotes = MaintenanceNotes,
             Amenities = Amenities,
             Description = Description,
             Notes = Notes,

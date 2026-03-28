@@ -121,19 +121,6 @@ public class PropertyResponseDto
     public int TrashPickupId { get; set; }
     public string? TrashRemoval { get; set; }
 
-    // Maintenance Section
-    public string? FilterDescription { get; set; }
-    public DateTimeOffset? LastFilterChangeDate { get; set; }
-    public string? SmokeDetectors { get; set; }
-    public DateTimeOffset? LastSmokeChangeDate { get; set; }
-    public string? LicenseNo { get; set; }
-    public DateTimeOffset? LicenseDate { get; set; }
-    public string? HvacNotes { get; set; }
-    public DateTimeOffset? HvacServiced { get; set; }
-    public string? FireplaceNotes { get; set; }
-    public DateTimeOffset? FireplaceServiced { get; set; }
-    public string? MaintenanceNotes { get; set; }
-
     // Additional Amenities Section
     public string? Amenities { get; set; }
     public string? Description { get; set; }
@@ -245,17 +232,6 @@ public class PropertyResponseDto
         Gym = property.Gym;
         TrashPickupId = property.TrashPickupId;
         TrashRemoval = property.TrashRemoval;
-        FilterDescription = property.FilterDescription;
-        LastFilterChangeDate = property.LastFilterChangeDate;
-        SmokeDetectors = property.SmokeDetectors;
-        LastSmokeChangeDate = property.LastSmokeChangeDate;
-        LicenseNo = property.LicenseNo;
-        LicenseDate = property.LicenseDate;
-        HvacNotes = property.HvacNotes;
-        HvacServiced = property.HvacServiced;
-        FireplaceNotes = property.FireplaceNotes;
-        FireplaceServiced = property.FireplaceServiced;
-        MaintenanceNotes = property.MaintenanceNotes;
         Amenities = property.Amenities;
         Description = property.Description;
         Notes = property.Notes;

@@ -113,9 +113,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-    #region Creates
-    public async Task<Property> CreateAsync(Property property)
-        {
+        #region Creates
+        public async Task<Property> CreateAsync(Property property)
+            {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_Add", new
             {
@@ -215,17 +215,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Gym = property.Gym,
                 TrashPickupId = property.TrashPickupId,
                 TrashRemoval = property.TrashRemoval,
-                FilterDescription = property.FilterDescription,
-                LastFilterChangeDate = property.LastFilterChangeDate,
-                SmokeDetectors = property.SmokeDetectors,
-                LastSmokeChangeDate = property.LastSmokeChangeDate,
-                LicenseNo = property.LicenseNo,
-                LicenseDate = property.LicenseDate,
-                HvacNotes = property.HvacNotes,
-                HvacServiced = property.HvacServiced,
-                FireplaceNotes = property.FireplaceNotes,
-                FireplaceServiced = property.FireplaceServiced,
-                MaintenanceNotes = property.MaintenanceNotes,
                 Amenities = property.Amenities,
                 Description = property.Description,
                 Notes = property.Notes,
@@ -343,17 +332,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Gym = property.Gym,
                 TrashPickupId = property.TrashPickupId,
                 TrashRemoval = property.TrashRemoval,
-                FilterDescription = property.FilterDescription,
-                LastFilterChangeDate = property.LastFilterChangeDate,
-                SmokeDetectors = property.SmokeDetectors,
-                LastSmokeChangeDate = property.LastSmokeChangeDate,
-                LicenseNo = property.LicenseNo,
-                LicenseDate = property.LicenseDate,
-                HvacNotes = property.HvacNotes,
-                HvacServiced = property.HvacServiced,
-                FireplaceNotes = property.FireplaceNotes,
-                FireplaceServiced = property.FireplaceServiced,
-                MaintenanceNotes = property.MaintenanceNotes,
                 Amenities = property.Amenities,
                 Description = property.Description,
                 Notes = property.Notes,

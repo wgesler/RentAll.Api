@@ -26,11 +26,77 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OfficeId = e.OfficeId,
             OfficeName = e.OfficeName,
             PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
             InspectionCheckList = e.InspectionCheckList,
-            InventoryCheckList = e.InventoryCheckList,
+            FilterDescription = e.FilterDescription,
+            LastFilterChangeDate = e.LastFilterChangeDate,
+            SmokeDetectors = e.SmokeDetectors,
+            LastSmokeChangeDate = e.LastSmokeChangeDate,
+            SmokeDetectorBatteries = e.SmokeDetectorBatteries,
+            LastDetectorChangeDate = e.LastDetectorChangeDate,
+            LicenseNo = e.LicenseNo,
+            LicenseDate = e.LicenseDate,
+            HvacNotes = e.HvacNotes,
+            HvacServiced = e.HvacServiced,
+            FireplaceNotes = e.FireplaceNotes,
+            FireplaceServiced = e.FireplaceServiced,
             Notes = e.Notes,
             IsActive = e.IsActive,
             IsDeleted = e.IsDeleted,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+
+    private static MaintenanceList ConvertEntityToModel(MaintenanceListEntity e)
+    {
+        return new MaintenanceList
+        {
+            MaintenanceId = e.MaintenanceId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            InspectionCheckList = e.InspectionCheckList,
+            Bedroom1 = e.Bedroom1,
+            Bedroom2 = e.Bedroom2,
+            Bedroom3 = e.Bedroom3,
+            Bedroom4 = e.Bedroom4,
+            FilterDescription = e.FilterDescription,
+            LastFilterChangeDate = e.LastFilterChangeDate,
+            SmokeDetectors = e.SmokeDetectors,
+            LastSmokeChangeDate = e.LastSmokeChangeDate,
+            SmokeDetectorBatteries = e.SmokeDetectorBatteries,
+            LastDetectorChangeDate = e.LastDetectorChangeDate,
+            LicenseNo = e.LicenseNo,
+            LicenseDate = e.LicenseDate,
+            HvacNotes = e.HvacNotes,
+            HvacServiced = e.HvacServiced,
+            FireplaceNotes = e.FireplaceNotes,
+            FireplaceServiced = e.FireplaceServiced,
+            Notes = e.Notes,
+            IsActive = e.IsActive,
+            IsDeleted = e.IsDeleted,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+
+    private static Appliance ConvertEntityToModel(ApplianceEntity e)
+    {
+        return new Appliance
+        {
+            ApplianceId = e.ApplianceId,
+            MaintenanceId = e.MaintenanceId,
+            Name = e.Name,
+            Make = e.Make,
+            Model = e.Model,
+            IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
