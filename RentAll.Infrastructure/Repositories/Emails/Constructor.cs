@@ -80,6 +80,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 WelcomeLetter = e.WelcomeLetter,
                 CorporateLetter = e.CorporateLetter,
                 Lease = e.Lease,
+                CorporateLease = e.CorporateLease,
                 Invoice = e.Invoice,
                 LetterSubject = e.LetterSubject,
                 LeaseSubject = e.LeaseSubject,

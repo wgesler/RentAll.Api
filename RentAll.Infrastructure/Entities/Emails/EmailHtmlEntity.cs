@@ -6,6 +6,7 @@ public class EmailHtmlEntity
     public string WelcomeLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
+    public string CorporateLease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;

@@ -6,6 +6,7 @@ public class EmailHtmlResponseDto
     public string WelcomeLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
+    public string CorporateLease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
@@ -21,6 +22,7 @@ public class EmailHtmlResponseDto
         WelcomeLetter = emailHtml.WelcomeLetter;
         CorporateLetter = emailHtml.CorporateLetter;
         Lease = emailHtml.Lease;
+        CorporateLease = emailHtml.CorporateLease;
         Invoice = emailHtml.Invoice;
         LetterSubject = emailHtml.LetterSubject;
         LeaseSubject = emailHtml.LeaseSubject;
