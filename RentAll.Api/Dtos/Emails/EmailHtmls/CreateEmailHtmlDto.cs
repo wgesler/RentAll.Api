@@ -8,6 +8,7 @@ public class CreateEmailHtmlDto
     public string Lease { get; set; } = string.Empty;
     public string CorporateLease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
+    public string CorporateInvoice { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
@@ -32,6 +33,9 @@ public class CreateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(Invoice))
             return (false, "Invoice is required");
 
+        if (string.IsNullOrWhiteSpace(CorporateInvoice))
+            return (false, "CorporateInvoice is required");
+
         if (string.IsNullOrWhiteSpace(LetterSubject))
             return (false, "LetterSubject is required");
 
@@ -54,6 +58,7 @@ public class CreateEmailHtmlDto
             Lease = Lease,
             CorporateLease = CorporateLease,
             Invoice = Invoice,
+            CorporateInvoice = CorporateInvoice,
             LetterSubject = LetterSubject,
             LeaseSubject = LeaseSubject,
             InvoiceSubject = InvoiceSubject,

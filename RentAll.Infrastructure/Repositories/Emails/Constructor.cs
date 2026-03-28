@@ -82,6 +82,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 Lease = e.Lease,
                 CorporateLease = e.CorporateLease,
                 Invoice = e.Invoice,
+                CorporateInvoice = e.CorporateInvoice,
                 LetterSubject = e.LetterSubject,
                 LeaseSubject = e.LeaseSubject,
                 InvoiceSubject = e.InvoiceSubject,

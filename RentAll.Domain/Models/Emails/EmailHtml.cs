@@ -8,6 +8,7 @@ public class EmailHtml
     public string Lease { get; set; } = string.Empty;
     public string CorporateLease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
+    public string CorporateInvoice { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
