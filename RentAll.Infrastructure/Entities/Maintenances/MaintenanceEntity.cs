@@ -9,6 +9,8 @@ public class MaintenanceEntity
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
+    public Guid? CleanerUserId { get; set; }
+    public Guid? InspectorUserId { get; set; }
 
     // Maintenance Section
     public string? FilterDescription { get; set; }

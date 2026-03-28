@@ -9,6 +9,8 @@ public class UpdateMaintenanceDto
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
     public string InspectionCheckList { get; set; } = string.Empty;
+    public Guid? CleanerUserId { get; set; }
+    public Guid? InspectorUserId { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
@@ -54,6 +56,8 @@ public class UpdateMaintenanceDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             InspectionCheckList = InspectionCheckList,
+            CleanerUserId = CleanerUserId,
+            InspectorUserId = InspectorUserId,
             FilterDescription = FilterDescription,
             LastFilterChangeDate = LastFilterChangeDate,
             SmokeDetectors = SmokeDetectors,

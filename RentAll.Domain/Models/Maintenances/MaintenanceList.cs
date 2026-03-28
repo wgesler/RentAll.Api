@@ -11,6 +11,8 @@ public class MaintenanceList
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
+    public Guid? CleanerUserId { get; set; }
+    public Guid? InspectorUserId { get; set; }
     public BedSizeType Bedroom1 { get; set; }
     public BedSizeType Bedroom2 { get; set; }
     public BedSizeType Bedroom3 { get; set; }

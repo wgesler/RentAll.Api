@@ -9,6 +9,8 @@ public class MaintenanceListResponseDto
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
+    public Guid? CleanerUserId { get; set; }
+    public Guid? InspectorUserId { get; set; }
     public int BedroomId1 { get; set; }
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
@@ -42,6 +44,8 @@ public class MaintenanceListResponseDto
         PropertyId = maintenance.PropertyId;
         PropertyCode = maintenance.PropertyCode;
         InspectionCheckList = maintenance.InspectionCheckList;
+        CleanerUserId = maintenance.CleanerUserId;
+        InspectorUserId = maintenance.InspectorUserId;
         BedroomId1 = (int)maintenance.Bedroom1;
         BedroomId2 = (int)maintenance.Bedroom2;
         BedroomId3 = (int)maintenance.Bedroom3;

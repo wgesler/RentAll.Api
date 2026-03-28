@@ -11,6 +11,8 @@ public class MaintenanceResponseDto
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
+    public Guid? CleanerUserId { get; set; }
+    public Guid? InspectorUserId { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
@@ -39,6 +41,8 @@ public class MaintenanceResponseDto
         PropertyId = maintenanceRecord.PropertyId;
         PropertyCode = maintenanceRecord.PropertyCode;
         InspectionCheckList = maintenanceRecord.InspectionCheckList;
+        CleanerUserId = maintenanceRecord.CleanerUserId;
+        InspectorUserId = maintenanceRecord.InspectorUserId;
         FilterDescription = maintenanceRecord.FilterDescription;
         LastFilterChangeDate = maintenanceRecord.LastFilterChangeDate;
         SmokeDetectors = maintenanceRecord.SmokeDetectors;
