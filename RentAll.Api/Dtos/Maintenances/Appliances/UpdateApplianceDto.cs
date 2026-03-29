@@ -3,10 +3,11 @@ namespace RentAll.Api.Dtos.Maintenances.Appliances;
 public class UpdateApplianceDto
 {
     public Guid ApplianceId { get; set; }
-    public Guid MaintenanceId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Make { get; set; } = string.Empty;
-    public string Model { get; set; } = string.Empty;
+    public Guid PropertyId { get; set; }
+    public string ApplianceName { get; set; } = string.Empty;
+    public string Manufacturer { get; set; } = string.Empty;
+    public string ModelNo { get; set; } = string.Empty;
+    public string SerialNo { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -14,17 +15,20 @@ public class UpdateApplianceDto
         if (ApplianceId == Guid.Empty)
             return (false, "ApplianceId is required");
 
-        if (MaintenanceId == Guid.Empty)
-            return (false, "MaintenanceId is required");
+        if (PropertyId == Guid.Empty)
+            return (false, "PropertyId is required");
 
-        if (string.IsNullOrWhiteSpace(Name))
-            return (false, "Name is required");
+        if (string.IsNullOrWhiteSpace(ApplianceName))
+            return (false, "ApplianceName is required");
 
-        if (string.IsNullOrWhiteSpace(Make))
-            return (false, "Make is required");
+        if (string.IsNullOrWhiteSpace(Manufacturer))
+            return (false, "Manufacturer is required");
 
-        if (string.IsNullOrWhiteSpace(Model))
-            return (false, "Model is required");
+        if (string.IsNullOrWhiteSpace(ModelNo))
+            return (false, "ModelNo is required");
+
+        if (string.IsNullOrWhiteSpace(SerialNo))
+            return (false, "SerialNo is required");
 
         return (true, null);
     }
@@ -34,10 +38,11 @@ public class UpdateApplianceDto
         return new Appliance
         {
             ApplianceId = ApplianceId,
-            MaintenanceId = MaintenanceId,
-            Name = Name,
-            Make = Make,
-            Model = Model,
+            PropertyId = PropertyId,
+            ApplianceName = ApplianceName,
+            Manufacturer = Manufacturer,
+            ModelNo = ModelNo,
+            SerialNo = SerialNo,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

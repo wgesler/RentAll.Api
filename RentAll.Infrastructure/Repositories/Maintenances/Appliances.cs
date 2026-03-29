@@ -42,10 +42,11 @@ public partial class MaintenanceRepository
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ApplianceEntity>("Maintenance.Appliance_Add", new
         {
-            MaintenanceId = appliance.MaintenanceId,
-            Name = appliance.Name,
-            Make = appliance.Make,
-            Model = appliance.Model,
+            PropertyId = appliance.PropertyId,
+            ApplianceName = appliance.ApplianceName,
+            Manufacturer = appliance.Manufacturer,
+            ModelNo = appliance.ModelNo,
+            SerialNo = appliance.SerialNo,
             IsActive = appliance.IsActive,
             CreatedBy = appliance.CreatedBy
         });
@@ -64,10 +65,11 @@ public partial class MaintenanceRepository
         var res = await db.DapperProcQueryAsync<ApplianceEntity>("Maintenance.Appliance_UpdateById", new
         {
             ApplianceId = appliance.ApplianceId,
-            MaintenanceId = appliance.MaintenanceId,
-            Name = appliance.Name,
-            Make = appliance.Make,
-            Model = appliance.Model,
+            PropertyId = appliance.PropertyId,
+            ApplianceName = appliance.ApplianceName,
+            Manufacturer = appliance.Manufacturer,
+            ModelNo = appliance.ModelNo,
+            SerialNo = appliance.SerialNo,
             IsActive = appliance.IsActive,
             ModifiedBy = appliance.ModifiedBy
         });
@@ -85,7 +87,7 @@ public partial class MaintenanceRepository
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.Appliance_DeleteById", new
         {
-            // Fyi - We don't store organization for appliance
+            // Note: We don't store organization for appliance
             ApplianceId = applianceId
         });
     }

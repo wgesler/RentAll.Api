@@ -21,6 +21,22 @@ public partial class AuthController
         }
     }
 
+    [HttpGet("user/role/{roletype}")]
+    public async Task<IActionResult> GetUsersByRoleAsync(string roletype)
+    {
+        try
+        {
+            var users = await _userRepository.GetUsersByRoleTypeAsync(CurrentOrganizationId, roletype);
+            var response = users.Select(u => new UserResponseDto(u)).ToList();
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all users");
+            return ServerError("An error occurred while retrieving users");
+        }
+    }
+
     [HttpGet("user/{UserId}")]
     public async Task<IActionResult> GetUserByIdAsync(Guid UserId)
     {

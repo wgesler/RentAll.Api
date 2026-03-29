@@ -20,7 +20,7 @@ public class MaintenanceResponseDto
     public string? SmokeDetectors { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? SmokeDetectorBatteries { get; set; }
-    public DateTimeOffset? LastDetectorChangeDate { get; set; }
+    public DateTimeOffset? LastBatteryChangeDate { get; set; }
     public string? LicenseNo { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
     public string? HvacNotes { get; set; }
@@ -52,7 +52,7 @@ public class MaintenanceResponseDto
         SmokeDetectors = maintenanceRecord.SmokeDetectors;
         LastSmokeChangeDate = maintenanceRecord.LastSmokeChangeDate;
         SmokeDetectorBatteries = maintenanceRecord.SmokeDetectorBatteries;
-        LastDetectorChangeDate = maintenanceRecord.LastDetectorChangeDate;
+        LastBatteryChangeDate = maintenanceRecord.LastBatteryChangeDate;
         LicenseNo = maintenanceRecord.LicenseNo;
         LicenseDate = maintenanceRecord.LicenseDate;
         HvacNotes = maintenanceRecord.HvacNotes;

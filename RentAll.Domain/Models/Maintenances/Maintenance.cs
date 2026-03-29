@@ -18,7 +18,7 @@ public class Maintenance
     public string? SmokeDetectors { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? SmokeDetectorBatteries { get; set; }
-    public DateTimeOffset? LastDetectorChangeDate { get; set; }
+    public DateTimeOffset? LastBatteryChangeDate { get; set; }
     public string? LicenseNo { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
     public string? HvacNotes { get; set; }

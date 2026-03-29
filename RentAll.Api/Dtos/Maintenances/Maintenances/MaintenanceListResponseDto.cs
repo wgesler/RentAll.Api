@@ -13,16 +13,16 @@ public class MaintenanceListResponseDto
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
-    public int Bedroom1 { get; set; }
-    public int Bedroom2 { get; set; }
-    public int Bedroom3 { get; set; }
-    public int Bedroom4 { get; set; }
+    public int BedroomId1 { get; set; }
+    public int BedroomId2 { get; set; }
+    public int BedroomId3 { get; set; }
+    public int BedroomId4 { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? SmokeDetectorBatteries { get; set; }
-    public DateTimeOffset? LastDetectorChangeDate { get; set; }
+    public DateTimeOffset? LastBatteryChangeDate { get; set; }
     public string? LicenseNo { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
     public string? HvacNotes { get; set; }
@@ -50,16 +50,16 @@ public class MaintenanceListResponseDto
         CleaningDate = maintenance.CleaningDate;
         InspectorUserId = maintenance.InspectorUserId;
         InspectingDate = maintenance.InspectingDate;
-        Bedroom1 = (int)maintenance.Bedroom1;
-        Bedroom2 = (int)maintenance.Bedroom2;
-        Bedroom3 = (int)maintenance.Bedroom3;
-        Bedroom4 = (int)maintenance.Bedroom4;
+        BedroomId1 = (int)maintenance.Bedroom1;
+        BedroomId2 = (int)maintenance.Bedroom2;
+        BedroomId3 = (int)maintenance.Bedroom3;
+        BedroomId4 = (int)maintenance.Bedroom4;
         FilterDescription = maintenance.FilterDescription;
         LastFilterChangeDate = maintenance.LastFilterChangeDate;
         SmokeDetectors = maintenance.SmokeDetectors;
         LastSmokeChangeDate = maintenance.LastSmokeChangeDate;
         SmokeDetectorBatteries = maintenance.SmokeDetectorBatteries;
-        LastDetectorChangeDate = maintenance.LastDetectorChangeDate;
+        LastBatteryChangeDate = maintenance.LastBatteryChangeDate;
         LicenseNo = maintenance.LicenseNo;
         LicenseDate = maintenance.LicenseDate;
         HvacNotes = maintenance.HvacNotes;

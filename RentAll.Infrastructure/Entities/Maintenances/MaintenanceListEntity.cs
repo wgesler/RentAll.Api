@@ -13,10 +13,10 @@ public class MaintenanceListEntity
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
-    public int Bedroom1 { get; set; }
-    public int Bedroom2 { get; set; }
-    public int Bedroom3 { get; set; }
-    public int Bedroom4 { get; set; }
+    public int BedroomId1 { get; set; }
+    public int BedroomId2 { get; set; }
+    public int BedroomId3 { get; set; }
+    public int BedroomId4 { get; set; }
 
     // Maintenance Section
     public string? FilterDescription { get; set; }
@@ -24,7 +24,7 @@ public class MaintenanceListEntity
     public string? SmokeDetectors { get; set; }
     public DateTimeOffset? LastSmokeChangeDate { get; set; }
     public string? SmokeDetectorBatteries { get; set; }
-    public DateTimeOffset? LastDetectorChangeDate { get; set; }
+    public DateTimeOffset? LastBatteryChangeDate { get; set; }
     public string? LicenseNo { get; set; }
     public DateTimeOffset? LicenseDate { get; set; }
     public string? HvacNotes { get; set; }

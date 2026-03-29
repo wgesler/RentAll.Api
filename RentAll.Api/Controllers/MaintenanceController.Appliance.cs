@@ -9,7 +9,7 @@ public partial class MaintenanceController
     public async Task<IActionResult> GetAppliancesByPropertyId(Guid propertyId)
     {
         if (propertyId == Guid.Empty)
-            return BadRequest("MaintenanceId is required");
+            return BadRequest("PropertyId is required");
 
         try
         {
@@ -59,9 +59,9 @@ public partial class MaintenanceController
 
         try
         {
-            var maintenance = await _maintenanceRepository.GetMaintenanceByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
+            var maintenance = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
             if (maintenance == null || maintenance.IsDeleted)
-                return NotFound("Maintenance record not found");
+                return NotFound("Property maintenance record not found");
 
             var appliance = dto.ToModel(CurrentUser);
             var created = await _maintenanceRepository.CreateApplianceAsync(appliance);
@@ -88,9 +88,9 @@ public partial class MaintenanceController
 
         try
         {
-            var maintenance = await _maintenanceRepository.GetMaintenanceByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
+            var maintenance = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
             if (maintenance == null || maintenance.IsDeleted)
-                return NotFound("Maintenance record not found");
+                return NotFound("Property maintenance record not found");
 
             var existing = await _maintenanceRepository.GetApplianceByIdAsync(dto.ApplianceId);
             if (existing == null)

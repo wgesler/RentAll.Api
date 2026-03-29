@@ -3,10 +3,11 @@ namespace RentAll.Api.Dtos.Maintenances.Appliances;
 public class ApplianceResponseDto
 {
     public Guid ApplianceId { get; set; }
-    public Guid MaintenanceId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Make { get; set; } = string.Empty;
-    public string Model { get; set; } = string.Empty;
+    public Guid PropertyId { get; set; }
+    public string ApplianceName { get; set; } = string.Empty;
+    public string Manufacturer { get; set; } = string.Empty;
+    public string ModelNo { get; set; } = string.Empty;
+    public string SerialNo { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -16,10 +17,11 @@ public class ApplianceResponseDto
     public ApplianceResponseDto(Appliance appliance)
     {
         ApplianceId = appliance.ApplianceId;
-        MaintenanceId = appliance.MaintenanceId;
-        Name = appliance.Name;
-        Make = appliance.Make;
-        Model = appliance.Model;
+        PropertyId = appliance.PropertyId;
+        ApplianceName = appliance.ApplianceName;
+        Manufacturer = appliance.Manufacturer;
+        ModelNo = appliance.ModelNo;
+        SerialNo = appliance.SerialNo;
         IsActive = appliance.IsActive;
         CreatedOn = appliance.CreatedOn;
         CreatedBy = appliance.CreatedBy;

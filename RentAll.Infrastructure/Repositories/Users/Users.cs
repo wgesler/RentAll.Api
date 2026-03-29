@@ -22,6 +22,21 @@ namespace RentAll.Infrastructure.Repositories.Users
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<User>> GetUsersByRoleTypeAsync(Guid organizationId, string roleType)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<UserEntity>("User.User_GetByRoleType", new
+            {
+                OrganizationId = organizationId,
+                Role = roleType
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<User>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<User?> GetUserByIdAsync(Guid userId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
