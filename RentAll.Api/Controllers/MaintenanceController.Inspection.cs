@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using RentAll.Api.Dtos.Maintenances.Inspections;
 
 namespace RentAll.Api.Controllers;
@@ -84,15 +85,23 @@ public partial class MaintenanceController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
+        InspectionResponseDto? response = null;
         try
         {
-            if (await _maintenanceManager.CurrentInspectionAlreadyExistsForProperty(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess))
-                return BadRequest("An active inspection record already exists for this property");
-
-            var model = dto.ToModel(CurrentUser);
-            var created = await _maintenanceRepository.CreateInspectionAsync(model);
-
-            var response = new InspectionResponseDto(created);
+            var existing = await _maintenanceRepository.GetInspectionByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
+            if (existing != null)
+            {
+                var model = dto.ToModel(CurrentUser);
+                model.InspectionId = existing.InspectionId;
+                var updated = await _maintenanceRepository.UpdateInspectionByIdAsync(model);
+                response = new InspectionResponseDto(updated);
+            }
+            else
+            {
+                var model = dto.ToModel(CurrentUser);
+                var created = await _maintenanceRepository.CreateInspectionAsync(model);
+                response = new InspectionResponseDto(created);
+            }
             return Ok(response);
         }
         catch (Exception ex)

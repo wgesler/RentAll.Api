@@ -53,6 +53,23 @@ public partial class MaintenanceRepository
 
         return ConvertEntityToModel(res.First());
     }
+
+    public async Task<Inspection?> GetInspectionByPropertyIdAsync(Guid property, Guid organizationId, string offices)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_GetByPropertyId", new
+        {
+            PropertyId = property,
+            OrganizationId = organizationId,
+            Offices = offices
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.First());
+    }
+
     #endregion
 
     #region Creates
