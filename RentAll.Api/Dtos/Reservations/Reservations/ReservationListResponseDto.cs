@@ -18,6 +18,7 @@ public class ReservationListResponseDto
     public DateTimeOffset DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
     public int CurrentInvoiceNo { get; set; }
+    public bool HasPets { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -40,6 +41,7 @@ public class ReservationListResponseDto
         DepartureDate = reservationList.DepartureDate;
         ReservationStatusId = (int)reservationList.ReservationStatus;
         CurrentInvoiceNo = reservationList.CurrentInvoiceNo;
+        HasPets = reservationList.HasPets;
         CreditDue = reservationList.CreditDue;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;

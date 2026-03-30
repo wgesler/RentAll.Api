@@ -120,6 +120,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 DepartureDate = e.DepartureDate,
                 ReservationStatus = (ReservationStatus)e.ReservationStatusId,
                 CurrentInvoiceNo = e.CurrentInvoiceNo,
+                HasPets = e.HasPets,
                 CreditDue = e.CreditDue,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn
