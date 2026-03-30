@@ -113,26 +113,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         };
     }
 
-    private static Inventory ConvertEntityToModel(InventoryEntity e)
-    {
-        return new Inventory
-        {
-            InventoryId = e.InventoryId,
-            OrganizationId = e.OrganizationId,
-            OfficeId = e.OfficeId,
-            PropertyId = e.PropertyId,
-            MaintenanceId = e.MaintenanceId,
-            InventoryCheckList = e.InventoryCheckList,
-            DocumentPath = e.DocumentPath,
-            IsActive = e.IsActive,
-            CreatedOn = e.CreatedOn,
-            CreatedBy = e.CreatedBy,
-            ModifiedOn = e.ModifiedOn,
-            ModifiedBy = e.ModifiedBy,
-            ModifiedByName = e.ModifiedByName
-        };
-    }
-
     private static Inspection ConvertEntityToModel(InspectionEntity e)
     {
         return new Inspection

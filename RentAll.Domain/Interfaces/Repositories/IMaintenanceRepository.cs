@@ -23,17 +23,6 @@ public interface IMaintenanceRepository
     Task DeleteApplianceByIdAsync(Guid applianceId);
     #endregion
 
-    #region Inventory
-    Task<IEnumerable<Inventory>> GetInventoriesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
-    Task<IEnumerable<Inventory>> GetInventoriesByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess);
-    Task<Inventory?> GetLatestInventoryByPropertyId(Guid propertyId, Guid organizationId, string officeAccess);
-    Task<Inventory?> GetInventoryByIdAsync(int inventoryId, Guid organizationId);
-
-    Task<Inventory> CreateInventoryAsync(Inventory inventory);
-    Task<Inventory> UpdateInventoryAsync(Inventory inventory);
-    Task DeleteInventoryByIdAsync(int inventoryId, Guid organizationId);
-    #endregion
-
     #region Inspection
     Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<IEnumerable<Inspection>> GetInspectionsByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess);
