@@ -17,6 +17,7 @@ public class MaintenanceListResponseDto
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+    public bool PetsAllowed { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
@@ -54,6 +55,7 @@ public class MaintenanceListResponseDto
         BedroomId2 = (int)maintenance.Bedroom2;
         BedroomId3 = (int)maintenance.Bedroom3;
         BedroomId4 = (int)maintenance.Bedroom4;
+        PetsAllowed = maintenance.PetsAllowed;
         FilterDescription = maintenance.FilterDescription;
         LastFilterChangeDate = maintenance.LastFilterChangeDate;
         SmokeDetectors = maintenance.SmokeDetectors;

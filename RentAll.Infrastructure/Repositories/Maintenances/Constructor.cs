@@ -73,6 +73,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             Bedroom2 = (BedSizeType)e.BedroomId2,
             Bedroom3 = (BedSizeType)e.BedroomId3,
             Bedroom4 = (BedSizeType)e.BedroomId4,
+            PetsAllowed = e.PetsAllowed,
             FilterDescription = e.FilterDescription,
             LastFilterChangeDate = e.LastFilterChangeDate,
             SmokeDetectors = e.SmokeDetectors,

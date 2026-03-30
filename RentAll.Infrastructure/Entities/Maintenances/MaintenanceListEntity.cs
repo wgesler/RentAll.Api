@@ -17,6 +17,7 @@ public class MaintenanceListEntity
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+    public bool PetsAllowed { get; set; }
 
     // Maintenance Section
     public string? FilterDescription { get; set; }

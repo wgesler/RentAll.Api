@@ -19,6 +19,7 @@ public class MaintenanceList
     public BedSizeType Bedroom2 { get; set; }
     public BedSizeType Bedroom3 { get; set; }
     public BedSizeType Bedroom4 { get; set; }
+    public bool PetsAllowed { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
