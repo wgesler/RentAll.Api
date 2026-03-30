@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using PuppeteerSharp;
 using RentAll.Domain.Interfaces.Services;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace RentAll.Infrastructure.Services;
@@ -84,8 +85,50 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 return match;
         }
 
+        // Local development fallbacks.
+        // Windows: check common Chrome/Edge install locations.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var winCandidates = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft", "Edge", "Application", "msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft", "Edge", "Application", "msedge.exe")
+            };
+
+            var winMatch = winCandidates.FirstOrDefault(File.Exists);
+            if (!string.IsNullOrWhiteSpace(winMatch))
+                return winMatch;
+        }
+
+        // Linux: common package paths.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            var linuxCandidates = new[]
+            {
+                "/usr/bin/google-chrome",
+                "/usr/bin/chromium-browser",
+                "/usr/bin/chromium",
+                "/snap/bin/chromium"
+            };
+
+            var linuxMatch = linuxCandidates.FirstOrDefault(File.Exists);
+            if (!string.IsNullOrWhiteSpace(linuxMatch))
+                return linuxMatch;
+        }
+
+        // macOS: standard app bundle path.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            const string macChromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+            if (File.Exists(macChromePath))
+                return macChromePath;
+        }
+
         throw new FileNotFoundException(
-            "Could not find a Chrome/Chromium executable. Checked CHROME_BIN and /ms-playwright.");
+            "Could not find a Chrome/Chromium executable. Checked CHROME_BIN, /ms-playwright, and common local browser install paths.");
     }
 
     public async Task<byte[]> ConvertHtmlToPdfAsync(string htmlContent)
