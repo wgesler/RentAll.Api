@@ -13,6 +13,8 @@ public class MaintenanceListResponseDto
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
+    public Guid? CarpetUserId { get; set; }
+    public DateTimeOffset? CarpetDate { get; set; }
     public int BedroomId1 { get; set; }
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
@@ -51,6 +53,8 @@ public class MaintenanceListResponseDto
         CleaningDate = maintenance.CleaningDate;
         InspectorUserId = maintenance.InspectorUserId;
         InspectingDate = maintenance.InspectingDate;
+        CarpetUserId = maintenance.CarpetUserId;
+        CarpetDate = maintenance.CarpetDate;
         BedroomId1 = (int)maintenance.Bedroom1;
         BedroomId2 = (int)maintenance.Bedroom2;
         BedroomId3 = (int)maintenance.Bedroom3;

@@ -13,6 +13,8 @@ public class MaintenanceEntity
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
+    public Guid? CarpetUserId { get; set; }
+    public DateTimeOffset? CarpetDate { get; set; }
 
     // Maintenance Section
     public string? FilterDescription { get; set; }

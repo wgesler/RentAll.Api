@@ -15,6 +15,8 @@ public class MaintenanceList
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
+    public Guid? CarpetUserId { get; set; }
+    public DateTimeOffset? CarpetDate { get; set; }
     public BedSizeType Bedroom1 { get; set; }
     public BedSizeType Bedroom2 { get; set; }
     public BedSizeType Bedroom3 { get; set; }

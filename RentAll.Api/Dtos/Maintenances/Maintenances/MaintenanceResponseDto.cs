@@ -15,6 +15,8 @@ public class MaintenanceResponseDto
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
+    public Guid? CarpetUserId { get; set; }
+    public DateTimeOffset? CarpetDate { get; set; }
     public string? FilterDescription { get; set; }
     public DateTimeOffset? LastFilterChangeDate { get; set; }
     public string? SmokeDetectors { get; set; }
@@ -47,6 +49,8 @@ public class MaintenanceResponseDto
         CleaningDate = maintenanceRecord.CleaningDate;
         InspectorUserId = maintenanceRecord.InspectorUserId;
         InspectingDate = maintenanceRecord.InspectingDate;
+        CarpetUserId = maintenanceRecord.CarpetUserId;
+        CarpetDate = maintenanceRecord.CarpetDate;
         FilterDescription = maintenanceRecord.FilterDescription;
         LastFilterChangeDate = maintenanceRecord.LastFilterChangeDate;
         SmokeDetectors = maintenanceRecord.SmokeDetectors;

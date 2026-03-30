@@ -13,6 +13,8 @@ public class MaintenanceListEntity
     public DateTimeOffset? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
     public DateTimeOffset? InspectingDate { get; set; }
+    public Guid? CarpetUserId { get; set; }
+    public DateTimeOffset? CarpetDate { get; set; }
     public int BedroomId1 { get; set; }
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
