@@ -25,7 +25,6 @@ public interface IMaintenanceRepository
 
     #region Inspection
     Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
-    Task<IEnumerable<Inspection>> GetInspectionsByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess);
     Task<Inspection?> GetInspectionByIdAsync(int inspectionId, Guid organizationId);
     Task<Inspection?> GetInspectionByPropertyIdAsync(Guid propertyId, Guid organizationId, string offices);
 

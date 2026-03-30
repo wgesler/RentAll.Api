@@ -10,25 +10,9 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Inspection>> GetInspectionsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_GetListByPropertyId", new
+        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_GetByPropertyId", new
         {
             PropertyId = propertyId,
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Inspection>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Inspection>> GetInspectionsByMaintenanceIdAsync(Guid maintenanceId, Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InspectionEntity>("Maintenance.Inspection_GetListByMaintenanceId", new
-        {
-            MaintenanceId = maintenanceId,
             OrganizationId = organizationId,
             Offices = officeAccess
         });
@@ -81,7 +65,6 @@ public partial class MaintenanceRepository
             OrganizationId = inspection.OrganizationId,
             OfficeId = inspection.OfficeId,
             PropertyId = inspection.PropertyId,
-            MaintenanceId = inspection.MaintenanceId,
             InspectionCheckList = inspection.InspectionCheckList,
             DocumentPath = inspection.DocumentPath,
             IsActive = inspection.IsActive,
@@ -105,7 +88,6 @@ public partial class MaintenanceRepository
             OrganizationId = inspection.OrganizationId,
             OfficeId = inspection.OfficeId,
             PropertyId = inspection.PropertyId,
-            MaintenanceId = inspection.MaintenanceId,
             InspectionCheckList = inspection.InspectionCheckList,
             DocumentPath = inspection.DocumentPath,
             IsActive = inspection.IsActive,

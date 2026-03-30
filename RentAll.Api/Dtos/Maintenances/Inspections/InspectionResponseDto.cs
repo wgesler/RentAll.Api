@@ -10,7 +10,6 @@ public class InspectionResponseDto
     public string OfficeName { get; set; }
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; }
-    public Guid MaintenanceId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
     public bool IsActive { get; set; }
@@ -25,7 +24,6 @@ public class InspectionResponseDto
         OfficeName = inspection.OfficeName;
         PropertyId = inspection.PropertyId;
         PropertyCode = inspection.PropertyCode;
-        MaintenanceId = inspection.MaintenanceId;
         InspectionCheckList = inspection.InspectionCheckList;
         DocumentPath = inspection.DocumentPath;
         IsActive = inspection.IsActive;

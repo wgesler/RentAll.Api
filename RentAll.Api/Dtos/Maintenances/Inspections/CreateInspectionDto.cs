@@ -7,7 +7,6 @@ public class CreateInspectionDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
-    public Guid MaintenanceId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
     public bool IsActive { get; set; } = true;
@@ -23,9 +22,6 @@ public class CreateInspectionDto
         if (PropertyId == Guid.Empty)
             return (false, "PropertyId is required");
 
-        if (MaintenanceId == Guid.Empty)
-            return (false, "MaintenanceId is required");
-
         return (true, null);
     }
 
@@ -36,7 +32,6 @@ public class CreateInspectionDto
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PropertyId = PropertyId,
-            MaintenanceId = MaintenanceId,
             InspectionCheckList = InspectionCheckList,
             DocumentPath = DocumentPath,
             IsActive = IsActive,

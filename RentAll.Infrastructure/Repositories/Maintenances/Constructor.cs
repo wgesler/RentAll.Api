@@ -122,7 +122,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             PropertyId = e.PropertyId,
-            MaintenanceId = e.MaintenanceId,
             InspectionCheckList = e.InspectionCheckList,
             DocumentPath = e.DocumentPath,
             IsActive = e.IsActive,

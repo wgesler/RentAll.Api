@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using RentAll.Api.Dtos.Maintenances.Inspections;
 
 namespace RentAll.Api.Controllers;
@@ -9,8 +8,8 @@ public partial class MaintenanceController
 
     [HttpGet("inspection/property/{propertyId:guid}")]
     public async Task<IActionResult> GetInspectionsByPropertyId(Guid propertyId)
-    {
-        if (propertyId == Guid.Empty)
+   {
+       if (propertyId == Guid.Empty)
             return BadRequest("PropertyId is required");
 
         try
@@ -22,25 +21,6 @@ public partial class MaintenanceController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting inspection records for property: {PropertyId}", propertyId);
-            return ServerError("An error occurred while retrieving inspection records");
-        }
-    }
-
-    [HttpGet("inspection/maintenance/{maitenanceId:guid}")]
-    public async Task<IActionResult> GetInspectionByMaintenanceId(Guid maintenanceId, Guid maitenanceId)
-    {
-        if (maitenanceId == Guid.Empty)
-            return BadRequest("PropertyId is required");
-
-        try
-        {
-            var records = await _maintenanceRepository.GetInspectionsByMaintenanceIdAsync(maitenanceId, CurrentOrganizationId, CurrentOfficeAccess);
-            var response = records.Select(o => new InspectionResponseDto(o));
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting inspection records for property: {maitenanceId}", maitenanceId);
             return ServerError("An error occurred while retrieving inspection records");
         }
     }
@@ -67,7 +47,6 @@ public partial class MaintenanceController
         }
     }
 
-
     #endregion
 
     #region Post
@@ -88,20 +67,17 @@ public partial class MaintenanceController
         InspectionResponseDto? response = null;
         try
         {
-            var existing = await _maintenanceRepository.GetInspectionByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
-            if (existing != null)
+            var inspection = await _maintenanceRepository.GetInspectionByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
+            if (inspection != null)
             {
-                var model = dto.ToModel(CurrentUser);
-                model.InspectionId = existing.InspectionId;
-                var updated = await _maintenanceRepository.UpdateInspectionByIdAsync(model);
-                response = new InspectionResponseDto(updated);
+                inspection.IsActive = false;
+                inspection.ModifiedBy = CurrentUser;
+                await _maintenanceRepository.UpdateInspectionByIdAsync(inspection);
             }
-            else
-            {
-                var model = dto.ToModel(CurrentUser);
-                var created = await _maintenanceRepository.CreateInspectionAsync(model);
-                response = new InspectionResponseDto(created);
-            }
+
+            var model = dto.ToModel(CurrentUser);
+            var created = await _maintenanceRepository.CreateInspectionAsync(model);
+            response = new InspectionResponseDto(created);
             return Ok(response);
         }
         catch (Exception ex)
@@ -130,10 +106,6 @@ public partial class MaintenanceController
 
         try
         {
-            var maintenance = await _maintenanceRepository.GetMaintenanceByIdAsync(dto.MaintenanceId, CurrentOrganizationId);
-            if (maintenance == null || !maintenance.IsActive)
-                return NotFound("Maintenance record not valid");
-
             var existing = await _maintenanceRepository.GetInspectionByIdAsync(dto.InspectionId, CurrentOrganizationId);
             if (existing == null)
                 return NotFound("Inspection record not found");

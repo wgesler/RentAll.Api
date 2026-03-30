@@ -8,7 +8,6 @@ public class InspectionEntity
     public string OfficeName { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid MaintenanceId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
     public bool IsActive { get; set; }
