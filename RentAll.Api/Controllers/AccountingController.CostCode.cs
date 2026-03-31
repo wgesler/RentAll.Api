@@ -106,9 +106,6 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                if (await _accountingRepository.ExistsByCostCodeAsync(dto.CostCode, CurrentOrganizationId, dto.OfficeId))
-                    return Conflict("Cost Code already exists");
-
                 var costCode = dto.ToModel();
                 costCode.OrganizationId = CurrentOrganizationId;
                 var createdCostCode = await _accountingRepository.CreateAsync(costCode);
@@ -140,12 +137,6 @@ namespace RentAll.Api.Controllers
                 var existingCostCode = await _accountingRepository.GetCostCodeByIdAsync(dto.CostCodeId, CurrentOrganizationId, dto.OfficeId);
                 if (existingCostCode == null)
                     return NotFound("Cost Code not found");
-
-                if (existingCostCode.Code != dto.CostCode)
-                {
-                    if (await _accountingRepository.ExistsByCostCodeAsync(dto.CostCode, CurrentOrganizationId, dto.OfficeId))
-                        return Conflict("Cost Code already exists");
-                }
 
                 var costCode = dto.ToModel();
                 costCode.OrganizationId = CurrentOrganizationId;
