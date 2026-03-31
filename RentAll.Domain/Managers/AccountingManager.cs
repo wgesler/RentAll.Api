@@ -106,8 +106,8 @@ public class AccountingManager : IAccountingManager
             OrganizationId = organizationId,
             OfficeId = officeId,
             Code = DEFAULT_CODE,
-            TransactionType = TransactionType.Charge,
-            Description = "Insidentals",
+            TransactionType = TransactionType.Expense,
+            Description = "Incidentals",
             IsActive = true
         };
 
@@ -267,7 +267,7 @@ public class AccountingManager : IAccountingManager
                     costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Security Deposit Waiver"));
                     if (costCode != null) line.CostCodeId = costCode.CostCodeId;
                     continue;
-                case string desc when desc.StartsWith("Deposit", StringComparison.OrdinalIgnoreCase):
+                case string desc when desc.StartsWith("Security Deposit", StringComparison.OrdinalIgnoreCase):
                     costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Deposit"));
                     if (costCode != null) line.CostCodeId = costCode.CostCodeId;
                     continue;
@@ -281,7 +281,7 @@ public class AccountingManager : IAccountingManager
                     continue;
                 case string desc when desc.StartsWith("Pet Fee", StringComparison.OrdinalIgnoreCase):
                     costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Pet Fee"));
-                    if (costCode != null) line.CostCodeId = costCode.CostCodeId;
+                    if (costCode != null) { line.CostCodeId = costCode.CostCodeId; line.}
                     continue;
                 case string desc when desc.StartsWith("Departure Fee", StringComparison.OrdinalIgnoreCase):
                     costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Departure Fee"));
@@ -299,7 +299,7 @@ public class AccountingManager : IAccountingManager
             return;
 
         if (reservation.DepositType == DepositType.Deposit)
-            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Deposit", Amount = reservation.Deposit });
+            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Security Deposit", Amount = reservation.Deposit });
         if (reservation.HasPets)
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Pet Fee", Amount = reservation.PetFee });
         if (reservation.DepartureFee >= 0)
