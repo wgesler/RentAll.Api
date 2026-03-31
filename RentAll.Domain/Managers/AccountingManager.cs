@@ -281,7 +281,7 @@ public class AccountingManager : IAccountingManager
                     continue;
                 case string desc when desc.StartsWith("Pet Fee", StringComparison.OrdinalIgnoreCase):
                     costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Pet Fee"));
-                    if (costCode != null) { line.CostCodeId = costCode.CostCodeId; line.}
+                    if (costCode != null) line.CostCodeId = costCode.CostCodeId;
                     continue;
                 case string desc when desc.StartsWith("Departure Fee", StringComparison.OrdinalIgnoreCase):
                     costCode = costCodes.FirstOrDefault(cc => cc.Description.Contains("Departure Fee"));
