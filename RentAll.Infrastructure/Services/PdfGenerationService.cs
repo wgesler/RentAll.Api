@@ -68,21 +68,33 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
     private static string ResolveChromeExecutablePath()
     {
         var envPath = Environment.GetEnvironmentVariable("CHROME_BIN");
-        if (!string.IsNullOrWhiteSpace(envPath) && File.Exists(envPath))
-            return envPath;
+        if (!string.IsNullOrWhiteSpace(envPath))
+        {
+            // Support either a full executable path or a PATH command (e.g. "google-chrome").
+            var resolvedFromEnv = ResolveExecutableReference(envPath);
+            if (!string.IsNullOrWhiteSpace(resolvedFromEnv))
+                return resolvedFromEnv;
+        }
 
         // Playwright Docker images keep browsers under /ms-playwright
         var msPlaywright = "/ms-playwright";
         if (Directory.Exists(msPlaywright))
         {
-            var candidates = Directory.GetFiles(msPlaywright, "chrome", SearchOption.AllDirectories)
-                .Concat(Directory.GetFiles(msPlaywright, "chrome-headless-shell", SearchOption.AllDirectories))
-                .OrderBy(p => p)
-                .ToList();
+            try
+            {
+                var candidates = Directory.GetFiles(msPlaywright, "chrome", SearchOption.AllDirectories)
+                    .Concat(Directory.GetFiles(msPlaywright, "chrome-headless-shell", SearchOption.AllDirectories))
+                    .OrderBy(p => p)
+                    .ToList();
 
-            var match = candidates.FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(match))
-                return match;
+                var match = candidates.FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(match))
+                    return match;
+            }
+            catch
+            {
+                // Keep probing other locations instead of failing hard.
+            }
         }
 
         // Local development fallbacks.
@@ -129,6 +141,42 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
 
         throw new FileNotFoundException(
             "Could not find a Chrome/Chromium executable. Checked CHROME_BIN, /ms-playwright, and common local browser install paths.");
+    }
+
+    private static string? ResolveExecutableReference(string reference)
+    {
+        var trimmed = reference.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return null;
+
+        // Absolute or relative path directly supplied.
+        if (trimmed.Contains(Path.DirectorySeparatorChar) || trimmed.Contains(Path.AltDirectorySeparatorChar))
+            return File.Exists(trimmed) ? trimmed : null;
+
+        // Command name supplied; resolve from PATH.
+        var pathValue = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(pathValue))
+            return null;
+
+        var extensions = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? new[] { ".exe", ".cmd", ".bat", string.Empty }
+            : new[] { string.Empty };
+
+        foreach (var rawDir in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var dir = rawDir.Trim();
+            if (string.IsNullOrWhiteSpace(dir))
+                continue;
+
+            foreach (var ext in extensions)
+            {
+                var candidate = Path.Combine(dir, trimmed + ext);
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+        }
+
+        return null;
     }
 
     public async Task<byte[]> ConvertHtmlToPdfAsync(string htmlContent)
