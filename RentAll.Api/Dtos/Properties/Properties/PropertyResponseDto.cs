@@ -76,7 +76,6 @@ public class PropertyResponseDto
     public string? ParkingNotes { get; set; }
     public string? AlarmCode { get; set; }
     public string? UnitMstrCode { get; set; }
-    public string? UnitTenantCode { get; set; }
     public string? BldgMstrCode { get; set; }
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }
@@ -198,7 +197,6 @@ public class PropertyResponseDto
         ParkingNotes = property.ParkingNotes;
         AlarmCode = property.AlarmCode;
         UnitMstrCode = property.UnitMstrCode;
-        UnitTenantCode = property.UnitTenantCode;
         BldgMstrCode = property.BldgMstrCode;
         BldgTenantCode = property.BldgTenantCode;
         MailRoomCode = property.MailRoomCode;

@@ -58,6 +58,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 DepartureDate = e.DepartureDate,
                 CheckInTime = (CheckInTime)e.CheckInTimeId,
                 CheckOutTime = (CheckOutTime)e.CheckOutTimeId,
+                LockBoxcode = e.LockBoxcode,
+                UnitTenantCode = e.UnitTenantCode,
                 BillingMethod = (BillingMethod)e.BillingMethodId,
                 ProrateType = (ProrateType)e.ProrateTypeId,
                 BillingType = (BillingType)e.BillingTypeId,

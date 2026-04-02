@@ -23,6 +23,8 @@ public class Reservation
     public DateTimeOffset DepartureDate { get; set; }
     public CheckInTime CheckInTime { get; set; }
     public CheckOutTime CheckOutTime { get; set; }
+    public string? LockBoxcode { get; set; }
+    public string? UnitTenantCode { get; set; }
     public BillingMethod BillingMethod { get; set; }
     public ProrateType ProrateType { get; set; }
     public BillingType BillingType { get; set; }

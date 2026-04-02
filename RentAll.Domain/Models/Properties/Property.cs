@@ -78,7 +78,6 @@ public class Property
     public string? ParkingNotes { get; set; }
     public string? AlarmCode { get; set; }
     public string? UnitMstrCode { get; set; }
-    public string? UnitTenantCode { get; set; }
     public string? BldgMstrCode { get; set; }
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }

@@ -84,7 +84,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 ParkingNotes = e.ParkingNotes,
                 AlarmCode = e.AlarmCode,
                 UnitMstrCode = e.UnitMstrCode,
-                UnitTenantCode = e.UnitTenantCode,
                 BldgMstrCode = e.BldgMstrCode,
                 BldgTenantCode = e.BldgTenantCode,
                 MailRoomCode = e.MailRoomCode,

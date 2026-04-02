@@ -23,6 +23,8 @@ public class ReservationResponseDto
     public DateTimeOffset DepartureDate { get; set; }
     public int CheckInTimeId { get; set; }
     public int CheckOutTimeId { get; set; }
+    public string? LockBoxcode { get; set; }
+    public string? UnitTenantCode { get; set; }
     public int BillingMethodId { get; set; }
     public int ProrateTypeId { get; set; }
     public int BillingTypeId { get; set; }
@@ -72,6 +74,8 @@ public class ReservationResponseDto
         DepartureDate = reservation.DepartureDate;
         CheckInTimeId = (int)reservation.CheckInTime;
         CheckOutTimeId = (int)reservation.CheckOutTime;
+        LockBoxcode = reservation.LockBoxcode;
+        UnitTenantCode = reservation.UnitTenantCode;
         BillingMethodId = (int)reservation.BillingMethod;
         ProrateTypeId = (int)reservation.ProrateType;
         BillingTypeId = (int)reservation.BillingType;
