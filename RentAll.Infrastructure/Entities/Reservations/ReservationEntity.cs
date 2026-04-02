@@ -21,7 +21,7 @@ public class ReservationEntity
     public DateTimeOffset DepartureDate { get; set; }
     public int CheckInTimeId { get; set; }
     public int CheckOutTimeId { get; set; }
-    public string? LockBoxcode { get; set; }
+    public string? LockBoxCode { get; set; }
     public string? UnitTenantCode { get; set; }
 
     public int BillingMethodId { get; set; }
