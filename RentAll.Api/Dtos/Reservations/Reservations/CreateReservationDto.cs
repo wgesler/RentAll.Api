@@ -6,7 +6,7 @@ public class CreateReservationDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public Guid AgentId { get; set; }
+    public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
     public Guid ContactId { get; set; }
     public int ReservationTypeId { get; set; }

@@ -8,6 +8,7 @@ public class ReservationListEntity
     public string PropertyCode { get; set; } = string.Empty;
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public Guid? AgentId { get; set; }
     public Guid ContactId { get; set; }
     public string ContactName { get; set; } = string.Empty;
     public string TenantName { get; set; } = string.Empty;
