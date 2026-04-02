@@ -112,7 +112,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 PropertyCode = e.PropertyCode,
                 OfficeId = e.OfficeId,
                 OfficeName = e.OfficeName,
-                AgentId = e.AgentId,
                 ContactId = e.ContactId,
                 ContactName = e.ContactName,
                 TenantName = e.TenantName,
