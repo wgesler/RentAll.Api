@@ -83,6 +83,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 WelcomeLetterSent = e.WelcomeLetterSent,
                 ReadyForArrival = e.ReadyForArrival,
                 Code = e.Code,
+                DepartureLetterSent = e.DepartureLetterSent,
                 CurrentInvoiceNo = e.CurrentInvoiceNo,
                 CreditDue = e.CreditDue,
                 IsActive = e.IsActive,
@@ -131,6 +132,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 WelcomeLetterSent = e.WelcomeLetterSent,
                 ReadyForArrival = e.ReadyForArrival,
                 Code = e.Code,
+                DepartureLetterSent = e.DepartureLetterSent,
                 CreditDue = e.CreditDue,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn

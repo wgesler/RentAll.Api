@@ -22,6 +22,7 @@ public class ReservationListResponseDto
     public int WelcomeLetterSent { get; set; }
     public int ReadyForArrival { get; set; }
     public int Code { get; set; }
+    public int DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
@@ -50,6 +51,7 @@ public class ReservationListResponseDto
         WelcomeLetterSent = reservationList.WelcomeLetterSent;
         ReadyForArrival = reservationList.ReadyForArrival;
         Code = reservationList.Code;
+        DepartureLetterSent = reservationList.DepartureLetterSent;
         CreditDue = reservationList.CreditDue;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;

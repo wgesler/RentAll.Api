@@ -46,6 +46,7 @@ public class UpdateReservationDto
     public int WelcomeLetterSent { get; set; }
     public int ReadyForArrival { get; set; }
     public int Code { get; set; }
+    public int DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
@@ -170,6 +171,7 @@ public class UpdateReservationDto
             WelcomeLetterSent = WelcomeLetterSent,
             ReadyForArrival = ReadyForArrival,
             Code = Code,
+            DepartureLetterSent = DepartureLetterSent,
             CurrentInvoiceNo = CurrentInvoiceNo,
             CreditDue = CreditDue,
             IsActive = IsActive,
