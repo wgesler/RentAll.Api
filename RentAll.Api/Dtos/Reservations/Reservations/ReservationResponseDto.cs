@@ -44,6 +44,10 @@ public class ReservationResponseDto
     public string? Notes { get; set; }
     public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
     public bool AllowExtensions { get; set; }
+    public int PaymentReceived { get; set; }
+    public int WelcomeLetterSent { get; set; }
+    public int ReadyForArrival { get; set; }
+    public int Code { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
@@ -95,6 +99,10 @@ public class ReservationResponseDto
         Notes = reservation.Notes;
         ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();
         AllowExtensions = reservation.AllowExtensions;
+        PaymentReceived = reservation.PaymentReceived;
+        WelcomeLetterSent = reservation.WelcomeLetterSent;
+        ReadyForArrival = reservation.ReadyForArrival;
+        Code = reservation.Code;
         CurrentInvoiceNo = reservation.CurrentInvoiceNo;
         CreditDue = reservation.CreditDue;
         IsActive = reservation.IsActive;

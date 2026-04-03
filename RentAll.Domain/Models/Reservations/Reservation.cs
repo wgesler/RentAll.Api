@@ -44,6 +44,10 @@ public class Reservation
     public string? Notes { get; set; }
     public List<ExtraFeeLine> ExtraFeeLines { get; set; } = new List<ExtraFeeLine>();
     public bool AllowExtensions { get; set; }
+    public int PaymentReceived { get; set; }
+    public int WelcomeLetterSent { get; set; }
+    public int ReadyForArrival { get; set; }
+    public int Code { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
