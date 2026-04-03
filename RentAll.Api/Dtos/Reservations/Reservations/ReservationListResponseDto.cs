@@ -18,11 +18,11 @@ public class ReservationListResponseDto
     public DateTimeOffset DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
-    public int PaymentReceived { get; set; }
-    public int WelcomeLetterSent { get; set; }
-    public int ReadyForArrival { get; set; }
-    public int Code { get; set; }
-    public int DepartureLetterSent { get; set; }
+    public bool PaymentReceived { get; set; }
+    public bool WelcomeLetterSent { get; set; }
+    public bool ReadyForArrival { get; set; }
+    public bool Code { get; set; }
+    public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
