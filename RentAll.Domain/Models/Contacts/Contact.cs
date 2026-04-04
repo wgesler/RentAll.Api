@@ -11,11 +11,10 @@ public class Contact
     public string OfficeName { get; set; } = string.Empty;
     public string ContactCode { get; set; } = string.Empty;
     public EntityType EntityType { get; set; }
-    public Guid? EntityId { get; set; }
     public OwnerType? OwnerType { get; set; }
+    public List<string> Properties { get; set; } = new List<string>();
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }
-    public List<string> Properties { get; set; } = new List<string>();
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

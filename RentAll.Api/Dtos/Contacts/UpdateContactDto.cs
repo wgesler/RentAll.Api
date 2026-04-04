@@ -10,11 +10,10 @@ public class UpdateContactDto
     public int OfficeId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
-    public Guid? EntityId { get; set; }
     public int? OwnerTypeId { get; set; }
+    public List<string> Properties { get; set; } = new List<string>();
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }
-    public List<string> Properties { get; set; } = new List<string>();
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -84,7 +83,6 @@ public class UpdateContactDto
             OfficeId = OfficeId,
             ContactCode = ContactCode,
             EntityType = (EntityType)EntityTypeId,
-            EntityId = EntityId,
             OwnerType = (OwnerType?)OwnerTypeId,
             CompanyName = CompanyName,
             CompanyEmail = CompanyEmail,

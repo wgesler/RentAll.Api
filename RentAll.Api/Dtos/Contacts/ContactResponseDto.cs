@@ -10,11 +10,10 @@ public class ContactResponseDto
     public string OfficeName { get; set; } = string.Empty;
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
-    public Guid? EntityId { get; set; }
     public int? OwnerTypeId { get; set; }
+    public List<string> Properties { get; set; } = new List<string>();
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }
-    public List<string> Properties { get; set; } = new List<string>();
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -59,7 +58,6 @@ public class ContactResponseDto
         OfficeName = contact.OfficeName;
         ContactCode = contact.ContactCode;
         EntityTypeId = (int)contact.EntityType;
-        EntityId = contact.EntityId;
         OwnerTypeId = (int?)contact.OwnerType;
         CompanyName = contact.CompanyName;
         CompanyEmail = contact.CompanyEmail;
