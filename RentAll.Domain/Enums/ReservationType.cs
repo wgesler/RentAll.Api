@@ -4,7 +4,8 @@ public enum ReservationType
 {
     Individual = 0,
     Corporate = 1,
-    Owner = 2
+    Owner = 2,
+    Platform = 3
 }
 
 
