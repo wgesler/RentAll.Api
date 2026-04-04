@@ -11,6 +11,7 @@ public class UpdateReservationDto
     public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
     public Guid ContactId { get; set; }
+    public Guid? CompanyId { get; set; }
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
     public int ReservationNoticeId { get; set; }
@@ -136,6 +137,7 @@ public class UpdateReservationDto
             AgentId = AgentId,
             PropertyId = PropertyId,
             ContactId = ContactId,
+            CompanyId = CompanyId,
             ReservationType = (ReservationType)ReservationTypeId,
             ReservationStatus = (ReservationStatus)ReservationStatusId,
             ReservationNotice = (ReservationNotice)ReservationNoticeId,

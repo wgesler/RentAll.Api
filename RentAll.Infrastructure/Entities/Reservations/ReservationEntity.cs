@@ -9,11 +9,13 @@ public class ReservationEntity
     public string ReservationCode { get; set; } = string.Empty;
     public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
-    public Guid ContactId { get; set; }
-    public string ContactName { get; set; } = string.Empty;
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
     public int ReservationNoticeId { get; set; }
+    public Guid ContactId { get; set; }
+    public string ContactName { get; set; } = string.Empty;
+    public Guid? CompanyId { get; set; }
+    public string? CompanyName { get; set; } = string.Empty;
     public int NumberOfPeople { get; set; }
     public string? TenantName { get; set; }
     public string? ReferenceNo { get; set; }

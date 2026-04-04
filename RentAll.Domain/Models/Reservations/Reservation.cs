@@ -13,6 +13,8 @@ public class Reservation
     public Guid PropertyId { get; set; }
     public Guid ContactId { get; set; }
     public string ContactName { get; set; } = string.Empty;
+    public Guid? CompanyId { get; set; }
+    public string? CompanyName { get; set; } = string.Empty;
     public ReservationType ReservationType { get; set; }
     public ReservationStatus ReservationStatus { get; set; }
     public ReservationNotice ReservationNotice { get; set; }

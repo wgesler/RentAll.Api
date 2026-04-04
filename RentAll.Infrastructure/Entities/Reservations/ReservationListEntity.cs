@@ -10,8 +10,9 @@ public class ReservationListEntity
     public string OfficeName { get; set; } = string.Empty;
     public Guid ContactId { get; set; }
     public string ContactName { get; set; } = string.Empty;
+    public Guid? CompanyId { get; set; }
+    public string? CompanyName { get; set; }
     public string TenantName { get; set; } = string.Empty;
-    public string CompanyName { get; set; } = string.Empty;
     public string? AgentCode { get; set; }
     public decimal MonthlyRate { get; set; }
     public DateTimeOffset ArrivalDate { get; set; }
