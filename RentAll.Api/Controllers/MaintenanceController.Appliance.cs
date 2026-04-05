@@ -5,7 +5,7 @@ namespace RentAll.Api.Controllers;
 public partial class MaintenanceController
 {
     #region Get
-    [HttpGet("appliances/{propertyId:guid}")]
+    [HttpGet("appliance/{propertyId:guid}")]
     public async Task<IActionResult> GetAppliancesByPropertyId(Guid propertyId)
     {
         if (propertyId == Guid.Empty)
@@ -24,10 +24,10 @@ public partial class MaintenanceController
         }
     }
 
-    [HttpGet("appliance/{applianceId:guid}")]
-    public async Task<IActionResult> GetApplianceById(Guid applianceId)
+    [HttpGet("appliance/{applianceId:int}")]
+    public async Task<IActionResult> GetApplianceById(int applianceId)
     {
-        if (applianceId == Guid.Empty)
+        if (applianceId <= 0)
             return BadRequest("ApplianceId is required");
 
         try
@@ -63,7 +63,7 @@ public partial class MaintenanceController
             if (maintenance == null || maintenance.IsDeleted)
                 return NotFound("Property maintenance record not found");
 
-            var appliance = dto.ToModel(CurrentUser);
+            var appliance = dto.ToModel();
             var created = await _maintenanceRepository.CreateApplianceAsync(appliance);
             return Ok(new ApplianceResponseDto(created));
         }
@@ -96,7 +96,7 @@ public partial class MaintenanceController
             if (existing == null)
                 return NotFound("Appliance not found");
 
-            var appliance = dto.ToModel(CurrentUser);
+            var appliance = dto.ToModel();
             var updated = await _maintenanceRepository.UpdateApplianceAsync(appliance);
             return Ok(new ApplianceResponseDto(updated));
         }
@@ -109,10 +109,10 @@ public partial class MaintenanceController
     #endregion
 
     #region Delete
-    [HttpDelete("appliance/{applianceId:guid}")]
-    public async Task<IActionResult> DeleteApplianceByIdAsync(Guid applianceId)
+    [HttpDelete("appliance/{applianceId:int}")]
+    public async Task<IActionResult> DeleteApplianceByIdAsync(int applianceId)
     {
-        if (applianceId == Guid.Empty)
+        if (applianceId <= 0)
             return BadRequest("ApplianceId is required");
 
         try

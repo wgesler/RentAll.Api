@@ -2,17 +2,16 @@ namespace RentAll.Api.Dtos.Maintenances.Appliances;
 
 public class UpdateApplianceDto
 {
-    public Guid ApplianceId { get; set; }
+    public int ApplianceId { get; set; }
     public Guid PropertyId { get; set; }
     public string ApplianceName { get; set; } = string.Empty;
     public string Manufacturer { get; set; } = string.Empty;
     public string ModelNo { get; set; } = string.Empty;
     public string SerialNo { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (ApplianceId == Guid.Empty)
+        if (ApplianceId <= 0)
             return (false, "ApplianceId is required");
 
         if (PropertyId == Guid.Empty)
@@ -33,7 +32,7 @@ public class UpdateApplianceDto
         return (true, null);
     }
 
-    public Appliance ToModel(Guid currentUser)
+    public Appliance ToModel()
     {
         return new Appliance
         {
@@ -42,9 +41,7 @@ public class UpdateApplianceDto
             ApplianceName = ApplianceName,
             Manufacturer = Manufacturer,
             ModelNo = ModelNo,
-            SerialNo = SerialNo,
-            IsActive = IsActive,
-            ModifiedBy = currentUser
+            SerialNo = SerialNo
         };
     }
 }

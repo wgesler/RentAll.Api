@@ -16,11 +16,20 @@ public interface IMaintenanceRepository
 
     #region Appliance
     Task<IEnumerable<Appliance>> GetAppliancesByPropertyIdAsync(Guid propertyId);
-    Task<Appliance?> GetApplianceByIdAsync(Guid applianceId);
+    Task<Appliance?> GetApplianceByIdAsync(int applianceId);
 
     Task<Appliance> CreateApplianceAsync(Appliance appliance);
     Task<Appliance> UpdateApplianceAsync(Appliance appliance);
-    Task DeleteApplianceByIdAsync(Guid applianceId);
+    Task DeleteApplianceByIdAsync(int applianceId);
+    #endregion
+
+    #region MaintenanceItem
+    Task<IEnumerable<MaintenanceItem>> GetMaintenanceItemsByPropertyIdAsync(Guid propertyId);
+    Task<MaintenanceItem?> GetMaintenanceItemByIdAsync(int maintenanceItemId);
+
+    Task<MaintenanceItem> CreateMaintenanceItemAsync(MaintenanceItem maintenanceItem);
+    Task<MaintenanceItem> UpdateMaintenanceItemAsync(MaintenanceItem maintenanceItem);
+    Task DeleteMaintenanceItemByIdAsync(int maintenanceItemId);
     #endregion
 
     #region Inspection

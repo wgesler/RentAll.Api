@@ -21,7 +21,7 @@ public partial class MaintenanceRepository
         return res.Select(ConvertEntityToModel);
     }
 
-    public async Task<Appliance?> GetApplianceByIdAsync(Guid applianceId)
+    public async Task<Appliance?> GetApplianceByIdAsync(int applianceId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ApplianceEntity>("Maintenance.Appliance_GetById", new
@@ -46,9 +46,7 @@ public partial class MaintenanceRepository
             ApplianceName = appliance.ApplianceName,
             Manufacturer = appliance.Manufacturer,
             ModelNo = appliance.ModelNo,
-            SerialNo = appliance.SerialNo,
-            IsActive = appliance.IsActive,
-            CreatedBy = appliance.CreatedBy
+            SerialNo = appliance.SerialNo
         });
 
         if (res == null || !res.Any())
@@ -69,9 +67,7 @@ public partial class MaintenanceRepository
             ApplianceName = appliance.ApplianceName,
             Manufacturer = appliance.Manufacturer,
             ModelNo = appliance.ModelNo,
-            SerialNo = appliance.SerialNo,
-            IsActive = appliance.IsActive,
-            ModifiedBy = appliance.ModifiedBy
+            SerialNo = appliance.SerialNo
         });
 
         if (res == null || !res.Any())
@@ -82,12 +78,11 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Deletes
-    public async Task DeleteApplianceByIdAsync(Guid applianceId)
+    public async Task DeleteApplianceByIdAsync(int applianceId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.Appliance_DeleteById", new
         {
-            // Note: We don't store organization for appliance
             ApplianceId = applianceId
         });
     }

@@ -34,18 +34,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             InspectingDate = e.InspectingDate,
             CarpetUserId = e.CarpetUserId,
             CarpetDate = e.CarpetDate,
-            FilterDescription = e.FilterDescription,
-            LastFilterChangeDate = e.LastFilterChangeDate,
-            SmokeDetectors = e.SmokeDetectors,
-            LastSmokeChangeDate = e.LastSmokeChangeDate,
-            SmokeDetectorBatteries = e.SmokeDetectorBatteries,
-            LastBatteryChangeDate = e.LastBatteryChangeDate,
-            LicenseNo = e.LicenseNo,
-            LicenseDate = e.LicenseDate,
-            HvacNotes = e.HvacNotes,
-            HvacServiced = e.HvacServiced,
-            FireplaceNotes = e.FireplaceNotes,
-            FireplaceServiced = e.FireplaceServiced,
             Notes = e.Notes,
             IsActive = e.IsActive,
             IsDeleted = e.IsDeleted,
@@ -109,12 +97,20 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ApplianceName = e.ApplianceName,
             Manufacturer = e.Manufacturer,
             ModelNo = e.ModelNo,
-            SerialNo = e.SerialNo,
-            IsActive = e.IsActive,
-            CreatedOn = e.CreatedOn,
-            CreatedBy = e.CreatedBy,
-            ModifiedOn = e.ModifiedOn,
-            ModifiedBy = e.ModifiedBy
+            SerialNo = e.SerialNo
+        };
+    }
+
+    private static MaintenanceItem ConvertEntityToModel(MaintenanceItemEntity e)
+    {
+        return new MaintenanceItem
+        {
+            MaintenanceItemId = e.MaintenanceItemId,
+            PropertyId = e.PropertyId,
+            Name = e.Name,
+            Notes = e.Notes,
+            MonthsBetweenService = e.MonthsBetweenService,
+            LastServicedOn = e.LastServicedOn
         };
     }
 

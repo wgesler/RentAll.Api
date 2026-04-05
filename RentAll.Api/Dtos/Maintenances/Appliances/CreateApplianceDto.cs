@@ -7,7 +7,6 @@ public class CreateApplianceDto
     public string Manufacturer { get; set; } = string.Empty;
     public string ModelNo { get; set; } = string.Empty;
     public string SerialNo { get; set; } = string.Empty;
-    public bool IsActive { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -29,7 +28,7 @@ public class CreateApplianceDto
         return (true, null);
     }
 
-    public Appliance ToModel(Guid currentUser)
+    public Appliance ToModel()
     {
         return new Appliance
         {
@@ -37,9 +36,7 @@ public class CreateApplianceDto
             ApplianceName = ApplianceName,
             Manufacturer = Manufacturer,
             ModelNo = ModelNo,
-            SerialNo = SerialNo,
-            IsActive = IsActive,
-            CreatedBy = currentUser
+            SerialNo = SerialNo
         };
     }
 }

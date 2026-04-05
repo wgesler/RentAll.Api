@@ -17,18 +17,6 @@ public class MaintenanceResponseDto
     public DateTimeOffset? InspectingDate { get; set; }
     public Guid? CarpetUserId { get; set; }
     public DateTimeOffset? CarpetDate { get; set; }
-    public string? FilterDescription { get; set; }
-    public DateTimeOffset? LastFilterChangeDate { get; set; }
-    public string? SmokeDetectors { get; set; }
-    public DateTimeOffset? LastSmokeChangeDate { get; set; }
-    public string? SmokeDetectorBatteries { get; set; }
-    public DateTimeOffset? LastBatteryChangeDate { get; set; }
-    public string? LicenseNo { get; set; }
-    public DateTimeOffset? LicenseDate { get; set; }
-    public string? HvacNotes { get; set; }
-    public DateTimeOffset? HvacServiced { get; set; }
-    public string? FireplaceNotes { get; set; }
-    public DateTimeOffset? FireplaceServiced { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -51,18 +39,6 @@ public class MaintenanceResponseDto
         InspectingDate = maintenanceRecord.InspectingDate;
         CarpetUserId = maintenanceRecord.CarpetUserId;
         CarpetDate = maintenanceRecord.CarpetDate;
-        FilterDescription = maintenanceRecord.FilterDescription;
-        LastFilterChangeDate = maintenanceRecord.LastFilterChangeDate;
-        SmokeDetectors = maintenanceRecord.SmokeDetectors;
-        LastSmokeChangeDate = maintenanceRecord.LastSmokeChangeDate;
-        SmokeDetectorBatteries = maintenanceRecord.SmokeDetectorBatteries;
-        LastBatteryChangeDate = maintenanceRecord.LastBatteryChangeDate;
-        LicenseNo = maintenanceRecord.LicenseNo;
-        LicenseDate = maintenanceRecord.LicenseDate;
-        HvacNotes = maintenanceRecord.HvacNotes;
-        HvacServiced = maintenanceRecord.HvacServiced;
-        FireplaceNotes = maintenanceRecord.FireplaceNotes;
-        FireplaceServiced = maintenanceRecord.FireplaceServiced;
         Notes = maintenanceRecord.Notes;
         IsActive = maintenanceRecord.IsActive;
         CreatedOn = maintenanceRecord.CreatedOn;

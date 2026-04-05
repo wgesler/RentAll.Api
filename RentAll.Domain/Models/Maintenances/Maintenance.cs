@@ -15,18 +15,6 @@ public class Maintenance
     public DateTimeOffset? InspectingDate { get; set; }
     public Guid? CarpetUserId { get; set; }
     public DateTimeOffset? CarpetDate { get; set; }
-    public string? FilterDescription { get; set; }
-    public DateTimeOffset? LastFilterChangeDate { get; set; }
-    public string? SmokeDetectors { get; set; }
-    public DateTimeOffset? LastSmokeChangeDate { get; set; }
-    public string? SmokeDetectorBatteries { get; set; }
-    public DateTimeOffset? LastBatteryChangeDate { get; set; }
-    public string? LicenseNo { get; set; }
-    public DateTimeOffset? LicenseDate { get; set; }
-    public string? HvacNotes { get; set; }
-    public DateTimeOffset? HvacServiced { get; set; }
-    public string? FireplaceNotes { get; set; }
-    public DateTimeOffset? FireplaceServiced { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }
