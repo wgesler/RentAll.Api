@@ -8,6 +8,7 @@ public class PropertyAgreementEntity
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public string? AgreementPath { get; set; }
+    public int ManagmentFeeTypeId { get; set; }
     public int Markup { get; set; }
     public int RevenueSplitOwner { get; set; }
     public int RevenueSplitOffice { get; set; }

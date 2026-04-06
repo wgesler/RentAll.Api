@@ -32,6 +32,7 @@ public partial class PropertyRepository
         {
             agreement.PropertyId,
             agreement.OfficeId,
+            ManagmentFeeTypeId = (int)agreement.ManagementFeeType,
             agreement.W9Path,
             agreement.InsurancePath,
             agreement.InsuranceExpiration,
@@ -63,6 +64,7 @@ public partial class PropertyRepository
         {
             agreement.PropertyId,
             agreement.OfficeId,
+            ManagmentFeeTypeId = (int)agreement.ManagementFeeType,
             agreement.W9Path,
             agreement.InsurancePath,
             agreement.InsuranceExpiration,

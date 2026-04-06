@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
@@ -5,6 +6,7 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 
 public class CreatePropertyAgreementDto
 {
+    public int ManagementFeeTypeId { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
@@ -22,6 +24,9 @@ public class CreatePropertyAgreementDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (!Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId))
+            return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId}");
+
         if (Markup.HasValue && Markup.Value < 0)
             return (false, "Markup cannot be negative");
 
@@ -44,6 +49,7 @@ public class CreatePropertyAgreementDto
         {
             PropertyId = propertyId,
             OfficeId = officeId,
+            ManagementFeeType = (ManagementFeeType)ManagementFeeTypeId,
             W9Path = null,
             InsurancePath = null,
             InsuranceExpiration = InsuranceExpiration,

@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
@@ -6,6 +7,7 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 public class UpdatePropertyAgreementDto
 {
     public Guid PropertyId { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
@@ -27,6 +29,9 @@ public class UpdatePropertyAgreementDto
     {
         if (PropertyId == Guid.Empty)
             return (false, "PropertyId is required");
+
+        if (ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
+            return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
 
         if (Markup.HasValue && Markup.Value < 0)
             return (false, "Markup cannot be negative");
@@ -50,6 +55,9 @@ public class UpdatePropertyAgreementDto
         {
             PropertyId = PropertyId,
             OfficeId = existing.OfficeId,
+            ManagementFeeType = ManagementFeeTypeId.HasValue
+                ? (ManagementFeeType)ManagementFeeTypeId.Value
+                : existing.ManagementFeeType,
             W9Path = W9Path,
             InsurancePath = InsurancePath,
             InsuranceExpiration = InsuranceExpiration,

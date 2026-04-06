@@ -1,3 +1,4 @@
+using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
@@ -6,6 +7,7 @@ public class PropertyAgreementResponseDto
 {
     public Guid PropertyId { get; set; }
     public int OfficeId { get; set; }
+    public int ManagementFeeTypeId { get; set; }
     public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
@@ -27,6 +29,7 @@ public class PropertyAgreementResponseDto
     {
         PropertyId = a.PropertyId;
         OfficeId = a.OfficeId;
+        ManagementFeeTypeId = (int)a.ManagementFeeType;
         W9Path = a.W9Path;
         InsurancePath = a.InsurancePath;
         InsuranceExpiration = a.InsuranceExpiration;
