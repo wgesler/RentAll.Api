@@ -29,7 +29,6 @@ public class ContactEntity
     public string? W9Path { get; set; }
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
-    public string? AgreementPath { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }

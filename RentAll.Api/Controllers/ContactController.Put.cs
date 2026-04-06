@@ -31,21 +31,14 @@ namespace RentAll.Api.Controllers
                 var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, dto.OrganizationId);
                 var officeName = office != null ? office.Name : null;
 
-                contact.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                    existing.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
-
-                contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                    existing.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
-
-                contact.AgreementPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                    existing.OrganizationId, officeName, dto.AgreementFileDetails, ImageType.Agreements, existing.AgreementPath, dto.AgreementPath);
+                contact.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(existing.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
+                contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(existing.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
 
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 var response = new ContactResponseDto(updatedContact);
 
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.InsurancePath, ImageType.Insurances);
-                response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.AgreementPath, ImageType.Agreements);
 
                 return Ok(response);
             }

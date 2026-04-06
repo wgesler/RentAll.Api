@@ -32,8 +32,6 @@ public class UpdateContactDto
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public string? AgreementPath { get; set; }
-    public FileDetails? AgreementFileDetails { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }
@@ -103,7 +101,6 @@ public class UpdateContactDto
             W9Path = W9Path,
             InsurancePath = InsurancePath,
             InsuranceExpiration = InsuranceExpiration,
-            AgreementPath = AgreementPath,
             Markup = Markup,
             RevenueSplitOwner = RevenueSplitOwner,
             RevenueSplitOffice = RevenueSplitOffice,

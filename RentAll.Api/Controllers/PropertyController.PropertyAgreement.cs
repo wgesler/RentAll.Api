@@ -13,27 +13,19 @@ public partial class PropertyController
 
         try
         {
-            var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
-            if (property == null)
-                return NotFound("Property not found");
-
-            var office = await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, CurrentOrganizationId);
-            var officeName = office?.Name;
-
             var agreement = await _propertyRepository.GetPropertyAgreementByPropertyIdAsync(propertyId);
-            var response = agreement == null
-                ? new PropertyAgreementResponseDto { PropertyId = propertyId, OfficeId = property.OfficeId }
-                : new PropertyAgreementResponseDto(agreement);
+            if (agreement == null)
+                return NotFound("Agreement not found");
 
-            if (agreement != null)
-            {
-                response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                    CurrentOrganizationId, officeName, agreement.W9Path, ImageType.W9Forms);
-                response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                    CurrentOrganizationId, officeName, agreement.InsurancePath, ImageType.Insurances);
-                response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                    CurrentOrganizationId, officeName, agreement.AgreementPath, ImageType.Agreements);
-            }
+            // Get the office name for file storage path
+            var office = await _organizationRepository.GetOfficeByIdAsync(agreement.OfficeId, CurrentOrganizationId);
+            var officeName = office != null ? office.Name : null;
+
+            // Get W9, Insurance, and Agreement file details if paths are available
+            var response = new PropertyAgreementResponseDto(agreement);
+            response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.W9Path, ImageType.W9Forms);
+            response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.InsurancePath, ImageType.Insurances);
+            response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.AgreementPath, ImageType.Agreements);
 
             return Ok(response);
         }
@@ -113,12 +105,9 @@ public partial class PropertyController
             var officeName = office?.Name;
 
             var model = dto.ToModel(existing);
-            model.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
-            model.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
-            model.AgreementPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                CurrentOrganizationId, officeName, dto.AgreementFileDetails, ImageType.Agreements, existing.AgreementPath, dto.AgreementPath);
+            model.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
+            model.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
+            model.AgreementPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, ImageType.Agreements, existing.AgreementPath, dto.AgreementPath);
 
             var updatedContact = await _propertyRepository.UpdatePropertyAgreementByPropertyIdAsync(model);
             var response = new PropertyAgreementResponseDto(updatedContact);

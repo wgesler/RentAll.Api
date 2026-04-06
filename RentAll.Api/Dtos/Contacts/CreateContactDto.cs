@@ -27,8 +27,6 @@ public class CreateContactDto
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
-    public string? AgreementPath { get; set; }
-    public FileDetails? AgreementFileDetails { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }
@@ -91,7 +89,6 @@ public class CreateContactDto
             W9Path = null, // Will be set by controller after file save
             InsurancePath = null,// Will be set by controller after file save
             InsuranceExpiration = InsuranceExpiration,
-            AgreementPath = AgreementPath,
             Markup = Markup,
             RevenueSplitOwner = RevenueSplitOwner,
             RevenueSplitOffice = RevenueSplitOffice,

@@ -34,7 +34,6 @@ public class Contact
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public string? AgreementPath { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }

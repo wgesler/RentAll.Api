@@ -1,4 +1,3 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
@@ -23,10 +22,6 @@ public class PropertyAgreementResponseDto
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
     public string? Notes { get; set; }
-
-    public PropertyAgreementResponseDto()
-    {
-    }
 
     public PropertyAgreementResponseDto(PropertyAgreement a)
     {
