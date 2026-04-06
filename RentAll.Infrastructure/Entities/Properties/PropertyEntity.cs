@@ -5,9 +5,11 @@ public class PropertyEntity
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid Owner1Id { get; set; }
+    public int PropertyLeaseId { get; set; }
+    public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
+    public Guid? VendorId { get; set; }
 
     // Availability Section 
     public DateTimeOffset? AvailableFrom { get; set; }

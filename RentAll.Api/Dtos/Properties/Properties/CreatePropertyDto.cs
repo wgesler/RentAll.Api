@@ -4,9 +4,11 @@ public class CreatePropertyDto
 {
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid Owner1Id { get; set; }
+    public int PropertyLeaseId { get; set; }
+    public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
+    public Guid? VendorId { get; set; }
 
     // Availability Section 
     public DateTimeOffset? AvailableFrom { get; set; }
@@ -132,9 +134,6 @@ public class CreatePropertyDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
-        if (Owner1Id == Guid.Empty)
-            return (false, "Owner1 ID is required");
-
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
 
@@ -163,6 +162,9 @@ public class CreatePropertyDto
         if (!Enum.IsDefined(typeof(PropertyStatus), PropertyStatusId))
             return (false, $"Invalid PropertyStatus value: {PropertyStatusId}");
 
+        if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseId))
+            return (false, $"Invalid PropertyLeaseType value: {PropertyLeaseId}");
+
         return (true, null);
     }
 
@@ -172,9 +174,11 @@ public class CreatePropertyDto
         {
             OrganizationId = OrganizationId,
             PropertyCode = PropertyCode,
+            PropertyLeaseType = (PropertyLeaseType)PropertyLeaseId,
             Owner1Id = Owner1Id,
             Owner2Id = Owner2Id,
             Owner3Id = Owner3Id,
+            VendorId = VendorId,
             AvailableFrom = AvailableFrom,
             AvailableUntil = AvailableUntil,
             MinStay = MinStay,

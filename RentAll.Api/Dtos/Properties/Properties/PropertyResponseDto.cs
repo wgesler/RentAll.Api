@@ -5,9 +5,11 @@ public class PropertyResponseDto
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public Guid Owner1Id { get; set; }
+    public int PropertyLeaseId { get; set; }
+    public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
+    public Guid? VendorId { get; set; }
 
     // Availability Section 
     public DateTimeOffset? AvailableFrom { get; set; }
@@ -136,9 +138,11 @@ public class PropertyResponseDto
         PropertyId = property.PropertyId;
         OrganizationId = property.OrganizationId;
         PropertyCode = property.PropertyCode;
+        PropertyLeaseId = (int)property.PropertyLeaseType;
         Owner1Id = property.Owner1Id;
         Owner2Id = property.Owner2Id;
         Owner3Id = property.Owner3Id;
+        VendorId = property.VendorId;
         AvailableFrom = property.AvailableFrom;
         AvailableUntil = property.AvailableUntil;
         MinStay = property.MinStay;

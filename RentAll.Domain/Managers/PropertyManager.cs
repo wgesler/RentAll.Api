@@ -19,9 +19,9 @@ public class PropertyManager : IPropertyManager
 
     public async Task UpdatePropertyOfficeAsync(Property p, Guid currentUser)
     {
-        if (p.Owner1Id != Guid.Empty)
+        if (p.Owner1Id is { } owner1Id && owner1Id != Guid.Empty)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(p.Owner1Id, p.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdAsync(owner1Id, p.OrganizationId);
             if (contact == null)
                 return;
 

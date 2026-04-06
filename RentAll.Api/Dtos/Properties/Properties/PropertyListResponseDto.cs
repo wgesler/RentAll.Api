@@ -4,11 +4,13 @@ public class PropertyListResponseDto
 {
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
+    public int PropertyLeaseId { get; set; }
     public string ShortAddress { get; set; } = string.Empty;
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
-    public Guid Owner1Id { get; set; }
-    public string OwnerName { get; set; } = string.Empty;
+    public Guid? Owner1Id { get; set; }
+    public Guid? VendorId { get; set; }
+    public string ContactName { get; set; } = string.Empty;
     public DateTimeOffset? AvailableFrom { get; set; }
     public DateTimeOffset? AvailableUntil { get; set; }
     public int Bedrooms { get; set; }
@@ -28,11 +30,13 @@ public class PropertyListResponseDto
     {
         PropertyId = propertyList.PropertyId;
         PropertyCode = propertyList.PropertyCode;
+        PropertyLeaseId = (int)propertyList.PropertyLeaseType;
         ShortAddress = propertyList.ShortAddress;
         OfficeId = propertyList.OfficeId;
         OfficeName = propertyList.OfficeName;
         Owner1Id = propertyList.Owner1Id;
-        OwnerName = propertyList.OwnerName;
+        VendorId = propertyList.VendorId;
+        ContactName = propertyList.ContactName;
         AvailableFrom = propertyList.AvailableFrom;
         AvailableUntil = propertyList.AvailableUntil;
         Bedrooms = propertyList.Bedrooms;
