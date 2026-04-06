@@ -4,7 +4,7 @@ public class CreatePropertyDto
 {
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public int PropertyLeaseId { get; set; }
+    public int PropertyLeaseTypeId { get; set; }
     public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
@@ -162,8 +162,8 @@ public class CreatePropertyDto
         if (!Enum.IsDefined(typeof(PropertyStatus), PropertyStatusId))
             return (false, $"Invalid PropertyStatus value: {PropertyStatusId}");
 
-        if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseId))
-            return (false, $"Invalid PropertyLeaseType value: {PropertyLeaseId}");
+        if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId))
+            return (false, $"Invalid PropertyLeaseType value: {PropertyLeaseTypeId}");
 
         return (true, null);
     }
@@ -174,7 +174,7 @@ public class CreatePropertyDto
         {
             OrganizationId = OrganizationId,
             PropertyCode = PropertyCode,
-            PropertyLeaseType = (PropertyLeaseType)PropertyLeaseId,
+            PropertyLeaseType = (PropertyLeaseType)PropertyLeaseTypeId,
             Owner1Id = Owner1Id,
             Owner2Id = Owner2Id,
             Owner3Id = Owner3Id,

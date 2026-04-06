@@ -5,7 +5,7 @@ public class PropertyEntity
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public int PropertyLeaseId { get; set; }
+    public int PropertyLeaseTypeId { get; set; }
     public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }

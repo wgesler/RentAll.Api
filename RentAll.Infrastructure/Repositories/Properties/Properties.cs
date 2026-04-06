@@ -121,7 +121,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             {
                 OrganizationId = property.OrganizationId,
                 PropertyCode = property.PropertyCode,
-                PropertyLeaseId = (int)property.PropertyLeaseType,
+                PropertyLeaseTypeId = (int)property.PropertyLeaseType,
                 Owner1Id = property.Owner1Id,
                 Owner2Id = property.Owner2Id,
                 Owner3Id = property.Owner3Id,
@@ -239,7 +239,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyId = property.PropertyId,
                 OrganizationId = property.OrganizationId,
                 PropertyCode = property.PropertyCode,
-                PropertyLeaseId = (int)property.PropertyLeaseType,
+                PropertyLeaseTypeId = (int)property.PropertyLeaseType,
                 Owner1Id = property.Owner1Id,
                 Owner2Id = property.Owner2Id,
                 Owner3Id = property.Owner3Id,

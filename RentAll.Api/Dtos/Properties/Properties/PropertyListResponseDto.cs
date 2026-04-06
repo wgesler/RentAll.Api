@@ -4,7 +4,7 @@ public class PropertyListResponseDto
 {
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public int PropertyLeaseId { get; set; }
+    public int PropertyLeaseTypeId { get; set; }
     public string ShortAddress { get; set; } = string.Empty;
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
@@ -30,7 +30,7 @@ public class PropertyListResponseDto
     {
         PropertyId = propertyList.PropertyId;
         PropertyCode = propertyList.PropertyCode;
-        PropertyLeaseId = (int)propertyList.PropertyLeaseType;
+        PropertyLeaseTypeId = (int)propertyList.PropertyLeaseType;
         ShortAddress = propertyList.ShortAddress;
         OfficeId = propertyList.OfficeId;
         OfficeName = propertyList.OfficeName;
