@@ -36,4 +36,11 @@ public interface IPropertyRepository
     Task<PropertySelection?> GetPropertySelectionByUserIdAsync(Guid userId);
     Task<PropertySelection> UpsertPropertySelectionAsync(PropertySelection selection);
     #endregion
+
+    #region Property Agreement
+    Task<PropertyAgreement?> GetPropertyAgreementByPropertyIdAsync(Guid propertyId);
+    Task<PropertyAgreement> CreatePropertyAgreementAsync(PropertyAgreement agreement);
+    Task<PropertyAgreement> UpdatePropertyAgreementByPropertyIdAsync(PropertyAgreement agreement);
+    Task DeletePropertyAgreementByPropertyIdAsync(Guid propertyId);
+    #endregion
 }

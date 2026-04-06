@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
     public partial class PropertyRepository
     {
         #region Selects
-    public async Task<PropertyHtml?> GetPropertyHtmlByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        public async Task<PropertyHtml?> GetPropertyHtmlByPropertyIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_GetByPropertyId", new
@@ -23,8 +23,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Creates
-    public async Task<PropertyHtml> CreatePropertyHtmlAsync(PropertyHtml propertyHtml)
+        #region Creates
+        public async Task<PropertyHtml> CreatePropertyHtmlAsync(PropertyHtml propertyHtml)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_UpsertByPropertyId", new
@@ -49,8 +49,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Updates
-    public async Task<PropertyHtml> UpdatePropertyHtmlByIdAsync(PropertyHtml propertyHtml)
+        #region Updates
+        public async Task<PropertyHtml> UpdatePropertyHtmlByIdAsync(PropertyHtml propertyHtml)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyHtmlEntity>("Property.PropertyHtml_UpsertByPropertyId", new
@@ -75,8 +75,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Deletes
-    public async Task DeletePropertyHtmlByPropertyIdAsync(Guid propertyId)
+        #region Deletes
+        public async Task DeletePropertyHtmlByPropertyIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.PropertyHtml_DeleteByPropertyId", new

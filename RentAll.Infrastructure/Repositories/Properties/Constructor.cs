@@ -162,6 +162,25 @@ namespace RentAll.Infrastructure.Repositories.Properties
             };
         }
 
+        private static PropertyAgreement ConvertEntityToModel(PropertyAgreementEntity e) => new()
+        {
+            PropertyId = e.PropertyId,
+            OfficeId = e.OfficeId,
+            W9Path = e.W9Path,
+            InsurancePath = e.InsurancePath,
+            InsuranceExpiration = e.InsuranceExpiration,
+            AgreementPath = e.AgreementPath,
+            Markup = e.Markup,
+            RevenueSplitOwner = e.RevenueSplitOwner,
+            RevenueSplitOffice = e.RevenueSplitOffice,
+            WorkingCapitalBalance = e.WorkingCapitalBalance,
+            LinenAndTowelFee = e.LinenAndTowelFee,
+            BankName = e.BankName,
+            RoutingNumber = e.RoutingNumber,
+            AccountNumber = e.AccountNumber,
+            Notes = e.Notes
+        };
+
         private PropertyHtml ConvertEntityToModel(PropertyHtmlEntity e)
         {
             var response = new PropertyHtml()
