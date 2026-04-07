@@ -7,6 +7,7 @@ public class PropertyAgreement
     public Guid PropertyId { get; set; }
     public int OfficeId { get; set; }
     public ManagementFeeType ManagementFeeType { get; set; }
+    public decimal FlatRateAmount { get; set; }
     public string? W9Path { get; set; }
     public string? InsurancePath { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }

@@ -30,22 +30,23 @@ public partial class PropertyRepository
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<PropertyAgreementEntity>("Property.PropertyAgreements_Add", new
         {
-            agreement.PropertyId,
-            agreement.OfficeId,
-            ManagmentFeeTypeId = (int)agreement.ManagementFeeType,
-            agreement.W9Path,
-            agreement.InsurancePath,
-            agreement.InsuranceExpiration,
-            agreement.AgreementPath,
+            PropertyId = agreement.PropertyId,
+            OfficeId = agreement.OfficeId,
+            ManagementFeeTypeId = (int)agreement.ManagementFeeType,
+            FlatRateAmount = agreement.FlatRateAmount,
+            W9Path = agreement.W9Path,
+            InsurancePath = agreement.InsurancePath,
+            InsuranceExpiration = agreement.InsuranceExpiration,
+            AgreementPath = agreement.AgreementPath,
             Markup = agreement.Markup,
             RevenueSplitOwner = agreement.RevenueSplitOwner,
             RevenueSplitOffice = agreement.RevenueSplitOffice,
             WorkingCapitalBalance = agreement.WorkingCapitalBalance,
             LinenAndTowelFee = agreement.LinenAndTowelFee,
-            agreement.BankName,
-            agreement.RoutingNumber,
-            agreement.AccountNumber,
-            agreement.Notes
+            BankName = agreement.BankName,
+            RoutingNumber = agreement.RoutingNumber,
+            AccountNumber = agreement.AccountNumber,
+            Notes = agreement.Notes
         });
 
         if (res == null || !res.Any())
@@ -62,22 +63,23 @@ public partial class PropertyRepository
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<PropertyAgreementEntity>("Property.PropertyAgreements_UpdateByPropertyId", new
         {
-            agreement.PropertyId,
-            agreement.OfficeId,
-            ManagmentFeeTypeId = (int)agreement.ManagementFeeType,
-            agreement.W9Path,
-            agreement.InsurancePath,
-            agreement.InsuranceExpiration,
-            agreement.AgreementPath,
+            PropertyId = agreement.PropertyId,
+            OfficeId = agreement.OfficeId,
+            ManagementFeeTypeId = (int)agreement.ManagementFeeType,
+            FlatRateAmount = agreement.FlatRateAmount,
+            W9Path = agreement.W9Path,
+            InsurancePath = agreement.InsurancePath,
+            InsuranceExpiration = agreement.InsuranceExpiration,
+            AgreementPath = agreement.AgreementPath,
             Markup = agreement.Markup,
             RevenueSplitOwner = agreement.RevenueSplitOwner,
             RevenueSplitOffice = agreement.RevenueSplitOffice,
             WorkingCapitalBalance = agreement.WorkingCapitalBalance,
             LinenAndTowelFee = agreement.LinenAndTowelFee,
-            agreement.BankName,
-            agreement.RoutingNumber,
-            agreement.AccountNumber,
-            agreement.Notes
+            BankName = agreement.BankName,
+            RoutingNumber = agreement.RoutingNumber,
+            AccountNumber = agreement.AccountNumber,
+            Notes = agreement.Notes
         });
 
         if (res == null || !res.Any())

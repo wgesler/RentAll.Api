@@ -8,6 +8,7 @@ public class UpdatePropertyAgreementDto
 {
     public Guid PropertyId { get; set; }
     public int? ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
@@ -32,6 +33,9 @@ public class UpdatePropertyAgreementDto
 
         if (ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
             return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
+
+        if (FlatRateAmount.HasValue && FlatRateAmount.Value < 0)
+            return (false, "FlatRateAmount cannot be negative");
 
         if (Markup.HasValue && Markup.Value < 0)
             return (false, "Markup cannot be negative");
@@ -58,6 +62,7 @@ public class UpdatePropertyAgreementDto
             ManagementFeeType = ManagementFeeTypeId.HasValue
                 ? (ManagementFeeType)ManagementFeeTypeId.Value
                 : existing.ManagementFeeType,
+            FlatRateAmount = FlatRateAmount ?? existing.FlatRateAmount,
             W9Path = W9Path,
             InsurancePath = InsurancePath,
             InsuranceExpiration = InsuranceExpiration,

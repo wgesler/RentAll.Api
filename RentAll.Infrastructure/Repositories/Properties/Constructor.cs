@@ -166,7 +166,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         {
             PropertyId = e.PropertyId,
             OfficeId = e.OfficeId,
-            ManagementFeeType = (ManagementFeeType)e.ManagmentFeeTypeId,
+            ManagementFeeType = (ManagementFeeType)e.ManagementFeeTypeId,
+            FlatRateAmount = e.FlatRateAmount,
             W9Path = e.W9Path,
             InsurancePath = e.InsurancePath,
             InsuranceExpiration = e.InsuranceExpiration,

@@ -7,6 +7,7 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 public class CreatePropertyAgreementDto
 {
     public int ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public DateTimeOffset? InsuranceExpiration { get; set; }
@@ -26,6 +27,9 @@ public class CreatePropertyAgreementDto
     {
         if (!Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId))
             return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId}");
+
+        if (FlatRateAmount.HasValue && FlatRateAmount.Value < 0)
+            return (false, "FlatRateAmount cannot be negative");
 
         if (Markup.HasValue && Markup.Value < 0)
             return (false, "Markup cannot be negative");
@@ -50,6 +54,7 @@ public class CreatePropertyAgreementDto
             PropertyId = propertyId,
             OfficeId = officeId,
             ManagementFeeType = (ManagementFeeType)ManagementFeeTypeId,
+            FlatRateAmount = FlatRateAmount ?? 0m,
             W9Path = null,
             InsurancePath = null,
             InsuranceExpiration = InsuranceExpiration,
