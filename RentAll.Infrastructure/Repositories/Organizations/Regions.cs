@@ -10,7 +10,7 @@ public partial class OrganizationRepository
     public async Task<IEnumerable<Region>> GetRegionsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetAllByOfficeId", new
+        var res = await db.DapperProcQueryAsync<RegionEntity>("Organization.Region_GetAllByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
