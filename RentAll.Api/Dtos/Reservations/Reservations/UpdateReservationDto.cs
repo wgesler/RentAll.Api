@@ -77,7 +77,7 @@ public class UpdateReservationDto
         if (ContactId == Guid.Empty)
             return (false, "ContactId is required");
 
-        if (ArrivalDate > DepartureDate)
+        if (ArrivalDate >= DepartureDate)
             return (false, "DepartureDate must be after ArrivalDate");
 
         if (BillingRate < 0)
