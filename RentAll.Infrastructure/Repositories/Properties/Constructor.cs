@@ -284,6 +284,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return new PropertySelection
             {
                 UserId = e.UserId,
+                FromUnitLevel = e.FromUnitLevel,
+                ToUnitLevel = e.ToUnitLevel,
                 FromBeds = e.FromBeds,
                 ToBeds = e.ToBeds,
                 Accomodates = e.Accomodates,

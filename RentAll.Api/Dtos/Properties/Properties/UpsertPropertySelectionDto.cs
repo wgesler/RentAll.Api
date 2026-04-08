@@ -3,6 +3,8 @@ namespace RentAll.Api.Dtos.Properties.Properties;
 public class UpsertPropertySelectionDto
 {
     public Guid UserId { get; set; }
+    public int FromUnitLevel { get; set; }
+    public int ToUnitLevel { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
     public int Accomodates { get; set; }
@@ -32,6 +34,15 @@ public class UpsertPropertySelectionDto
         if (UserId == Guid.Empty || UserId != currentUser)
             return (false, "UserId is invalid");
 
+        if (FromUnitLevel < 0)
+            return (false, "FromUnitLevel must be zero or greater");
+
+        if (ToUnitLevel < 0)
+            return (false, "ToUnitLevel must be zero or greater");
+
+        if (ToUnitLevel < FromUnitLevel)
+            return (false, "ToUnitLevel must be greater than or equal to FromUnitLevel");
+
         if (FromBeds < 0)
             return (false, "FromBeds must be zero or greater");
 
@@ -55,6 +66,8 @@ public class UpsertPropertySelectionDto
         return new PropertySelection
         {
             UserId = UserId,
+            FromUnitLevel = FromUnitLevel,
+            ToUnitLevel = ToUnitLevel,
             FromBeds = FromBeds,
             ToBeds = ToBeds,
             Accomodates = Accomodates,

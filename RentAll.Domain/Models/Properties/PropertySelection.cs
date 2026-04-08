@@ -3,6 +3,8 @@ namespace RentAll.Domain.Models;
 public class PropertySelection
 {
     public Guid UserId { get; set; }
+    public int FromUnitLevel { get; set; }
+    public int ToUnitLevel { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
     public int Accomodates { get; set; }

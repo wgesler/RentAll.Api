@@ -3,6 +3,8 @@ namespace RentAll.Api.Dtos.Properties.Properties;
 public class PropertySelectionResponseDto
 {
     public Guid UserId { get; set; }
+    public int FromUnitLevel { get; set; }
+    public int ToUnitLevel { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
     public int Accomodates { get; set; }
@@ -29,6 +31,8 @@ public class PropertySelectionResponseDto
     public PropertySelectionResponseDto(PropertySelection s)
     {
         UserId = s.UserId;
+        FromUnitLevel = s.FromUnitLevel;
+        ToUnitLevel = s.ToUnitLevel;
         FromBeds = s.FromBeds;
         ToBeds = s.ToBeds;
         Accomodates = s.Accomodates;

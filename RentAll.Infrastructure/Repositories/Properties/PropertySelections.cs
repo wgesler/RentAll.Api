@@ -40,6 +40,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
             var res = await db.DapperProcQueryAsync<PropertySelectionEntity>("Property.PropertySelection_UpsertByUserId", new
             {
                 UserId = selection.UserId,
+                FromUnitLevel = selection.FromUnitLevel,
+                ToUnitLevel = selection.ToUnitLevel,
                 FromBeds = selection.FromBeds,
                 ToBeds = selection.ToBeds,
                 Accomodates = selection.Accomodates,
