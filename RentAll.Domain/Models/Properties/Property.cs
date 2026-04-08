@@ -41,6 +41,7 @@ public class Property
     public decimal PetFee { get; set; }
     public decimal ExtraFee { get; set; }
     public string ExtraFeeName { get; set; } = string.Empty;
+    public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }

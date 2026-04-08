@@ -15,6 +15,7 @@ public class PropertyList
     public string ContactName { get; set; } = string.Empty;
     public DateTimeOffset? AvailableFrom { get; set; }
     public DateTimeOffset? AvailableUntil { get; set; }
+    public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }

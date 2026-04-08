@@ -3,6 +3,8 @@ namespace RentAll.Infrastructure.Entities.Properties;
 public class PropertySelectionEntity
 {
     public Guid UserId { get; set; }
+    public int FromUnitFloor { get; set; }
+    public int ToUnitFloor { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
     public int Accomodates { get; set; }
