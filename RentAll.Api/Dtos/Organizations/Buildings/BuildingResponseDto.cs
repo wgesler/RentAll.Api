@@ -22,6 +22,8 @@ public class BuildingResponseDto
     public bool DogsOkay { get; set; }
     public bool CatsOkay { get; set; }
     public string PoundLimit { get; set; } = string.Empty;
+    public int TrashPickupId { get; set; }
+    public string? TrashRemoval { get; set; }
     public bool WasherDryerInBldg { get; set; }
     public bool Deck { get; set; }
     public bool Patio { get; set; }
@@ -56,6 +58,8 @@ public class BuildingResponseDto
         DogsOkay = building.DogsOkay;
         CatsOkay = building.CatsOkay;
         PoundLimit = building.PoundLimit;
+        TrashPickupId = building.TrashPickupId;
+        TrashRemoval = building.TrashRemoval;
         WasherDryerInBldg = building.WasherDryerInBldg;
         Deck = building.Deck;
         Patio = building.Patio;

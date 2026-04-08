@@ -193,6 +193,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             DogsOkay = e.DogsOkay,
             CatsOkay = e.CatsOkay,
             PoundLimit = e.PoundLimit,
+            TrashPickupId = e.TrashPickupId,
+            TrashRemoval = e.TrashRemoval,
             WasherDryerInBldg = e.WasherDryerInBldg,
             Deck = e.Deck,
             Patio = e.Patio,

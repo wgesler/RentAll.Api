@@ -22,6 +22,8 @@ public class Building
     public bool DogsOkay { get; set; }
     public bool CatsOkay { get; set; }
     public string PoundLimit { get; set; } = string.Empty;
+    public int TrashPickupId { get; set; }
+    public string? TrashRemoval { get; set; }
     public bool WasherDryerInBldg { get; set; }
     public bool Deck { get; set; }
     public bool Patio { get; set; }
