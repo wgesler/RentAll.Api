@@ -20,9 +20,11 @@ public class ReservationListResponseDto
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
     public bool PaymentReceived { get; set; }
+    public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
     public bool ReadyForArrival { get; set; }
     public bool Code { get; set; }
+    public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
@@ -50,9 +52,11 @@ public class ReservationListResponseDto
         CurrentInvoiceNo = reservationList.CurrentInvoiceNo;
         HasPets = reservationList.HasPets;
         PaymentReceived = reservationList.PaymentReceived;
+        WelcomeLetterChecked = reservationList.WelcomeLetterChecked;
         WelcomeLetterSent = reservationList.WelcomeLetterSent;
         ReadyForArrival = reservationList.ReadyForArrival;
         Code = reservationList.Code;
+        DepartureLetterChecked = reservationList.DepartureLetterChecked;
         DepartureLetterSent = reservationList.DepartureLetterSent;
         CreditDue = reservationList.CreditDue;
         IsActive = reservationList.IsActive;

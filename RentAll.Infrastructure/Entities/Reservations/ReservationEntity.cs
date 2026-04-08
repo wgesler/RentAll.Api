@@ -46,9 +46,11 @@ public class ReservationEntity
     public string? ExtraFeeLines { get; set; }
     public bool AllowExtensions { get; set; }
     public bool PaymentReceived { get; set; }
+    public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
     public bool ReadyForArrival { get; set; }
     public bool Code { get; set; }
+    public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }

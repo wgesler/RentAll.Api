@@ -42,9 +42,11 @@ public class CreateReservationDto
     public List<CreateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<CreateExtraFeeLineDto>();
     public bool AllowExtensions { get; set; }
     public bool PaymentReceived { get; set; }
+    public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
     public bool ReadyForArrival { get; set; }
     public bool Code { get; set; }
+    public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
@@ -162,9 +164,11 @@ public class CreateReservationDto
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
             AllowExtensions = AllowExtensions,
             PaymentReceived = PaymentReceived,
+            WelcomeLetterChecked = WelcomeLetterChecked,
             WelcomeLetterSent = WelcomeLetterSent,
             ReadyForArrival = ReadyForArrival,
             Code = Code,
+            DepartureLetterChecked = DepartureLetterChecked,
             DepartureLetterSent = DepartureLetterSent,
             CurrentInvoiceNo = CurrentInvoiceNo,
             CreditDue = CreditDue,
