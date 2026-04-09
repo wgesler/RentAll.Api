@@ -10,6 +10,8 @@ public class Inspection
     public string OfficeName { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
+    public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public InspectionType InspectionType { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }

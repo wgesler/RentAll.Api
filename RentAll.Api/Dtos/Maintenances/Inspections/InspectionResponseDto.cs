@@ -8,6 +8,8 @@ public class InspectionResponseDto
     public string OfficeName { get; set; }
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; }
+    public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public int InspectionTypeId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
@@ -23,6 +25,8 @@ public class InspectionResponseDto
         OfficeName = inspection.OfficeName;
         PropertyId = inspection.PropertyId;
         PropertyCode = inspection.PropertyCode;
+        ReservationId = inspection.ReservationId;
+        ReservationCode = inspection.ReservationCode;
         InspectionTypeId = (int)inspection.InspectionType;
         InspectionCheckList = inspection.InspectionCheckList;
         DocumentPath = inspection.DocumentPath;

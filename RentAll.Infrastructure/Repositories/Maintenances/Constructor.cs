@@ -124,6 +124,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OfficeName = e.OfficeName,
             PropertyId = e.PropertyId,
             PropertyCode = e.PropertyCode,
+            ReservationId = e.ReservationId,
+            ReservationCode = e.ReservationCode,
             InspectionType = (InspectionType)e.InspectionTypeId,
             InspectionCheckList = e.InspectionCheckList,
             DocumentPath = e.DocumentPath,

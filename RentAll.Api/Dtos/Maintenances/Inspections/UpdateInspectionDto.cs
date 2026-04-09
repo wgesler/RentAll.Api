@@ -6,6 +6,8 @@ public class UpdateInspectionDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
+    public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public int InspectionTypeId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
@@ -39,6 +41,8 @@ public class UpdateInspectionDto
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PropertyId = PropertyId,
+            ReservationId = ReservationId,
+            ReservationCode = ReservationCode,
             InspectionType = (InspectionType)InspectionTypeId,
             InspectionCheckList = InspectionCheckList,
             DocumentPath = DocumentPath,
