@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Maintenances.Inspections;
@@ -7,6 +8,7 @@ public class CreateInspectionDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid PropertyId { get; set; }
+    public int InspectionTypeId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
     public bool IsActive { get; set; } = true;
@@ -22,6 +24,9 @@ public class CreateInspectionDto
         if (PropertyId == Guid.Empty)
             return (false, "PropertyId is required");
 
+        if (!Enum.IsDefined(typeof(InspectionType), InspectionTypeId))
+            return (false, $"Invalid InspectionType value: {InspectionTypeId}");
+
         return (true, null);
     }
 
@@ -32,6 +37,7 @@ public class CreateInspectionDto
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PropertyId = PropertyId,
+            InspectionType = (InspectionType)InspectionTypeId,
             InspectionCheckList = InspectionCheckList,
             DocumentPath = DocumentPath,
             IsActive = IsActive,

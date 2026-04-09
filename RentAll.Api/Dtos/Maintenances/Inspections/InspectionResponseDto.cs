@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Maintenances.Inspections;
 
 public class InspectionResponseDto
@@ -10,6 +8,7 @@ public class InspectionResponseDto
     public string OfficeName { get; set; }
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; }
+    public int InspectionTypeId { get; set; }
     public string? InspectionCheckList { get; set; }
     public string? DocumentPath { get; set; }
     public bool IsActive { get; set; }
@@ -24,6 +23,7 @@ public class InspectionResponseDto
         OfficeName = inspection.OfficeName;
         PropertyId = inspection.PropertyId;
         PropertyCode = inspection.PropertyCode;
+        InspectionTypeId = (int)inspection.InspectionType;
         InspectionCheckList = inspection.InspectionCheckList;
         DocumentPath = inspection.DocumentPath;
         IsActive = inspection.IsActive;
