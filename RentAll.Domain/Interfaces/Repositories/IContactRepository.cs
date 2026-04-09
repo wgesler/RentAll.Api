@@ -11,7 +11,7 @@ public interface IContactRepository
     Task<Contact?> GetContactByEmailAsync(string email, Guid organizationId);
     Task<Contact?> GetContactByContactCodeAsync(string contactCode, Guid organizationId);
     Task<bool> ExistsByContactCodeAsync(string contactCode, Guid organizationId);
- 
+
     Task<Contact> CreateAsync(Contact contact);
     Task<Contact> UpdateByIdAsync(Contact contact);
     Task DeleteContactByIdAsync(Guid contactId, Guid modifiedBy);

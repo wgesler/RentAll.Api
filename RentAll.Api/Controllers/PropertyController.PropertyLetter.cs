@@ -16,7 +16,7 @@ namespace RentAll.Api.Controllers
             {
                 // Verify property belongs to organization
                 var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
-                if (property == null)   
+                if (property == null)
                     return NotFound("Property not found");
 
                 var propertyLetter = await _propertyRepository.GetPropertyLetterByPropertyIdAsync(propertyId, CurrentOrganizationId);

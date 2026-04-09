@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
 
                     if (!string.IsNullOrWhiteSpace(existing.W9Path))
                         await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.W9Path, ImageType.W9Forms);
-                    if(!string.IsNullOrEmpty(existing.InsurancePath))
+                    if (!string.IsNullOrEmpty(existing.InsurancePath))
                         await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.InsurancePath, ImageType.Insurances);
                 }
 

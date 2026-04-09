@@ -43,7 +43,7 @@ public class PdfGenerationService : IPdfGenerationService, IDisposable
                 {
                     Headless = true,
                     ExecutablePath = executablePath,
-                    Timeout = 60000, 
+                    Timeout = 60000,
                     Args = new[]
 
                     {

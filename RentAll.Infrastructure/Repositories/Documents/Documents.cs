@@ -5,7 +5,6 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Documents;
 
 namespace RentAll.Infrastructure.Repositories.Documents;
 

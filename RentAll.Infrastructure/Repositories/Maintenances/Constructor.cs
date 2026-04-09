@@ -9,7 +9,7 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 
 public partial class MaintenanceRepository : IMaintenanceRepository
 {
-    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions{ PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
     private readonly string _dbConnectionString;
 
     public MaintenanceRepository(IOptions<AppSettings> appSettings)

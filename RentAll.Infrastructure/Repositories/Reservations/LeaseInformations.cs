@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
     public partial class ReservationRepository
     {
         #region Selects
-    public async Task<LeaseInformation?> GetLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId)
+        public async Task<LeaseInformation?> GetLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetById", new

@@ -115,7 +115,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 
         #region Creates
         public async Task<Property> CreateAsync(Property property)
-            {
+        {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_Add", new
             {

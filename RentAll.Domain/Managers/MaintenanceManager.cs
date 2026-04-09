@@ -21,7 +21,8 @@ public class MaintenanceManager : IMaintenanceManager
             return await _maintenanceRepository.UpdateByIdAsync(m);
 
         // Retire the old maintenance record
-        foreach (var inspection in inspections) {
+        foreach (var inspection in inspections)
+        {
             inspection.IsActive = false;
             await _maintenanceRepository.UpdateInspectionByIdAsync(inspection);
         }

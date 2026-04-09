@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Maintenances.Receipts;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers;
 

@@ -280,7 +280,8 @@ namespace RentAll.Api.Controllers
                 return BadRequest("Property ID is required");
 
             try
-            {                await _propertyRepository.DeletePropertyByIdAsync(propertyId);
+            {
+                await _propertyRepository.DeletePropertyByIdAsync(propertyId);
                 return NoContent();
             }
             catch (Exception ex)

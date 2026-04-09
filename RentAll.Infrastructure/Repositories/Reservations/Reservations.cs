@@ -173,7 +173,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
         #region Updates
         public async Task<Reservation> UpdateByIdAsync(Reservation reservation)
-            {
+        {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.OpenAsync();
             await using var transaction = await db.BeginTransactionAsync();

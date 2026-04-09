@@ -8,7 +8,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
 {
     public partial class ContactRepository : IContactRepository
     {
-         public async Task<Contact> UpdateByIdAsync(Contact contact)
+        public async Task<Contact> UpdateByIdAsync(Contact contact)
         {
             var propertiesJson = contact.Properties != null && contact.Properties.Any()
                 ? JsonSerializer.Serialize(contact.Properties)

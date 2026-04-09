@@ -17,7 +17,7 @@ public interface IAccountingRepository
     #endregion
 
     #region CostCodes
-    Task<List<CostCode>> GetCostCodesByOfficeIdsAsync( Guid organizationId, string officeIds);
+    Task<List<CostCode>> GetCostCodesByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<List<CostCode>> GetCostCodesByOfficeIdAsync(Guid organizationId, int officeId);
     Task<CostCode?> GetCostCodeByIdAsync(int costCodeId, Guid organizationId, int officeId);
     Task<CostCode?> GetByCostCodeAsync(string costCode, Guid organizationId, int officeId);

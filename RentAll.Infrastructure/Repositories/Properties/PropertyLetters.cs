@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
     public partial class PropertyRepository
     {
         #region Selects
-    public async Task<PropertyLetter?> GetPropertyLetterByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        public async Task<PropertyLetter?> GetPropertyLetterByPropertyIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_GetByPropertyId", new
@@ -23,8 +23,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Creates
-    public async Task<PropertyLetter> CreatePropertyLetterAsync(PropertyLetter propertyLetter)
+        #region Creates
+        public async Task<PropertyLetter> CreatePropertyLetterAsync(PropertyLetter propertyLetter)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_Add", new
@@ -57,8 +57,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Updates
-    public async Task<PropertyLetter> UpdatePropertyLetterByIdAsync(PropertyLetter propertyLetter)
+        #region Updates
+        public async Task<PropertyLetter> UpdatePropertyLetterByIdAsync(PropertyLetter propertyLetter)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyLetterEntity>("Property.PropertyInformation_UpdateByPropertyId", new
@@ -91,8 +91,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
         }
         #endregion
 
-#region Deletes
-    public async Task DeletePropertyLetterByPropertyIdAsync(Guid propertyId)
+        #region Deletes
+        public async Task DeletePropertyLetterByPropertyIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.PropertyInformation_DeleteByPropertyId", new

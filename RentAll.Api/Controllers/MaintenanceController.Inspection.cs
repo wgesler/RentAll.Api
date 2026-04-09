@@ -8,8 +8,8 @@ public partial class MaintenanceController
 
     [HttpGet("inspection/property/{propertyId:guid}")]
     public async Task<IActionResult> GetInspectionsByPropertyId(Guid propertyId)
-   {
-       if (propertyId == Guid.Empty)
+    {
+        if (propertyId == Guid.Empty)
             return BadRequest("PropertyId is required");
 
         try

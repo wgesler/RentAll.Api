@@ -1,5 +1,4 @@
 using RentAll.Domain.Models.Common;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
 

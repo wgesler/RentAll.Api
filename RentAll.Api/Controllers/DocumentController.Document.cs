@@ -171,7 +171,7 @@ namespace RentAll.Api.Controllers
                 {
                     // Update existing document (including deleted ones - restore them)
                     var model = dto.ToModelForUpdate(existing, CurrentUser);
-                    model.IsDeleted = false; 
+                    model.IsDeleted = false;
                     model.DocumentPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(existing.OrganizationId, existing.OfficeName,
                         dto.FileDetails, (DocumentType)dto.DocumentTypeId, existing.DocumentPath, null) ?? string.Empty;
 

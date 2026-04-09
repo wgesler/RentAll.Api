@@ -38,7 +38,7 @@ public class ReservationEntity
     public int NumberOfPets { get; set; }
     public string? PetDescription { get; set; }
     public bool MaidService { get; set; }
-    public decimal MaidServiceFee { get; set; } 
+    public decimal MaidServiceFee { get; set; }
     public int FrequencyId { get; set; }
     public DateTimeOffset MaidStartDate { get; set; }
     public decimal Taxes { get; set; }

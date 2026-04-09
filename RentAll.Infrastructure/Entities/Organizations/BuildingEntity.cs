@@ -8,7 +8,7 @@ public class BuildingEntity
     public string OfficeName { get; set; } = string.Empty;
     public string BuildingCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; } 
+    public string? Description { get; set; }
     public string? HoaName { get; set; }
     public string? HoaPhone { get; set; }
     public string? HoaEmail { get; set; }

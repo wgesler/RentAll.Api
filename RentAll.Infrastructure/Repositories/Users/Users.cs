@@ -177,7 +177,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 
         #region Deletes
         public async Task DeleteUserByIdAsync(Guid userId)
-            {
+        {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("User.User_DeleteById", new
             {

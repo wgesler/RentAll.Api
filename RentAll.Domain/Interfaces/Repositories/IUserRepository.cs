@@ -10,7 +10,7 @@ namespace RentAll.Domain.Interfaces.Repositories
         Task<User?> GetUserByIdAsync(Guid userId);
         Task<User?> GetUserByEmailAsync(string email);
         Task<bool> ExistsByEmailAsync(string email);
-  
+
         Task<User> CreateAsync(User user);
         Task<User> UpdateByIdAsync(User user);
         Task DeleteUserByIdAsync(Guid userId);

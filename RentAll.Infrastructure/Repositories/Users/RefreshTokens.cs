@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Users
     public partial class UserRepository
     {
         #region Selects
-    public async Task<RefreshToken?> GetRefreshTokenByTokenHashAsync(string tokenHash)
+        public async Task<RefreshToken?> GetRefreshTokenByTokenHashAsync(string tokenHash)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_GetByTokenHash", new
@@ -64,8 +64,8 @@ namespace RentAll.Infrastructure.Repositories.Users
         }
         #endregion
 
-#region Creates
-    public async Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken)
+        #region Creates
+        public async Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<RefreshTokenEntity>("User.RefreshToken_Add", new
@@ -82,8 +82,8 @@ namespace RentAll.Infrastructure.Repositories.Users
         }
         #endregion
 
-#region Deletes
-    public async Task DeleteRefreshTokenByIdAsync(Guid refreshTokenId)
+        #region Deletes
+        public async Task DeleteRefreshTokenByIdAsync(Guid refreshTokenId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("User.RefreshToken_DeleteById", new

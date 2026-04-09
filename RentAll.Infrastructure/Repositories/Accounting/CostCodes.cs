@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 public partial class AccountingRepository
 {
     #region Selects
-    public async Task<List<CostCode>> GetCostCodesByOfficeIdsAsync(Guid organizationId,string officeIds)
+    public async Task<List<CostCode>> GetCostCodesByOfficeIdsAsync(Guid organizationId, string officeIds)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<CostCodeEntity>("Accounting.CostCode_GetAllByOfficeIds", new

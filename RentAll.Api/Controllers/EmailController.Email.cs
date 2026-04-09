@@ -1,5 +1,3 @@
-using System.Reflection.Metadata;
-
 namespace RentAll.Api.Controllers
 {
     public partial class EmailController
