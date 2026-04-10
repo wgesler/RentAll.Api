@@ -182,6 +182,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
             BankName = e.BankName,
             RoutingNumber = e.RoutingNumber,
             AccountNumber = e.AccountNumber,
+            RentalIncomeCcId = e.RentalIncomeCcId,
+            RentalExpenseCcId = e.RentalExpenseCcId,
             Notes = e.Notes
         };
 

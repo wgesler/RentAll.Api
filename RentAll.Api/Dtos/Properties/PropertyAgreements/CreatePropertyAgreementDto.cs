@@ -19,6 +19,8 @@ public class CreatePropertyAgreementDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? RentalIncomeCcId { get; set; }
+    public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -41,6 +43,12 @@ public class CreatePropertyAgreementDto
         if (RevenueSplitOwner.HasValue && RevenueSplitOffice.HasValue
             && RevenueSplitOwner.Value + RevenueSplitOffice.Value != 100)
             return (false, "When both splits are provided, RevenueSplitOwner and RevenueSplitOffice must sum to 100");
+
+        if (RentalIncomeCcId.HasValue && RentalIncomeCcId.Value <= 0)
+            return (false, "RentalIncomeCcId must be greater than zero when provided");
+
+        if (RentalExpenseCcId.HasValue && RentalExpenseCcId.Value <= 0)
+            return (false, "RentalExpenseCcId must be greater than zero when provided");
 
         return (true, null);
     }
@@ -65,6 +73,8 @@ public class CreatePropertyAgreementDto
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
+            RentalIncomeCcId = RentalIncomeCcId,
+            RentalExpenseCcId = RentalExpenseCcId,
             Notes = Notes
         };
     }

@@ -23,6 +23,8 @@ public class PropertyAgreementResponseDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? RentalIncomeCcId { get; set; }
+    public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
 
     public PropertyAgreementResponseDto(PropertyAgreement a)
@@ -43,6 +45,8 @@ public class PropertyAgreementResponseDto
         BankName = a.BankName;
         RoutingNumber = a.RoutingNumber;
         AccountNumber = a.AccountNumber;
+        RentalIncomeCcId = a.RentalIncomeCcId;
+        RentalExpenseCcId = a.RentalExpenseCcId;
         Notes = a.Notes;
     }
 }

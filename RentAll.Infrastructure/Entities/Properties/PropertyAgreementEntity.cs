@@ -18,5 +18,7 @@ public class PropertyAgreementEntity
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? RentalIncomeCcId { get; set; }
+    public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
 }
