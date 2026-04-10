@@ -199,8 +199,18 @@ var app = builder.Build();
 //app.UseHttpsRedirection();
 
 // Enable static files (for images, logos, etc.)
-app.UseStaticFiles();
-
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name == "index.html")
+        {
+            ctx.Context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+            ctx.Context.Response.Headers["Pragma"] = "no-cache";
+            ctx.Context.Response.Headers["Expires"] = "0";
+        }
+    }
+});
 // Enable CORS (must be before UseAuthentication and UseAuthorization)
 app.UseCors();
 
