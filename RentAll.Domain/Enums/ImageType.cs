@@ -1,3 +1,4 @@
+
 namespace RentAll.Domain.Enums;
 
 public enum ImageType
@@ -8,6 +9,6 @@ public enum ImageType
     Profiles = 3,
     W9Forms = 4,
     Insurances = 5,
-    Agreements = 6,
+    ApplianceDecal = 6,
 }
 

@@ -25,7 +25,7 @@ public partial class PropertyController
             var response = new PropertyAgreementResponseDto(agreement);
             response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.W9Path, ImageType.W9Forms);
             response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.InsurancePath, ImageType.Insurances);
-            response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.AgreementPath, ImageType.Agreements);
+            response.AgreementFileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(CurrentOrganizationId, officeName, agreement.AgreementPath);
 
             return Ok(response);
         }
@@ -66,13 +66,13 @@ public partial class PropertyController
             var model = dto.ToModel(propertyId, property.OfficeId);
             model.W9Path = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms);
             model.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
-            model.AgreementPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, ImageType.Agreements);
+            model.AgreementPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, DocumentType.Agreements);
             var saved = await _propertyRepository.CreatePropertyAgreementAsync(model);
 
             var response = new PropertyAgreementResponseDto(saved);
             response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, saved.W9Path, ImageType.W9Forms);
             response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, saved.InsurancePath, ImageType.Insurances);
-            response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, saved.AgreementPath, ImageType.Agreements);
+            response.AgreementFileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(CurrentOrganizationId, officeName, saved.AgreementPath);
 
             return Ok(response);
         }
@@ -107,14 +107,14 @@ public partial class PropertyController
             var model = dto.ToModel(existing);
             model.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
             model.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
-            model.AgreementPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, ImageType.Agreements, existing.AgreementPath, dto.AgreementPath);
+            model.AgreementPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, DocumentType.Agreements, existing.AgreementPath, dto.AgreementPath);
 
             var updatedContact = await _propertyRepository.UpdatePropertyAgreementByPropertyIdAsync(model);
             var response = new PropertyAgreementResponseDto(updatedContact);
 
             response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, updatedContact.W9Path, ImageType.W9Forms);
             response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, updatedContact.InsurancePath, ImageType.Insurances);
-            response.AgreementFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, updatedContact.AgreementPath, ImageType.Agreements);
+            response.AgreementFileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(CurrentOrganizationId, officeName, updatedContact.AgreementPath);
 
             return Ok(response);
         }
@@ -147,7 +147,7 @@ public partial class PropertyController
             if (!string.IsNullOrWhiteSpace(existing.InsurancePath))
                 await _fileService.DeleteImageAsync(CurrentOrganizationId, officeName, existing.InsurancePath, ImageType.Insurances);
             if (!string.IsNullOrWhiteSpace(existing.AgreementPath))
-                await _fileService.DeleteImageAsync(CurrentOrganizationId, officeName, existing.AgreementPath, ImageType.Agreements);
+                await _fileService.DeleteDocumentAsync(CurrentOrganizationId, officeName, existing.AgreementPath);
 
             await _propertyRepository.DeletePropertyAgreementByPropertyIdAsync(propertyId);
             return NoContent();

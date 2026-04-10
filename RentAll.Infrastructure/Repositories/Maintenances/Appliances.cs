@@ -46,7 +46,8 @@ public partial class MaintenanceRepository
             ApplianceName = appliance.ApplianceName,
             Manufacturer = appliance.Manufacturer,
             ModelNo = appliance.ModelNo,
-            SerialNo = appliance.SerialNo
+            SerialNo = appliance.SerialNo,
+            DecalPath = appliance.DecalPath
         });
 
         if (res == null || !res.Any())
@@ -67,7 +68,8 @@ public partial class MaintenanceRepository
             ApplianceName = appliance.ApplianceName,
             Manufacturer = appliance.Manufacturer,
             ModelNo = appliance.ModelNo,
-            SerialNo = appliance.SerialNo
+            SerialNo = appliance.SerialNo,
+            DecalPath = appliance.DecalPath
         });
 
         if (res == null || !res.Any())

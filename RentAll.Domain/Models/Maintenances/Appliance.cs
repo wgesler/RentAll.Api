@@ -6,6 +6,7 @@ public class Appliance
     public Guid PropertyId { get; set; }
     public string ApplianceName { get; set; } = string.Empty;
     public string Manufacturer { get; set; } = string.Empty;
-    public string ModelNo { get; set; } = string.Empty;
-    public string SerialNo { get; set; } = string.Empty;
+    public string? ModelNo { get; set; }
+    public string? SerialNo { get; set; }
+    public string? DecalPath { get; set; }
 }

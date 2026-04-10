@@ -97,7 +97,22 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ApplianceName = e.ApplianceName,
             Manufacturer = e.Manufacturer,
             ModelNo = e.ModelNo,
-            SerialNo = e.SerialNo
+            SerialNo = e.SerialNo,
+            DecalPath = e.DecalPath
+        };
+    }
+
+    private static Utility ConvertEntityToModel(UtilityEntity e)
+    {
+        return new Utility
+        {
+            UtilityId = e.UtilityId,
+            PropertyId = e.PropertyId,
+            UtilityName = e.UtilityName,
+            Phone = e.Phone,
+            AccountName = e.AccountName,
+            AccountNumber = e.AccountNumber,
+            Notes = e.Notes
         };
     }
 

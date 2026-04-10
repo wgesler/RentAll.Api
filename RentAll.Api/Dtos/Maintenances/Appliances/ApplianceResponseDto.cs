@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Api.Dtos.Maintenances.Appliances;
 
 public class ApplianceResponseDto
@@ -6,8 +8,10 @@ public class ApplianceResponseDto
     public Guid PropertyId { get; set; }
     public string ApplianceName { get; set; } = string.Empty;
     public string Manufacturer { get; set; } = string.Empty;
-    public string ModelNo { get; set; } = string.Empty;
-    public string SerialNo { get; set; } = string.Empty;
+    public string? ModelNo { get; set; }
+    public string? SerialNo { get; set; }
+    public string? DecalPath { get; set; }
+    public FileDetails? DecalFileDetails { get; set; }
 
     public ApplianceResponseDto(Appliance appliance)
     {
@@ -17,5 +21,6 @@ public class ApplianceResponseDto
         Manufacturer = appliance.Manufacturer;
         ModelNo = appliance.ModelNo;
         SerialNo = appliance.SerialNo;
+        DecalPath = appliance.DecalPath;
     }
 }

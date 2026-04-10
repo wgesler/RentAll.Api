@@ -13,8 +13,21 @@ public partial class MaintenanceController
 
         try
         {
+            var maintenance = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
+            if (maintenance == null || maintenance.IsDeleted)
+                return NotFound("Property maintenance record not found");
+
             var records = await _maintenanceRepository.GetAppliancesByPropertyIdAsync(propertyId);
-            var response = records.Select(o => new ApplianceResponseDto(o));
+            var officeName = maintenance.OfficeName;
+            var response = new List<ApplianceResponseDto>();
+            foreach (var o in records)
+            {
+                var item = new ApplianceResponseDto(o);
+                item.DecalFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                    CurrentOrganizationId, officeName, o.DecalPath, ImageType.ApplianceDecal);
+                response.Add(item);
+            }
+
             return Ok(response);
         }
         catch (Exception ex)
@@ -36,7 +49,15 @@ public partial class MaintenanceController
             if (record == null)
                 return NotFound("Appliance not found");
 
-            return Ok(new ApplianceResponseDto(record));
+            var maintenance = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(record.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
+            if (maintenance == null || maintenance.IsDeleted)
+                return NotFound("Appliance not found");
+
+            var response = new ApplianceResponseDto(record);
+            response.DecalFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                CurrentOrganizationId, maintenance.OfficeName, record.DecalPath, ImageType.ApplianceDecal);
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -64,8 +85,14 @@ public partial class MaintenanceController
                 return NotFound("Property maintenance record not found");
 
             var appliance = dto.ToModel();
+            appliance.DecalPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(
+                CurrentOrganizationId, maintenance.OfficeName, dto.DecalFileDetails, ImageType.ApplianceDecal);
+
             var created = await _maintenanceRepository.CreateApplianceAsync(appliance);
-            return Ok(new ApplianceResponseDto(created));
+            var response = new ApplianceResponseDto(created);
+            response.DecalFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                CurrentOrganizationId, maintenance.OfficeName, created.DecalPath, ImageType.ApplianceDecal);
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -97,8 +124,14 @@ public partial class MaintenanceController
                 return NotFound("Appliance not found");
 
             var appliance = dto.ToModel();
+            appliance.DecalPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId,
+                maintenance.OfficeName,dto.DecalFileDetails,ImageType.ApplianceDecal,existing.DecalPath,dto.DecalPath);
+
             var updated = await _maintenanceRepository.UpdateApplianceAsync(appliance);
-            return Ok(new ApplianceResponseDto(updated));
+            var response = new ApplianceResponseDto(updated);
+            response.DecalFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                CurrentOrganizationId, maintenance.OfficeName, updated.DecalPath, ImageType.ApplianceDecal);
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -117,6 +150,14 @@ public partial class MaintenanceController
 
         try
         {
+            var existing = await _maintenanceRepository.GetApplianceByIdAsync(applianceId);
+            if (existing != null)
+            {
+                var maintenance = await _maintenanceRepository.GetMaintenanceByPropertyIdAsync(existing.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
+                if (!string.IsNullOrWhiteSpace(existing.DecalPath))
+                    await _fileService.DeleteImageAsync(CurrentOrganizationId, maintenance?.OfficeName, existing.DecalPath, ImageType.ApplianceDecal);
+            }
+
             await _maintenanceRepository.DeleteApplianceByIdAsync(applianceId);
             return NoContent();
         }
