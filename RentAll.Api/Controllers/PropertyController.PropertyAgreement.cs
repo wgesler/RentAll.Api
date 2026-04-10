@@ -15,7 +15,7 @@ public partial class PropertyController
         {
             var agreement = await _propertyRepository.GetPropertyAgreementByPropertyIdAsync(propertyId);
             if (agreement == null)
-                return NotFound("Agreement not found");
+                return Ok();
 
             // Get the office name for file storage path
             var office = await _organizationRepository.GetOfficeByIdAsync(agreement.OfficeId, CurrentOrganizationId);
