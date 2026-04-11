@@ -16,6 +16,7 @@ public class CreatePropertyAgreementDto
     public int? RevenueSplitOffice { get; set; }
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
+    public decimal? HourlyLaborCost { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
@@ -30,6 +31,9 @@ public class CreatePropertyAgreementDto
 
         if (FlatRateAmount.HasValue && FlatRateAmount.Value < 0)
             return (false, "FlatRateAmount cannot be negative");
+
+        if (HourlyLaborCost.HasValue && HourlyLaborCost.Value < 0)
+            return (false, "HourlyLaborCost cannot be negative");
 
         if (Markup.HasValue && Markup.Value < 0)
             return (false, "Markup cannot be negative");
@@ -70,6 +74,7 @@ public class CreatePropertyAgreementDto
             RevenueSplitOffice = RevenueSplitOffice ?? 25,
             WorkingCapitalBalance = WorkingCapitalBalance ?? 0m,
             LinenAndTowelFee = LinenAndTowelFee ?? 0m,
+            HourlyLaborCost = HourlyLaborCost ?? 0m,
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,

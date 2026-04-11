@@ -179,6 +179,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             RevenueSplitOffice = e.RevenueSplitOffice,
             WorkingCapitalBalance = e.WorkingCapitalBalance,
             LinenAndTowelFee = e.LinenAndTowelFee,
+            HourlyLaborCost = e.HourlyLaborCost,
             BankName = e.BankName,
             RoutingNumber = e.RoutingNumber,
             AccountNumber = e.AccountNumber,

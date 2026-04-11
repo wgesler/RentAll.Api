@@ -15,6 +15,7 @@ public class PropertyAgreementEntity
     public int RevenueSplitOffice { get; set; }
     public decimal WorkingCapitalBalance { get; set; }
     public decimal LinenAndTowelFee { get; set; }
+    public decimal HourlyLaborCost { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
