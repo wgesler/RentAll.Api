@@ -31,13 +31,27 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 }
             }
 
+            List<int> officeAccess = new List<int>();
+            if (!string.IsNullOrWhiteSpace(e.OfficeAccess))
+            {
+                try
+                {
+                    officeAccess = JsonSerializer.Deserialize<List<int>>(e.OfficeAccess) ?? new List<int>();
+                }
+                catch
+                {
+                    officeAccess = new List<int>();
+                }
+            }
+
             var response = new Contact()
             {
                 ContactId = e.ContactId,
+                UserId = e.UserId,
                 OrganizationId = e.OrganizationId,
                 OfficeId = e.OfficeId,
                 OfficeName = e.OfficeName,
-                OfficeAccess = e.OfficeAccess,
+                OfficeAccess = officeAccess,
                 ContactCode = e.ContactCode,
                 EntityType = (EntityType)e.EntityTypeId,
                 OwnerType = (OwnerType?)e.OwnerTypeId,

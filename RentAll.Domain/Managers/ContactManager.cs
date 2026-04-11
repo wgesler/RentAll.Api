@@ -35,28 +35,38 @@ public class ContactManager : IContactManager
         return code;
     }
 
-    public async Task GenerateLoginForOwnerContact(Contact contact, Guid createdBy)
+    public async Task<Contact> GenerateLoginForOwnerContact(Contact contact, Guid createdBy)
     {
-        if (contact.EntityType == EntityType.Owner)
+        if (contact.EntityType != EntityType.Owner)
+            return contact;
+
+        var newUser = new User
         {
-            var newUser = new User
-            {
-                OrganizationId = contact.OrganizationId,
-                FirstName = contact.FirstName ?? string.Empty,
-                LastName = contact.LastName ?? string.Empty,
-                Email = contact.Email,
-                Phone = contact.Phone ?? string.Empty,
-                PasswordHash = _passwordHasher.HashPassword(contact.ContactCode),
-                UserGroups = new List<string>() { "Owner" },
-                OfficeAccess = new List<int>() { contact.OfficeId },
-                ProfilePath = null,
-                StartupPage = StartupPage.Dashboard,
-                AgentId = null,
-                CommissionRate = 0,
-                CreatedBy = contact.CreatedBy
-            };
-            await _userRepository.CreateAsync(newUser);
+            OrganizationId = contact.OrganizationId,
+            ContactId = contact.ContactId,
+            FirstName = contact.FirstName ?? string.Empty,
+            LastName = contact.LastName ?? string.Empty,
+            Email = contact.Email,
+            Phone = contact.Phone ?? string.Empty,
+            PasswordHash = _passwordHasher.HashPassword(contact.ContactCode),
+            UserGroups = new List<string>() { "Owner" },
+            OfficeAccess = contact.OfficeAccess != null && contact.OfficeAccess.Count > 0
+                ? new List<int>(contact.OfficeAccess)
+                : new List<int> { contact.OfficeId },
+            ProfilePath = null,
+            StartupPage = StartupPage.Dashboard,
+            AgentId = null,
+            CommissionRate = 0,
+            CreatedBy = contact.CreatedBy
+        };
+        var createdUser = await _userRepository.CreateAsync(newUser);
+        if (createdUser.UserId != Guid.Empty)
+        {
+            contact.UserId = createdUser.UserId;
+            return await _contactRepository.UpdateByIdAsync(contact);
         }
+
+        return contact;
     }
 }
 

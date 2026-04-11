@@ -121,6 +121,7 @@ public partial class AuthController
                 passwordHash = existingUser.PasswordHash;
 
             var user = dto.ToModel(dto, passwordHash, CurrentUser);
+            user.ContactId = dto.ContactId ?? existingUser.ContactId;
 
             user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                 existingUser.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);

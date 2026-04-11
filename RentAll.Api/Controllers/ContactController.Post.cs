@@ -28,11 +28,11 @@ namespace RentAll.Api.Controllers
                 contact.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
-                await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
-                var response = new ContactResponseDto(createdContact);
+                var afterLogin = await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
+                var response = new ContactResponseDto(afterLogin);
 
-                response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdContact.OrganizationId, null, createdContact.W9Path, ImageType.W9Forms);
-                response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(createdContact.OrganizationId, null, createdContact.InsurancePath, ImageType.Insurances);
+                response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.W9Path, ImageType.W9Forms);
+                response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.InsurancePath, ImageType.Insurances);
 
                 return Ok(response);
             }

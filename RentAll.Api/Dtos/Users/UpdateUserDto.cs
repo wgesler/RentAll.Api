@@ -20,6 +20,7 @@ public class UpdateUserDto
     public int StartupPageId { get; set; }
     public int? DefaultOfficeId { get; set; }
     public Guid? AgentId { get; set; }
+    public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
 
@@ -57,7 +58,9 @@ public class UpdateUserDto
             OrganizationId = d.OrganizationId,
             UserId = d.UserId,
             AgentId = d.AgentId,
+            ContactId = d.ContactId,
             CommissionRate = d.CommissionRate,
+            Username = d.Email,
             FirstName = d.FirstName,
             LastName = d.LastName,
             Email = d.Email,

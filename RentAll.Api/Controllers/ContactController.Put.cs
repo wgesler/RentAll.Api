@@ -26,6 +26,7 @@ namespace RentAll.Api.Controllers
                     return BadRequest("Contact Code cannot change");
 
                 var contact = dto.ToModel(CurrentUser);
+                contact.UserId = dto.UserId ?? existing.UserId;
 
                 // Get the office name for file storage path
                 var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, dto.OrganizationId);

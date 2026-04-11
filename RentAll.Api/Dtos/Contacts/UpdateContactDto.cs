@@ -5,9 +5,10 @@ namespace RentAll.Api.Dtos.Contacts;
 public class UpdateContactDto
 {
     public Guid ContactId { get; set; }
+    public Guid? UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public string OfficeAccess { get; set; } = string.Empty;
+    public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public int? OwnerTypeId { get; set; }
@@ -62,7 +63,7 @@ public class UpdateContactDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
-        if (string.IsNullOrWhiteSpace(OfficeAccess))
+        if (OfficeAccess == null || !OfficeAccess.Any())
             return (false, "OfficeAccess is required");
 
         // Validate enum values
@@ -80,6 +81,7 @@ public class UpdateContactDto
         return new Contact
         {
             ContactId = ContactId,
+            UserId = UserId,
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             ContactCode = ContactCode,
@@ -91,7 +93,7 @@ public class UpdateContactDto
             DisplayName = DisplayName,
             FirstName = FirstName,
             LastName = LastName,
-            OfficeAccess = OfficeAccess.Trim(),
+            OfficeAccess = OfficeAccess,
             Address1 = Address1,
             Address2 = Address2,
             City = City,

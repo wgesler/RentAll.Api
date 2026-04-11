@@ -101,6 +101,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 {
                     OrganizationId = user.OrganizationId,
                     AgentId = user.AgentId,
+                    ContactId = user.ContactId,
                     CommissionRate = user.CommissionRate,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
@@ -152,6 +153,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 OrganizationId = user.OrganizationId,
                 UserId = user.UserId,
                 AgentId = user.AgentId,
+                ContactId = user.ContactId,
                 CommissionRate = user.CommissionRate,
                 FirstName = user.FirstName,
                 LastName = user.LastName,

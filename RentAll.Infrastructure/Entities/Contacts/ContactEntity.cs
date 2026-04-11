@@ -5,6 +5,7 @@ public class ContactEntity
     public Guid ContactId { get; set; }
     public Guid OrganizationId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
+    public Guid? UserId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public string OfficeAccess { get; set; } = string.Empty;

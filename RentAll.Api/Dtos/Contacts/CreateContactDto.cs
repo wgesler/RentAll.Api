@@ -6,7 +6,7 @@ public class CreateContactDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public string OfficeAccess { get; set; } = string.Empty;
+    public List<int> OfficeAccess { get; set; } = new List<int>();
     public int EntityTypeId { get; set; }
     public int? OwnerTypeId { get; set; }
     public List<string> Properties { get; set; } = new List<string>();
@@ -52,7 +52,7 @@ public class CreateContactDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
-        if (string.IsNullOrWhiteSpace(OfficeAccess))
+        if (OfficeAccess == null || !OfficeAccess.Any())
             return (false, "OfficeAccess is required");
 
         // Validate enum values
@@ -80,7 +80,7 @@ public class CreateContactDto
             DisplayName = DisplayName,
             FirstName = FirstName,
             LastName = LastName,
-            OfficeAccess = OfficeAccess.Trim(),
+            OfficeAccess = OfficeAccess,
             Address1 = Address1,
             Address2 = Address2,
             City = City,

@@ -6,10 +6,11 @@ namespace RentAll.Domain.Models;
 public class Contact
 {
     public Guid ContactId { get; set; }
+    public Guid? UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
-    public string OfficeAccess { get; set; } = string.Empty;
+    public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
     public EntityType EntityType { get; set; }
     public OwnerType? OwnerType { get; set; }

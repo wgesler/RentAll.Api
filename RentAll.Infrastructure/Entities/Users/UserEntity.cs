@@ -18,6 +18,7 @@ public class UserEntity
     public int? DefaultOfficeId { get; set; }
     public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
+    public Guid? ContactId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

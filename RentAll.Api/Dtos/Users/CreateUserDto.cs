@@ -17,6 +17,7 @@ public class CreateUserDto
     public int StartupPageId { get; set; }
     public int? DefaultOfficeId { get; set; }
     public Guid? AgentId { get; set; }
+    public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
 
@@ -63,7 +64,9 @@ public class CreateUserDto
         {
             OrganizationId = OrganizationId,
             AgentId = AgentId,
+            ContactId = ContactId,
             CommissionRate = CommissionRate,
+            Username = Email,
             FirstName = FirstName,
             LastName = LastName,
             Email = Email,

@@ -14,11 +14,16 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 ? JsonSerializer.Serialize(contact.Properties)
                 : "[]";
 
+            var officeAccessJson = contact.OfficeAccess != null && contact.OfficeAccess.Any()
+                ? JsonSerializer.Serialize(contact.OfficeAccess)
+                : "[]";
+
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_UpdateById", new
             {
                 ContactId = contact.ContactId,
                 OrganizationId = contact.OrganizationId,
+                UserId = contact.UserId,
                 OfficeId = contact.OfficeId,
                 ContactCode = contact.ContactCode,
                 EntityTypeId = (int)contact.EntityType,
@@ -29,7 +34,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 DisplayName = contact.DisplayName,
                 FirstName = contact.FirstName,
                 LastName = contact.LastName,
-                OfficeAccess = contact.OfficeAccess,
+                OfficeAccess = officeAccessJson,
                 Address1 = contact.Address1,
                 Address2 = contact.Address2,
                 City = contact.City,

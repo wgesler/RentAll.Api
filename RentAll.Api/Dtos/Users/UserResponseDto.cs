@@ -8,6 +8,7 @@ public class UserResponseDto
     public Guid OrganizationId { get; set; }
     public string? OrganizationName { get; set; }
     public Guid? AgentId { get; set; }
+    public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -33,6 +34,7 @@ public class UserResponseDto
         OrganizationId = user.OrganizationId;
         OrganizationName = user.OrganizationName;
         AgentId = user.AgentId;
+        ContactId = user.ContactId;
         CommissionRate = user.CommissionRate;
         FirstName = user.FirstName;
         LastName = user.LastName;
