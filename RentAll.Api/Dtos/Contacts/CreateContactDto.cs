@@ -9,6 +9,7 @@ public class CreateContactDto
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public int EntityTypeId { get; set; }
     public int? OwnerTypeId { get; set; }
+    public int? VendorTypeId { get; set; }
     public List<string> Properties { get; set; } = new List<string>();
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }
@@ -62,6 +63,9 @@ public class CreateContactDto
         if (OwnerTypeId.HasValue && !Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
             return (false, $"Invalid OwnerType value: {OwnerTypeId}");
 
+        if (VendorTypeId.HasValue && !Enum.IsDefined(typeof(VendorType), VendorTypeId.Value))
+            return (false, $"Invalid VendorType value: {VendorTypeId}");
+
         return (true, null);
     }
 
@@ -74,6 +78,7 @@ public class CreateContactDto
             ContactCode = code,
             EntityType = (EntityType)EntityTypeId,
             OwnerType = (OwnerType?)OwnerTypeId,
+            VendorType = (VendorType?)VendorTypeId,
             CompanyName = CompanyName,
             CompanyEmail = CompanyEmail,
             Properties = Properties ?? new List<string>(),
