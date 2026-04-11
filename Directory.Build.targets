@@ -1,0 +1,11 @@
+<Project>
+  <!-- Clear alternate output used for locked-bin build verification so it does not accumulate stale artifacts. -->
+  <Target Name="CleanBuildVerifyOutput" BeforeTargets="Build">
+    <PropertyGroup>
+      <_BuildVerifyParent>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\_build_verify'))</_BuildVerifyParent>
+      <_BuildVerifyLocal>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)_build_verify'))</_BuildVerifyLocal>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_BuildVerifyParent)" Condition="Exists('$(_BuildVerifyParent)')" />
+    <RemoveDir Directories="$(_BuildVerifyLocal)" Condition="Exists('$(_BuildVerifyLocal)')" />
+  </Target>
+</Project>

@@ -7,6 +7,7 @@ public class UpdateContactDto
     public Guid ContactId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
+    public string OfficeAccess { get; set; } = string.Empty;
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public int? OwnerTypeId { get; set; }
@@ -61,6 +62,9 @@ public class UpdateContactDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
+        if (string.IsNullOrWhiteSpace(OfficeAccess))
+            return (false, "OfficeAccess is required");
+
         // Validate enum values
         if (!Enum.IsDefined(typeof(EntityType), EntityTypeId))
             return (false, $"Invalid EntityType value: {EntityTypeId}");
@@ -87,6 +91,7 @@ public class UpdateContactDto
             DisplayName = DisplayName,
             FirstName = FirstName,
             LastName = LastName,
+            OfficeAccess = OfficeAccess.Trim(),
             Address1 = Address1,
             Address2 = Address2,
             City = City,

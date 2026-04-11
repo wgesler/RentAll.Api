@@ -7,6 +7,7 @@ public class ContactEntity
     public string ContactCode { get; set; } = string.Empty;
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public string OfficeAccess { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public int? OwnerTypeId { get; set; }
     public string Properties { get; set; } = string.Empty;

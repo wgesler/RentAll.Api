@@ -9,6 +9,7 @@ public class Contact
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public string OfficeAccess { get; set; } = string.Empty;
     public string ContactCode { get; set; } = string.Empty;
     public EntityType EntityType { get; set; }
     public OwnerType? OwnerType { get; set; }

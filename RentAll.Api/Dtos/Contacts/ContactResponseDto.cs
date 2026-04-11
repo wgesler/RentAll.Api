@@ -8,6 +8,7 @@ public class ContactResponseDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public string OfficeAccess { get; set; } = string.Empty;
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
     public int? OwnerTypeId { get; set; }
@@ -54,6 +55,7 @@ public class ContactResponseDto
         OrganizationId = contact.OrganizationId;
         OfficeId = contact.OfficeId;
         OfficeName = contact.OfficeName;
+        OfficeAccess = contact.OfficeAccess;
         ContactCode = contact.ContactCode;
         EntityTypeId = (int)contact.EntityType;
         OwnerTypeId = (int?)contact.OwnerType;

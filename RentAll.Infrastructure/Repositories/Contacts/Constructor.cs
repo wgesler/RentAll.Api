@@ -37,6 +37,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 OrganizationId = e.OrganizationId,
                 OfficeId = e.OfficeId,
                 OfficeName = e.OfficeName,
+                OfficeAccess = e.OfficeAccess,
                 ContactCode = e.ContactCode,
                 EntityType = (EntityType)e.EntityTypeId,
                 OwnerType = (OwnerType?)e.OwnerTypeId,
