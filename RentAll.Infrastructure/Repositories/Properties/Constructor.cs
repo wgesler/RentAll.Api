@@ -154,7 +154,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Accomodates = e.Accomodates,
                 SquareFeet = e.SquareFeet,
                 PropertyType = (PropertyType)e.PropertyTypeId,
-                Unfurnished = e.Unfurnhished,
+                Unfurnished = e.Unfurnished,
                 MonthlyRate = e.MonthlyRate,
                 DailyRate = e.DailyRate,
                 DepartureFee = e.DepartureFee,
