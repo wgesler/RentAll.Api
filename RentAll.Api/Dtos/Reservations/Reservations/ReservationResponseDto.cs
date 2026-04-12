@@ -11,7 +11,7 @@ public class ReservationResponseDto
     public string ReservationCode { get; set; } = string.Empty;
     public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
-    public Guid ContactId { get; set; }
+    public List<Guid> ContactIds { get; set; } = new List<Guid>();
     public string ContactName { get; set; } = string.Empty;
     public Guid? CompanyId { get; set; }
     public string? CompanyName { get; set; }
@@ -71,7 +71,7 @@ public class ReservationResponseDto
         ReservationCode = reservation.ReservationCode;
         AgentId = reservation.AgentId;
         PropertyId = reservation.PropertyId;
-        ContactId = reservation.ContactId;
+        ContactIds = reservation.ContactIds;
         ContactName = reservation.ContactName;
         CompanyId = reservation.CompanyId;
         CompanyName = reservation.CompanyName;

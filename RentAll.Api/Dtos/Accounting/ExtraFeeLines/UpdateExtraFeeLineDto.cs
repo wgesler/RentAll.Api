@@ -11,8 +11,6 @@ public class UpdateExtraFeeLineDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (ExtraFeeLineId <= 0)
-            return (false, "ExtraFeeLineId is required");
 
         if (ReservationId == Guid.Empty)
             return (false, "ReservationId is required");

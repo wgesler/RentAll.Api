@@ -11,7 +11,7 @@ public class Reservation
     public string ReservationCode { get; set; } = string.Empty;
     public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
-    public Guid ContactId { get; set; }
+    public List<Guid> ContactIds { get; set; } = new List<Guid>();
     public string ContactName { get; set; } = string.Empty;
     public Guid? CompanyId { get; set; }
     public string? CompanyName { get; set; } = string.Empty;

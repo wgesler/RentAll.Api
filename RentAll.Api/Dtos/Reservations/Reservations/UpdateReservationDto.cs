@@ -10,7 +10,7 @@ public class UpdateReservationDto
     public string ReservationCode { get; set; } = string.Empty;
     public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
-    public Guid ContactId { get; set; }
+    public List<Guid> ContactIds { get; set; } = new List<Guid>();
     public Guid? CompanyId { get; set; }
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
@@ -74,8 +74,11 @@ public class UpdateReservationDto
         if (string.IsNullOrWhiteSpace(TenantName))
             return (false, "TenantName is required");
 
-        if (ContactId == Guid.Empty)
-            return (false, "ContactId is required");
+        if (ContactIds == null || !ContactIds.Any())
+            return (false, "At least one ContactId is required");
+
+        if (ContactIds.Any(id => id == Guid.Empty))
+            return (false, "ContactId values must be non-empty");
 
         if (ArrivalDate >= DepartureDate)
             return (false, "DepartureDate must be after ArrivalDate");
@@ -138,7 +141,7 @@ public class UpdateReservationDto
             ReservationCode = ReservationCode,
             AgentId = AgentId,
             PropertyId = PropertyId,
-            ContactId = ContactId,
+            ContactIds = ContactIds,
             CompanyId = CompanyId,
             ReservationType = (ReservationType)ReservationTypeId,
             ReservationStatus = (ReservationStatus)ReservationStatusId,

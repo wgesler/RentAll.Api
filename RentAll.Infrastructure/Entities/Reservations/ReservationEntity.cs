@@ -12,7 +12,7 @@ public class ReservationEntity
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
     public int ReservationNoticeId { get; set; }
-    public Guid ContactId { get; set; }
+    public string ContactIds { get; set; } = "[]";
     public string ContactName { get; set; } = string.Empty;
     public Guid? CompanyId { get; set; }
     public string? CompanyName { get; set; } = string.Empty;

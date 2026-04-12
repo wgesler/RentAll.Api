@@ -87,13 +87,18 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         public async Task<Reservation> CreateAsync(Reservation reservation)
         {
             await using var db = new SqlConnection(_dbConnectionString);
+            await db.OpenAsync();
+            await using var transaction = await db.BeginTransactionAsync();
+
+            try
+            {
             var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_Add", new
             {
                 OrganizationId = reservation.OrganizationId,
                 ReservationCode = reservation.ReservationCode,
                 AgentId = reservation.AgentId,
                 PropertyId = reservation.PropertyId,
-                ContactId = reservation.ContactId,
+                ContactIds = SerializeReservationContactIds(reservation.ContactIds),
                 CompanyId = reservation.CompanyId,
                 ReservationTypeId = (int)reservation.ReservationType,
                 ReservationStatusId = (int)reservation.ReservationStatus,
@@ -136,7 +141,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 CreditDue = reservation.CreditDue,
                 IsActive = reservation.IsActive,
                 CreatedBy = reservation.CreatedBy
-            });
+            }, transaction: transaction);
 
             if (res == null || !res.Any())
                 throw new Exception("Reservation not created");
@@ -154,7 +159,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                         FeeAmount = line.FeeAmount,
                         FeeFrequencyId = (int)line.FeeFrequency,
                         CostCodeId = line.CostCodeId
-                    });
+                    }, transaction: transaction);
                 }
             }
 
@@ -162,12 +167,19 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             {
                 ReservationId = createdReservation.ReservationId,
                 OrganizationId = createdReservation.OrganizationId
-            });
+            }, transaction: transaction);
 
             if (populatedRes == null || !populatedRes.Any())
                 throw new Exception("Reservation not found");
 
+            await transaction.CommitAsync();
             return ConvertEntityToModel(populatedRes.FirstOrDefault()!);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
         #endregion
 
@@ -200,7 +212,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     ReservationCode = reservation.ReservationCode,
                     AgentId = reservation.AgentId,
                     PropertyId = reservation.PropertyId,
-                    ContactId = reservation.ContactId,
+                    ContactIds = SerializeReservationContactIds(reservation.ContactIds),
                     CompanyId = reservation.CompanyId,
                     ReservationTypeId = (int)reservation.ReservationType,
                     ReservationStatusId = (int)reservation.ReservationStatus,

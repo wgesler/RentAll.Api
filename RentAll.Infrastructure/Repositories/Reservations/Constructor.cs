@@ -21,6 +21,27 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
         }
 
+        private static string SerializeReservationContactIds(IReadOnlyList<Guid> contactIds)
+        {
+            if (contactIds == null || contactIds.Count == 0)
+                return "[]";
+            return JsonSerializer.Serialize(contactIds.Where(id => id != Guid.Empty).Distinct().ToList());
+        }
+
+        private List<Guid> DeserializeReservationContactIds(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<Guid>();
+            try
+            {
+                return JsonSerializer.Deserialize<List<Guid>>(json, JsonOptions) ?? new List<Guid>();
+            }
+            catch
+            {
+                return new List<Guid>();
+            }
+        }
+
         private Reservation ConvertEntityToModel(ReservationEntity e)
         {
             List<ExtraFeeLine> extraFeeLines = new List<ExtraFeeLine>();
@@ -46,7 +67,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ReservationCode = e.ReservationCode,
                 AgentId = e.AgentId,
                 PropertyId = e.PropertyId,
-                ContactId = e.ContactId,
+                ContactIds = DeserializeReservationContactIds(e.ContactIds),
                 ContactName = e.ContactName,
                 CompanyId = e.CompanyId,
                 CompanyName = e.CompanyName,
