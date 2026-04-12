@@ -19,6 +19,7 @@ public class PropertyListResponseDto
     public int Accomodates { get; set; }
     public int SquareFeet { get; set; }
     public int PropertyTypeId { get; set; }
+    public bool Unfurnished { get; set; }
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
     public decimal DepartureFee { get; set; }
@@ -46,6 +47,7 @@ public class PropertyListResponseDto
         Accomodates = propertyList.Accomodates;
         SquareFeet = propertyList.SquareFeet;
         PropertyTypeId = (int)propertyList.PropertyType;
+        Unfurnished = propertyList.Unfurnished;
         MonthlyRate = propertyList.MonthlyRate;
         DailyRate = propertyList.DailyRate;
         DepartureFee = propertyList.DepartureFee;

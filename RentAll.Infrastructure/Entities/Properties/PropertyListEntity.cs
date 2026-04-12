@@ -19,6 +19,7 @@ public class PropertyListEntity
     public int Accomodates { get; set; }
     public int SquareFeet { get; set; }
     public int PropertyTypeId { get; set; }
+    public bool Unfurnhished { get; set; }
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
     public decimal DepartureFee { get; set; }
