@@ -49,7 +49,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyCode = selection.PropertyCode,
                 City = selection.City,
                 State = selection.State,
-                Unfurnished = selection.Unfurnished,
                 Cable = selection.Cable,
                 Streaming = selection.Streaming,
                 Pool = selection.Pool,

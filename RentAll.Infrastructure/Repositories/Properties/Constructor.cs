@@ -296,7 +296,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyCode = e.PropertyCode,
                 City = e.City,
                 State = e.State,
-                Unfurnished = e.Unfurnished,
                 Cable = e.Cable,
                 Streaming = e.Streaming,
                 Pool = e.Pool,

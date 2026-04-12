@@ -12,7 +12,6 @@ public class UpsertPropertySelectionDto
     public string? PropertyCode { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
-    public bool Unfurnished { get; set; }
     public bool Cable { get; set; }
     public bool Streaming { get; set; }
     public bool Pool { get; set; }
@@ -75,7 +74,6 @@ public class UpsertPropertySelectionDto
             PropertyCode = PropertyCode,
             City = City,
             State = State,
-            Unfurnished = Unfurnished,
             Cable = Cable,
             Streaming = Streaming,
             Pool = Pool,
