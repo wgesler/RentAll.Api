@@ -63,6 +63,9 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Alternate MSBuild output paths (local/agent builds; not source)
+_compile_check_out/
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
