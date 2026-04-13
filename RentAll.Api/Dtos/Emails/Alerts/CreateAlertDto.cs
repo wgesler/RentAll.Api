@@ -70,9 +70,6 @@ public class CreateAlertDto
         return (true, null);
     }
 
-    private static bool IsAlertEmailType(EmailType type) =>
-        type is EmailType.PropertyAlert or EmailType.ReservationAlert or EmailType.MaintenanceAlert;
-
     private static bool IsValidEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
