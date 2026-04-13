@@ -24,6 +24,7 @@ public interface IEmailRepository
     Task<Alert?> GetAlertByIdAsync(Guid alertId, Guid organizationId);
     Task<Alert> CreateAlertAsync(Alert alert);
     Task<Alert> UpdateAlertByIdAsync(Alert alert);
+    Task<Alert> UpdateAlertEmailStatusAsync(Alert alert);
     Task DeleteAlertByIdAsync(Guid alertId, Guid organizationId);
     #endregion
 }

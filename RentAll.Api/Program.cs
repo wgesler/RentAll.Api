@@ -22,6 +22,7 @@ using RentAll.Infrastructure.Repositories.Organizations;
 using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
 using RentAll.Infrastructure.Repositories.Users;
+using RentAll.Api.HostedServices;
 using RentAll.Infrastructure.Services;
 using System.Text;
 
@@ -177,6 +178,8 @@ builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
 builder.Services.AddScoped<IAccountingRepository, AccountingRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
+
+builder.Services.AddHostedService<AlertSchedulingHostedService>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>

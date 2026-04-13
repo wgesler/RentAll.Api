@@ -102,6 +102,29 @@ namespace RentAll.Infrastructure.Repositories.Emails
 
             return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
         }
+
+        public async Task<Alert> UpdateAlertEmailStatusAsync(Alert alert)
+        {
+            var entity = ConvertModelToEntity(alert);
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Email.Alert_UpdateEmailStatus", new
+            {
+                AlertId = entity.AlertId,
+                OrganizationId = entity.OrganizationId,
+                EmailStatusId = entity.EmailStatusId,
+                AttemptCount = entity.AttemptCount,
+                LastError = entity.LastError,
+                LastAttemptedOn = entity.LastAttemptedOn,
+                SentOn = entity.SentOn,
+                ModifiedBy = entity.ModifiedBy
+            });
+
+            var updated = await GetAlertByIdAsync(entity.AlertId, entity.OrganizationId);
+            if (updated == null)
+                throw new Exception("Alert not found");
+
+            return updated;
+        }
         #endregion
 
         #region Deletes
