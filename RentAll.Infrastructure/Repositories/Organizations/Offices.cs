@@ -117,6 +117,7 @@ public partial class OrganizationRepository
             MaidFourBed = office.MaidFourBed,
             ParkingLowEnd = office.ParkingLowEnd,
             ParkingHighEnd = office.ParkingHighEnd,
+            EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
         });
@@ -168,6 +169,7 @@ public partial class OrganizationRepository
             MaidFourBed = office.MaidFourBed,
             ParkingLowEnd = office.ParkingLowEnd,
             ParkingHighEnd = office.ParkingHighEnd,
+            EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
         });

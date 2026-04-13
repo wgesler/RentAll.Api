@@ -38,6 +38,7 @@ public class OfficeResponseDto
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }
@@ -78,6 +79,7 @@ public class OfficeResponseDto
         MaidFourBed = office.MaidFourBed;
         ParkingLowEnd = office.ParkingLowEnd;
         ParkingHighEnd = office.ParkingHighEnd;
+        EmailListForReservations = office.EmailListForReservations;
         FileDetails = office.FileDetails;
         IsInternational = office.IsInternational;
         IsActive = office.IsActive;

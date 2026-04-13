@@ -36,6 +36,7 @@ public class OfficeEntity
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public string? EmailListForReservations { get; set; }
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }
 }

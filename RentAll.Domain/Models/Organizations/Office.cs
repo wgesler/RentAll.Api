@@ -38,6 +38,7 @@ public class Office
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }

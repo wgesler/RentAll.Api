@@ -36,6 +36,7 @@ public class OfficeCreateDto
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }
@@ -97,6 +98,7 @@ public class OfficeCreateDto
             MaidFourBed = MaidFourBed,
             ParkingLowEnd = ParkingLowEnd,
             ParkingHighEnd = ParkingHighEnd,
+            EmailListForReservations = EmailListForReservations,
             IsInternational = IsInternational,
             IsActive = IsActive
         };

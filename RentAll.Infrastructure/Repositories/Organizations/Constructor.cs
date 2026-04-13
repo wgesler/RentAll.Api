@@ -89,6 +89,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             MaidFourBed = e.MaidFourBed,
             ParkingLowEnd = e.ParkingLowEnd,
             ParkingHighEnd = e.ParkingHighEnd,
+            EmailListForReservations = e.EmailListForReservations,
             IsInternational = e.IsInternational,
             IsActive = e.IsActive
         };
