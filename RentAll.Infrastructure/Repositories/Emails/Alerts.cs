@@ -22,6 +22,21 @@ namespace RentAll.Infrastructure.Repositories.Emails
             return res.Select(ConvertStoredProcRowToModel);
         }
 
+        public async Task<IEnumerable<Alert>> GetActiveAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<AlertStoredProcRow>("Email.Alert_GetAllActiveByOfficeIds", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Alert>();
+
+            return res.Select(ConvertStoredProcRowToModel);
+        }
+
         public async Task<Alert?> GetAlertByIdAsync(Guid alertId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -64,6 +79,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 LastError = entity.LastError,
                 LastAttemptedOn = entity.LastAttemptedOn,
                 SentOn = entity.SentOn,
+                IsActive = entity.IsActive,
                 CreatedBy = entity.CreatedBy
             });
 
@@ -96,6 +112,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 StartDate = entity.StartDate,
                 DaysBeforeDeparture = entity.DaysBeforeDeparture,
                 FrequencyId = entity.FrequencyId,
+                IsActive = entity.IsActive,
                 ModifiedBy = entity.ModifiedBy
             });
 
@@ -118,6 +135,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 LastError = entity.LastError,
                 LastAttemptedOn = entity.LastAttemptedOn,
                 SentOn = entity.SentOn,
+                IsActive = entity.IsActive,
                 ModifiedBy = entity.ModifiedBy
             });
 

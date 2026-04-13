@@ -26,6 +26,7 @@ public class UpdateAlertDto
     public string LastError { get; set; } = string.Empty;
     public DateTimeOffset? LastAttemptedOn { get; set; }
     public DateTimeOffset? SentOn { get; set; }
+    public bool IsActive { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organization, string officeAccess)
     {
@@ -147,6 +148,7 @@ public class UpdateAlertDto
         existing.LastError = LastError;
         existing.LastAttemptedOn = LastAttemptedOn;
         existing.SentOn = SentOn;
+        existing.IsActive = IsActive;
         existing.ModifiedBy = modifiedBy;
         return existing;
     }

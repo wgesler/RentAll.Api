@@ -23,12 +23,14 @@ public class Alert
     public EmailType EmailType { get; set; } = EmailType.Other;
     public DateTimeOffset? StartDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
+    public DateTimeOffset? NextAlertDate { get; set; }
     public FrequencyType Frequency { get; set; }
     public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;
     public int AttemptCount { get; set; }
     public string LastError { get; set; } = string.Empty;
     public DateTimeOffset? LastAttemptedOn { get; set; }
     public DateTimeOffset? SentOn { get; set; }
+    public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

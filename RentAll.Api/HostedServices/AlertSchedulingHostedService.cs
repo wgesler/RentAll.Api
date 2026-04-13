@@ -53,6 +53,7 @@ public class AlertSchedulingHostedService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var organizationRepository = scope.ServiceProvider.GetRequiredService<IOrganizationRepository>();
         var emailRepository = scope.ServiceProvider.GetRequiredService<IEmailRepository>();
+        var reservationRepository = scope.ServiceProvider.GetRequiredService<IReservationRepository>();
         var emailManager = scope.ServiceProvider.GetRequiredService<IEmailManager>();
 
         var utcNow = DateTimeOffset.UtcNow;
@@ -62,6 +63,11 @@ public class AlertSchedulingHostedService : BackgroundService
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
+
+            if (!alert.IsActive)
+                continue;
+
+            await HydrateDepartureDateIfNeededAsync(alert, reservationRepository);
 
             if (!AlertScheduleEvaluator.IsDue(alert, utcNow))
                 continue;
@@ -76,6 +82,11 @@ public class AlertSchedulingHostedService : BackgroundService
                 var result = await emailManager.SendEmail(organization.SendGridName, email);
 
                 ApplySendResultToAlert(alert, result);
+
+                var shouldDeactivateAlert = result.EmailStatus == EmailStatus.Succeeded || result.SentOn.HasValue;
+                if (shouldDeactivateAlert)
+                    alert.IsActive = false;
+
                 await emailRepository.UpdateAlertEmailStatusAsync(alert);
 
                 if (result.EmailStatus == EmailStatus.Succeeded)
@@ -115,7 +126,7 @@ public class AlertSchedulingHostedService : BackgroundService
                 continue;
 
             var officeCsv = string.Join(",", officeList.Select(o => o.OfficeId));
-            var batch = await emailRepository.GetAlertsByOfficeIdsAsync(org.OrganizationId, officeCsv);
+            var batch = await emailRepository.GetActiveAlertsByOfficeIdsAsync(org.OrganizationId, officeCsv);
             all.AddRange(batch);
         }
 
@@ -161,5 +172,31 @@ public class AlertSchedulingHostedService : BackgroundService
         alert.LastAttemptedOn = email.LastAttemptedOn;
         alert.SentOn = email.SentOn;
         alert.ModifiedBy = alert.CreatedBy != Guid.Empty ? alert.CreatedBy : Guid.Empty;
+    }
+
+    private async Task HydrateDepartureDateIfNeededAsync(Alert alert, IReservationRepository reservationRepository)
+    {
+        if (!alert.DaysBeforeDeparture.HasValue || alert.DepartureDate.HasValue || !alert.ReservationId.HasValue)
+            return;
+
+        try
+        {
+            var reservation = await reservationRepository.GetReservationByIdAsync(alert.ReservationId.Value, alert.OrganizationId);
+            if (reservation != null)
+                alert.DepartureDate = reservation.DepartureDate;
+            else
+                _logger.LogWarning(
+                    "Alert has DaysBeforeDeparture but reservation was not found. AlertId={AlertId}, ReservationId={ReservationId}",
+                    alert.AlertId,
+                    alert.ReservationId.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Unable to hydrate departure date for alert. AlertId={AlertId}, ReservationId={ReservationId}",
+                alert.AlertId,
+                alert.ReservationId.Value);
+        }
     }
 }

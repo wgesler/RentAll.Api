@@ -3,6 +3,7 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Domain.Scheduling;
 using RentAll.Infrastructure.Entities.Emails;
 using System.Text.Json;
 
@@ -187,7 +188,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
 
         private Alert ConvertEntityToModel(AlertEntity e)
         {
-            return new Alert
+            var alert = new Alert
             {
                 AlertId = e.AlertId,
                 OrganizationId = e.OrganizationId,
@@ -223,11 +224,15 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 LastError = e.LastError,
                 LastAttemptedOn = e.LastAttemptedOn,
                 SentOn = e.SentOn,
+                IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,
                 ModifiedOn = e.ModifiedOn,
                 ModifiedBy = e.ModifiedBy
             };
+
+            alert.NextAlertDate = AlertScheduleEvaluator.GetNextAlertDate(alert, DateTimeOffset.UtcNow);
+            return alert;
         }
 
         private static AlertEntity ConvertModelToEntity(Alert model)
@@ -266,6 +271,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 LastError = model.LastError,
                 LastAttemptedOn = model.LastAttemptedOn,
                 SentOn = model.SentOn,
+                IsActive = model.IsActive,
                 CreatedOn = model.CreatedOn,
                 CreatedBy = model.CreatedBy,
                 ModifiedOn = model.ModifiedOn,
@@ -301,6 +307,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 LastError = row.LastError,
                 LastAttemptedOn = row.LastAttemptedOn,
                 SentOn = row.SentOn,
+                IsActive = row.IsActive,
                 CreatedOn = row.CreatedOn,
                 CreatedBy = row.CreatedBy,
                 ModifiedOn = row.ModifiedOn,
@@ -414,6 +421,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string LastError { get; set; } = string.Empty;
             public DateTimeOffset? LastAttemptedOn { get; set; }
             public DateTimeOffset? SentOn { get; set; }
+            public bool IsActive { get; set; }
             public DateTimeOffset CreatedOn { get; set; }
             public Guid CreatedBy { get; set; }
             public DateTimeOffset ModifiedOn { get; set; }

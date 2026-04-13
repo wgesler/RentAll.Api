@@ -26,6 +26,7 @@ public class AlertEntity
     public string LastError { get; set; } = string.Empty;
     public DateTimeOffset? LastAttemptedOn { get; set; }
     public DateTimeOffset? SentOn { get; set; }
+    public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

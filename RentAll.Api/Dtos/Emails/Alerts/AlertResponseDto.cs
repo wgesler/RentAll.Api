@@ -11,8 +11,6 @@ public class AlertResponseDto
     public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
-    public DateTimeOffset? ArrivalDate { get; set; }
-    public DateTimeOffset? DepartureDate { get; set; }
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
     public List<EmailAddress> BccRecipients { get; set; } = [];
@@ -21,6 +19,7 @@ public class AlertResponseDto
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateTimeOffset? StartDate { get; set; }
+    public DateTimeOffset? NextAlertDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }
@@ -28,6 +27,7 @@ public class AlertResponseDto
     public string LastError { get; set; } = string.Empty;
     public DateTimeOffset? LastAttemptedOn { get; set; }
     public DateTimeOffset? SentOn { get; set; }
+    public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -42,8 +42,6 @@ public class AlertResponseDto
         PropertyCode = alert.PropertyCode;
         ReservationId = alert.ReservationId;
         ReservationCode = alert.ReservationCode;
-        ArrivalDate = alert.ArrivalDate;
-        DepartureDate = alert.DepartureDate;
         ToRecipients = alert.ToRecipients;
         CcRecipients = alert.CcRecipients;
         BccRecipients = alert.BccRecipients;
@@ -52,6 +50,7 @@ public class AlertResponseDto
         PlainTextContent = alert.PlainTextContent;
         EmailTypeId = (int)alert.EmailType;
         StartDate = alert.StartDate;
+        NextAlertDate = alert.NextAlertDate;
         DaysBeforeDeparture = alert.DaysBeforeDeparture;
         FrequencyId = (int)alert.Frequency;
         EmailStatusId = (int)alert.EmailStatus;
@@ -59,6 +58,7 @@ public class AlertResponseDto
         LastError = alert.LastError;
         LastAttemptedOn = alert.LastAttemptedOn;
         SentOn = alert.SentOn;
+        IsActive = alert.IsActive;
         CreatedOn = alert.CreatedOn;
         CreatedBy = alert.CreatedBy;
         ModifiedOn = alert.ModifiedOn;

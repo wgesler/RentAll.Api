@@ -19,6 +19,7 @@ public class CreateAlertDto
     public DateTimeOffset? StartDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
+    public bool IsActive { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organization, string officeAccess)
     {
@@ -131,6 +132,7 @@ public class CreateAlertDto
             DaysBeforeDeparture = DaysBeforeDeparture,
             Frequency = (FrequencyType)FrequencyId,
             EmailStatus = EmailStatus.Unsent,
+            IsActive = IsActive,
             CreatedBy = currentUser
         };
     }
