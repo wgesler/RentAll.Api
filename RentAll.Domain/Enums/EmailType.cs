@@ -9,9 +9,6 @@ public enum EmailType
     WorkOrder = 4,
     Inspection = 5,
     InspectionIssues = 6,
-    PropertyAlert = 7,
-    ReservationAlert = 8,
-    MaintenanceAlert = 9,
-    GeneralAlert = 10
+    Alert = 7
 }
 
