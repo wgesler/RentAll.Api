@@ -3,6 +3,7 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Infrastructure.Entities.Emails;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Emails
@@ -184,6 +185,121 @@ namespace RentAll.Infrastructure.Repositories.Emails
             return ConvertEntityToModel(ConvertStoredProcRowToEntity(row));
         }
 
+        private Alert ConvertEntityToModel(AlertEntity e)
+        {
+            return new Alert
+            {
+                AlertId = e.AlertId,
+                OrganizationId = e.OrganizationId,
+                OfficeId = e.OfficeId,
+                PropertyId = e.PropertyId,
+                ReservationId = e.ReservationId,
+                ToRecipients = (e.ToRecipients ?? [])
+                    .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
+                    .ToList(),
+                CcRecipients = (e.CcRecipients ?? [])
+                    .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
+                    .ToList(),
+                BccRecipients = (e.BccRecipients ?? [])
+                    .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
+                    .ToList(),
+                FromRecipient = new Domain.Models.Common.EmailAddress
+                {
+                    Email = e.FromRecipient?.Email ?? string.Empty,
+                    Name = e.FromRecipient?.Name ?? string.Empty
+                },
+                Subject = e.Subject,
+                PlainTextContent = e.PlainTextContent,
+                EmailType = (EmailType)e.EmailTypeId,
+                StartDate = e.StartDate,
+                Frequency = (FrequencyType)e.FrequencyId,
+                EmailStatus = (EmailStatus)e.EmailStatusId,
+                AttemptCount = e.AttemptCount,
+                LastError = e.LastError,
+                LastAttemptedOn = e.LastAttemptedOn,
+                SentOn = e.SentOn,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy,
+                ModifiedOn = e.ModifiedOn,
+                ModifiedBy = e.ModifiedBy
+            };
+        }
+
+        private static AlertEntity ConvertModelToEntity(Alert model)
+        {
+            return new AlertEntity
+            {
+                AlertId = model.AlertId,
+                OrganizationId = model.OrganizationId,
+                OfficeId = model.OfficeId,
+                PropertyId = model.PropertyId,
+                ReservationId = model.ReservationId,
+                ToRecipients = (model.ToRecipients ?? [])
+                    .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
+                    .ToList(),
+                CcRecipients = (model.CcRecipients ?? [])
+                    .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
+                    .ToList(),
+                BccRecipients = (model.BccRecipients ?? [])
+                    .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
+                    .ToList(),
+                FromRecipient = new EmailAddressEntity
+                {
+                    Email = model.FromRecipient?.Email ?? string.Empty,
+                    Name = model.FromRecipient?.Name ?? string.Empty
+                },
+                Subject = model.Subject,
+                PlainTextContent = model.PlainTextContent,
+                EmailTypeId = (int)model.EmailType,
+                StartDate = model.StartDate,
+                FrequencyId = (int)model.Frequency,
+                EmailStatusId = (int)model.EmailStatus,
+                AttemptCount = model.AttemptCount,
+                LastError = model.LastError,
+                LastAttemptedOn = model.LastAttemptedOn,
+                SentOn = model.SentOn,
+                CreatedOn = model.CreatedOn,
+                CreatedBy = model.CreatedBy,
+                ModifiedOn = model.ModifiedOn,
+                ModifiedBy = model.ModifiedBy
+            };
+        }
+
+        private static AlertEntity ConvertStoredProcRowToEntity(AlertStoredProcRow row)
+        {
+            return new AlertEntity
+            {
+                AlertId = row.AlertId,
+                OrganizationId = row.OrganizationId,
+                OfficeId = row.OfficeId,
+                PropertyId = row.PropertyId,
+                ReservationId = row.ReservationId,
+                ToRecipients = DeserializeRecipients(row.ToRecipients),
+                CcRecipients = DeserializeRecipients(row.CcRecipients),
+                BccRecipients = DeserializeRecipients(row.BccRecipients),
+                FromRecipient = DeserializeRecipient(row.FromRecipient),
+                Subject = row.Subject,
+                PlainTextContent = row.PlainTextContent,
+                EmailTypeId = row.EmailTypeId,
+                StartDate = row.StartDate,
+                FrequencyId = row.FrequencyId,
+                EmailStatusId = row.EmailStatusId,
+                AttemptCount = row.AttemptCount,
+                LastError = row.LastError,
+                LastAttemptedOn = row.LastAttemptedOn,
+                SentOn = row.SentOn,
+                CreatedOn = row.CreatedOn,
+                CreatedBy = row.CreatedBy,
+                ModifiedOn = row.ModifiedOn,
+                ModifiedBy = row.ModifiedBy
+            };
+        }
+
+        private Alert ConvertStoredProcRowToModel(AlertStoredProcRow row)
+        {
+            return ConvertEntityToModel(ConvertStoredProcRowToEntity(row));
+        }
+
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -248,6 +364,33 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string AttachmentName { get; set; } = string.Empty;
             public string AttachmentPath { get; set; } = string.Empty;
             public int EmailTypeId { get; set; }
+            public int EmailStatusId { get; set; }
+            public int AttemptCount { get; set; }
+            public string LastError { get; set; } = string.Empty;
+            public DateTimeOffset? LastAttemptedOn { get; set; }
+            public DateTimeOffset? SentOn { get; set; }
+            public DateTimeOffset CreatedOn { get; set; }
+            public Guid CreatedBy { get; set; }
+            public DateTimeOffset ModifiedOn { get; set; }
+            public Guid ModifiedBy { get; set; }
+        }
+
+        private sealed class AlertStoredProcRow
+        {
+            public Guid AlertId { get; set; }
+            public Guid OrganizationId { get; set; }
+            public int OfficeId { get; set; }
+            public Guid? PropertyId { get; set; }
+            public Guid? ReservationId { get; set; }
+            public string ToRecipients { get; set; } = "[]";
+            public string CcRecipients { get; set; } = "[]";
+            public string BccRecipients { get; set; } = "[]";
+            public string FromRecipient { get; set; } = "{}";
+            public string Subject { get; set; } = string.Empty;
+            public string PlainTextContent { get; set; } = string.Empty;
+            public int EmailTypeId { get; set; }
+            public DateTimeOffset? StartDate { get; set; }
+            public int FrequencyId { get; set; }
             public int EmailStatusId { get; set; }
             public int AttemptCount { get; set; }
             public string LastError { get; set; } = string.Empty;

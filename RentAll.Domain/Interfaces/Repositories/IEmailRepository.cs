@@ -18,4 +18,12 @@ public interface IEmailRepository
     Task<EmailHtml> UpdateEmailHtmlByOrganizationIdAsync(EmailHtml emailHtml);
     Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId);
     #endregion
+
+    #region Alerts
+    Task<IEnumerable<Alert>> GetAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<Alert?> GetAlertByIdAsync(Guid alertId, Guid organizationId);
+    Task<Alert> CreateAlertAsync(Alert alert);
+    Task<Alert> UpdateAlertByIdAsync(Alert alert);
+    Task DeleteAlertByIdAsync(Guid alertId, Guid organizationId);
+    #endregion
 }
