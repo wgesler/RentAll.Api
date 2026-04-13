@@ -17,6 +17,7 @@ public class CreateAlertDto
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateTimeOffset? StartDate { get; set; }
+    public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organization, string officeAccess)
@@ -63,6 +64,9 @@ public class CreateAlertDto
 
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
+
+        if (DaysBeforeDeparture.HasValue && DaysBeforeDeparture.Value < 0)
+            return (false, "DaysBeforeDeparture cannot be negative");
 
         if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
             return (false, $"Invalid Frequency value: {FrequencyId}");
@@ -124,6 +128,7 @@ public class CreateAlertDto
             PlainTextContent = PlainTextContent,
             EmailType = (EmailType)EmailTypeId,
             StartDate = StartDate,
+            DaysBeforeDeparture = DaysBeforeDeparture,
             Frequency = (FrequencyType)FrequencyId,
             EmailStatus = EmailStatus.Unsent,
             CreatedBy = currentUser

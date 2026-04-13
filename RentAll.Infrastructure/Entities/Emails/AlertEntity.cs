@@ -9,6 +9,8 @@ public class AlertEntity
     public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public DateTimeOffset? ArrivalDate { get; set; }
+    public DateTimeOffset? DepartureDate { get; set; }
     public List<EmailAddressEntity> ToRecipients { get; set; } = [];
     public List<EmailAddressEntity> CcRecipients { get; set; } = [];
     public List<EmailAddressEntity> BccRecipients { get; set; } = [];
@@ -17,6 +19,7 @@ public class AlertEntity
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateTimeOffset? StartDate { get; set; }
+    public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }
     public int AttemptCount { get; set; }

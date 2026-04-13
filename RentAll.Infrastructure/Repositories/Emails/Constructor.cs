@@ -196,6 +196,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = e.PropertyCode,
                 ReservationId = e.ReservationId,
                 ReservationCode = e.ReservationCode,
+                ArrivalDate = e.ArrivalDate,
+                DepartureDate = e.DepartureDate,
                 ToRecipients = (e.ToRecipients ?? [])
                     .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
                     .ToList(),
@@ -214,6 +216,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = e.PlainTextContent,
                 EmailType = (EmailType)e.EmailTypeId,
                 StartDate = e.StartDate,
+                DaysBeforeDeparture = e.DaysBeforeDeparture,
                 Frequency = (FrequencyType)e.FrequencyId,
                 EmailStatus = (EmailStatus)e.EmailStatusId,
                 AttemptCount = e.AttemptCount,
@@ -256,6 +259,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = model.PlainTextContent,
                 EmailTypeId = (int)model.EmailType,
                 StartDate = model.StartDate,
+                DaysBeforeDeparture = model.DaysBeforeDeparture,
                 FrequencyId = (int)model.Frequency,
                 EmailStatusId = (int)model.EmailStatus,
                 AttemptCount = model.AttemptCount,
@@ -280,6 +284,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = row.PropertyCode,
                 ReservationId = row.ReservationId,
                 ReservationCode = row.ReservationCode,
+                ArrivalDate = row.ArrivalDate,
+                DepartureDate = row.DepartureDate,
                 ToRecipients = DeserializeRecipients(row.ToRecipients),
                 CcRecipients = DeserializeRecipients(row.CcRecipients),
                 BccRecipients = DeserializeRecipients(row.BccRecipients),
@@ -288,6 +294,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = row.PlainTextContent,
                 EmailTypeId = row.EmailTypeId,
                 StartDate = row.StartDate,
+                DaysBeforeDeparture = row.DaysBeforeDeparture,
                 FrequencyId = row.FrequencyId,
                 EmailStatusId = row.EmailStatusId,
                 AttemptCount = row.AttemptCount,
@@ -390,6 +397,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string? PropertyCode { get; set; }
             public Guid? ReservationId { get; set; }
             public string? ReservationCode { get; set; }
+            public DateTimeOffset? ArrivalDate { get; set; }
+            public DateTimeOffset? DepartureDate { get; set; }
             public string ToRecipients { get; set; } = "[]";
             public string CcRecipients { get; set; } = "[]";
             public string BccRecipients { get; set; } = "[]";
@@ -398,6 +407,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string PlainTextContent { get; set; } = string.Empty;
             public int EmailTypeId { get; set; }
             public DateTimeOffset? StartDate { get; set; }
+            public int? DaysBeforeDeparture { get; set; }
             public int FrequencyId { get; set; }
             public int EmailStatusId { get; set; }
             public int AttemptCount { get; set; }

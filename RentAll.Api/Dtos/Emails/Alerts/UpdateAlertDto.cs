@@ -19,6 +19,7 @@ public class UpdateAlertDto
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateTimeOffset? StartDate { get; set; }
+    public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }
     public int AttemptCount { get; set; }
@@ -73,6 +74,9 @@ public class UpdateAlertDto
 
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
+
+        if (DaysBeforeDeparture.HasValue && DaysBeforeDeparture.Value < 0)
+            return (false, "DaysBeforeDeparture cannot be negative");
 
         if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
             return (false, $"Invalid Frequency value: {FrequencyId}");
@@ -136,6 +140,7 @@ public class UpdateAlertDto
         existing.PlainTextContent = PlainTextContent;
         existing.EmailType = (EmailType)EmailTypeId;
         existing.StartDate = StartDate;
+        existing.DaysBeforeDeparture = DaysBeforeDeparture;
         existing.Frequency = (FrequencyType)FrequencyId;
         existing.EmailStatus = (EmailStatus)EmailStatusId;
         existing.AttemptCount = AttemptCount;

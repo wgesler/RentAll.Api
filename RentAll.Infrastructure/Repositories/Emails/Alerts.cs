@@ -57,6 +57,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = entity.PlainTextContent,
                 EmailTypeId = entity.EmailTypeId,
                 StartDate = entity.StartDate,
+                DaysBeforeDeparture = entity.DaysBeforeDeparture,
                 FrequencyId = entity.FrequencyId,
                 EmailStatusId = entity.EmailStatusId,
                 AttemptCount = entity.AttemptCount,
@@ -93,6 +94,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = entity.PlainTextContent,
                 EmailTypeId = entity.EmailTypeId,
                 StartDate = entity.StartDate,
+                DaysBeforeDeparture = entity.DaysBeforeDeparture,
                 FrequencyId = entity.FrequencyId,
                 ModifiedBy = entity.ModifiedBy
             });
