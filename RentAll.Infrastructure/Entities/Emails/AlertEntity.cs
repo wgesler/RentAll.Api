@@ -6,7 +6,9 @@ public class AlertEntity
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public List<EmailAddressEntity> ToRecipients { get; set; } = [];
     public List<EmailAddressEntity> CcRecipients { get; set; } = [];
     public List<EmailAddressEntity> BccRecipients { get; set; } = [];

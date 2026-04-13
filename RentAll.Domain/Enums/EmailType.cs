@@ -11,6 +11,7 @@ public enum EmailType
     InspectionIssues = 6,
     PropertyAlert = 7,
     ReservationAlert = 8,
-    MaintenanceAlert = 9
+    MaintenanceAlert = 9,
+    GeneralAlert = 10
 }
 

@@ -64,9 +64,6 @@ public class CreateAlertDto
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
 
-        if (!IsAlertEmailType((EmailType)EmailTypeId))
-            return (false, "EmailType must be PropertyAlert, ReservationAlert, or MaintenanceAlert");
-
         if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
             return (false, $"Invalid Frequency value: {FrequencyId}");
 

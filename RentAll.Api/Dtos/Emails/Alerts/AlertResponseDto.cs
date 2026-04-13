@@ -8,7 +8,9 @@ public class AlertResponseDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
     public List<EmailAddress> BccRecipients { get; set; } = [];
@@ -34,7 +36,9 @@ public class AlertResponseDto
         OrganizationId = alert.OrganizationId;
         OfficeId = alert.OfficeId;
         PropertyId = alert.PropertyId;
+        PropertyCode = alert.PropertyCode;
         ReservationId = alert.ReservationId;
+        ReservationCode = alert.ReservationCode;
         ToRecipients = alert.ToRecipients;
         CcRecipients = alert.CcRecipients;
         BccRecipients = alert.BccRecipients;

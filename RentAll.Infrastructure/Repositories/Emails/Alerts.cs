@@ -94,11 +94,6 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 EmailTypeId = entity.EmailTypeId,
                 StartDate = entity.StartDate,
                 FrequencyId = entity.FrequencyId,
-                EmailStatusId = entity.EmailStatusId,
-                AttemptCount = entity.AttemptCount,
-                LastError = entity.LastError,
-                LastAttemptedOn = entity.LastAttemptedOn,
-                SentOn = entity.SentOn,
                 ModifiedBy = entity.ModifiedBy
             });
 

@@ -9,7 +9,9 @@ public class Alert
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
     public List<EmailAddress> BccRecipients { get; set; } = [];

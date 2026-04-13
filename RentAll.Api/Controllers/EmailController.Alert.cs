@@ -5,7 +5,7 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
-        [HttpGet("alerts")]
+        [HttpGet("alert")]
         public async Task<IActionResult> GetAlertsByOfficeIdsAsync()
         {
             try
@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        [HttpGet("alerts/{alertId:guid}")]
+        [HttpGet("alert/{alertId:guid}")]
         public async Task<IActionResult> GetAlertByIdAsync(Guid alertId)
         {
             if (alertId == Guid.Empty)
@@ -46,7 +46,7 @@ namespace RentAll.Api.Controllers
 
         #region Post
 
-        [HttpPost("alerts")]
+        [HttpPost("alert")]
         public async Task<IActionResult> Create([FromBody] CreateAlertDto dto)
         {
             if (dto == null)
@@ -73,14 +73,11 @@ namespace RentAll.Api.Controllers
 
         #region Put
 
-        [HttpPut("alerts/{alertId:guid}")]
-        public async Task<IActionResult> Update(Guid alertId, [FromBody] UpdateAlertDto dto)
+        [HttpPut("alert")]
+        public async Task<IActionResult> Update([FromBody] UpdateAlertDto dto)
         {
             if (dto == null)
                 return BadRequest("Alert data is required");
-
-            if (alertId == Guid.Empty)
-                return BadRequest("Alert ID is required");
 
             var (isValid, errorMessage) = dto.IsValid(CurrentOrganizationId, CurrentOfficeAccess);
             if (!isValid)
@@ -88,7 +85,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existing = await _emailRepository.GetAlertByIdAsync(alertId, CurrentOrganizationId);
+                var existing = await _emailRepository.GetAlertByIdAsync(dto.AlertId, CurrentOrganizationId);
                 if (existing == null)
                     return NotFound("Alert not found");
 
@@ -98,7 +95,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating alert: {AlertId}", alertId);
+                _logger.LogError(ex, "Error updating alert: {AlertId}", dto.AlertId);
                 return ServerError("An error occurred while updating the alert");
             }
         }
@@ -107,7 +104,7 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        [HttpDelete("alerts/{alertId:guid}")]
+        [HttpDelete("alert/{alertId:guid}")]
         public async Task<IActionResult> DeleteAlertByIdAsync(Guid alertId)
         {
             if (alertId == Guid.Empty)

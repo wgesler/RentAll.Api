@@ -6,6 +6,7 @@ namespace RentAll.Api.Dtos.Emails.Alerts;
 
 public class UpdateAlertDto
 {
+    public Guid AlertId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
@@ -31,6 +32,9 @@ public class UpdateAlertDto
         CcRecipients ??= [];
         BccRecipients ??= [];
         FromRecipient ??= new EmailAddress();
+
+        if (AlertId == Guid.Empty)
+            return (false, "AlertId is required");
 
         if (OrganizationId == Guid.Empty || OrganizationId != organization)
             return (false, "OrganizationId not valid");
@@ -70,9 +74,6 @@ public class UpdateAlertDto
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
 
-        if (!IsAlertEmailType((EmailType)EmailTypeId))
-            return (false, "EmailType must be PropertyAlert, ReservationAlert, or MaintenanceAlert");
-
         if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
             return (false, $"Invalid Frequency value: {FrequencyId}");
 
@@ -81,9 +82,6 @@ public class UpdateAlertDto
 
         return (true, null);
     }
-
-    private static bool IsAlertEmailType(EmailType type) =>
-        type is EmailType.PropertyAlert or EmailType.ReservationAlert or EmailType.MaintenanceAlert;
 
     private static bool IsValidEmail(string email)
     {
@@ -103,6 +101,7 @@ public class UpdateAlertDto
 
     public Alert ApplyTo(Alert existing, Guid modifiedBy)
     {
+        existing.AlertId = AlertId;
         existing.OrganizationId = OrganizationId;
         existing.OfficeId = OfficeId;
         existing.PropertyId = PropertyId;
