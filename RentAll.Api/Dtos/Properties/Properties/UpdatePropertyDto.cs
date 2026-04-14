@@ -39,6 +39,7 @@ public class UpdatePropertyDto
     public decimal PetFee { get; set; }
     public decimal ExtraFee { get; set; }
     public string ExtraFeeName { get; set; } = string.Empty;
+    public string? BldgNo { get; set; }
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
@@ -208,16 +209,17 @@ public class UpdatePropertyDto
             PetFee = PetFee,
             ExtraFee = ExtraFee,
             ExtraFeeName = ExtraFeeName ?? string.Empty,
+            BldgNo = BldgNo,
             UnitLevel = UnitLevel,
             Bedrooms = Bedrooms,
             Bathrooms = Bathrooms,
             Accomodates = Accomodates,
             SquareFeet = SquareFeet,
-            Bedroom1 = (BedSizeType)BedroomId1,
-            Bedroom2 = (BedSizeType)BedroomId2,
-            Bedroom3 = (BedSizeType)BedroomId3,
-            Bedroom4 = (BedSizeType)BedroomId4,
-            Sofabed = (BedSizeType)Sofabed,
+            BedroomId1 = BedroomId1,
+            BedroomId2 = BedroomId2,
+            BedroomId3 = BedroomId3,
+            BedroomId4 = BedroomId4,
+            Sofabed = Sofabed,
             Address1 = Address1,
             Address2 = Address2,
             Suite = Suite,

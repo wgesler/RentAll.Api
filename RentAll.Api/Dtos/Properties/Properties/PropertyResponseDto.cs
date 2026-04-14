@@ -39,6 +39,7 @@ public class PropertyResponseDto
     public decimal PetFee { get; set; }
     public decimal ExtraFee { get; set; }
     public string ExtraFeeName { get; set; } = string.Empty;
+    public string? BldgNo { get; set; }
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
@@ -167,16 +168,17 @@ public class PropertyResponseDto
         PetFee = property.PetFee;
         ExtraFee = property.ExtraFee;
         ExtraFeeName = property.ExtraFeeName;
+        BldgNo = property.BldgNo;
         UnitLevel = property.UnitLevel;
         Bedrooms = property.Bedrooms;
         Bathrooms = property.Bathrooms;
         Accomodates = property.Accomodates;
         SquareFeet = property.SquareFeet;
-        BedroomId1 = (int)property.Bedroom1;
-        BedroomId2 = (int)property.Bedroom2;
-        BedroomId3 = (int)property.Bedroom3;
-        BedroomId4 = (int)property.Bedroom4;
-        Sofabed = (int)property.Sofabed;
+        BedroomId1 = property.BedroomId1;
+        BedroomId2 = property.BedroomId2;
+        BedroomId3 = property.BedroomId3;
+        BedroomId4 = property.BedroomId4;
+        Sofabed = property.Sofabed;
         Address1 = property.Address1;
         Address2 = property.Address2;
         Suite = property.Suite;

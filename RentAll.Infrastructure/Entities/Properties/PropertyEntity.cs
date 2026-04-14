@@ -41,6 +41,7 @@ public class PropertyEntity
     public decimal ExtraFee { get; set; }
     public string ExtraFeeName { get; set; } = string.Empty;
     public int UnitLevel { get; set; }
+    public string? BldgNo { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
     public int Accomodates { get; set; }
