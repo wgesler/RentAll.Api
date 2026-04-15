@@ -42,6 +42,7 @@ public class Reservation
     public decimal MaidServiceFee { get; set; }
     public FrequencyType Frequency { get; set; }
     public DateTimeOffset MaidStartDate { get; set; }
+    public Guid? MaidUserId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public List<ExtraFeeLine> ExtraFeeLines { get; set; } = new List<ExtraFeeLine>();

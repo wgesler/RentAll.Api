@@ -42,6 +42,7 @@ public class ReservationResponseDto
     public decimal MaidServiceFee { get; set; }
     public int FrequencyId { get; set; }
     public DateTimeOffset MaidStartDate { get; set; }
+    public Guid? MaidUserId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
@@ -102,6 +103,7 @@ public class ReservationResponseDto
         MaidServiceFee = reservation.MaidServiceFee;
         FrequencyId = (int)reservation.Frequency;
         MaidStartDate = reservation.MaidStartDate;
+        MaidUserId = reservation.MaidUserId;
         Taxes = reservation.Taxes;
         Notes = reservation.Notes;
         ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();

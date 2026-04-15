@@ -4,6 +4,7 @@ public enum MaidServiceType
 {
     Online = 0,
     Offline = 1,
-    Scheduled = 2,
-    Departure = 3
+    Arrival = 2,
+    Departure = 3,
+    Scheduled = 4
 }

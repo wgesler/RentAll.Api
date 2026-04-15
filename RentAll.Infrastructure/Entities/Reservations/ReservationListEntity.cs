@@ -19,6 +19,7 @@ public class ReservationListEntity
     public DateTimeOffset DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
+    public Guid? MaidUserId { get; set; }
 
     public bool PaymentReceived { get; set; }
     public bool WelcomeLetterChecked { get; set; }

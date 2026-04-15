@@ -19,6 +19,7 @@ public class ReservationListResponseDto
     public DateTimeOffset DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
+    public Guid? MaidUserId { get; set; }
     public bool PaymentReceived { get; set; }
     public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
@@ -51,6 +52,7 @@ public class ReservationListResponseDto
         ReservationStatusId = (int)reservationList.ReservationStatus;
         CurrentInvoiceNo = reservationList.CurrentInvoiceNo;
         HasPets = reservationList.HasPets;
+        MaidUserId = reservationList.MaidUserId;
         PaymentReceived = reservationList.PaymentReceived;
         WelcomeLetterChecked = reservationList.WelcomeLetterChecked;
         WelcomeLetterSent = reservationList.WelcomeLetterSent;

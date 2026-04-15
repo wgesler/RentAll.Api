@@ -41,6 +41,7 @@ public class ReservationEntity
     public decimal MaidServiceFee { get; set; }
     public int FrequencyId { get; set; }
     public DateTimeOffset MaidStartDate { get; set; }
+    public Guid? MaidUserId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public string? ExtraFeeLines { get; set; }
