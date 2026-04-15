@@ -22,6 +22,9 @@ public class ReservationList
     public ReservationStatus ReservationStatus { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }
+    public DateTimeOffset? MaidStartDate { get; set; }
+    public FrequencyType Frequency { get; set; }
+    public decimal MaidServiceFee { get; set; }
     public bool PaymentReceived { get; set; }
     public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }

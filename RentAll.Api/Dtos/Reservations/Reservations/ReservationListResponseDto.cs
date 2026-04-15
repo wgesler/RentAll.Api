@@ -20,6 +20,9 @@ public class ReservationListResponseDto
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }
+    public DateTimeOffset? MaidStartDate { get; set; }
+    public int FrequencyId { get; set; }
+    public decimal MaidServiceFee { get; set; }
     public bool PaymentReceived { get; set; }
     public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
@@ -53,6 +56,9 @@ public class ReservationListResponseDto
         CurrentInvoiceNo = reservationList.CurrentInvoiceNo;
         HasPets = reservationList.HasPets;
         MaidUserId = reservationList.MaidUserId;
+        MaidStartDate = reservationList.MaidStartDate;
+        FrequencyId = (int)reservationList.Frequency;
+        MaidServiceFee = reservationList.MaidServiceFee;
         PaymentReceived = reservationList.PaymentReceived;
         WelcomeLetterChecked = reservationList.WelcomeLetterChecked;
         WelcomeLetterSent = reservationList.WelcomeLetterSent;
