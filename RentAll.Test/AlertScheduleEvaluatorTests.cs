@@ -71,7 +71,7 @@ public class AlertScheduleEvaluatorTests
             departureDate: DateOnly.FromDateTime(utcNow.AddDays(1).Date),
             daysBeforeDeparture: 1);
         alert.EmailStatus = EmailStatus.Succeeded;
-        alert.SentOn = DateOnly.FromDateTime(utcNow.UtcDateTime);
+        alert.SentOn = utcNow;
 
         var isDue = AlertScheduleEvaluator.IsDue(alert, utcNow);
 
@@ -101,7 +101,7 @@ public class AlertScheduleEvaluatorTests
             departureDate: DateOnly.FromDateTime(utcNow.AddDays(1).Date),
             daysBeforeDeparture: 1);
         alert.EmailStatus = EmailStatus.Succeeded;
-        alert.SentOn = DateOnly.FromDateTime(utcNow.UtcDateTime);
+        alert.SentOn = utcNow;
 
         var nextAlertDate = AlertScheduleEvaluator.GetNextAlertDate(alert, utcNow);
 
@@ -117,7 +117,7 @@ public class AlertScheduleEvaluatorTests
         {
             Frequency = FrequencyType.Weekly,
             StartDate = startDate,
-            SentOn = DateOnly.FromDateTime(utcNow.AddDays(-1).UtcDateTime)
+            SentOn = utcNow.AddDays(-1)
         };
 
         var nextAlertDate = AlertScheduleEvaluator.GetNextAlertDate(alert, utcNow);

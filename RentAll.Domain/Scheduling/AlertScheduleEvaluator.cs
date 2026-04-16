@@ -11,6 +11,9 @@ public static class AlertScheduleEvaluator
     private static DateOnly UtcCalendarDate(DateTimeOffset utcNow) =>
         DateOnly.FromDateTime(utcNow.UtcDateTime);
 
+    private static DateOnly UtcCalendarDateFromOffset(DateTimeOffset instant) =>
+        DateOnly.FromDateTime(instant.UtcDateTime);
+
     public static DateOnly? GetNextAlertDate(Alert alert, DateTimeOffset utcNow)
     {
         if (alert.Frequency == FrequencyType.NA)
@@ -35,7 +38,7 @@ public static class AlertScheduleEvaluator
         var periodIndex = elapsedDays / periodLengthDays.Value;
         var periodStartDate = anchor.AddDays(periodIndex * periodLengthDays.Value);
 
-        if (alert.SentOn.HasValue && alert.SentOn.Value >= periodStartDate)
+        if (alert.SentOn.HasValue && UtcCalendarDateFromOffset(alert.SentOn.Value) >= periodStartDate)
             return periodStartDate.AddDays(periodLengthDays.Value);
 
         return periodStartDate;
@@ -51,7 +54,7 @@ public static class AlertScheduleEvaluator
         // Same UTC calendar day as last attempt while still "Attempting" — avoid hammering SendGrid.
         if (alert.EmailStatus == EmailStatus.Attempting &&
             alert.LastAttemptedOn.HasValue &&
-            alert.LastAttemptedOn.Value == today)
+            UtcCalendarDateFromOffset(alert.LastAttemptedOn.Value) == today)
             return false;
 
         if (alert.Frequency == FrequencyType.OneTime)
@@ -136,7 +139,7 @@ public static class AlertScheduleEvaluator
     /// Due if we are on or after the start of the current period and <see cref="Alert.SentOn"/> is before that period start.
     /// Uses fixed day counts (approximate calendar months/years).
     /// </summary>
-    private static bool IsRecurringPeriodDue(DateOnly anchorDate, DateOnly today, DateOnly? sentOn, int periodLengthDays)
+    private static bool IsRecurringPeriodDue(DateOnly anchorDate, DateOnly today, DateTimeOffset? sentOn, int periodLengthDays)
     {
         if (periodLengthDays <= 0)
             return false;
@@ -151,6 +154,6 @@ public static class AlertScheduleEvaluator
         if (today < periodStartDate)
             return false;
 
-        return !sentOn.HasValue || sentOn.Value < periodStartDate;
+        return !sentOn.HasValue || UtcCalendarDateFromOffset(sentOn.Value) < periodStartDate;
     }
 }

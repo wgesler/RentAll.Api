@@ -24,8 +24,8 @@ public class AlertEntity
     public int EmailStatusId { get; set; }
     public int AttemptCount { get; set; }
     public string LastError { get; set; } = string.Empty;
-    public DateOnly? LastAttemptedOn { get; set; }
-    public DateOnly? SentOn { get; set; }
+    public DateTimeOffset? LastAttemptedOn { get; set; }
+    public DateTimeOffset? SentOn { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
