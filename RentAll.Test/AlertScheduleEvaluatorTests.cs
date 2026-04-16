@@ -11,8 +11,8 @@ public class AlertScheduleEvaluatorTests
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow.AddDays(-30),
-            departureDate: utcNow.AddDays(2),
+            startDate: DateOnly.FromDateTime(utcNow.AddDays(-30).Date),
+            departureDate: DateOnly.FromDateTime(utcNow.AddDays(2).Date),
             daysBeforeDeparture: 1);
 
         var isDue = AlertScheduleEvaluator.IsDue(alert, utcNow);
@@ -25,8 +25,8 @@ public class AlertScheduleEvaluatorTests
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow,
-            departureDate: utcNow.AddDays(7),
+            startDate: DateOnly.FromDateTime(utcNow.Date),
+            departureDate: DateOnly.FromDateTime(utcNow.AddDays(7).Date),
             daysBeforeDeparture: 7);
 
         var isDue = AlertScheduleEvaluator.IsDue(alert, utcNow);
@@ -39,7 +39,7 @@ public class AlertScheduleEvaluatorTests
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow.AddDays(-1),
+            startDate: DateOnly.FromDateTime(utcNow.AddDays(-1).Date),
             departureDate: null,
             daysBeforeDeparture: 3);
 
@@ -53,8 +53,8 @@ public class AlertScheduleEvaluatorTests
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow.AddHours(-1),
-            departureDate: utcNow.AddDays(14),
+            startDate: DateOnly.FromDateTime(utcNow.Date),
+            departureDate: DateOnly.FromDateTime(utcNow.AddDays(14).Date),
             daysBeforeDeparture: null);
 
         var isDue = AlertScheduleEvaluator.IsDue(alert, utcNow);
@@ -67,11 +67,11 @@ public class AlertScheduleEvaluatorTests
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow.AddDays(-1),
-            departureDate: utcNow.AddDays(1),
+            startDate: DateOnly.FromDateTime(utcNow.AddDays(-1).Date),
+            departureDate: DateOnly.FromDateTime(utcNow.AddDays(1).Date),
             daysBeforeDeparture: 1);
         alert.EmailStatus = EmailStatus.Succeeded;
-        alert.SentOn = utcNow.AddMinutes(-5);
+        alert.SentOn = DateOnly.FromDateTime(utcNow.UtcDateTime);
 
         var isDue = AlertScheduleEvaluator.IsDue(alert, utcNow);
 
@@ -79,17 +79,17 @@ public class AlertScheduleEvaluatorTests
     }
 
     [Fact]
-    public void GetNextAlertDate_OneTime_WithDaysBeforeDeparture_ReturnsDepartureOffsetDate()
+    public void GetNextAlertDate_OneTime_WithDaysBeforeDeparture_ReturnsDepartureMinusDays()
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow.AddDays(-30),
-            departureDate: utcNow.AddDays(5),
+            startDate: DateOnly.FromDateTime(utcNow.AddDays(-30).Date),
+            departureDate: DateOnly.FromDateTime(utcNow.AddDays(5).Date),
             daysBeforeDeparture: 2);
 
         var nextAlertDate = AlertScheduleEvaluator.GetNextAlertDate(alert, utcNow);
 
-        Assert.Equal(utcNow.AddDays(3), nextAlertDate);
+        Assert.Equal(new DateOnly(2026, 04, 17), nextAlertDate);
     }
 
     [Fact]
@@ -97,11 +97,11 @@ public class AlertScheduleEvaluatorTests
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
         var alert = CreateOneTimeAlert(
-            startDate: utcNow.AddDays(-1),
-            departureDate: utcNow.AddDays(1),
+            startDate: DateOnly.FromDateTime(utcNow.AddDays(-1).Date),
+            departureDate: DateOnly.FromDateTime(utcNow.AddDays(1).Date),
             daysBeforeDeparture: 1);
         alert.EmailStatus = EmailStatus.Succeeded;
-        alert.SentOn = utcNow;
+        alert.SentOn = DateOnly.FromDateTime(utcNow.UtcDateTime);
 
         var nextAlertDate = AlertScheduleEvaluator.GetNextAlertDate(alert, utcNow);
 
@@ -112,20 +112,20 @@ public class AlertScheduleEvaluatorTests
     public void GetNextAlertDate_RecurringWhenCurrentPeriodAlreadySent_ReturnsNextPeriodStart()
     {
         var utcNow = new DateTimeOffset(2026, 04, 14, 12, 0, 0, TimeSpan.Zero);
-        var startDate = utcNow.AddDays(-10);
+        var startDate = DateOnly.FromDateTime(utcNow.AddDays(-10).Date);
         var alert = new Alert
         {
             Frequency = FrequencyType.Weekly,
             StartDate = startDate,
-            SentOn = utcNow.AddDays(-1)
+            SentOn = DateOnly.FromDateTime(utcNow.AddDays(-1).UtcDateTime)
         };
 
         var nextAlertDate = AlertScheduleEvaluator.GetNextAlertDate(alert, utcNow);
 
-        Assert.Equal(startDate.AddDays(14), nextAlertDate);
+        Assert.Equal(new DateOnly(2026, 04, 18), nextAlertDate);
     }
 
-    private static Alert CreateOneTimeAlert(DateTimeOffset? startDate, DateTimeOffset? departureDate, int? daysBeforeDeparture)
+    private static Alert CreateOneTimeAlert(DateOnly? startDate, DateOnly? departureDate, int? daysBeforeDeparture)
     {
         return new Alert
         {

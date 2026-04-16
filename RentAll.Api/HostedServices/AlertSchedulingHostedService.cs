@@ -169,8 +169,12 @@ public class AlertSchedulingHostedService : BackgroundService
         alert.EmailStatus = email.EmailStatus;
         alert.AttemptCount = email.AttemptCount;
         alert.LastError = email.LastError;
-        alert.LastAttemptedOn = email.LastAttemptedOn;
-        alert.SentOn = email.SentOn;
+        alert.LastAttemptedOn = email.LastAttemptedOn.HasValue
+            ? DateOnly.FromDateTime(email.LastAttemptedOn.Value.UtcDateTime)
+            : null;
+        alert.SentOn = email.SentOn.HasValue
+            ? DateOnly.FromDateTime(email.SentOn.Value.UtcDateTime)
+            : null;
         alert.ModifiedBy = alert.CreatedBy != Guid.Empty ? alert.CreatedBy : Guid.Empty;
     }
 

@@ -8,7 +8,7 @@ public class CreatePropertyAgreementDto
     public decimal? FlatRateAmount { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public DateTimeOffset? InsuranceExpiration { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
     public string? AgreementPath { get; set; }
     public FileDetails? AgreementFileDetails { get; set; }
     public int? Markup { get; set; }

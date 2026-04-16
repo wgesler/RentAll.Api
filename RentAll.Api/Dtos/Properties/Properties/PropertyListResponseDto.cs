@@ -11,8 +11,8 @@ public class PropertyListResponseDto
     public Guid? Owner1Id { get; set; }
     public Guid? VendorId { get; set; }
     public string ContactName { get; set; } = string.Empty;
-    public DateTimeOffset? AvailableFrom { get; set; }
-    public DateTimeOffset? AvailableUntil { get; set; }
+    public DateOnly? AvailableFrom { get; set; }
+    public DateOnly? AvailableUntil { get; set; }
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }

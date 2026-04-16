@@ -12,8 +12,8 @@ public class Alert
     public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
-    public DateTimeOffset? ArrivalDate { get; set; }
-    public DateTimeOffset? DepartureDate { get; set; }
+    public DateOnly? ArrivalDate { get; set; }
+    public DateOnly? DepartureDate { get; set; }
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
     public List<EmailAddress> BccRecipients { get; set; } = [];
@@ -21,15 +21,15 @@ public class Alert
     public string Subject { get; set; } = string.Empty;
     public string PlainTextContent { get; set; } = string.Empty;
     public EmailType EmailType { get; set; } = EmailType.Other;
-    public DateTimeOffset? StartDate { get; set; }
+    public DateOnly? StartDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
-    public DateTimeOffset? NextAlertDate { get; set; }
+    public DateOnly? NextAlertDate { get; set; }
     public FrequencyType Frequency { get; set; }
     public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;
     public int AttemptCount { get; set; }
     public string LastError { get; set; } = string.Empty;
-    public DateTimeOffset? LastAttemptedOn { get; set; }
-    public DateTimeOffset? SentOn { get; set; }
+    public DateOnly? LastAttemptedOn { get; set; }
+    public DateOnly? SentOn { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

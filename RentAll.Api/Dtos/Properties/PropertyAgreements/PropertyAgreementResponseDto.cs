@@ -11,7 +11,7 @@ public class PropertyAgreementResponseDto
     public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
-    public DateTimeOffset? InsuranceExpiration { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
     public string? AgreementPath { get; set; }
     public FileDetails? AgreementFileDetails { get; set; }

@@ -11,8 +11,8 @@ public class InvoiceResponseDto
     public string? ReservationCode { get; set; }
     public Guid? ContactId { get; set; }
     public string? ResponsibleParty { get; set; }
-    public DateTimeOffset InvoiceDate { get; set; }
-    public DateTimeOffset? DueDate { get; set; }
+    public DateOnly InvoiceDate { get; set; }
+    public DateOnly? DueDate { get; set; }
     public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }

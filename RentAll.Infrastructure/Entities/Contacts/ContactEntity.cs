@@ -31,7 +31,7 @@ public class ContactEntity
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
     public string? InsurancePath { get; set; }
-    public DateTimeOffset? InsuranceExpiration { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }

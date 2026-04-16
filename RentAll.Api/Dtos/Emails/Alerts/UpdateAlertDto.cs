@@ -18,7 +18,7 @@ public class UpdateAlertDto
     public string Subject { get; set; } = string.Empty;
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
-    public DateTimeOffset? StartDate { get; set; }
+    public DateOnly? StartDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }

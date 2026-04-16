@@ -8,11 +8,11 @@ public class UpdateMaintenanceDto
     public Guid PropertyId { get; set; }
     public string InspectionCheckList { get; set; } = string.Empty;
     public Guid? CleanerUserId { get; set; }
-    public DateTimeOffset? CleaningDate { get; set; }
+    public DateOnly? CleaningDate { get; set; }
     public Guid? InspectorUserId { get; set; }
-    public DateTimeOffset? InspectingDate { get; set; }
+    public DateOnly? InspectingDate { get; set; }
     public Guid? CarpetUserId { get; set; }
-    public DateTimeOffset? CarpetDate { get; set; }
+    public DateOnly? CarpetDate { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }

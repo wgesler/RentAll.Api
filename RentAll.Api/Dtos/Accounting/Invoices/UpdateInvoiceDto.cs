@@ -11,8 +11,8 @@ public class UpdateInvoiceDto
     public string InvoiceCode { get; set; } = string.Empty;
     public Guid ReservationId { get; set; }
     public string ReservationCode { get; set; } = string.Empty;
-    public DateTimeOffset InvoiceDate { get; set; }
-    public DateTimeOffset? DueDate { get; set; }
+    public DateOnly InvoiceDate { get; set; }
+    public DateOnly? DueDate { get; set; }
     public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }

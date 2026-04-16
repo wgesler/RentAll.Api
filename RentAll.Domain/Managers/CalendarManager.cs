@@ -34,7 +34,7 @@ public class CalendarManager : ICalendarManager
         var calendarReservations = reservations
             .Where(r => r.IsActive)
             .Where(r => r.ReservationStatus != ReservationStatus.PreBooking)
-            .Where(r => r.DepartureDate > DateTimeOffset.UtcNow.AddYears(-1))
+            .Where(r => r.DepartureDate > DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(-1)))
             .ToList();
 
         return _calendarService.BuildPropertyCalendar(propertyId, calendarReservations, DateTimeOffset.UtcNow);

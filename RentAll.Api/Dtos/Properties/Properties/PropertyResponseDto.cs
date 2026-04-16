@@ -12,8 +12,8 @@ public class PropertyResponseDto
     public Guid? VendorId { get; set; }
 
     // Availability Section 
-    public DateTimeOffset? AvailableFrom { get; set; }
-    public DateTimeOffset? AvailableUntil { get; set; }
+    public DateOnly? AvailableFrom { get; set; }
+    public DateOnly? AvailableUntil { get; set; }
     public int MinStay { get; set; }
     public int MaxStay { get; set; }
     public int CheckInTimeId { get; set; }

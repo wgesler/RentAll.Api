@@ -4,13 +4,14 @@ using RentAll.Domain.Models;
 namespace RentAll.Domain.Scheduling;
 
 /// <summary>
-/// Decides whether an alert should be sent on this scheduler tick (UTC).
+/// Decides whether an alert should be sent on this scheduler tick (UTC calendar dates).
 /// </summary>
 public static class AlertScheduleEvaluator
 {
-    private static readonly TimeSpan AttemptingCooldown = TimeSpan.FromMinutes(55);
+    private static DateOnly UtcCalendarDate(DateTimeOffset utcNow) =>
+        DateOnly.FromDateTime(utcNow.UtcDateTime);
 
-    public static DateTimeOffset? GetNextAlertDate(Alert alert, DateTimeOffset utcNow)
+    public static DateOnly? GetNextAlertDate(Alert alert, DateTimeOffset utcNow)
     {
         if (alert.Frequency == FrequencyType.NA)
             return null;
@@ -25,18 +26,19 @@ public static class AlertScheduleEvaluator
         if (!periodLengthDays.HasValue)
             return null;
 
+        var today = UtcCalendarDate(utcNow);
         var anchor = alert.StartDate.Value;
-        if (utcNow < anchor)
+        if (today < anchor)
             return anchor;
 
-        var elapsed = utcNow - anchor;
-        var periodIndex = (int)(elapsed.TotalDays / periodLengthDays.Value);
-        var periodStart = anchor.AddDays(periodIndex * periodLengthDays.Value);
+        var elapsedDays = today.DayNumber - anchor.DayNumber;
+        var periodIndex = elapsedDays / periodLengthDays.Value;
+        var periodStartDate = anchor.AddDays(periodIndex * periodLengthDays.Value);
 
-        if (alert.SentOn.HasValue && alert.SentOn.Value >= periodStart)
-            return periodStart.AddDays(periodLengthDays.Value);
+        if (alert.SentOn.HasValue && alert.SentOn.Value >= periodStartDate)
+            return periodStartDate.AddDays(periodLengthDays.Value);
 
-        return periodStart;
+        return periodStartDate;
     }
 
     public static bool IsDue(Alert alert, DateTimeOffset utcNow)
@@ -44,32 +46,37 @@ public static class AlertScheduleEvaluator
         if (alert.Frequency == FrequencyType.NA)
             return false;
 
-        if (alert.EmailStatus == EmailStatus.Attempting && alert.LastAttemptedOn.HasValue && utcNow - alert.LastAttemptedOn.Value < AttemptingCooldown)
+        var today = UtcCalendarDate(utcNow);
+
+        // Same UTC calendar day as last attempt while still "Attempting" — avoid hammering SendGrid.
+        if (alert.EmailStatus == EmailStatus.Attempting &&
+            alert.LastAttemptedOn.HasValue &&
+            alert.LastAttemptedOn.Value == today)
             return false;
 
         if (alert.Frequency == FrequencyType.OneTime)
-            return IsOneTimeDue(alert, utcNow);
+            return IsOneTimeDue(alert, today);
 
         if (!alert.StartDate.HasValue)
             return false;
 
-        var start = alert.StartDate.Value;
-        if (utcNow < start)
+        var anchor = alert.StartDate.Value;
+        if (today < anchor)
             return false;
 
         return alert.Frequency switch
         {
-            FrequencyType.Weekly => IsRecurringPeriodDue(start, utcNow, alert.SentOn, 7),
-            FrequencyType.EOW => IsRecurringPeriodDue(start, utcNow, alert.SentOn, 14),
-            FrequencyType.Monthly => IsRecurringPeriodDue(start, utcNow, alert.SentOn, 30),
-            FrequencyType.Quarterly => IsRecurringPeriodDue(start, utcNow, alert.SentOn, 90),
-            FrequencyType.BiAnnually => IsRecurringPeriodDue(start, utcNow, alert.SentOn, 180),
-            FrequencyType.Annually => IsRecurringPeriodDue(start, utcNow, alert.SentOn, 365),
+            FrequencyType.Weekly => IsRecurringPeriodDue(anchor, today, alert.SentOn, 7),
+            FrequencyType.EOW => IsRecurringPeriodDue(anchor, today, alert.SentOn, 14),
+            FrequencyType.Monthly => IsRecurringPeriodDue(anchor, today, alert.SentOn, 30),
+            FrequencyType.Quarterly => IsRecurringPeriodDue(anchor, today, alert.SentOn, 90),
+            FrequencyType.BiAnnually => IsRecurringPeriodDue(anchor, today, alert.SentOn, 180),
+            FrequencyType.Annually => IsRecurringPeriodDue(anchor, today, alert.SentOn, 365),
             _ => false
         };
     }
 
-    private static bool IsOneTimeDue(Alert alert, DateTimeOffset utcNow)
+    private static bool IsOneTimeDue(Alert alert, DateOnly today)
     {
         if (alert.SentOn.HasValue || alert.EmailStatus == EmailStatus.Succeeded)
             return false;
@@ -77,13 +84,13 @@ public static class AlertScheduleEvaluator
         if (!TryGetOneTimeTriggerDate(alert, out var triggerDate))
             return false;
 
-        if (utcNow < triggerDate)
+        if (today < triggerDate)
             return false;
 
         return alert.EmailStatus is EmailStatus.Unsent or EmailStatus.Failed;
     }
 
-    private static DateTimeOffset? GetOneTimeNextAlertDate(Alert alert)
+    private static DateOnly? GetOneTimeNextAlertDate(Alert alert)
     {
         if (alert.SentOn.HasValue || alert.EmailStatus == EmailStatus.Succeeded)
             return null;
@@ -91,7 +98,7 @@ public static class AlertScheduleEvaluator
         return TryGetOneTimeTriggerDate(alert, out var triggerDate) ? triggerDate : null;
     }
 
-    private static bool TryGetOneTimeTriggerDate(Alert alert, out DateTimeOffset triggerDate)
+    private static bool TryGetOneTimeTriggerDate(Alert alert, out DateOnly triggerDate)
     {
         triggerDate = default;
 
@@ -126,24 +133,24 @@ public static class AlertScheduleEvaluator
     }
 
     /// <summary>
-    /// Due if we are inside a new period that has not yet been satisfied by <see cref="Alert.SentOn"/>.
+    /// Due if we are on or after the start of the current period and <see cref="Alert.SentOn"/> is before that period start.
     /// Uses fixed day counts (approximate calendar months/years).
     /// </summary>
-    private static bool IsRecurringPeriodDue(DateTimeOffset anchor, DateTimeOffset utcNow, DateTimeOffset? sentOn, int periodLengthDays)
+    private static bool IsRecurringPeriodDue(DateOnly anchorDate, DateOnly today, DateOnly? sentOn, int periodLengthDays)
     {
         if (periodLengthDays <= 0)
             return false;
 
-        var elapsed = utcNow - anchor;
-        if (elapsed < TimeSpan.Zero)
+        var elapsedDays = today.DayNumber - anchorDate.DayNumber;
+        if (elapsedDays < 0)
             return false;
 
-        var periodIndex = (int)(elapsed.TotalDays / periodLengthDays);
-        var periodStart = anchor.AddDays(periodIndex * periodLengthDays);
+        var periodIndex = elapsedDays / periodLengthDays;
+        var periodStartDate = anchorDate.AddDays(periodIndex * periodLengthDays);
 
-        if (utcNow < periodStart)
+        if (today < periodStartDate)
             return false;
 
-        return !sentOn.HasValue || sentOn.Value < periodStart;
+        return !sentOn.HasValue || sentOn.Value < periodStartDate;
     }
 }

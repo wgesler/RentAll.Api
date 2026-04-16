@@ -16,8 +16,8 @@ public class CreateReservationDto
     public int NumberOfPeople { get; set; }
     public string? TenantName { get; set; }
     public string? ReferenceNo { get; set; }
-    public DateTimeOffset ArrivalDate { get; set; }
-    public DateTimeOffset DepartureDate { get; set; }
+    public DateOnly ArrivalDate { get; set; }
+    public DateOnly DepartureDate { get; set; }
     public int CheckInTimeId { get; set; }
     public int CheckOutTimeId { get; set; }
     public string? LockBoxCode { get; set; }
@@ -36,7 +36,7 @@ public class CreateReservationDto
     public bool MaidService { get; set; }
     public decimal MaidServiceFee { get; set; }
     public int FrequencyId { get; set; }
-    public DateTimeOffset MaidStartDate { get; set; }
+    public DateOnly MaidStartDate { get; set; }
     public Guid? MaidUserId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }

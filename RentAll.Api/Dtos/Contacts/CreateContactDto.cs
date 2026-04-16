@@ -28,7 +28,7 @@ public class CreateContactDto
     public bool IsInternational { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public DateTimeOffset? InsuranceExpiration { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
     public int? Markup { get; set; }
     public decimal? RevenueSplitOwner { get; set; }
     public decimal? RevenueSplitOffice { get; set; }

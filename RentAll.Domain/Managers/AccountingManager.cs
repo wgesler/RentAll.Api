@@ -29,12 +29,12 @@ public class AccountingManager : IAccountingManager
     }
 
     #region Billing
-    public async Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateTimeOffset startDate, DateTimeOffset endDate)
+    public async Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate)
     {
         var lineItems = new List<LedgerLine>();
         var lineNumber = 1;
 
-        var requestedDate = startDate.Date;
+        var requestedDate = startDate;
         var requestedMonth = startDate.Month;
 
         // Partial month = NO if: check-in is 1st, OR (month has 31 days AND check-in is 1st or 2nd)
@@ -48,7 +48,7 @@ public class AccountingManager : IAccountingManager
 
         foreach (var office in offices)
         {
-            var officeLine = $"Office Base Fee ({office.Name}): ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
+            var officeLine = $"Office Base Fee ({office.Name}): ({startDate:MM/dd}-{endDate:MM/dd})";
             lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = officeLine, Amount = organization.OfficeFee });
 
             var properties = await _propertyRepository.GetPropertyListByOfficeIdsAsync(office.OrganizationId, Convert.ToString(office.OfficeId));
@@ -167,7 +167,7 @@ public class AccountingManager : IAccountingManager
         return response;
     }
 
-    public async Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate)
+    public async Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate)
     {
         var ledgerLines = GetLedgerLinesByReservationIdAsync(reservation, startDate, endDate);
         await ApplyCostCodesAsync(reservation.OfficeId, reservation.OrganizationId, ledgerLines);
@@ -175,17 +175,17 @@ public class AccountingManager : IAccountingManager
         return ledgerLines;
     }
 
-    public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate)
+    public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate)
     {
         var lineItems = new List<LedgerLine>();
         var lineNumber = 1;
 
-        var requestedDate = startDate.Date;
+        var requestedDate = startDate;
         var requestedMonth = startDate.Month;
 
-        var checkInDate = reservation.ArrivalDate.Date;
+        var checkInDate = reservation.ArrivalDate;
         var checkInMonth = reservation.ArrivalDate.Month;
-        var checkOutDate = reservation.DepartureDate.Date;
+        var checkOutDate = reservation.DepartureDate;
         var checkOutMonth = reservation.DepartureDate.Month;
 
         // Determine if we have a partial month scenario
@@ -193,10 +193,10 @@ public class AccountingManager : IAccountingManager
         var daysInCheckInMonth = DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month);
         var isFirstMonthPartial = (checkInDate.Day != 1 && (daysInCheckInMonth == 31 && checkInDate.Day > 2));
 
-        DateTime firstDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, 1);
-        DateTime lastDayOfMonth = new DateTime(requestedDate.Year, requestedDate.Month, DateTime.DaysInMonth(requestedDate.Year, requestedDate.Month));
-        DateTime firstDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, 1);
-        DateTime lastDayOfCheckInMonth = new DateTime(checkInDate.Year, checkInDate.Month, DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month));
+        var firstDayOfMonth = new DateOnly(requestedDate.Year, requestedDate.Month, 1);
+        var lastDayOfMonth = new DateOnly(requestedDate.Year, requestedDate.Month, DateTime.DaysInMonth(requestedDate.Year, requestedDate.Month));
+        var firstDayOfCheckInMonth = new DateOnly(checkInDate.Year, checkInDate.Month, 1);
+        var lastDayOfCheckInMonth = new DateOnly(checkInDate.Year, checkInDate.Month, DateTime.DaysInMonth(checkInDate.Year, checkInDate.Month));
 
         // Calculate secondMonth based on whether first month was prorated or not
         // If prorated: billed to end of first month, so second month starts the day after
@@ -313,9 +313,9 @@ public class AccountingManager : IAccountingManager
         }
     }
 
-    private void AddRentalLine(int days, Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate, bool isProratedMonth, List<LedgerLine> lines, ref int lineNumber)
+    private void AddRentalLine(int days, Reservation reservation, DateOnly startDate, DateOnly endDate, bool isProratedMonth, List<LedgerLine> lines, ref int lineNumber)
     {
-        var rentLine = $"Rental Fee ({startDate.LocalDateTime:MM/dd}-{endDate.LocalDateTime:MM/dd})";
+        var rentLine = $"Rental Fee ({startDate:MM/dd}-{endDate:MM/dd})";
         if (reservation.BillingType == BillingType.Monthly)
         {
             if (isProratedMonth)
@@ -341,7 +341,7 @@ public class AccountingManager : IAccountingManager
 
     }
 
-    private void AddMaidServiceLines(Reservation reservation, DateTimeOffset startDate, DateTimeOffset endDate, int requestedYear, int requestedMonth, List<LedgerLine> lines, ref int lineNumber)
+    private void AddMaidServiceLines(Reservation reservation, DateOnly startDate, DateOnly endDate, int requestedYear, int requestedMonth, List<LedgerLine> lines, ref int lineNumber)
     {
         var sDate = reservation.MaidStartDate > startDate ? reservation.MaidStartDate : startDate;
         var dDate = endDate > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : endDate;
@@ -364,7 +364,7 @@ public class AccountingManager : IAccountingManager
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee });
     }
 
-    private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateTimeOffset startDate, DateTimeOffset endDate, int requestedYear, int requestedMonth, List<LedgerLine> lines, ref int lineNumber)
+    private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int requestedMonth, List<LedgerLine> lines, ref int lineNumber)
     {
         int fees = 0;
         switch (extraFeeLine.FeeFrequency)
@@ -387,32 +387,27 @@ public class AccountingManager : IAccountingManager
     #endregion
 
     #region Day Calculation Methods
-    private static int CalculateNumberOfBillingDays(DateTimeOffset startDate, DateTimeOffset endDate)
+    private static int CalculateNumberOfBillingDays(DateOnly startDate, DateOnly endDate)
     {
-        DateTime start = startDate.Date;
-        DateTime end = endDate.Date;
-        if (end < start) return 0;
+        if (endDate < startDate) return 0;
 
-        var days = (end - start).Days;
-        return days;
+        return endDate.DayNumber - startDate.DayNumber;
     }
 
-    private static int CalculateNumberOfDays(DateTimeOffset startDate, DateTimeOffset endDate, BillingType billingType)
+    private static int CalculateNumberOfDays(DateOnly startDate, DateOnly endDate, BillingType billingType)
     {
-        DateTime start = startDate.Date;
-        DateTime end = endDate.Date;
-        if (end < start) return 0;
+        if (endDate < startDate) return 0;
 
-        var days = (end - start).Days;
+        var days = endDate.DayNumber - startDate.DayNumber;
         if (billingType != BillingType.Nightly)
             days++;
         return days;
     }
 
-    private static int CountNumberOfWeekDaysInMonth(DateTimeOffset maidStartDate, DateTimeOffset sDate, DateTimeOffset dDate, int currentYear, int currentMonth)
+    private static int CountNumberOfWeekDaysInMonth(DateOnly maidStartDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth)
     {
         int count = 0;
-        for (DateTimeOffset d = maidStartDate; d <= dDate; d = d.AddDays(7))
+        for (var d = maidStartDate; d <= dDate; d = d.AddDays(7))
         {
             if (d >= sDate && d <= dDate)
                 count++;
@@ -421,10 +416,10 @@ public class AccountingManager : IAccountingManager
         return count;
     }
 
-    private static int CountEowDaysInMonth(DateTimeOffset maidStartDate, DateTimeOffset sDate, DateTimeOffset dDate, int currentYear, int currentMonth)
+    private static int CountEowDaysInMonth(DateOnly maidStartDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth)
     {
         int count = 0;
-        for (DateTimeOffset d = maidStartDate; d <= dDate; d = d.AddDays(14))
+        for (var d = maidStartDate; d <= dDate; d = d.AddDays(14))
         {
             if (d >= sDate && d <= dDate)
                 count++;
@@ -433,7 +428,7 @@ public class AccountingManager : IAccountingManager
         return count;
     }
 
-    private static int CountNumberOfMonths(DateTimeOffset maidStartDate, DateTimeOffset sDate, DateTimeOffset dDate, int currentYear, int currentMonth, FrequencyType frequency)
+    private static int CountNumberOfMonths(DateOnly maidStartDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth, FrequencyType frequency)
     {
         // Determine the interval based on frequency
         int monthInterval;
@@ -456,7 +451,7 @@ public class AccountingManager : IAccountingManager
         }
 
         int count = 0;
-        for (DateTimeOffset d = maidStartDate; d <= dDate; d = d.AddMonths(monthInterval))
+        for (var d = maidStartDate; d <= dDate; d = d.AddMonths(monthInterval))
         {
             if (d >= sDate && d <= dDate)
                 count++;

@@ -10,7 +10,7 @@ public class PropertyAgreement
     public decimal FlatRateAmount { get; set; }
     public string? W9Path { get; set; }
     public string? InsurancePath { get; set; }
-    public DateTimeOffset? InsuranceExpiration { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
     public string? AgreementPath { get; set; }
     public int Markup { get; set; }
     public int RevenueSplitOwner { get; set; }

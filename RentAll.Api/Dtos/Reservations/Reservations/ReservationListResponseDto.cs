@@ -15,12 +15,12 @@ public class ReservationListResponseDto
     public string TenantName { get; set; } = string.Empty;
     public string? AgentCode { get; set; }
     public decimal MonthlyRate { get; set; }
-    public DateTimeOffset ArrivalDate { get; set; }
-    public DateTimeOffset DepartureDate { get; set; }
+    public DateOnly ArrivalDate { get; set; }
+    public DateOnly DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }
-    public DateTimeOffset? MaidStartDate { get; set; }
+    public DateOnly? MaidStartDate { get; set; }
     public int FrequencyId { get; set; }
     public decimal MaidServiceFee { get; set; }
     public bool PaymentReceived { get; set; }

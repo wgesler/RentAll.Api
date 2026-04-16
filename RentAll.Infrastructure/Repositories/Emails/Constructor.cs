@@ -404,8 +404,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string? PropertyCode { get; set; }
             public Guid? ReservationId { get; set; }
             public string? ReservationCode { get; set; }
-            public DateTimeOffset? ArrivalDate { get; set; }
-            public DateTimeOffset? DepartureDate { get; set; }
+            public DateOnly? ArrivalDate { get; set; }
+            public DateOnly? DepartureDate { get; set; }
             public string ToRecipients { get; set; } = "[]";
             public string CcRecipients { get; set; } = "[]";
             public string BccRecipients { get; set; } = "[]";
@@ -413,14 +413,14 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string Subject { get; set; } = string.Empty;
             public string PlainTextContent { get; set; } = string.Empty;
             public int EmailTypeId { get; set; }
-            public DateTimeOffset? StartDate { get; set; }
+            public DateOnly? StartDate { get; set; }
             public int? DaysBeforeDeparture { get; set; }
             public int FrequencyId { get; set; }
             public int EmailStatusId { get; set; }
             public int AttemptCount { get; set; }
             public string LastError { get; set; } = string.Empty;
-            public DateTimeOffset? LastAttemptedOn { get; set; }
-            public DateTimeOffset? SentOn { get; set; }
+            public DateOnly? LastAttemptedOn { get; set; }
+            public DateOnly? SentOn { get; set; }
             public bool IsActive { get; set; }
             public DateTimeOffset CreatedOn { get; set; }
             public Guid CreatedBy { get; set; }

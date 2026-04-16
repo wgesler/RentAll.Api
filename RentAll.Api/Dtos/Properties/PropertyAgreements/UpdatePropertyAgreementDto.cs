@@ -9,7 +9,7 @@ public class UpdatePropertyAgreementDto
     public decimal? FlatRateAmount { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
-    public DateTimeOffset? InsuranceExpiration { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
     public string? W9Path { get; set; }
     public string? InsurancePath { get; set; }
     public string? AgreementPath { get; set; }

@@ -56,8 +56,8 @@ public class CalendarService : ICalendarService
             sb.AppendLine("BEGIN:VEVENT");
             sb.AppendLine($"UID:reservation-{reservation.ReservationId}@rentall");
             sb.AppendLine($"DTSTAMP:{stamp}");
-            sb.AppendLine($"DTSTART;VALUE=DATE:{reservation.ArrivalDate.UtcDateTime:yyyyMMdd}");
-            sb.AppendLine($"DTEND;VALUE=DATE:{reservation.DepartureDate.UtcDateTime:yyyyMMdd}");
+            sb.AppendLine($"DTSTART;VALUE=DATE:{reservation.ArrivalDate:yyyyMMdd}");
+            sb.AppendLine($"DTEND;VALUE=DATE:{reservation.DepartureDate:yyyyMMdd}");
             sb.AppendLine($"SUMMARY:{EscapeIcalText(GetSummary(reservation))}");
             sb.AppendLine("STATUS:CONFIRMED");
             sb.AppendLine("END:VEVENT");
