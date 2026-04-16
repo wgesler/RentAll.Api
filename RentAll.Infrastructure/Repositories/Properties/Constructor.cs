@@ -163,6 +163,10 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PetFee = e.PetFee,
                 MaidServiceFee = e.MaidServiceFee,
                 PropertyStatus = (PropertyStatus)e.PropertyStatusId,
+                BedroomId1 = e.BedroomId1,
+                BedroomId2 = e.BedroomId2,
+                BedroomId3 = e.BedroomId3,
+                BedroomId4 = e.BedroomId4,
                 IsActive = e.IsActive
             };
         }
