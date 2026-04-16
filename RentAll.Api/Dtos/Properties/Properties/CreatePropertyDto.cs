@@ -57,6 +57,7 @@ public class CreatePropertyDto
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? CommunityAddress { get; set; }
     public string? Neighborhood { get; set; }
     public string? CrossStreet { get; set; }
     public string? View { get; set; }
@@ -221,6 +222,7 @@ public class CreatePropertyDto
             State = State,
             Zip = Zip,
             Phone = Phone,
+            CommunityAddress = CommunityAddress,
             Neighborhood = Neighborhood,
             CrossStreet = CrossStreet,
             View = View,

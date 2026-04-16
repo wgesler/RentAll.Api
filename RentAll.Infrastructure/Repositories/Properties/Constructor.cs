@@ -69,6 +69,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 State = e.State,
                 Zip = e.Zip,
                 Phone = e.Phone,
+                CommunityAddress = e.CommunityAddress,
                 Neighborhood = e.Neighborhood,
                 CrossStreet = e.CrossStreet,
                 View = e.View,

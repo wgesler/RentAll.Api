@@ -59,6 +59,7 @@ public class PropertyResponseDto
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? CommunityAddress { get; set; }
     public string? Neighborhood { get; set; }
     public string? CrossStreet { get; set; }
     public string? View { get; set; }
@@ -186,6 +187,7 @@ public class PropertyResponseDto
         State = property.State;
         Zip = property.Zip;
         Phone = property.Phone;
+        CommunityAddress = property.CommunityAddress;
         Neighborhood = property.Neighborhood;
         CrossStreet = property.CrossStreet;
         View = property.View;
