@@ -6,6 +6,8 @@ namespace RentAll.Infrastructure.Configuration;
 
 public static class SqlConnectionExtensions
 {
+    static SqlConnectionExtensions() => DapperDateOnlyTypeHandlers.EnsureRegistered();
+
     public static async Task<IEnumerable<T>?> DapperProcQueryAsync<T>(
         this SqlConnection connection,
         string procedureName,
