@@ -62,7 +62,6 @@ public class ReservationEntity
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
 
-    // Arrival Service Providers
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
     public Guid? aCarpetUserId { get; set; }
@@ -70,13 +69,12 @@ public class ReservationEntity
     public Guid? aInspectorUserId { get; set; }
     public DateOnly? aInspectingDate { get; set; }
 
-    // Departure Service Providers
     public Guid? dCleanerUserId { get; set; }
     public DateOnly? dCleaningDate { get; set; }
     public Guid? dCarpetUserId { get; set; }
     public DateOnly? dCarpetDate { get; set; }
     public Guid? dInspectorUserId { get; set; }
-    public DateOnly? InspectingDate { get; set; }
+    public DateOnly? dInspectingDate { get; set; }
 
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

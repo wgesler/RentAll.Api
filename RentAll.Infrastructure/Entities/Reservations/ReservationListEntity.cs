@@ -38,7 +38,6 @@ public class ReservationListEntity
     public bool DepartureLetterSent { get; set; }
 
 
-    // Arrival Service Providers
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
     public Guid? aCarpetUserId { get; set; }
@@ -46,7 +45,6 @@ public class ReservationListEntity
     public Guid? aInspectorUserId { get; set; }
     public DateOnly? aInspectingDate { get; set; }
 
-    // Departure Service Providers
     public Guid? dCleanerUserId { get; set; }
     public DateOnly? dCleaningDate { get; set; }
     public Guid? dCarpetUserId { get; set; }

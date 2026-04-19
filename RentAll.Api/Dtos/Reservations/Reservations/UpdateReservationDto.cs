@@ -52,21 +52,19 @@ public class UpdateReservationDto
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
 
-    // Arrival Service Providers
-    public Guid? ArrivalCleanerUserId { get; set; }
-    public DateOnly? ArrivalCleaningDate { get; set; }
-    public Guid? ArrivalCarpetUserId { get; set; }
-    public DateOnly? ArrivalCarpetDate { get; set; }
-    public Guid? ArrivalInspectorUserId { get; set; }
-    public DateOnly? ArrivalInspectingDate { get; set; }
+    public Guid? aCleanerUserId { get; set; }
+    public DateOnly? aCleaningDate { get; set; }
+    public Guid? aCarpetUserId { get; set; }
+    public DateOnly? aCarpetDate { get; set; }
+    public Guid? aInspectorUserId { get; set; }
+    public DateOnly? aInspectingDate { get; set; }
 
-    // Departure Service Providers
-    public Guid? DepartureCleanerUserId { get; set; }
-    public DateOnly? DepartureCleaningDate { get; set; }
-    public Guid? DepartureCarpetUserId { get; set; }
-    public DateOnly? DepartureCarpetDate { get; set; }
-    public Guid? DepartureInspectorUserId { get; set; }
-    public DateOnly? DepartureInspectingDate { get; set; }
+    public Guid? dCleanerUserId { get; set; }
+    public DateOnly? dCleaningDate { get; set; }
+    public Guid? dCarpetUserId { get; set; }
+    public DateOnly? dCarpetDate { get; set; }
+    public Guid? dInspectorUserId { get; set; }
+    public DateOnly? dInspectingDate { get; set; }
 
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
@@ -200,18 +198,18 @@ public class UpdateReservationDto
             Code = Code,
             DepartureLetterChecked = DepartureLetterChecked,
             DepartureLetterSent = DepartureLetterSent,
-            ArrivalCleanerUserId = ArrivalCleanerUserId,
-            ArrivalCleaningDate = ArrivalCleaningDate,
-            ArrivalCarpetUserId = ArrivalCarpetUserId,
-            ArrivalCarpetDate = ArrivalCarpetDate,
-            ArrivalInspectorUserId = ArrivalInspectorUserId,
-            ArrivalInspectingDate = ArrivalInspectingDate,
-            DepartureCleanerUserId = DepartureCleanerUserId,
-            DepartureCleaningDate = DepartureCleaningDate,
-            DepartureCarpetUserId = DepartureCarpetUserId,
-            DepartureCarpetDate = DepartureCarpetDate,
-            DepartureInspectorUserId = DepartureInspectorUserId,
-            DepartureInspectingDate = DepartureInspectingDate,
+            aCleanerUserId = aCleanerUserId,
+            aCleaningDate = aCleaningDate,
+            aCarpetUserId = aCarpetUserId,
+            aCarpetDate = aCarpetDate,
+            aInspectorUserId = aInspectorUserId,
+            aInspectingDate = aInspectingDate,
+            dCleanerUserId = dCleanerUserId,
+            dCleaningDate = dCleaningDate,
+            dCarpetUserId = dCarpetUserId,
+            dCarpetDate = dCarpetDate,
+            dInspectorUserId = dInspectorUserId,
+            dInspectingDate = dInspectingDate,
             CurrentInvoiceNo = CurrentInvoiceNo,
             CreditDue = CreditDue,
             IsActive = IsActive,

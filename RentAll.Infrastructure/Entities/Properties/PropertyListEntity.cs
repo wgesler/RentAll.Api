@@ -31,7 +31,6 @@ public class PropertyListEntity
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
 
-    // Online Service Providers
     public Guid? onCleanerUserId { get; set; }
     public DateOnly? onCleaningDate { get; set; }
     public Guid? onCarpetUserId { get; set; }
@@ -39,7 +38,6 @@ public class PropertyListEntity
     public Guid? onInspectorUserId { get; set; }
     public DateOnly? onInspectingDate { get; set; }
 
-    // Offline Service Providers
     public Guid? offCleanerUserId { get; set; }
     public DateOnly? offCleaningDate { get; set; }
     public Guid? offCarpetUserId { get; set; }

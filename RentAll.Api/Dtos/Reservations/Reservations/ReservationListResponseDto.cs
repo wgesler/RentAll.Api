@@ -36,21 +36,19 @@ public class ReservationListResponseDto
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
 
-    // Arrival Service Providers
-    public Guid? ArrivalCleanerUserId { get; set; }
-    public DateOnly? ArrivalCleaningDate { get; set; }
-    public Guid? ArrivalCarpetUserId { get; set; }
-    public DateOnly? ArrivalCarpetDate { get; set; }
-    public Guid? ArrivalInspectorUserId { get; set; }
-    public DateOnly? ArrivalInspectingDate { get; set; }
+    public Guid? aCleanerUserId { get; set; }
+    public DateOnly? aCleaningDate { get; set; }
+    public Guid? aCarpetUserId { get; set; }
+    public DateOnly? aCarpetDate { get; set; }
+    public Guid? aInspectorUserId { get; set; }
+    public DateOnly? aInspectingDate { get; set; }
 
-    // Departure Service Providers
-    public Guid? DepartureCleanerUserId { get; set; }
-    public DateOnly? DepartureCleaningDate { get; set; }
-    public Guid? DepartureCarpetUserId { get; set; }
-    public DateOnly? DepartureCarpetDate { get; set; }
-    public Guid? DepartureInspectorUserId { get; set; }
-    public DateOnly? DepartureInspectingDate { get; set; }
+    public Guid? dCleanerUserId { get; set; }
+    public DateOnly? dCleaningDate { get; set; }
+    public Guid? dCarpetUserId { get; set; }
+    public DateOnly? dCarpetDate { get; set; }
+    public Guid? dInspectorUserId { get; set; }
+    public DateOnly? dInspectingDate { get; set; }
 
     public ReservationListResponseDto(ReservationList reservationList)
     {
@@ -87,18 +85,18 @@ public class ReservationListResponseDto
         CreditDue = reservationList.CreditDue;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;
-        ArrivalCleanerUserId = reservationList.ArrivalCleanerUserId;
-        ArrivalCleaningDate = reservationList.ArrivalCleaningDate;
-        ArrivalCarpetUserId = reservationList.ArrivalCarpetUserId;
-        ArrivalCarpetDate = reservationList.ArrivalCarpetDate;
-        ArrivalInspectorUserId = reservationList.ArrivalInspectorUserId;
-        ArrivalInspectingDate = reservationList.ArrivalInspectingDate;
-        DepartureCleanerUserId = reservationList.DepartureCleanerUserId;
-        DepartureCleaningDate = reservationList.DepartureCleaningDate;
-        DepartureCarpetUserId = reservationList.DepartureCarpetUserId;
-        DepartureCarpetDate = reservationList.DepartureCarpetDate;
-        DepartureInspectorUserId = reservationList.DepartureInspectorUserId;
-        DepartureInspectingDate = reservationList.DepartureInspectingDate;
+        aCleanerUserId = reservationList.aCleanerUserId;
+        aCleaningDate = reservationList.aCleaningDate;
+        aCarpetUserId = reservationList.aCarpetUserId;
+        aCarpetDate = reservationList.aCarpetDate;
+        aInspectorUserId = reservationList.aInspectorUserId;
+        aInspectingDate = reservationList.aInspectingDate;
+        dCleanerUserId = reservationList.dCleanerUserId;
+        dCleaningDate = reservationList.dCleaningDate;
+        dCarpetUserId = reservationList.dCarpetUserId;
+        dCarpetDate = reservationList.dCarpetDate;
+        dInspectorUserId = reservationList.dInspectorUserId;
+        dInspectingDate = reservationList.dInspectingDate;
     }
 }
 
