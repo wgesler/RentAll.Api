@@ -9,12 +9,6 @@ public class MaintenanceEntity
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string InspectionCheckList { get; set; } = string.Empty;
-    public Guid? CleanerUserId { get; set; }
-    public DateOnly? CleaningDate { get; set; }
-    public Guid? InspectorUserId { get; set; }
-    public DateOnly? InspectingDate { get; set; }
-    public Guid? CarpetUserId { get; set; }
-    public DateOnly? CarpetDate { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }

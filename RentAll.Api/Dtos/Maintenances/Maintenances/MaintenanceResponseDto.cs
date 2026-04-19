@@ -17,6 +17,7 @@ public class MaintenanceResponseDto
     public DateOnly? CarpetDate { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -39,6 +40,7 @@ public class MaintenanceResponseDto
         CarpetDate = maintenanceRecord.CarpetDate;
         Notes = maintenanceRecord.Notes;
         IsActive = maintenanceRecord.IsActive;
+        IsDeleted = maintenanceRecord.IsDeleted;
         CreatedOn = maintenanceRecord.CreatedOn;
         CreatedBy = maintenanceRecord.CreatedBy;
         ModifiedOn = maintenanceRecord.ModifiedOn;
