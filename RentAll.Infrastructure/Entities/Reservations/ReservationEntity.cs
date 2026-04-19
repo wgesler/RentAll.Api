@@ -6,9 +6,9 @@ public class ReservationEntity
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
-    public string ReservationCode { get; set; } = string.Empty;
-    public Guid? AgentId { get; set; }
     public Guid PropertyId { get; set; }
+    public Guid? AgentId { get; set; }
+    public string ReservationCode { get; set; } = string.Empty;
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
     public int ReservationNoticeId { get; set; }
@@ -26,6 +26,7 @@ public class ReservationEntity
     public string? LockBoxCode { get; set; }
     public string? UnitTenantCode { get; set; }
 
+    // Billing Fields
     public int BillingMethodId { get; set; }
     public int ProrateTypeId { get; set; }
     public int BillingTypeId { get; set; }
@@ -33,6 +34,8 @@ public class ReservationEntity
     public decimal Deposit { get; set; }
     public int DepositTypeId { get; set; }
     public decimal DepartureFee { get; set; }
+
+    // Pets and Maids
     public bool HasPets { get; set; }
     public decimal PetFee { get; set; }
     public int NumberOfPets { get; set; }
@@ -44,17 +47,37 @@ public class ReservationEntity
     public Guid? MaidUserId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
+
+    // Payment Fields
     public string? ExtraFeeLines { get; set; }
     public bool AllowExtensions { get; set; }
+    public int CurrentInvoiceNo { get; set; }
+    public decimal CreditDue { get; set; }
     public bool PaymentReceived { get; set; }
+
     public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
     public bool ReadyForArrival { get; set; }
     public bool Code { get; set; }
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
-    public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
+
+    // Arrival Service Providers
+    public Guid? aCleanerUserId { get; set; }
+    public DateOnly? aCleaningDate { get; set; }
+    public Guid? aCarpetUserId { get; set; }
+    public DateOnly? aCarpetDate { get; set; }
+    public Guid? aInspectorUserId { get; set; }
+    public DateOnly? aInspectingDate { get; set; }
+
+    // Departure Service Providers
+    public Guid? dCleanerUserId { get; set; }
+    public DateOnly? dCleaningDate { get; set; }
+    public Guid? dCarpetUserId { get; set; }
+    public DateOnly? dCarpetDate { get; set; }
+    public Guid? dInspectorUserId { get; set; }
+    public DateOnly? InspectingDate { get; set; }
+
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

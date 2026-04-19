@@ -32,6 +32,23 @@ public class PropertyList
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+
+    // Online Service Providers
+    public Guid? OnlineCleanerUserId { get; set; }
+    public DateOnly? OnlineCleaningDate { get; set; }
+    public Guid? OnlineCarpetUserId { get; set; }
+    public DateOnly? OnlineCarpetDate { get; set; }
+    public Guid? OnlineInspectorUserId { get; set; }
+    public DateOnly? OnlineInspectingDate { get; set; }
+
+    // Offline Service Providers
+    public Guid? OfflineCleanerUserId { get; set; }
+    public DateOnly? OfflineCleaningDate { get; set; }
+    public Guid? OfflineCarpetUserId { get; set; }
+    public DateOnly? OfflineCarpetDate { get; set; }
+    public Guid? OfflineInspectorUserId { get; set; }
+    public DateOnly? OfflineInspectingDate { get; set; }
+
     public bool IsActive { get; set; }
 }
 

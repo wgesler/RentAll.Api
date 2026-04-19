@@ -30,5 +30,22 @@ public class PropertyListEntity
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+
+    // Online Service Providers
+    public Guid? onCleanerUserId { get; set; }
+    public DateOnly? onCleaningDate { get; set; }
+    public Guid? onCarpetUserId { get; set; }
+    public DateOnly? onCarpetDate { get; set; }
+    public Guid? onInspectorUserId { get; set; }
+    public DateOnly? onInspectingDate { get; set; }
+
+    // Offline Service Providers
+    public Guid? offCleanerUserId { get; set; }
+    public DateOnly? offCleaningDate { get; set; }
+    public Guid? offCarpetUserId { get; set; }
+    public DateOnly? offCarpetDate { get; set; }
+    public Guid? offInspectorUserId { get; set; }
+    public DateOnly? offInspectingDate { get; set; }
+
     public bool IsActive { get; set; }
 }

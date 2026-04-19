@@ -15,6 +15,7 @@ public class ReservationListResponseDto
     public string TenantName { get; set; } = string.Empty;
     public string? AgentCode { get; set; }
     public decimal MonthlyRate { get; set; }
+    public decimal DailyRate { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
@@ -35,6 +36,22 @@ public class ReservationListResponseDto
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
 
+    // Arrival Service Providers
+    public Guid? ArrivalCleanerUserId { get; set; }
+    public DateOnly? ArrivalCleaningDate { get; set; }
+    public Guid? ArrivalCarpetUserId { get; set; }
+    public DateOnly? ArrivalCarpetDate { get; set; }
+    public Guid? ArrivalInspectorUserId { get; set; }
+    public DateOnly? ArrivalInspectingDate { get; set; }
+
+    // Departure Service Providers
+    public Guid? DepartureCleanerUserId { get; set; }
+    public DateOnly? DepartureCleaningDate { get; set; }
+    public Guid? DepartureCarpetUserId { get; set; }
+    public DateOnly? DepartureCarpetDate { get; set; }
+    public Guid? DepartureInspectorUserId { get; set; }
+    public DateOnly? DepartureInspectingDate { get; set; }
+
     public ReservationListResponseDto(ReservationList reservationList)
     {
         ReservationId = reservationList.ReservationId;
@@ -50,6 +67,7 @@ public class ReservationListResponseDto
         CompanyName = reservationList.CompanyName;
         AgentCode = reservationList.AgentCode;
         MonthlyRate = reservationList.MonthlyRate;
+        DailyRate = reservationList.DailyRate;
         ArrivalDate = reservationList.ArrivalDate;
         DepartureDate = reservationList.DepartureDate;
         ReservationStatusId = (int)reservationList.ReservationStatus;
@@ -69,6 +87,18 @@ public class ReservationListResponseDto
         CreditDue = reservationList.CreditDue;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;
+        ArrivalCleanerUserId = reservationList.ArrivalCleanerUserId;
+        ArrivalCleaningDate = reservationList.ArrivalCleaningDate;
+        ArrivalCarpetUserId = reservationList.ArrivalCarpetUserId;
+        ArrivalCarpetDate = reservationList.ArrivalCarpetDate;
+        ArrivalInspectorUserId = reservationList.ArrivalInspectorUserId;
+        ArrivalInspectingDate = reservationList.ArrivalInspectingDate;
+        DepartureCleanerUserId = reservationList.DepartureCleanerUserId;
+        DepartureCleaningDate = reservationList.DepartureCleaningDate;
+        DepartureCarpetUserId = reservationList.DepartureCarpetUserId;
+        DepartureCarpetDate = reservationList.DepartureCarpetDate;
+        DepartureInspectorUserId = reservationList.DepartureInspectorUserId;
+        DepartureInspectingDate = reservationList.DepartureInspectingDate;
     }
 }
 

@@ -129,6 +129,23 @@ public class PropertyResponseDto
     public string? Amenities { get; set; }
     public string? Description { get; set; }
     public string? Notes { get; set; }
+
+    // Online Service Providers
+    public Guid? OnlineCleanerUserId { get; set; }
+    public DateOnly? OnlineCleaningDate { get; set; }
+    public Guid? OnlineCarpetUserId { get; set; }
+    public DateOnly? OnlineCarpetDate { get; set; }
+    public Guid? OnlineInspectorUserId { get; set; }
+    public DateOnly? OnlineInspectingDate { get; set; }
+
+    // Offline Service Providers
+    public Guid? OfflineCleanerUserId { get; set; }
+    public DateOnly? OfflineCleaningDate { get; set; }
+    public Guid? OfflineCarpetUserId { get; set; }
+    public DateOnly? OfflineCarpetDate { get; set; }
+    public Guid? OfflineInspectorUserId { get; set; }
+    public DateOnly? OfflineInspectingDate { get; set; }
+
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -243,6 +260,18 @@ public class PropertyResponseDto
         Amenities = property.Amenities;
         Description = property.Description;
         Notes = property.Notes;
+        OnlineCleanerUserId = property.OnlineCleanerUserId;
+        OnlineCleaningDate = property.OnlineCleaningDate;
+        OnlineCarpetUserId = property.OnlineCarpetUserId;
+        OnlineCarpetDate = property.OnlineCarpetDate;
+        OnlineInspectorUserId = property.OnlineInspectorUserId;
+        OnlineInspectingDate = property.OnlineInspectingDate;
+        OfflineCleanerUserId = property.OfflineCleanerUserId;
+        OfflineCleaningDate = property.OfflineCleaningDate;
+        OfflineCarpetUserId = property.OfflineCarpetUserId;
+        OfflineCarpetDate = property.OfflineCarpetDate;
+        OfflineInspectorUserId = property.OfflineInspectorUserId;
+        OfflineInspectingDate = property.OfflineInspectingDate;
         IsActive = property.IsActive;
         CreatedOn = property.CreatedOn;
         CreatedBy = property.CreatedBy;

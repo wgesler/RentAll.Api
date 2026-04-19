@@ -54,6 +54,23 @@ public class ReservationResponseDto
     public bool Code { get; set; }
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
+
+    // Arrival Service Providers
+    public Guid? ArrivalCleanerUserId { get; set; }
+    public DateOnly? ArrivalCleaningDate { get; set; }
+    public Guid? ArrivalCarpetUserId { get; set; }
+    public DateOnly? ArrivalCarpetDate { get; set; }
+    public Guid? ArrivalInspectorUserId { get; set; }
+    public DateOnly? ArrivalInspectingDate { get; set; }
+
+    // Departure Service Providers
+    public Guid? DepartureCleanerUserId { get; set; }
+    public DateOnly? DepartureCleaningDate { get; set; }
+    public Guid? DepartureCarpetUserId { get; set; }
+    public DateOnly? DepartureCarpetDate { get; set; }
+    public Guid? DepartureInspectorUserId { get; set; }
+    public DateOnly? DepartureInspectingDate { get; set; }
+
     public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
@@ -115,6 +132,18 @@ public class ReservationResponseDto
         Code = reservation.Code;
         DepartureLetterChecked = reservation.DepartureLetterChecked;
         DepartureLetterSent = reservation.DepartureLetterSent;
+        ArrivalCleanerUserId = reservation.ArrivalCleanerUserId;
+        ArrivalCleaningDate = reservation.ArrivalCleaningDate;
+        ArrivalCarpetUserId = reservation.ArrivalCarpetUserId;
+        ArrivalCarpetDate = reservation.ArrivalCarpetDate;
+        ArrivalInspectorUserId = reservation.ArrivalInspectorUserId;
+        ArrivalInspectingDate = reservation.ArrivalInspectingDate;
+        DepartureCleanerUserId = reservation.DepartureCleanerUserId;
+        DepartureCleaningDate = reservation.DepartureCleaningDate;
+        DepartureCarpetUserId = reservation.DepartureCarpetUserId;
+        DepartureCarpetDate = reservation.DepartureCarpetDate;
+        DepartureInspectorUserId = reservation.DepartureInspectorUserId;
+        DepartureInspectingDate = reservation.DepartureInspectingDate;
         CurrentInvoiceNo = reservation.CurrentInvoiceNo;
         CreditDue = reservation.CreditDue;
         IsActive = reservation.IsActive;

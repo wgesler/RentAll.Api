@@ -8,13 +8,16 @@ public class ReservationListEntity
     public string PropertyCode { get; set; } = string.Empty;
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public string? AgentCode { get; set; }
+
     public Guid ContactId { get; set; }
     public string ContactName { get; set; } = string.Empty;
     public Guid? CompanyId { get; set; }
     public string? CompanyName { get; set; }
     public string TenantName { get; set; } = string.Empty;
-    public string? AgentCode { get; set; }
+
     public decimal MonthlyRate { get; set; }
+    public decimal DailyRate { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int ReservationStatusId { get; set; }
@@ -24,6 +27,8 @@ public class ReservationListEntity
     public int FrequencyId { get; set; }
     public decimal MaidServiceFee { get; set; }
 
+    public int CurrentInvoiceNo { get; set; }
+    public decimal CreditDue { get; set; }
     public bool PaymentReceived { get; set; }
     public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
@@ -32,8 +37,23 @@ public class ReservationListEntity
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
 
-    public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
+
+    // Arrival Service Providers
+    public Guid? aCleanerUserId { get; set; }
+    public DateOnly? aCleaningDate { get; set; }
+    public Guid? aCarpetUserId { get; set; }
+    public DateOnly? aCarpetDate { get; set; }
+    public Guid? aInspectorUserId { get; set; }
+    public DateOnly? aInspectingDate { get; set; }
+
+    // Departure Service Providers
+    public Guid? dCleanerUserId { get; set; }
+    public DateOnly? dCleaningDate { get; set; }
+    public Guid? dCarpetUserId { get; set; }
+    public DateOnly? dCarpetDate { get; set; }
+    public Guid? dInspectorUserId { get; set; }
+    public DateOnly? dInspectingDate { get; set; }
+
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
 

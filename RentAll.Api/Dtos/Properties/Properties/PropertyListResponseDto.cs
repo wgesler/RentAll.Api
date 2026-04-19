@@ -30,6 +30,23 @@ public class PropertyListResponseDto
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
     public int BedroomId4 { get; set; }
+
+    // Online Service Providers
+    public Guid? OnlineCleanerUserId { get; set; }
+    public DateOnly? OnlineCleaningDate { get; set; }
+    public Guid? OnlineCarpetUserId { get; set; }
+    public DateOnly? OnlineCarpetDate { get; set; }
+    public Guid? OnlineInspectorUserId { get; set; }
+    public DateOnly? OnlineInspectingDate { get; set; }
+
+    // Offline Service Providers
+    public Guid? OfflineCleanerUserId { get; set; }
+    public DateOnly? OfflineCleaningDate { get; set; }
+    public Guid? OfflineCarpetUserId { get; set; }
+    public DateOnly? OfflineCarpetDate { get; set; }
+    public Guid? OfflineInspectorUserId { get; set; }
+    public DateOnly? OfflineInspectingDate { get; set; }
+
     public bool IsActive { get; set; }
 
     public PropertyListResponseDto(PropertyList propertyList)
@@ -62,6 +79,18 @@ public class PropertyListResponseDto
         BedroomId2 = propertyList.BedroomId2;
         BedroomId3 = propertyList.BedroomId3;
         BedroomId4 = propertyList.BedroomId4;
+        OnlineCleanerUserId = propertyList.OnlineCleanerUserId;
+        OnlineCleaningDate = propertyList.OnlineCleaningDate;
+        OnlineCarpetUserId = propertyList.OnlineCarpetUserId;
+        OnlineCarpetDate = propertyList.OnlineCarpetDate;
+        OnlineInspectorUserId = propertyList.OnlineInspectorUserId;
+        OnlineInspectingDate = propertyList.OnlineInspectingDate;
+        OfflineCleanerUserId = propertyList.OfflineCleanerUserId;
+        OfflineCleaningDate = propertyList.OfflineCleaningDate;
+        OfflineCarpetUserId = propertyList.OfflineCarpetUserId;
+        OfflineCarpetDate = propertyList.OfflineCarpetDate;
+        OfflineInspectorUserId = propertyList.OfflineInspectorUserId;
+        OfflineInspectingDate = propertyList.OfflineInspectingDate;
         IsActive = propertyList.IsActive;
     }
 }
