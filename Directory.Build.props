@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <!-- Magick.NET 14.12.0 ships ImageMagick 7.1.2-19 (Magick.NET 14.12 release notes), matching the patched release for GHSA-8vfj-q2cp-5m5j. No newer stable NuGet version exists; suppress until advisory metadata matches upstream. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-8vfj-q2cp-5m5j" />
+  </ItemGroup>
+</Project>
