@@ -72,6 +72,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             MaintenanceEmail = e.MaintenanceEmail,
             AfterHoursPhone = e.AfterHoursPhone,
             AfterHoursInstructions = e.AfterHoursInstructions,
+            UseDailyOnResBoard = e.UseDailyOnResBoard,
             DaysToRefundDeposit = e.DaysToRefundDeposit,
             DefaultDeposit = e.DefaultDeposit,
             DefaultSdw = e.DefaultSdw,
