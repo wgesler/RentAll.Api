@@ -9,6 +9,10 @@ public class LedgerLineResponseDto
     public int CostCodeId { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
 
     public LedgerLineResponseDto(LedgerLine ledgerLine)
     {
@@ -19,5 +23,9 @@ public class LedgerLineResponseDto
         CostCodeId = ledgerLine.CostCodeId;
         Amount = ledgerLine.Amount;
         Description = ledgerLine.Description;
+        CreatedOn = ledgerLine.CreatedOn;
+        CreatedBy = ledgerLine.CreatedBy;
+        ModifiedOn = ledgerLine.ModifiedOn;
+        ModifiedBy = ledgerLine.ModifiedBy;
     }
 }

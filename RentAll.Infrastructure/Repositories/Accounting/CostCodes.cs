@@ -56,7 +56,7 @@ public partial class AccountingRepository
     public async Task<CostCode?> GetByCostCodeAsync(string costCode, Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<CostCodeEntity>("Accounting.CostCode_GetByCostCode", new
+        var res = await db.DapperProcQueryAsync<CostCodeEntity>("Accounting.CostCode_GetByCode", new
         {
             CostCode = costCode,
             OrganizationId = organizationId,

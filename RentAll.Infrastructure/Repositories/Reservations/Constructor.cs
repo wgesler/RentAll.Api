@@ -3,16 +3,14 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Infrastructure.Serialization;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Reservations
 {
     public partial class ReservationRepository : IReservationRepository
     {
-        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
+        private static readonly JsonSerializerOptions JsonOptions = SqlColumnJsonSerializerOptions.CaseInsensitive;
 
         private readonly string _dbConnectionString;
 

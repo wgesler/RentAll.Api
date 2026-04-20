@@ -9,8 +9,8 @@ public class LedgerLineEntity
     public int CostCodeId { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
-    public DateOnly CreatedOn { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
-    public DateOnly ModifiedOn { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }

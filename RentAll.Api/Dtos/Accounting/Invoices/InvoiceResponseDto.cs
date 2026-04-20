@@ -1,3 +1,6 @@
+using RentAll.Api.Dtos.Accounting.LedgerLines;
+using RentAll.Domain.Models;
+
 namespace RentAll.Api.Dtos.Accounting.Invoices;
 
 public class InvoiceResponseDto
@@ -18,7 +21,7 @@ public class InvoiceResponseDto
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
-    public List<LedgerLine> LedgerLines { get; set; } = new List<LedgerLine>();
+    public List<LedgerLineResponseDto> LedgerLines { get; set; } = new List<LedgerLineResponseDto>();
 
     public InvoiceResponseDto(Invoice invoice)
     {
@@ -37,7 +40,7 @@ public class InvoiceResponseDto
         TotalAmount = invoice.TotalAmount;
         PaidAmount = invoice.PaidAmount;
         Notes = invoice.Notes;
-        LedgerLines = invoice.LedgerLines;
+        LedgerLines = invoice.LedgerLines.Select(l => new LedgerLineResponseDto(l)).ToList();
         IsActive = invoice.IsActive;
     }
 }
