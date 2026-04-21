@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
@@ -10,6 +12,7 @@ namespace RentAll.Api.Controllers
     [Authorize]
     public partial class PropertyController : BaseController
     {
+        private readonly AppSettings _appSettings;
         private readonly IPropertyManager _propertyManager;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
@@ -21,6 +24,7 @@ namespace RentAll.Api.Controllers
         private readonly ILogger<PropertyController> _logger;
 
         public PropertyController(
+            IOptions<AppSettings> appSettingsOptions,
             IPropertyManager propertyManager,
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
@@ -31,6 +35,7 @@ namespace RentAll.Api.Controllers
             IFileService fileService,
             ILogger<PropertyController> logger)
         {
+            _appSettings = appSettingsOptions.Value;
             _propertyManager = propertyManager;
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;

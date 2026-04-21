@@ -156,7 +156,8 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.PublicApiBaseUrl)
+                    ? _appSettings.PublicApiBaseUrl.Trim().TrimEnd('/') : $"{Request.Scheme}://{Request.Host}";
                 var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId, CurrentOrganizationId, baseUrl);
 
                 return Ok(new CalendarUrlResponseDto { PropertyId = propertyId, OrganizationId = CurrentOrganizationId, SubscriptionUrl = subscriptionUrl });

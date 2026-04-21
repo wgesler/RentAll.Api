@@ -2,6 +2,7 @@ namespace RentAll.Domain.Configuration
 {
     public class AppSettings
     {
+        public string? PublicApiBaseUrl { get; set; }
         public string[] AllowedHostNames { get; set; } = Array.Empty<string>();
         public string Environment { get; set; } = string.Empty;
         public string Container { get; set; } = string.Empty;

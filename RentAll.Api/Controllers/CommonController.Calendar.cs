@@ -16,7 +16,8 @@ namespace RentAll.Api.Controllers
                     return NotFound("Calendar not found");
 
                 Response.Headers.CacheControl = "public,max-age=300";
-                return Content(ics, "text/calendar; charset=utf-8");
+                var response = Content(ics, "text/calendar; charset=utf-8");
+                return response;
             }
             catch (Exception ex)
             {
