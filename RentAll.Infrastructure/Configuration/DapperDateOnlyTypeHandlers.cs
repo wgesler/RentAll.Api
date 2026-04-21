@@ -25,6 +25,7 @@ internal static class DapperDateOnlyTypeHandlers
     {
         public override DateOnly Parse(object value) => value switch
         {
+            DateOnly d => d,
             DateTime dt => DateOnly.FromDateTime(dt),
             DateTimeOffset dto => DateOnly.FromDateTime(dto.Date),
             string s => DateOnly.Parse(s, CultureInfo.InvariantCulture),
@@ -43,6 +44,7 @@ internal static class DapperDateOnlyTypeHandlers
         public override DateOnly? Parse(object value) => value switch
         {
             null or DBNull => null,
+            DateOnly d => d,
             DateTime dt => DateOnly.FromDateTime(dt),
             DateTimeOffset dto => DateOnly.FromDateTime(dto.Date),
             string s => DateOnly.Parse(s, CultureInfo.InvariantCulture),

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -43,32 +44,37 @@ public class CalendarService : ICalendarService
     public string BuildPropertyCalendar(Guid propertyId, IEnumerable<Reservation> reservations, DateTimeOffset generatedOnUtc)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("BEGIN:VCALENDAR");
-        sb.AppendLine("VERSION:2.0");
-        sb.AppendLine("PRODID:-//RentAll//Property Calendar//EN");
-        sb.AppendLine("CALSCALE:GREGORIAN");
-        sb.AppendLine("METHOD:PUBLISH");
-        sb.AppendLine($"X-WR-CALNAME:Property {propertyId} Availability");
+        var newLine = "\r\n";
 
-        var stamp = generatedOnUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'");
+        sb.Append("BEGIN:VCALENDAR").Append(newLine);
+        sb.Append("VERSION:2.0").Append(newLine);
+        sb.Append("PRODID:-//RentAll//Property Calendar//EN").Append(newLine);
+        sb.Append("CALSCALE:GREGORIAN").Append(newLine);
+        sb.Append("METHOD:PUBLISH").Append(newLine);
+        sb.Append($"X-WR-CALNAME:{EscapeIcalText($"Property {propertyId} Availability")}").Append(newLine);
+
+        var stamp = generatedOnUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+
         foreach (var reservation in reservations.OrderBy(r => r.ArrivalDate))
         {
-            sb.AppendLine("BEGIN:VEVENT");
-            sb.AppendLine($"UID:reservation-{reservation.ReservationId}@rentall");
-            sb.AppendLine($"DTSTAMP:{stamp}");
-            sb.AppendLine($"DTSTART;VALUE=DATE:{reservation.ArrivalDate:yyyyMMdd}");
-            // RFC 5545: DTEND;VALUE=DATE is exclusive — the last blocked calendar day is DTEND minus one day.
-            // DepartureDate is inclusive (last day of the stay), so emit the day after departure as DTEND.
-            sb.AppendLine($"DTEND;VALUE=DATE:{reservation.DepartureDate.AddDays(1):yyyyMMdd}");
-            sb.AppendLine($"SUMMARY:{EscapeIcalText(GetSummary(reservation))}");
-            sb.AppendLine("STATUS:CONFIRMED");
-            sb.AppendLine("END:VEVENT");
+            var startDate = reservation.ArrivalDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var endDateExclusive = reservation.DepartureDate.AddDays(1).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var summary = EscapeIcalText(GetSummary(reservation));
+
+            sb.Append("BEGIN:VEVENT").Append(newLine);
+            sb.Append($"UID:reservation-{reservation.ReservationId}@rentall").Append(newLine);
+            sb.Append($"DTSTAMP:{stamp}").Append(newLine);
+            sb.Append($"DTSTART;VALUE=DATE:{startDate}").Append(newLine);
+            sb.Append($"DTEND;VALUE=DATE:{endDateExclusive}").Append(newLine);
+            sb.Append($"SUMMARY:{summary}").Append(newLine);
+            sb.Append("STATUS:CONFIRMED").Append(newLine);
+            sb.Append("END:VEVENT").Append(newLine);
         }
 
-        sb.AppendLine("END:VCALENDAR");
-        return sb.ToString().Replace("\n", "\r\n");
-    }
+        sb.Append("END:VCALENDAR").Append(newLine);
 
+        return sb.ToString();
+    }
     private static string GetTokenPayload(Guid propertyId, Guid organizationId)
     {
         return $"{organizationId:N}:{propertyId:N}";

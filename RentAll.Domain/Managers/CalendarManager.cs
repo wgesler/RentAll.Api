@@ -10,7 +10,9 @@ public class CalendarManager : ICalendarManager
     private readonly ICalendarService _calendarService;
     private readonly IReservationRepository _reservationRepository;
 
-    public CalendarManager(ICalendarService calendarService, IReservationRepository reservationRepository)
+    public CalendarManager(
+        ICalendarService calendarService,
+        IReservationRepository reservationRepository)
     {
         _calendarService = calendarService;
         _reservationRepository = reservationRepository;
@@ -22,6 +24,7 @@ public class CalendarManager : ICalendarManager
             throw new ArgumentException("Base URL is required", nameof(baseUrl));
 
         var token = _calendarService.GeneratePropertyCalendarToken(propertyId, organizationId);
+
         return $"{baseUrl}/api/common/calendar/property/{propertyId}.ics?organizationId={organizationId}&token={token}";
     }
 
@@ -30,12 +33,13 @@ public class CalendarManager : ICalendarManager
         if (!_calendarService.IsValidPropertyCalendarToken(propertyId, organizationId, token))
             return null;
 
-        // Use the DB "active list" for this property so the feed is not empty when the list-by-property
-        // result set omits or does not map IsActive (defaults to false and filters out every row in memory).
+        var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
+
         var reservations = await _reservationRepository.GetReservationActiveListByPropertyIdAsync(propertyId, organizationId);
+
         var calendarReservations = reservations
             .Where(r => r.ReservationStatus != ReservationStatus.PreBooking)
-            .Where(r => r.DepartureDate > DateOnly.FromDateTime(DateTime.UtcNow.Date.AddYears(-1)))
+            .Where(r => r.DepartureDate > cutoffDate)
             .ToList();
 
         return _calendarService.BuildPropertyCalendar(propertyId, calendarReservations, DateTimeOffset.UtcNow);
