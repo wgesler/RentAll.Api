@@ -34,13 +34,8 @@ public class CalendarManager : ICalendarManager
             return null;
 
         var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
-
         var reservations = await _reservationRepository.GetReservationActiveListByPropertyIdAsync(propertyId, organizationId);
-
-        var calendarReservations = reservations
-            .Where(r => r.ReservationStatus != ReservationStatus.PreBooking)
-            .Where(r => r.DepartureDate > cutoffDate)
-            .ToList();
+        var calendarReservations = reservations.Where(r => r.DepartureDate > cutoffDate).ToList();
 
         return _calendarService.BuildPropertyCalendar(propertyId, calendarReservations, DateTimeOffset.UtcNow);
     }
