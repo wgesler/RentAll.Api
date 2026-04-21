@@ -57,7 +57,9 @@ public class CalendarService : ICalendarService
             sb.AppendLine($"UID:reservation-{reservation.ReservationId}@rentall");
             sb.AppendLine($"DTSTAMP:{stamp}");
             sb.AppendLine($"DTSTART;VALUE=DATE:{reservation.ArrivalDate:yyyyMMdd}");
-            sb.AppendLine($"DTEND;VALUE=DATE:{reservation.DepartureDate:yyyyMMdd}");
+            // RFC 5545: DTEND;VALUE=DATE is exclusive — the last blocked calendar day is DTEND minus one day.
+            // DepartureDate is inclusive (last day of the stay), so emit the day after departure as DTEND.
+            sb.AppendLine($"DTEND;VALUE=DATE:{reservation.DepartureDate.AddDays(1):yyyyMMdd}");
             sb.AppendLine($"SUMMARY:{EscapeIcalText(GetSummary(reservation))}");
             sb.AppendLine("STATUS:CONFIRMED");
             sb.AppendLine("END:VEVENT");
