@@ -156,11 +156,14 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.PublicApiBaseUrl)
-                    ? _appSettings.PublicApiBaseUrl.Trim().TrimEnd('/') : $"{Request.Scheme}://{Request.Host}";
-                var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId, CurrentOrganizationId, baseUrl);
+                var configuredBaseUrl = _appSettings.PublicApiBaseUrl;
+                var fallbackBaseUrl = $"{Request.Scheme}://{Request.Host}";
 
-                return Ok(new CalendarUrlResponseDto { PropertyId = propertyId, OrganizationId = CurrentOrganizationId, SubscriptionUrl = subscriptionUrl });
+                var baseUrl = !string.IsNullOrWhiteSpace(configuredBaseUrl)
+                    ? configuredBaseUrl.Trim().TrimEnd('/'): fallbackBaseUrl;
+
+                var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId,CurrentOrganizationId,baseUrl);
+                return Ok(new {configuredBaseUrl, fallbackBaseUrl, finalBaseUrl = baseUrl, subscriptionUrl });
             }
             catch (Exception ex)
             {
