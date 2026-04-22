@@ -143,8 +143,6 @@ public class AccountingManager : IAccountingManager
             if (remainingBalance <= 0)
                 continue;
 
-
-
             if (availableAmount >= remainingBalance)
             {
                 // Full payment for this invoice
@@ -158,9 +156,9 @@ public class AccountingManager : IAccountingManager
             {
                 // Partial payment
                 invoice.PaidAmount += availableAmount;
-                availableAmount = 0;
                 var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, LineNumber = maxLineNumber + 1, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = invoice.PaidAmount, CreatedBy = currentUser });
+                invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, LineNumber = maxLineNumber + 1, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = availableAmount, CreatedBy = currentUser });
+                availableAmount = 0;
                 await _accountingRepository.UpdateByIdAsync(invoice);
             }
         }
