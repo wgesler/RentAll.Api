@@ -11,7 +11,7 @@ public class CreateWorkOrderItemDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (ReceiptId.HasValue && ReceiptId.Value <= 0)
+        if (ReceiptId.HasValue && ReceiptId.Value < 0)
             return (false, "ReceiptId must be positive when provided");
 
         if (ItemAmount <= 0)
