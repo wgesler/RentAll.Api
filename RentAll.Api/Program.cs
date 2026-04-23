@@ -21,6 +21,7 @@ using RentAll.Infrastructure.Repositories.Maintenances;
 using RentAll.Infrastructure.Repositories.Organizations;
 using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
+using RentAll.Infrastructure.Repositories.Tickets;
 using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Api.HostedServices;
 using RentAll.Infrastructure.Services;
@@ -178,6 +179,7 @@ builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
 builder.Services.AddScoped<IAccountingRepository, AccountingRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
+builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 
 builder.Services.AddHostedService<AlertSchedulingHostedService>();
 

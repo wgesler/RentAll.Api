@@ -7,4 +7,5 @@ global using RentAll.Infrastructure.Entities.Maintenances;
 global using RentAll.Infrastructure.Entities.Organizations;
 global using RentAll.Infrastructure.Entities.Properties;
 global using RentAll.Infrastructure.Entities.Reservations;
+global using RentAll.Infrastructure.Entities.Tickets;
 global using RentAll.Infrastructure.Entities.Users;

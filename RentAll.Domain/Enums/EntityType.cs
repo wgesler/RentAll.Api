@@ -9,7 +9,8 @@ public enum EntityType
     Owner = 4,
     Tenant = 5,
     Vendor = 6,
-    Hoa = 7
+    Hoa = 7,
+    Ticket = 8,
 }
 
 public static class EntityTypeExtensions
@@ -23,6 +24,7 @@ public static class EntityTypeExtensions
         { EntityType.Tenant, "T" },
         { EntityType.Vendor, "V" },
         { EntityType.Hoa, "H" },
+        { EntityType.Ticket, "TK" },
     };
 
     private static readonly Dictionary<string, EntityType> CodeToEntityType = new()
@@ -34,6 +36,7 @@ public static class EntityTypeExtensions
         { "T", EntityType.Tenant },
         { "V", EntityType.Vendor },
         { "H", EntityType.Hoa },
+        { "TK", EntityType.Ticket },
     };
 
     public static string ToCode(this EntityType entityType)

@@ -205,4 +205,5 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ItemAmount = e.ItemAmount
         };
     }
+
 }
