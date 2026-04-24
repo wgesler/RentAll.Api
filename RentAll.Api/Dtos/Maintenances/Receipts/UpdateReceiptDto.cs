@@ -7,7 +7,7 @@ public class UpdateReceiptDto
     public int ReceiptId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public Guid PropertyId { get; set; }
+    public List<Guid> PropertyIds { get; set; } = new List<Guid>();
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<ReceiptSplit> Splits { get; set; } = new List<ReceiptSplit>();
@@ -26,8 +26,11 @@ public class UpdateReceiptDto
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
-        if (PropertyId == Guid.Empty)
-            return (false, "PropertyId is required");
+        if (PropertyIds == null || PropertyIds.Count == 0)
+            return (false, "At least one PropertyId is required");
+
+        if (PropertyIds.Any(id => id == Guid.Empty))
+            return (false, "PropertyIds cannot contain empty Guid values");
 
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
@@ -45,7 +48,7 @@ public class UpdateReceiptDto
             ReceiptId = ReceiptId,
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
-            PropertyId = PropertyId,
+            PropertyIds = PropertyIds,
             Description = Description,
             Amount = Amount,
             Splits = Splits,

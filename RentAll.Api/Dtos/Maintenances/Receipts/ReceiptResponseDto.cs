@@ -8,8 +8,7 @@ public class ReceiptResponseDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
-    public Guid PropertyId { get; set; }
-    public string PropertyCode { get; set; } = string.Empty;
+    public List<Guid> PropertyIds { get; set; } = new List<Guid>();
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<ReceiptSplit> Splits { get; set; } = new List<ReceiptSplit>();
@@ -25,8 +24,7 @@ public class ReceiptResponseDto
         OrganizationId = receipt.OrganizationId;
         OfficeId = receipt.OfficeId;
         OfficeName = receipt.OfficeName;
-        PropertyId = receipt.PropertyId;
-        PropertyCode = receipt.PropertyCode;
+        PropertyIds = receipt.PropertyIds;
         Amount = receipt.Amount;
         Description = receipt.Description;
         Splits = receipt.Splits;

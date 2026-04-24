@@ -62,7 +62,7 @@ public partial class MaintenanceRepository
         {
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
-            PropertyId = receipt.PropertyId,
+            Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
             Amount = receipt.Amount,
             Description = receipt.Description,
             Splits = SerializeReceiptSplits(receipt.Splits),
@@ -87,7 +87,7 @@ public partial class MaintenanceRepository
             ReceiptId = receipt.ReceiptId,
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
-            PropertyId = receipt.PropertyId,
+            Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
             Amount = receipt.Amount,
             Description = receipt.Description,
             Splits = SerializeReceiptSplits(receipt.Splits),

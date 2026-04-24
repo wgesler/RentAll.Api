@@ -6,8 +6,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public Guid OrganizationId { get; set; }
         public int OfficeId { get; set; }
         public string OfficeName { get; set; } = string.Empty;
-        public Guid PropertyId { get; set; }
-        public string PropertyCode { get; set; } = string.Empty;
+        public string Properties { get; set; } = "[]";
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Splits { get; set; } = "[]";

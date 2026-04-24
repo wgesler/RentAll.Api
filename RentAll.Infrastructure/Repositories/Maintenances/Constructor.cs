@@ -132,6 +132,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
 
     private static Receipt ConvertEntityToModel(ReceiptEntity e)
     {
+        var propertyIds = DeserializeReceiptPropertyIds(e.Properties);
         var splits = DeserializeReceiptSplits(e.Splits);
 
         return new Receipt
@@ -140,8 +141,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             OfficeName = e.OfficeName,
-            PropertyId = e.PropertyId,
-            PropertyCode = e.PropertyCode,
+            PropertyIds = propertyIds,
             Amount = e.Amount,
             Description = e.Description,
             Splits = splits,
@@ -153,6 +153,41 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ModifiedOn = e.ModifiedOn,
             ModifiedByName = e.ModifiedByName
         };
+    }
+
+    private static List<Guid> DeserializeReceiptPropertyIds(string? propertiesJson)
+    {
+        if (string.IsNullOrWhiteSpace(propertiesJson))
+            return new List<Guid>();
+
+        try
+        {
+            var pairs = JsonSerializer.Deserialize<List<ReceiptPropertyIdJson>>(propertiesJson, JsonOptions);
+            if (pairs != null && pairs.Count > 0)
+            {
+                return pairs
+                    .Select(x => x.PropertyId)
+                    .Where(id => id != Guid.Empty)
+                    .Distinct()
+                    .ToList();
+            }
+        }
+        catch
+        {
+            // Fallback to legacy guid-array shape below.
+        }
+
+        try
+        {
+            return (JsonSerializer.Deserialize<List<Guid>>(propertiesJson, JsonOptions) ?? new List<Guid>())
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+        }
+        catch
+        {
+            return new List<Guid>();
+        }
     }
 
     private static List<ReceiptSplit> DeserializeReceiptSplits(string? splitsJson)
@@ -172,7 +207,27 @@ public partial class MaintenanceRepository : IMaintenanceRepository
 
     private static string SerializeReceiptSplits(List<ReceiptSplit>? splits)
     {
-        return JsonSerializer.Serialize(splits ?? new List<ReceiptSplit>(), JsonOptions);
+        var s = JsonSerializer.Serialize(splits ?? new List<ReceiptSplit>(), JsonOptions);
+        return s;
+    }
+
+    private static string SerializeReceiptPropertyIds(List<Guid>? properties)
+    {
+        var propertyIds = (properties ?? new List<Guid>())
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        var pairs = propertyIds
+            .Select(id => new ReceiptPropertyIdJson { PropertyId = id })
+            .ToList();
+
+        return JsonSerializer.Serialize(pairs, JsonOptions);
+    }
+
+    private sealed class ReceiptPropertyIdJson
+    {
+        public Guid PropertyId { get; set; }
     }
 
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)
