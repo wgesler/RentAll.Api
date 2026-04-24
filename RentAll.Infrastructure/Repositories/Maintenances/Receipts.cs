@@ -63,10 +63,10 @@ public partial class MaintenanceRepository
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
             PropertyId = receipt.PropertyId,
-            Description = receipt.Description,
             Amount = receipt.Amount,
+            Description = receipt.Description,
+            Splits = SerializeReceiptSplits(receipt.Splits),
             ReceiptPath = receipt.ReceiptPath,
-            WorkOrderCode = receipt.WorkOrderCode,
             IsActive = receipt.IsActive,
             CreatedBy = receipt.CreatedBy
         });
@@ -88,10 +88,10 @@ public partial class MaintenanceRepository
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
             PropertyId = receipt.PropertyId,
-            Description = receipt.Description,
             Amount = receipt.Amount,
+            Description = receipt.Description,
+            Splits = SerializeReceiptSplits(receipt.Splits),
             ReceiptPath = receipt.ReceiptPath,
-            WorkOrderCode = receipt.WorkOrderCode,
             IsActive = receipt.IsActive,
             ModifiedBy = receipt.ModifiedBy
         });

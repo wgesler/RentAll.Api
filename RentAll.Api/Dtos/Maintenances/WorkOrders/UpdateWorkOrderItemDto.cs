@@ -15,8 +15,8 @@ public class UpdateWorkOrderItemDto
         if (WorkOrderId == Guid.Empty)
             return (false, "WorkOrderId is required");
 
-        if (ItemAmount <= 0)
-            return (false, "ItemAmount is required");
+        if (ItemAmount == 0)
+            return (false, "ItemAmount cannot be zero");
 
         return (true, null);
     }

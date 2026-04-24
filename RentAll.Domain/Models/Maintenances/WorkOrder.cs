@@ -15,6 +15,7 @@ public class WorkOrder
     public string WorkOrderCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public WorkOrderType WorkOrderType { get; set; }
+    public bool ApplyMarkup { get; set; }
     public List<WorkOrderItem> WorkOrderItems { get; set; } = new List<WorkOrderItem>();
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

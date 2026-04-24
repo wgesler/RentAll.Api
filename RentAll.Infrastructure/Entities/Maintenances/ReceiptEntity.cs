@@ -8,10 +8,10 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string OfficeName { get; set; } = string.Empty;
         public Guid PropertyId { get; set; }
         public string PropertyCode { get; set; } = string.Empty;
-        public string? Description { get; set; }
         public decimal Amount { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string Splits { get; set; } = "[]";
         public string? ReceiptPath { get; set; }
-        public string? WorkOrderCode { get; set; }
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }

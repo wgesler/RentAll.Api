@@ -132,6 +132,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
 
     private static Receipt ConvertEntityToModel(ReceiptEntity e)
     {
+        var splits = DeserializeReceiptSplits(e.Splits);
+
         return new Receipt
         {
             ReceiptId = e.ReceiptId,
@@ -140,10 +142,10 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OfficeName = e.OfficeName,
             PropertyId = e.PropertyId,
             PropertyCode = e.PropertyCode,
-            Description = e.Description,
             Amount = e.Amount,
+            Description = e.Description,
+            Splits = splits,
             ReceiptPath = e.ReceiptPath,
-            WorkOrderCode = e.WorkOrderCode,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,
             CreatedOn = e.CreatedOn,
@@ -151,6 +153,26 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ModifiedOn = e.ModifiedOn,
             ModifiedByName = e.ModifiedByName
         };
+    }
+
+    private static List<ReceiptSplit> DeserializeReceiptSplits(string? splitsJson)
+    {
+        if (string.IsNullOrWhiteSpace(splitsJson))
+            return new List<ReceiptSplit>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<ReceiptSplit>>(splitsJson, JsonOptions) ?? new List<ReceiptSplit>();
+        }
+        catch
+        {
+            return new List<ReceiptSplit>();
+        }
+    }
+
+    private static string SerializeReceiptSplits(List<ReceiptSplit>? splits)
+    {
+        return JsonSerializer.Serialize(splits ?? new List<ReceiptSplit>(), JsonOptions);
     }
 
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)
@@ -182,6 +204,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             WorkOrderCode = e.WorkOrderCode,
             Description = e.Description,
             WorkOrderType = (WorkOrderType)e.WorkOrderTypeId,
+            ApplyMarkup = e.ApplyMarkup,
             WorkOrderItems = items,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,

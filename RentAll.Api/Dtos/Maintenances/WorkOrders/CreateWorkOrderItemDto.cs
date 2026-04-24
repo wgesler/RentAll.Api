@@ -14,8 +14,8 @@ public class CreateWorkOrderItemDto
         if (ReceiptId.HasValue && ReceiptId.Value < 0)
             return (false, "ReceiptId must be positive when provided");
 
-        if (ItemAmount <= 0)
-            return (false, "Work Order Item Amount is required");
+        if (ItemAmount == 0)
+            return (false, "Work Order Item Amount cannot be zero");
 
         return (true, null);
     }

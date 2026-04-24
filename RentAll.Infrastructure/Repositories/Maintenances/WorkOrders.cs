@@ -73,6 +73,7 @@ public partial class MaintenanceRepository
                 WorkOrderCode = workOrder.WorkOrderCode,
                 Description = workOrder.Description,
                 WorkOrderTypeId = (int)workOrder.WorkOrderType,
+                ApplyMarkup = workOrder.ApplyMarkup,
                 IsActive = workOrder.IsActive,
                 CreatedBy = workOrder.CreatedBy
             }, transaction: transaction);
@@ -151,6 +152,7 @@ public partial class MaintenanceRepository
                 WorkOrderCode = workOrder.WorkOrderCode,
                 Description = workOrder.Description,
                 WorkOrderTypeId = (int)workOrder.WorkOrderType,
+                ApplyMarkup = workOrder.ApplyMarkup,
                 IsActive = workOrder.IsActive,
                 ModifiedBy = workOrder.ModifiedBy
             }, transaction: transaction);

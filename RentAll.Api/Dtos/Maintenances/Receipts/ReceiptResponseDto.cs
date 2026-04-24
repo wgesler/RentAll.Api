@@ -10,10 +10,10 @@ public class ReceiptResponseDto
     public string OfficeName { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public string? Description { get; set; }
     public decimal Amount { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public List<ReceiptSplit> Splits { get; set; } = new List<ReceiptSplit>();
     public string? ReceiptPath { get; set; }
-    public string? WorkOrderCode { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -27,10 +27,10 @@ public class ReceiptResponseDto
         OfficeName = receipt.OfficeName;
         PropertyId = receipt.PropertyId;
         PropertyCode = receipt.PropertyCode;
-        Description = receipt.Description;
         Amount = receipt.Amount;
+        Description = receipt.Description;
+        Splits = receipt.Splits;
         ReceiptPath = receipt.ReceiptPath;
-        WorkOrderCode = receipt.WorkOrderCode;
         FileDetails = receipt.FileDetails;
         IsActive = receipt.IsActive;
         ModifiedOn = receipt.ModifiedOn;

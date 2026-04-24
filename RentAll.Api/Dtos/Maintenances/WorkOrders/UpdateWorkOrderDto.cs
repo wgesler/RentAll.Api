@@ -11,6 +11,7 @@ public class UpdateWorkOrderDto
     public string WorkOrderCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int WorkOrderTypeId { get; set; }
+    public bool ApplyMarkup { get; set; }
     public List<UpdateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<UpdateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -63,6 +64,7 @@ public class UpdateWorkOrderDto
             WorkOrderCode = WorkOrderCode,
             Description = Description,
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
+            ApplyMarkup = ApplyMarkup,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = true,
             ModifiedBy = currentUser

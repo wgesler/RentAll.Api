@@ -10,6 +10,7 @@ public class CreateWorkOrderDto
     public string WorkOrderCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int WorkOrderTypeId { get; set; }
+    public bool ApplyMarkup { get; set; }
     public List<CreateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<CreateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -59,6 +60,7 @@ public class CreateWorkOrderDto
             WorkOrderCode = WorkOrderCode,
             Description = Description,
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
+            ApplyMarkup = ApplyMarkup,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = true,
             CreatedBy = currentUser

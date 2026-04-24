@@ -10,10 +10,10 @@ public class Receipt
     public string OfficeName { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public string? Description { get; set; }
     public decimal Amount { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public List<ReceiptSplit> Splits { get; set; } = new();
     public string? ReceiptPath { get; set; }
-    public string? WorkOrderCode { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
