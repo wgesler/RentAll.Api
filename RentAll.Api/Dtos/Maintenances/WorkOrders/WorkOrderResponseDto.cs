@@ -14,6 +14,7 @@ public class WorkOrderResponseDto
     public string Description { get; set; } = string.Empty;
     public int WorkOrderTypeId { get; set; }
     public bool ApplyMarkup { get; set; }
+    public DateOnly WorkOrderDate { get; set; }
     public List<WorkOrderItem> WorkOrderItems { get; set; } = new List<WorkOrderItem>();
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -34,6 +35,7 @@ public class WorkOrderResponseDto
         Description = workOrder.Description;
         WorkOrderTypeId = (int)workOrder.WorkOrderType;
         ApplyMarkup = workOrder.ApplyMarkup;
+        WorkOrderDate = workOrder.WorkOrderDate;
         WorkOrderItems = workOrder.WorkOrderItems;
         IsActive = workOrder.IsActive;
         CreatedOn = workOrder.CreatedOn;

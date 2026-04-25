@@ -15,6 +15,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string Description { get; set; } = string.Empty;
         public string? WorkOrderItems { get; set; }
         public bool ApplyMarkup { get; set; }
+        public DateOnly WorkOrderDate { get; set; }
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }
