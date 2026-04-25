@@ -20,6 +20,7 @@ public class ReservationList
     public decimal DailyRate { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
+    public ReservationType ReservationType { get; set; }
     public ReservationStatus ReservationStatus { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }

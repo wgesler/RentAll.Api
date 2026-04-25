@@ -163,6 +163,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 DailyRate = e.DailyRate,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
+                ReservationType = (ReservationType)e.ReservationTypeId,
                 ReservationStatus = (ReservationStatus)e.ReservationStatusId,
                 CurrentInvoiceNo = e.CurrentInvoiceNo,
                 HasPets = e.HasPets,

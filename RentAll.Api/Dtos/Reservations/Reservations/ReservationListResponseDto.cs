@@ -18,6 +18,7 @@ public class ReservationListResponseDto
     public decimal DailyRate { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
+    public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }
@@ -68,6 +69,7 @@ public class ReservationListResponseDto
         DailyRate = reservationList.DailyRate;
         ArrivalDate = reservationList.ArrivalDate;
         DepartureDate = reservationList.DepartureDate;
+        ReservationTypeId = (int)reservationList.ReservationType;
         ReservationStatusId = (int)reservationList.ReservationStatus;
         CurrentInvoiceNo = reservationList.CurrentInvoiceNo;
         HasPets = reservationList.HasPets;
