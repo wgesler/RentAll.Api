@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Maintenances.Receipts;
 using RentAll.Api.Dtos.Maintenances.WorkOrders;
 
 namespace RentAll.Api.Controllers;
@@ -11,6 +12,26 @@ public partial class MaintenanceController
         try
         {
             var records = await _maintenanceRepository.GetWorkOrdersByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new WorkOrderResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting work orders");
+            return ServerError("An error occurred while retrieving work orders");
+        }
+    }
+
+    [HttpGet("work-order/office/{officeId:int}")]
+    public async Task<IActionResult> GetWorkOrdersByOfficeId(int officeId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        try
+        {
+            var officeAccess = officeId.ToString();
+            var records = await _maintenanceRepository.GetWorkOrdersByOfficeIdsAsync(CurrentOrganizationId, officeAccess);
             var response = records.Select(o => new WorkOrderResponseDto(o));
             return Ok(response);
         }

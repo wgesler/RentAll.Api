@@ -21,6 +21,27 @@ public partial class MaintenanceController
         }
     }
 
+    [HttpGet("receipt/office/{officeId:int}")]
+    public async Task<IActionResult> GetReceiptsByOfficeId(int officeId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        try
+        {
+            var officeAccess = officeId.ToString();
+            var records = await _maintenanceRepository.GetReceiptsByOfficeIdsAsync(CurrentOrganizationId, officeAccess);
+            var response = records.Select(o => new ReceiptResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting receipts");
+            return ServerError("An error occurred while retrieving receipts");
+        }
+    }
+
+
     [HttpGet("receipt/property/{propertyId:guid}")]
     public async Task<IActionResult> GetReceiptsByPropertyId(Guid propertyId)
     {
