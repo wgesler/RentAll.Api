@@ -61,8 +61,9 @@ public class AccountingManagerLedgerLineTests
             "FirstMonth,Nightly,04/05/2026,06/15/2026,04/01/2026,04/30/2026,Rental Fee (04/05-04/30),26,2600,0",
             "FirstMonth,Nightly,04/01/2026,06/15/2026,05/01/2026,05/31/2026,Rental Fee (05/01-05/31),31,3100,0",
             "FirstMonth,Nightly,04/01/2026,06/15/2026,06/01/2026,06/30/2026,Rental Fee (06/01-06/14),14,1400,0",
-            "FirstMonth,Nightly,04/01/2026,06/30/2026,06/01/2026,06/30/2026,Rental Fee (06/01-06/30),29,2900,0",
-            "FirstMonth,Nightly,04/01/2026,07/31/2026,07/01/2026,07/31/2026,Rental Fee (07/01-07/31),30,3000,0",
+            "FirstMonth,Nightly,04/01/2026,06/30/2026,06/01/2026,06/30/2026,Rental Fee (06/01-06/29),29,2900,0",
+            "FirstMonth,Nightly,04/01/2026,07/31/2026,07/01/2026,07/31/2026,Rental Fee (07/01-07/30),30,3000,0",
+
             "SecondMonth,Monthly,04/01/2026,06/15/2026,04/01/2026,04/30/2026,Rental Fee (04/01-04/30),30,3000,0",
             "SecondMonth,Monthly,04/02/2026,06/15/2026,04/01/2026,04/30/2026,Rental Fee (04/02-05/01),30,3000,0",
             "SecondMonth,Monthly,04/05/2026,06/15/2026,04/01/2026,04/30/2026,Rental Fee (04/05-05/04),30,3000,0",
@@ -88,8 +89,8 @@ public class AccountingManagerLedgerLineTests
             "SecondMonth,Nightly,04/05/2026,06/15/2026,05/01/2026,05/31/2026,Rental Fee (05/05-05/31),27,2700,0",
             "SecondMonth,Nightly,04/05/2026,05/15/2026,05/01/2026,05/31/2026,Rental Fee (05/05-05/14),10,1000,0",
             "SecondMonth,Nightly,04/01/2026,06/15/2026,06/01/2026,06/30/2026,Rental Fee (06/01-06/14),14,1400,0",
-            "SecondMonth,Nightly,04/01/2026,06/30/2026,06/01/2026,06/30/2026,Rental Fee (06/01-06/30),29,2900,0",
-            "SecondMonth,Nightly,04/01/2026,07/31/2026,07/01/2026,07/31/2026,Rental Fee (07/01-07/31),30,3000,0"
+            "SecondMonth,Nightly,04/01/2026,06/30/2026,06/01/2026,06/30/2026,Rental Fee (06/01-06/29),29,2900,0",
+            "SecondMonth,Nightly,04/01/2026,07/31/2026,07/01/2026,07/31/2026,Rental Fee (07/01-07/30),30,3000,0"
         };
 
         foreach (var row in rows)

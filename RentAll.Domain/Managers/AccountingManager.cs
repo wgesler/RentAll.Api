@@ -238,7 +238,7 @@ public class AccountingManager : IAccountingManager
             (arrivalMonth == startDateMonth && arrivalYear == startDateYear && departureMonth == startDateMonth && departureYear == startDateYear))     
         {
             var days = CalculateNumberOfDays(arrivalDate, departureDate, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
-            AddRentalLine(days, reservation, arrivalDate, departureDate, daysInMonth, lineItems, ref lineNumber, rentalCostCodeId);
+            AddRentalLine(days, reservation, arrivalDate, departureDate, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             GetFirstMonthLines(reservation, isFirstMonth, lineItems, ref lineNumber);
             AddMaidServiceLines(reservation, arrivalDate, departureDate, startDateYear, startDateMonth, lineItems, ref lineNumber);
             return lineItems;
@@ -249,7 +249,7 @@ public class AccountingManager : IAccountingManager
         {
             var lastDay = reservation.ProrateType == ProrateType.FirstMonth ? lastDayOfMonth : arrivalDate.AddDays(PRORATE_DAYS - 1);
             var days = CalculateNumberOfDays(arrivalDate, lastDay, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
-            AddRentalLine(days, reservation, arrivalDate, lastDay, daysInMonth, lineItems, ref lineNumber, rentalCostCodeId);
+            AddRentalLine(days, reservation, arrivalDate, lastDay, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             GetFirstMonthLines(reservation, isFirstMonth, lineItems, ref lineNumber);
             AddMaidServiceLines(reservation, arrivalDate, lastDay, startDateYear, startDateMonth, lineItems, ref lineNumber);
             foreach (var extraFeeLine in reservation.ExtraFeeLines)
@@ -263,7 +263,7 @@ public class AccountingManager : IAccountingManager
             var firstDay = reservation.ProrateType == ProrateType.SecondMonth ? arrivalDate.AddDays(PRORATE_DAYS) : firstDayOfMonth;
             var lastDay = (startDateMonth == departureMonth) ? lastDayOfLastMonth : lastDayOfMonth;
             var days = CalculateNumberOfDays(firstDay, lastDay, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
-            AddRentalLine(days, reservation, firstDay, lastDay, daysInMonth, lineItems, ref lineNumber, rentalCostCodeId);
+            AddRentalLine(days, reservation, firstDay, lastDay, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             AddMaidServiceLines(reservation, firstDay, lastDayOfMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
             foreach (var extraFeeLine in reservation.ExtraFeeLines)
                 AddExtraFeeLines(extraFeeLine, firstDay, lastDayOfMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
@@ -274,7 +274,7 @@ public class AccountingManager : IAccountingManager
         if (startDateMonth == departureMonth)
         {
             var days = CalculateNumberOfDays(firstDayOfLastMonth, lastDayOfLastMonth, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
-            AddRentalLine(days, reservation, firstDayOfLastMonth, lastDayOfLastMonth, daysInMonth, lineItems, ref lineNumber, rentalCostCodeId);
+            AddRentalLine(days, reservation, firstDayOfLastMonth, lastDayOfLastMonth, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             AddMaidServiceLines(reservation, firstDayOfLastMonth, lastDayOfLastMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
             foreach (var extraFeeLine in reservation.ExtraFeeLines)
                 AddExtraFeeLines(extraFeeLine, firstDayOfLastMonth, lastDayOfLastMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
@@ -283,7 +283,7 @@ public class AccountingManager : IAccountingManager
 
         // Otherwise, simply bill for the full month
         var checkoutDays = CalculateNumberOfDays(firstDayOfMonth, lastDayOfMonth, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
-        AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfMonth, daysInMonth, lineItems, ref lineNumber, rentalCostCodeId);
+        AddRentalLine(checkoutDays, reservation, firstDayOfMonth, lastDayOfMonth, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
         GetFirstMonthLines(reservation, isFirstMonth, lineItems, ref lineNumber);
         AddMaidServiceLines(reservation, firstDayOfMonth, lastDayOfMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
         foreach (var extraFeeLine in reservation.ExtraFeeLines)
@@ -349,9 +349,11 @@ public class AccountingManager : IAccountingManager
         }
     }
 
-    private void AddRentalLine(int days, Reservation reservation, DateOnly startDate, DateOnly endDate, int daysInMonth, List<LedgerLine> lines, ref int lineNumber, int? costCodeId)
+    private void AddRentalLine(int days, Reservation reservation, DateOnly startDate, DateOnly endDate, int daysInMonth,
+        bool isDepartureMonthYear, bool isLastDayOfMonth, List<LedgerLine> lines, ref int lineNumber, int? costCodeId)
     {
-        if (days < daysInMonth && reservation.BillingType == BillingType.Nightly && endDate.Day != daysInMonth)
+
+        if (days < daysInMonth && reservation.BillingType == BillingType.Nightly && isDepartureMonthYear && isLastDayOfMonth)
             endDate = endDate.AddDays(-1);
 
         var rentLine = $"Rental Fee ({startDate:MM/dd}-{endDate:MM/dd})";
@@ -441,7 +443,8 @@ public class AccountingManager : IAccountingManager
         if (endDate == startDate) return 1;
 
         var days = endDate.DayNumber - startDate.DayNumber;
-        if (billingType != BillingType.Nightly || (billingType == BillingType.Nightly && !isDepartureMonthYear && isLastDayOfMonth))
+        if (billingType != BillingType.Nightly ||
+           (billingType == BillingType.Nightly && !isDepartureMonthYear && isLastDayOfMonth))
             days++;
         return days;
     }
