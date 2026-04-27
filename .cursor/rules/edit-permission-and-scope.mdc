@@ -1,0 +1,12 @@
+---
+description: Respect explicit permission and strict task scope
+alwaysApply: true
+---
+
+# Edit Permission and Scope
+
+- Do not run commands, edit files, or make code changes unless the user explicitly gives permission in the current conversation.
+- When permission is granted, perform only the exact requested task and avoid related or "helpful" extra changes.
+- Do not modify files outside the user-specified scope.
+- If scope is ambiguous, ask one clarifying question before making changes.
+- Prefer small, surgical edits and report exactly what changed.
