@@ -261,6 +261,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             WorkOrderType = (WorkOrderType)e.WorkOrderTypeId,
             ApplyMarkup = e.ApplyMarkup,
             WorkOrderDate = e.WorkOrderDate,
+            UseDepartureFee = e.UseDepartureFee,
             WorkOrderItems = items,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,

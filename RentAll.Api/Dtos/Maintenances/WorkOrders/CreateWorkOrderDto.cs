@@ -12,6 +12,7 @@ public class CreateWorkOrderDto
     public int WorkOrderTypeId { get; set; }
     public bool ApplyMarkup { get; set; }
     public DateOnly WorkOrderDate { get; set; }
+    public bool UseDepartureFee { get; set; } = true;
     public List<CreateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<CreateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -63,6 +64,7 @@ public class CreateWorkOrderDto
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
             ApplyMarkup = ApplyMarkup,
             WorkOrderDate = WorkOrderDate,
+            UseDepartureFee = UseDepartureFee,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = true,
             CreatedBy = currentUser
