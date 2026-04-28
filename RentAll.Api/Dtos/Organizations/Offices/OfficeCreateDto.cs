@@ -37,10 +37,10 @@ public class OfficeCreateDto
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
-    public int TenantChargeCcId { get; set; }
-    public int TenantExpenseCcId { get; set; }
-    public int OwnerChargeCcId { get; set; }
-    public int OwnerExpenseCcId { get; set; }
+    public int? TenantChargeCcId { get; set; }
+    public int? TenantExpenseCcId { get; set; }
+    public int? OwnerChargeCcId { get; set; }
+    public int? OwnerExpenseCcId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -63,6 +63,18 @@ public class OfficeCreateDto
 
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
+
+        if (TenantChargeCcId.HasValue && TenantChargeCcId.Value <= 0)
+            return (false, "TenantChargeCcId must be greater than 0 when provided");
+
+        if (TenantExpenseCcId.HasValue && TenantExpenseCcId.Value <= 0)
+            return (false, "TenantExpenseCcId must be greater than 0 when provided");
+
+        if (OwnerChargeCcId.HasValue && OwnerChargeCcId.Value <= 0)
+            return (false, "OwnerChargeCcId must be greater than 0 when provided");
+
+        if (OwnerExpenseCcId.HasValue && OwnerExpenseCcId.Value <= 0)
+            return (false, "OwnerExpenseCcId must be greater than 0 when provided");
 
         return (true, null);
     }
