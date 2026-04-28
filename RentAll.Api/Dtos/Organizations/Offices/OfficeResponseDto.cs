@@ -39,6 +39,10 @@ public class OfficeResponseDto
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public int TenantChargeCcId { get; set; }
+    public int TenantExpenseCcId { get; set; }
+    public int OwnerChargeCcId { get; set; }
+    public int OwnerExpenseCcId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -81,6 +85,10 @@ public class OfficeResponseDto
         MaidFourBed = office.MaidFourBed;
         ParkingLowEnd = office.ParkingLowEnd;
         ParkingHighEnd = office.ParkingHighEnd;
+        TenantChargeCcId = office.TenantChargeCcId;
+        TenantExpenseCcId = office.TenantExpenseCcId;
+        OwnerChargeCcId = office.OwnerChargeCcId;
+        OwnerExpenseCcId = office.OwnerExpenseCcId;
         EmailListForReservations = office.EmailListForReservations;
         FileDetails = office.FileDetails;
         IsInternational = office.IsInternational;

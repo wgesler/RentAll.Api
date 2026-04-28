@@ -118,6 +118,10 @@ public partial class OrganizationRepository
             MaidFourBed = office.MaidFourBed,
             ParkingLowEnd = office.ParkingLowEnd,
             ParkingHighEnd = office.ParkingHighEnd,
+            TenantChargeCcId = office.TenantChargeCcId,
+            TenantExpenseCcId = office.TenantExpenseCcId,
+            OwnerChargeCcId = office.OwnerChargeCcId,
+            OwnerExpenseCcId = office.OwnerExpenseCcId,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
@@ -171,6 +175,10 @@ public partial class OrganizationRepository
             MaidFourBed = office.MaidFourBed,
             ParkingLowEnd = office.ParkingLowEnd,
             ParkingHighEnd = office.ParkingHighEnd,
+            TenantChargeCcId = office.TenantChargeCcId,
+            TenantExpenseCcId = office.TenantExpenseCcId,
+            OwnerChargeCcId = office.OwnerChargeCcId,
+            OwnerExpenseCcId = office.OwnerExpenseCcId,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive

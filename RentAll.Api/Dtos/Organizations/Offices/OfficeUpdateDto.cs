@@ -39,6 +39,10 @@ public class OfficeUpdateDto
     public decimal MaidFourBed { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public int TenantChargeCcId { get; set; }
+    public int TenantExpenseCcId { get; set; }
+    public int OwnerChargeCcId { get; set; }
+    public int OwnerExpenseCcId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -107,6 +111,10 @@ public class OfficeUpdateDto
             MaidFourBed = MaidFourBed,
             ParkingLowEnd = ParkingLowEnd,
             ParkingHighEnd = ParkingHighEnd,
+            TenantChargeCcId = TenantChargeCcId,
+            TenantExpenseCcId = TenantExpenseCcId,
+            OwnerChargeCcId = OwnerChargeCcId,
+            OwnerExpenseCcId = OwnerExpenseCcId,
             EmailListForReservations = EmailListForReservations,
             IsInternational = IsInternational,
             IsActive = IsActive

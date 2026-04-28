@@ -90,6 +90,10 @@ public partial class OrganizationRepository : IOrganizationRepository
             MaidFourBed = e.MaidFourBed,
             ParkingLowEnd = e.ParkingLowEnd,
             ParkingHighEnd = e.ParkingHighEnd,
+            TenantChargeCcId = e.TenantChargeCcId,
+            TenantExpenseCcId = e.TenantExpenseCcId,
+            OwnerChargeCcId = e.OwnerChargeCcId,
+            OwnerExpenseCcId = e.OwnerExpenseCcId,
             EmailListForReservations = e.EmailListForReservations,
             IsInternational = e.IsInternational,
             IsActive = e.IsActive
