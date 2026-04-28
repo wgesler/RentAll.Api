@@ -224,18 +224,19 @@ public class AccountingManager : IAccountingManager
         var secondMonth = secondMonthDate.Month;
         var secondYear = secondMonthDate.Year;
 
-        var isFirstMonth = startDateMonth == arrivalMonth;
+        var isFirstMonth = startDateMonth == arrivalMonth && startDateYear == arrivalYear;
+        var isSecondMonth = startDateMonth == secondMonth;
         var isFirstMonthProrated = reservation.ProrateType == ProrateType.FirstMonth;
-        var isFirstMonthAndFirsMonthPartial =  (startDateMonth == arrivalMonth && startDateYear == arrivalYear && isFirstMonthPartial);
-        var isSecondMonthFirstMonthProrated = (startDateMonth == secondMonth  && startDateYear == secondYear  && isFirstMonthPartial);
+        var isFirstMonthLessThan30Days = daysInArrivalMonth < PRORATE_DAYS;
+        var isFirstMonthAndFirstMonthPartial = isFirstMonth && isFirstMonthPartial;
+        var isSecondMonthFirstMonthPartial = isSecondMonth && isFirstMonthPartial;
 
         // Use end date to hold payments to certain timeframe
         var firstDayOfLastMonth = new DateOnly(departureYear, departureMonth, 1);
         var lastDayOfLastMonth = endDate <= reservation.DepartureDate ? endDate : reservation.DepartureDate;
 
         // If you're in and out in the same month OR less than 30 days
-        if ((CalculateNumberOfBillingDays(arrivalDate, departureDate) <= PRORATE_DAYS)  ||
-            (arrivalMonth == startDateMonth && arrivalYear == startDateYear && departureMonth == startDateMonth && departureYear == startDateYear))     
+        if (arrivalMonth == startDateMonth && arrivalYear == startDateYear && departureMonth == startDateMonth && departureYear == startDateYear)
         {
             var days = CalculateNumberOfDays(arrivalDate, departureDate, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
             AddRentalLine(days, reservation, arrivalDate, departureDate, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
@@ -245,7 +246,7 @@ public class AccountingManager : IAccountingManager
         }
 
         // FirstMonth, partialFirstMonth & FirstMonthProrated
-        if (isFirstMonthAndFirsMonthPartial)
+        if (isFirstMonthAndFirstMonthPartial || (isFirstMonth && reservation.BillingType != BillingType.Monthly && isFirstMonthLessThan30Days))
         {
             var lastDay = reservation.ProrateType == ProrateType.FirstMonth ? lastDayOfMonth : arrivalDate.AddDays(PRORATE_DAYS - 1);
             var days = CalculateNumberOfDays(arrivalDate, lastDay, reservation.BillingType, isDepartureMonthYear, isLastDayOfMonth);
@@ -258,7 +259,7 @@ public class AccountingManager : IAccountingManager
         }
 
         // SecondMonth, partialFirstMonth & SecondMonthProrated
-        if (isSecondMonthFirstMonthProrated)
+        if (isSecondMonthFirstMonthPartial || (isSecondMonth && reservation.BillingType != BillingType.Monthly && isFirstMonthLessThan30Days))
         {
             var firstDay = reservation.ProrateType == ProrateType.SecondMonth ? arrivalDate.AddDays(PRORATE_DAYS) : firstDayOfMonth;
             var lastDay = (startDateMonth == departureMonth) ? lastDayOfLastMonth : lastDayOfMonth;
@@ -353,7 +354,7 @@ public class AccountingManager : IAccountingManager
         bool isDepartureMonthYear, bool isLastDayOfMonth, List<LedgerLine> lines, ref int lineNumber, int? costCodeId)
     {
 
-        if (days < daysInMonth && reservation.BillingType == BillingType.Nightly && isDepartureMonthYear && isLastDayOfMonth)
+        if (days < daysInMonth && reservation.BillingType == BillingType.Nightly && isDepartureMonthYear) // && isLastDayOfMonth
             endDate = endDate.AddDays(-1);
 
         var rentLine = $"Rental Fee ({startDate:MM/dd}-{endDate:MM/dd})";
@@ -407,7 +408,8 @@ public class AccountingManager : IAccountingManager
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee });
     }
 
-    private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, List<LedgerLine> lines, ref int lineNumber)
+    private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth,
+        List<LedgerLine> lines, ref int lineNumber)
     {
         int fees = 0;
         switch (extraFeeLine.FeeFrequency)
