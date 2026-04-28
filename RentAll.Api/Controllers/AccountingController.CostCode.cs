@@ -90,6 +90,31 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("cost-code/office/{officeId:int}/description/{description}")]
+        public async Task<IActionResult> GetByDescriptionAsync(int officeId, string description)
+        {
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
+                return Unauthorized("You do not have access to this office's cost codes");
+
+            if (string.IsNullOrWhiteSpace(description))
+                return BadRequest("Invalid description");
+
+            try
+            {
+                var costCode = await _accountingRepository.GetByDescriptionAsync(description, CurrentOrganizationId, officeId);
+                if (costCode == null)
+                    return NotFound("Cost Code not found");
+
+                var response = new CostCodeResponseDto(costCode);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting cost code by description: {description}", description);
+                return ServerError("An error occurred while retrieving the cost code");
+            }
+        }
+
         #endregion
 
         #region Post

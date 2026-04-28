@@ -69,6 +69,22 @@ public partial class AccountingRepository
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
 
+    public async Task<CostCode?> GetByDescriptionAsync(string description, Guid organizationId, int officeId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<CostCodeEntity>("Accounting.CostCode_GetByDescription", new
+        {
+            Description = description,
+            OrganizationId = organizationId,
+            OfficeId = officeId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
     public async Task<bool> ExistsByCostCodeAsync(string costCode, Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

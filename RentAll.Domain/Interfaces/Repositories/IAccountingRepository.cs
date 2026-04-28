@@ -21,6 +21,7 @@ public interface IAccountingRepository
     Task<List<CostCode>> GetCostCodesByOfficeIdAsync(Guid organizationId, int officeId);
     Task<CostCode?> GetCostCodeByIdAsync(int costCodeId, Guid organizationId, int officeId);
     Task<CostCode?> GetByCostCodeAsync(string costCode, Guid organizationId, int officeId);
+    Task<CostCode?> GetByDescriptionAsync(string description, Guid organizationId, int officeId);
     Task<bool> ExistsByCostCodeAsync(string costCode, Guid organizationI, int officeId);
 
     Task<CostCode> CreateAsync(CostCode costCode);
