@@ -66,7 +66,6 @@ public class UpdateReservationDto
     public Guid? dInspectorUserId { get; set; }
     public DateOnly? dInspectingDate { get; set; }
 
-    public int CurrentInvoiceNo { get; set; }
     public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
 
@@ -210,7 +209,6 @@ public class UpdateReservationDto
             dCarpetDate = dCarpetDate,
             dInspectorUserId = dInspectorUserId,
             dInspectingDate = dInspectingDate,
-            CurrentInvoiceNo = CurrentInvoiceNo,
             CreditDue = CreditDue,
             IsActive = IsActive,
             ModifiedBy = currentUser

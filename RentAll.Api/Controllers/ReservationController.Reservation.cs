@@ -145,6 +145,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Reservation not found");
 
                 var reservation = dto.ToModel(CurrentUser);
+                reservation.CurrentInvoiceNo = existingReservation.CurrentInvoiceNo;
                 var updatedReservation = await _reservationRepository.UpdateByIdAsync(reservation);
                 return Ok(new ReservationResponseDto(updatedReservation));
             }
