@@ -16,7 +16,7 @@ public class ExtraFeeLineDto
             ExtraFeeLineId = ExtraFeeLineId,
             ReservationId = ReservationId,
             FeeDescription = FeeDescription,
-            FeeAmount = FeeAmount,
+            FeeAmount = Math.Abs(FeeAmount),
             FeeFrequency = (FrequencyType)FeeFrequencyId,
             CostCodeId = CostCodeId
         };

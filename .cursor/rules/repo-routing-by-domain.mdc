@@ -1,0 +1,18 @@
+---
+description: Route UI, API, and DB tasks to the correct RentAll repo
+alwaysApply: true
+---
+
+# RentAll Repo Routing
+
+Use these repo roots by request type:
+
+- UI work: `C:/RentAll/RentAll.Ui`
+- API work: `C:/RentAll/RentAll.Api`
+- DB work: `C:/RentAll/RentAll.Db`
+
+When the user asks a UI question, work in the UI repo by default.
+When the user asks an API question, work in the API repo by default.
+When the user asks a DB question, work in the DB repo by default.
+
+If the request is ambiguous or cross-cutting, ask one clarifying question before editing.

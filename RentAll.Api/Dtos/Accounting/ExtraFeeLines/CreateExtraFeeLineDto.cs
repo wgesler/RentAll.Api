@@ -34,7 +34,7 @@ public class CreateExtraFeeLineDto
         {
             ReservationId = ReservationId,
             FeeDescription = FeeDescription,
-            FeeAmount = FeeAmount,
+            FeeAmount = Math.Abs(FeeAmount),
             FeeFrequency = (FrequencyType)FeeFrequencyId,
             CostCodeId = CostCodeId
         };

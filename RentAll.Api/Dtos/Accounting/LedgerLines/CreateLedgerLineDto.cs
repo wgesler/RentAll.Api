@@ -14,8 +14,8 @@ public class CreateLedgerLineDto
         if (CostCodeId <= 0)
             return (false, "CostCodeId is required");
 
-        if (Amount == 0)
-            return (false, "Amount cannot be zero");
+        if (Amount < 0)
+            return (false, "Amount cannot be negative");
 
         return (true, null);
     }
@@ -28,7 +28,7 @@ public class CreateLedgerLineDto
             LineNumber = LineNumber,
             ReservationId = ReservationId,
             CostCodeId = CostCodeId,
-            Amount = Amount,
+            Amount = Math.Abs(Amount),
             Description = Description,
             CreatedBy = currentUser
         };

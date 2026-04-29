@@ -6,6 +6,7 @@ alwaysApply: true
 # Edit Permission and Scope
 
 - Do not run commands, edit files, or make code changes unless the user explicitly gives permission in the current conversation.
+- Once the user asks for a fix, you may switch directories/branches/worktrees as needed to complete that requested fix without asking for repeated permission for each directory switch.
 - When permission is granted, perform only the exact requested task and avoid related or "helpful" extra changes.
 - Do not modify files outside the user-specified scope.
 - If scope is ambiguous, ask one clarifying question before making changes.
