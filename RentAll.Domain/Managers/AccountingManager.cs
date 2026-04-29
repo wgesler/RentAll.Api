@@ -150,7 +150,7 @@ public class AccountingManager : IAccountingManager
                 invoice.PaidAmount = invoice.TotalAmount;
                 availableAmount -= remainingBalance;
                 var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, LineNumber = maxLineNumber + 1, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = invoice.PaidAmount, CreatedBy = currentUser });
+                invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, LineNumber = maxLineNumber + 1, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = remainingBalance, CreatedBy = currentUser });
                 await _accountingRepository.UpdateByIdAsync(invoice);
             }
             else

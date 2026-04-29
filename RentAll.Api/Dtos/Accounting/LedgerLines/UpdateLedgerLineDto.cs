@@ -18,9 +18,6 @@ public class UpdateLedgerLineDto
         if (CostCodeId <= 0)
             return (false, "CostCodeId is required");
 
-        if (Amount == 0)
-            return (false, "Amount cannot be zero");
-
         return (true, null);
     }
 

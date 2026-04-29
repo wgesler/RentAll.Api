@@ -172,7 +172,9 @@ public partial class AccountingRepository
 
             var currentInvoice = ConvertEntityToModel(currentInvoiceResult.FirstOrDefault()!);
             var currentLedgerLineIds = currentInvoice.LedgerLines.Select(ll => ll.LedgerLineId).ToHashSet();
-            var incomingLedgerLineIds = invoice.LedgerLines.Where(ll => ll.LedgerLineId != Guid.Empty).Select(ll => ll.LedgerLineId).ToHashSet();
+            // Zero-amount lines from update requests are treated as "removed" rows (e.g. UI x-out behavior).
+            var incomingActiveLedgerLines = invoice.LedgerLines.Where(ll => ll.Amount != 0).ToList();
+            var incomingLedgerLineIds = incomingActiveLedgerLines .Where(ll => ll.LedgerLineId != Guid.Empty) .Select(ll => ll.LedgerLineId) .ToHashSet();
 
             // Update the Invoice
             var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_UpdateById", new
@@ -198,7 +200,7 @@ public partial class AccountingRepository
                 throw new Exception("Invoice not updated");
 
             // Sync LedgerLines
-            foreach (var line in invoice.LedgerLines)
+            foreach (var line in incomingActiveLedgerLines)
             {
                 if (line.LedgerLineId == Guid.Empty)
                 {
