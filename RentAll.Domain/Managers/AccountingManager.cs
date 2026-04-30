@@ -285,7 +285,7 @@ public class AccountingManager : IAccountingManager
             AddRentalLine(days, reservation, firstDayOfLastMonth, lastDayOfLastMonth, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             AddMaidServiceLines(reservation, firstDayOfLastMonth, lastDayOfLastMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
             foreach (var extraFeeLine in reservation.ExtraFeeLines)
-                AddExtraFeeLines(extraFeeLine, firstDayOfLastMonth, lastDayOfLastMonth, startDateYear, startDateMonth, isProratedMonth, days, lineItems, ref lineNumber);
+                AddExtraFeeLines(extraFeeLine, firstDayOfLastMonth, lastDayOfLastMonth, startDateYear, startDateMonth, true, days, lineItems, ref lineNumber);
             return lineItems;
         }
 
@@ -391,20 +391,18 @@ public class AccountingManager : IAccountingManager
             case FrequencyType.EOW:
                 fees = CountEowDaysInMonth(startDate, startDate, endDate, requestedYear, startDateMonth);
                 break;
-            case FrequencyType.Monthly:
-                fees = CountNumberOfMonths(startDate, startDate, endDate, requestedYear, startDateMonth, extraFeeLine.FeeFrequency);
-                var daysInMonth = DateTime.DaysInMonth(startDate.Year, startDate.Month);
-                if (fees > 0)
-                {
-                    if (isProratedMonth && days < daysInMonth && days < PRORATE_DAYS)
-                        lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription} ({fees} times)", Amount = (extraFeeLine.FeeAmount / PRORATE_DAYS) * days, CostCodeId = extraFeeLine.CostCodeId });
-                    else
-                        lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription} ({fees} times)", Amount = fees * extraFeeLine.FeeAmount, CostCodeId = extraFeeLine.CostCodeId });
-                }
-                break;
             default:
                 fees = CountNumberOfMonths(startDate, startDate, endDate, requestedYear, startDateMonth, extraFeeLine.FeeFrequency);
                 break;
+        }
+
+        if (fees > 0)
+        {
+            var daysInMonth = DateTime.DaysInMonth(startDate.Year, startDate.Month);
+            if (extraFeeLine.FeeFrequency == FrequencyType.Monthly && isProratedMonth && days < daysInMonth && days < PRORATE_DAYS)
+                lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription}", Amount = (extraFeeLine.FeeAmount / PRORATE_DAYS) * days, CostCodeId = extraFeeLine.CostCodeId });
+            else
+                lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription}", Amount = fees * extraFeeLine.FeeAmount, CostCodeId = extraFeeLine.CostCodeId });
         }
     }
 
