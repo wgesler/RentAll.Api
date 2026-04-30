@@ -11,7 +11,6 @@ public class CreatePropertyLetterDto
     public string? Access { get; set; }
     public string? Amenities { get; set; }
     public string? Laundry { get; set; }
-    public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }
     public string? TelevisionSource { get; set; }
     public string? InternetService { get; set; }
@@ -45,7 +44,6 @@ public class CreatePropertyLetterDto
             Access = Access,
             Amenities = Amenities,
             Laundry = Laundry,
-            ProvidedFurnishings = ProvidedFurnishings,
             Housekeeping = Housekeeping,
             TelevisionSource = TelevisionSource,
             InternetService = InternetService,

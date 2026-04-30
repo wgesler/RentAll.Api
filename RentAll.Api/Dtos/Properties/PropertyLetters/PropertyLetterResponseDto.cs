@@ -11,7 +11,6 @@ public class PropertyLetterResponseDto
     public string? Access { get; set; }
     public string? Amenities { get; set; }
     public string? Laundry { get; set; }
-    public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }
     public string? TelevisionSource { get; set; }
     public string? InternetService { get; set; }
@@ -32,7 +31,6 @@ public class PropertyLetterResponseDto
         Access = propertyLetter.Access;
         Amenities = propertyLetter.Amenities;
         Laundry = propertyLetter.Laundry;
-        ProvidedFurnishings = propertyLetter.ProvidedFurnishings;
         Housekeeping = propertyLetter.Housekeeping;
         TelevisionSource = propertyLetter.TelevisionSource;
         InternetService = propertyLetter.InternetService;

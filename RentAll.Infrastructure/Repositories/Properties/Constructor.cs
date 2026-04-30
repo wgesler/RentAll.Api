@@ -256,7 +256,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Access = e.Access,
                 Amenities = e.Amenities,
                 Laundry = e.Laundry,
-                ProvidedFurnishings = e.ProvidedFurnishings,
                 Housekeeping = e.Housekeeping,
                 TelevisionSource = e.TelevisionSource,
                 InternetService = e.InternetService,
