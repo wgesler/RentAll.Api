@@ -199,7 +199,18 @@ public partial class AccountingRepository
             if (response == null || !response.Any())
                 throw new Exception("Invoice not updated");
 
-            // Sync LedgerLines
+            // Delete LedgerLines that are no longer in the incoming list
+            var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
+            foreach (var ledgerLineId in ledgerLinesToDelete)
+            {
+                await db.DapperProcExecuteAsync("Accounting.LedgerLine_DeleteById", new
+                {
+                    LedgerLineId = ledgerLineId
+                }, transaction: transaction);
+            }
+
+            // Sync LedgerLines after deletes so line-number uniqueness cannot collide
+            // with rows being replaced from UI payloads that use Guid.Empty for new items.
             foreach (var line in incomingActiveLedgerLines)
             {
                 if (line.LedgerLineId == Guid.Empty)
@@ -231,16 +242,6 @@ public partial class AccountingRepository
                         ModifiedBy = invoice.ModifiedBy
                     }, transaction: transaction);
                 }
-            }
-
-            // Delete LedgerLines that are no longer in the incoming list
-            var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
-            foreach (var ledgerLineId in ledgerLinesToDelete)
-            {
-                await db.DapperProcExecuteAsync("Accounting.LedgerLine_DeleteById", new
-                {
-                    LedgerLineId = ledgerLineId
-                }, transaction: transaction);
             }
 
             // Get fully populated invoice

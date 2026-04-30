@@ -36,12 +36,6 @@ public class CreateInvoiceDto
         if (InvoiceDate == default)
             return (false, "InvoiceDate is required");
 
-        if (TotalAmount < 0)
-            return (false, "TotalAmount cannot be negative");
-
-        if (PaidAmount < 0)
-            return (false, "PaidAmount cannot be negative");
-
         if (LedgerLines != null)
         {
             foreach (var line in LedgerLines)
@@ -68,8 +62,8 @@ public class CreateInvoiceDto
             InvoiceDate = InvoiceDate,
             DueDate = DueDate,
             InvoicePeriod = InvoicePeriod,
-            TotalAmount = Math.Abs(TotalAmount),
-            PaidAmount = Math.Abs(PaidAmount),
+            TotalAmount = TotalAmount,
+            PaidAmount = PaidAmount,
             Notes = Notes,
             IsActive = IsActive,
             LedgerLines = LedgerLines?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<LedgerLine>(),

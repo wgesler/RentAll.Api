@@ -140,8 +140,6 @@ namespace RentAll.Api.Controllers
             {
                 var invoice = dto.ToModel(CurrentUser);
                 invoice.OrganizationId = CurrentOrganizationId;
-                foreach (var line in invoice.LedgerLines)
-                    line.Amount = Math.Abs(line.Amount);
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
                 var response = new InvoiceResponseDto(createdInvoice);
@@ -224,8 +222,6 @@ namespace RentAll.Api.Controllers
 
                 var invoice = dto.ToModel(CurrentUser);
                 invoice.OrganizationId = CurrentOrganizationId;
-                foreach (var line in invoice.LedgerLines)
-                    line.Amount = Math.Abs(line.Amount);
 
                 var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
 

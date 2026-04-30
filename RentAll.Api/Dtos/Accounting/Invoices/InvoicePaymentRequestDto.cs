@@ -13,7 +13,7 @@ public class InvoicePaymentRequestDto
         if (CostCodeId < 0)
             return (false, "CostCodeId is required");
 
-        if (Amount <= 0)
+        if (Amount == 0)
             return (false, "No payment submitted");
 
         if (Invoices.Count <= 0)

@@ -18,9 +18,6 @@ public class UpdateLedgerLineDto
         if (CostCodeId <= 0)
             return (false, "CostCodeId is required");
 
-        if (Amount < 0)
-            return (false, "Amount cannot be negative");
-
         return (true, null);
     }
 
@@ -33,7 +30,7 @@ public class UpdateLedgerLineDto
             LineNumber = LineNumber,
             ReservationId = ReservationId,
             CostCodeId = CostCodeId,
-            Amount = Math.Abs(Amount),
+            Amount = Amount,
             Description = Description,
             ModifiedBy = currentUser
         };

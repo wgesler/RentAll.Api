@@ -18,9 +18,6 @@ public class UpdateExtraFeeLineDto
         if (string.IsNullOrWhiteSpace(FeeDescription))
             return (false, "FeeDescription is required");
 
-        if (FeeAmount < 0)
-            return (false, "FeeAmount must be zero or greater");
-
         if (!Enum.IsDefined(typeof(FrequencyType), FeeFrequencyId))
             return (false, $"Invalid FeeFrequencyId value: {FeeFrequencyId}");
 
@@ -37,7 +34,7 @@ public class UpdateExtraFeeLineDto
             ExtraFeeLineId = ExtraFeeLineId,
             ReservationId = ReservationId,
             FeeDescription = FeeDescription,
-            FeeAmount = Math.Abs(FeeAmount),
+            FeeAmount = FeeAmount,
             FeeFrequency = (FrequencyType)FeeFrequencyId,
             CostCodeId = CostCodeId
         };
