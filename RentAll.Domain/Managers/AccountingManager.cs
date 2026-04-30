@@ -140,30 +140,77 @@ public class AccountingManager : IAccountingManager
         var availableAmount = amountPaid;
         foreach (var invoice in invoices)
         {
-            if (availableAmount <= 0)
+            if (availableAmount == 0)
                 break;
 
-            // Skip over already paid invoices
-            var remainingBalance = invoice.TotalAmount - invoice.PaidAmount;
-            if (remainingBalance <= 0)
-                continue;
-
-            if (availableAmount >= remainingBalance)
+            if (availableAmount > 0)
             {
-                // Full payment for this invoice
-                invoice.PaidAmount = invoice.TotalAmount;
-                availableAmount -= remainingBalance;
-                var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, LineNumber = maxLineNumber + 1, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = remainingBalance, CreatedBy = currentUser });
-                await _accountingRepository.UpdateByIdAsync(invoice);
+                var remainingBalance = invoice.TotalAmount - invoice.PaidAmount;
+                if (remainingBalance <= 0)
+                    continue;
+
+                if (availableAmount >= remainingBalance)
+                {
+                    // Full payment for this invoice
+                    invoice.PaidAmount = invoice.TotalAmount;
+                    availableAmount -= remainingBalance;
+                    var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
+                    invoice.LedgerLines.Add(new LedgerLine
+                    {
+                        InvoiceId = invoice.InvoiceId,
+                        LineNumber = maxLineNumber + 1,
+                        ReservationId = invoice.ReservationId,
+                        CostCodeId = costCodeId,
+                        Description = description,
+                        Amount = remainingBalance,
+                        CreatedBy = currentUser
+                    });
+                    await _accountingRepository.UpdateByIdAsync(invoice);
+                }
+                else
+                {
+                    // Partial payment
+                    invoice.PaidAmount += availableAmount;
+                    var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
+                    invoice.LedgerLines.Add(new LedgerLine
+                    {
+                        InvoiceId = invoice.InvoiceId,
+                        LineNumber = maxLineNumber + 1,
+                        ReservationId = invoice.ReservationId,
+                        CostCodeId = costCodeId,
+                        Description = description,
+                        Amount = availableAmount,
+                        CreatedBy = currentUser
+                    });
+                    availableAmount = 0;
+                    await _accountingRepository.UpdateByIdAsync(invoice);
+                }
             }
             else
             {
-                // Partial payment
-                invoice.PaidAmount += availableAmount;
+                // Negative payment: create a separate reversal line and reduce PaidAmount.
+                // Limit reversal to already paid amount to prevent PaidAmount dropping below zero.
+                if (invoice.PaidAmount <= 0)
+                    continue;
+
+                var reversalAmount = Math.Max(availableAmount, -invoice.PaidAmount);
+                if (reversalAmount == 0)
+                    continue;
+
+                invoice.PaidAmount += reversalAmount;
                 var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                invoice.LedgerLines.Add(new LedgerLine { InvoiceId = invoice.InvoiceId, LineNumber = maxLineNumber + 1, ReservationId = invoice.ReservationId, CostCodeId = costCodeId, Description = description, Amount = availableAmount, CreatedBy = currentUser });
-                availableAmount = 0;
+                invoice.LedgerLines.Add(new LedgerLine
+                {
+                    InvoiceId = invoice.InvoiceId,
+                    LineNumber = maxLineNumber + 1,
+                    ReservationId = invoice.ReservationId,
+                    CostCodeId = costCodeId,
+                    Description = description,
+                    Amount = reversalAmount,
+                    CreatedBy = currentUser
+                });
+
+                availableAmount -= reversalAmount;
                 await _accountingRepository.UpdateByIdAsync(invoice);
             }
         }
