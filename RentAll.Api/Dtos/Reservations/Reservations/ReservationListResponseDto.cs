@@ -33,7 +33,6 @@ public class ReservationListResponseDto
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
 
@@ -84,7 +83,6 @@ public class ReservationListResponseDto
         Code = reservationList.Code;
         DepartureLetterChecked = reservationList.DepartureLetterChecked;
         DepartureLetterSent = reservationList.DepartureLetterSent;
-        CreditDue = reservationList.CreditDue;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;
         aCleanerUserId = reservationList.aCleanerUserId;

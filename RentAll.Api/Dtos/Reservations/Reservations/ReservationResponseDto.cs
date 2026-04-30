@@ -70,7 +70,6 @@ public class ReservationResponseDto
     public DateOnly? dInspectingDate { get; set; }
 
     public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -143,7 +142,6 @@ public class ReservationResponseDto
         dInspectorUserId = reservation.dInspectorUserId;
         dInspectingDate = reservation.dInspectingDate;
         CurrentInvoiceNo = reservation.CurrentInvoiceNo;
-        CreditDue = reservation.CreditDue;
         IsActive = reservation.IsActive;
         CreatedOn = reservation.CreatedOn;
         CreatedBy = reservation.CreatedBy;

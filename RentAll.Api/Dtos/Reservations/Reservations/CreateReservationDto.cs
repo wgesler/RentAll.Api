@@ -64,7 +64,6 @@ public class CreateReservationDto
     public Guid? dInspectorUserId { get; set; }
     public DateOnly? dInspectingDate { get; set; }
 
-    public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
 
 
@@ -202,7 +201,6 @@ public class CreateReservationDto
             dInspectorUserId = dInspectorUserId,
             dInspectingDate = dInspectingDate,
             CurrentInvoiceNo = 0,
-            CreditDue = CreditDue,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

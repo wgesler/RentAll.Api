@@ -35,7 +35,6 @@ public class ReservationList
     public bool DepartureLetterChecked { get; set; }
     public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
 

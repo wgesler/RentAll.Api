@@ -70,7 +70,6 @@ public class Reservation
     public DateOnly? dInspectingDate { get; set; }
 
     public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

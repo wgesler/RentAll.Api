@@ -150,7 +150,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 dCarpetDate = reservation.dCarpetDate,
                 dInspectorUserId = reservation.dInspectorUserId,
                 dInspectingDate = reservation.dInspectingDate,
-                CreditDue = reservation.CreditDue,
                 IsActive = reservation.IsActive,
                 CreatedBy = reservation.CreatedBy
             }, transaction: transaction);
@@ -276,7 +275,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     dCarpetDate = reservation.dCarpetDate,
                     dInspectorUserId = reservation.dInspectorUserId,
                     dInspectingDate = reservation.dInspectingDate,
-                    CreditDue = reservation.CreditDue,
                     IsActive = reservation.IsActive,
                     ModifiedBy = reservation.ModifiedBy
                 }, transaction: transaction);

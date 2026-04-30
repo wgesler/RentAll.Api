@@ -138,84 +138,49 @@ public class AccountingManager : IAccountingManager
         invoices = invoices.Where(i => i.IsActive).OrderBy(i => i.InvoiceDate).ToList();
 
         var availableAmount = amountPaid;
-        foreach (var invoice in invoices)
+        for (var invoiceIndex = 0; invoiceIndex < invoices.Count && availableAmount != 0; invoiceIndex++)
         {
-            if (availableAmount == 0)
-                break;
+            var invoice = invoices[invoiceIndex];
+            var isLastInvoice = invoiceIndex == invoices.Count - 1;
+            decimal amountForInvoice;
 
-            if (availableAmount > 0)
+            if (availableAmount > 0 && !isLastInvoice)
             {
+                // For positive multi-invoice runs, fill current due first, then carry remainder.
                 var remainingBalance = invoice.TotalAmount - invoice.PaidAmount;
                 if (remainingBalance <= 0)
                     continue;
 
-                if (availableAmount >= remainingBalance)
-                {
-                    // Full payment for this invoice
-                    invoice.PaidAmount = invoice.TotalAmount;
-                    availableAmount -= remainingBalance;
-                    var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                    invoice.LedgerLines.Add(new LedgerLine
-                    {
-                        InvoiceId = invoice.InvoiceId,
-                        LineNumber = maxLineNumber + 1,
-                        ReservationId = invoice.ReservationId,
-                        CostCodeId = costCodeId,
-                        Description = description,
-                        Amount = remainingBalance,
-                        CreatedBy = currentUser
-                    });
-                    await _accountingRepository.UpdateByIdAsync(invoice);
-                }
-                else
-                {
-                    // Partial payment
-                    invoice.PaidAmount += availableAmount;
-                    var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                    invoice.LedgerLines.Add(new LedgerLine
-                    {
-                        InvoiceId = invoice.InvoiceId,
-                        LineNumber = maxLineNumber + 1,
-                        ReservationId = invoice.ReservationId,
-                        CostCodeId = costCodeId,
-                        Description = description,
-                        Amount = availableAmount,
-                        CreatedBy = currentUser
-                    });
-                    availableAmount = 0;
-                    await _accountingRepository.UpdateByIdAsync(invoice);
-                }
+                amountForInvoice = Math.Min(availableAmount, remainingBalance);
             }
             else
             {
-                // Negative payment: create a separate reversal line and reduce PaidAmount.
-                // Limit reversal to already paid amount to prevent PaidAmount dropping below zero.
-                if (invoice.PaidAmount <= 0)
-                    continue;
-
-                var reversalAmount = Math.Max(availableAmount, -invoice.PaidAmount);
-                if (reversalAmount == 0)
-                    continue;
-
-                invoice.PaidAmount += reversalAmount;
-                var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
-                invoice.LedgerLines.Add(new LedgerLine
-                {
-                    InvoiceId = invoice.InvoiceId,
-                    LineNumber = maxLineNumber + 1,
-                    ReservationId = invoice.ReservationId,
-                    CostCodeId = costCodeId,
-                    Description = description,
-                    Amount = reversalAmount,
-                    CreatedBy = currentUser
-                });
-
-                availableAmount -= reversalAmount;
-                await _accountingRepository.UpdateByIdAsync(invoice);
+                // For single-invoice runs, last invoice in a multi-run, and all negative adjustments:
+                // apply as entered so invoice math can naturally go negative/overpaid.
+                amountForInvoice = availableAmount;
             }
+
+            if (amountForInvoice == 0)
+                continue;
+
+            invoice.PaidAmount += amountForInvoice;
+            var maxLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(ll => ll.LineNumber) : 0;
+            invoice.LedgerLines.Add(new LedgerLine
+            {
+                InvoiceId = invoice.InvoiceId,
+                LineNumber = maxLineNumber + 1,
+                ReservationId = invoice.ReservationId,
+                CostCodeId = costCodeId,
+                Description = description,
+                Amount = amountForInvoice,
+                CreatedBy = currentUser
+            });
+
+            availableAmount -= amountForInvoice;
+            await _accountingRepository.UpdateByIdAsync(invoice);
         }
 
-        var response = new InvoicePayment { Invoices = invoices, CreditRemaining = availableAmount };
+        var response = new InvoicePayment { Invoices = invoices };
         return response;
     }
 

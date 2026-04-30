@@ -29,7 +29,6 @@ public class ReservationListEntity
     public decimal MaidServiceFee { get; set; }
 
     public int CurrentInvoiceNo { get; set; }
-    public decimal CreditDue { get; set; }
     public bool PaymentReceived { get; set; }
     public bool WelcomeLetterChecked { get; set; }
     public bool WelcomeLetterSent { get; set; }
