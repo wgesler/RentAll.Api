@@ -43,6 +43,18 @@ public class OfficeUpdateDto
     public int? TenantExpenseCcId { get; set; }
     public int? OwnerChargeCcId { get; set; }
     public int? OwnerExpenseCcId { get; set; }
+    public int? FurnishedRentChargeCcId { get; set; }
+    public int? FurnishedRentExpenseCcId { get; set; }
+    public int? UnfurnishedRentChargeCcId { get; set; }
+    public int? UnfurnishedRentExpenseCcId { get; set; }
+    public int? MaidServiceChargeCcId { get; set; }
+    public int? MaidServiceExpenseCcId { get; set; }
+    public int? ParkingChargeCcId { get; set; }
+    public int? ParkingExpenseCcId { get; set; }
+    public int? DepartureFeeCcId { get; set; }
+    public int? PetFeeCcId { get; set; }
+    public int? SecurityDepositCcId { get; set; }
+    public int? SecurityDepositWaiverCcId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -80,6 +92,42 @@ public class OfficeUpdateDto
 
         if (OwnerExpenseCcId.HasValue && OwnerExpenseCcId.Value <= 0)
             return (false, "OwnerExpenseCcId must be greater than 0 when provided");
+
+        if (FurnishedRentChargeCcId.HasValue && FurnishedRentChargeCcId.Value <= 0)
+            return (false, "FurnishedRentChargeCcId must be greater than 0 when provided");
+
+        if (FurnishedRentExpenseCcId.HasValue && FurnishedRentExpenseCcId.Value <= 0)
+            return (false, "FurnishedRentExpenseCcId must be greater than 0 when provided");
+
+        if (UnfurnishedRentChargeCcId.HasValue && UnfurnishedRentChargeCcId.Value <= 0)
+            return (false, "UnfurnishedRentChargeCcId must be greater than 0 when provided");
+
+        if (UnfurnishedRentExpenseCcId.HasValue && UnfurnishedRentExpenseCcId.Value <= 0)
+            return (false, "UnfurnishedRentExpenseCcId must be greater than 0 when provided");
+
+        if (MaidServiceChargeCcId.HasValue && MaidServiceChargeCcId.Value <= 0)
+            return (false, "MaidServiceChargeCcId must be greater than 0 when provided");
+
+        if (MaidServiceExpenseCcId.HasValue && MaidServiceExpenseCcId.Value <= 0)
+            return (false, "MaidServiceExpenseCcId must be greater than 0 when provided");
+
+        if (ParkingChargeCcId.HasValue && ParkingChargeCcId.Value <= 0)
+            return (false, "ParkingChargeCcId must be greater than 0 when provided");
+
+        if (ParkingExpenseCcId.HasValue && ParkingExpenseCcId.Value <= 0)
+            return (false, "ParkingExpenseCcId must be greater than 0 when provided");
+
+        if (DepartureFeeCcId.HasValue && DepartureFeeCcId.Value <= 0)
+            return (false, "DepartureFeeCcId must be greater than 0 when provided");
+
+        if (PetFeeCcId.HasValue && PetFeeCcId.Value <= 0)
+            return (false, "PetFeeCcId must be greater than 0 when provided");
+
+        if (SecurityDepositCcId.HasValue && SecurityDepositCcId.Value <= 0)
+            return (false, "SecurityDepositCcId must be greater than 0 when provided");
+
+        if (SecurityDepositWaiverCcId.HasValue && SecurityDepositWaiverCcId.Value <= 0)
+            return (false, "SecurityDepositWaiverCcId must be greater than 0 when provided");
 
         return (true, null);
     }
@@ -127,6 +175,18 @@ public class OfficeUpdateDto
             TenantExpenseCcId = TenantExpenseCcId,
             OwnerChargeCcId = OwnerChargeCcId,
             OwnerExpenseCcId = OwnerExpenseCcId,
+            FurnishedRentChargeCcId = FurnishedRentChargeCcId,
+            FurnishedRentExpenseCcId = FurnishedRentExpenseCcId,
+            UnfurnishedRentChargeCcId = UnfurnishedRentChargeCcId,
+            UnfurnishedRentExpenseCcId = UnfurnishedRentExpenseCcId,
+            MaidServiceChargeCcId = MaidServiceChargeCcId,
+            MaidServiceExpenseCcId = MaidServiceExpenseCcId,
+            ParkingChargeCcId = ParkingChargeCcId,
+            ParkingExpenseCcId = ParkingExpenseCcId,
+            DepartureFeeCcId = DepartureFeeCcId,
+            PetFeeCcId = PetFeeCcId,
+            SecurityDepositCcId = SecurityDepositCcId,
+            SecurityDepositWaiverCcId = SecurityDepositWaiverCcId,
             EmailListForReservations = EmailListForReservations,
             IsInternational = IsInternational,
             IsActive = IsActive

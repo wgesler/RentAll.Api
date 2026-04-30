@@ -43,6 +43,18 @@ public class OfficeResponseDto
     public int? TenantExpenseCcId { get; set; }
     public int? OwnerChargeCcId { get; set; }
     public int? OwnerExpenseCcId { get; set; }
+    public int? FurnishedRentChargeCcId { get; set; }
+    public int? FurnishedRentExpenseCcId { get; set; }
+    public int? UnfurnishedRentChargeCcId { get; set; }
+    public int? UnfurnishedRentExpenseCcId { get; set; }
+    public int? MaidServiceChargeCcId { get; set; }
+    public int? MaidServiceExpenseCcId { get; set; }
+    public int? ParkingChargeCcId { get; set; }
+    public int? ParkingExpenseCcId { get; set; }
+    public int? DepartureFeeCcId { get; set; }
+    public int? PetFeeCcId { get; set; }
+    public int? SecurityDepositCcId { get; set; }
+    public int? SecurityDepositWaiverCcId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -89,6 +101,18 @@ public class OfficeResponseDto
         TenantExpenseCcId = office.TenantExpenseCcId;
         OwnerChargeCcId = office.OwnerChargeCcId;
         OwnerExpenseCcId = office.OwnerExpenseCcId;
+        FurnishedRentChargeCcId = office.FurnishedRentChargeCcId;
+        FurnishedRentExpenseCcId = office.FurnishedRentExpenseCcId;
+        UnfurnishedRentChargeCcId = office.UnfurnishedRentChargeCcId;
+        UnfurnishedRentExpenseCcId = office.UnfurnishedRentExpenseCcId;
+        MaidServiceChargeCcId = office.MaidServiceChargeCcId;
+        MaidServiceExpenseCcId = office.MaidServiceExpenseCcId;
+        ParkingChargeCcId = office.ParkingChargeCcId;
+        ParkingExpenseCcId = office.ParkingExpenseCcId;
+        DepartureFeeCcId = office.DepartureFeeCcId;
+        PetFeeCcId = office.PetFeeCcId;
+        SecurityDepositCcId = office.SecurityDepositCcId;
+        SecurityDepositWaiverCcId = office.SecurityDepositWaiverCcId;
         EmailListForReservations = office.EmailListForReservations;
         FileDetails = office.FileDetails;
         IsInternational = office.IsInternational;

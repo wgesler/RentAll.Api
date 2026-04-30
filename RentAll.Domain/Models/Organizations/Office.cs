@@ -43,6 +43,18 @@ public class Office
     public int? TenantExpenseCcId { get; set; }
     public int? OwnerChargeCcId { get; set; }
     public int? OwnerExpenseCcId { get; set; }
+    public int? FurnishedRentChargeCcId { get; set; }
+    public int? FurnishedRentExpenseCcId { get; set; }
+    public int? UnfurnishedRentChargeCcId { get; set; }
+    public int? UnfurnishedRentExpenseCcId { get; set; }
+    public int? MaidServiceChargeCcId { get; set; }
+    public int? MaidServiceExpenseCcId { get; set; }
+    public int? ParkingChargeCcId { get; set; }
+    public int? ParkingExpenseCcId { get; set; }
+    public int? DepartureFeeCcId { get; set; }
+    public int? PetFeeCcId { get; set; }
+    public int? SecurityDepositCcId { get; set; }
+    public int? SecurityDepositWaiverCcId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
