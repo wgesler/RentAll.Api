@@ -1,4 +1,5 @@
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Domain.Interfaces.Repositories;
 
@@ -42,5 +43,19 @@ public interface IPropertyRepository
     Task<PropertyAgreement> CreatePropertyAgreementAsync(PropertyAgreement agreement);
     Task<PropertyAgreement> UpdatePropertyAgreementByPropertyIdAsync(PropertyAgreement agreement);
     Task DeletePropertyAgreementByPropertyIdAsync(Guid propertyId);
+    #endregion
+
+    #region Property Photos
+    Task<PropertyPhoto?> GetPropertyPhotoByIdAsync(int photoId, Guid organizationId);
+    Task<IEnumerable<PropertyPhoto>> GetPropertyPhotosByPropertyIdAsync(Guid propertyId);
+    Task<PropertyPhoto> CreatePropertyPhotoAsync(PropertyPhoto photo);
+    Task UpdatePropertyPhotoOrderAsync(int photoId, int order);
+    Task DeletePropertyPhotoByIdAsync(int photoId);
+    #endregion
+
+    #region Property Listing Share
+    Task<PropertyListingShare> UpsertPropertyListingShareByPropertyIdAsync(PropertyListingShare share, Guid createdBy);
+    Task<PropertyListingShare?> GetPropertyListingShareByTokenHashAsync(string tokenHash);
+    Task RevokePropertyListingShareByPropertyIdAsync(Guid propertyId, Guid modifiedBy);
     #endregion
 }

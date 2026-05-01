@@ -3,6 +3,8 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Properties;
+using RentAll.Infrastructure.Entities.Properties;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Properties
@@ -217,6 +219,24 @@ namespace RentAll.Infrastructure.Repositories.Properties
             RentalIncomeCcId = e.RentalIncomeCcId,
             RentalExpenseCcId = e.RentalExpenseCcId,
             Notes = e.Notes
+        };
+
+        private static PropertyPhoto ConvertEntityToModel(PropertyPhotoEntity e) => new()
+        {
+            PhotoId = e.PhotoId,
+            PropertyId = e.PropertyId,
+            Order = e.Order,
+            PhotoPath = e.PhotoPath
+        };
+
+        private static PropertyListingShare ConvertEntityToModel(PropertyListingShareEntity e) => new()
+        {
+            ShareId = e.ShareId,
+            PropertyId = e.PropertyId,
+            OrganizationId = e.OrganizationId,
+            TokenHash = e.TokenHash,
+            ExpiresOn = e.ExpiresOn,
+            IsActive = e.IsActive
         };
 
         private PropertyHtml ConvertEntityToModel(PropertyHtmlEntity e)
