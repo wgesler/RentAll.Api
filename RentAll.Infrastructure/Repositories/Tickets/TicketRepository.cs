@@ -23,7 +23,7 @@ public class TicketRepository : ITicketRepository
     public async Task<IEnumerable<Ticket>> GetTicketsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetListByOfficeIds", new
+        var res = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetAllByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
@@ -38,7 +38,7 @@ public class TicketRepository : ITicketRepository
     public async Task<IEnumerable<Ticket>> GetTicketsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetListByPropertyId", new
+        var res = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
@@ -81,7 +81,9 @@ public class TicketRepository : ITicketRepository
                 PropertyId = ticket.PropertyId,
                 ReservationId = ticket.ReservationId,
                 ReservationCode = ticket.ReservationCode,
+                AssigneeId = ticket.AssigneeId,
                 TicketCode = ticket.TicketCode,
+                Title = ticket.Title,
                 Description = ticket.Description,
                 TicketStateId = (int)ticket.TicketStateType,
                 PermissionToEnter = ticket.PermissionToEnter,
@@ -159,7 +161,9 @@ public class TicketRepository : ITicketRepository
                 PropertyId = ticket.PropertyId,
                 ReservationId = ticket.ReservationId,
                 ReservationCode = ticket.ReservationCode,
+                AssigneeId = ticket.AssigneeId,
                 TicketCode = ticket.TicketCode,
+                Title = ticket.Title,
                 Description = ticket.Description,
                 TicketStateId = (int)ticket.TicketStateType,
                 PermissionToEnter = ticket.PermissionToEnter,
@@ -251,7 +255,10 @@ public class TicketRepository : ITicketRepository
             PropertyCode = e.PropertyCode,
             ReservationId = e.ReservationId,
             ReservationCode = e.ReservationCode,
+            AssigneeId = e.AssigneeId,
+            Assignee = e.Assignee,
             TicketCode = e.TicketCode,
+            Title = e.Title,
             Description = e.Description,
             TicketStateType = (TicketStateType)e.TicketStateId,
             PermissionToEnter = e.PermissionToEnter,

@@ -8,7 +8,9 @@ public class UpdateTicketDto
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public Guid? AssigneeId { get; set; }
     public string TicketCode { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int TicketStateTypeId { get; set; }
     public bool PermissionToEnter { get; set; }
@@ -32,6 +34,9 @@ public class UpdateTicketDto
 
         if (string.IsNullOrWhiteSpace(TicketCode))
             return (false, "TicketCode is required");
+
+        if (string.IsNullOrWhiteSpace(Title))
+            return (false, "Title is required");
 
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
@@ -62,7 +67,9 @@ public class UpdateTicketDto
             PropertyId = PropertyId,
             ReservationId = ReservationId,
             ReservationCode = ReservationCode,
+            AssigneeId = AssigneeId,
             TicketCode = TicketCode,
+            Title = Title,
             Description = Description,
             TicketStateType = (TicketStateType)TicketStateTypeId,
             PermissionToEnter = PermissionToEnter,

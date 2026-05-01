@@ -12,7 +12,10 @@ public class Ticket
     public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public Guid? AssigneeId { get; set; }
+    public string? Assignee { get; set; }
     public string TicketCode { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public TicketStateType TicketStateType { get; set; }
     public bool PermissionToEnter { get; set; }
