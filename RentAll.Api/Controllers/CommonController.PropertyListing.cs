@@ -30,8 +30,17 @@ namespace RentAll.Api.Controllers
                         var dto = new PropertyPhotoResponseDto(p);
                         if (!string.IsNullOrWhiteSpace(dto.PhotoPath))
                         {
-                            var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                            dto.PhotoPath = $"{baseUrl}{dto.PhotoPath}";
+                            var normalizedPath = dto.PhotoPath.Trim().Replace("\\", "/");
+                            if (!Uri.TryCreate(normalizedPath, UriKind.Absolute, out _))
+                            {
+                                if (!normalizedPath.StartsWith("/"))
+                                    normalizedPath = "/" + normalizedPath;
+
+                                var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+                                normalizedPath = $"{baseUrl}{normalizedPath}";
+                            }
+
+                            dto.PhotoPath = normalizedPath;
                         }
 
                         return dto;
