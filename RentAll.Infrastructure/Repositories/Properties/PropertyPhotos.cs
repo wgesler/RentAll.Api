@@ -1,7 +1,6 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -11,10 +10,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<PropertyPhoto?> GetPropertyPhotoByIdAsync(int photoId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.Photo_GetById", new
+            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.PropertyPhoto_GetById", new
             {
-                PhotoId = photoId,
-                OrganizationId = organizationId
+                PhotoId = photoId
             });
 
             if (res == null || !res.Any())
@@ -26,7 +24,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<IEnumerable<PropertyPhoto>> GetPropertyPhotosByPropertyIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.Photo_GetAllByPropertyId", new
+            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.PropertyPhoto_GetAllByPropertyId", new
             {
                 PropertyId = propertyId
             });
@@ -43,14 +41,14 @@ namespace RentAll.Infrastructure.Repositories.Properties
         {
             await using var db = new SqlConnection(_dbConnectionString);
 
-            await db.DapperProcExecuteAsync("Property.Photo_Add", new
+            await db.DapperProcExecuteAsync("Property.PropertyPhoto_Add", new
             {
                 PropertyId = photo.PropertyId,
                 Order = photo.Order,
                 PhotoPath = photo.PhotoPath
             });
 
-            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.Photo_GetAllByPropertyId", new
+            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.PropertyPhoto_GetAllByPropertyId", new
             {
                 PropertyId = photo.PropertyId
             });
@@ -81,7 +79,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task UpdatePropertyPhotoOrderAsync(int photoId, int order)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            await db.DapperProcExecuteAsync("Property.Photo_Update", new
+            await db.DapperProcExecuteAsync("Property.PropertyPhoto_Update", new
             {
                 PhotoId = photoId,
                 Order = order
@@ -93,7 +91,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task DeletePropertyPhotoByIdAsync(int photoId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            await db.DapperProcExecuteAsync("Property.Photo_Delete", new
+            await db.DapperProcExecuteAsync("Property.PropertyPhoto_Delete", new
             {
                 PhotoId = photoId
             });
