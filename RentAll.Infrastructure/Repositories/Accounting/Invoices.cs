@@ -126,6 +126,7 @@ public partial class AccountingRepository
                     CostCodeId = line.CostCodeId,
                     Amount = line.Amount,
                     Description = line.Description,
+                    LedgerLineDate = line.LedgerLineDate,
                     CreatedBy = invoice.CreatedBy
                 }, transaction: transaction);
             }
@@ -224,6 +225,7 @@ public partial class AccountingRepository
                         CostCodeId = line.CostCodeId,
                         Amount = line.Amount,
                         Description = line.Description,
+                        LedgerLineDate = line.LedgerLineDate,
                         CreatedBy = invoice.CreatedBy
                     }, transaction: transaction);
                 }
@@ -239,6 +241,7 @@ public partial class AccountingRepository
                         CostCodeId = line.CostCodeId,
                         Amount = line.Amount,
                         Description = line.Description,
+                        LedgerLineDate = line.LedgerLineDate,
                         ModifiedBy = invoice.ModifiedBy
                     }, transaction: transaction);
                 }

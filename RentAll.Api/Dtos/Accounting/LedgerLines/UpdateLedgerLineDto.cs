@@ -9,6 +9,7 @@ public class UpdateLedgerLineDto
     public int CostCodeId { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
+    public DateOnly LedgerLineDate { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -17,6 +18,10 @@ public class UpdateLedgerLineDto
 
         if (CostCodeId <= 0)
             return (false, "CostCodeId is required");
+        if (string.IsNullOrWhiteSpace(Description))
+            return (false, "Description is required");
+        if (LedgerLineDate == default)
+            return (false, "LedgerLineDate is required");
 
         return (true, null);
     }
@@ -31,7 +36,8 @@ public class UpdateLedgerLineDto
             ReservationId = ReservationId,
             CostCodeId = CostCodeId,
             Amount = Amount,
-            Description = Description,
+            Description = Description.Trim(),
+            LedgerLineDate = LedgerLineDate,
             ModifiedBy = currentUser
         };
     }

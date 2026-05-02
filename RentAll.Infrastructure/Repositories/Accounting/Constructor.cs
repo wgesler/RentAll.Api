@@ -131,6 +131,7 @@ public partial class AccountingRepository : IAccountingRepository
             CostCodeId = e.CostCodeId,
             Amount = e.Amount,
             Description = e.Description,
+            LedgerLineDate = e.LedgerLineDate,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
