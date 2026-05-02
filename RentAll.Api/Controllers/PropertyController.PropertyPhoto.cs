@@ -19,10 +19,10 @@ namespace RentAll.Api.Controllers
                     return NotFound("Photo not found");
 
                 var property = await _propertyRepository.GetPropertyByIdAsync(photo.PropertyId, CurrentOrganizationId);
-                var office = property == null ? null : await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, CurrentOrganizationId);
+                var listingScope = BuildListingPhotoScope(property?.OfficeName, property?.PropertyCode);
 
                 var response = new PropertyPhotoResponseDto(photo);
-                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, office?.Name, photo.PhotoPath, ImageType.Photos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, listingScope, photo.PhotoPath, ImageType.Photos);
 
                 return Ok(response);
             }
@@ -45,14 +45,16 @@ namespace RentAll.Api.Controllers
                 if (property == null)
                     return NotFound("Property not found");
 
-                var office = await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, CurrentOrganizationId);
+                var propertyCode = property.PropertyCode;
+                var officeName = property.OfficeName;
                 var photos = await _propertyRepository.GetPropertyPhotosByPropertyIdAsync(propertyId);
 
                 var response = new List<PropertyPhotoResponseDto>();
                 foreach (var photo in photos)
                 {
+                    var listingScope = BuildListingPhotoScope(officeName, propertyCode);
                     var photoResponse = new PropertyPhotoResponseDto(photo);
-                    photoResponse.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, office?.Name, photo.PhotoPath, ImageType.Photos);
+                    photoResponse.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, listingScope, photo.PhotoPath, ImageType.Photos);
                     response.Add(photoResponse);
                 }
 
@@ -88,15 +90,13 @@ namespace RentAll.Api.Controllers
                 if (property == null)
                     return NotFound("Property not found");
 
-                var office = await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, CurrentOrganizationId);
-                var officeName = office?.Name;
-
+                var listingScope = BuildListingPhotoScope(property.OfficeName, property.PropertyCode);
                 var photo = dto.ToModel(propertyId);
-                photo.PhotoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.FileDetails, ImageType.Photos) ?? string.Empty;
+                photo.PhotoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, listingScope, dto.FileDetails, ImageType.Photos) ?? string.Empty;
 
                 var created = await _propertyRepository.CreatePropertyPhotoAsync(photo);
                 var response = new PropertyPhotoResponseDto(created);
-                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, created.PhotoPath, ImageType.Photos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, listingScope, created.PhotoPath, ImageType.Photos);
 
                 return Ok(response);
             }
@@ -156,10 +156,10 @@ namespace RentAll.Api.Controllers
                     return NoContent();
 
                 var property = await _propertyRepository.GetPropertyByIdAsync(photo.PropertyId, CurrentOrganizationId);
-                var office = property == null ? null : await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, CurrentOrganizationId);
+                var listingScope = BuildListingPhotoScope(property?.OfficeName, property?.PropertyCode);
 
                 if (!string.IsNullOrWhiteSpace(photo.PhotoPath))
-                    await _fileService.DeleteImageAsync(CurrentOrganizationId, office?.Name, photo.PhotoPath, ImageType.Photos);
+                    await _fileService.DeleteImageAsync(CurrentOrganizationId, listingScope, photo.PhotoPath, ImageType.Photos);
 
                 await _propertyRepository.DeletePropertyPhotoByIdAsync(photoId);
                 return NoContent();
@@ -172,5 +172,12 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
+
+        private static string BuildListingPhotoScope(string? officeName, string? propertyCode)
+        {
+            var normalizedOffice = string.IsNullOrWhiteSpace(officeName) ? "global" : officeName.Trim();
+            var normalizedCode = string.IsNullOrWhiteSpace(propertyCode) ? "unknown-property" : propertyCode.Trim();
+            return $"{normalizedOffice}/listings/{normalizedCode}";
+        }
     }
 }

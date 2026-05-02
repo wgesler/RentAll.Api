@@ -10,7 +10,6 @@ namespace RentAll.Api.Controllers
     public partial class DocumentController : BaseController
     {
         private readonly IDocumentRepository _documentRepository;
-        private readonly IPhotoRepository _photoRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IFileService _fileService;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -19,7 +18,6 @@ namespace RentAll.Api.Controllers
 
         public DocumentController(
             IDocumentRepository documentRepository,
-            IPhotoRepository photoRepository,
             IOrganizationRepository organizationRepository,
             IFileService fileService,
             IFileAttachmentHelper fileAttachmentHelper,
@@ -27,7 +25,6 @@ namespace RentAll.Api.Controllers
             ILogger<DocumentController> logger)
         {
             _documentRepository = documentRepository;
-            _photoRepository = photoRepository;
             _organizationRepository = organizationRepository;
             _fileService = fileService;
             _fileAttachmentHelper = fileAttachmentHelper;

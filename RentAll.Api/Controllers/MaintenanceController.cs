@@ -13,6 +13,7 @@ public partial class MaintenanceController : BaseController
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IMaintenanceManager _maintenanceManager;
     private readonly IMaintenanceRepository _maintenanceRepository;
+    private readonly IPhotoRepository _photoRepository;
     private readonly IPropertyRepository _propertyRepository;
     private readonly IFileService _fileService;
     private readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -22,6 +23,7 @@ public partial class MaintenanceController : BaseController
         IOrganizationRepository organizationRepository,
         IMaintenanceManager maintenanceManager,
         IMaintenanceRepository maintenanceRepository,
+        IPhotoRepository photoRepository,
         IPropertyRepository propertyRepository,
         IFileService fileService,
         IFileAttachmentHelper fileAttachmentHelper,
@@ -30,6 +32,7 @@ public partial class MaintenanceController : BaseController
         _organizationRepository = organizationRepository;
         _maintenanceManager = maintenanceManager;
         _maintenanceRepository = maintenanceRepository;
+        _photoRepository = photoRepository;
         _propertyRepository = propertyRepository;
         _fileService = fileService;
         _fileAttachmentHelper = fileAttachmentHelper;

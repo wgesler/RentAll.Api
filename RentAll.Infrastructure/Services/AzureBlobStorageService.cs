@@ -102,6 +102,7 @@ public class AzureBlobStorageService : IFileService
 
         await containerClient.CreateIfNotExistsAsync(PublicAccessType.None).ConfigureAwait(false);
         var typeString = imageType.ToString().ToLowerInvariant();
+        var includeTypeFolder = ShouldIncludeImageTypeFolder(officeName, imageType);
 
         var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
         if (!string.IsNullOrEmpty(fileNameOnly))
@@ -109,7 +110,9 @@ public class AzureBlobStorageService : IFileService
 
         var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
         var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
-        var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
+        var blobName = includeTypeFolder
+            ? $"{blobPathPrefix}/{typeString}/{uniqueFileName}"
+            : $"{blobPathPrefix}/{uniqueFileName}";
         var blobClient = containerClient.GetBlobClient(blobName);
 
         uploadStream.Position = 0;
@@ -336,6 +339,18 @@ public class AzureBlobStorageService : IFileService
     {
         var env = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
         return SanitizeContainerSegment(env);
+    }
+
+    private static bool ShouldIncludeImageTypeFolder(string? officeName, ImageType imageType)
+    {
+        if (imageType != ImageType.Photos)
+            return true;
+
+        if (string.IsNullOrWhiteSpace(officeName))
+            return true;
+
+        return !officeName.Contains("/listings/", StringComparison.OrdinalIgnoreCase)
+            && !officeName.Contains("/inspection/", StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetBlobPathPrefix(Guid organizationId, string? officeName)

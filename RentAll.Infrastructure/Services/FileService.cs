@@ -95,7 +95,10 @@ public class FileService : IFileService
         var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
-        var uploadsPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString);
+        var includeTypeFolder = ShouldIncludeImageTypeFolder(officeName, imageType);
+        var uploadsPath = includeTypeFolder
+            ? Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString)
+            : Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(uploadsPath);
 
         var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
@@ -106,7 +109,9 @@ public class FileService : IFileService
             await streamToSave.CopyToAsync(fileStreamOut).ConfigureAwait(false);
         }
 
-        return "/" + containerPath + "/" + typeString + "/" + uniqueFileName;
+        return includeTypeFolder
+            ? "/" + containerPath + "/" + typeString + "/" + uniqueFileName
+            : "/" + containerPath + "/" + uniqueFileName;
     }
 
     public Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)
@@ -116,7 +121,10 @@ public class FileService : IFileService
 
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
-        var expectedPathPrefix = $"/{containerPath}/{typeString}/";
+        var includeTypeFolder = ShouldIncludeImageTypeFolder(officeName, imageType);
+        var expectedPathPrefix = includeTypeFolder
+            ? $"/{containerPath}/{typeString}/"
+            : $"/{containerPath}/";
         if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Attempted to delete file outside allowed directory: {FilePath} for organization {OrganizationId}, office {officeName}", filePath, organizationId, officeName);
@@ -127,7 +135,9 @@ public class FileService : IFileService
         if (string.IsNullOrEmpty(fileName))
             return Task.FromResult(false);
 
-        var fullPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName);
+        var fullPath = includeTypeFolder
+            ? Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName)
+            : Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), fileName);
 
         try
         {
@@ -153,7 +163,10 @@ public class FileService : IFileService
 
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
-        var expectedPathPrefix = $"/{containerPath}/{typeString}/";
+        var includeTypeFolder = ShouldIncludeImageTypeFolder(officeName, imageType);
+        var expectedPathPrefix = includeTypeFolder
+            ? $"/{containerPath}/{typeString}/"
+            : $"/{containerPath}/";
         if (!filePath.StartsWith(expectedPathPrefix, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Attempted to read file outside allowed directory: {FilePath} for organization {OrganizationId}, office {officeName}", filePath, organizationId, officeName);
@@ -164,7 +177,9 @@ public class FileService : IFileService
         if (string.IsNullOrEmpty(fileName))
             return null;
 
-        var fullPath = Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName);
+        var fullPath = includeTypeFolder
+            ? Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString, fileName)
+            : Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), fileName);
 
         try
         {
@@ -357,6 +372,18 @@ public class FileService : IFileService
         var orgSegment = $"{organizationId:N}".ToLowerInvariant();
         var officeSegment = !string.IsNullOrWhiteSpace(officeName) ? officeName.Trim().ToLower() : "global";
         return $"{envName}/{orgSegment}/{officeSegment}";
+    }
+
+    private static bool ShouldIncludeImageTypeFolder(string? officeName, ImageType imageType)
+    {
+        if (imageType != ImageType.Photos)
+            return true;
+
+        if (string.IsNullOrWhiteSpace(officeName))
+            return true;
+
+        return !officeName.Contains("/listings/", StringComparison.OrdinalIgnoreCase)
+            && !officeName.Contains("/inspection/", StringComparison.OrdinalIgnoreCase);
     }
 
 }
