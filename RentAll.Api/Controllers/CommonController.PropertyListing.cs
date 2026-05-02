@@ -23,11 +23,28 @@ namespace RentAll.Api.Controllers
                 if (property == null)
                     return NotFound("Listing not found");
 
+                var listingScope = BuildListingPhotoScope(property.OfficeName, property.PropertyCode);
                 var photos = await _propertyRepository.GetPropertyPhotosByPropertyIdAsync(share.PropertyId);
                 var photoDtos = photos
-                    .Select(p =>
+                    .Select(async p =>
                     {
                         var dto = new PropertyPhotoResponseDto(p);
+                        dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                            share.OrganizationId,
+                            listingScope,
+                            dto.PhotoPath,
+                            ImageType.Photos);
+
+                        var hasInlineBytes = dto.FileDetails != null
+                            && (!string.IsNullOrWhiteSpace(dto.FileDetails.DataUrl)
+                                || !string.IsNullOrWhiteSpace(dto.FileDetails.File));
+                        if (hasInlineBytes)
+                        {
+                            // Public listing should render from bytes, not direct blob links.
+                            dto.PhotoPath = string.Empty;
+                            return dto;
+                        }
+
                         if (!string.IsNullOrWhiteSpace(dto.PhotoPath))
                         {
                             var normalizedPath = dto.PhotoPath.Trim().Replace("\\", "/");
@@ -46,11 +63,12 @@ namespace RentAll.Api.Controllers
                         return dto;
                     })
                     .ToList();
+                var resolvedPhotoDtos = await Task.WhenAll(photoDtos);
 
                 var response = new PublicPropertyListingResponseDto
                 {
                     Property = new PropertyResponseDto(property),
-                    Photos = photoDtos
+                    Photos = resolvedPhotoDtos.ToList()
                 };
 
                 return Ok(response);
@@ -67,6 +85,13 @@ namespace RentAll.Api.Controllers
             var bytes = Encoding.UTF8.GetBytes(value);
             var hash = SHA256.HashData(bytes);
             return Convert.ToHexString(hash);
+        }
+
+        private static string BuildListingPhotoScope(string? officeName, string? propertyCode)
+        {
+            var normalizedOffice = string.IsNullOrWhiteSpace(officeName) ? "global" : officeName.Trim();
+            var normalizedCode = string.IsNullOrWhiteSpace(propertyCode) ? "unknown-property" : propertyCode.Trim();
+            return $"{normalizedOffice}/listings/{normalizedCode}";
         }
     }
 }

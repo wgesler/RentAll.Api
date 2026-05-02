@@ -17,6 +17,7 @@ namespace RentAll.Api.Controllers
         private readonly ICalendarManager _calendarManager;
         private readonly ICommonRepository _commonRepository;
         private readonly IPropertyRepository _propertyRepository;
+        private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly ILogger<CommonController> _logger;
 
         public CommonController(
@@ -25,6 +26,7 @@ namespace RentAll.Api.Controllers
             ICommonRepository commonRepository,
             ICalendarManager calendarManager,
             IPropertyRepository propertyRepository,
+            IFileAttachmentHelper fileAttachmentHelper,
             ILogger<CommonController> logger)
         {
             _appSettings = options.Value;
@@ -32,6 +34,7 @@ namespace RentAll.Api.Controllers
             _commonRepository = commonRepository;
             _calendarManager = calendarManager;
             _propertyRepository = propertyRepository;
+            _fileAttachmentHelper = fileAttachmentHelper;
             _logger = logger;
         }
     }
