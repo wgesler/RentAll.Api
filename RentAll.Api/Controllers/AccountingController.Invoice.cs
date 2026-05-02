@@ -248,7 +248,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
-                    dto.CostCodeId, dto.Description, dto.Amount, CurrentUser);
+                    dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
                 var response = new InvoicePaymentResponseDto(invoicePayment);
                 return Ok(response);
             }

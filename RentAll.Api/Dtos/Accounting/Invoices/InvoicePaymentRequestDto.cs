@@ -2,6 +2,7 @@ namespace RentAll.Api.Dtos.Accounting.Invoices;
 
 public class InvoicePaymentRequestDto
 {
+    public DateOnly PaymentDate { get; set; }
     public int CostCodeId { get; set; }
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
@@ -10,6 +11,9 @@ public class InvoicePaymentRequestDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (PaymentDate == default)
+            return (false, "PaymentDate is required");
+
         if (CostCodeId < 0)
             return (false, "CostCodeId is required");
 

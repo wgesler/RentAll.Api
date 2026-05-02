@@ -124,7 +124,7 @@ public class AccountingManager : IAccountingManager
 
     #region Invoices
     public async Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId,
-        string description, decimal amountPaid, Guid currentUser)
+        string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser)
     {
         var invoices = new List<Invoice>();
         foreach (var invoiceGuid in invoiceGuids)
@@ -173,6 +173,7 @@ public class AccountingManager : IAccountingManager
                 CostCodeId = costCodeId,
                 Description = description,
                 Amount = amountForInvoice,
+                LedgerLineDate = paymentDate,
                 CreatedBy = currentUser
             });
 
