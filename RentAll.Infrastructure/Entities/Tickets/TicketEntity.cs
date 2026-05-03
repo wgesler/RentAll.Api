@@ -18,7 +18,8 @@ namespace RentAll.Infrastructure.Entities.Tickets
         public string TicketCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public bool PermissionToEnter { get; set; }
+        public bool NeedPermissionToEnter { get; set; }
+        public bool PermissionGranted { get; set; }
         public bool OwnerContacted { get; set; }
         public bool ConfirmedWithTenant { get; set; }
         public bool FollowedUpWithOwner { get; set; }

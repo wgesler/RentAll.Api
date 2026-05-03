@@ -1,3 +1,5 @@
+using RentAll.Api.Dtos.Tickets.TicketNotes;
+
 namespace RentAll.Api.Dtos.Tickets.Tickets;
 
 public class UpdateTicketDto
@@ -7,19 +9,19 @@ public class UpdateTicketDto
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
-    public string? ReservationCode { get; set; }
     public Guid? AssigneeId { get; set; }
     public Guid? AgentId { get; set; }
     public string TicketCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int TicketStateTypeId { get; set; }
-    public bool PermissionToEnter { get; set; }
+    public bool NeedPermissionToEnter { get; set; }
+    public bool PermissionGranted { get; set; }
     public bool OwnerContacted { get; set; }
     public bool ConfirmedWithTenant { get; set; }
     public bool FollowedUpWithOwner { get; set; }
     public bool WorkOrderCompleted { get; set; }
-    public List<UpdateTicketNoteDto> Notes { get; set; } = new List<UpdateTicketNoteDto>();
+    public List<UpdateTicketNoteDto>? Notes { get; set; } = new List<UpdateTicketNoteDto>();
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -47,7 +49,7 @@ public class UpdateTicketDto
 
         if (Notes != null)
         {
-            foreach (var note in Notes)
+            foreach (var note in Notes.Where(n => n != null && !string.IsNullOrWhiteSpace(n.Note)))
             {
                 var (isValid, errorMessage) = note.IsValid();
                 if (!isValid)
@@ -67,19 +69,22 @@ public class UpdateTicketDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             ReservationId = ReservationId,
-            ReservationCode = ReservationCode,
             AssigneeId = AssigneeId,
             AgentId = AgentId,
             TicketCode = TicketCode,
             Title = Title,
             Description = Description,
             TicketStateType = (TicketStateType)TicketStateTypeId,
-            PermissionToEnter = PermissionToEnter,
+            NeedPermissionToEnter = NeedPermissionToEnter,
+            PermissionGranted = PermissionGranted,
             OwnerContacted = OwnerContacted,
             ConfirmedWithTenant = ConfirmedWithTenant,
             FollowedUpWithOwner = FollowedUpWithOwner,
             WorkOrderCompleted = WorkOrderCompleted,
-            Notes = Notes?.Select(note => note.ToModel(currentUser)).ToList() ?? new List<TicketNote>(),
+            Notes = Notes?
+                .Where(note => note != null && !string.IsNullOrWhiteSpace(note.Note))
+                .Select(note => note.ToModel(currentUser))
+                .ToList() ?? new List<TicketNote>(),
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

@@ -1,11 +1,15 @@
-namespace RentAll.Api.Dtos.Tickets.Tickets;
+namespace RentAll.Api.Dtos.Tickets.TicketNotes;
 
 public class CreateTicketNoteDto
 {
+    public int? TicketNoteId { get; set; }
     public string Note { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (TicketNoteId.HasValue && TicketNoteId.Value < 0)
+            return (false, "TicketNoteId must be zero or greater");
+
         if (string.IsNullOrWhiteSpace(Note))
             return (false, "Note is required");
 
@@ -16,6 +20,7 @@ public class CreateTicketNoteDto
     {
         return new TicketNote
         {
+            TicketNoteId = TicketNoteId.GetValueOrDefault(0),
             Note = Note,
             CreatedBy = currentUser
         };

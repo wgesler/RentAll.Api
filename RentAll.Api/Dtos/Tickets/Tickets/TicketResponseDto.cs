@@ -1,3 +1,5 @@
+using RentAll.Api.Dtos.Tickets.TicketNotes;
+
 namespace RentAll.Api.Dtos.Tickets.Tickets;
 
 public class TicketResponseDto
@@ -18,7 +20,8 @@ public class TicketResponseDto
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int TicketStateTypeId { get; set; }
-    public bool PermissionToEnter { get; set; }
+    public bool NeedPermissionToEnter { get; set; }
+    public bool PermissionGranted { get; set; }
     public bool OwnerContacted { get; set; }
     public bool ConfirmedWithTenant { get; set; }
     public bool FollowedUpWithOwner { get; set; }
@@ -47,7 +50,8 @@ public class TicketResponseDto
         Title = ticket.Title;
         Description = ticket.Description;
         TicketStateTypeId = (int)ticket.TicketStateType;
-        PermissionToEnter = ticket.PermissionToEnter;
+        NeedPermissionToEnter = ticket.NeedPermissionToEnter;
+        PermissionGranted = ticket.PermissionGranted;
         OwnerContacted = ticket.OwnerContacted;
         ConfirmedWithTenant = ticket.ConfirmedWithTenant;
         FollowedUpWithOwner = ticket.FollowedUpWithOwner;

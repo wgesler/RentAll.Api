@@ -1,0 +1,11 @@
+---
+description: Follow existing project patterns before introducing new approaches
+alwaysApply: true
+---
+
+# Follow Existing Patterns
+
+- Nothing in this project is new; default to existing patterns already used in nearby components/services.
+- If asked to revisit the same issue more than once, assume pattern drift and compare against established implementations before changing code again.
+- Prefer copying working structure from analogous files over inventing a new local pattern.
+- Before changing behavior, inspect at least one mature component that solves the same problem (filtering, loading, mapping, shell coordination, etc.).

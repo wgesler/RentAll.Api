@@ -75,7 +75,10 @@ public partial class TicketController
 
         try
         {
-            var ticket = dto.ToModel(CurrentUser);
+            // Get a new Contact code
+            var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Ticket);
+            var ticket = dto.ToModel(code, CurrentUser);
+
             var created = await _ticketRepository.CreateTicketAsync(ticket);
             return Ok(new TicketResponseDto(created));
         }

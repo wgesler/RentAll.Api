@@ -1,13 +1,13 @@
-namespace RentAll.Api.Dtos.Tickets.Tickets;
+namespace RentAll.Api.Dtos.Tickets.TicketNotes;
 
 public class UpdateTicketNoteDto
 {
-    public int TicketNoteId { get; set; }
+    public int? TicketNoteId { get; set; }
     public string Note { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (TicketNoteId < 0)
+        if (TicketNoteId.HasValue && TicketNoteId.Value < 0)
             return (false, "TicketNoteId must be zero or greater");
 
         if (string.IsNullOrWhiteSpace(Note))
@@ -20,7 +20,7 @@ public class UpdateTicketNoteDto
     {
         return new TicketNote
         {
-            TicketNoteId = TicketNoteId,
+            TicketNoteId = TicketNoteId.GetValueOrDefault(0),
             Note = Note,
             ModifiedBy = currentUser
         };

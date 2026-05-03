@@ -22,6 +22,15 @@ alwaysApply: true
 - Colors must be global and theme-driven (no local hardcoded component colors for standard UI patterns).
 - `primary` and `accent` color usage must come from shared/global theme configuration.
 
+# Typography Debugging Guardrails
+
+- Do not create ad-hoc local typography overrides when a field looks wrong; first fix the existing global form style path in `src/styles.scss`.
+- Keep `input` and `textarea` value typography aligned through the same global rule source (font family, size, weight, line-height, letter-spacing).
+- Avoid broad `::ng-deep` typography overrides on `mat-form-field`/`textarea`; they can leak across pages and create inconsistent rendering.
+- When typography appears inconsistent, verify with DevTools computed styles before changing code:
+  - compare `font-family`, `font-size`, `font-weight`, `line-height`, `letter-spacing`
+  - identify and fix the winning override rule at the global/shared layer.
+
 # Save and Tab Behavior
 
 - Use contextual Save from the parent title bar when tabs represent different save targets.
