@@ -9,6 +9,7 @@ public class UpdateTicketDto
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
     public Guid? AssigneeId { get; set; }
+    public Guid? AgentId { get; set; }
     public string TicketCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -68,6 +69,7 @@ public class UpdateTicketDto
             ReservationId = ReservationId,
             ReservationCode = ReservationCode,
             AssigneeId = AssigneeId,
+            AgentId = AgentId,
             TicketCode = TicketCode,
             Title = Title,
             Description = Description,

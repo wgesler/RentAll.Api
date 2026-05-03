@@ -12,6 +12,8 @@ public class TicketResponseDto
     public string? ReservationCode { get; set; }
     public Guid? AssigneeId { get; set; }
     public string? Assignee { get; set; }
+    public Guid? AgentId { get; set; }
+    public string? Agent { get; set; }
     public string TicketCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -39,6 +41,8 @@ public class TicketResponseDto
         ReservationCode = ticket.ReservationCode;
         AssigneeId = ticket.AssigneeId;
         Assignee = ticket.Assignee;
+        AgentId = ticket.AgentId;
+        Agent = ticket.Agent;
         TicketCode = ticket.TicketCode;
         Title = ticket.Title;
         Description = ticket.Description;

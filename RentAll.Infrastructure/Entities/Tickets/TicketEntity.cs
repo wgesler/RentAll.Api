@@ -12,6 +12,8 @@ namespace RentAll.Infrastructure.Entities.Tickets
         public string? ReservationCode { get; set; }
         public Guid? AssigneeId { get; set; }
         public string? Assignee { get; set; }
+        public Guid? AgentId { get; set; }
+        public string? Agent { get; set; }
         public int TicketStateId { get; set; }
         public string TicketCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
