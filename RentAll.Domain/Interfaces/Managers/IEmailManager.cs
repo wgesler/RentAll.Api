@@ -5,4 +5,5 @@ namespace RentAll.Domain.Interfaces.Managers;
 public interface IEmailManager
 {
     Task<Email> SendEmail(string? sendGridName, Email email);
+    Task AlertTicketListeners(Ticket ticket);
 }

@@ -51,6 +51,21 @@ namespace RentAll.Infrastructure.Repositories.Emails
 
             return ConvertStoredProcRowToModel(res.FirstOrDefault()!);
         }
+
+        public async Task<IEnumerable<Alert>> GetAlertsByTicketIdAsync(Guid ticketId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<AlertStoredProcRow>("Email.Alert_GetByTicketId", new
+            {
+                TicketId = ticketId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Alert>();
+
+            return res.Select(ConvertStoredProcRowToModel);
+        }
         #endregion
 
         #region Creates

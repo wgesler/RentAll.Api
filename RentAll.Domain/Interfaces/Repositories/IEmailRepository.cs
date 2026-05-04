@@ -23,6 +23,7 @@ public interface IEmailRepository
     Task<IEnumerable<Alert>> GetAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Alert>> GetActiveAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<Alert?> GetAlertByIdAsync(Guid alertId, Guid organizationId);
+    Task<IEnumerable<Alert>> GetAlertsByTicketIdAsync(Guid ticketId, Guid organizationId);
     Task<Alert> CreateAlertAsync(Alert alert);
     Task<Alert> UpdateAlertByIdAsync(Alert alert);
     Task<Alert> UpdateAlertEmailStatusAsync(Alert alert);

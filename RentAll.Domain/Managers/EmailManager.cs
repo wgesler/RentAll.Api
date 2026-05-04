@@ -117,6 +117,77 @@ public class EmailManager : IEmailManager
         return currentEmail;
     }
 
+    public async Task AlertTicketListeners(Ticket ticket)
+    {
+        if (ticket.TicketId == Guid.Empty || ticket.OrganizationId == Guid.Empty)
+            return;
+
+        var alerts = await _emailRepository.GetAlertsByTicketIdAsync(ticket.TicketId, ticket.OrganizationId);
+        var alertList = alerts?.ToList() ?? [];
+        if (alertList.Count == 0)
+            return;
+
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(ticket.OrganizationId);
+        var sendGridName = organization?.SendGridName;
+        var mostRecentNote = GetMostRecentNote(ticket);
+        var assignee = string.IsNullOrWhiteSpace(ticket.Assignee) ? "Unassigned" : ticket.Assignee.Trim();
+        var ticketState = FormatTicketState(ticket.TicketStateType);
+        var ticketCode = string.IsNullOrWhiteSpace(ticket.TicketCode) ? "N/A" : ticket.TicketCode.Trim();
+        var ticketTitle = string.IsNullOrWhiteSpace(ticket.Title) ? "N/A" : ticket.Title.Trim();
+        var ticketDescription = string.IsNullOrWhiteSpace(ticket.Description) ? "N/A" : ticket.Description.Trim();
+        var propertyCode = string.IsNullOrWhiteSpace(ticket.PropertyCode) ? "N/A" : ticket.PropertyCode.Trim();
+        var reservationCode = string.IsNullOrWhiteSpace(ticket.ReservationCode) ? "N/A" : ticket.ReservationCode.Trim();
+        var actor = ticket.ModifiedBy != Guid.Empty ? ticket.ModifiedBy : ticket.CreatedBy;
+
+        var plainTextContent =
+            "Ticket has been updated.\n\n" +
+            $"Ticket Code: {ticketCode}\n" +
+            $"Title: {ticketTitle}\n" +
+            $"Description: {ticketDescription}\n" +
+            $"Property: {propertyCode}\n" +
+            $"Reservation: {reservationCode}\n" +
+            $"Current Assignee: {assignee}\n" +
+            $"Current State: {ticketState}\n" +
+            $"Most recent Note: {mostRecentNote}";
+
+        var htmlContent =
+            "<p>Ticket has been updated.</p>" +
+            $"<p><strong>Ticket Code:</strong> {EscapeHtml(ticketCode)}<br>" +
+            $"<strong>Title:</strong> {EscapeHtml(ticketTitle)}<br>" +
+            $"<strong>Description:</strong> {EscapeHtml(ticketDescription)}<br>" +
+            $"<strong>Property:</strong> {EscapeHtml(propertyCode)}<br>" +
+            $"<strong>Reservation:</strong> {EscapeHtml(reservationCode)}<br>" +
+            $"<strong>Current Assignee:</strong> {EscapeHtml(assignee)}<br>" +
+            $"<strong>Current State:</strong> {EscapeHtml(ticketState)}<br>" +
+            $"<strong>Most recent Note:</strong> {EscapeHtml(mostRecentNote)}</p>";
+
+        foreach (var alert in alertList)
+        {
+            if ((alert.ToRecipients?.Count ?? 0) == 0)
+                continue;
+
+            var email = new Email
+            {
+                OrganizationId = ticket.OrganizationId,
+                OfficeId = ticket.OfficeId,
+                PropertyId = ticket.PropertyId,
+                ReservationId = ticket.ReservationId,
+                FromRecipient = alert.FromRecipient,
+                ToRecipients = alert.ToRecipients,
+                CcRecipients = alert.CcRecipients,
+                BccRecipients = alert.BccRecipients,
+                Subject = $"Ticket Update: {ticketCode}",
+                PlainTextContent = plainTextContent,
+                HtmlContent = htmlContent,
+                EmailType = alert.EmailType,
+                EmailStatus = EmailStatus.Attempting,
+                CreatedBy = actor
+            };
+
+            await SendEmail(sendGridName, email);
+        }
+    }
+
     private static bool IsUnreachable(Exception ex)
     {
         var current = ex;
@@ -129,5 +200,34 @@ public class EmailManager : IEmailManager
         }
 
         return false;
+    }
+
+    private static string GetMostRecentNote(Ticket ticket)
+    {
+        var latest = (ticket.Notes ?? [])
+            .OrderByDescending(note => note.ModifiedOn)
+            .ThenByDescending(note => note.CreatedOn)
+            .FirstOrDefault();
+        return string.IsNullOrWhiteSpace(latest?.Note) ? "N/A" : latest.Note.Trim();
+    }
+
+    private static string FormatTicketState(TicketStateType state)
+    {
+        return state switch
+        {
+            TicketStateType.InProgress => "In Progress",
+            TicketStateType.WorkComplete => "Work Complete",
+            _ => state.ToString()
+        };
+    }
+
+    private static string EscapeHtml(string value)
+    {
+        return value
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace("\"", "&quot;", StringComparison.Ordinal)
+            .Replace("'", "&#39;", StringComparison.Ordinal);
     }
 }
