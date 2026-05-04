@@ -185,6 +185,8 @@ public class EmailManager : IEmailManager
             };
 
             await SendEmail(sendGridName, email);
+            if (ticket.TicketStateType == TicketStateType.Closed)
+                await _emailRepository.DeleteAlertByIdAsync(alert.AlertId, alert.OrganizationId);
         }
     }
 
