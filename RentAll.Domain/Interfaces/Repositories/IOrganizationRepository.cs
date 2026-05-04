@@ -75,6 +75,11 @@ public interface IOrganizationRepository
     Task UpdateColorByIdAsync(Colour color);
     #endregion
 
+    #region Branding
+    Task<Branding?> GetBrandingByOrganizationIdAsync(Guid organizationId);
+    Task<Branding> UpsertBrandingByOrganizationIdAsync(Branding branding, Guid modifiedBy);
+    #endregion
+
     #region Regions
     Task<IEnumerable<Region>> GetRegionsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<Region?> GetRegionByIdAsync(int regionId, Guid organizationId);

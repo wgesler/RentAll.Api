@@ -241,6 +241,22 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 
+    #region Branding
+    private Branding ConvertEntityToModel(BrandingEntity e)
+    {
+        return new Branding
+        {
+            OrganizationId = e.OrganizationId,
+            PrimaryColor = e.PrimaryColor,
+            AccentColor = e.AccentColor,
+            HeaderBackgroundColor = e.HeaderBackgroundColor,
+            HeaderTextColor = e.HeaderTextColor,
+            LogoPath = e.LogoPath,
+            CollapsedLogoPath = e.CollapsedLogoPath
+        };
+    }
+    #endregion
+
     #region Regions
     private Region ConvertEntityToModel(RegionEntity e)
     {

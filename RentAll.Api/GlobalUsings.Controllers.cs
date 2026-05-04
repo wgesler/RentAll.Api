@@ -6,6 +6,7 @@ global using RentAll.Api.Dtos.Emails.Emails;
 global using RentAll.Api.Dtos.Organizations.Accounting;
 global using RentAll.Api.Dtos.Organizations.Agents;
 global using RentAll.Api.Dtos.Organizations.Areas;
+global using RentAll.Api.Dtos.Organizations.Brandings;
 global using RentAll.Api.Dtos.Organizations.Buildings;
 global using RentAll.Api.Dtos.Organizations.Colors;
 global using RentAll.Api.Dtos.Organizations.Offices;
