@@ -197,6 +197,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = e.PropertyCode,
                 ReservationId = e.ReservationId,
                 ReservationCode = e.ReservationCode,
+                TicketId = e.TicketId,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
                 ToRecipients = (e.ToRecipients ?? [])
@@ -246,6 +247,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = model.PropertyCode,
                 ReservationId = model.ReservationId,
                 ReservationCode = model.ReservationCode,
+                TicketId = model.TicketId,
                 ToRecipients = (model.ToRecipients ?? [])
                     .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
                     .ToList(),
@@ -290,6 +292,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = row.PropertyCode,
                 ReservationId = row.ReservationId,
                 ReservationCode = row.ReservationCode,
+                TicketId = row.TicketId,
                 ArrivalDate = row.ArrivalDate,
                 DepartureDate = row.DepartureDate,
                 ToRecipients = DeserializeRecipients(row.ToRecipients),
@@ -404,6 +407,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string? PropertyCode { get; set; }
             public Guid? ReservationId { get; set; }
             public string? ReservationCode { get; set; }
+            public Guid? TicketId { get; set; }
             public DateOnly? ArrivalDate { get; set; }
             public DateOnly? DepartureDate { get; set; }
             public string ToRecipients { get; set; } = "[]";

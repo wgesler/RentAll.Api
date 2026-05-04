@@ -9,6 +9,7 @@ public class AlertEntity
     public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public Guid? TicketId { get; set; }
     public DateOnly? ArrivalDate { get; set; }
     public DateOnly? DepartureDate { get; set; }
     public List<EmailAddressEntity> ToRecipients { get; set; } = [];

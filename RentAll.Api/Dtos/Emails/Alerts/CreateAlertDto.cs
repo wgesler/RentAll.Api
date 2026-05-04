@@ -9,6 +9,7 @@ public class CreateAlertDto
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
+    public Guid? TicketId { get; set; }
     public EmailAddress FromRecipient { get; set; } = new();
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
@@ -99,6 +100,7 @@ public class CreateAlertDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             ReservationId = ReservationId,
+            TicketId = TicketId,
             FromRecipient = new EmailAddress
             {
                 Email = FromRecipient.Email,

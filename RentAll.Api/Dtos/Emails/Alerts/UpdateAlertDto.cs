@@ -11,6 +11,7 @@ public class UpdateAlertDto
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
+    public Guid? TicketId { get; set; }
     public EmailAddress FromRecipient { get; set; } = new();
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
@@ -111,6 +112,7 @@ public class UpdateAlertDto
         existing.OfficeId = OfficeId;
         existing.PropertyId = PropertyId;
         existing.ReservationId = ReservationId;
+        existing.TicketId = TicketId;
         existing.FromRecipient = new EmailAddress
         {
             Email = FromRecipient.Email,
