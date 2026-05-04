@@ -150,10 +150,6 @@ public class TicketRepository : ITicketRepository
             if (currentTicketResult == null || !currentTicketResult.Any())
                 throw new Exception("Ticket not found");
 
-            var currentTicket = ConvertEntityToModel(currentTicketResult.First());
-            var currentTicketNoteIds = currentTicket.Notes.Select(note => note.TicketNoteId).ToHashSet();
-            var incomingTicketNoteIds = ticket.Notes.Where(note => note.TicketNoteId != 0).Select(note => note.TicketNoteId).ToHashSet();
-
             var response = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_UpdateById", new
             {
                 TicketId = ticket.TicketId,
@@ -193,26 +189,7 @@ public class TicketRepository : ITicketRepository
                             CreatedBy = ticket.ModifiedBy
                         }, transaction: transaction);
                     }
-                    else if (currentTicketNoteIds.Contains(note.TicketNoteId))
-                    {
-                        await db.DapperProcQueryAsync<object>("Maintenance.TicketNote_UpdateById", new
-                        {
-                            TicketNoteId = note.TicketNoteId,
-                            TicketId = ticket.TicketId,
-                            Note = note.Note,
-                            ModifiedBy = ticket.ModifiedBy
-                        }, transaction: transaction);
-                    }
                 }
-            }
-
-            var notesToDelete = currentTicketNoteIds.Except(incomingTicketNoteIds).ToList();
-            foreach (var ticketNoteId in notesToDelete)
-            {
-                await db.DapperProcExecuteAsync("Maintenance.TicketNote_DeleteById", new
-                {
-                    TicketNoteId = ticketNoteId
-                }, transaction: transaction);
             }
 
             var updatedResult = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetById", new
