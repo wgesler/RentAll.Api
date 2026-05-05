@@ -105,8 +105,7 @@ public partial class TicketController
         {
             var ticket = dto.ToModel(CurrentUser);
             var updated = await _ticketRepository.UpdateTicketAsync(ticket);
-            if (updated.TicketStateType == TicketStateType.Closed)
-                await _emailManager.AlertTicketListeners(updated);
+            await _emailManager.AlertTicketListeners(updated);
             return Ok(new TicketResponseDto(updated));
         }
         catch (Exception ex)

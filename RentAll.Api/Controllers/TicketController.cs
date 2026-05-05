@@ -10,6 +10,7 @@ namespace RentAll.Api.Controllers;
 public partial class TicketController : BaseController
 {
     #region Fields
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationManager _organizationManager;
     private readonly ITicketRepository _ticketRepository;
     private readonly IEmailManager _emailManager;
@@ -18,11 +19,13 @@ public partial class TicketController : BaseController
 
     #region Constructor
     public TicketController(
+        IOrganizationRepository organizationRepository,
         IOrganizationManager organizationManager,
         ITicketRepository ticketRepository,
         IEmailManager emailManager,
         ILogger<TicketController> logger)
     {
+        _organizationRepository = organizationRepository;
         _organizationManager = organizationManager;
         _ticketRepository = ticketRepository;
         _emailManager = emailManager;
