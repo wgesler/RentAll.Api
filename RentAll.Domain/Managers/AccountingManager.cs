@@ -193,10 +193,12 @@ public class AccountingManager : IAccountingManager
         var agreement = await _propertyRepository.GetPropertyAgreementByPropertyIdAsync(reservation.PropertyId);
         var isFurnished = property!.Unfurnished ? false: true;
         var officeRentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
-        var codeAsInt = agreement?.RentalIncomeCcId.HasValue == true && agreement.RentalIncomeCcId.Value > 0
-            ? agreement.RentalIncomeCcId.Value
-            : officeRentalCostCodeId;
+        var codeAsInt = agreement?.RentalIncomeCcId.HasValue == true && agreement.RentalIncomeCcId.Value > 0 ? agreement.RentalIncomeCcId.Value : officeRentalCostCodeId;
+
         var ledgerLines = GetLedgerLinesByReservationIdAsync(reservation, startDate, endDate, codeAsInt);
+        foreach (var ledgerLine in ledgerLines)
+            ledgerLine.LedgerLineDate = startDate;
+
         return ledgerLines;
     }
 
