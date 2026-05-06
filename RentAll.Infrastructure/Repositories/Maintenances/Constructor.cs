@@ -262,6 +262,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ApplyMarkup = e.ApplyMarkup,
             WorkOrderDate = e.WorkOrderDate,
             UseDepartureFee = e.UseDepartureFee,
+            EnteredInQb = e.EnteredInQb,
             WorkOrderItems = items,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,

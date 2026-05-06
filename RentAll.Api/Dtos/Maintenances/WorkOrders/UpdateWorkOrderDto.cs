@@ -14,6 +14,7 @@ public class UpdateWorkOrderDto
     public bool ApplyMarkup { get; set; }
     public DateOnly WorkOrderDate { get; set; }
     public bool UseDepartureFee { get; set; } = true;
+    public bool EnteredInQb { get; set; }
     public List<UpdateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<UpdateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -69,6 +70,7 @@ public class UpdateWorkOrderDto
             ApplyMarkup = ApplyMarkup,
             WorkOrderDate = WorkOrderDate,
             UseDepartureFee = UseDepartureFee,
+            EnteredInQb = EnteredInQb,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = true,
             ModifiedBy = currentUser

@@ -76,6 +76,7 @@ public partial class MaintenanceRepository
                 ApplyMarkup = workOrder.ApplyMarkup,
                 WorkOrderDate = workOrder.WorkOrderDate,
                 UseDepartureFee = workOrder.UseDepartureFee,
+                EnteredInQb = workOrder.EnteredInQb,
                 IsActive = workOrder.IsActive,
                 CreatedBy = workOrder.CreatedBy
             }, transaction: transaction);
@@ -157,6 +158,7 @@ public partial class MaintenanceRepository
                 ApplyMarkup = workOrder.ApplyMarkup,
                 WorkOrderDate = workOrder.WorkOrderDate,
                 UseDepartureFee = workOrder.UseDepartureFee,
+                EnteredInQb = workOrder.EnteredInQb,
                 IsActive = workOrder.IsActive,
                 ModifiedBy = workOrder.ModifiedBy
             }, transaction: transaction);
