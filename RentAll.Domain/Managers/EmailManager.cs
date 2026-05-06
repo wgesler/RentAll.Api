@@ -173,7 +173,7 @@ public class EmailManager : IEmailManager
                 PropertyId = ticket.PropertyId,
                 ReservationId = ticket.ReservationId,
                 FromRecipient = alert.FromRecipient,
-                ToRecipients = alert.ToRecipients,
+                ToRecipients = alert.ToRecipients ?? [],
                 CcRecipients = alert.CcRecipients,
                 BccRecipients = alert.BccRecipients,
                 Subject = $"Ticket Update: {ticketCode}",

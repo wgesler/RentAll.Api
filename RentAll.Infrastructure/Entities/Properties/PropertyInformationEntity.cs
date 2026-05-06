@@ -1,6 +1,6 @@
-namespace RentAll.Domain.Models;
+namespace RentAll.Infrastructure.Entities.Properties;
 
-public class PropertyLetter
+public class PropertyInformationEntity
 {
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
@@ -11,6 +11,7 @@ public class PropertyLetter
     public string? Access { get; set; }
     public string? Amenities { get; set; }
     public string? Laundry { get; set; }
+    public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }
     public string? TelevisionSource { get; set; }
     public string? InternetService { get; set; }
@@ -24,4 +25,3 @@ public class PropertyLetter
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-

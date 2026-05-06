@@ -1,6 +1,6 @@
-namespace RentAll.Api.Dtos.Properties.PropertyLetters;
+namespace RentAll.Api.Dtos.Properties.PropertyInformations;
 
-public class CreatePropertyLetterDto
+public class CreatePropertyInformationDto
 {
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
@@ -11,6 +11,7 @@ public class CreatePropertyLetterDto
     public string? Access { get; set; }
     public string? Amenities { get; set; }
     public string? Laundry { get; set; }
+    public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }
     public string? TelevisionSource { get; set; }
     public string? InternetService { get; set; }
@@ -31,9 +32,9 @@ public class CreatePropertyLetterDto
         return (true, null);
     }
 
-    public PropertyLetter ToModel(Guid currentUser)
+    public PropertyInformation ToModel(Guid currentUser)
     {
-        return new PropertyLetter
+        return new PropertyInformation
         {
             PropertyId = PropertyId,
             OrganizationId = OrganizationId,
@@ -44,6 +45,7 @@ public class CreatePropertyLetterDto
             Access = Access,
             Amenities = Amenities,
             Laundry = Laundry,
+            ProvidedFurnishings = ProvidedFurnishings,
             Housekeeping = Housekeeping,
             TelevisionSource = TelevisionSource,
             InternetService = InternetService,

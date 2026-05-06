@@ -263,9 +263,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return response;
         }
 
-        private PropertyLetter ConvertEntityToModel(PropertyLetterEntity e)
+        private PropertyInformation ConvertEntityToModel(PropertyInformationEntity e)
         {
-            var response = new PropertyLetter()
+            var response = new PropertyInformation()
             {
                 PropertyId = e.PropertyId,
                 OrganizationId = e.OrganizationId,
@@ -276,6 +276,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Access = e.Access,
                 Amenities = e.Amenities,
                 Laundry = e.Laundry,
+                ProvidedFurnishings = e.ProvidedFurnishings,
                 Housekeeping = e.Housekeeping,
                 TelevisionSource = e.TelevisionSource,
                 InternetService = e.InternetService,

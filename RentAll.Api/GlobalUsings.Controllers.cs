@@ -14,7 +14,7 @@ global using RentAll.Api.Dtos.Organizations.Organizations;
 global using RentAll.Api.Dtos.Organizations.Regions;
 global using RentAll.Api.Dtos.Properties.Properties;
 global using RentAll.Api.Dtos.Properties.PropertyHtmls;
-global using RentAll.Api.Dtos.Properties.PropertyLetters;
+global using RentAll.Api.Dtos.Properties.PropertyInformations;
 global using RentAll.Api.Dtos.Reservations.LeaseInformations;
 global using RentAll.Api.Dtos.Reservations.Reservations;
 global using RentAll.Domain.Enums;

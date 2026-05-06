@@ -26,11 +26,11 @@ public interface IPropertyRepository
     Task DeletePropertyHtmlByPropertyIdAsync(Guid propertyId);
     #endregion
 
-    #region Property Letter
-    Task<PropertyLetter?> GetPropertyLetterByPropertyIdAsync(Guid propertyId, Guid organizationId);
-    Task<PropertyLetter> CreatePropertyLetterAsync(PropertyLetter propertyLetter);
-    Task<PropertyLetter> UpdatePropertyLetterByIdAsync(PropertyLetter propertyLetter);
-    Task DeletePropertyLetterByPropertyIdAsync(Guid propertyId);
+    #region Property Information
+    Task<PropertyInformation?> GetPropertyInformationByPropertyIdAsync(Guid propertyId, Guid organizationId);
+    Task<PropertyInformation> CreatePropertyInformationAsync(PropertyInformation propertyInformation);
+    Task<PropertyInformation> UpdatePropertyInformationByIdAsync(PropertyInformation propertyInformation);
+    Task DeletePropertyInformationByPropertyIdAsync(Guid propertyId);
     #endregion
 
     #region Property Selection
