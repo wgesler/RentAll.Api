@@ -88,6 +88,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             MaidTwoBed = e.MaidTwoBed,
             MaidThreeBed = e.MaidThreeBed,
             MaidFourBed = e.MaidFourBed,
+            MaidHouse = e.MaidHouse,
             ParkingLowEnd = e.ParkingLowEnd,
             ParkingHighEnd = e.ParkingHighEnd,
             TenantChargeCcId = e.TenantChargeCcId,

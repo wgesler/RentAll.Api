@@ -35,6 +35,7 @@ public class OfficeCreateDto
     public decimal MaidTwoBed { get; set; }
     public decimal MaidThreeBed { get; set; }
     public decimal MaidFourBed { get; set; }
+    public decimal MaidHouse { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
     public int? TenantChargeCcId { get; set; }
@@ -162,6 +163,7 @@ public class OfficeCreateDto
             MaidTwoBed = MaidTwoBed,
             MaidThreeBed = MaidThreeBed,
             MaidFourBed = MaidFourBed,
+            MaidHouse = MaidHouse,
             ParkingLowEnd = ParkingLowEnd,
             ParkingHighEnd = ParkingHighEnd,
             TenantChargeCcId = TenantChargeCcId,
