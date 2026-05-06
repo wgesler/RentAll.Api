@@ -29,6 +29,7 @@ public class TicketResponseDto
     public List<TicketNoteResponseDto> Notes { get; set; } = new List<TicketNoteResponseDto>();
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public string ModifiedBy { get; set; } = string.Empty;
 
@@ -59,6 +60,7 @@ public class TicketResponseDto
         Notes = ticket.Notes.Select(note => new TicketNoteResponseDto(note)).ToList();
         IsActive = ticket.IsActive;
         CreatedOn = ticket.CreatedOn;
+        CreatedBy = ticket.CreatedBy;
         ModifiedOn = ticket.ModifiedOn;
         ModifiedBy = ticket.ModifiedByName;
     }
