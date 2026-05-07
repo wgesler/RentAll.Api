@@ -9,7 +9,6 @@ public class UpdatePropertyInformationDto
     public string? PackageInstructions { get; set; }
     public string? ParkingInformation { get; set; }
     public string? Access { get; set; }
-    public string? Amenities { get; set; }
     public string? Laundry { get; set; }
     public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }
@@ -43,7 +42,6 @@ public class UpdatePropertyInformationDto
             PackageInstructions = PackageInstructions,
             ParkingInformation = ParkingInformation,
             Access = Access,
-            Amenities = Amenities,
             Laundry = Laundry,
             ProvidedFurnishings = ProvidedFurnishings,
             Housekeeping = Housekeeping,

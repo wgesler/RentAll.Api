@@ -9,7 +9,6 @@ public class PropertyInformation
     public string? PackageInstructions { get; set; }
     public string? ParkingInformation { get; set; }
     public string? Access { get; set; }
-    public string? Amenities { get; set; }
     public string? Laundry { get; set; }
     public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }

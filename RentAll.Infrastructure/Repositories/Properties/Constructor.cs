@@ -4,7 +4,6 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Properties;
-using RentAll.Infrastructure.Entities.Properties;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Properties
@@ -274,7 +273,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PackageInstructions = e.PackageInstructions,
                 ParkingInformation = e.ParkingInformation,
                 Access = e.Access,
-                Amenities = e.Amenities,
                 Laundry = e.Laundry,
                 ProvidedFurnishings = e.ProvidedFurnishings,
                 Housekeeping = e.Housekeeping,

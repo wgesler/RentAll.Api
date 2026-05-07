@@ -9,7 +9,6 @@ public class PropertyInformationResponseDto
     public string? PackageInstructions { get; set; }
     public string? ParkingInformation { get; set; }
     public string? Access { get; set; }
-    public string? Amenities { get; set; }
     public string? Laundry { get; set; }
     public string? ProvidedFurnishings { get; set; }
     public string? Housekeeping { get; set; }
@@ -30,7 +29,6 @@ public class PropertyInformationResponseDto
         PackageInstructions = propertyInformation.PackageInstructions;
         ParkingInformation = propertyInformation.ParkingInformation;
         Access = propertyInformation.Access;
-        Amenities = propertyInformation.Amenities;
         Laundry = propertyInformation.Laundry;
         ProvidedFurnishings = propertyInformation.ProvidedFurnishings;
         Housekeeping = propertyInformation.Housekeeping;
