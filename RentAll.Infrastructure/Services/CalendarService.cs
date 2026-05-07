@@ -58,14 +58,14 @@ public class CalendarService : ICalendarService
         foreach (var reservation in reservations.OrderBy(r => r.ArrivalDate))
         {
             var startDate = reservation.ArrivalDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-            var endDateExclusive = reservation.DepartureDate.AddDays(1).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var endDate = reservation.DepartureDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
             var summary = EscapeIcalText(GetSummary(reservation));
 
             sb.Append("BEGIN:VEVENT").Append(newLine);
             sb.Append($"UID:reservation-{reservation.ReservationId}@rentall").Append(newLine);
             sb.Append($"DTSTAMP:{stamp}").Append(newLine);
             sb.Append($"DTSTART;VALUE=DATE:{startDate}").Append(newLine);
-            sb.Append($"DTEND;VALUE=DATE:{endDateExclusive}").Append(newLine);
+            sb.Append($"DTEND;VALUE=DATE:{endDate}").Append(newLine);
             sb.Append($"SUMMARY:{summary}").Append(newLine);
             sb.Append("STATUS:CONFIRMED").Append(newLine);
             sb.Append("END:VEVENT").Append(newLine);
