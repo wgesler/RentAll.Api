@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 
@@ -270,6 +271,61 @@ public partial class OrganizationRepository : IOrganizationRepository
             RegionCode = e.RegionCode,
             Name = e.Name,
             Description = e.Description,
+            IsActive = e.IsActive
+        };
+    }
+    #endregion
+
+    #region Tracker Mapping
+    private static TrackerContext ConvertEntityToModel(TrackerContextEntity e)
+    {
+        return new TrackerContext
+        {
+            TrackerContextId = (TrackerContextType)e.TrackerContextId,
+            Code = e.Code,
+            Description = e.Description,
+            IsActive = e.IsActive
+        };
+    }
+
+    private static TrackerDefinition ConvertEntityToModel(TrackerDefinitionEntity e)
+    {
+        return new TrackerDefinition
+        {
+            TrackerDefinitionId = e.TrackerDefinitionId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            TrackerContextId = (TrackerContextType)e.TrackerContextId,
+            TrackerContextCode = e.TrackerContextCode,
+            DisplayName = e.DisplayName,
+            Description = e.Description,
+            SortOrder = e.SortOrder,
+            IsActive = e.IsActive,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+
+    private static TrackerDefinitionOption ConvertEntityToModel(TrackerDefinitionOptionEntity e)
+    {
+        return new TrackerDefinitionOption
+        {
+            TrackerDefinitionOptionId = e.TrackerDefinitionOptionId,
+            TrackerDefinitionId = e.TrackerDefinitionId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            TrackerContextId = (TrackerContextType)e.TrackerContextId,
+            TrackerContextCode = e.TrackerContextCode,
+            TrackerDisplayName = e.TrackerDisplayName,
+            TrackerDescription = e.TrackerDescription,
+            TrackerSortOrder = e.TrackerSortOrder,
+            Label = e.Label,
+            OptionDescription = e.OptionDescription,
+            OptionSortOrder = e.OptionSortOrder,
             IsActive = e.IsActive
         };
     }

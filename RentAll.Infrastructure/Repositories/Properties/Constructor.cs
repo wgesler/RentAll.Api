@@ -361,5 +361,65 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 AreaCodes = areaCodes
             };
         }
+
+        #region Tracker Mapping
+        private static TrackerResponse ConvertEntityToModel(TrackerResponseEntity e)
+        {
+            return new TrackerResponse
+            {
+                TrackerResponseId = e.TrackerResponseId,
+                TrackerDefinitionId = e.TrackerDefinitionId,
+                PropertyId = e.PropertyId,
+                ReservationId = e.ReservationId,
+                OrganizationId = e.OrganizationId,
+                OfficeId = e.OfficeId,
+                OfficeName = e.OfficeName,
+                TrackerContextId = (TrackerContextType)e.TrackerContextId,
+                TrackerContextCode = e.TrackerContextCode,
+                TrackerDisplayName = e.TrackerDisplayName,
+                TrackerDescription = e.TrackerDescription,
+                TrackerSortOrder = e.TrackerSortOrder,
+                EntityTypeId = e.EntityTypeId,
+                EntityTypeDescription = e.EntityTypeDescription,
+                EntityId = e.EntityId,
+                IsChecked = e.IsChecked,
+                CheckedOn = e.CheckedOn,
+                CheckedBy = e.CheckedBy,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy,
+                ModifiedOn = e.ModifiedOn,
+                ModifiedBy = e.ModifiedBy
+            };
+        }
+
+        private static TrackerResponseOption ConvertEntityToModel(TrackerResponseOptionEntity e)
+        {
+            return new TrackerResponseOption
+            {
+                TrackerResponseId = e.TrackerResponseId,
+                TrackerDefinitionOptionId = e.TrackerDefinitionOptionId,
+                PropertyId = e.PropertyId,
+                ReservationId = e.ReservationId,
+                TrackerDefinitionId = e.TrackerDefinitionId,
+                OrganizationId = e.OrganizationId,
+                OfficeId = e.OfficeId,
+                OfficeName = e.OfficeName,
+                TrackerContextId = (TrackerContextType)e.TrackerContextId,
+                TrackerContextCode = e.TrackerContextCode,
+                TrackerDisplayName = e.TrackerDisplayName,
+                TrackerDescription = e.TrackerDescription,
+                TrackerSortOrder = e.TrackerSortOrder,
+                Label = e.Label,
+                OptionDescription = e.OptionDescription,
+                OptionSortOrder = e.OptionSortOrder,
+                EntityTypeId = e.EntityTypeId,
+                EntityTypeDescription = e.EntityTypeDescription,
+                EntityId = e.EntityId,
+                IsChecked = e.IsChecked,
+                CreatedOn = e.CreatedOn,
+                CreatedBy = e.CreatedBy
+            };
+        }
+        #endregion
     }
 }

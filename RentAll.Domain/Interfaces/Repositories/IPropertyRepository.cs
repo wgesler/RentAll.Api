@@ -58,4 +58,18 @@ public interface IPropertyRepository
     Task<PropertyListingShare?> GetPropertyListingShareByTokenHashAsync(string tokenHash);
     Task RevokePropertyListingShareByPropertyIdAsync(Guid propertyId, Guid modifiedBy);
     #endregion
+
+    #region Tracker Responses
+    Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByPropertyIdAsync(Guid propertyId);
+    Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByPropertyIdAsync(Guid propertyId);
+    Task<TrackerResponse?> GetTrackerResponseByIdAsync(Guid trackerResponseId);
+    Task<TrackerResponse> CreateTrackerResponseAsync(TrackerResponse trackerResponse);
+    Task<TrackerResponse> UpdateTrackerResponseByIdAsync(TrackerResponse trackerResponse);
+    Task DeleteTrackerResponseByIdAsync(Guid trackerResponseId);
+
+    Task<TrackerResponseOption?> GetTrackerResponseOptionByIdAsync(Guid trackerResponseId, Guid trackerDefinitionOptionId);
+    Task<TrackerResponseOption> CreateTrackerResponseOptionAsync(TrackerResponseOption trackerResponseOption);
+    Task<TrackerResponseOption> UpdateTrackerResponseOptionByIdAsync(Guid trackerResponseId, Guid trackerDefinitionOptionId, Guid newTrackerDefinitionOptionId);
+    Task DeleteTrackerResponseOptionByIdAsync(Guid trackerResponseId, Guid trackerDefinitionOptionId);
+    #endregion
 }

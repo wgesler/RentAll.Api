@@ -90,4 +90,25 @@ public interface IOrganizationRepository
     Task<Region> UpdateRegionByIdAsync(Region region);
     Task DeleteRegionByIdAsync(int regionId);
     #endregion
+
+    #region Tracker Configuration
+    Task<IEnumerable<TrackerContext>> GetTrackerContextsAsync();
+    Task<TrackerContext?> GetTrackerContextByIdAsync(int trackerContextId);
+    Task<TrackerContext> CreateTrackerContextAsync(TrackerContext trackerContext);
+    Task<TrackerContext> UpdateTrackerContextByIdAsync(TrackerContext trackerContext);
+    Task DeleteTrackerContextByIdAsync(int trackerContextId);
+
+    Task<IEnumerable<TrackerDefinition>> GetTrackerDefinitionsByOfficeIdsAsync(Guid organizationId, string officeAccess, int? trackerContextId, bool includeInactive);
+    Task<TrackerDefinition?> GetTrackerDefinitionByIdAsync(Guid trackerDefinitionId, Guid organizationId);
+    Task<TrackerDefinition> CreateTrackerDefinitionAsync(TrackerDefinition trackerDefinition);
+    Task<TrackerDefinition> UpdateTrackerDefinitionByIdAsync(TrackerDefinition trackerDefinition);
+    Task DeleteTrackerDefinitionByIdAsync(Guid trackerDefinitionId, Guid organizationId);
+
+    Task<IEnumerable<TrackerDefinitionOption>> GetTrackerDefinitionOptionsByOfficeIdsAsync(Guid organizationId, string officeAccess, int? trackerContextId, bool includeInactive);
+    Task<IEnumerable<TrackerDefinitionOption>> GetTrackerDefinitionOptionsByTrackerDefinitionIdAsync(Guid trackerDefinitionId, bool includeInactive);
+    Task<TrackerDefinitionOption?> GetTrackerDefinitionOptionByIdAsync(Guid trackerDefinitionOptionId);
+    Task<TrackerDefinitionOption> CreateTrackerDefinitionOptionAsync(TrackerDefinitionOption trackerDefinitionOption);
+    Task<TrackerDefinitionOption> UpdateTrackerDefinitionOptionByIdAsync(TrackerDefinitionOption trackerDefinitionOption);
+    Task DeleteTrackerDefinitionOptionByIdAsync(Guid trackerDefinitionOptionId);
+    #endregion
 }
