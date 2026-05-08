@@ -42,8 +42,7 @@ public partial class PropertyRepository
         {
             OrganizationId = organizationId,
             Offices = officeAccess,
-            IncludeInactive = includeInactive,
-            ExcludeCompletedPropertyTracking = excludeCompletedPropertyTracking
+            IncludeInactive = includeInactive
         });
 
         if (res == null || !res.Any())
@@ -61,8 +60,7 @@ public partial class PropertyRepository
         {
             OrganizationId = organizationId,
             Offices = officeAccess,
-            IncludeInactive = includeInactive,
-            ExcludeCompletedPropertyTracking = excludeCompletedPropertyTracking
+            IncludeInactive = includeInactive
         });
 
         if (res == null || !res.Any())
