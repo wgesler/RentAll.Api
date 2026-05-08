@@ -10,6 +10,7 @@ public class PropertyAgreementLineResponseDto
     public decimal Deposit { get; set; }
     public decimal OneTime { get; set; }
     public decimal Monthly { get; set; }
+    public decimal Daily { get; set; }
 
     public PropertyAgreementLineResponseDto(AgreementLine model)
     {
@@ -21,5 +22,6 @@ public class PropertyAgreementLineResponseDto
         Deposit = model.Deposit;
         OneTime = model.OneTime;
         Monthly = model.Monthly;
+        Daily = model.Daily;
     }
 }

@@ -76,7 +76,8 @@ public partial class PropertyRepository
                         EndDate = line.EndDate,
                         Deposit = line.Deposit,
                         OneTime = line.OneTime,
-                        Monthly = line.Monthly
+                        Monthly = line.Monthly,
+                        Daily = line.Daily
                     }, transaction: transaction);
                 }
             }
@@ -163,7 +164,8 @@ public partial class PropertyRepository
                         EndDate = line.EndDate,
                         Deposit = line.Deposit,
                         OneTime = line.OneTime,
-                        Monthly = line.Monthly
+                        Monthly = line.Monthly,
+                        Daily = line.Daily
                     }, transaction: transaction);
                 }
                 else if (currentLineIds.Contains(line.AgreementLineId))
@@ -177,7 +179,8 @@ public partial class PropertyRepository
                         EndDate = line.EndDate,
                         Deposit = line.Deposit,
                         OneTime = line.OneTime,
-                        Monthly = line.Monthly
+                        Monthly = line.Monthly,
+                        Daily = line.Daily
                     }, transaction: transaction);
                 }
             }
@@ -244,7 +247,8 @@ public partial class PropertyRepository
             EndDate = line.EndDate,
             Deposit = line.Deposit,
             OneTime = line.OneTime,
-            Monthly = line.Monthly
+            Monthly = line.Monthly,
+            Daily = line.Daily
         }).ToList();
     }
 }

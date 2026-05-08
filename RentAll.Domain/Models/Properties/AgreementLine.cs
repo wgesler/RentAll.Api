@@ -10,4 +10,5 @@ public class AgreementLine
     public decimal Deposit { get; set; }
     public decimal OneTime { get; set; }
     public decimal Monthly { get; set; }
+    public decimal Daily { get; set; }
 }

@@ -8,6 +8,7 @@ public class CreatePropertyAgreementLineDto
     public decimal? Deposit { get; set; }
     public decimal? OneTime { get; set; }
     public decimal? Monthly { get; set; }
+    public decimal? Daily { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -29,8 +30,11 @@ public class CreatePropertyAgreementLineDto
         if (!Monthly.HasValue)
             return (false, "Monthly is required");
 
-        if (Deposit.Value < 0 || OneTime.Value < 0 || Monthly.Value < 0)
-            return (false, "Deposit, OneTime, and Monthly must be zero or greater");
+        if (!Daily.HasValue)
+            return (false, "Daily is required");
+
+        if (Deposit.Value < 0 || OneTime.Value < 0 || Monthly.Value < 0 || Daily.Value < 0)
+            return (false, "Deposit, OneTime, Monthly, and Daily must be zero or greater");
 
         return (true, null);
     }
@@ -45,7 +49,8 @@ public class CreatePropertyAgreementLineDto
             EndDate = EndDate,
             Deposit = Deposit!.Value,
             OneTime = OneTime!.Value,
-            Monthly = Monthly!.Value
+            Monthly = Monthly!.Value,
+            Daily = Daily!.Value
         };
     }
 }
