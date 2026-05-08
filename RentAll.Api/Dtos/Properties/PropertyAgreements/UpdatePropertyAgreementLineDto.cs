@@ -18,10 +18,7 @@ public class UpdatePropertyAgreementLineDto
         if (!StartDate.HasValue)
             return (false, "StartDate is required");
 
-        if (!EndDate.HasValue)
-            return (false, "EndDate is required");
-
-        if (EndDate.Value < StartDate.Value)
+        if (EndDate.HasValue && EndDate.Value < StartDate.Value)
             return (false, "EndDate must be on or after StartDate");
 
         if (!Deposit.HasValue)
@@ -47,7 +44,7 @@ public class UpdatePropertyAgreementLineDto
             AgreementId = agreementId,
             Title = Title.Trim(),
             StartDate = StartDate!.Value,
-            EndDate = EndDate!.Value,
+            EndDate = EndDate,
             Deposit = Deposit!.Value,
             OneTime = OneTime!.Value,
             Monthly = Monthly!.Value
