@@ -103,6 +103,8 @@ public interface IOrganizationRepository
     Task<TrackerDefinition> CreateTrackerDefinitionAsync(TrackerDefinition trackerDefinition);
     Task<TrackerDefinition> UpdateTrackerDefinitionByIdAsync(TrackerDefinition trackerDefinition);
     Task DeleteTrackerDefinitionByIdAsync(Guid trackerDefinitionId, Guid organizationId);
+    Task DeleteTrackerDefinitionsByOfficeIdAsync(Guid organizationId, int officeId);
+    Task CopyTrackerDefinitionsByOfficeIdAsync(Guid organizationId, int sourceOfficeId, int targetOfficeId, Guid createdBy);
 
     Task<IEnumerable<TrackerDefinitionOption>> GetTrackerDefinitionOptionsByOfficeIdsAsync(Guid organizationId, string officeAccess, int? trackerContextId, bool includeInactive);
     Task<IEnumerable<TrackerDefinitionOption>> GetTrackerDefinitionOptionsByTrackerDefinitionIdAsync(Guid trackerDefinitionId, bool includeInactive);

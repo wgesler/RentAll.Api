@@ -147,6 +147,15 @@ public partial class PropertyRepository
     #endregion
 
     #region Deletes
+    public async Task DeleteTrackerResponsesByPropertyIdAsync(Guid propertyId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Property.TrackerResponse_DeleteByPropertyId", new
+        {
+            PropertyId = propertyId
+        });
+    }
+
     public async Task DeleteTrackerResponseByIdAsync(Guid trackerResponseId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

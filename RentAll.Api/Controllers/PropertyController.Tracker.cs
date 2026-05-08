@@ -174,6 +174,28 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Delete
+        [HttpDelete("tracker-response/property/{propertyId:guid}")]
+        public async Task<IActionResult> DeleteTrackerResponsesByPropertyId(Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("PropertyId is required");
+
+            try
+            {
+                var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, CurrentOrganizationId);
+                if (property == null)
+                    return NotFound("Property not found");
+
+                await _propertyRepository.DeleteTrackerResponsesByPropertyIdAsync(propertyId);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting tracker responses by PropertyId: {PropertyId}", propertyId);
+                return ServerError("An error occurred while deleting tracker responses");
+            }
+        }
+
         [HttpDelete("tracker-response/{trackerResponseId:guid}")]
         public async Task<IActionResult> DeleteTrackerResponseById(Guid trackerResponseId)
         {

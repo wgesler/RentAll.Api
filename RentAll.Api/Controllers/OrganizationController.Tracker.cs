@@ -148,6 +148,27 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while creating tracker definition option");
             }
         }
+
+        [HttpPost("tracker-definition/office/{targetOfficeId:int}/copy/{sourceOfficeId:int}")]
+        public async Task<IActionResult> CopyTrackerDefinitionsByOfficeId(int targetOfficeId, int sourceOfficeId)
+        {
+            if (targetOfficeId <= 0 || sourceOfficeId <= 0)
+                return BadRequest("SourceOfficeId and TargetOfficeId are required");
+
+            if (targetOfficeId == sourceOfficeId)
+                return BadRequest("SourceOfficeId and TargetOfficeId must be different");
+
+            try
+            {
+                await _organizationRepository.CopyTrackerDefinitionsByOfficeIdAsync(CurrentOrganizationId, sourceOfficeId, targetOfficeId, CurrentUser);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error copying tracker definitions from office {SourceOfficeId} to office {TargetOfficeId}", sourceOfficeId, targetOfficeId);
+                return ServerError("An error occurred while copying tracker definitions");
+            }
+        }
         #endregion
 
         #region Put
@@ -267,6 +288,24 @@ namespace RentAll.Api.Controllers
             {
                 _logger.LogError(ex, "Error deleting tracker definition: {TrackerDefinitionId}", trackerDefinitionId);
                 return ServerError("An error occurred while deleting tracker definition");
+            }
+        }
+
+        [HttpDelete("tracker-definition/office/{officeId:int}")]
+        public async Task<IActionResult> DeleteTrackerDefinitionsByOfficeId(int officeId)
+        {
+            if (officeId <= 0)
+                return BadRequest("OfficeId is required");
+
+            try
+            {
+                await _organizationRepository.DeleteTrackerDefinitionsByOfficeIdAsync(CurrentOrganizationId, officeId);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting tracker definitions for office: {OfficeId}", officeId);
+                return ServerError("An error occurred while deleting tracker definitions for office");
             }
         }
 

@@ -65,6 +65,7 @@ public interface IPropertyRepository
     Task<TrackerResponse?> GetTrackerResponseByIdAsync(Guid trackerResponseId);
     Task<TrackerResponse> CreateTrackerResponseAsync(TrackerResponse trackerResponse);
     Task<TrackerResponse> UpdateTrackerResponseByIdAsync(TrackerResponse trackerResponse);
+    Task DeleteTrackerResponsesByPropertyIdAsync(Guid propertyId);
     Task DeleteTrackerResponseByIdAsync(Guid trackerResponseId);
 
     Task<TrackerResponseOption?> GetTrackerResponseOptionByIdAsync(Guid trackerResponseId, Guid trackerDefinitionOptionId);

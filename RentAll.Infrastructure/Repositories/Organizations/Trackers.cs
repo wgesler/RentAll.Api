@@ -250,6 +250,28 @@ public partial class OrganizationRepository
         });
     }
 
+    public async Task DeleteTrackerDefinitionsByOfficeIdAsync(Guid organizationId, int officeId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Organization.TrackerDefinition_DeleteByOfficeId", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId
+        });
+    }
+
+    public async Task CopyTrackerDefinitionsByOfficeIdAsync(Guid organizationId, int sourceOfficeId, int targetOfficeId, Guid createdBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Organization.TrackerDefinition_CopyByOfficeId", new
+        {
+            OrganizationId = organizationId,
+            SourceOfficeId = sourceOfficeId,
+            TargetOfficeId = targetOfficeId,
+            CreatedBy = createdBy
+        });
+    }
+
     public async Task DeleteTrackerDefinitionOptionByIdAsync(Guid trackerDefinitionOptionId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
