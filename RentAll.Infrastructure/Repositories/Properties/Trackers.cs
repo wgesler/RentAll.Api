@@ -35,6 +35,44 @@ public partial class PropertyRepository
         return res.Select(ConvertEntityToModel);
     }
 
+    public async Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByOfficeIdsAsync(Guid organizationId, string officeAccess, bool includeInactive = false, bool excludeCompletedPropertyTracking = true)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<TrackerResponseEntity>("Property.TrackerResponse_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess,
+            IncludeInactive = includeInactive,
+            ExcludeCompletedPropertyTracking = excludeCompletedPropertyTracking
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<TrackerResponse>();
+
+        return res
+            .Select(ConvertEntityToModel)
+            .Where(r => r.PropertyId != Guid.Empty);
+    }
+
+    public async Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByOfficeIdsAsync(Guid organizationId, string officeAccess, bool includeInactive = false, bool excludeCompletedPropertyTracking = true)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<TrackerResponseOptionEntity>("Property.TrackerResponseOption_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess,
+            IncludeInactive = includeInactive,
+            ExcludeCompletedPropertyTracking = excludeCompletedPropertyTracking
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<TrackerResponseOption>();
+
+        return res
+            .Select(ConvertEntityToModel)
+            .Where(r => r.PropertyId != Guid.Empty);
+    }
+
     public async Task<TrackerResponse?> GetTrackerResponseByIdAsync(Guid trackerResponseId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

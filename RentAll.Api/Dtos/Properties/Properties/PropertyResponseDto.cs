@@ -143,6 +143,8 @@ public class PropertyResponseDto
     public DateOnly? offCarpetDate { get; set; }
     public Guid? offInspectorUserId { get; set; }
     public DateOnly? offInspectingDate { get; set; }
+    public bool OnlineChecked { get; set; }
+    public bool OfflineChecked { get; set; }
 
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -270,6 +272,8 @@ public class PropertyResponseDto
         offCarpetDate = property.offCarpetDate;
         offInspectorUserId = property.offInspectorUserId;
         offInspectingDate = property.offInspectingDate;
+        OnlineChecked = property.OnlineChecked;
+        OfflineChecked = property.OfflineChecked;
         IsActive = property.IsActive;
         CreatedOn = property.CreatedOn;
         CreatedBy = property.CreatedBy;

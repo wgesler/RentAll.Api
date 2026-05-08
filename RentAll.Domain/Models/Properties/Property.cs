@@ -145,6 +145,8 @@ public class Property
     public DateOnly? offCarpetDate { get; set; }
     public Guid? offInspectorUserId { get; set; }
     public DateOnly? offInspectingDate { get; set; }
+    public bool OnlineChecked { get; set; }
+    public bool OfflineChecked { get; set; }
 
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

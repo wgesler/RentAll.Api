@@ -62,6 +62,8 @@ public interface IPropertyRepository
     #region Tracker Responses
     Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByPropertyIdAsync(Guid propertyId);
     Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByPropertyIdAsync(Guid propertyId);
+    Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByOfficeIdsAsync(Guid organizationId, string officeAccess, bool includeInactive = false, bool excludeCompletedPropertyTracking = true);
+    Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByOfficeIdsAsync(Guid organizationId, string officeAccess, bool includeInactive = false, bool excludeCompletedPropertyTracking = true);
     Task<TrackerResponse?> GetTrackerResponseByIdAsync(Guid trackerResponseId);
     Task<TrackerResponse> CreateTrackerResponseAsync(TrackerResponse trackerResponse);
     Task<TrackerResponse> UpdateTrackerResponseByIdAsync(TrackerResponse trackerResponse);

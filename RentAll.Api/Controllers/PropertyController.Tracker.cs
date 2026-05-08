@@ -26,6 +26,22 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("tracker-response/offices")]
+        public async Task<IActionResult> GetTrackerResponsesByOfficeIds([FromQuery] bool includeInactive = false)
+        {
+            try
+            {
+                var responses = await _propertyRepository.GetTrackerResponsesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, includeInactive, true);
+                var response = responses.Select(r => new PropertyTrackerResponseResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting tracker responses by office access");
+                return ServerError("An error occurred while retrieving tracker responses");
+            }
+        }
+
         [HttpGet("tracker-response-option/property/{propertyId}")]
         public async Task<IActionResult> GetTrackerResponseOptionsByPropertyId(Guid propertyId)
         {
@@ -45,6 +61,22 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting tracker response options by PropertyId: {PropertyId}", propertyId);
+                return ServerError("An error occurred while retrieving tracker response options");
+            }
+        }
+
+        [HttpGet("tracker-response-option/offices")]
+        public async Task<IActionResult> GetTrackerResponseOptionsByOfficeIds([FromQuery] bool includeInactive = false)
+        {
+            try
+            {
+                var options = await _propertyRepository.GetTrackerResponseOptionsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, includeInactive, true);
+                var response = options.Select(o => new PropertyTrackerResponseOptionResponseDto(o));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting tracker response options by office access");
                 return ServerError("An error occurred while retrieving tracker response options");
             }
         }

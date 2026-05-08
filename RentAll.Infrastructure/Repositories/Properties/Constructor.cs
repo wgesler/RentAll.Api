@@ -141,6 +141,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offCarpetDate = e.offCarpetDate,
                 offInspectorUserId = e.offInspectorUserId,
                 offInspectingDate = e.offInspectingDate,
+                OnlineChecked = e.OnlineChecked,
+                OfflineChecked = e.OfflineChecked,
                 IsActive = e.IsActive,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,
@@ -195,6 +197,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offCarpetDate = e.offCarpetDate,
                 offInspectorUserId = e.offInspectorUserId,
                 offInspectingDate = e.offInspectingDate,
+                OnlineChecked = e.OnlineChecked,
+                OfflineChecked = e.OfflineChecked,
                 IsActive = e.IsActive
             };
         }

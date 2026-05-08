@@ -44,6 +44,8 @@ public class PropertyListResponseDto
     public DateOnly? offCarpetDate { get; set; }
     public Guid? offInspectorUserId { get; set; }
     public DateOnly? offInspectingDate { get; set; }
+    public bool OnlineChecked { get; set; }
+    public bool OfflineChecked { get; set; }
 
     public bool IsActive { get; set; }
 
@@ -89,6 +91,8 @@ public class PropertyListResponseDto
         offCarpetDate = propertyList.offCarpetDate;
         offInspectorUserId = propertyList.offInspectorUserId;
         offInspectingDate = propertyList.offInspectingDate;
+        OnlineChecked = propertyList.OnlineChecked;
+        OfflineChecked = propertyList.OfflineChecked;
         IsActive = propertyList.IsActive;
     }
 }

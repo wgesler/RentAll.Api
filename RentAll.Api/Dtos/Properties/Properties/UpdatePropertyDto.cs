@@ -143,6 +143,8 @@ public class UpdatePropertyDto
     public DateOnly? offCarpetDate { get; set; }
     public Guid? offInspectorUserId { get; set; }
     public DateOnly? offInspectingDate { get; set; }
+    public bool OnlineChecked { get; set; }
+    public bool OfflineChecked { get; set; }
 
     public bool IsActive { get; set; }
 
@@ -311,6 +313,8 @@ public class UpdatePropertyDto
             offCarpetDate = offCarpetDate,
             offInspectorUserId = offInspectorUserId,
             offInspectingDate = offInspectingDate,
+            OnlineChecked = OnlineChecked,
+            OfflineChecked = OfflineChecked,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

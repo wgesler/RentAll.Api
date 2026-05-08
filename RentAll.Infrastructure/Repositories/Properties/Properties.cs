@@ -234,6 +234,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offCarpetDate = property.offCarpetDate,
                 offInspectorUserId = property.offInspectorUserId,
                 offInspectingDate = property.offInspectingDate,
+                OnlineChecked = property.OnlineChecked,
+                OfflineChecked = property.OfflineChecked,
                 IsActive = property.IsActive,
                 CreatedBy = property.CreatedBy
             });
@@ -367,6 +369,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offCarpetDate = property.offCarpetDate,
                 offInspectorUserId = property.offInspectorUserId,
                 offInspectingDate = property.offInspectingDate,
+                OnlineChecked = property.OnlineChecked,
+                OfflineChecked = property.OfflineChecked,
                 IsActive = property.IsActive,
                 ModifiedBy = property.ModifiedBy
             });
