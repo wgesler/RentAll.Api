@@ -26,6 +26,7 @@ public class UpdatePropertyAgreementDto
     public int? RentalIncomeCcId { get; set; }
     public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
+    public List<UpdatePropertyAgreementLineDto> AgreementLines { get; set; } = new();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -60,6 +61,13 @@ public class UpdatePropertyAgreementDto
         if (RentalExpenseCcId.HasValue && RentalExpenseCcId.Value <= 0)
             return (false, "RentalExpenseCcId must be greater than zero when provided");
 
+        foreach (var line in AgreementLines ?? new List<UpdatePropertyAgreementLineDto>())
+        {
+            var (isLineValid, lineError) = line.IsValid();
+            if (!isLineValid)
+                return (false, $"AgreementLine validation failed: {lineError}");
+        }
+
         return (true, null);
     }
 
@@ -88,7 +96,8 @@ public class UpdatePropertyAgreementDto
             AccountNumber = AccountNumber,
             RentalIncomeCcId = RentalIncomeCcId ?? existing.RentalIncomeCcId,
             RentalExpenseCcId = RentalExpenseCcId ?? existing.RentalExpenseCcId,
-            Notes = Notes
+            Notes = Notes,
+            AgreementLines = AgreementLines?.Select(line => line.ToModel(PropertyId)).ToList() ?? new List<AgreementLine>()
         };
     }
 }

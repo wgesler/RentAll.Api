@@ -4,7 +4,7 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 
 public class CreatePropertyAgreementDto
 {
-    public int ManagementFeeTypeId { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
     public decimal? FlatRateAmount { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
@@ -23,11 +23,12 @@ public class CreatePropertyAgreementDto
     public int? RentalIncomeCcId { get; set; }
     public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
+    public List<CreatePropertyAgreementLineDto> AgreementLines { get; set; } = new();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (!Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId))
-            return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId}");
+        if (ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
+            return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
 
         if (FlatRateAmount.HasValue && FlatRateAmount.Value < 0)
             return (false, "FlatRateAmount cannot be negative");
@@ -54,6 +55,13 @@ public class CreatePropertyAgreementDto
         if (RentalExpenseCcId.HasValue && RentalExpenseCcId.Value <= 0)
             return (false, "RentalExpenseCcId must be greater than zero when provided");
 
+        foreach (var line in AgreementLines ?? new List<CreatePropertyAgreementLineDto>())
+        {
+            var (isLineValid, lineError) = line.IsValid();
+            if (!isLineValid)
+                return (false, $"AgreementLine validation failed: {lineError}");
+        }
+
         return (true, null);
     }
 
@@ -63,7 +71,7 @@ public class CreatePropertyAgreementDto
         {
             PropertyId = propertyId,
             OfficeId = officeId,
-            ManagementFeeType = (ManagementFeeType)ManagementFeeTypeId,
+            ManagementFeeType = ManagementFeeTypeId.HasValue ? (ManagementFeeType)ManagementFeeTypeId.Value : ManagementFeeType.FlatRate,
             FlatRateAmount = FlatRateAmount ?? 0m,
             W9Path = null,
             InsurancePath = null,
@@ -80,7 +88,8 @@ public class CreatePropertyAgreementDto
             AccountNumber = AccountNumber,
             RentalIncomeCcId = RentalIncomeCcId,
             RentalExpenseCcId = RentalExpenseCcId,
-            Notes = Notes
+            Notes = Notes,
+            AgreementLines = AgreementLines?.Select(line => line.ToModel(propertyId)).ToList() ?? new List<AgreementLine>()
         };
     }
 }

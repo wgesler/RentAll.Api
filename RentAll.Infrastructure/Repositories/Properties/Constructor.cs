@@ -4,12 +4,15 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Properties;
+using RentAll.Infrastructure.Serialization;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository : IPropertyRepository
     {
+        private static readonly JsonSerializerOptions JsonOptions = SqlColumnJsonSerializerOptions.CaseInsensitive;
+
         private readonly string _dbConnectionString;
 
         public PropertyRepository(IOptions<AppSettings> appSettings)
@@ -198,6 +201,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
 
         private static PropertyAgreement ConvertEntityToModel(PropertyAgreementEntity e) => new()
         {
+            AgreementLines = DeserializeAgreementLines(e.AgreementLines),
             PropertyId = e.PropertyId,
             OfficeId = e.OfficeId,
             ManagementFeeType = (ManagementFeeType)e.ManagementFeeTypeId,
@@ -219,6 +223,37 @@ namespace RentAll.Infrastructure.Repositories.Properties
             RentalExpenseCcId = e.RentalExpenseCcId,
             Notes = e.Notes
         };
+
+        private static List<AgreementLine> DeserializeAgreementLines(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<AgreementLine>();
+
+            try
+            {
+                var entityLines = JsonSerializer.Deserialize<List<AgreementLineEntity>>(json, JsonOptions) ?? new List<AgreementLineEntity>();
+                return entityLines.Select(ConvertAgreementLineEntityToModel).ToList();
+            }
+            catch
+            {
+                return new List<AgreementLine>();
+            }
+        }
+
+        private static AgreementLine ConvertAgreementLineEntityToModel(AgreementLineEntity e)
+        {
+            return new AgreementLine
+            {
+                AgreementLineId = e.AgreementLineId,
+                AgreementId = e.AgreementId,
+                Title = e.Title,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                Deposit = e.Deposit,
+                OneTime = e.OneTime,
+                Monthly = e.Monthly
+            };
+        }
 
         private static PropertyPhoto ConvertEntityToModel(PropertyPhotoEntity e) => new()
         {

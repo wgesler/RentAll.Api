@@ -27,6 +27,7 @@ public class PropertyAgreementResponseDto
     public int? RentalIncomeCcId { get; set; }
     public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
+    public List<PropertyAgreementLineResponseDto> AgreementLines { get; set; } = new();
 
     public PropertyAgreementResponseDto(PropertyAgreement a)
     {
@@ -50,5 +51,6 @@ public class PropertyAgreementResponseDto
         RentalIncomeCcId = a.RentalIncomeCcId;
         RentalExpenseCcId = a.RentalExpenseCcId;
         Notes = a.Notes;
+        AgreementLines = a.AgreementLines?.Select(l => new PropertyAgreementLineResponseDto(l)).ToList() ?? new List<PropertyAgreementLineResponseDto>();
     }
 }

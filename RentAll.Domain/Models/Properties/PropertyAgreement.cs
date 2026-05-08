@@ -24,4 +24,5 @@ public class PropertyAgreement
     public int? RentalIncomeCcId { get; set; }
     public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
+    public List<AgreementLine> AgreementLines { get; set; } = new List<AgreementLine>();
 }

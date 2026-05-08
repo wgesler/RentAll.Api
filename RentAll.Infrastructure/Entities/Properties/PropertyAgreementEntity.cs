@@ -22,4 +22,5 @@ public class PropertyAgreementEntity
     public int? RentalIncomeCcId { get; set; }
     public int? RentalExpenseCcId { get; set; }
     public string? Notes { get; set; }
+    public string? AgreementLines { get; set; }
 }
