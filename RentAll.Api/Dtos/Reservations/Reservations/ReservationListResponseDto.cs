@@ -25,13 +25,6 @@ public class ReservationListResponseDto
     public DateOnly? MaidStartDate { get; set; }
     public int FrequencyId { get; set; }
     public decimal MaidServiceFee { get; set; }
-    public bool PaymentReceived { get; set; }
-    public bool WelcomeLetterChecked { get; set; }
-    public bool WelcomeLetterSent { get; set; }
-    public bool ReadyForArrival { get; set; }
-    public bool Code { get; set; }
-    public bool DepartureLetterChecked { get; set; }
-    public bool DepartureLetterSent { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -76,13 +69,6 @@ public class ReservationListResponseDto
         MaidStartDate = reservationList.MaidStartDate;
         FrequencyId = (int)reservationList.Frequency;
         MaidServiceFee = reservationList.MaidServiceFee;
-        PaymentReceived = reservationList.PaymentReceived;
-        WelcomeLetterChecked = reservationList.WelcomeLetterChecked;
-        WelcomeLetterSent = reservationList.WelcomeLetterSent;
-        ReadyForArrival = reservationList.ReadyForArrival;
-        Code = reservationList.Code;
-        DepartureLetterChecked = reservationList.DepartureLetterChecked;
-        DepartureLetterSent = reservationList.DepartureLetterSent;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;
         aCleanerUserId = reservationList.aCleanerUserId;

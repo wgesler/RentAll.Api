@@ -42,13 +42,6 @@ public class CreateReservationDto
     public string? Notes { get; set; }
     public List<CreateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<CreateExtraFeeLineDto>();
     public bool AllowExtensions { get; set; }
-    public bool PaymentReceived { get; set; }
-    public bool WelcomeLetterChecked { get; set; }
-    public bool WelcomeLetterSent { get; set; }
-    public bool ReadyForArrival { get; set; }
-    public bool Code { get; set; }
-    public bool DepartureLetterChecked { get; set; }
-    public bool DepartureLetterSent { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -181,13 +174,6 @@ public class CreateReservationDto
             Notes = Notes,
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
             AllowExtensions = AllowExtensions,
-            PaymentReceived = PaymentReceived,
-            WelcomeLetterChecked = WelcomeLetterChecked,
-            WelcomeLetterSent = WelcomeLetterSent,
-            ReadyForArrival = ReadyForArrival,
-            Code = Code,
-            DepartureLetterChecked = DepartureLetterChecked,
-            DepartureLetterSent = DepartureLetterSent,
             aCleanerUserId = aCleanerUserId,
             aCleaningDate = aCleaningDate,
             aCarpetUserId = aCarpetUserId,
