@@ -20,6 +20,7 @@ public interface IReservationRepository
     Task<LeaseInformation?> GetLeaseInformationByIdAsync(Guid leaseInformationId, Guid organizationId);
     Task<LeaseInformation?> GetLeaseInformationByPropertyIdAsync(Guid propertyId, Guid organizationId, int? officeId = null);
     Task<LeaseInformation?> GetLeaseInformationByScopeAsync(Guid organizationId, int? officeId, Guid? propertyId);
+    Task<LeaseInformation?> GetLeaseInformationByExactScopeAsync(Guid organizationId, int? officeId, Guid? propertyId);
 
     Task<LeaseInformation> CreateLeaseInformationAsync(LeaseInformation leaseInformation);
     Task<LeaseInformation> UpdateLeaseInformationByIdAsync(LeaseInformation leaseInformation);

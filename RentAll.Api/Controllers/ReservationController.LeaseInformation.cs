@@ -90,6 +90,8 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Lease information data is required");
 
+            dto.OrganizationId = CurrentOrganizationId;
+
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
@@ -128,6 +130,8 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Lease information data is required");
 
+            dto.OrganizationId = CurrentOrganizationId;
+
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
@@ -145,8 +149,8 @@ namespace RentAll.Api.Controllers
 
                 var leaseInformation = dto.ToModel(CurrentUser);
 
-                // Check if lease information exists
-                var existing = await _reservationRepository.GetLeaseInformationByScopeAsync(CurrentOrganizationId, dto.OfficeId, dto.PropertyId);
+                // Upsert must use exact scope only; fallback lookup is read-only behavior.
+                var existing = await _reservationRepository.GetLeaseInformationByExactScopeAsync(CurrentOrganizationId, dto.OfficeId, dto.PropertyId);
                 if (existing == null)
                 {
                     var addLeaseInformation = await _reservationRepository.CreateLeaseInformationAsync(leaseInformation);

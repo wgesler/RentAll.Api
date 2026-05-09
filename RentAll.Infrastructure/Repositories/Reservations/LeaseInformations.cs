@@ -44,6 +44,23 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
+
+        public async Task<LeaseInformation?> GetLeaseInformationByExactScopeAsync(Guid organizationId, int? officeId, Guid? propertyId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetById", new
+            {
+                LeaseInformationId = (Guid?)null,
+                OrganizationId = organizationId,
+                OfficeId = officeId,
+                PropertyId = propertyId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
         #endregion
 
         #region Creates
