@@ -2,9 +2,9 @@ namespace RentAll.Api.Dtos.Reservations.LeaseInformations;
 
 public class UpdateLeaseInformationDto
 {
-    public Guid PropertyId { get; set; }
+    public int? OfficeId { get; set; }
+    public Guid? PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
-    public Guid? ContactId { get; set; }
     public string? RentalPayment { get; set; }
     public string? SecurityDeposit { get; set; }
     public string? SecurityDepositWaiver { get; set; }
@@ -36,8 +36,11 @@ public class UpdateLeaseInformationDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
-        if (PropertyId == Guid.Empty)
-            return (false, "PropertyId is required");
+        if (PropertyId.HasValue && PropertyId.Value == Guid.Empty)
+            return (false, "PropertyId is invalid");
+
+        if (!PropertyId.HasValue && OfficeId.HasValue && OfficeId.Value <= 0)
+            return (false, "OfficeId is invalid");
 
         return (true, null);
     }
@@ -47,8 +50,8 @@ public class UpdateLeaseInformationDto
         return new LeaseInformation
         {
             PropertyId = PropertyId,
+            OfficeId = OfficeId,
             OrganizationId = OrganizationId,
-            ContactId = ContactId,
             RentalPayment = RentalPayment,
             SecurityDeposit = SecurityDeposit,
             SecurityDepositWaiver = SecurityDepositWaiver,

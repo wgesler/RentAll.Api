@@ -40,7 +40,7 @@ namespace RentAll.Api.Controllers
                 if (property == null)
                     return NotFound("Property not found");
 
-                var leaseInformation = await _reservationRepository.GetLeaseInformationByPropertyIdAsync(propertyId, CurrentOrganizationId);
+                var leaseInformation = await _reservationRepository.GetLeaseInformationByPropertyIdAsync(propertyId, CurrentOrganizationId, property.OfficeId);
                 if (leaseInformation == null)
                     return Ok(); // Not required
 
@@ -49,6 +49,33 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting lease information by Property ID: {PropertyId}", propertyId);
+                return ServerError("An error occurred while retrieving the lease information");
+            }
+        }
+
+        [HttpGet("lease-information/scope")]
+        public async Task<IActionResult> GetLeaseInformationByScope([FromQuery] int? officeId = null, [FromQuery] Guid? propertyId = null)
+        {
+            try
+            {
+                if (propertyId.HasValue)
+                {
+                    var property = await _propertyRepository.GetPropertyByIdAsync(propertyId.Value, CurrentOrganizationId);
+                    if (property == null)
+                        return NotFound("Property not found");
+
+                    officeId = property.OfficeId;
+                }
+
+                var leaseInformation = await _reservationRepository.GetLeaseInformationByScopeAsync(CurrentOrganizationId, officeId, propertyId);
+                if (leaseInformation == null)
+                    return Ok();
+
+                return Ok(new LeaseInformationResponseDto(leaseInformation));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting lease information by scope: {OrganizationId}-{OfficeId}-{PropertyId}", CurrentOrganizationId, officeId, propertyId);
                 return ServerError("An error occurred while retrieving the lease information");
             }
         }
@@ -69,17 +96,13 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                // Verify property belongs to organization
-                var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
-                if (property == null)
-                    return NotFound("Property not found");
-
-                // Verify contact belongs to organization if ContactId is provided
-                if (dto.ContactId.HasValue)
+                if (dto.PropertyId.HasValue)
                 {
-                    var contact = await _contactRepository.GetContactByIdAsync(dto.ContactId.Value, CurrentOrganizationId);
-                    if (contact == null)
-                        return NotFound("Contact not found");
+                    var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId.Value, CurrentOrganizationId);
+                    if (property == null)
+                        return NotFound("Property not found");
+
+                    dto.OfficeId = property.OfficeId;
                 }
 
                 var leaseInformation = dto.ToModel(CurrentUser);
@@ -111,10 +134,19 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                if (dto.PropertyId.HasValue)
+                {
+                    var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId.Value, CurrentOrganizationId);
+                    if (property == null)
+                        return NotFound("Property not found");
+
+                    dto.OfficeId = property.OfficeId;
+                }
+
                 var leaseInformation = dto.ToModel(CurrentUser);
 
                 // Check if lease information exists
-                var existing = await _reservationRepository.GetLeaseInformationByIdAsync(dto.PropertyId, CurrentOrganizationId);
+                var existing = await _reservationRepository.GetLeaseInformationByScopeAsync(CurrentOrganizationId, dto.OfficeId, dto.PropertyId);
                 if (existing == null)
                 {
                     var addLeaseInformation = await _reservationRepository.CreateLeaseInformationAsync(leaseInformation);
@@ -128,7 +160,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating lease information: {PropertyId}", dto.PropertyId);
+                _logger.LogError(ex, "Error updating lease information: {OrganizationId}-{OfficeId}-{PropertyId}", dto.OrganizationId, dto.OfficeId, dto.PropertyId);
                 return ServerError("An error occurred while updating the lease information");
             }
         }

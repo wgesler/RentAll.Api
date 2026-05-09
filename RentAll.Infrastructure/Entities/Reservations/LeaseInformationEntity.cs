@@ -3,9 +3,9 @@ namespace RentAll.Infrastructure.Entities.Reservations;
 public class LeaseInformationEntity
 {
     public Guid LeaseInformationId { get; set; }
-    public Guid PropertyId { get; set; }
+    public int? OfficeId { get; set; }
+    public Guid? PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
-    public Guid? ContactId { get; set; }
     public string? RentalPayment { get; set; }
     public string? SecurityDeposit { get; set; }
     public string? SecurityDepositWaiver { get; set; }

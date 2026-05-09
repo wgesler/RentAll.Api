@@ -12,8 +12,10 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetById", new
             {
-                PropertyId = leaseInformationId,
-                OrganizationId = organizationId
+                LeaseInformationId = leaseInformationId,
+                OrganizationId = organizationId,
+                OfficeId = (int?)null,
+                PropertyId = (Guid?)null
             });
 
             if (res == null || !res.Any())
@@ -22,12 +24,18 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
-        public async Task<LeaseInformation?> GetLeaseInformationByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        public async Task<LeaseInformation?> GetLeaseInformationByPropertyIdAsync(Guid propertyId, Guid organizationId, int? officeId = null)
+        {
+            return await GetLeaseInformationByScopeAsync(organizationId, officeId, propertyId);
+        }
+
+        public async Task<LeaseInformation?> GetLeaseInformationByScopeAsync(Guid organizationId, int? officeId, Guid? propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_GetByPropertyId", new
             {
                 PropertyId = propertyId,
+                OfficeId = officeId,
                 OrganizationId = organizationId
             });
 
@@ -45,8 +53,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_Add", new
             {
                 PropertyId = leaseInformation.PropertyId,
+                OfficeId = leaseInformation.OfficeId,
                 OrganizationId = leaseInformation.OrganizationId,
-                ContactId = leaseInformation.ContactId,
                 RentalPayment = leaseInformation.RentalPayment,
                 SecurityDeposit = leaseInformation.SecurityDeposit,
                 SecurityDepositWaiver = leaseInformation.SecurityDepositWaiver,
@@ -89,8 +97,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             var res = await db.DapperProcQueryAsync<LeaseInformationEntity>("Property.LeaseInformation_UpdateById", new
             {
                 PropertyId = leaseInformation.PropertyId,
+                OfficeId = leaseInformation.OfficeId,
                 OrganizationId = leaseInformation.OrganizationId,
-                ContactId = leaseInformation.ContactId,
                 RentalPayment = leaseInformation.RentalPayment,
                 SecurityDeposit = leaseInformation.SecurityDeposit,
                 SecurityDepositWaiver = leaseInformation.SecurityDepositWaiver,

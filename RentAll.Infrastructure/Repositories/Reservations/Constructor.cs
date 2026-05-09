@@ -185,9 +185,9 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             var response = new LeaseInformation()
             {
                 LeaseInformationId = e.LeaseInformationId,
+                OfficeId = e.OfficeId,
                 PropertyId = e.PropertyId,
                 OrganizationId = e.OrganizationId,
-                ContactId = e.ContactId,
                 RentalPayment = e.RentalPayment,
                 SecurityDeposit = e.SecurityDeposit,
                 SecurityDepositWaiver = e.SecurityDepositWaiver,
