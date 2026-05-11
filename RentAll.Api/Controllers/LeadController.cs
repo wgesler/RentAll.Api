@@ -55,4 +55,13 @@ public partial class LeadController : BaseController
         var agent = await _organizationRepository.GetAgentByIdAsync(agentId.Value, CurrentOrganizationId);
         return agent != null;
     }
+
+    private async Task<bool> CanAssignAgentForOrganizationAsync(Guid organizationId, Guid? agentId)
+    {
+        if (!agentId.HasValue)
+            return true;
+
+        var agent = await _organizationRepository.GetAgentByIdAsync(agentId.Value, organizationId);
+        return agent != null;
+    }
 }

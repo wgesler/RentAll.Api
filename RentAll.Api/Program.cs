@@ -47,6 +47,7 @@ builder.Services.Configure<SendGridSettings>(sendGridSettings);
 
 builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
 builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.GetSection("ExternalTicketIntakeSettings"));
+builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
 
 var allowedHosts = appSettingsSection.GetSection("AllowedHostNames").Get<string[]>()!;
 var environment = appSettingsSection.GetSection("Environment").Get<string>()!;
