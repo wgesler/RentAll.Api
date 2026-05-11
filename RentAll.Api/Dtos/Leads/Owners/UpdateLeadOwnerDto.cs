@@ -33,8 +33,9 @@ public class UpdateLeadOwnerDto
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
     public string? TimeDateForContact { get; set; }
-    public bool? EmailPhoneConsent { get; set; }
-    public bool? SmsConsent { get; set; }
+    public bool EmailPhoneConsent { get; set; }
+    public bool SmsConsent { get; set; }
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -88,6 +89,7 @@ public class UpdateLeadOwnerDto
             PreferredContactMethod = PreferredContactMethod,
             TimeDateForContact = TimeDateForContact,
             EmailPhoneConsent = EmailPhoneConsent,
-            SmsConsent = SmsConsent
+            SmsConsent = SmsConsent,
+            IsActive = IsActive
         };
 }

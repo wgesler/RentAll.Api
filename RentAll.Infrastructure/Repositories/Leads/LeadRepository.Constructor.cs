@@ -48,7 +48,8 @@ public partial class LeadRepository : ILeadRepository
             AdditionalInformation = e.AdditionalInformation,
             INeedAsap = e.INeedAsap,
             EmailPhoneConsent = e.EmailPhoneConsent,
-            SmsConsent = e.SmsConsent
+            SmsConsent = e.SmsConsent,
+            IsActive = e.IsActive
         };
 
     private static LeadOwner ConvertOwnerEntityToModel(OwnerEntity e) =>
@@ -83,6 +84,7 @@ public partial class LeadRepository : ILeadRepository
             PreferredContactMethod = e.PreferredContactMethod,
             TimeDateForContact = e.TimeDateForContact,
             EmailPhoneConsent = e.EmailPhoneConsent,
-            SmsConsent = e.SmsConsent
+            SmsConsent = e.SmsConsent,
+            IsActive = e.IsActive
         };
 }

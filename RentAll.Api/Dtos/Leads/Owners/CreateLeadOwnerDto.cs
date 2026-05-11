@@ -5,7 +5,7 @@ namespace RentAll.Api.Dtos.Leads.Owners;
 
 public class CreateLeadOwnerDto
 {
-    public int LeadStateId { get; set; } = (int)LeadStateType.New;
+    public int LeadStateId { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -32,8 +32,9 @@ public class CreateLeadOwnerDto
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
     public string? TimeDateForContact { get; set; }
-    public bool? EmailPhoneConsent { get; set; }
-    public bool? SmsConsent { get; set; }
+    public bool EmailPhoneConsent { get; set; }
+    public bool SmsConsent { get; set; }
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -83,6 +84,7 @@ public class CreateLeadOwnerDto
             PreferredContactMethod = PreferredContactMethod,
             TimeDateForContact = TimeDateForContact,
             EmailPhoneConsent = EmailPhoneConsent,
-            SmsConsent = SmsConsent
+            SmsConsent = SmsConsent,
+            IsActive = IsActive
         };
 }

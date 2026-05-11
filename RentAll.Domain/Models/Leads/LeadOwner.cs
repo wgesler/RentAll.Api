@@ -32,6 +32,7 @@ public class LeadOwner
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
     public string? TimeDateForContact { get; set; }
-    public bool? EmailPhoneConsent { get; set; }
-    public bool? SmsConsent { get; set; }
+    public bool EmailPhoneConsent { get; set; }
+    public bool SmsConsent { get; set; }
+    public bool IsActive { get; set; } = true;
 }

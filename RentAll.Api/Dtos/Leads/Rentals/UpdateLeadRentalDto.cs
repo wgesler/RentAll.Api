@@ -26,9 +26,10 @@ public class UpdateLeadRentalDto
     public DateOnly? DecisionDate { get; set; }
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
-    public bool? INeedAsap { get; set; }
-    public bool? EmailPhoneConsent { get; set; }
-    public bool? SmsConsent { get; set; }
+    public bool INeedAsap { get; set; }
+    public bool EmailPhoneConsent { get; set; }
+    public bool SmsConsent { get; set; }
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -79,6 +80,7 @@ public class UpdateLeadRentalDto
             AdditionalInformation = AdditionalInformation,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,
-            SmsConsent = SmsConsent
+            SmsConsent = SmsConsent,
+            IsActive = IsActive
         };
 }

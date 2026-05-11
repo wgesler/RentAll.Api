@@ -69,7 +69,8 @@ public partial class LeadRepository : ILeadRepository
             PreferredContactMethod = owner.PreferredContactMethod,
             TimeDateForContact = owner.TimeDateForContact,
             EmailPhoneConsent = owner.EmailPhoneConsent,
-            SmsConsent = owner.SmsConsent
+            SmsConsent = owner.SmsConsent,
+            IsActive = owner.IsActive
         });
 
         if (res == null || !res.Any())
@@ -116,7 +117,8 @@ public partial class LeadRepository : ILeadRepository
             PreferredContactMethod = owner.PreferredContactMethod,
             TimeDateForContact = owner.TimeDateForContact,
             EmailPhoneConsent = owner.EmailPhoneConsent,
-            SmsConsent = owner.SmsConsent
+            SmsConsent = owner.SmsConsent,
+            IsActive = owner.IsActive
         });
 
         if (res == null || !res.Any())

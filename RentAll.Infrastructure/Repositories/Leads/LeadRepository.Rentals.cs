@@ -63,7 +63,8 @@ public partial class LeadRepository : ILeadRepository
             AdditionalInformation = rental.AdditionalInformation,
             INeedAsap = rental.INeedAsap,
             EmailPhoneConsent = rental.EmailPhoneConsent,
-            SmsConsent = rental.SmsConsent
+            SmsConsent = rental.SmsConsent,
+            IsActive = rental.IsActive
         });
 
         if (res == null || !res.Any())
@@ -104,7 +105,8 @@ public partial class LeadRepository : ILeadRepository
             AdditionalInformation = rental.AdditionalInformation,
             INeedAsap = rental.INeedAsap,
             EmailPhoneConsent = rental.EmailPhoneConsent,
-            SmsConsent = rental.SmsConsent
+            SmsConsent = rental.SmsConsent,
+            IsActive = rental.IsActive
         });
 
         if (res == null || !res.Any())

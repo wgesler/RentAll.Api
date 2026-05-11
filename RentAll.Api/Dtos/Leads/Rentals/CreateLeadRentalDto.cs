@@ -5,7 +5,7 @@ namespace RentAll.Api.Dtos.Leads.Rentals;
 
 public class CreateLeadRentalDto
 {
-    public int LeadStateId { get; set; } = (int)LeadStateType.New;
+    public int LeadStateId { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -25,9 +25,10 @@ public class CreateLeadRentalDto
     public DateOnly? DecisionDate { get; set; }
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
-    public bool? INeedAsap { get; set; }
-    public bool? EmailPhoneConsent { get; set; }
-    public bool? SmsConsent { get; set; }
+    public bool INeedAsap { get; set; }
+    public bool EmailPhoneConsent { get; set; }
+    public bool SmsConsent { get; set; }
+    public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -74,7 +75,8 @@ public class CreateLeadRentalDto
             AdditionalInformation = AdditionalInformation,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,
-            SmsConsent = SmsConsent
+            SmsConsent = SmsConsent,
+            IsActive = IsActive
         };
 
 }
