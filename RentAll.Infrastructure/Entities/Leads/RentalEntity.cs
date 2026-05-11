@@ -18,7 +18,7 @@ public class RentalEntity
     public string? NumberOfOccupants { get; set; }
     public string? WhatBringsYouToTown { get; set; }
     public string? HowDidYouFindUs { get; set; }
-    public string? TellUsMore { get; set; }
+    public string? TellUsMoreAboutHowYouFoundUs { get; set; }
     public bool? PetFriendly { get; set; }
     public DateTime? DecisionDate { get; set; }
     public string? OrganizationName { get; set; }

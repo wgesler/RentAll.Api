@@ -41,7 +41,7 @@ public partial class LeadRepository : ILeadRepository
             NumberOfOccupants = e.NumberOfOccupants,
             WhatBringsYouToTown = e.WhatBringsYouToTown,
             HowDidYouFindUs = e.HowDidYouFindUs,
-            TellUsMore = e.TellUsMore,
+            TellUsMoreAboutHowYouFoundUs = e.TellUsMoreAboutHowYouFoundUs,
             PetFriendly = e.PetFriendly,
             DecisionDate = ToDateOnly(e.DecisionDate),
             OrganizationName = e.OrganizationName,
