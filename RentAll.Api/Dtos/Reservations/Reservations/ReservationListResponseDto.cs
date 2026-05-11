@@ -16,6 +16,8 @@ public class ReservationListResponseDto
     public string? AgentCode { get; set; }
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
+    public decimal BillingRate { get; set; }
+    public int BillingTypeId { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int ReservationTypeId { get; set; }
@@ -59,6 +61,8 @@ public class ReservationListResponseDto
         AgentCode = reservationList.AgentCode;
         MonthlyRate = reservationList.MonthlyRate;
         DailyRate = reservationList.DailyRate;
+        BillingRate = reservationList.BillingRate;
+        BillingTypeId = reservationList.BillingTypeId;
         ArrivalDate = reservationList.ArrivalDate;
         DepartureDate = reservationList.DepartureDate;
         ReservationTypeId = (int)reservationList.ReservationType;

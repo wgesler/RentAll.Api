@@ -18,6 +18,8 @@ public class ReservationList
     public string? AgentCode { get; set; }
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
+    public decimal BillingRate { get; set; }
+    public int BillingTypeId { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public ReservationType ReservationType { get; set; }

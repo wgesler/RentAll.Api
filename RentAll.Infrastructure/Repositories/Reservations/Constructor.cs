@@ -153,6 +153,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 AgentCode = e.AgentCode,
                 MonthlyRate = e.MonthlyRate,
                 DailyRate = e.DailyRate,
+                BillingRate = e.BillingRate,
+                BillingTypeId = e.BillingTypeId,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
                 ReservationType = (ReservationType)e.ReservationTypeId,

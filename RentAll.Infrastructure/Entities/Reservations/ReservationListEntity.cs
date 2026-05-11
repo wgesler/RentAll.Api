@@ -18,6 +18,8 @@ public class ReservationListEntity
 
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
+    public decimal BillingRate { get; set; }
+    public int BillingTypeId { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int ReservationTypeId { get; set; }
