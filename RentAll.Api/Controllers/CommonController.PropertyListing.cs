@@ -14,6 +14,10 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                token = NormalizeListingShareToken(token);
+                if (string.IsNullOrWhiteSpace(token))
+                    return BadRequest("Token is required");
+
                 var tokenHash = ComputeSha256Hex(token);
                 var share = await _propertyRepository.GetPropertyListingShareByTokenHashAsync(tokenHash);
                 if (share == null)
@@ -78,6 +82,32 @@ namespace RentAll.Api.Controllers
                 _logger.LogError(ex, "Error getting public property listing by token");
                 return ServerError("An error occurred while retrieving property listing");
             }
+        }
+
+        private static string NormalizeListingShareToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return string.Empty;
+
+            var t = token.Trim()
+                .Replace("\u00AD", string.Empty, StringComparison.Ordinal)
+                .Replace("\u200B", string.Empty, StringComparison.Ordinal)
+                .Replace("\u200C", string.Empty, StringComparison.Ordinal)
+                .Replace("\u200D", string.Empty, StringComparison.Ordinal)
+                .Replace("\uFEFF", string.Empty, StringComparison.Ordinal);
+
+            Span<char> buffer = stackalloc char[t.Length];
+            var written = 0;
+            foreach (var ch in t)
+            {
+                buffer[written++] = ch switch
+                {
+                    '\u2010' or '\u2011' or '\u2012' or '\u2013' or '\u2014' or '\u2015' or '\u2212' or '\uFE58' or '\uFE63' or '\uFF0D' => '-',
+                    _ => ch
+                };
+            }
+
+            return new string(buffer[..written]);
         }
 
         private static string ComputeSha256Hex(string value)

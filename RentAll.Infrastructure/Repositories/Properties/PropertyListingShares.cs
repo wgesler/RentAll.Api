@@ -11,27 +11,19 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<PropertyListingShare> UpsertPropertyListingShareByPropertyIdAsync(PropertyListingShare share, Guid createdBy)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            try
+            var res = await db.DapperProcQueryAsync<PropertyListingShareEntity>("Property.PropertyListingShare_UpsertByPropertyId", new
             {
-                var res = await db.DapperProcQueryAsync<PropertyListingShareEntity>("Property.PropertyListingShare_UpsertByPropertyId", new
-                {
-                    PropertyId = share.PropertyId,
-                    ShareId = share.ShareId,
-                    TokenHash = share.TokenHash,
-                    ExpiresOn = share.ExpiresOn,
-                    CreatedBy = createdBy
-                });
+                PropertyId = share.PropertyId,
+                ShareId = share.ShareId,
+                TokenHash = share.TokenHash,
+                ExpiresOn = share.ExpiresOn,
+                CreatedBy = createdBy
+            });
 
-                if (res == null || !res.Any())
-                    throw new Exception("Property listing share not created");
+            if (res == null || !res.Any())
+                throw new InvalidOperationException("Property listing share was not created.");
 
-                return ConvertEntityToModel(res.First());
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-            return new PropertyListingShare();
+            return ConvertEntityToModel(res.First());
         }
 
         public async Task<PropertyListingShare?> GetPropertyListingShareByTokenHashAsync(string tokenHash)

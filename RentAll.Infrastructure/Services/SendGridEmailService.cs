@@ -54,6 +54,9 @@ public class SendGridEmailService : IEmailService
             false);
         mail.SetReplyTo(new SendGridEmailAddress(fromEmail, fromName));
 
+        if (!_settings.EnableSendGridClickTracking)
+            mail.SetClickTracking(false, false);
+
         foreach (var recipient in message.CcRecipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient.Email)))
         {
             mail.AddCc(new SendGridEmailAddress(recipient.Email, recipient.Name));
