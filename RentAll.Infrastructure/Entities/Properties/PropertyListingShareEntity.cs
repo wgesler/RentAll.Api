@@ -7,5 +7,4 @@ public class PropertyListingShareEntity
     public Guid OrganizationId { get; set; }
     public string TokenHash { get; set; } = string.Empty;
     public DateTimeOffset ExpiresOn { get; set; }
-    public bool IsActive { get; set; }
 }

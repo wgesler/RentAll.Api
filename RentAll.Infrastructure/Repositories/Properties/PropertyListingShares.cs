@@ -1,14 +1,13 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
     public partial class PropertyRepository
     {
         #region Property Listing Share
-        public async Task<PropertyListingShare> UpsertPropertyListingShareByPropertyIdAsync(PropertyListingShare share, Guid createdBy)
+        public async Task<PropertyListingShare> UpsertPropertyListingShareByPropertyIdAsync(PropertyListingShare share)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<PropertyListingShareEntity>("Property.PropertyListingShare_UpsertByPropertyId", new
@@ -16,8 +15,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyId = share.PropertyId,
                 ShareId = share.ShareId,
                 TokenHash = share.TokenHash,
-                ExpiresOn = share.ExpiresOn,
-                CreatedBy = createdBy
+                ExpiresOn = share.ExpiresOn
             });
 
             if (res == null || !res.Any())
@@ -41,13 +39,21 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return ConvertEntityToModel(res.First());
         }
 
-        public async Task RevokePropertyListingShareByPropertyIdAsync(Guid propertyId, Guid modifiedBy)
+        public async Task RevokePropertyListingShareByPropertyIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.PropertyListingShare_RevokeByPropertyId", new
             {
-                PropertyId = propertyId,
-                ModifiedBy = modifiedBy
+                PropertyId = propertyId
+            });
+        }
+
+        public async Task DeleteExpiredPropertyListingSharesAsync()
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Property.PropertyListingShare_DeleteExpired", new
+            {
+                NowUtc = DateTimeOffset.UtcNow
             });
         }
         #endregion

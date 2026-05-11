@@ -273,8 +273,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             PropertyId = e.PropertyId,
             OrganizationId = e.OrganizationId,
             TokenHash = e.TokenHash,
-            ExpiresOn = e.ExpiresOn,
-            IsActive = e.IsActive
+            ExpiresOn = e.ExpiresOn
         };
 
         private PropertyHtml ConvertEntityToModel(PropertyHtmlEntity e)

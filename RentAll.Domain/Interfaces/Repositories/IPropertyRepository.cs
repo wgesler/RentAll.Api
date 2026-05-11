@@ -54,9 +54,10 @@ public interface IPropertyRepository
     #endregion
 
     #region Property Listing Share
-    Task<PropertyListingShare> UpsertPropertyListingShareByPropertyIdAsync(PropertyListingShare share, Guid createdBy);
+    Task<PropertyListingShare> UpsertPropertyListingShareByPropertyIdAsync(PropertyListingShare share);
     Task<PropertyListingShare?> GetPropertyListingShareByTokenHashAsync(string tokenHash);
-    Task RevokePropertyListingShareByPropertyIdAsync(Guid propertyId, Guid modifiedBy);
+    Task RevokePropertyListingShareByPropertyIdAsync(Guid propertyId);
+    Task DeleteExpiredPropertyListingSharesAsync();
     #endregion
 
     #region Tracker Responses

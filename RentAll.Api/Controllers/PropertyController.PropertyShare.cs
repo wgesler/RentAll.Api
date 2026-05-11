@@ -30,11 +30,10 @@ namespace RentAll.Api.Controllers
                     PropertyId = propertyId,
                     OrganizationId = CurrentOrganizationId,
                     TokenHash = tokenHash,
-                    ExpiresOn = DateTimeOffset.UtcNow.AddDays(30),
-                    IsActive = true
+                    ExpiresOn = DateTimeOffset.UtcNow.AddDays(30)
                 };
 
-                var created = await _propertyRepository.UpsertPropertyListingShareByPropertyIdAsync(share, CurrentUser);
+                var created = await _propertyRepository.UpsertPropertyListingShareByPropertyIdAsync(share);
 
                 return Ok(new PropertyListingShareResponseDto
                 {
@@ -67,7 +66,7 @@ namespace RentAll.Api.Controllers
                 if (property == null)
                     return NotFound("Property not found");
 
-                await _propertyRepository.RevokePropertyListingShareByPropertyIdAsync(propertyId, CurrentUser);
+                await _propertyRepository.RevokePropertyListingShareByPropertyIdAsync(propertyId);
                 return NoContent();
             }
             catch (Exception ex)

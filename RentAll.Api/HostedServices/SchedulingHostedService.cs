@@ -5,14 +5,14 @@ using RentAll.Domain.Scheduling;
 
 namespace RentAll.Api.HostedServices;
 
-public class AlertSchedulingHostedService : BackgroundService
+public class SchedulingHostedService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<AlertSchedulingHostedService> _logger;
+    private readonly ILogger<SchedulingHostedService> _logger;
 
-    public AlertSchedulingHostedService(
+    public SchedulingHostedService(
         IServiceScopeFactory scopeFactory,
-        ILogger<AlertSchedulingHostedService> logger)
+        ILogger<SchedulingHostedService> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -34,7 +34,7 @@ public class AlertSchedulingHostedService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Alert scheduling cycle failed");
+                _logger.LogError(ex, "Scheduling hosted service cycle failed");
             }
 
             try
@@ -51,11 +51,29 @@ public class AlertSchedulingHostedService : BackgroundService
     private async Task RunCycleAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
+        var propertyRepository = scope.ServiceProvider.GetRequiredService<IPropertyRepository>();
         var organizationRepository = scope.ServiceProvider.GetRequiredService<IOrganizationRepository>();
         var emailRepository = scope.ServiceProvider.GetRequiredService<IEmailRepository>();
         var reservationRepository = scope.ServiceProvider.GetRequiredService<IReservationRepository>();
         var emailManager = scope.ServiceProvider.GetRequiredService<IEmailManager>();
 
+        await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
+        await ProcessScheduledAlertsAsync(
+            organizationRepository,
+            emailRepository,
+            reservationRepository,
+            emailManager,
+            cancellationToken);
+    }
+
+    #region Alerts
+    private async Task ProcessScheduledAlertsAsync(
+        IOrganizationRepository organizationRepository,
+        IEmailRepository emailRepository,
+        IReservationRepository reservationRepository,
+        IEmailManager emailManager,
+        CancellationToken cancellationToken)
+    {
         var utcNow = DateTimeOffset.UtcNow;
         var alerts = await LoadAllAlertsAsync(organizationRepository, emailRepository, cancellationToken);
 
@@ -199,4 +217,20 @@ public class AlertSchedulingHostedService : BackgroundService
                 alert.ReservationId.Value);
         }
     }
+    #endregion
+
+    #region Retire Links
+    private async Task ProcessRetireExpiredListingLinksAsync(IPropertyRepository propertyRepository, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            await propertyRepository.DeleteExpiredPropertyListingSharesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Property listing share delete-expired job failed");
+        }
+    }
+    #endregion
 }

@@ -182,7 +182,7 @@ builder.Services.AddScoped<IAccountingRepository, AccountingRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 
-builder.Services.AddHostedService<AlertSchedulingHostedService>();
+builder.Services.AddHostedService<SchedulingHostedService>();
 
 // Configure Swagger/OpenAPI with JWT support
 builder.Services.AddSwaggerGen(c =>
