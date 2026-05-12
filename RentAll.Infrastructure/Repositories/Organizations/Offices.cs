@@ -135,6 +135,9 @@ public partial class OrganizationRepository
             PetFeeCcId = office.PetFeeCcId,
             SecurityDepositCcId = office.SecurityDepositCcId,
             SecurityDepositWaiverCcId = office.SecurityDepositWaiverCcId,
+            QuotePreface = office.QuotePreface,
+            QuoteSuffix = office.QuoteSuffix,
+            QuoteDisclaimer = office.QuoteDisclaimer,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
@@ -205,6 +208,9 @@ public partial class OrganizationRepository
             PetFeeCcId = office.PetFeeCcId,
             SecurityDepositCcId = office.SecurityDepositCcId,
             SecurityDepositWaiverCcId = office.SecurityDepositWaiverCcId,
+            QuotePreface = office.QuotePreface,
+            QuoteSuffix = office.QuoteSuffix,
+            QuoteDisclaimer = office.QuoteDisclaimer,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive

@@ -1,0 +1,34 @@
+---
+description: Prove DB/API/UI wire with logs and network before UI edits; no normalization-first.
+alwaysApply: true
+---
+
+# Data pipeline and “wrong value” debugging
+
+## Default order (do not skip)
+
+When a scalar from the database (IDs, enums, rates, flags) appears wrong in the API or UI:
+
+1. **Prove the server has the same shape as the repo** — stored procedures, views, and column lists actually **deployed** on the database the app’s connection string uses. Undeployed procs/views are the first suspect when Dapper or the client sees **defaults** (`0`, `false`, empty).
+2. **Prove the API returns the value** — breakpoint or log on the **entity/model immediately after** the DB read (e.g. right after Dapper), then on the **response DTO** before JSON. If it is already wrong there, **do not** fix it in TypeScript with coercion first.
+3. **Prove the HTTP payload** — browser network tab or raw JSON for the same call the UI uses.
+4. Only then change **mapping or UI** — and keep that change **minimal** and tied to a proven gap.
+
+## UI: proof before changes or assumptions
+
+- Before changing templates, pipes, labels, display mappers, or “Angular must be wrong” guesses: add **runtime proof** first — e.g. **targeted `console.log`** at the boundary where the UI receives data (`subscribe` / `next`, mapping output, `ngOnChanges` inputs), plus **Network** tab response body for the same request. Prefer proof over assumptions about casing, typing, or change detection.
+- Scope logs to **one reproduction** (specific reservation id, property code, or route) so output stays readable; avoid broad logging across every row unless the user explicitly wants a trace.
+- Do **not** treat layout, theme, or form structure as the fix until **field values at that boundary** are shown to be wrong; if the logged object matches the API, debug **binding path** next, not unrelated UI.
+
+## Do not do by default
+
+- Do **not** add **`Number()`**, **`parseInt`**, string-to-enum coercion, or “normalize everything” helpers as the **first** response to “UI shows 0 / wrong enum.”
+- Do **not** assume the problem is strict equality, JSON casing, or Angular typing until **steps 1–3** have ruled out **missing columns / old procs / wrong DB**.
+
+## When normalization is appropriate
+
+Coercion or normalization is appropriate only **after** you have shown the value is **present and correct** on the wire but **lost or misread** in one specific layer (with a cited line or payload field). Prefer fixing the **source** (SQL, DTO, contract) over duplicating fixes in multiple mappers.
+
+## Cross-repo note
+
+For RentAll, list and detail often come from **different SQL paths**. A column can exist on **`Reservation_GetById`** but be missing on a **list** proc until deployed — compare both and deploy **sqlproj** / migrations before chasing UI bugs.

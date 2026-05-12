@@ -108,6 +108,9 @@ public partial class OrganizationRepository : IOrganizationRepository
             PetFeeCcId = e.PetFeeCcId,
             SecurityDepositCcId = e.SecurityDepositCcId,
             SecurityDepositWaiverCcId = e.SecurityDepositWaiverCcId,
+            QuotePreface = e.QuotePreface,
+            QuoteSuffix = e.QuoteSuffix,
+            QuoteDisclaimer = e.QuoteDisclaimer,
             EmailListForReservations = e.EmailListForReservations,
             IsInternational = e.IsInternational,
             IsActive = e.IsActive

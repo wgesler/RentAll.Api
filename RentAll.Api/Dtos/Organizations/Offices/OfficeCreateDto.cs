@@ -54,6 +54,9 @@ public class OfficeCreateDto
     public int? PetFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
+    public string? QuotePreface { get; set; }
+    public string? QuoteSuffix { get; set; }
+    public string? QuoteDisclaimer { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -182,6 +185,9 @@ public class OfficeCreateDto
             PetFeeCcId = PetFeeCcId,
             SecurityDepositCcId = SecurityDepositCcId,
             SecurityDepositWaiverCcId = SecurityDepositWaiverCcId,
+            QuotePreface = QuotePreface,
+            QuoteSuffix = QuoteSuffix,
+            QuoteDisclaimer = QuoteDisclaimer,
             EmailListForReservations = EmailListForReservations,
             IsInternational = IsInternational,
             IsActive = IsActive

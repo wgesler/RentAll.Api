@@ -56,6 +56,9 @@ public class OfficeResponseDto
     public int? PetFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
+    public string? QuotePreface { get; set; }
+    public string? QuoteSuffix { get; set; }
+    public string? QuoteDisclaimer { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -115,6 +118,9 @@ public class OfficeResponseDto
         PetFeeCcId = office.PetFeeCcId;
         SecurityDepositCcId = office.SecurityDepositCcId;
         SecurityDepositWaiverCcId = office.SecurityDepositWaiverCcId;
+        QuotePreface = office.QuotePreface;
+        QuoteSuffix = office.QuoteSuffix;
+        QuoteDisclaimer = office.QuoteDisclaimer;
         EmailListForReservations = office.EmailListForReservations;
         FileDetails = office.FileDetails;
         IsInternational = office.IsInternational;
