@@ -111,6 +111,10 @@ public partial class OrganizationRepository : IOrganizationRepository
             QuotePreface = e.QuotePreface,
             QuoteSuffix = e.QuoteSuffix,
             QuoteDisclaimer = e.QuoteDisclaimer,
+            QuotePropertyCode = e.QuotePropertyCode,
+            QuotePetFee = e.QuotePetFee,
+            QuoteDepartureFee = e.QuoteDepartureFee,
+            QuoteMaidFee = e.QuoteMaidFee,
             EmailListForReservations = e.EmailListForReservations,
             IsInternational = e.IsInternational,
             IsActive = e.IsActive

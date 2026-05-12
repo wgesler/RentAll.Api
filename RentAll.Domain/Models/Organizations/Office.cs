@@ -59,6 +59,10 @@ public class Office
     public string? QuotePreface { get; set; }
     public string? QuoteSuffix { get; set; }
     public string? QuoteDisclaimer { get; set; }
+    public bool QuotePropertyCode { get; set; }
+    public bool QuotePetFee { get; set; }
+    public bool QuoteDepartureFee { get; set; }
+    public bool QuoteMaidFee { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }

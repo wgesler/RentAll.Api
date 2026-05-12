@@ -138,6 +138,10 @@ public partial class OrganizationRepository
             QuotePreface = office.QuotePreface,
             QuoteSuffix = office.QuoteSuffix,
             QuoteDisclaimer = office.QuoteDisclaimer,
+            QuotePropertyCode = office.QuotePropertyCode,
+            QuotePetFee = office.QuotePetFee,
+            QuoteDepartureFee = office.QuoteDepartureFee,
+            QuoteMaidFee = office.QuoteMaidFee,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
@@ -211,6 +215,10 @@ public partial class OrganizationRepository
             QuotePreface = office.QuotePreface,
             QuoteSuffix = office.QuoteSuffix,
             QuoteDisclaimer = office.QuoteDisclaimer,
+            QuotePropertyCode = office.QuotePropertyCode,
+            QuotePetFee = office.QuotePetFee,
+            QuoteDepartureFee = office.QuoteDepartureFee,
+            QuoteMaidFee = office.QuoteMaidFee,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
