@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using RentAll.Api.Dtos.Tickets.Tickets;
 using RentAll.Domain.Configuration;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers;
 

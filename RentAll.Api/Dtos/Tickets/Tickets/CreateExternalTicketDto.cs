@@ -1,5 +1,4 @@
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
+using System.Net;
 
 namespace RentAll.Api.Dtos.Tickets.Tickets;
 
@@ -58,6 +57,7 @@ public class CreateExternalTicketDto
 
     public Ticket ToModel(string code, Guid createdBy)
     {
+        var fullName = string.Join(" ", new[] { FirstName?.Trim(), LastName?.Trim() }.Where(s => !string.IsNullOrWhiteSpace(s)));
         return new Ticket
         {
             OrganizationId = OrganizationId,
@@ -68,7 +68,7 @@ public class CreateExternalTicketDto
             AssigneeId = null,
             AgentId = null,
             TicketCode = code,
-            Title = "Maintenance Request",
+            Title = $"Maintenance Request: From {fullName}",
             Description = BuildDigestDescription(),
             TicketStateType = TicketStateType.Created,
             NeedPermissionToEnter = true,
@@ -85,20 +85,34 @@ public class CreateExternalTicketDto
 
     private string BuildDigestDescription()
     {
-        var lines = new List<string>();
         var fullName = string.Join(" ", new[] { FirstName?.Trim(), LastName?.Trim() }.Where(s => !string.IsNullOrWhiteSpace(s)));
-        AddLine(lines, "Name", fullName);
-        AddLine(lines, "Location", Location);
-        AddLine(lines, "Email", Email);
-        AddLine(lines, "Phone/Mobile", PhoneMobile);
-        AddLine(lines, "Address", Address);
-        AddLine(lines, "Permission To Enter", ToYesNo(HasPermissionToEnter));
-        AddLine(lines, "Communication Consent", ToYesNo(CommunicationConsent));
-        AddLine(lines, "SMS Consent", ToYesNo(SmsConsent));
 
-        AddBlock(lines, "Issue Description", IssueDescription);
+        var issueLines = new List<string>();
+        AddBlock(issueLines, "Issue Description", IssueDescription);
+        var issueHtml = string.Join("<br />", issueLines);
 
-        return string.Join(Environment.NewLine, lines);
+        var metaLines = new List<string>();
+        AddLine(metaLines, "Name", fullName);
+        AddLine(metaLines, "Location", Location);
+        AddLine(metaLines, "Email", Email);
+        AddLine(metaLines, "Phone/Mobile", PhoneMobile);
+        AddLine(metaLines, "Address", Address);
+        AddLine(metaLines, "Permission To Enter", ToYesNo(HasPermissionToEnter));
+        AddLine(metaLines, "Communication Consent", ToYesNo(CommunicationConsent));
+        AddLine(metaLines, "SMS Consent", ToYesNo(SmsConsent));
+
+        var metaHtml = string.Join("<br />", metaLines);
+        if (string.IsNullOrWhiteSpace(issueHtml))
+        {
+            return metaHtml;
+        }
+
+        if (string.IsNullOrWhiteSpace(metaHtml))
+        {
+            return issueHtml;
+        }
+
+        return $"{issueHtml}<br /><br />{metaHtml}";
     }
 
     private static void AddLine(List<string> lines, string label, string? value)
@@ -106,7 +120,7 @@ public class CreateExternalTicketDto
         if (string.IsNullOrWhiteSpace(value))
             return;
 
-        lines.Add($"**{label}:** {value.Trim()}");
+        lines.Add($"<strong>{WebUtility.HtmlEncode(label)}:</strong> {WebUtility.HtmlEncode(value.Trim())}");
     }
 
     private static void AddBlock(List<string> lines, string label, string? value)
@@ -114,8 +128,9 @@ public class CreateExternalTicketDto
         if (string.IsNullOrWhiteSpace(value))
             return;
 
-        lines.Add($"**{label}:**");
-        lines.Add(value.Trim());
+        lines.Add($"<strong>{WebUtility.HtmlEncode(label)}:</strong>");
+        var encoded = WebUtility.HtmlEncode(value.Trim());
+        lines.Add(encoded.Replace("\r\n", "\n").Replace("\n", "<br />"));
     }
 
     private static string? ToYesNo(bool? value)
