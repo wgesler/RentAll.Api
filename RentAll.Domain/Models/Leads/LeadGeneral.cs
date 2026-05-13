@@ -10,7 +10,6 @@ public class LeadGeneral
     public LeadStateType LeadState { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
-    public string? Location { get; set; }
     public string? Email { get; set; }
     public string? PhoneMobile { get; set; }
     public string? Message { get; set; }

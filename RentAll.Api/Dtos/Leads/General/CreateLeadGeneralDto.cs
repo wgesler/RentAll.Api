@@ -9,7 +9,6 @@ public class CreateLeadGeneralDto
     public int OfficeId { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
-    public string? Location { get; set; }
     public string? Email { get; set; }
     public string? PhoneMobile { get; set; }
     public string? Message { get; set; }
@@ -28,9 +27,6 @@ public class CreateLeadGeneralDto
 
         if (string.IsNullOrWhiteSpace(LastName))
             return (false, "LastName is required");
-
-        if (string.IsNullOrWhiteSpace(Location))
-            return (false, "Location is required");
 
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
@@ -62,7 +58,6 @@ public class CreateLeadGeneralDto
             LeadState = (LeadStateType)LeadStateId,
             FirstName = FirstName?.Trim(),
             LastName = LastName?.Trim(),
-            Location = Location?.Trim(),
             Email = Email?.Trim(),
             PhoneMobile = PhoneMobile?.Trim(),
             Message = Message?.Trim(),

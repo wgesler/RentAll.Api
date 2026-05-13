@@ -101,7 +101,6 @@ public partial class LeadRepository : ILeadRepository
             LeadState = (LeadStateType)e.LeadStateId,
             FirstName = e.FirstName,
             LastName = e.LastName,
-            Location = e.Location,
             Email = e.Email,
             PhoneMobile = e.PhoneMobile,
             Message = e.Message,
