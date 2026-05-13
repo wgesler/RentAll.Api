@@ -11,10 +11,8 @@ public partial class LeadController
     {
         try
         {
-            var orgAgentIds = await GetAgentIdsForCurrentOrganizationAsync();
-            var all = await _leadRepository.GetOwnersAsync();
-            var filtered = all.Where(o => !o.AgentId.HasValue || orgAgentIds.Contains(o.AgentId.Value));
-            return Ok(filtered.Select(o => new LeadOwnerResponseDto(o)));
+            var all = await _leadRepository.GetOwnersByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            return Ok(all.Select(o => new LeadOwnerResponseDto(o)));
         }
         catch (Exception ex)
         {
@@ -35,7 +33,10 @@ public partial class LeadController
             if (owner == null)
                 return NotFound("Owner lead not found");
 
-            if (!await CanViewOwnerLeadAsync(owner))
+            if (owner.OrganizationId != CurrentOrganizationId)
+                return NotFound("Owner lead not found");
+
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == owner.OfficeId))
                 return NotFound("Owner lead not found");
 
             return Ok(new LeadOwnerResponseDto(owner));
@@ -57,16 +58,16 @@ public partial class LeadController
         if (dto == null)
             return BadRequest("Owner lead data is required");
 
-        var (isValid, errorMessage) = dto.IsValid();
+        var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!await CanAssignAgentAsync(dto.AgentId))
+        if (dto.AgentId.HasValue && await _organizationRepository.GetAgentByIdAsync(dto.AgentId.Value, CurrentOrganizationId) == null)
             return BadRequest("AgentId is not valid for the current organization.");
 
         try
         {
-            var created = await _leadRepository.CreateOwnerAsync(dto.ToModel());
+            var created = await _leadRepository.CreateOwnerAsync(dto.ToModel(CurrentOrganizationId));
             return Ok(new LeadOwnerResponseDto(created));
         }
         catch (Exception ex)
@@ -86,11 +87,11 @@ public partial class LeadController
         if (dto == null)
             return BadRequest("Owner lead data is required");
 
-        var (isValid, errorMessage) = dto.IsValid();
+        var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!await CanAssignAgentAsync(dto.AgentId))
+        if (dto.AgentId.HasValue && await _organizationRepository.GetAgentByIdAsync(dto.AgentId.Value, CurrentOrganizationId) == null)
             return BadRequest("AgentId is not valid for the current organization.");
 
         try
@@ -99,11 +100,16 @@ public partial class LeadController
             if (existing == null)
                 return NotFound("Owner lead not found");
 
-            if (!await CanViewOwnerLeadAsync(existing))
+            if (existing.OrganizationId != CurrentOrganizationId)
                 return NotFound("Owner lead not found");
 
-            var updated = await _leadRepository.UpdateOwnerByIdAsync(dto.ToModel());
-            return Ok(new LeadOwnerResponseDto(updated));
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
+                return NotFound("Owner lead not found");
+
+            var updated = dto.ToModel();
+            updated.OrganizationId = existing.OrganizationId;
+            var updatedResult = await _leadRepository.UpdateOwnerByIdAsync(updated, existing.OrganizationId, existing.OfficeId);
+            return Ok(new LeadOwnerResponseDto(updatedResult));
         }
         catch (Exception ex)
         {
@@ -128,7 +134,10 @@ public partial class LeadController
             if (existing == null)
                 return NotFound("Owner lead not found");
 
-            if (!await CanViewOwnerLeadAsync(existing))
+            if (existing.OrganizationId != CurrentOrganizationId)
+                return NotFound("Owner lead not found");
+
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
                 return NotFound("Owner lead not found");
 
             await _leadRepository.DeleteOwnerByIdAsync(ownerId);

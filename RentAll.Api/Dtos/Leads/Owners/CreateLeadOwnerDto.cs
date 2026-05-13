@@ -5,7 +5,9 @@ namespace RentAll.Api.Dtos.Leads.Owners;
 
 public class CreateLeadOwnerDto
 {
+    public Guid OrganizationId { get; set; }
     public int LeadStateId { get; set; }
+    public int OfficeId { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -36,8 +38,11 @@ public class CreateLeadOwnerDto
     public bool SmsConsent { get; set; }
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid(string? currentOffices)
     {
+        if (currentOffices == null && OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
         if (!Enum.IsDefined(typeof(LeadStateType), LeadStateId))
             return (false, $"Invalid LeadStateId value: {LeadStateId}");
 
@@ -50,12 +55,21 @@ public class CreateLeadOwnerDto
         if (YearsOfExperienceWithRentals.HasValue && YearsOfExperienceWithRentals.Value < 0)
             return (false, "YearsOfExperienceWithRentals cannot be negative.");
 
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required.");
+
+        if (!string.IsNullOrWhiteSpace(currentOffices)
+            && !currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
+            return (false, "Unauthorized");
+
         return (true, null);
     }
 
-    public LeadOwner ToModel() =>
+    public LeadOwner ToModel(Guid organizationId) =>
         new()
         {
+            OrganizationId = organizationId,
+            OfficeId = OfficeId,
             LeadState = (LeadStateType)LeadStateId,
             AgentId = AgentId,
             FirstName = FirstName,

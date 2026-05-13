@@ -10,10 +10,14 @@ public partial class LeadRepository : ILeadRepository
 {
     #region Selects
 
-    public async Task<IEnumerable<LeadRental>> GetRentalsAsync()
+    public async Task<IEnumerable<LeadRental>> GetRentalsByOfficeIdsAsync(Guid organizationId, string officeIds)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RentalEntity>("dLeads.Rental_GetAll", new { });
+        var res = await db.DapperProcQueryAsync<RentalEntity>("Lead.Rental_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeIds
+        });
 
         if (res == null || !res.Any())
             return Enumerable.Empty<LeadRental>();
@@ -24,7 +28,7 @@ public partial class LeadRepository : ILeadRepository
     public async Task<LeadRental?> GetRentalByIdAsync(int rentalId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RentalEntity>("dLeads.Rental_GetById", new { RentalId = rentalId });
+        var res = await db.DapperProcQueryAsync<RentalEntity>("Lead.Rental_GetById", new { RentalId = rentalId });
 
         if (res == null || !res.Any())
             return null;
@@ -39,8 +43,10 @@ public partial class LeadRepository : ILeadRepository
     public async Task<LeadRental> CreateRentalAsync(LeadRental rental)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RentalEntity>("dLeads.Rental_Add", new
+        var res = await db.DapperProcQueryAsync<RentalEntity>("Lead.Rental_Add", new
         {
+            OrganizationId = rental.OrganizationId,
+            OfficeId = rental.OfficeId,
             LeadStateId = (int)rental.LeadState,
             AgentId = rental.AgentId,
             FirstName = rental.FirstName,
@@ -77,12 +83,16 @@ public partial class LeadRepository : ILeadRepository
 
     #region Updates
 
-    public async Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental)
+    public async Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental, Guid rowOrganizationId, int rowOfficeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<RentalEntity>("dLeads.Rental_UpdateById", new
+        var res = await db.DapperProcQueryAsync<RentalEntity>("Lead.Rental_UpdateById", new
         {
             RentalId = rental.RentalId,
+            RowOrganizationId = rowOrganizationId,
+            RowOfficeId = rowOfficeId,
+            OrganizationId = rental.OrganizationId,
+            OfficeId = rental.OfficeId,
             LeadStateId = (int)rental.LeadState,
             AgentId = rental.AgentId,
             FirstName = rental.FirstName,
@@ -122,7 +132,7 @@ public partial class LeadRepository : ILeadRepository
     public async Task DeleteRentalByIdAsync(int rentalId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("dLeads.Rental_DeleteById", new { RentalId = rentalId });
+        await db.DapperProcExecuteAsync("Lead.Rental_DeleteById", new { RentalId = rentalId });
     }
 
     #endregion

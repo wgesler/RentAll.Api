@@ -5,18 +5,26 @@ namespace RentAll.Domain.Interfaces.Repositories;
 public interface ILeadRepository
 {
     #region Rental leads
-    Task<IEnumerable<LeadRental>> GetRentalsAsync();
+    Task<IEnumerable<LeadRental>> GetRentalsByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<LeadRental?> GetRentalByIdAsync(int rentalId);
     Task<LeadRental> CreateRentalAsync(LeadRental rental);
-    Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental);
+    Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental, Guid rowOrganizationId, int rowOfficeId);
     Task DeleteRentalByIdAsync(int rentalId);
     #endregion
 
     #region Owner leads
-    Task<IEnumerable<LeadOwner>> GetOwnersAsync();
+    Task<IEnumerable<LeadOwner>> GetOwnersByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<LeadOwner?> GetOwnerByIdAsync(int ownerId);
     Task<LeadOwner> CreateOwnerAsync(LeadOwner owner);
-    Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner);
+    Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner, Guid rowOrganizationId, int rowOfficeId);
     Task DeleteOwnerByIdAsync(int ownerId);
+    #endregion
+
+    #region General leads
+    Task<IEnumerable<LeadGeneral>> GetGeneralsByOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task<LeadGeneral?> GetGeneralByIdAsync(int generalId);
+    Task<LeadGeneral> CreateGeneralAsync(LeadGeneral lead);
+    Task<LeadGeneral> UpdateGeneralByIdAsync(LeadGeneral lead, Guid rowOrganizationId, int rowOfficeId);
+    Task DeleteGeneralByIdAsync(int generalId);
     #endregion
 }

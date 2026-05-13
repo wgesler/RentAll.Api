@@ -10,10 +10,14 @@ public partial class LeadRepository : ILeadRepository
 {
     #region Selects
 
-    public async Task<IEnumerable<LeadOwner>> GetOwnersAsync()
+    public async Task<IEnumerable<LeadOwner>> GetOwnersByOfficeIdsAsync(Guid organizationId, string officeIds)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OwnerEntity>("dLeads.Owner_GetAll", new { });
+        var res = await db.DapperProcQueryAsync<OwnerEntity>("Lead.Owner_GetAllByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeIds
+        });
 
         if (res == null || !res.Any())
             return Enumerable.Empty<LeadOwner>();
@@ -24,7 +28,7 @@ public partial class LeadRepository : ILeadRepository
     public async Task<LeadOwner?> GetOwnerByIdAsync(int ownerId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OwnerEntity>("dLeads.Owner_GetById", new { OwnerId = ownerId });
+        var res = await db.DapperProcQueryAsync<OwnerEntity>("Lead.Owner_GetById", new { OwnerId = ownerId });
 
         if (res == null || !res.Any())
             return null;
@@ -39,8 +43,10 @@ public partial class LeadRepository : ILeadRepository
     public async Task<LeadOwner> CreateOwnerAsync(LeadOwner owner)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OwnerEntity>("dLeads.Owner_Add", new
+        var res = await db.DapperProcQueryAsync<OwnerEntity>("Lead.Owner_Add", new
         {
+            OrganizationId = owner.OrganizationId,
+            OfficeId = owner.OfficeId,
             LeadStateId = (int)owner.LeadState,
             AgentId = owner.AgentId,
             FirstName = owner.FirstName,
@@ -83,12 +89,16 @@ public partial class LeadRepository : ILeadRepository
 
     #region Updates
 
-    public async Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner)
+    public async Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner, Guid rowOrganizationId, int rowOfficeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<OwnerEntity>("dLeads.Owner_UpdateById", new
+        var res = await db.DapperProcQueryAsync<OwnerEntity>("Lead.Owner_UpdateById", new
         {
             OwnerId = owner.OwnerId,
+            RowOrganizationId = rowOrganizationId,
+            RowOfficeId = rowOfficeId,
+            OrganizationId = owner.OrganizationId,
+            OfficeId = owner.OfficeId,
             LeadStateId = (int)owner.LeadState,
             AgentId = owner.AgentId,
             FirstName = owner.FirstName,
@@ -134,7 +144,7 @@ public partial class LeadRepository : ILeadRepository
     public async Task DeleteOwnerByIdAsync(int ownerId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("dLeads.Owner_DeleteById", new { OwnerId = ownerId });
+        await db.DapperProcExecuteAsync("Lead.Owner_DeleteById", new { OwnerId = ownerId });
     }
 
     #endregion

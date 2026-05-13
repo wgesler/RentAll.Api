@@ -3,6 +3,8 @@ namespace RentAll.Infrastructure.Entities.Leads;
 public class RentalEntity
 {
     public int RentalId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public int OfficeId { get; set; }
     public int LeadStateId { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }

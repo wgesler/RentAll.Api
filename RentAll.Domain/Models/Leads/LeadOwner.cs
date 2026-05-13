@@ -5,6 +5,8 @@ namespace RentAll.Domain.Models.Leads;
 public class LeadOwner
 {
     public int OwnerId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public int OfficeId { get; set; }
     public LeadStateType LeadState { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }

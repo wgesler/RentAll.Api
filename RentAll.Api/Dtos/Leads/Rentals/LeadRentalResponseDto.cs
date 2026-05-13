@@ -5,6 +5,8 @@ namespace RentAll.Api.Dtos.Leads.Rentals;
 public class LeadRentalResponseDto
 {
     public int RentalId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public int OfficeId { get; set; }
     public int LeadStateId { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }
@@ -33,6 +35,8 @@ public class LeadRentalResponseDto
     public LeadRentalResponseDto(LeadRental rental)
     {
         RentalId = rental.RentalId;
+        OrganizationId = rental.OrganizationId;
+        OfficeId = rental.OfficeId;
         LeadStateId = (int)rental.LeadState;
         AgentId = rental.AgentId;
         FirstName = rental.FirstName;

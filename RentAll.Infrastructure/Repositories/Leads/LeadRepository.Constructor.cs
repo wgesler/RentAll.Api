@@ -26,6 +26,8 @@ public partial class LeadRepository : ILeadRepository
         new()
         {
             RentalId = e.RentalId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
             LeadState = (LeadStateType)e.LeadStateId,
             AgentId = e.AgentId,
             FirstName = e.FirstName,
@@ -56,6 +58,8 @@ public partial class LeadRepository : ILeadRepository
         new()
         {
             OwnerId = e.OwnerId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
             LeadState = (LeadStateType)e.LeadStateId,
             AgentId = e.AgentId,
             FirstName = e.FirstName,
@@ -85,6 +89,22 @@ public partial class LeadRepository : ILeadRepository
             TimeDateForContact = e.TimeDateForContact,
             EmailPhoneConsent = e.EmailPhoneConsent,
             SmsConsent = e.SmsConsent,
+            IsActive = e.IsActive
+        };
+
+    private static LeadGeneral ConvertGeneralEntityToModel(GeneralEntity e) =>
+        new()
+        {
+            GeneralId = e.GeneralId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            LeadState = (LeadStateType)e.LeadStateId,
+            FirstName = e.FirstName,
+            LastName = e.LastName,
+            Location = e.Location,
+            Email = e.Email,
+            PhoneMobile = e.PhoneMobile,
+            Message = e.Message,
             IsActive = e.IsActive
         };
 }

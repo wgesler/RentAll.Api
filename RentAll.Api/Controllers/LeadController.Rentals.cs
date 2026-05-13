@@ -11,10 +11,8 @@ public partial class LeadController
     {
         try
         {
-            var orgAgentIds = await GetAgentIdsForCurrentOrganizationAsync();
-            var all = await _leadRepository.GetRentalsAsync();
-            var filtered = all.Where(r => !r.AgentId.HasValue || orgAgentIds.Contains(r.AgentId.Value));
-            return Ok(filtered.Select(r => new LeadRentalResponseDto(r)));
+            var all = await _leadRepository.GetRentalsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            return Ok(all.Select(r => new LeadRentalResponseDto(r)));
         }
         catch (Exception ex)
         {
@@ -35,7 +33,10 @@ public partial class LeadController
             if (rental == null)
                 return NotFound("Rental lead not found");
 
-            if (!await CanViewRentalLeadAsync(rental))
+            if (rental.OrganizationId != CurrentOrganizationId)
+                return NotFound("Rental lead not found");
+
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == rental.OfficeId))
                 return NotFound("Rental lead not found");
 
             return Ok(new LeadRentalResponseDto(rental));
@@ -57,16 +58,16 @@ public partial class LeadController
         if (dto == null)
             return BadRequest("Rental lead data is required");
 
-        var (isValid, errorMessage) = dto.IsValid();
+        var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!await CanAssignAgentAsync(dto.AgentId))
+        if (dto.AgentId.HasValue && await _organizationRepository.GetAgentByIdAsync(dto.AgentId.Value, CurrentOrganizationId) == null)
             return BadRequest("AgentId is not valid for the current organization.");
 
         try
         {
-            var created = await _leadRepository.CreateRentalAsync(dto.ToModel());
+            var created = await _leadRepository.CreateRentalAsync(dto.ToModel(CurrentOrganizationId));
             return Ok(new LeadRentalResponseDto(created));
         }
         catch (Exception ex)
@@ -86,11 +87,11 @@ public partial class LeadController
         if (dto == null)
             return BadRequest("Rental lead data is required");
 
-        var (isValid, errorMessage) = dto.IsValid();
+        var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!await CanAssignAgentAsync(dto.AgentId))
+        if (dto.AgentId.HasValue && await _organizationRepository.GetAgentByIdAsync(dto.AgentId.Value, CurrentOrganizationId) == null)
             return BadRequest("AgentId is not valid for the current organization.");
 
         try
@@ -99,11 +100,16 @@ public partial class LeadController
             if (existing == null)
                 return NotFound("Rental lead not found");
 
-            if (!await CanViewRentalLeadAsync(existing))
+            if (existing.OrganizationId != CurrentOrganizationId)
                 return NotFound("Rental lead not found");
 
-            var updated = await _leadRepository.UpdateRentalByIdAsync(dto.ToModel());
-            return Ok(new LeadRentalResponseDto(updated));
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
+                return NotFound("Rental lead not found");
+
+            var updated = dto.ToModel();
+            updated.OrganizationId = existing.OrganizationId;
+            var updatedResult = await _leadRepository.UpdateRentalByIdAsync(updated, existing.OrganizationId, existing.OfficeId);
+            return Ok(new LeadRentalResponseDto(updatedResult));
         }
         catch (Exception ex)
         {
@@ -128,7 +134,10 @@ public partial class LeadController
             if (existing == null)
                 return NotFound("Rental lead not found");
 
-            if (!await CanViewRentalLeadAsync(existing))
+            if (existing.OrganizationId != CurrentOrganizationId)
+                return NotFound("Rental lead not found");
+
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
                 return NotFound("Rental lead not found");
 
             await _leadRepository.DeleteRentalByIdAsync(rentalId);

@@ -6,6 +6,7 @@ namespace RentAll.Api.Dtos.Leads.Rentals;
 public class UpdateLeadRentalDto
 {
     public int RentalId { get; set; }
+    public int OfficeId { get; set; }
     public int LeadStateId { get; set; }
     public Guid? AgentId { get; set; }
     public string? FirstName { get; set; }
@@ -31,7 +32,7 @@ public class UpdateLeadRentalDto
     public bool SmsConsent { get; set; }
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid(string? currentOffices)
     {
         if (RentalId <= 0)
             return (false, "RentalId is required.");
@@ -51,6 +52,13 @@ public class UpdateLeadRentalDto
         if (MinBedrooms.HasValue && MinBedrooms.Value < 0)
             return (false, "MinBedrooms cannot be negative.");
 
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required.");
+
+        if (!string.IsNullOrWhiteSpace(currentOffices)
+            && !currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
+            return (false, "Unauthorized");
+
         return (true, null);
     }
 
@@ -58,6 +66,7 @@ public class UpdateLeadRentalDto
         new()
         {
             RentalId = RentalId,
+            OfficeId = OfficeId,
             LeadState = (LeadStateType)LeadStateId,
             AgentId = AgentId,
             FirstName = FirstName,
