@@ -1,4 +1,3 @@
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Leads;
 
 namespace RentAll.Api.Dtos.Leads.Rentals;

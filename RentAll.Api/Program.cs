@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RentAll.Api.HostedServices;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Managers;
@@ -24,7 +25,6 @@ using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
 using RentAll.Infrastructure.Repositories.Tickets;
 using RentAll.Infrastructure.Repositories.Users;
-using RentAll.Api.HostedServices;
 using RentAll.Infrastructure.Services;
 using System.Text;
 

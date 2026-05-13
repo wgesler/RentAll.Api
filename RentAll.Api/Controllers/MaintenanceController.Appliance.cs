@@ -125,7 +125,7 @@ public partial class MaintenanceController
 
             var appliance = dto.ToModel();
             appliance.DecalPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId,
-                maintenance.OfficeName,dto.DecalFileDetails,ImageType.ApplianceDecal,existing.DecalPath,dto.DecalPath);
+                maintenance.OfficeName, dto.DecalFileDetails, ImageType.ApplianceDecal, existing.DecalPath, dto.DecalPath);
 
             var updated = await _maintenanceRepository.UpdateApplianceAsync(appliance);
             var response = new ApplianceResponseDto(updated);

@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using RentAll.Domain.Models.Common;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Dtos.Organizations.Brandings;
 

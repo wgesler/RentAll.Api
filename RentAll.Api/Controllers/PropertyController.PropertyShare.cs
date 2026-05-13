@@ -1,7 +1,7 @@
-using System.Security.Cryptography;
-using System.Text;
 using RentAll.Api.Dtos.Properties.PropertyShares;
 using RentAll.Domain.Models.Properties;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace RentAll.Api.Controllers
 {

@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
-using RentAll.Api.Dtos.Properties.Properties;
 
 namespace RentAll.Api.Dtos.Common;
 

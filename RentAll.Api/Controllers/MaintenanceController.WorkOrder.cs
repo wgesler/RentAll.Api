@@ -1,4 +1,3 @@
-using RentAll.Api.Dtos.Maintenances.Receipts;
 using RentAll.Api.Dtos.Maintenances.WorkOrders;
 
 namespace RentAll.Api.Controllers;

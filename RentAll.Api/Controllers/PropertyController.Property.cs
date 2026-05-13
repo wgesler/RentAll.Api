@@ -160,10 +160,10 @@ namespace RentAll.Api.Controllers
                 var fallbackBaseUrl = $"{Request.Scheme}://{Request.Host}";
 
                 var baseUrl = !string.IsNullOrWhiteSpace(configuredBaseUrl)
-                    ? configuredBaseUrl.Trim().TrimEnd('/'): fallbackBaseUrl;
+                    ? configuredBaseUrl.Trim().TrimEnd('/') : fallbackBaseUrl;
 
-                var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId,CurrentOrganizationId,baseUrl);
-                return Ok(new {configuredBaseUrl, fallbackBaseUrl, finalBaseUrl = baseUrl, subscriptionUrl });
+                var subscriptionUrl = _calendarManager.GeneratePropertyCalendarSubscriptionUrl(propertyId, CurrentOrganizationId, baseUrl);
+                return Ok(new { configuredBaseUrl, fallbackBaseUrl, finalBaseUrl = baseUrl, subscriptionUrl });
             }
             catch (Exception ex)
             {
