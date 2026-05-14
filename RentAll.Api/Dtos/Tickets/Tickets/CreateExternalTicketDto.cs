@@ -95,7 +95,7 @@ public class CreateExternalTicketDto
         AddLine(metaLines, "Name", fullName);
         AddLine(metaLines, "Location", Location);
         AddLine(metaLines, "Email", Email);
-        AddLine(metaLines, "Phone/Mobile", PhoneMobile);
+        AddLine(metaLines, "Phone", Phone);
         AddLine(metaLines, "Address", Address);
         AddLine(metaLines, "Permission To Enter", ToYesNo(HasPermissionToEnter));
         AddLine(metaLines, "Communication Consent", ToYesNo(CommunicationConsent));
