@@ -164,7 +164,7 @@ namespace RentAll.Api.Controllers
                 if (reservation == null)
                     return NotFound("Reservation not found");
 
-                var ledgerLines = await _accountingManager.CreateLedgerLinesForReservationIdAsync(reservation, dto.StartDate, dto.EndDate);
+                var ledgerLines = await _accountingManager.CreateLedgerLinesForReservationIdAsync(reservation, dto.InvoiceDate, dto.StartDate, dto.EndDate);
                 var data = new InvoiceMonthlyData { InvoiceCode = dto.InvoiceCode, ReservationId = dto.ReservationId, LedgerLines = ledgerLines };
                 var response = new InvoiceMonthlyDataResponseDto(data);
                 return Ok(response);

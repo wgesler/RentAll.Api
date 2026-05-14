@@ -185,7 +185,7 @@ public class AccountingManager : IAccountingManager
         return response;
     }
 
-    public async Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate)
+    public async Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly invoiceDate, DateOnly startDate, DateOnly endDate)
     {
         await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
 
@@ -197,7 +197,7 @@ public class AccountingManager : IAccountingManager
 
         var ledgerLines = GetLedgerLinesByReservationIdAsync(reservation, startDate, endDate, codeAsInt);
         foreach (var ledgerLine in ledgerLines)
-            ledgerLine.LedgerLineDate = startDate;
+            ledgerLine.LedgerLineDate = invoiceDate;
 
         return ledgerLines;
     }
