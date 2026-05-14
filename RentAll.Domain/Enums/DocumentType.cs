@@ -9,7 +9,8 @@ public enum DocumentType
     Attachments = 4,
     Inspections = 5,
     WorkOrder = 6,
-    Agreements = 7
+    Agreements = 7,
+    Quote = 8
 }
 
 

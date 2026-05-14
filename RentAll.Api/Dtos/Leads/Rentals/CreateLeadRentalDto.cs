@@ -26,6 +26,7 @@ public class CreateLeadRentalDto
     public DateOnly? DecisionDate { get; set; }
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
+    public string? QuotePath { get; set; }
     public bool INeedAsap { get; set; }
     public bool EmailPhoneConsent { get; set; }
     public bool SmsConsent { get; set; }
@@ -101,6 +102,7 @@ public class CreateLeadRentalDto
             DecisionDate = DecisionDate,
             OrganizationName = OrganizationName,
             AdditionalInformation = AdditionalInformation,
+            QuotePath = QuotePath,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,

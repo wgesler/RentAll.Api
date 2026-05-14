@@ -48,6 +48,7 @@ public partial class LeadRepository : ILeadRepository
             DecisionDate = ToDateOnly(e.DecisionDate),
             OrganizationName = e.OrganizationName,
             AdditionalInformation = e.AdditionalInformation,
+            QuotePath = e.QuotePath,
             INeedAsap = e.INeedAsap,
             EmailPhoneConsent = e.EmailPhoneConsent,
             SmsConsent = e.SmsConsent,
