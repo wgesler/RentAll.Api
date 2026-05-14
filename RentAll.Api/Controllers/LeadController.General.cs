@@ -25,27 +25,13 @@ public partial class LeadController
     public async Task<IActionResult> GetGeneralLeadByIdAsync(int generalId)
     {
         if (generalId <= 0)
-        {
             return BadRequest("GeneralId is required");
-        }
 
         try
         {
             var lead = await _leadRepository.GetGeneralByIdAsync(generalId);
             if (lead == null)
-            {
                 return NotFound("General lead not found");
-            }
-
-            if (lead.OrganizationId != CurrentOrganizationId)
-            {
-                return NotFound("General lead not found");
-            }
-
-            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == lead.OfficeId))
-            {
-                return NotFound("General lead not found");
-            }
 
             return Ok(new LeadGeneralResponseDto(lead));
         }
@@ -64,15 +50,11 @@ public partial class LeadController
     public async Task<IActionResult> CreateGeneralLeadAsync([FromBody] CreateLeadGeneralDto dto)
     {
         if (dto == null)
-        {
             return BadRequest("General lead data is required");
-        }
 
         var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
         if (!isValid)
-        {
             return BadRequest(errorMessage ?? "Invalid request data");
-        }
 
         try
         {
@@ -94,36 +76,26 @@ public partial class LeadController
     public async Task<IActionResult> UpdateGeneralLeadAsync([FromBody] UpdateLeadGeneralDto dto)
     {
         if (dto == null)
-        {
             return BadRequest("General lead data is required");
-        }
 
         var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
         if (!isValid)
-        {
             return BadRequest(errorMessage ?? "Invalid request data");
-        }
 
         try
         {
             var existing = await _leadRepository.GetGeneralByIdAsync(dto.GeneralId);
             if (existing == null)
-            {
                 return NotFound("General lead not found");
-            }
 
             if (existing.OrganizationId != CurrentOrganizationId)
-            {
                 return NotFound("General lead not found");
-            }
 
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
-            {
                 return NotFound("General lead not found");
-            }
 
             var updated = dto.ToModel(existing.OrganizationId);
-            var updatedResult = await _leadRepository.UpdateGeneralByIdAsync(updated, existing.OrganizationId, existing.OfficeId);
+            var updatedResult = await _leadRepository.UpdateGeneralByIdAsync(updated);
             return Ok(new LeadGeneralResponseDto(updatedResult));
         }
         catch (Exception ex)
@@ -141,28 +113,10 @@ public partial class LeadController
     public async Task<IActionResult> DeleteGeneralLeadAsync(int generalId)
     {
         if (generalId <= 0)
-        {
             return BadRequest("GeneralId is required");
-        }
 
         try
         {
-            var existing = await _leadRepository.GetGeneralByIdAsync(generalId);
-            if (existing == null)
-            {
-                return NotFound("General lead not found");
-            }
-
-            if (existing.OrganizationId != CurrentOrganizationId)
-            {
-                return NotFound("General lead not found");
-            }
-
-            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
-            {
-                return NotFound("General lead not found");
-            }
-
             await _leadRepository.DeleteGeneralByIdAsync(generalId);
             return Ok();
         }

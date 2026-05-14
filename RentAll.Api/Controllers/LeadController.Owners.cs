@@ -108,7 +108,7 @@ public partial class LeadController
 
             var updated = dto.ToModel();
             updated.OrganizationId = existing.OrganizationId;
-            var updatedResult = await _leadRepository.UpdateOwnerByIdAsync(updated, existing.OrganizationId, existing.OfficeId);
+            var updatedResult = await _leadRepository.UpdateOwnerByIdAsync(updated);
             return Ok(new LeadOwnerResponseDto(updatedResult));
         }
         catch (Exception ex)

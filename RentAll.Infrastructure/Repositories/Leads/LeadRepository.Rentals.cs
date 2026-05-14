@@ -83,14 +83,12 @@ public partial class LeadRepository : ILeadRepository
 
     #region Updates
 
-    public async Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental, Guid rowOrganizationId, int rowOfficeId)
+    public async Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<RentalEntity>("Lead.Rental_UpdateById", new
         {
             RentalId = rental.RentalId,
-            RowOrganizationId = rowOrganizationId,
-            RowOfficeId = rowOfficeId,
             OrganizationId = rental.OrganizationId,
             OfficeId = rental.OfficeId,
             LeadStateId = (int)rental.LeadState,

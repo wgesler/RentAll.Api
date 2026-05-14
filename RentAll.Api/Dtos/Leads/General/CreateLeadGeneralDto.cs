@@ -7,11 +7,11 @@ public class CreateLeadGeneralDto
     public Guid OrganizationId { get; set; }
     public int LeadStateId { get; set; }
     public int OfficeId { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public string? PhoneMobile { get; set; }
-    public string? Message { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid(string? currentOffices)
@@ -34,8 +34,8 @@ public class CreateLeadGeneralDto
         if (!LeadDtoValidation.IsValidEmail(Email))
             return (false, "Email format is invalid.");
 
-        if (string.IsNullOrWhiteSpace(PhoneMobile))
-            return (false, "PhoneMobile is required");
+        if (string.IsNullOrWhiteSpace(Phone))
+            return (false, "Phone is required");
 
         if (string.IsNullOrWhiteSpace(Message))
             return (false, "Message is required");
@@ -59,7 +59,7 @@ public class CreateLeadGeneralDto
             FirstName = FirstName?.Trim(),
             LastName = LastName?.Trim(),
             Email = Email?.Trim(),
-            PhoneMobile = PhoneMobile?.Trim(),
+            PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
             IsActive = IsActive
         };

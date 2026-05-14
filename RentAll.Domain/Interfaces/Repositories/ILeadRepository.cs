@@ -8,7 +8,7 @@ public interface ILeadRepository
     Task<IEnumerable<LeadRental>> GetRentalsByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<LeadRental?> GetRentalByIdAsync(int rentalId);
     Task<LeadRental> CreateRentalAsync(LeadRental rental);
-    Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental, Guid rowOrganizationId, int rowOfficeId);
+    Task<LeadRental> UpdateRentalByIdAsync(LeadRental rental);
     Task DeleteRentalByIdAsync(int rentalId);
     #endregion
 
@@ -16,7 +16,7 @@ public interface ILeadRepository
     Task<IEnumerable<LeadOwner>> GetOwnersByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<LeadOwner?> GetOwnerByIdAsync(int ownerId);
     Task<LeadOwner> CreateOwnerAsync(LeadOwner owner);
-    Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner, Guid rowOrganizationId, int rowOfficeId);
+    Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner);
     Task DeleteOwnerByIdAsync(int ownerId);
     #endregion
 
@@ -24,7 +24,7 @@ public interface ILeadRepository
     Task<IEnumerable<LeadGeneral>> GetGeneralsByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<LeadGeneral?> GetGeneralByIdAsync(int generalId);
     Task<LeadGeneral> CreateGeneralAsync(LeadGeneral lead);
-    Task<LeadGeneral> UpdateGeneralByIdAsync(LeadGeneral lead, Guid rowOrganizationId, int rowOfficeId);
+    Task<LeadGeneral> UpdateGeneralByIdAsync(LeadGeneral lead);
     Task DeleteGeneralByIdAsync(int generalId);
     #endregion
 }

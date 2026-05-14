@@ -7,11 +7,11 @@ public class UpdateLeadGeneralDto
     public int GeneralId { get; set; }
     public int OfficeId { get; set; }
     public int LeadStateId { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public string? PhoneMobile { get; set; }
-    public string? Message { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(string? currentOffices)
@@ -22,8 +22,23 @@ public class UpdateLeadGeneralDto
         if (!Enum.IsDefined(typeof(LeadStateType), LeadStateId))
             return (false, $"Invalid LeadStateId value: {LeadStateId}");
 
+        if (string.IsNullOrWhiteSpace(FirstName))
+            return (false, "FirstName is required");
+
+        if (string.IsNullOrWhiteSpace(LastName))
+            return (false, "LastName is required");
+
+        if (string.IsNullOrWhiteSpace(Email))
+            return (false, "Email is required");
+
         if (!string.IsNullOrWhiteSpace(Email) && !LeadDtoValidation.IsValidEmail(Email))
             return (false, "Email format is invalid.");
+
+        if (string.IsNullOrWhiteSpace(Phone))
+            return (false, "Phone is required");
+
+        if (string.IsNullOrWhiteSpace(Message))
+            return (false, "Message is required");
 
         if (OfficeId <= 0)
             return (false, "OfficeId is required.");
@@ -45,7 +60,7 @@ public class UpdateLeadGeneralDto
             FirstName = FirstName?.Trim(),
             LastName = LastName?.Trim(),
             Email = Email?.Trim(),
-            PhoneMobile = PhoneMobile?.Trim(),
+            PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
             IsActive = IsActive
         };

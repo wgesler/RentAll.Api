@@ -8,10 +8,10 @@ public class CreateLeadRentalDto
     public int LeadStateId { get; set; }
     public int OfficeId { get; set; }
     public Guid? AgentId { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public string? Phone { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
     public string? DesiredLocation { get; set; }
     public string? PropertyRefId { get; set; }
     public string? EstimatedArrivalDate { get; set; }
@@ -38,6 +38,21 @@ public class CreateLeadRentalDto
 
         if (!Enum.IsDefined(typeof(LeadStateType), LeadStateId))
             return (false, $"Invalid LeadStateId value: {LeadStateId}");
+
+        if (string.IsNullOrWhiteSpace(FirstName))
+            return (false, "FirstName is required");
+
+        if (string.IsNullOrWhiteSpace(LastName))
+            return (false, "LastName is required");
+
+        if (string.IsNullOrWhiteSpace(Email))
+            return (false, "Email is required");
+
+        if (!LeadDtoValidation.IsValidEmail(Email))
+            return (false, "Email format is invalid.");
+
+        if (string.IsNullOrWhiteSpace(Phone))
+            return (false, "Phone is required");
 
         if (AgentId.HasValue && AgentId.Value == Guid.Empty)
             return (false, "AgentId cannot be an empty GUID when supplied.");

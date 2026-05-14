@@ -11,7 +11,7 @@ public class LeadGeneralResponseDto
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Email { get; set; }
-    public string? PhoneMobile { get; set; }
+    public string? Phone { get; set; }
     public string? Message { get; set; }
     public bool IsActive { get; set; }
 
@@ -24,7 +24,7 @@ public class LeadGeneralResponseDto
         FirstName = lead.FirstName;
         LastName = lead.LastName;
         Email = lead.Email;
-        PhoneMobile = lead.PhoneMobile;
+        Phone = lead.PhoneMobile;
         Message = lead.Message;
         IsActive = lead.IsActive;
     }

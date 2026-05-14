@@ -89,14 +89,12 @@ public partial class LeadRepository : ILeadRepository
 
     #region Updates
 
-    public async Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner, Guid rowOrganizationId, int rowOfficeId)
+    public async Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<OwnerEntity>("Lead.Owner_UpdateById", new
         {
             OwnerId = owner.OwnerId,
-            RowOrganizationId = rowOrganizationId,
-            RowOfficeId = rowOfficeId,
             OrganizationId = owner.OrganizationId,
             OfficeId = owner.OfficeId,
             LeadStateId = (int)owner.LeadState,

@@ -72,16 +72,15 @@ public partial class LeadRepository : ILeadRepository
 
     #region Updates
 
-    public async Task<LeadGeneral> UpdateGeneralByIdAsync(LeadGeneral lead, Guid rowOrganizationId, int rowOfficeId)
+    public async Task<LeadGeneral> UpdateGeneralByIdAsync(LeadGeneral lead)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<GeneralEntity>("Lead.General_UpdateById", new
         {
             GeneralId = lead.GeneralId,
-            RowOrganizationId = rowOrganizationId,
-            RowOfficeId = rowOfficeId,
-            LeadStateId = (int)lead.LeadState,
+            OrganizationId = lead.OrganizationId,
             OfficeId = lead.OfficeId,
+            LeadStateId = (int)lead.LeadState,
             FirstName = lead.FirstName,
             LastName = lead.LastName,
             Email = lead.Email,
