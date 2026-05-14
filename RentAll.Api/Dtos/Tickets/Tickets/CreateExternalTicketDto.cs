@@ -10,7 +10,7 @@ public class CreateExternalTicketDto
     public string? LastName { get; set; }
     public string? Location { get; set; }
     public string? Email { get; set; }
-    public string? PhoneMobile { get; set; }
+    public string? Phone { get; set; }
     public string? Address { get; set; }
     public bool? HasPermissionToEnter { get; set; }
     public string? IssueDescription { get; set; }
@@ -37,7 +37,7 @@ public class CreateExternalTicketDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
-        if (string.IsNullOrWhiteSpace(PhoneMobile))
+        if (string.IsNullOrWhiteSpace(Phone))
             return (false, "PhoneMobile is required");
 
         if (string.IsNullOrWhiteSpace(Address))

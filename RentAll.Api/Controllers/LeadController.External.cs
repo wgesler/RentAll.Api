@@ -69,9 +69,6 @@ public partial class LeadController
             if (orgOfficeError != null)
                 return orgOfficeError;
 
-            if (dto.AgentId.HasValue && await _organizationRepository.GetAgentByIdAsync(dto.AgentId.Value, dto.OrganizationId) == null)
-                return BadRequest("AgentId is not valid for the specified organization.");
-
             var created = await _leadRepository.CreateRentalAsync(dto.ToModel(dto.OrganizationId));
             return Ok(new LeadRentalResponseDto(created));
         }
@@ -107,9 +104,6 @@ public partial class LeadController
             var orgOfficeError = await TryValidateExternalLeadOrgAndOfficeAsync(dto.OrganizationId, dto.OfficeId);
             if (orgOfficeError != null)
                 return orgOfficeError;
-
-            if (dto.AgentId.HasValue && await _organizationRepository.GetAgentByIdAsync(dto.AgentId.Value, dto.OrganizationId) == null)
-                return BadRequest("AgentId is not valid for the specified organization.");
 
             var created = await _leadRepository.CreateOwnerAsync(dto.ToModel(dto.OrganizationId));
             return Ok(new LeadOwnerResponseDto(created));
