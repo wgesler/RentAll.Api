@@ -38,7 +38,7 @@ public class CreateExternalTicketDto
             return (false, "Email is required");
 
         if (string.IsNullOrWhiteSpace(Phone))
-            return (false, "PhoneMobile is required");
+            return (false, "Phone is required");
 
         if (string.IsNullOrWhiteSpace(Address))
             return (false, "Address is required");
