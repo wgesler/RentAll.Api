@@ -10,5 +10,6 @@ public enum LeadStateType
     Interested = 5,
     Denied = 6,
     ChoseAnotherOption = 7,
-    BookedWithUs = 8
+    BudgetTooLow = 8,
+    BookedWithUs = 9
 }
