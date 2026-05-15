@@ -381,6 +381,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Accomodates = e.Accomodates,
                 MaxRent = e.MaxRent,
                 PropertyCode = e.PropertyCode,
+                PropertyLeaseTypeId = e.PropertyLeaseTypeId,
                 City = e.City,
                 State = e.State,
                 Cable = e.Cable,

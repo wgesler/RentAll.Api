@@ -10,6 +10,7 @@ public class PropertySelectionEntity
     public int Accomodates { get; set; }
     public decimal MaxRent { get; set; }
     public string? PropertyCode { get; set; }
+    public int PropertyLeaseTypeId { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public bool Cable { get; set; }
