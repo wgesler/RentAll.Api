@@ -11,5 +11,6 @@ public enum LeadStateType
     Denied = 6,
     ChoseAnotherOption = 7,
     BudgetTooLow = 8,
-    BookedWithUs = 9
+    BookedWithUs = 9,
+    DifferentOffice = 10
 }
