@@ -1,10 +1,12 @@
-using RentAll.Api.Dtos.Leads.Owners;
+using RentAll.Domain.Models.Leads;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace RentAll.Api.Controllers;
 
 public partial class LeadController
 {
-    #region Get
+    #region Select
 
     [HttpGet("owners")]
     public async Task<IActionResult> GetOwnerLeadsAsync()
@@ -50,7 +52,7 @@ public partial class LeadController
 
     #endregion
 
-    #region Post
+    #region Create
 
     [HttpPost("owners")]
     public async Task<IActionResult> CreateOwnerLeadAsync([FromBody] CreateLeadOwnerDto dto)
@@ -77,9 +79,55 @@ public partial class LeadController
         }
     }
 
+    [HttpPost("owners/{ownerId:int}/share-link")]
+    public async Task<IActionResult> CreateOwnerFormShareLinkAsync(int ownerId)
+    {
+        if (ownerId <= 0)
+            return BadRequest("OwnerId is required");
+
+        try
+        {
+            var owner = await _leadRepository.GetOwnerByIdAsync(ownerId);
+            if (owner == null)
+                return NotFound("Owner lead not found");
+
+            if (owner.OrganizationId != CurrentOrganizationId)
+                return NotFound("Owner lead not found");
+
+            if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == owner.OfficeId))
+                return NotFound("Owner lead not found");
+
+            var token = GenerateOwnerFormShareToken();
+            var tokenHash = ComputeSha256Hex(token);
+
+            var share = new LeadOwnerFormShare
+            {
+                ShareId = Guid.NewGuid(),
+                OwnerId = ownerId,
+                OrganizationId = CurrentOrganizationId,
+                TokenHash = tokenHash,
+                ExpiresOn = DateTimeOffset.UtcNow.AddDays(14)
+            };
+
+            var created = await _leadRepository.UpsertOwnerFormShareByOwnerIdAsync(share);
+            return Ok(new OwnerFormShareResponseDto
+            {
+                ShareId = created.ShareId,
+                OwnerId = created.OwnerId,
+                Token = token,
+                ExpiresOn = created.ExpiresOn
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating owner form share link: {OwnerId}", ownerId);
+            return ServerError("An error occurred while creating the owner form share link");
+        }
+    }
+
     #endregion
 
-    #region Put
+    #region Update
 
     [HttpPut("owners")]
     public async Task<IActionResult> UpdateOwnerLeadAsync([FromBody] UpdateLeadOwnerDto dto)
@@ -151,4 +199,21 @@ public partial class LeadController
     }
 
     #endregion
+
+    private static string GenerateOwnerFormShareToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        var token = Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+        return token;
+    }
+
+    private static string ComputeSha256Hex(string value)
+    {
+        var bytes = Encoding.UTF8.GetBytes(value);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
+    }
 }

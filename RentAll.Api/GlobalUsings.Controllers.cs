@@ -17,6 +17,7 @@ global using RentAll.Api.Dtos.Properties.Properties;
 global using RentAll.Api.Dtos.Properties.PropertyHtmls;
 global using RentAll.Api.Dtos.Properties.PropertyInformations;
 global using RentAll.Api.Dtos.Properties.TrackerResponses;
+global using RentAll.Api.Dtos.Leads.Owners;
 global using RentAll.Api.Dtos.Reservations.LeaseInformations;
 global using RentAll.Api.Dtos.Reservations.Reservations;
 global using RentAll.Api.Dtos.Reservations.Trackers;

@@ -21,6 +21,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_Add", new
             {
+                OwnerLeadId = contact.OwnerLeadId,
                 OrganizationId = contact.OrganizationId,
                 UserId = contact.UserId,
                 OfficeId = contact.OfficeId,

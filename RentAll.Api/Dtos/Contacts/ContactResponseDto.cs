@@ -5,6 +5,7 @@ namespace RentAll.Api.Dtos.Contacts;
 public class ContactResponseDto
 {
     public Guid ContactId { get; set; }
+    public int? OwnerLeadId { get; set; }
     public Guid? UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
@@ -54,6 +55,7 @@ public class ContactResponseDto
     public ContactResponseDto(Contact contact)
     {
         ContactId = contact.ContactId;
+        OwnerLeadId = contact.OwnerLeadId;
         UserId = contact.UserId;
         OrganizationId = contact.OrganizationId;
         OfficeId = contact.OfficeId;

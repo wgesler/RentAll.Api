@@ -52,6 +52,25 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
+        public async Task<Contact?> GetContactByLeadAsync(Guid organizationId, string officeAccess, int? leadOwnerId, string? firstName, string? lastName, string? address)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByLead", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess,
+                LeadOwnerId = leadOwnerId,
+                FirstName = firstName,
+                LastName = lastName,
+                Address = address
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
         public async Task<Contact?> GetContactByEmailAsync(string email, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);

@@ -133,6 +133,7 @@ namespace RentAll.Api.Controllers
 
                 var contact = dto.ToModel(CurrentUser);
                 contact.UserId = dto.UserId ?? existing.UserId;
+                contact.OwnerLeadId = dto.OwnerLeadId ?? existing.OwnerLeadId;
 
                 // Get the office name for file storage path
                 var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, dto.OrganizationId);
@@ -155,6 +156,77 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the contact");
             }
         }
+
+        [HttpPut("by-lead")]
+        public async Task<IActionResult> GetContactByLeadAsync([FromBody] UpdateLeadOwnerDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Lead owner data is required");
+
+            try
+            {
+                var contact = await _contactRepository.GetContactByLeadAsync(CurrentOrganizationId, CurrentOfficeAccess, dto.OwnerId, dto.FirstName, dto.LastName, dto.Address);
+                if (contact == null)
+                {
+                    var normalizedEmail = string.IsNullOrWhiteSpace(dto.Email) ? string.Empty : dto.Email.Trim();
+                    var code = await _contactManager.GenerateContactCodeAsync(CurrentOrganizationId, (int)EntityType.Owner);
+                    var createdContact = await _contactRepository.CreateAsync(new Contact
+                    {
+                        OwnerLeadId = dto.OwnerId,
+                        OrganizationId = CurrentOrganizationId,
+                        OfficeId = dto.OfficeId,
+                        OfficeAccess = new List<int> { dto.OfficeId },
+                        ContactCode = code,
+                        EntityType = EntityType.Owner,
+                        OwnerType = OwnerType.Individual,
+                        Properties = new List<string>(),
+                        FirstName = dto.FirstName,
+                        LastName = dto.LastName,
+                        Address1 = dto.Address,
+                        City = dto.City,
+                        State = dto.State,
+                        Zip = dto.Zip,
+                        Phone = dto.Phone,
+                        Email = dto.Email,
+                        Rating = 0,
+                        IsInternational = false,
+                        Markup = 25,
+                        RevenueSplitOwner = 75,
+                        RevenueSplitOffice = 25,
+                        WorkingCapitalBalance = 0,
+                        LinenAndTowelFee = 0,
+                        IsActive = true,
+                        CreatedBy = CurrentUser
+                    });
+
+                    var afterLogin = await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
+                    return Ok(new ContactResponseDto(afterLogin));
+                }
+
+                // If we've matched a contact to a lead, make sure information follows
+                if (contact.OwnerLeadId == null)
+                    contact.OwnerLeadId = dto.OwnerId;
+
+                if (string.IsNullOrEmpty(contact.Address1))
+                {
+                    contact.Address1 = dto.Address;
+                    contact.City = dto.City;
+                    contact.State = dto.State;
+                    contact.Zip = dto.Zip;
+                }
+
+                contact.ModifiedBy = CurrentUser;
+                var updated = await _contactRepository.UpdateByIdAsync(contact);
+                return Ok(new ContactResponseDto(updated));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting contact by lead");
+                return ServerError("An error occurred while retrieving contact by lead");
+            }
+        }
+
+
         #endregion
 
         #region Delete

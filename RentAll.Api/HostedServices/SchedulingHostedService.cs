@@ -52,18 +52,15 @@ public class SchedulingHostedService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var propertyRepository = scope.ServiceProvider.GetRequiredService<IPropertyRepository>();
+        var leadRepository = scope.ServiceProvider.GetRequiredService<ILeadRepository>();
         var organizationRepository = scope.ServiceProvider.GetRequiredService<IOrganizationRepository>();
         var emailRepository = scope.ServiceProvider.GetRequiredService<IEmailRepository>();
         var reservationRepository = scope.ServiceProvider.GetRequiredService<IReservationRepository>();
         var emailManager = scope.ServiceProvider.GetRequiredService<IEmailManager>();
 
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
-        await ProcessScheduledAlertsAsync(
-            organizationRepository,
-            emailRepository,
-            reservationRepository,
-            emailManager,
-            cancellationToken);
+        await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
+        await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
     }
 
     #region Alerts
@@ -230,6 +227,19 @@ public class SchedulingHostedService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Property listing share delete-expired job failed");
+        }
+    }
+
+    private async Task ProcessRetireExpiredOwnerFormLinksAsync(ILeadRepository leadRepository, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            await leadRepository.DeleteExpiredOwnerFormSharesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Owner form share delete-expired job failed");
         }
     }
     #endregion

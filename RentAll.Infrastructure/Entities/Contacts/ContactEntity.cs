@@ -3,6 +3,7 @@ namespace RentAll.Infrastructure.Entities.Contacts;
 public class ContactEntity
 {
     public Guid ContactId { get; set; }
+    public int? OwnerLeadId { get; set; }
     public Guid OrganizationId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
     public Guid? UserId { get; set; }

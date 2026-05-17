@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using RentAll.Api.Dtos.Leads.General;
-using RentAll.Api.Dtos.Leads.Owners;
 using RentAll.Api.Dtos.Leads.Rentals;
 using RentAll.Domain.Configuration;
 

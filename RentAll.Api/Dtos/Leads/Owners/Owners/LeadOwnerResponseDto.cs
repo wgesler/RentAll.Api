@@ -26,6 +26,19 @@ public class LeadOwnerResponseDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
+    public decimal? AdjustedGrossRentTarget { get; set; }
+    public decimal? OnlineFee { get; set; }
+    public decimal? OnlineClean { get; set; }
+    public decimal? WorkingBalance { get; set; }
+    public decimal? AnnualLinenAmount { get; set; }
+    public decimal? OfflineFee { get; set; }
+    public bool PurchaseKitchenItems { get; set; }
+    public decimal? KitchenBudget { get; set; }
+    public bool FurnishUnit { get; set; }
+    public decimal? FurnishBudget { get; set; }
+    public bool OneBedroom { get; set; }
+    public bool TwoBedroom { get; set; }
+    public bool ThreeBedroom { get; set; }
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
@@ -62,6 +75,19 @@ public class LeadOwnerResponseDto
         City = owner.City;
         State = owner.State;
         Zip = owner.Zip;
+        AdjustedGrossRentTarget = owner.AdjustedGrossRentTarget;
+        OnlineFee = owner.OnlineFee;
+        OnlineClean = owner.OnlineClean;
+        WorkingBalance = owner.WorkingBalance;
+        AnnualLinenAmount = owner.AnnualLinenAmount;
+        OfflineFee = owner.OfflineFee;
+        PurchaseKitchenItems = owner.PurchaseKitchenItems;
+        KitchenBudget = owner.KitchenBudget;
+        FurnishUnit = owner.FurnishUnit;
+        FurnishBudget = owner.FurnishBudget;
+        OneBedroom = owner.OneBedroom;
+        TwoBedroom = owner.TwoBedroom;
+        ThreeBedroom = owner.ThreeBedroom;
         NumberOfBeds = owner.NumberOfBeds;
         NumberOfBaths = owner.NumberOfBaths;
         ApproxSqFootage = owner.ApproxSqFootage;

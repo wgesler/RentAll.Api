@@ -6,6 +6,7 @@ namespace RentAll.Domain.Models;
 public class Contact
 {
     public Guid ContactId { get; set; }
+    public int? OwnerLeadId { get; set; }
     public Guid? UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }

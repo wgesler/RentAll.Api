@@ -82,20 +82,15 @@ namespace RentAll.Api.Controllers
         [HttpGet("owner/{ownerId}")]
         public async Task<IActionResult> GetPropertiesByOwnerId(Guid ownerId)
         {
-            if (CurrentUser == Guid.Empty || CurrentUser != ownerId)
+            if (CurrentUser == Guid.Empty)
                 return Unauthorized();
 
             try
             {
-                var user = await _userRepository.GetUserByIdAsync(CurrentUser);
-                if (user == null)
-                    return NotFound("User not found");
+                if (ownerId == Guid.Empty)
+                    return Ok(Enumerable.Empty<PropertyListResponseDto>());
 
-                var contact = await _contactRepository.GetContactByEmailAsync(user.Email, CurrentOrganizationId);
-                if (contact == null)
-                    return NotFound("Owner not found");
-
-                var properties = await _propertyRepository.GetPropertyListByOwnerIdAsync(contact.ContactId, CurrentOrganizationId, CurrentOfficeAccess);
+                var properties = await _propertyRepository.GetPropertyListByOwnerIdAsync(ownerId, CurrentOrganizationId, CurrentOfficeAccess);
                 var response = properties.Select(p => new PropertyListResponseDto(p));
                 return Ok(response);
             }

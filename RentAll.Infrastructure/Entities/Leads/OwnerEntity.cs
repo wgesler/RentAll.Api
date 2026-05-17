@@ -24,6 +24,19 @@ public class OwnerEntity
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
+    public decimal? AdjustedGrossRentTarget { get; set; }
+    public decimal? OnlineFee { get; set; }
+    public decimal? OnlineClean { get; set; }
+    public decimal? WorkingBalance { get; set; }
+    public decimal? AnnualLinenAmount { get; set; }
+    public decimal? OfflineFee { get; set; }
+    public bool PurchaseKitchenItems { get; set; }
+    public decimal? KitchenBudget { get; set; }
+    public bool FurnishUnit { get; set; }
+    public decimal? FurnishBudget { get; set; }
+    public bool OneBedroom { get; set; }
+    public bool TwoBedroom { get; set; }
+    public bool ThreeBedroom { get; set; }
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }

@@ -47,6 +47,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             var response = new Contact()
             {
                 ContactId = e.ContactId,
+                OwnerLeadId = e.OwnerLeadId,
                 UserId = e.UserId,
                 OrganizationId = e.OrganizationId,
                 OfficeId = e.OfficeId,

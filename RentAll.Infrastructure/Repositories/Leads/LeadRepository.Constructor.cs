@@ -80,6 +80,19 @@ public partial class LeadRepository : ILeadRepository
             City = e.City,
             State = e.State,
             Zip = e.Zip,
+            AdjustedGrossRentTarget = e.AdjustedGrossRentTarget,
+            OnlineFee = e.OnlineFee,
+            OnlineClean = e.OnlineClean,
+            WorkingBalance = e.WorkingBalance,
+            AnnualLinenAmount = e.AnnualLinenAmount,
+            OfflineFee = e.OfflineFee,
+            PurchaseKitchenItems = e.PurchaseKitchenItems,
+            KitchenBudget = e.KitchenBudget,
+            FurnishUnit = e.FurnishUnit,
+            FurnishBudget = e.FurnishBudget,
+            OneBedroom = e.OneBedroom,
+            TwoBedroom = e.TwoBedroom,
+            ThreeBedroom = e.ThreeBedroom,
             NumberOfBeds = e.NumberOfBeds,
             NumberOfBaths = e.NumberOfBaths,
             ApproxSqFootage = e.ApproxSqFootage,
@@ -91,6 +104,80 @@ public partial class LeadRepository : ILeadRepository
             EmailPhoneConsent = e.EmailPhoneConsent,
             SmsConsent = e.SmsConsent,
             IsActive = e.IsActive
+        };
+
+    private static LeadOwnerFormShare ConvertOwnerFormShareEntityToModel(OwnerFormShareEntity e) =>
+        new()
+        {
+            ShareId = e.ShareId,
+            OwnerId = e.OwnerId,
+            OrganizationId = e.OrganizationId,
+            TokenHash = e.TokenHash,
+            ExpiresOn = e.ExpiresOn
+        };
+
+    private static OwnerAgreementInformation ConvertOwnerAgreementInformationEntityToModel(OwnerAgreementInformationEntity e) =>
+        new()
+        {
+            OwnerAgreementInformationId = e.OwnerAgreementInformationId,
+            OfficeId = e.OfficeId,
+            PropertyId = e.PropertyId,
+            OrganizationId = e.OrganizationId,
+            AgreementIntroduction = e.AgreementIntroduction,
+            Recitals = e.Recitals,
+            SectionOneEmploymentOfAvenueWest = e.SectionOneEmploymentOfAvenueWest,
+            SectionTwoAgentDuties = e.SectionTwoAgentDuties,
+            SectionThreeOwnersDuties = e.SectionThreeOwnersDuties,
+            SectionFourAdvertisingAndPromotion = e.SectionFourAdvertisingAndPromotion,
+            SectionFiveMaintenanceRepairsAndOperations = e.SectionFiveMaintenanceRepairsAndOperations,
+            SectionSixReimbursements = e.SectionSixReimbursements,
+            SectionSevenGovernmentRegulations = e.SectionSevenGovernmentRegulations,
+            SectionEightInsurance = e.SectionEightInsurance,
+            SectionNineCollectionOfIncomeAndInstitutionOfLegalAction = e.SectionNineCollectionOfIncomeAndInstitutionOfLegalAction,
+            SectionTenBankAccounts = e.SectionTenBankAccounts,
+            SectionElevenRecordsAndReports = e.SectionElevenRecordsAndReports,
+            SectionTwelveAdditionalDutiesAndRightsOfAvenueWest = e.SectionTwelveAdditionalDutiesAndRightsOfAvenueWest,
+            SectionThirteenTerminationAndRenewal = e.SectionThirteenTerminationAndRenewal,
+            SectionFourteenSaleOfPropertyAccess = e.SectionFourteenSaleOfPropertyAccess,
+            SectionFifteenSummaryOfFees = e.SectionFifteenSummaryOfFees,
+            SectionSixteenForeignOwnership = e.SectionSixteenForeignOwnership,
+            SectionSeventeenIndemnity = e.SectionSeventeenIndemnity,
+            SectionEighteenMiscellaneous = e.SectionEighteenMiscellaneous,
+            SectionNineteenAdditionalForms = e.SectionNineteenAdditionalForms,
+            InWitnessWhereof = e.InWitnessWhereof,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+
+    private static OwnerInventoryInformation ConvertOwnerInventoryInformationEntityToModel(OwnerInventoryInformationEntity e) =>
+        new()
+        {
+            OwnerId = e.OwnerId,
+            OrganizationId = e.OrganizationId,
+            OnSiteComplexManagementPhone = e.OnSiteComplexManagementPhone,
+            KeyCount = e.KeyCount,
+            GarageRemoteModelCode = e.GarageRemoteModelCode,
+            StorageAccessDetails = e.StorageAccessDetails,
+            CableSupplier = e.CableSupplier,
+            CablePhone = e.CablePhone,
+            CableAccountNumber = e.CableAccountNumber,
+            ElectricSupplier = e.ElectricSupplier,
+            ElectricPhone = e.ElectricPhone,
+            ElectricAccountNumber = e.ElectricAccountNumber,
+            InternetSupplier = e.InternetSupplier,
+            InternetPhone = e.InternetPhone,
+            InternetAccountNumber = e.InternetAccountNumber,
+            FuseBoxLocation = e.FuseBoxLocation,
+            SchoolDistrict = e.SchoolDistrict,
+            LocalEmergencyContact = e.LocalEmergencyContact,
+            AccessInformation = e.AccessInformation,
+            IsActive = e.IsActive,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
         };
 
     private static LeadGeneral ConvertGeneralEntityToModel(GeneralEntity e) =>

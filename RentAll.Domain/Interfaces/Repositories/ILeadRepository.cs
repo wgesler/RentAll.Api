@@ -18,6 +18,19 @@ public interface ILeadRepository
     Task<LeadOwner> CreateOwnerAsync(LeadOwner owner);
     Task<LeadOwner> UpdateOwnerByIdAsync(LeadOwner owner);
     Task DeleteOwnerByIdAsync(int ownerId);
+    Task<LeadOwnerFormShare> UpsertOwnerFormShareByOwnerIdAsync(LeadOwnerFormShare share);
+    Task<LeadOwnerFormShare?> GetOwnerFormShareByTokenHashAsync(string tokenHash);
+    Task DeleteExpiredOwnerFormSharesAsync();
+    Task<OwnerAgreementInformation?> GetOwnerAgreementInformationByIdAsync(Guid ownerAgreementInformationId, Guid organizationId);
+    Task<OwnerAgreementInformation?> GetOwnerAgreementInformationByScopeAsync(Guid organizationId, int? officeId, Guid? propertyId);
+    Task<OwnerAgreementInformation?> GetOwnerAgreementInformationByExactScopeAsync(Guid organizationId, int? officeId, Guid? propertyId);
+    Task<OwnerAgreementInformation> CreateOwnerAgreementInformationAsync(OwnerAgreementInformation ownerAgreementInformation);
+    Task<OwnerAgreementInformation> UpdateOwnerAgreementInformationByIdAsync(OwnerAgreementInformation ownerAgreementInformation);
+    Task DeleteOwnerAgreementInformationByIdAsync(Guid ownerAgreementInformationId, Guid organizationId, Guid modifiedBy);
+    Task<OwnerInventoryInformation?> GetOwnerInventoryInformationByOwnerIdAsync(int ownerId, Guid organizationId);
+    Task<OwnerInventoryInformation> CreateOwnerInventoryInformationAsync(OwnerInventoryInformation ownerInventoryInformation);
+    Task<OwnerInventoryInformation> UpdateOwnerInventoryInformationByIdAsync(OwnerInventoryInformation ownerInventoryInformation);
+    Task DeleteOwnerInventoryInformationByIdAsync(int ownerId, Guid organizationId, Guid modifiedBy);
     #endregion
 
     #region General leads
