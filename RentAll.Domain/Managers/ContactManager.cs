@@ -40,13 +40,37 @@ public class ContactManager : IContactManager
         if (contact.EntityType != EntityType.Owner)
             return contact;
 
+        var ownerEmail = (contact.Email ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(ownerEmail))
+            return contact;
+
+        var existingUser = await _userRepository.GetUserByEmailAsync(ownerEmail);
+        if (existingUser != null)
+        {
+            var shouldUpdateContact = contact.UserId != existingUser.UserId;
+            if (shouldUpdateContact)
+                contact.UserId = existingUser.UserId;
+
+            if (existingUser.ContactId == null)
+            {
+                existingUser.ContactId = contact.ContactId;
+                existingUser.ModifiedBy = createdBy;
+                await _userRepository.UpdateByIdAsync(existingUser);
+            }
+
+            if (shouldUpdateContact)
+                return await _contactRepository.UpdateByIdAsync(contact);
+
+            return contact;
+        }
+
         var newUser = new User
         {
             OrganizationId = contact.OrganizationId,
             ContactId = contact.ContactId,
             FirstName = contact.FirstName ?? string.Empty,
             LastName = contact.LastName ?? string.Empty,
-            Email = contact.Email,
+            Email = ownerEmail,
             Phone = contact.Phone ?? string.Empty,
             PasswordHash = _passwordHasher.HashPassword(contact.ContactCode),
             UserGroups = new List<string>() { "Owner" },
