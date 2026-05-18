@@ -10,7 +10,7 @@ public class OwnerAgreementInformationResponseDto
     public Guid OrganizationId { get; set; }
     public string? AgreementIntroduction { get; set; }
     public string? Recitals { get; set; }
-    public string? SectionOneEmploymentOfAvenueWest { get; set; }
+    public string? SectionOneEmployment { get; set; }
     public string? SectionTwoAgentDuties { get; set; }
     public string? SectionThreeOwnersDuties { get; set; }
     public string? SectionFourAdvertisingAndPromotion { get; set; }
@@ -21,7 +21,7 @@ public class OwnerAgreementInformationResponseDto
     public string? SectionNineCollectionOfIncomeAndInstitutionOfLegalAction { get; set; }
     public string? SectionTenBankAccounts { get; set; }
     public string? SectionElevenRecordsAndReports { get; set; }
-    public string? SectionTwelveAdditionalDutiesAndRightsOfAvenueWest { get; set; }
+    public string? SectionTwelveAdditionalDutiesAndRights { get; set; }
     public string? SectionThirteenTerminationAndRenewal { get; set; }
     public string? SectionFourteenSaleOfPropertyAccess { get; set; }
     public string? SectionFifteenSummaryOfFees { get; set; }
@@ -39,7 +39,7 @@ public class OwnerAgreementInformationResponseDto
         OrganizationId = ownerAgreementInformation.OrganizationId;
         AgreementIntroduction = ownerAgreementInformation.AgreementIntroduction;
         Recitals = ownerAgreementInformation.Recitals;
-        SectionOneEmploymentOfAvenueWest = ownerAgreementInformation.SectionOneEmploymentOfAvenueWest;
+        SectionOneEmployment = ownerAgreementInformation.SectionOneEmployment;
         SectionTwoAgentDuties = ownerAgreementInformation.SectionTwoAgentDuties;
         SectionThreeOwnersDuties = ownerAgreementInformation.SectionThreeOwnersDuties;
         SectionFourAdvertisingAndPromotion = ownerAgreementInformation.SectionFourAdvertisingAndPromotion;
@@ -50,7 +50,7 @@ public class OwnerAgreementInformationResponseDto
         SectionNineCollectionOfIncomeAndInstitutionOfLegalAction = ownerAgreementInformation.SectionNineCollectionOfIncomeAndInstitutionOfLegalAction;
         SectionTenBankAccounts = ownerAgreementInformation.SectionTenBankAccounts;
         SectionElevenRecordsAndReports = ownerAgreementInformation.SectionElevenRecordsAndReports;
-        SectionTwelveAdditionalDutiesAndRightsOfAvenueWest = ownerAgreementInformation.SectionTwelveAdditionalDutiesAndRightsOfAvenueWest;
+        SectionTwelveAdditionalDutiesAndRights = ownerAgreementInformation.SectionTwelveAdditionalDutiesAndRights;
         SectionThirteenTerminationAndRenewal = ownerAgreementInformation.SectionThirteenTerminationAndRenewal;
         SectionFourteenSaleOfPropertyAccess = ownerAgreementInformation.SectionFourteenSaleOfPropertyAccess;
         SectionFifteenSummaryOfFees = ownerAgreementInformation.SectionFifteenSummaryOfFees;

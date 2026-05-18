@@ -1,5 +1,3 @@
-using RentAll.Api.Dtos.Leads.Owners;
-
 namespace RentAll.Api.Controllers;
 
 public partial class LeadController
