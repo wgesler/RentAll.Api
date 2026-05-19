@@ -10,5 +10,6 @@ public enum ImageType
     W9Forms = 4,
     Insurances = 5,
     ApplianceDecal = 6,
+    StateForm = 7,
 }
 

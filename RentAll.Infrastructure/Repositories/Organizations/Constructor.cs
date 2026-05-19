@@ -283,6 +283,21 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 
+    #region State Forms
+    private StateForm ConvertEntityToModel(StateFormEntity e)
+    {
+        return new StateForm
+        {
+            StateFormId = e.StateFormId,
+            OrganizationId = e.OrganizationId,
+            StateCode = e.StateCode,
+            FormName = e.FormName,
+            Path = e.Path,
+            FormAsHtml = e.FormAsHtml
+        };
+    }
+    #endregion
+
     #region Tracker Mapping
     private static TrackerContext ConvertEntityToModel(TrackerContextEntity e)
     {

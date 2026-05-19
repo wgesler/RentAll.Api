@@ -91,6 +91,15 @@ public interface IOrganizationRepository
     Task DeleteRegionByIdAsync(int regionId);
     #endregion
 
+    #region State Forms
+    Task<IEnumerable<StateForm>> GetStateFormsAsync(string organizationId, string stateCode);
+    Task<StateForm?> GetStateFormByIdAsync(int stateFormId, string organizationId);
+
+    Task<StateForm> CreateStateFormAsync(StateForm stateForm);
+    Task<StateForm> UpdateStateFormByIdAsync(StateForm stateForm);
+    Task DeleteStateFormByIdAsync(int stateFormId, string organizationId);
+    #endregion
+
     #region Tracker Configuration
     Task<IEnumerable<TrackerContext>> GetTrackerContextsAsync();
     Task<TrackerContext?> GetTrackerContextByIdAsync(int trackerContextId);
