@@ -29,7 +29,7 @@ public class SubmitPublicOwnerFormDto
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
-    public string? TypeOfProperty { get; set; }
+    public int? PropertyTypeId { get; set; }
     public string? PropertyCode { get; set; }
     public string? PropertyOffice { get; set; }
     public string? PropertyGoals { get; set; }
@@ -76,6 +76,9 @@ public class SubmitPublicOwnerFormDto
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
 
+        if (PropertyTypeId.HasValue && !Enum.IsDefined(typeof(PropertyType), PropertyTypeId.Value))
+            return (false, $"Invalid PropertyTypeId value: {PropertyTypeId.Value}");
+
         return (true, null);
     }
 
@@ -106,7 +109,7 @@ public class SubmitPublicOwnerFormDto
         owner.NumberOfBeds = NumberOfBeds;
         owner.NumberOfBaths = NumberOfBaths;
         owner.ApproxSqFootage = ApproxSqFootage;
-        owner.TypeOfProperty = TypeOfProperty;
+        owner.TypeOfProperty = PropertyTypeId.HasValue ? (PropertyType?)PropertyTypeId.Value : null;
         owner.PropertyCode = PropertyCode;
         owner.PropertyOffice = PropertyOffice;
         owner.PropertyGoals = PropertyGoals;

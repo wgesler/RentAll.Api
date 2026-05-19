@@ -41,7 +41,7 @@ public class UpdateLeadOwnerDto
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
-    public string? TypeOfProperty { get; set; }
+    public int? PropertyTypeId { get; set; }
     public string? PropertyCode { get; set; }
     public string? PropertyOffice { get; set; }
     public string? TellUsWhatYouLikeMostAboutYourProperty { get; set; }
@@ -69,6 +69,9 @@ public class UpdateLeadOwnerDto
         if (!string.IsNullOrWhiteSpace(currentOffices)
             && !currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
             return (false, "Unauthorized");
+
+        if (PropertyTypeId.HasValue && !Enum.IsDefined(typeof(PropertyType), PropertyTypeId.Value))
+            return (false, $"Invalid PropertyTypeId value: {PropertyTypeId.Value}");
 
         return (true, null);
     }
@@ -113,7 +116,7 @@ public class UpdateLeadOwnerDto
             NumberOfBeds = NumberOfBeds,
             NumberOfBaths = NumberOfBaths,
             ApproxSqFootage = ApproxSqFootage,
-            TypeOfProperty = TypeOfProperty,
+            TypeOfProperty = PropertyTypeId.HasValue ? (PropertyType?)PropertyTypeId.Value : null,
             PropertyCode = PropertyCode,
             PropertyOffice = PropertyOffice,
             TellUsWhatYouLikeMostAboutYourProperty = TellUsWhatYouLikeMostAboutYourProperty,

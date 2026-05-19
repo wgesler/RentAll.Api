@@ -41,7 +41,7 @@ public class CreateLeadOwnerDto
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
-    public string? TypeOfProperty { get; set; }
+    public int? PropertyTypeId { get; set; }
     public string? PropertyCode { get; set; }
     public string? PropertyOffice { get; set; }
     public string? TellUsWhatYouLikeMostAboutYourProperty { get; set; }
@@ -83,6 +83,9 @@ public class CreateLeadOwnerDto
 
         if (YearsOfExperienceWithRentals.HasValue && YearsOfExperienceWithRentals.Value < 0)
             return (false, "YearsOfExperienceWithRentals cannot be negative.");
+
+        if (PropertyTypeId.HasValue && !Enum.IsDefined(typeof(PropertyType), PropertyTypeId.Value))
+            return (false, $"Invalid PropertyTypeId value: {PropertyTypeId.Value}");
 
         if (OfficeId <= 0)
             return (false, "OfficeId is required.");
@@ -134,7 +137,7 @@ public class CreateLeadOwnerDto
             NumberOfBeds = NumberOfBeds,
             NumberOfBaths = NumberOfBaths,
             ApproxSqFootage = ApproxSqFootage,
-            TypeOfProperty = TypeOfProperty,
+            TypeOfProperty = PropertyTypeId.HasValue ? (PropertyType?)PropertyTypeId.Value : null,
             PropertyCode = PropertyCode,
             PropertyOffice = PropertyOffice,
             TellUsWhatYouLikeMostAboutYourProperty = TellUsWhatYouLikeMostAboutYourProperty,

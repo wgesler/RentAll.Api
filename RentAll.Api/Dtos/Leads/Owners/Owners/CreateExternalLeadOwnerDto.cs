@@ -92,7 +92,7 @@ public class CreateExternalLeadOwnerDto
             NumberOfBeds = NumberOfBeds,
             NumberOfBaths = NumberOfBaths,
             ApproxSqFootage = ApproxSqFootage,
-            TypeOfProperty = TypeOfProperty,
+            TypeOfProperty = string.Equals(TypeOfProperty?.Trim(), "Condo", StringComparison.OrdinalIgnoreCase) ? PropertyType.Condo : PropertyType.House,
             PropertyCode = PropertyCode,
             PropertyOffice = PropertyOffice,
             TellUsWhatYouLikeMostAboutYourProperty = TellUsWhatYouLikeMostAboutYourProperty,

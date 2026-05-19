@@ -96,7 +96,7 @@ public partial class LeadRepository : ILeadRepository
             NumberOfBeds = e.NumberOfBeds,
             NumberOfBaths = e.NumberOfBaths,
             ApproxSqFootage = e.ApproxSqFootage,
-            TypeOfProperty = e.TypeOfProperty,
+            TypeOfProperty = e.PropertyTypeId.HasValue ? (PropertyType?)e.PropertyTypeId.Value : null,
             PropertyCode = e.PropertyCode,
             PropertyOffice = e.PropertyOffice,
             TellUsWhatYouLikeMostAboutYourProperty = e.TellUsWhatYouLikeMostAboutYourProperty,

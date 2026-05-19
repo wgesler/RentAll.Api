@@ -42,7 +42,7 @@ public class LeadOwnerResponseDto
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
-    public string? TypeOfProperty { get; set; }
+    public int? PropertyTypeId { get; set; }
     public string? PropertyCode { get; set; }
     public string? PropertyOffice { get; set; }
     public string? TellUsWhatYouLikeMostAboutYourProperty { get; set; }
@@ -93,7 +93,7 @@ public class LeadOwnerResponseDto
         NumberOfBeds = owner.NumberOfBeds;
         NumberOfBaths = owner.NumberOfBaths;
         ApproxSqFootage = owner.ApproxSqFootage;
-        TypeOfProperty = owner.TypeOfProperty;
+        PropertyTypeId = owner.TypeOfProperty.HasValue ? (int)owner.TypeOfProperty.Value : null;
         PropertyCode = owner.PropertyCode;
         PropertyOffice = owner.PropertyOffice;
         TellUsWhatYouLikeMostAboutYourProperty = owner.TellUsWhatYouLikeMostAboutYourProperty;
