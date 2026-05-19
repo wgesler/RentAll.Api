@@ -25,6 +25,7 @@ public class Property
     public PropertyStyle PropertyStyle { get; set; }
     public PropertyType PropertyType { get; set; }
     public PropertyStatus PropertyStatus { get; set; }
+    public ReservationNotice NoticeToVacate { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public int? BuildingId { get; set; }

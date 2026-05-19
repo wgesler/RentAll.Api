@@ -46,6 +46,8 @@ public class PublicOwnerFormDto
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
     public string? TypeOfProperty { get; set; }
+    public string? PropertyCode { get; set; }
+    public string? PropertyOffice { get; set; }
     public string? PropertyGoals { get; set; }
     public string? TellUsMoreAboutYourGoals { get; set; }
     public string? TellUsMoreAboutProperty { get; set; }
@@ -105,6 +107,8 @@ public class PublicOwnerFormDto
         NumberOfBaths = owner.NumberOfBaths;
         ApproxSqFootage = owner.ApproxSqFootage;
         TypeOfProperty = owner.TypeOfProperty;
+        PropertyCode = owner.PropertyCode;
+        PropertyOffice = owner.PropertyOffice;
         PropertyGoals = owner.PropertyGoals;
         TellUsMoreAboutYourGoals = owner.TellUsMoreAboutYourGoals;
         TellUsMoreAboutProperty = owner.TellUsMoreAboutProperty;

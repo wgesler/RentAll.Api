@@ -43,6 +43,8 @@ public class LeadOwnerResponseDto
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
     public string? TypeOfProperty { get; set; }
+    public string? PropertyCode { get; set; }
+    public string? PropertyOffice { get; set; }
     public string? TellUsWhatYouLikeMostAboutYourProperty { get; set; }
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
@@ -92,6 +94,8 @@ public class LeadOwnerResponseDto
         NumberOfBaths = owner.NumberOfBaths;
         ApproxSqFootage = owner.ApproxSqFootage;
         TypeOfProperty = owner.TypeOfProperty;
+        PropertyCode = owner.PropertyCode;
+        PropertyOffice = owner.PropertyOffice;
         TellUsWhatYouLikeMostAboutYourProperty = owner.TellUsWhatYouLikeMostAboutYourProperty;
         TellUsAnyDrawbacks = owner.TellUsAnyDrawbacks;
         PreferredContactMethod = owner.PreferredContactMethod;

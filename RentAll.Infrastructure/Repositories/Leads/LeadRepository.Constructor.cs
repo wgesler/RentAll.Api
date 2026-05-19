@@ -97,6 +97,8 @@ public partial class LeadRepository : ILeadRepository
             NumberOfBaths = e.NumberOfBaths,
             ApproxSqFootage = e.ApproxSqFootage,
             TypeOfProperty = e.TypeOfProperty,
+            PropertyCode = e.PropertyCode,
+            PropertyOffice = e.PropertyOffice,
             TellUsWhatYouLikeMostAboutYourProperty = e.TellUsWhatYouLikeMostAboutYourProperty,
             TellUsAnyDrawbacks = e.TellUsAnyDrawbacks,
             PreferredContactMethod = e.PreferredContactMethod,

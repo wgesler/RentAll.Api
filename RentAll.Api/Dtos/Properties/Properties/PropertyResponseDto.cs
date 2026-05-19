@@ -23,6 +23,7 @@ public class PropertyResponseDto
     public int PropertyStyleId { get; set; }
     public int PropertyTypeId { get; set; }
     public int PropertyStatusId { get; set; }
+    public int NoticeToVacateId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public int? BuildingId { get; set; }
@@ -172,6 +173,7 @@ public class PropertyResponseDto
         PropertyStyleId = (int)property.PropertyStyle;
         PropertyTypeId = (int)property.PropertyType;
         PropertyStatusId = (int)property.PropertyStatus;
+        NoticeToVacateId = (int)property.NoticeToVacate;
         OfficeId = property.OfficeId;
         OfficeName = property.OfficeName;
         BuildingId = property.BuildingId;

@@ -42,6 +42,8 @@ public class CreateLeadOwnerDto
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
     public string? TypeOfProperty { get; set; }
+    public string? PropertyCode { get; set; }
+    public string? PropertyOffice { get; set; }
     public string? TellUsWhatYouLikeMostAboutYourProperty { get; set; }
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
@@ -133,6 +135,8 @@ public class CreateLeadOwnerDto
             NumberOfBaths = NumberOfBaths,
             ApproxSqFootage = ApproxSqFootage,
             TypeOfProperty = TypeOfProperty,
+            PropertyCode = PropertyCode,
+            PropertyOffice = PropertyOffice,
             TellUsWhatYouLikeMostAboutYourProperty = TellUsWhatYouLikeMostAboutYourProperty,
             TellUsAnyDrawbacks = TellUsAnyDrawbacks,
             PreferredContactMethod = PreferredContactMethod,
