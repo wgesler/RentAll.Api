@@ -21,6 +21,7 @@ public class WorkOrderResponseDto
     public List<WorkOrderItem> WorkOrderItems { get; set; } = new List<WorkOrderItem>();
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
     public DateTimeOffset ModifiedOn { get; set; }
     public string ModifiedBy { get; set; } = string.Empty;
 
@@ -45,6 +46,7 @@ public class WorkOrderResponseDto
         WorkOrderItems = workOrder.WorkOrderItems;
         IsActive = workOrder.IsActive;
         CreatedOn = workOrder.CreatedOn;
+        CreatedBy = workOrder.CreatedByName;
         ModifiedOn = workOrder.ModifiedOn;
         ModifiedBy = workOrder.ModifiedByName;
     }

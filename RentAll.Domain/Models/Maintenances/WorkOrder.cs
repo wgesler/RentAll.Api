@@ -24,6 +24,7 @@ public class WorkOrder
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
+    public string CreatedByName { get; set; } = string.Empty;
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public string ModifiedByName { get; set; } = string.Empty;

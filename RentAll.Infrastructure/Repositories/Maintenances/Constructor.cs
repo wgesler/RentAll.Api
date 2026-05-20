@@ -267,6 +267,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             WorkOrderItems = items,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,
+            CreatedByName = e.CreatedByName,
             CreatedOn = e.CreatedOn,
             ModifiedBy = e.ModifiedBy,
             ModifiedOn = e.ModifiedOn,
