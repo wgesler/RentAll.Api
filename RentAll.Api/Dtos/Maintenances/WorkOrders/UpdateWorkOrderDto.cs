@@ -72,7 +72,7 @@ public class UpdateWorkOrderDto
             UseDepartureFee = UseDepartureFee,
             EnteredInQb = EnteredInQb,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
-            IsActive = true,
+            IsActive = IsActive,
             ModifiedBy = currentUser
         };
     }
