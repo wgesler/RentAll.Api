@@ -13,6 +13,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public int WorkOrderTypeId { get; set; }
         public string WorkOrderCode { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
         public string? WorkOrderItems { get; set; }
         public bool ApplyMarkup { get; set; }
         public DateOnly WorkOrderDate { get; set; }

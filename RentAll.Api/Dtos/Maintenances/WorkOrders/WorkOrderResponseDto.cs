@@ -12,6 +12,7 @@ public class WorkOrderResponseDto
     public string? ReservationCode { get; set; }
     public string WorkOrderCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
     public int WorkOrderTypeId { get; set; }
     public bool ApplyMarkup { get; set; }
     public DateOnly WorkOrderDate { get; set; }
@@ -35,6 +36,7 @@ public class WorkOrderResponseDto
         ReservationCode = workOrder.ReservationCode;
         WorkOrderCode = workOrder.WorkOrderCode;
         Description = workOrder.Description;
+        Amount = workOrder.Amount;
         WorkOrderTypeId = (int)workOrder.WorkOrderType;
         ApplyMarkup = workOrder.ApplyMarkup;
         WorkOrderDate = workOrder.WorkOrderDate;

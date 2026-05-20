@@ -14,6 +14,7 @@ public class WorkOrder
     public string? ReservationCode { get; set; }
     public string WorkOrderCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
     public WorkOrderType WorkOrderType { get; set; }
     public bool ApplyMarkup { get; set; }
     public DateOnly WorkOrderDate { get; set; }
