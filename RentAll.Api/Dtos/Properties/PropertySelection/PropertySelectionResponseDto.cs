@@ -20,6 +20,8 @@ public class PropertySelectionResponseDto
     public bool Security { get; set; }
     public bool Parking { get; set; }
     public bool Pets { get; set; }
+    public bool DogsOkay { get; set; }
+    public bool CatsOkay { get; set; }
     public bool Smoking { get; set; }
     public bool HighSpeedInternet { get; set; }
     public int PropertyStatusId { get; set; }
@@ -48,6 +50,8 @@ public class PropertySelectionResponseDto
         Security = s.Security;
         Parking = s.Parking;
         Pets = s.Pets;
+        DogsOkay = s.DogsOkay;
+        CatsOkay = s.CatsOkay;
         Smoking = s.Smoking;
         HighSpeedInternet = s.HighSpeedInternet;
         PropertyStatusId = s.PropertyStatusId;

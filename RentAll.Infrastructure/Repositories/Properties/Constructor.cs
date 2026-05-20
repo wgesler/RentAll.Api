@@ -392,6 +392,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Security = e.Security,
                 Parking = e.Parking,
                 Pets = e.Pets,
+                DogsOkay = e.DogsOkay,
+                CatsOkay = e.CatsOkay,
                 Smoking = e.Smoking,
                 HighSpeedInternet = e.HighSpeedInternet,
                 PropertyStatusId = e.PropertyStatusId,

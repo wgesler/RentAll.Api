@@ -57,6 +57,8 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Security = selection.Security,
                 Parking = selection.Parking,
                 Pets = selection.Pets,
+                DogsOkay = selection.DogsOkay,
+                CatsOkay = selection.CatsOkay,
                 Smoking = selection.Smoking,
                 HighSpeedInternet = selection.HighSpeedInternet,
                 PropertyStatusId = selection.PropertyStatusId,

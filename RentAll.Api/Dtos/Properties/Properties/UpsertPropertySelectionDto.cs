@@ -20,6 +20,8 @@ public class UpsertPropertySelectionDto
     public bool Security { get; set; }
     public bool Parking { get; set; }
     public bool Pets { get; set; }
+    public bool DogsOkay { get; set; }
+    public bool CatsOkay { get; set; }
     public bool Smoking { get; set; }
     public bool HighSpeedInternet { get; set; }
     public int PropertyStatusId { get; set; }
@@ -83,6 +85,8 @@ public class UpsertPropertySelectionDto
             Security = Security,
             Parking = Parking,
             Pets = Pets,
+            DogsOkay = DogsOkay,
+            CatsOkay = CatsOkay,
             Smoking = Smoking,
             HighSpeedInternet = HighSpeedInternet,
             PropertyStatusId = PropertyStatusId,
