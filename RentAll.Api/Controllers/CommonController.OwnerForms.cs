@@ -1,17 +1,8 @@
-using RentAll.Api.Dtos.Leads.Owners;
-using RentAll.Api.Dtos.Organizations.Accounting;
-using RentAll.Api.Dtos.Organizations.Offices;
-using RentAll.Api.Dtos.Organizations.Organizations;
 using RentAll.Api.Dtos.Organizations.StateForms;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Dtos.Properties.PropertyAgreements;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Leads;
-using RentAll.Domain.Models.Properties;
 using System.Security.Cryptography;
 using System.Text;
-using System.Linq;
 
 namespace RentAll.Api.Controllers
 {

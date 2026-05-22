@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Organizations.StateForms;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {

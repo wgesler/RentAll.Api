@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace RentAll.Domain.Models;
 
 public class ReceiptSplit

@@ -115,7 +115,7 @@ public class AccountingManager : IAccountingManager
         UNFURNISHED_EXPENSE_COST_CODE = office.UnfurnishedRentChargeCcId ?? 0;
         SECURITY_DEPOSIT_COST_CODE = office.SecurityDepositCcId ?? 0;
         SECURITY_DEPOSIT_WAIVER_COST_CODE = office.SecurityDepositWaiverCcId ?? 0;
-        DEPARTURE_EXPENSE_COST_CODE = office.DepartureFeeCcId?? 0;
+        DEPARTURE_EXPENSE_COST_CODE = office.DepartureFeeCcId ?? 0;
         MAID_SERVICE_EXPENSE_COST_CODE = office.MaidServiceChargeCcId ?? 0;
         PET_FEE_EXPENSE_COST_CODE = office.PetFeeCcId ?? 0;
         PARKING_EXPENSE_COST_CODE = office.ParkingChargeCcId ?? 0;
@@ -191,7 +191,7 @@ public class AccountingManager : IAccountingManager
 
         var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
         var agreement = await _propertyRepository.GetPropertyAgreementByPropertyIdAsync(reservation.PropertyId);
-        var isFurnished = property!.Unfurnished ? false: true;
+        var isFurnished = property!.Unfurnished ? false : true;
         var officeRentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
         var codeAsInt = agreement?.RentalIncomeCcId.HasValue == true && agreement.RentalIncomeCcId.Value > 0 ? agreement.RentalIncomeCcId.Value : officeRentalCostCodeId;
 
@@ -251,7 +251,7 @@ public class AccountingManager : IAccountingManager
         var isFirstMonthLessThan30Days = daysInArrivalMonth < PRORATE_DAYS;
         var isFirstMonthAndFirstMonthPartial = isFirstMonth && isFirstMonthPartial;
         var isSecondMonthFirstMonthPartial = isSecondMonth && isFirstMonthPartial;
-        var isProratedMonth  = isFirstMonthAndFirstMonthPartial || isSecondMonthFirstMonthPartial;
+        var isProratedMonth = isFirstMonthAndFirstMonthPartial || isSecondMonthFirstMonthPartial;
 
         // Use end date to hold payments to certain timeframe
         var firstDayOfLastMonth = new DateOnly(departureYear, departureMonth, 1);

@@ -1,6 +1,6 @@
+using Dapper;
 using System.Data;
 using System.Globalization;
-using Dapper;
 
 namespace RentAll.Infrastructure.Configuration;
 

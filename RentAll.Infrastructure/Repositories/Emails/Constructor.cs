@@ -4,7 +4,6 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Domain.Scheduling;
-using RentAll.Infrastructure.Entities.Emails;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Emails

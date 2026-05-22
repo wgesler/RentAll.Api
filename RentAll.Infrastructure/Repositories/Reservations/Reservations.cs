@@ -92,92 +92,92 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
             try
             {
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_Add", new
-            {
-                OrganizationId = reservation.OrganizationId,
-                ReservationCode = reservation.ReservationCode,
-                AgentId = reservation.AgentId,
-                PropertyId = reservation.PropertyId,
-                ContactIds = SerializeReservationContactIds(reservation.ContactIds),
-                CompanyId = reservation.CompanyId,
-                ReservationTypeId = (int)reservation.ReservationType,
-                ReservationStatusId = (int)reservation.ReservationStatus,
-                ReservationNoticeId = (int)reservation.ReservationNotice,
-                NumberOfPeople = reservation.NumberOfPeople,
-                TenantName = reservation.TenantName,
-                ReferenceNo = reservation.ReferenceNo,
-                ArrivalDate = reservation.ArrivalDate,
-                DepartureDate = reservation.DepartureDate,
-                CheckInTimeId = (int)reservation.CheckInTime,
-                CheckOutTimeId = (int)reservation.CheckOutTime,
-                LockBoxCode = reservation.LockBoxCode,
-                UnitTenantCode = reservation.UnitTenantCode,
-                BillingMethodId = (int)reservation.BillingMethod,
-                ProrateTypeId = (int)reservation.ProrateType,
-                BillingTypeId = (int)reservation.BillingType,
-                BillingRate = reservation.BillingRate,
-                Deposit = reservation.Deposit,
-                DepositTypeId = (int)reservation.DepositType,
-                DepartureFee = reservation.DepartureFee,
-                HasPets = reservation.HasPets,
-                PetFee = reservation.PetFee,
-                NumberOfPets = reservation.NumberOfPets,
-                PetDescription = reservation.PetDescription,
-                MaidService = reservation.MaidService,
-                MaidServiceFee = reservation.MaidServiceFee,
-                FrequencyId = (int)reservation.Frequency,
-                MaidStartDate = reservation.MaidStartDate,
-                MaidUserId = reservation.MaidUserId,
-                Taxes = reservation.Taxes,
-                Notes = reservation.Notes,
-                AllowExtensions = reservation.AllowExtensions,
-                aCleanerUserId = reservation.aCleanerUserId,
-                aCleaningDate = reservation.aCleaningDate,
-                aCarpetUserId = reservation.aCarpetUserId,
-                aCarpetDate = reservation.aCarpetDate,
-                aInspectorUserId = reservation.aInspectorUserId,
-                aInspectingDate = reservation.aInspectingDate,
-                dCleanerUserId = reservation.dCleanerUserId,
-                dCleaningDate = reservation.dCleaningDate,
-                dCarpetUserId = reservation.dCarpetUserId,
-                dCarpetDate = reservation.dCarpetDate,
-                dInspectorUserId = reservation.dInspectorUserId,
-                dInspectingDate = reservation.dInspectingDate,
-                IsActive = reservation.IsActive,
-                CreatedBy = reservation.CreatedBy
-            }, transaction: transaction);
-
-            if (res == null || !res.Any())
-                throw new Exception("Reservation not created");
-
-            var createdReservation = ConvertEntityToModel(res.FirstOrDefault()!);
-
-            if (reservation.ExtraFeeLines != null && reservation.ExtraFeeLines.Any())
-            {
-                foreach (var line in reservation.ExtraFeeLines)
+                var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_Add", new
                 {
-                    await db.DapperProcQueryAsync<ExtraFeeLineEntity>("Property.ExtraFeeLine_Add", new
+                    OrganizationId = reservation.OrganizationId,
+                    ReservationCode = reservation.ReservationCode,
+                    AgentId = reservation.AgentId,
+                    PropertyId = reservation.PropertyId,
+                    ContactIds = SerializeReservationContactIds(reservation.ContactIds),
+                    CompanyId = reservation.CompanyId,
+                    ReservationTypeId = (int)reservation.ReservationType,
+                    ReservationStatusId = (int)reservation.ReservationStatus,
+                    ReservationNoticeId = (int)reservation.ReservationNotice,
+                    NumberOfPeople = reservation.NumberOfPeople,
+                    TenantName = reservation.TenantName,
+                    ReferenceNo = reservation.ReferenceNo,
+                    ArrivalDate = reservation.ArrivalDate,
+                    DepartureDate = reservation.DepartureDate,
+                    CheckInTimeId = (int)reservation.CheckInTime,
+                    CheckOutTimeId = (int)reservation.CheckOutTime,
+                    LockBoxCode = reservation.LockBoxCode,
+                    UnitTenantCode = reservation.UnitTenantCode,
+                    BillingMethodId = (int)reservation.BillingMethod,
+                    ProrateTypeId = (int)reservation.ProrateType,
+                    BillingTypeId = (int)reservation.BillingType,
+                    BillingRate = reservation.BillingRate,
+                    Deposit = reservation.Deposit,
+                    DepositTypeId = (int)reservation.DepositType,
+                    DepartureFee = reservation.DepartureFee,
+                    HasPets = reservation.HasPets,
+                    PetFee = reservation.PetFee,
+                    NumberOfPets = reservation.NumberOfPets,
+                    PetDescription = reservation.PetDescription,
+                    MaidService = reservation.MaidService,
+                    MaidServiceFee = reservation.MaidServiceFee,
+                    FrequencyId = (int)reservation.Frequency,
+                    MaidStartDate = reservation.MaidStartDate,
+                    MaidUserId = reservation.MaidUserId,
+                    Taxes = reservation.Taxes,
+                    Notes = reservation.Notes,
+                    AllowExtensions = reservation.AllowExtensions,
+                    aCleanerUserId = reservation.aCleanerUserId,
+                    aCleaningDate = reservation.aCleaningDate,
+                    aCarpetUserId = reservation.aCarpetUserId,
+                    aCarpetDate = reservation.aCarpetDate,
+                    aInspectorUserId = reservation.aInspectorUserId,
+                    aInspectingDate = reservation.aInspectingDate,
+                    dCleanerUserId = reservation.dCleanerUserId,
+                    dCleaningDate = reservation.dCleaningDate,
+                    dCarpetUserId = reservation.dCarpetUserId,
+                    dCarpetDate = reservation.dCarpetDate,
+                    dInspectorUserId = reservation.dInspectorUserId,
+                    dInspectingDate = reservation.dInspectingDate,
+                    IsActive = reservation.IsActive,
+                    CreatedBy = reservation.CreatedBy
+                }, transaction: transaction);
+
+                if (res == null || !res.Any())
+                    throw new Exception("Reservation not created");
+
+                var createdReservation = ConvertEntityToModel(res.FirstOrDefault()!);
+
+                if (reservation.ExtraFeeLines != null && reservation.ExtraFeeLines.Any())
+                {
+                    foreach (var line in reservation.ExtraFeeLines)
                     {
-                        ReservationId = createdReservation.ReservationId,
-                        FeeDescription = line.FeeDescription,
-                        FeeAmount = line.FeeAmount,
-                        FeeFrequencyId = (int)line.FeeFrequency,
-                        CostCodeId = line.CostCodeId
-                    }, transaction: transaction);
+                        await db.DapperProcQueryAsync<ExtraFeeLineEntity>("Property.ExtraFeeLine_Add", new
+                        {
+                            ReservationId = createdReservation.ReservationId,
+                            FeeDescription = line.FeeDescription,
+                            FeeAmount = line.FeeAmount,
+                            FeeFrequencyId = (int)line.FeeFrequency,
+                            CostCodeId = line.CostCodeId
+                        }, transaction: transaction);
+                    }
                 }
-            }
 
-            var populatedRes = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
-            {
-                ReservationId = createdReservation.ReservationId,
-                OrganizationId = createdReservation.OrganizationId
-            }, transaction: transaction);
+                var populatedRes = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
+                {
+                    ReservationId = createdReservation.ReservationId,
+                    OrganizationId = createdReservation.OrganizationId
+                }, transaction: transaction);
 
-            if (populatedRes == null || !populatedRes.Any())
-                throw new Exception("Reservation not found");
+                if (populatedRes == null || !populatedRes.Any())
+                    throw new Exception("Reservation not found");
 
-            await transaction.CommitAsync();
-            return ConvertEntityToModel(populatedRes.FirstOrDefault()!);
+                await transaction.CommitAsync();
+                return ConvertEntityToModel(populatedRes.FirstOrDefault()!);
             }
             catch
             {

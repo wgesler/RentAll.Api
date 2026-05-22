@@ -100,11 +100,11 @@ public partial class LeadRepository : ILeadRepository
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<OwnerEntity>("Lead.Owner_UpdateById", new
         {
-        OwnerId = owner.OwnerId,
-        OrganizationId = owner.OrganizationId,
-        OfficeId = owner.OfficeId,
-        LeadStateId = (int)owner.LeadState,
-        AgentId = owner.AgentId,
+            OwnerId = owner.OwnerId,
+            OrganizationId = owner.OrganizationId,
+            OfficeId = owner.OfficeId,
+            LeadStateId = (int)owner.LeadState,
+            AgentId = owner.AgentId,
             FirstName = owner.FirstName,
             LastName = owner.LastName,
             Email = owner.Email,
