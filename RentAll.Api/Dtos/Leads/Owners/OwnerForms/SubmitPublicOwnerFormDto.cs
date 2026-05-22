@@ -13,19 +13,10 @@ public class SubmitPublicOwnerFormDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
-    public string? AdjustedGrossRentTarget { get; set; }
-    public string? OnlineFeeRentReady { get; set; }
-    public string? OnlineCleanHourlyFee { get; set; }
-    public string? WorkingBalanceEscrow { get; set; }
-    public string? AnnualLinenCustomAmount { get; set; }
-    public string? OfflineFee { get; set; }
     public bool FurnishingKitchenItemsRequested { get; set; }
     public string? FurnishingKitchenItemsAmount { get; set; }
     public bool FurnishingFullUnitRequested { get; set; }
     public string? FurnishingFullUnitEstimateAmount { get; set; }
-    public bool AnnualLinenTierStudio1Bedroom { get; set; }
-    public bool AnnualLinenTier2Bedroom { get; set; }
-    public bool AnnualLinenTier3Bedroom { get; set; }
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
@@ -93,19 +84,10 @@ public class SubmitPublicOwnerFormDto
         owner.City = City;
         owner.State = State;
         owner.Zip = Zip;
-        owner.AdjustedGrossRentTarget = ParseNullableDecimal(AdjustedGrossRentTarget);
-        owner.OnlineFee = ParseNullableDecimal(OnlineFeeRentReady);
-        owner.OnlineClean = ParseNullableDecimal(OnlineCleanHourlyFee);
-        owner.WorkingBalance = ParseNullableDecimal(WorkingBalanceEscrow);
-        owner.AnnualLinenAmount = ParseNullableDecimal(AnnualLinenCustomAmount);
-        owner.OfflineFee = ParseNullableDecimal(OfflineFee);
         owner.PurchaseKitchenItems = FurnishingKitchenItemsRequested;
         owner.KitchenBudget = ParseNullableDecimal(FurnishingKitchenItemsAmount);
         owner.FurnishUnit = FurnishingFullUnitRequested;
         owner.FurnishBudget = ParseNullableDecimal(FurnishingFullUnitEstimateAmount);
-        owner.OneBedroom = AnnualLinenTierStudio1Bedroom;
-        owner.TwoBedroom = AnnualLinenTier2Bedroom;
-        owner.ThreeBedroom = AnnualLinenTier3Bedroom;
         owner.NumberOfBeds = NumberOfBeds;
         owner.NumberOfBaths = NumberOfBaths;
         owner.ApproxSqFootage = ApproxSqFootage;
@@ -151,4 +133,5 @@ public class SubmitPublicOwnerFormDto
 
         return decimal.TryParse(value, out var parsed) ? parsed : null;
     }
+
 }

@@ -29,19 +29,10 @@ public class PublicOwnerFormDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
-    public decimal? AdjustedGrossRentTarget { get; set; }
-    public decimal? OnlineFeeRentReady { get; set; }
-    public decimal? OnlineCleanHourlyFee { get; set; }
-    public decimal? WorkingBalanceEscrow { get; set; }
-    public decimal? AnnualLinenCustomAmount { get; set; }
-    public decimal? OfflineFee { get; set; }
     public bool FurnishingKitchenItemsRequested { get; set; }
     public decimal? FurnishingKitchenItemsAmount { get; set; }
     public bool FurnishingFullUnitRequested { get; set; }
     public decimal? FurnishingFullUnitEstimateAmount { get; set; }
-    public bool AnnualLinenTierStudio1Bedroom { get; set; }
-    public bool AnnualLinenTier2Bedroom { get; set; }
-    public bool AnnualLinenTier3Bedroom { get; set; }
     public string? NumberOfBeds { get; set; }
     public string? NumberOfBaths { get; set; }
     public string? ApproxSqFootage { get; set; }
@@ -90,19 +81,10 @@ public class PublicOwnerFormDto
         City = owner.City;
         State = owner.State;
         Zip = owner.Zip;
-        AdjustedGrossRentTarget = owner.AdjustedGrossRentTarget;
-        OnlineFeeRentReady = owner.OnlineFee;
-        OnlineCleanHourlyFee = owner.OnlineClean;
-        WorkingBalanceEscrow = owner.WorkingBalance;
-        AnnualLinenCustomAmount = owner.AnnualLinenAmount;
-        OfflineFee = owner.OfflineFee;
         FurnishingKitchenItemsRequested = owner.PurchaseKitchenItems;
         FurnishingKitchenItemsAmount = owner.KitchenBudget;
         FurnishingFullUnitRequested = owner.FurnishUnit;
         FurnishingFullUnitEstimateAmount = owner.FurnishBudget;
-        AnnualLinenTierStudio1Bedroom = owner.OneBedroom;
-        AnnualLinenTier2Bedroom = owner.TwoBedroom;
-        AnnualLinenTier3Bedroom = owner.ThreeBedroom;
         NumberOfBeds = owner.NumberOfBeds;
         NumberOfBaths = owner.NumberOfBaths;
         ApproxSqFootage = owner.ApproxSqFootage;
