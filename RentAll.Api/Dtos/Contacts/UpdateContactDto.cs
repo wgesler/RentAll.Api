@@ -26,6 +26,7 @@ public class UpdateContactDto
     public string? State { get; set; }
     public string? Zip { get; set; }
     public string? Phone { get; set; }
+    public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
@@ -43,6 +44,7 @@ public class UpdateContactDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public bool IsOwnerReady { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -107,6 +109,7 @@ public class UpdateContactDto
             State = State,
             Zip = Zip,
             Phone = Phone,
+            Extension = Extension,
             Email = Email,
             Rating = Rating,
             Notes = Notes,
@@ -122,6 +125,7 @@ public class UpdateContactDto
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
+            IsOwnerReady = IsOwnerReady,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

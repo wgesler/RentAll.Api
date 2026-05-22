@@ -26,6 +26,7 @@ public class ContactEntity
     public string? State { get; set; }
     public string? Zip { get; set; }
     public string? Phone { get; set; }
+    public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
@@ -41,6 +42,7 @@ public class ContactEntity
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public bool IsOwnerReady { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

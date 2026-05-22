@@ -28,6 +28,7 @@ public class ContactResponseDto
     public string? State { get; set; }
     public string? Zip { get; set; }
     public string? Phone { get; set; }
+    public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
@@ -45,6 +46,7 @@ public class ContactResponseDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public bool IsOwnerReady { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -78,6 +80,7 @@ public class ContactResponseDto
         State = contact.State;
         Zip = contact.Zip;
         Phone = contact.Phone;
+        Extension = contact.Extension;
         Email = contact.Email;
         Rating = contact.Rating;
         Notes = contact.Notes;
@@ -95,6 +98,7 @@ public class ContactResponseDto
         BankName = contact.BankName;
         RoutingNumber = contact.RoutingNumber;
         AccountNumber = contact.AccountNumber;
+        IsOwnerReady = contact.IsOwnerReady;
         IsActive = contact.IsActive;
         CreatedOn = contact.CreatedOn;
         CreatedBy = contact.CreatedBy;

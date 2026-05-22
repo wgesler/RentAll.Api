@@ -42,6 +42,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 State = contact.State,
                 Zip = contact.Zip,
                 Phone = contact.Phone,
+                Extension = contact.Extension,
                 Email = contact.Email,
                 Rating = contact.Rating,
                 Notes = contact.Notes,
@@ -57,6 +58,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 BankName = contact.BankName,
                 RoutingNumber = contact.RoutingNumber,
                 AccountNumber = contact.AccountNumber,
+                IsOwnerReady = contact.IsOwnerReady,
                 CreatedBy = contact.CreatedBy
             });
 
