@@ -21,6 +21,7 @@ public interface ILeadRepository
     Task<LeadOwnerFormShare> UpsertOwnerFormShareByOwnerIdAsync(LeadOwnerFormShare share);
     Task<LeadOwnerFormShare?> GetOwnerFormShareByTokenHashAsync(string tokenHash);
     Task DeleteExpiredOwnerFormSharesAsync();
+    Task<OwnerHtml?> GetOwnerHtmlByPropertyIdAsync(Guid propertyId, Guid organizationId);
     Task<OwnerAgreementInformation?> GetOwnerAgreementInformationByIdAsync(Guid ownerAgreementInformationId, Guid organizationId);
     Task<OwnerAgreementInformation?> GetOwnerAgreementInformationByScopeAsync(Guid organizationId, int? officeId, Guid? propertyId);
     Task<OwnerAgreementInformation?> GetOwnerAgreementInformationByExactScopeAsync(Guid organizationId, int? officeId, Guid? propertyId);

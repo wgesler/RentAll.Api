@@ -17,6 +17,9 @@ namespace RentAll.Api.Controllers
         private readonly ICalendarManager _calendarManager;
         private readonly ICommonRepository _commonRepository;
         private readonly ILeadRepository _leadRepository;
+        private readonly IContactManager _contactManager;
+        private readonly IContactRepository _contactRepository;
+        private readonly IPropertyManager _propertyManager;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -27,6 +30,9 @@ namespace RentAll.Api.Controllers
             IDailyQuoteService dailyQuoteService,
             ICommonRepository commonRepository,
             ILeadRepository leadRepository,
+            IContactManager contactManager,
+            IContactRepository contactRepository,
+            IPropertyManager propertyManager,
             IOrganizationRepository organizationRepository,
             ICalendarManager calendarManager,
             IPropertyRepository propertyRepository,
@@ -37,6 +43,9 @@ namespace RentAll.Api.Controllers
             _dailyQuoteService = dailyQuoteService;
             _commonRepository = commonRepository;
             _leadRepository = leadRepository;
+            _contactManager = contactManager;
+            _contactRepository = contactRepository;
+            _propertyManager = propertyManager;
             _organizationRepository = organizationRepository;
             _calendarManager = calendarManager;
             _propertyRepository = propertyRepository;

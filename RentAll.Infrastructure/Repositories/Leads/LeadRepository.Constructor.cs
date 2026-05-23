@@ -109,6 +109,20 @@ public partial class LeadRepository : ILeadRepository
             ExpiresOn = e.ExpiresOn
         };
 
+    private static OwnerHtml ConvertOwnerHtmlEntityToModel(OwnerHtmlEntity e) =>
+        new()
+        {
+            PropertyId = e.PropertyId,
+            OrganizationId = e.OrganizationId,
+            OwnerAgreement = e.OwnerAgreement,
+            DirectDeposit = e.DirectDeposit,
+            IsDeleted = e.IsDeleted,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+
     private static OwnerAgreementInformation ConvertOwnerAgreementInformationEntityToModel(OwnerAgreementInformationEntity e) =>
         new()
         {

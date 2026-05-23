@@ -2,6 +2,11 @@ namespace RentAll.Api.Dtos.Properties.Properties;
 
 public class PropertyResponseDto
 {
+    private static int NormalizeEnumId<TEnum>(TEnum value, int fallback = 0) where TEnum : struct, Enum
+    {
+        return Enum.IsDefined(typeof(TEnum), value) ? Convert.ToInt32(value) : fallback;
+    }
+
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
@@ -159,7 +164,7 @@ public class PropertyResponseDto
         PropertyId = property.PropertyId;
         OrganizationId = property.OrganizationId;
         PropertyCode = property.PropertyCode;
-        PropertyLeaseTypeId = (int)property.PropertyLeaseType;
+        PropertyLeaseTypeId = NormalizeEnumId(property.PropertyLeaseType, 0);
         Owner1Id = property.Owner1Id;
         Owner2Id = property.Owner2Id;
         Owner3Id = property.Owner3Id;
@@ -168,12 +173,12 @@ public class PropertyResponseDto
         AvailableUntil = property.AvailableUntil;
         MinStay = property.MinStay;
         MaxStay = property.MaxStay;
-        CheckInTimeId = (int)property.CheckInTime;
-        CheckOutTimeId = (int)property.CheckOutTime;
-        PropertyStyleId = (int)property.PropertyStyle;
-        PropertyTypeId = (int)property.PropertyType;
-        PropertyStatusId = (int)property.PropertyStatus;
-        NoticeToVacateId = (int)property.NoticeToVacate;
+        CheckInTimeId = NormalizeEnumId(property.CheckInTime, 0);
+        CheckOutTimeId = NormalizeEnumId(property.CheckOutTime, 0);
+        PropertyStyleId = NormalizeEnumId(property.PropertyStyle, 0);
+        PropertyTypeId = NormalizeEnumId(property.PropertyType, 0);
+        PropertyStatusId = NormalizeEnumId(property.PropertyStatus, 0);
+        NoticeToVacateId = NormalizeEnumId(property.NoticeToVacate, 0);
         OfficeId = property.OfficeId;
         OfficeName = property.OfficeName;
         BuildingId = property.BuildingId;

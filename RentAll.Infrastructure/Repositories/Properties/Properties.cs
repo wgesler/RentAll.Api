@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Dapper;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 
@@ -98,6 +99,73 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 return null;
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
+        public async Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            static bool IsMissingGetByCodeProcedure(Exception ex)
+            {
+                var message = ex.Message ?? string.Empty;
+                return message.Contains("Property.Property_GetByCode", StringComparison.OrdinalIgnoreCase)
+                    && message.Contains("could not find stored procedure", StringComparison.OrdinalIgnoreCase);
+            }
+
+            try
+            {
+                var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_GetByCode", new
+                {
+                    PropertyCode = propertyCode,
+                    OrganizationId = organizationId
+                });
+
+                if (res == null || !res.Any())
+                    return null;
+
+                return ConvertEntityToModel(res.FirstOrDefault()!);
+            }
+            catch (SqlException ex) when (ex.Number == 2812)
+            {
+                const string fallbackSql = @"
+SELECT TOP (1)
+    p.*,
+    o.[Name] AS OfficeName
+FROM Property.[Property] AS p
+INNER JOIN Organization.[Office] AS o
+    ON p.OfficeId = o.OfficeId
+WHERE
+    p.PropertyCode = @PropertyCode
+    AND p.OrganizationId = @OrganizationId
+    AND p.IsDeleted = 0;";
+
+                var row = await db.QueryFirstOrDefaultAsync<PropertyEntity>(
+                    fallbackSql,
+                    new { PropertyCode = propertyCode, OrganizationId = organizationId }
+                );
+
+                return row == null ? null : ConvertEntityToModel(row);
+            }
+            catch (InvalidOperationException ex) when (IsMissingGetByCodeProcedure(ex) || (ex.InnerException != null && IsMissingGetByCodeProcedure(ex.InnerException)))
+            {
+                const string fallbackSql = @"
+SELECT TOP (1)
+    p.*,
+    o.[Name] AS OfficeName
+FROM Property.[Property] AS p
+INNER JOIN Organization.[Office] AS o
+    ON p.OfficeId = o.OfficeId
+WHERE
+    p.PropertyCode = @PropertyCode
+    AND p.OrganizationId = @OrganizationId
+    AND p.IsDeleted = 0;";
+
+                var row = await db.QueryFirstOrDefaultAsync<PropertyEntity>(
+                    fallbackSql,
+                    new { PropertyCode = propertyCode, OrganizationId = organizationId }
+                );
+
+                return row == null ? null : ConvertEntityToModel(row);
+            }
         }
 
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)
