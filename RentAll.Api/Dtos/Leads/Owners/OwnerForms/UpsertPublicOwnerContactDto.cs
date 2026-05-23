@@ -60,7 +60,7 @@ public class UpsertPublicOwnerContactDto
 
         contact.FirstName = ResolveIncomingOrKeepExisting(FirstName, contact.FirstName, owner.FirstName);
         contact.LastName = ResolveIncomingOrKeepExisting(LastName, contact.LastName, owner.LastName);
-        contact.Email = ResolveIncomingOrKeepExisting(Email, contact.Email, owner.Email);
+        contact.Email = ResolveRequiredValue(Email, ResolveIncomingOrKeepExisting(null, contact.Email, owner.Email));
         contact.Phone = ResolveIncomingOrKeepExisting(Phone, contact.Phone, owner.Phone);
         contact.Address1 = ResolveIncomingOrKeepExisting(Address1, contact.Address1, owner.Address);
         if (!string.IsNullOrWhiteSpace(Address2))

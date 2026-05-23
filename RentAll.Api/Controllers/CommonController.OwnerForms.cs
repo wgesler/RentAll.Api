@@ -30,7 +30,7 @@ namespace RentAll.Api.Controllers
         }
 
         [HttpGet("owner-form/{token}/stateforms")]
-        public async Task<IActionResult> GetPublicOwnerFormStateFormsByTokenAsync(string token)
+        public async Task<IActionResult> GetPublicOwnerFormStateFormsByTokenAsync(string token, [FromQuery] string? stateCode = null, [FromQuery] Guid? organizationId = null)
         {
             try
             {
@@ -38,26 +38,65 @@ namespace RentAll.Api.Controllers
                 if (tokenErrorResult != null)
                     return tokenErrorResult;
 
+                var resolvedOrganizationId = organizationId ?? owner.OrganizationId;
+                if (organizationId.HasValue && organizationId.Value != owner.OrganizationId)
+                    return BadRequest("OrganizationId does not match owner form token");
+
                 var ownerStateCode = (owner.State ?? string.Empty).Trim().ToUpperInvariant();
-                var requestedStates = new[] { "XX", ownerStateCode }
-                    .Where(state => !string.IsNullOrWhiteSpace(state) && state.Length == 2)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
+                if (ownerStateCode.Length != 2)
+                {
+                    Contact? ownerContact = null;
+                    var ownerEmail = (owner.Email ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(ownerEmail))
+                    {
+                        ownerContact = await _contactRepository.GetContactByEmailAsync(ownerEmail, owner.OrganizationId);
+                        if (ownerContact != null && (ownerContact.OwnerLeadId == null || ownerContact.OwnerLeadId <= 0))
+                        {
+                            ownerContact.OwnerLeadId = owner.OwnerId;
+                            ownerContact.ModifiedBy = Guid.Empty;
+                            ownerContact = await _contactRepository.UpdateByIdAsync(ownerContact);
+                        }
+                    }
+                    if (ownerContact == null)
+                    {
+                        var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
+                        if (!string.IsNullOrWhiteSpace(officeAccess))
+                        {
+                            ownerContact = await _contactRepository.GetContactByLeadAsync(
+                                owner.OrganizationId,
+                                officeAccess,
+                                owner.OwnerId,
+                                owner.FirstName,
+                                owner.LastName,
+                                owner.Address
+                            );
+                        }
+                    }
+                    ownerStateCode = (ownerContact?.State ?? string.Empty).Trim().ToUpperInvariant();
+                }
+                var requestedStates = string.IsNullOrWhiteSpace(stateCode)
+                    ? new[] { "XX", ownerStateCode }
+                        .Where(state => !string.IsNullOrWhiteSpace(state) && state.Length == 2)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray()
+                    : new[] { stateCode.Trim().ToUpperInvariant() }
+                        .Where(state => state.Length == 2)
+                        .ToArray();
 
                 if (requestedStates.Length == 0)
                     return Ok(Array.Empty<StateFormResponseDto>());
 
                 var allForms = new List<StateForm>();
-                foreach (var stateCode in requestedStates)
+                foreach (var requestedStateCode in requestedStates)
                 {
-                    var stateForms = await _organizationRepository.GetStateFormsAsync(share.OrganizationId.ToString(), stateCode);
+                    var stateForms = await _organizationRepository.GetStateFormsAsync(resolvedOrganizationId.ToString(), requestedStateCode);
                     allForms.AddRange(stateForms ?? Enumerable.Empty<StateForm>());
                 }
 
                 if (allForms.Count == 0)
                     return Ok(Array.Empty<StateFormResponseDto>());
 
-                var organizationGuid = share.OrganizationId;
+                var organizationGuid = resolvedOrganizationId;
                 var response = new List<StateFormResponseDto>();
                 foreach (var stateForm in allForms)
                 {
@@ -80,6 +119,12 @@ namespace RentAll.Api.Controllers
                 _logger.LogError(ex, "Error getting public owner state forms by token");
                 return ServerError("An error occurred while retrieving owner state forms");
             }
+        }
+
+        [HttpGet("owner-form/{token}/stateforms/{stateCode}")]
+        public Task<IActionResult> GetPublicOwnerFormStateFormsByTokenAndStateAsync(string token, string stateCode, [FromQuery] Guid? organizationId = null)
+        {
+            return GetPublicOwnerFormStateFormsByTokenAsync(token, stateCode, organizationId);
         }
 
         [HttpGet("owner-form/{token}/lead-owner")]
