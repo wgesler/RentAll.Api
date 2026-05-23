@@ -18,6 +18,7 @@ public enum RoleType
     Tenants = 13,
     Owner = 14,
     Inspector = 15,
+    OwnerAdmin = 16
 }
 
 
