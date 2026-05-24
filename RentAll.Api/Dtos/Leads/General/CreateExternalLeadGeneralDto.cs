@@ -54,6 +54,8 @@ public class CreateExternalLeadGeneralDto
             PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
             Notes = Notes?.Trim(),
+            CreatedBy = Guid.Empty,
+            ModifiedBy = Guid.Empty,
             IsActive = true
         };
 }

@@ -69,7 +69,7 @@ public partial class LeadController
 
         try
         {
-            var created = await _leadRepository.CreateOwnerAsync(dto.ToModel(CurrentOrganizationId));
+            var created = await _leadRepository.CreateOwnerAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new LeadOwnerResponseDto(created));
         }
         catch (Exception ex)
@@ -154,7 +154,7 @@ public partial class LeadController
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
                 return NotFound("Owner lead not found");
 
-            var updated = dto.ToModel();
+            var updated = dto.ToModel(CurrentUser);
             updated.OrganizationId = existing.OrganizationId;
             var updatedResult = await _leadRepository.UpdateOwnerByIdAsync(updated);
             return Ok(new LeadOwnerResponseDto(updatedResult));

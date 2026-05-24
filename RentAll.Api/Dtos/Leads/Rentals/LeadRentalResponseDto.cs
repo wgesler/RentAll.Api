@@ -28,6 +28,11 @@ public class LeadRentalResponseDto
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
     public string? Notes { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
+    public string ModifiedByName { get; set; } = string.Empty;
     public string? QuotePath { get; set; }
     public bool INeedAsap { get; set; }
     public bool EmailPhoneConsent { get; set; }
@@ -60,6 +65,11 @@ public class LeadRentalResponseDto
         OrganizationName = rental.OrganizationName;
         AdditionalInformation = rental.AdditionalInformation;
         Notes = rental.Notes;
+        CreatedOn = rental.CreatedOn;
+        CreatedBy = rental.CreatedBy;
+        ModifiedOn = rental.ModifiedOn;
+        ModifiedBy = rental.ModifiedBy;
+        ModifiedByName = rental.ModifiedByName;
         QuotePath = rental.QuotePath;
         INeedAsap = rental.INeedAsap;
         EmailPhoneConsent = rental.EmailPhoneConsent;

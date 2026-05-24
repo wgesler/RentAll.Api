@@ -67,7 +67,7 @@ public partial class LeadController
 
         try
         {
-            var created = await _leadRepository.CreateRentalAsync(dto.ToModel(CurrentOrganizationId));
+            var created = await _leadRepository.CreateRentalAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new LeadRentalResponseDto(created));
         }
         catch (Exception ex)
@@ -106,7 +106,7 @@ public partial class LeadController
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
                 return NotFound("Rental lead not found");
 
-            var updated = dto.ToModel();
+            var updated = dto.ToModel(CurrentUser);
             updated.OrganizationId = existing.OrganizationId;
             var updatedResult = await _leadRepository.UpdateRentalByIdAsync(updated);
             return Ok(new LeadRentalResponseDto(updatedResult));

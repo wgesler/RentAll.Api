@@ -51,7 +51,7 @@ public class CreateLeadGeneralDto
         return (true, null);
     }
 
-    public LeadGeneral ToModel(Guid organizationId) =>
+    public LeadGeneral ToModel(Guid organizationId, Guid currentUser) =>
         new()
         {
             OrganizationId = organizationId,
@@ -63,6 +63,8 @@ public class CreateLeadGeneralDto
             PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
             Notes = Notes?.Trim(),
+            CreatedBy = currentUser,
+            ModifiedBy = currentUser,
             IsActive = IsActive
         };
 }

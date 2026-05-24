@@ -101,6 +101,8 @@ public class CreateExternalLeadOwnerDto
             PreferredContactMethod = PreferredContactMethod,
             TimeDateForContact = TimeDateForContact,
             Notes = Notes,
+            CreatedBy = Guid.Empty,
+            ModifiedBy = Guid.Empty,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,
             IsActive = true

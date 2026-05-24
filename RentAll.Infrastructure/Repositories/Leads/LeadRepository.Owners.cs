@@ -81,6 +81,8 @@ public partial class LeadRepository : ILeadRepository
             PreferredContactMethod = owner.PreferredContactMethod,
             TimeDateForContact = owner.TimeDateForContact,
             Notes = owner.Notes,
+            CreatedBy = owner.CreatedBy,
+            ModifiedBy = owner.ModifiedBy,
             EmailPhoneConsent = owner.EmailPhoneConsent,
             SmsConsent = owner.SmsConsent,
             IsActive = owner.IsActive
@@ -138,6 +140,7 @@ public partial class LeadRepository : ILeadRepository
             PreferredContactMethod = owner.PreferredContactMethod,
             TimeDateForContact = owner.TimeDateForContact,
             Notes = owner.Notes,
+            ModifiedBy = owner.ModifiedBy,
             EmailPhoneConsent = owner.EmailPhoneConsent,
             SmsConsent = owner.SmsConsent,
             IsActive = owner.IsActive

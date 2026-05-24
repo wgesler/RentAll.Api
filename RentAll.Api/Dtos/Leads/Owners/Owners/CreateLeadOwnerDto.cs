@@ -89,7 +89,7 @@ public class CreateLeadOwnerDto
         return (true, null);
     }
 
-    public LeadOwner ToModel(Guid organizationId) =>
+    public LeadOwner ToModel(Guid organizationId, Guid currentUser) =>
         new()
         {
             OrganizationId = organizationId,
@@ -128,6 +128,8 @@ public class CreateLeadOwnerDto
             PreferredContactMethod = PreferredContactMethod,
             TimeDateForContact = TimeDateForContact,
             Notes = Notes,
+            CreatedBy = currentUser,
+            ModifiedBy = currentUser,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,
             IsActive = IsActive

@@ -78,7 +78,7 @@ public class CreateLeadRentalDto
         return (true, null);
     }
 
-    public LeadRental ToModel(Guid organizationId) =>
+    public LeadRental ToModel(Guid organizationId, Guid currentUser) =>
         new()
         {
             OrganizationId = organizationId,
@@ -104,6 +104,8 @@ public class CreateLeadRentalDto
             OrganizationName = OrganizationName,
             AdditionalInformation = AdditionalInformation,
             Notes = Notes,
+            CreatedBy = currentUser,
+            ModifiedBy = currentUser,
             QuotePath = QuotePath,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,

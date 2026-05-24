@@ -58,7 +58,7 @@ public partial class LeadController
 
         try
         {
-            var created = await _leadRepository.CreateGeneralAsync(dto.ToModel(CurrentOrganizationId));
+            var created = await _leadRepository.CreateGeneralAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new LeadGeneralResponseDto(created));
         }
         catch (Exception ex)
@@ -94,7 +94,7 @@ public partial class LeadController
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == existing.OfficeId))
                 return NotFound("General lead not found");
 
-            var updated = dto.ToModel(existing.OrganizationId);
+            var updated = dto.ToModel(existing.OrganizationId, CurrentUser);
             var updatedResult = await _leadRepository.UpdateGeneralByIdAsync(updated);
             return Ok(new LeadGeneralResponseDto(updatedResult));
         }

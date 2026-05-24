@@ -12,5 +12,10 @@ public class GeneralEntity
     public string? PhoneMobile { get; set; }
     public string? Message { get; set; }
     public string? Notes { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
+    public string ModifiedByName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 }

@@ -28,6 +28,11 @@ public class LeadRental
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
     public string? Notes { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
+    public string ModifiedByName { get; set; } = string.Empty;
     public string? QuotePath { get; set; }
     public bool INeedAsap { get; set; }
     public bool EmailPhoneConsent { get; set; }

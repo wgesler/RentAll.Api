@@ -51,7 +51,7 @@ public class UpdateLeadGeneralDto
         return (true, null);
     }
 
-    public LeadGeneral ToModel(Guid organizationId) =>
+    public LeadGeneral ToModel(Guid organizationId, Guid currentUser) =>
         new()
         {
             GeneralId = GeneralId,
@@ -64,6 +64,7 @@ public class UpdateLeadGeneralDto
             PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
             Notes = Notes?.Trim(),
+            ModifiedBy = currentUser,
             IsActive = IsActive
         };
 }

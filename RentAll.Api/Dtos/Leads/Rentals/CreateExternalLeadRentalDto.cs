@@ -87,6 +87,8 @@ public class CreateExternalLeadRentalDto
             OrganizationName = OrganizationName,
             AdditionalInformation = AdditionalInformation,
             Notes = Notes,
+            CreatedBy = Guid.Empty,
+            ModifiedBy = Guid.Empty,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,

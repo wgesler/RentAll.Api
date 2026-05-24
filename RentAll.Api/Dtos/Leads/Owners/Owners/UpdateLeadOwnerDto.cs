@@ -68,7 +68,7 @@ public class UpdateLeadOwnerDto
         return (true, null);
     }
 
-    public LeadOwner ToModel() =>
+    public LeadOwner ToModel(Guid currentUser) =>
         new()
         {
             OwnerId = OwnerId,
@@ -107,6 +107,7 @@ public class UpdateLeadOwnerDto
             PreferredContactMethod = PreferredContactMethod,
             TimeDateForContact = TimeDateForContact,
             Notes = Notes,
+            ModifiedBy = currentUser,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,
             IsActive = IsActive

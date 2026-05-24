@@ -72,7 +72,7 @@ public class UpdateLeadRentalDto
         return (true, null);
     }
 
-    public LeadRental ToModel() =>
+    public LeadRental ToModel(Guid currentUser) =>
         new()
         {
             RentalId = RentalId,
@@ -98,6 +98,7 @@ public class UpdateLeadRentalDto
             OrganizationName = OrganizationName,
             AdditionalInformation = AdditionalInformation,
             Notes = Notes,
+            ModifiedBy = currentUser,
             QuotePath = QuotePath,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,

@@ -14,6 +14,11 @@ public class LeadGeneralResponseDto
     public string? Phone { get; set; }
     public string? Message { get; set; }
     public string? Notes { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
+    public string ModifiedByName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public LeadGeneralResponseDto(LeadGeneral lead)
@@ -28,6 +33,11 @@ public class LeadGeneralResponseDto
         Phone = lead.PhoneMobile;
         Message = lead.Message;
         Notes = lead.Notes;
+        CreatedOn = lead.CreatedOn;
+        CreatedBy = lead.CreatedBy;
+        ModifiedOn = lead.ModifiedOn;
+        ModifiedBy = lead.ModifiedBy;
+        ModifiedByName = lead.ModifiedByName;
         IsActive = lead.IsActive;
     }
 }

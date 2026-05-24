@@ -58,6 +58,8 @@ public partial class LeadRepository : ILeadRepository
             PhoneMobile = lead.PhoneMobile,
             Message = lead.Message,
             Notes = lead.Notes,
+            CreatedBy = lead.CreatedBy,
+            ModifiedBy = lead.ModifiedBy,
             IsActive = lead.IsActive
         });
 
@@ -88,6 +90,7 @@ public partial class LeadRepository : ILeadRepository
             PhoneMobile = lead.PhoneMobile,
             Message = lead.Message,
             Notes = lead.Notes,
+            ModifiedBy = lead.ModifiedBy,
             IsActive = lead.IsActive
         });
 

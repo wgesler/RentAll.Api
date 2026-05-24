@@ -49,6 +49,11 @@ public partial class LeadRepository : ILeadRepository
             OrganizationName = e.OrganizationName,
             AdditionalInformation = e.AdditionalInformation,
             Notes = e.Notes,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedByName = e.ModifiedByName,
             QuotePath = e.QuotePath,
             INeedAsap = e.INeedAsap,
             EmailPhoneConsent = e.EmailPhoneConsent,
@@ -96,6 +101,11 @@ public partial class LeadRepository : ILeadRepository
             PreferredContactMethod = e.PreferredContactMethod,
             TimeDateForContact = e.TimeDateForContact,
             Notes = e.Notes,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedByName = e.ModifiedByName,
             EmailPhoneConsent = e.EmailPhoneConsent,
             SmsConsent = e.SmsConsent,
             IsActive = e.IsActive
@@ -202,6 +212,11 @@ public partial class LeadRepository : ILeadRepository
             PhoneMobile = e.PhoneMobile,
             Message = e.Message,
             Notes = e.Notes,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedByName = e.ModifiedByName,
             IsActive = e.IsActive
         };
 }
