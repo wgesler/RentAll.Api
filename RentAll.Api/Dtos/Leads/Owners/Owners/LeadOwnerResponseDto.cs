@@ -40,6 +40,7 @@ public class LeadOwnerResponseDto
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
     public string? TimeDateForContact { get; set; }
+    public string? Notes { get; set; }
     public bool EmailPhoneConsent { get; set; }
     public bool SmsConsent { get; set; }
     public bool IsActive { get; set; }
@@ -82,6 +83,7 @@ public class LeadOwnerResponseDto
         TellUsAnyDrawbacks = owner.TellUsAnyDrawbacks;
         PreferredContactMethod = owner.PreferredContactMethod;
         TimeDateForContact = owner.TimeDateForContact;
+        Notes = owner.Notes;
         EmailPhoneConsent = owner.EmailPhoneConsent;
         SmsConsent = owner.SmsConsent;
         IsActive = owner.IsActive;

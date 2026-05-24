@@ -11,6 +11,7 @@ public class CreateExternalLeadGeneralDto
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? Notes { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -52,6 +53,7 @@ public class CreateExternalLeadGeneralDto
             Email = Email?.Trim(),
             PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
+            Notes = Notes?.Trim(),
             IsActive = true
         };
 }

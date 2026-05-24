@@ -12,6 +12,7 @@ public class CreateLeadGeneralDto
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
 
     public (bool IsValid, string? ErrorMessage) IsValid(string? currentOffices)
@@ -61,6 +62,7 @@ public class CreateLeadGeneralDto
             Email = Email?.Trim(),
             PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
+            Notes = Notes?.Trim(),
             IsActive = IsActive
         };
 }

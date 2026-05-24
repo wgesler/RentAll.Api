@@ -39,6 +39,7 @@ public class UpdateLeadOwnerDto
     public string? TellUsAnyDrawbacks { get; set; }
     public string? PreferredContactMethod { get; set; }
     public string? TimeDateForContact { get; set; }
+    public string? Notes { get; set; }
     public bool EmailPhoneConsent { get; set; }
     public bool SmsConsent { get; set; }
     public bool IsActive { get; set; }
@@ -105,6 +106,7 @@ public class UpdateLeadOwnerDto
             TellUsAnyDrawbacks = TellUsAnyDrawbacks,
             PreferredContactMethod = PreferredContactMethod,
             TimeDateForContact = TimeDateForContact,
+            Notes = Notes,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,
             IsActive = IsActive

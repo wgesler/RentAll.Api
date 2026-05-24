@@ -80,6 +80,7 @@ public partial class LeadRepository : ILeadRepository
             TellUsAnyDrawbacks = owner.TellUsAnyDrawbacks,
             PreferredContactMethod = owner.PreferredContactMethod,
             TimeDateForContact = owner.TimeDateForContact,
+            Notes = owner.Notes,
             EmailPhoneConsent = owner.EmailPhoneConsent,
             SmsConsent = owner.SmsConsent,
             IsActive = owner.IsActive
@@ -136,6 +137,7 @@ public partial class LeadRepository : ILeadRepository
             TellUsAnyDrawbacks = owner.TellUsAnyDrawbacks,
             PreferredContactMethod = owner.PreferredContactMethod,
             TimeDateForContact = owner.TimeDateForContact,
+            Notes = owner.Notes,
             EmailPhoneConsent = owner.EmailPhoneConsent,
             SmsConsent = owner.SmsConsent,
             IsActive = owner.IsActive

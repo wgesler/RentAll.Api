@@ -13,6 +13,7 @@ public class LeadGeneralResponseDto
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Message { get; set; }
+    public string? Notes { get; set; }
     public bool IsActive { get; set; }
 
     public LeadGeneralResponseDto(LeadGeneral lead)
@@ -26,6 +27,7 @@ public class LeadGeneralResponseDto
         Email = lead.Email;
         Phone = lead.PhoneMobile;
         Message = lead.Message;
+        Notes = lead.Notes;
         IsActive = lead.IsActive;
     }
 }

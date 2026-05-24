@@ -24,6 +24,7 @@ public class CreateExternalLeadRentalDto
     public DateOnly? DecisionDate { get; set; }
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
+    public string? Notes { get; set; }
     public bool INeedAsap { get; set; }
     public bool EmailPhoneConsent { get; set; }
     public bool SmsConsent { get; set; }
@@ -85,6 +86,7 @@ public class CreateExternalLeadRentalDto
             DecisionDate = DecisionDate,
             OrganizationName = OrganizationName,
             AdditionalInformation = AdditionalInformation,
+            Notes = Notes,
             INeedAsap = INeedAsap,
             EmailPhoneConsent = EmailPhoneConsent,
             SmsConsent = SmsConsent,

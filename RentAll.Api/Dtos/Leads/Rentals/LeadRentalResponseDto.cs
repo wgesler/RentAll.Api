@@ -27,6 +27,7 @@ public class LeadRentalResponseDto
     public DateOnly? DecisionDate { get; set; }
     public string? OrganizationName { get; set; }
     public string? AdditionalInformation { get; set; }
+    public string? Notes { get; set; }
     public string? QuotePath { get; set; }
     public bool INeedAsap { get; set; }
     public bool EmailPhoneConsent { get; set; }
@@ -58,6 +59,7 @@ public class LeadRentalResponseDto
         DecisionDate = rental.DecisionDate;
         OrganizationName = rental.OrganizationName;
         AdditionalInformation = rental.AdditionalInformation;
+        Notes = rental.Notes;
         QuotePath = rental.QuotePath;
         INeedAsap = rental.INeedAsap;
         EmailPhoneConsent = rental.EmailPhoneConsent;

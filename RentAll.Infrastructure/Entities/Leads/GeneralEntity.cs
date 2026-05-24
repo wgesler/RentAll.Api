@@ -11,5 +11,6 @@ public class GeneralEntity
     public string? Email { get; set; }
     public string? PhoneMobile { get; set; }
     public string? Message { get; set; }
+    public string? Notes { get; set; }
     public bool IsActive { get; set; }
 }

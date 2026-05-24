@@ -57,6 +57,7 @@ public partial class LeadRepository : ILeadRepository
             Email = lead.Email,
             PhoneMobile = lead.PhoneMobile,
             Message = lead.Message,
+            Notes = lead.Notes,
             IsActive = lead.IsActive
         });
 
@@ -86,6 +87,7 @@ public partial class LeadRepository : ILeadRepository
             Email = lead.Email,
             PhoneMobile = lead.PhoneMobile,
             Message = lead.Message,
+            Notes = lead.Notes,
             IsActive = lead.IsActive
         });
 

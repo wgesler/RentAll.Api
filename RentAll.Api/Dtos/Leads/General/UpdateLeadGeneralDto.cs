@@ -12,6 +12,7 @@ public class UpdateLeadGeneralDto
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? Notes { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(string? currentOffices)
@@ -62,6 +63,7 @@ public class UpdateLeadGeneralDto
             Email = Email?.Trim(),
             PhoneMobile = Phone?.Trim(),
             Message = Message?.Trim(),
+            Notes = Notes?.Trim(),
             IsActive = IsActive
         };
 }
