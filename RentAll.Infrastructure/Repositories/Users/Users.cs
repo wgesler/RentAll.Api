@@ -60,7 +60,7 @@ namespace RentAll.Infrastructure.Repositories.Users
             });
 
             if (res == null || !res.Any())
-                throw new Exception("User not found");
+                return null;
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
