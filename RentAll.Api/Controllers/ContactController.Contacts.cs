@@ -182,10 +182,10 @@ namespace RentAll.Api.Controllers
                         Properties = new List<string>(),
                         FirstName = dto.FirstName,
                         LastName = dto.LastName,
-                        Address1 = dto.Address,
-                        City = dto.City,
-                        State = dto.State,
-                        Zip = dto.Zip,
+                        Address1 = null,
+                        City = null,
+                        State = null,
+                        Zip = null,
                         Phone = dto.Phone,
                         Email = dto.Email,
                         Rating = 0,
@@ -206,14 +206,6 @@ namespace RentAll.Api.Controllers
                 // If we've matched a contact to a lead, make sure information follows
                 if (contact.OwnerLeadId == null)
                     contact.OwnerLeadId = dto.OwnerId;
-
-                if (string.IsNullOrEmpty(contact.Address1))
-                {
-                    contact.Address1 = dto.Address;
-                    contact.City = dto.City;
-                    contact.State = dto.State;
-                    contact.Zip = dto.Zip;
-                }
 
                 contact.ModifiedBy = CurrentUser;
                 var updated = await _contactRepository.UpdateByIdAsync(contact);
