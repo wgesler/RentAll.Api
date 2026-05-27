@@ -1,6 +1,6 @@
 namespace RentAll.Domain.Models;
 
-public class PropertyCode
+public class PropertyCodes
 {
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;

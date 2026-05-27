@@ -37,17 +37,17 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<ReservationCode>> GetReservationActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        public async Task<IEnumerable<ReservationCodes>> GetReservationActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationCode>("Property.Reservation_GetActiveCodesByOfficeIds", new
+            var res = await db.DapperProcQueryAsync<ReservationCodes>("Property.Reservation_GetActiveCodesByOfficeIds", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
             });
 
             if (res == null || !res.Any())
-                return Enumerable.Empty<ReservationCode>();
+                return Enumerable.Empty<ReservationCodes>();
 
             return res;
         }

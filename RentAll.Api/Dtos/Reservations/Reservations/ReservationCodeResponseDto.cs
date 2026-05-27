@@ -11,7 +11,7 @@ public class ReservationCodeResponseDto
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
 
-    public ReservationCodeResponseDto(ReservationCode reservationCode)
+    public ReservationCodeResponseDto(ReservationCodes reservationCode)
     {
         ReservationId = reservationCode.ReservationId;
         ReservationCode = reservationCode.ReservationCode;

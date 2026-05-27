@@ -38,17 +38,17 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<PropertyCode>> GetPropertyActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        public async Task<IEnumerable<PropertyCodes>> GetPropertyActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyCode>("Property.Property_GetActiveCodesByOfficeIds", new
+            var res = await db.DapperProcQueryAsync<PropertyCodes>("Property.Property_GetActiveCodesByOfficeIds", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
             });
 
             if (res == null || !res.Any())
-                return Enumerable.Empty<PropertyCode>();
+                return Enumerable.Empty<PropertyCodes>();
 
             return res;
         }

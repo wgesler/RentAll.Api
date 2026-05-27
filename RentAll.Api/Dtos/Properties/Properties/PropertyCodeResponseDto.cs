@@ -11,7 +11,7 @@ public class PropertyCodeResponseDto
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
 
-    public PropertyCodeResponseDto(PropertyCode propertyCode)
+    public PropertyCodeResponseDto(PropertyCodes propertyCode)
     {
         PropertyId = propertyCode.PropertyId;
         PropertyCode = propertyCode.PropertyCode;

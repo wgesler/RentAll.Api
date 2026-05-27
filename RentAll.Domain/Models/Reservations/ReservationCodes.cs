@@ -1,6 +1,6 @@
 namespace RentAll.Domain.Models;
 
-public class ReservationCode
+public class ReservationCodes
 {
     public Guid ReservationId { get; set; }
     public string ReservationCode { get; set; } = string.Empty;
