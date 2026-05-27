@@ -27,7 +27,9 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 OrganizationId = e.OrganizationId,
                 OfficeId = e.OfficeId,
                 PropertyId = e.PropertyId,
+                PropertyCode = e.PropertyCode,
                 ReservationId = e.ReservationId,
+                ReservationCode = e.ReservationCode,
                 ToRecipients = (e.ToRecipients ?? [])
                     .Select(recipient => new Domain.Models.Common.EmailAddress
                     {
@@ -102,7 +104,9 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 OrganizationId = model.OrganizationId,
                 OfficeId = model.OfficeId,
                 PropertyId = model.PropertyId,
+                PropertyCode = model.PropertyCode,
                 ReservationId = model.ReservationId,
+                ReservationCode = model.ReservationCode,
                 ToRecipients = (model.ToRecipients ?? [])
                     .Select(recipient => new EmailAddressEntity
                     {
@@ -156,7 +160,9 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 OrganizationId = row.OrganizationId,
                 OfficeId = row.OfficeId,
                 PropertyId = row.PropertyId,
+                PropertyCode = row.PropertyCode,
                 ReservationId = row.ReservationId,
+                ReservationCode = row.ReservationCode,
                 ToRecipients = DeserializeRecipients(row.ToRecipients),
                 CcRecipients = DeserializeRecipients(row.CcRecipients),
                 BccRecipients = DeserializeRecipients(row.BccRecipients),
@@ -374,7 +380,9 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public Guid OrganizationId { get; set; }
             public int OfficeId { get; set; }
             public Guid? PropertyId { get; set; }
+            public string? PropertyCode { get; set; }
             public Guid? ReservationId { get; set; }
+            public string? ReservationCode { get; set; }
             public string ToRecipients { get; set; } = "[]";
             public string CcRecipients { get; set; } = "[]";
             public string BccRecipients { get; set; } = "[]";

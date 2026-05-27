@@ -8,7 +8,9 @@ public class EmailResponseDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public List<EmailAddress> ToRecipients { get; set; } = [];
     public List<EmailAddress> CcRecipients { get; set; } = [];
     public List<EmailAddress> BccRecipients { get; set; } = [];
@@ -37,7 +39,9 @@ public class EmailResponseDto
         OrganizationId = email.OrganizationId;
         OfficeId = email.OfficeId;
         PropertyId = email.PropertyId;
+        PropertyCode = email.PropertyCode;
         ReservationId = email.ReservationId;
+        ReservationCode = email.ReservationCode;
         ToRecipients = email.ToRecipients;
         CcRecipients = email.CcRecipients;
         BccRecipients = email.BccRecipients;
