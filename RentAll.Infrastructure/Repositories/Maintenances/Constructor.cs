@@ -151,7 +151,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             CreatedOn = e.CreatedOn,
             ModifiedBy = e.ModifiedBy,
             ModifiedOn = e.ModifiedOn,
-            ModifiedByName = e.ModifiedByName
+            ModifiedByName = e.ModifiedByName,
+            BankCardDisplayName = e.BankCardDisplayName
         };
     }
 
@@ -197,7 +198,15 @@ public partial class MaintenanceRepository : IMaintenanceRepository
 
         try
         {
-            return JsonSerializer.Deserialize<List<ReceiptSplit>>(splitsJson, JsonOptions) ?? new List<ReceiptSplit>();
+            var splitRows = JsonSerializer.Deserialize<List<ReceiptSplitJson>>(splitsJson, JsonOptions) ?? new List<ReceiptSplitJson>();
+            return splitRows.Select(split => new ReceiptSplit
+            {
+                Amount = split.Amount,
+                Description = split.Description,
+                WorkOrder = split.WorkOrder,
+                ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
+                BankCardId = split.BankCardId ?? 0
+            }).ToList();
         }
         catch
         {
@@ -228,6 +237,15 @@ public partial class MaintenanceRepository : IMaintenanceRepository
     private sealed class ReceiptPropertyIdJson
     {
         public Guid PropertyId { get; set; }
+    }
+
+    private sealed class ReceiptSplitJson
+    {
+        public decimal Amount { get; set; }
+        public string? Description { get; set; }
+        public string? WorkOrder { get; set; }
+        public int? ReceiptTypeId { get; set; }
+        public int? BankCardId { get; set; }
     }
 
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)

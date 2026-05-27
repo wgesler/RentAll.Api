@@ -11,12 +11,13 @@ public class ReceiptResponseDto
     public List<Guid> PropertyIds { get; set; } = new List<Guid>();
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
-    public List<ReceiptSplit> Splits { get; set; } = new List<ReceiptSplit>();
+    public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public string ModifiedBy { get; set; }
+    public string BankCardDisplayName { get; set; } = string.Empty;
 
     public ReceiptResponseDto(Receipt receipt)
     {
@@ -27,11 +28,12 @@ public class ReceiptResponseDto
         PropertyIds = receipt.PropertyIds;
         Amount = receipt.Amount;
         Description = receipt.Description;
-        Splits = receipt.Splits;
+        Splits = (receipt.Splits ?? new List<ReceiptSplit>()).Select(split => new ReceiptSplitDto(split)).ToList();
         ReceiptPath = receipt.ReceiptPath;
         FileDetails = receipt.FileDetails;
         IsActive = receipt.IsActive;
         ModifiedOn = receipt.ModifiedOn;
         ModifiedBy = receipt.ModifiedByName;
+        BankCardDisplayName = receipt.BankCardDisplayName;
     }
 }

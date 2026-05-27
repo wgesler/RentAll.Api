@@ -48,6 +48,7 @@ builder.Services.Configure<SendGridSettings>(sendGridSettings);
 builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
 builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.GetSection("ExternalTicketIntakeSettings"));
 builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
+builder.Services.Configure<EncryptionSettings>(builder.Configuration.GetSection("EncryptionSettings"));
 
 var allowedHosts = appSettingsSection.GetSection("AllowedHostNames").Get<string[]>()!;
 var environment = appSettingsSection.GetSection("Environment").Get<string>()!;
@@ -105,6 +106,7 @@ builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
 // Configure File Storage Service (FileSystem or AzureBlob)
 var storageConfig = builder.Configuration.GetSection("StorageSettings");

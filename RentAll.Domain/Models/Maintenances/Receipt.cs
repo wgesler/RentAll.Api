@@ -20,4 +20,5 @@ public class Receipt
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public string ModifiedByName { get; set; } = string.Empty;
+    public string BankCardDisplayName { get; set; } = string.Empty;
 }

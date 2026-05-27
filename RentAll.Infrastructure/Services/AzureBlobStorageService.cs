@@ -107,6 +107,7 @@ public class AzureBlobStorageService : IFileService
         var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
         if (!string.IsNullOrEmpty(fileNameOnly))
             fileNameOnly = Uri.UnescapeDataString(fileNameOnly);
+        fileNameOnly = SanitizeBlobPathSegment(fileNameOnly, "image", 120);
 
         var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
         var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
@@ -356,8 +357,29 @@ public class AzureBlobStorageService : IFileService
     private string GetBlobPathPrefix(Guid organizationId, string? officeName)
     {
         var orgSegment = $"{organizationId:N}".ToLowerInvariant();
-        var officeSegment = !string.IsNullOrWhiteSpace(officeName) ? officeName.Trim().ToLower() : "global";
+        var officeSegment = SanitizeBlobPathSegment(officeName, "global", 120);
         return $"{orgSegment}/{officeSegment}";
+    }
+
+    private static string SanitizeBlobPathSegment(string? value, string fallback, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return fallback;
+
+        var trimmed = value.Trim().ToLowerInvariant();
+        var chars = trimmed
+            .Select(c => (char.IsLetterOrDigit(c) || c == '-' || c == '_') ? c : '-')
+            .ToArray();
+
+        var normalized = new string(chars);
+        while (normalized.Contains("--", StringComparison.Ordinal))
+            normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
+
+        normalized = normalized.Trim('-', '_', '.');
+        if (string.IsNullOrWhiteSpace(normalized))
+            normalized = fallback;
+
+        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
     }
 
     private static string SanitizeContainerSegment(string value)

@@ -22,6 +22,21 @@ public partial class AccountingRepository : IAccountingRepository
     }
 
     #region CostCodes
+    private BankCard ConvertEntityToModel(BankCardEntity e)
+    {
+        return new BankCard
+        {
+            BankCardId = e.BankCardId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            CardTypeId = e.CardTypeId,
+            CardName = e.CardName,
+            DisplayName = e.DisplayName,
+            LastFour = e.LastFour,
+            CostCodeId = e.CostCodeId
+        };
+    }
+
     private CostCode ConvertEntityToModel(CostCodeEntity e)
     {
         return new CostCode

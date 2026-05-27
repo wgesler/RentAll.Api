@@ -1,4 +1,5 @@
 using RentAll.Domain.Models.Common;
+using RentAll.Api.Dtos.Accounting.BankCards;
 
 namespace RentAll.Api.Dtos.Organizations.Accounting;
 
@@ -31,6 +32,7 @@ public class AccountingOfficeResponseDto
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
+    public List<BankCardResponseDto> BankCards { get; set; } = new();
 
     public AccountingOfficeResponseDto(AccountingOffice accountingOffice)
     {
@@ -60,5 +62,6 @@ public class AccountingOfficeResponseDto
         CreatedBy = accountingOffice.CreatedBy;
         ModifiedOn = accountingOffice.ModifiedOn;
         ModifiedBy = accountingOffice.ModifiedBy;
+        BankCards = accountingOffice.BankCards.Select(b => new BankCardResponseDto(b)).ToList();
     }
 }

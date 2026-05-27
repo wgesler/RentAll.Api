@@ -28,4 +28,13 @@ public interface IAccountingRepository
     Task<CostCode> UpdateByIdAsync(CostCode costCode);
     Task DeleteCostCodeByIdAsync(int costCodeId, Guid organizationId, int officeId);
     #endregion
+
+    #region BankCards
+    Task<List<BankCard>> GetBankCardsByOfficeIdAsync(Guid organizationId, int officeId);
+    Task<List<BankCard>> GetBankCardsByOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task<BankCard?> GetBankCardByIdAsync(int bankCardId, Guid organizationId, int officeId);
+    Task<BankCard> CreateAsync(BankCard bankCard, byte[] encryptedCardNumber);
+    Task<BankCard> UpdateByIdAsync(BankCard bankCard, byte[] encryptedCardNumber);
+    Task DeleteBankCardByIdAsync(int bankCardId, Guid organizationId, int officeId);
+    #endregion
 }

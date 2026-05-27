@@ -10,7 +10,7 @@ public class UpdateReceiptDto
     public List<Guid> PropertyIds { get; set; } = new List<Guid>();
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
-    public List<ReceiptSplit> Splits { get; set; } = new List<ReceiptSplit>();
+    public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -38,6 +38,13 @@ public class UpdateReceiptDto
         if (Splits == null || Splits.Count == 0)
             return (false, "At least one split is required");
 
+        foreach (var split in Splits)
+        {
+            var (isValid, errorMessage) = split.IsValid();
+            if (!isValid)
+                return (false, $"Split validation failed: {errorMessage}");
+        }
+
         return (true, null);
     }
 
@@ -51,7 +58,7 @@ public class UpdateReceiptDto
             PropertyIds = PropertyIds,
             Description = Description,
             Amount = Amount,
-            Splits = Splits,
+            Splits = Splits.Select(split => split.ToModel()).ToList(),
             ReceiptPath = ReceiptPath,
             IsActive = IsActive,
             ModifiedBy = currentUser

@@ -1,9 +1,10 @@
 
+using RentAll.Api.Dtos.Accounting.BankCards;
+
 namespace RentAll.Api.Controllers
 {
     public partial class OrganizationController
     {
-
         #region Get
 
         [HttpGet("accounting-office")]
@@ -12,8 +13,12 @@ namespace RentAll.Api.Controllers
             try
             {
                 var accountingOffices = await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var accountingOfficeList = accountingOffices.ToList();
+                foreach (var accountingOffice in accountingOfficeList)
+                    accountingOffice.BankCards = await LoadBankCardsAsync(accountingOffice.OfficeId);
+
                 var response = new List<AccountingOfficeResponseDto>();
-                foreach (var accountingOffice in accountingOffices)
+                foreach (var accountingOffice in accountingOfficeList)
                 {
                     var dto = new AccountingOfficeResponseDto(accountingOffice);
                     if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
@@ -37,7 +42,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+                var accountingOffice = await LoadAccountingOfficeWithBankCardsAsync(officeId);
                 if (accountingOffice == null)
                     return NotFound("Accounting office not found");
 
@@ -79,9 +84,15 @@ namespace RentAll.Api.Controllers
                 accountingOffice.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, ImageType.Logos);
 
                 var created = await _organizationRepository.CreateAccountingAsync(accountingOffice);
-                var response = new AccountingOfficeResponseDto(created);
-                if (!string.IsNullOrWhiteSpace(created.LogoPath))
-                    response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, await GetOfficeNameAsync(created.OfficeId), created.LogoPath, ImageType.Logos);
+                await ReplaceBankCardsForOfficeAsync(created.OfficeId, dto.BankCards);
+
+                var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(created.OfficeId);
+                if (refreshedAccountingOffice == null)
+                    return NotFound("Accounting office not found");
+
+                var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
+                if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
+                    response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
@@ -118,9 +129,15 @@ namespace RentAll.Api.Controllers
                     ImageType.Logos, existing.LogoPath, dto.LogoPath);
 
                 var updated = await _organizationRepository.UpdateAccountingAsync(accountingOffice);
-                var response = new AccountingOfficeResponseDto(updated);
-                if (!string.IsNullOrWhiteSpace(updated.LogoPath))
-                    response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, officeName, updated.LogoPath, ImageType.Logos);
+                await ReplaceBankCardsForOfficeAsync(updated.OfficeId, dto.BankCards);
+
+                var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(updated.OfficeId);
+                if (refreshedAccountingOffice == null)
+                    return NotFound("Accounting office not found");
+
+                var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
+                if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
+                    response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -145,6 +162,8 @@ namespace RentAll.Api.Controllers
                 if (office != null && !string.IsNullOrWhiteSpace(office.LogoPath))
                     await _fileService.DeleteImageAsync(office.OrganizationId, await GetOfficeNameAsync(officeId), office.LogoPath, ImageType.Logos);
 
+                await DeleteBankCardsForOfficeAsync(officeId);
+
                 await _organizationRepository.DeleteAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 return NoContent();
             }
@@ -155,6 +174,74 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        #endregion
+
+        #region Private Methods
+        private async Task<List<BankCard>> LoadBankCardsAsync(int officeId)
+        {
+            var bankCards = await _accountingRepository.GetBankCardsByOfficeIdAsync(CurrentOrganizationId, officeId);
+            await DecryptAndMaskBankCardsAsync(bankCards);
+            return bankCards;
+        }
+
+        private async Task<AccountingOffice?> LoadAccountingOfficeWithBankCardsAsync(int officeId)
+        {
+            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+            if (accountingOffice == null)
+                return null;
+
+            accountingOffice.BankCards = await LoadBankCardsAsync(officeId);
+            return accountingOffice;
+        }
+
+        private async Task DeleteBankCardsForOfficeAsync(int officeId)
+        {
+            var existingCards = await _accountingRepository.GetBankCardsByOfficeIdAsync(CurrentOrganizationId, officeId);
+            foreach (var existingCard in existingCards)
+                await _accountingRepository.DeleteBankCardByIdAsync(existingCard.BankCardId, CurrentOrganizationId, officeId);
+        }
+
+        private async Task ReplaceBankCardsForOfficeAsync(int officeId, IEnumerable<CreateBankCardDto> bankCards)
+        {
+            await DeleteBankCardsForOfficeAsync(officeId);
+            foreach (var bankCardDto in bankCards)
+            {
+                var model = bankCardDto.ToModel(CurrentOrganizationId, officeId);
+                model.LastFour = ExtractLastFour(model.CardNumber);
+                var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
+                await _accountingRepository.CreateAsync(model, encrypted);
+            }
+        }
+
+        private async Task ReplaceBankCardsForOfficeAsync(int officeId, IEnumerable<UpdateBankCardDto> bankCards)
+        {
+            await DeleteBankCardsForOfficeAsync(officeId);
+            foreach (var bankCardDto in bankCards)
+            {
+                var model = bankCardDto.ToModel(0, CurrentOrganizationId, officeId);
+                model.LastFour = ExtractLastFour(model.CardNumber);
+                var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
+                await _accountingRepository.CreateAsync(model, encrypted);
+            }
+        }
+
+        private async Task DecryptAndMaskBankCardsAsync(List<BankCard> bankCards)
+        {
+            foreach (var bankCard in bankCards)
+            {
+                if (string.IsNullOrWhiteSpace(bankCard.CardNumber))
+                    continue;
+
+                var cipherBytes = Convert.FromBase64String(bankCard.CardNumber);
+                bankCard.CardNumber = await _encryptionService.DecryptAsync(cipherBytes);
+                bankCard.LastFour = ExtractLastFour(bankCard.CardNumber);
+            }
+        }
+
+        private static string ExtractLastFour(string cardNumber)
+            => string.IsNullOrWhiteSpace(cardNumber)
+                ? string.Empty
+                : (cardNumber.Length <= 4 ? cardNumber : cardNumber[^4..]);
         #endregion
 
     }
