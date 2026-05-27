@@ -38,6 +38,22 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("codes")]
+        public async Task<IActionResult> GetReservationActiveCodesByOfficeIdsAsync()
+        {
+            try
+            {
+                var list = await _reservationRepository.GetReservationActiveCodesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(r => new ReservationCodeResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reservation codes");
+                return ServerError("An error occurred while retrieving reservation codes");
+            }
+        }
+
         [HttpGet("property/{propertyId}")]
         public async Task<IActionResult> GetReservationListByPropertyIdAsync(Guid propertyId)
         {

@@ -40,6 +40,22 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("codes")]
+        public async Task<IActionResult> GetActiveCodesByOfficeIds()
+        {
+            try
+            {
+                var list = await _propertyRepository.GetPropertyActiveCodesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(p => new PropertyCodeResponseDto(p));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting property codes list");
+                return ServerError("An error occurred while retrieving property codes");
+            }
+        }
+
 
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
