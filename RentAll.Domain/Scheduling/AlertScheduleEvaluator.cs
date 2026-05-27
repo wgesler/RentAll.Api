@@ -4,15 +4,15 @@ using RentAll.Domain.Models;
 namespace RentAll.Domain.Scheduling;
 
 /// <summary>
-/// Decides whether an alert should be sent on this scheduler tick (UTC calendar dates).
+/// Decides whether an alert should be sent on this scheduler tick using standard local calendar dates.
 /// </summary>
 public static class AlertScheduleEvaluator
 {
-    private static DateOnly UtcCalendarDate(DateTimeOffset utcNow) =>
-        DateOnly.FromDateTime(utcNow.UtcDateTime);
+    private static DateOnly CalendarDate(DateTimeOffset now) =>
+        DateOnly.FromDateTime(now.LocalDateTime);
 
-    private static DateOnly UtcCalendarDateFromOffset(DateTimeOffset instant) =>
-        DateOnly.FromDateTime(instant.UtcDateTime);
+    private static DateOnly CalendarDateFromOffset(DateTimeOffset instant) =>
+        DateOnly.FromDateTime(instant.LocalDateTime);
 
     public static DateOnly? GetNextAlertDate(Alert alert, DateTimeOffset utcNow)
     {
@@ -29,7 +29,7 @@ public static class AlertScheduleEvaluator
         if (!periodLengthDays.HasValue)
             return null;
 
-        var today = UtcCalendarDate(utcNow);
+        var today = CalendarDate(utcNow);
         var anchor = alert.StartDate.Value;
         if (today < anchor)
             return anchor;
@@ -38,7 +38,7 @@ public static class AlertScheduleEvaluator
         var periodIndex = elapsedDays / periodLengthDays.Value;
         var periodStartDate = anchor.AddDays(periodIndex * periodLengthDays.Value);
 
-        if (alert.SentOn.HasValue && UtcCalendarDateFromOffset(alert.SentOn.Value) >= periodStartDate)
+        if (alert.SentOn.HasValue && CalendarDateFromOffset(alert.SentOn.Value) >= periodStartDate)
             return periodStartDate.AddDays(periodLengthDays.Value);
 
         return periodStartDate;
@@ -49,12 +49,12 @@ public static class AlertScheduleEvaluator
         if (alert.Frequency == FrequencyType.NA)
             return false;
 
-        var today = UtcCalendarDate(utcNow);
+        var today = CalendarDate(utcNow);
 
         // Same UTC calendar day as last attempt while still "Attempting" — avoid hammering SendGrid.
         if (alert.EmailStatus == EmailStatus.Attempting &&
             alert.LastAttemptedOn.HasValue &&
-            UtcCalendarDateFromOffset(alert.LastAttemptedOn.Value) == today)
+            CalendarDateFromOffset(alert.LastAttemptedOn.Value) == today)
             return false;
 
         if (alert.Frequency == FrequencyType.OneTime)
@@ -154,6 +154,6 @@ public static class AlertScheduleEvaluator
         if (today < periodStartDate)
             return false;
 
-        return !sentOn.HasValue || UtcCalendarDateFromOffset(sentOn.Value) < periodStartDate;
+        return !sentOn.HasValue || CalendarDateFromOffset(sentOn.Value) < periodStartDate;
     }
 }

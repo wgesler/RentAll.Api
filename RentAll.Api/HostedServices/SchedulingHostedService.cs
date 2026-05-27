@@ -1,5 +1,6 @@
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 using RentAll.Domain.Scheduling;
 
@@ -98,7 +99,8 @@ public class SchedulingHostedService : BackgroundService
 
                 ApplySendResultToAlert(alert, result);
 
-                var shouldDeactivateAlert = result.EmailStatus == EmailStatus.Succeeded || result.SentOn.HasValue;
+                var shouldDeactivateAlert = alert.Frequency == FrequencyType.OneTime
+                    && (result.EmailStatus == EmailStatus.Succeeded || result.SentOn.HasValue);
                 if (shouldDeactivateAlert)
                     alert.IsActive = false;
 
