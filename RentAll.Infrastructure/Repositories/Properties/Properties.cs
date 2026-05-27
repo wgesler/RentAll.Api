@@ -41,7 +41,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<IEnumerable<PropertyCodes>> GetPropertyActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyCodes>("Property.Property_GetActiveCodesByOfficeIds", new
+            var res = await db.DapperProcQueryAsync<PropertyCodes>("Property.Property_GetCodesByOfficeIds", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
