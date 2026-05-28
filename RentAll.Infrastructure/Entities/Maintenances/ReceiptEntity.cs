@@ -7,6 +7,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public int OfficeId { get; set; }
         public string OfficeName { get; set; } = string.Empty;
         public string Properties { get; set; } = "[]";
+        public DateOnly ReceiptDate { get; set; }
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Splits { get; set; } = "[]";
@@ -14,6 +15,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }
+        public string CreatedByName { get; set; } = string.Empty;
         public DateTimeOffset ModifiedOn { get; set; }
         public Guid ModifiedBy { get; set; }
         public string ModifiedByName { get; set; } = string.Empty;

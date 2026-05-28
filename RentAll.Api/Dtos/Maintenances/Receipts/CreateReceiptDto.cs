@@ -7,6 +7,7 @@ public class CreateReceiptDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public List<Guid> PropertyIds { get; set; } = new List<Guid>();
+    public DateOnly ReceiptDate { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
@@ -27,6 +28,9 @@ public class CreateReceiptDto
 
         if (PropertyIds.Any(id => id == Guid.Empty))
             return (false, "PropertyIds cannot contain empty Guid values");
+
+        if (ReceiptDate == default)
+            return (false, "ReceiptDate is required");
 
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
@@ -51,6 +55,7 @@ public class CreateReceiptDto
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PropertyIds = PropertyIds,
+            ReceiptDate = ReceiptDate,
             Amount = Amount,
             Description = Description,
             Splits = Splits.Select(split => split.ToModel()).ToList(),

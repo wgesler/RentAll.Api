@@ -9,6 +9,7 @@ public class Receipt
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public List<Guid> PropertyIds { get; set; } = new();
+    public DateOnly ReceiptDate { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<ReceiptSplit> Splits { get; set; } = new();
@@ -17,6 +18,7 @@ public class Receipt
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
+    public string CreatedByName { get; set; } = string.Empty;
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public string ModifiedByName { get; set; } = string.Empty;
