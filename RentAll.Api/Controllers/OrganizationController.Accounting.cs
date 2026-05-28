@@ -215,13 +215,49 @@ namespace RentAll.Api.Controllers
 
         private async Task ReplaceBankCardsForOfficeAsync(int officeId, IEnumerable<UpdateBankCardDto> bankCards)
         {
-            await DeleteBankCardsForOfficeAsync(officeId);
-            foreach (var bankCardDto in bankCards)
+            var incomingCards = (bankCards ?? Enumerable.Empty<UpdateBankCardDto>()).ToList();
+            var existingCards = await _accountingRepository.GetBankCardsByOfficeIdAsync(CurrentOrganizationId, officeId);
+
+            var incomingIds = incomingCards
+                .Where(card => card.BankCardId > 0)
+                .Select(card => card.BankCardId)
+                .ToList();
+
+            if (incomingIds.Count != incomingIds.Distinct().Count())
+                throw new InvalidOperationException("Duplicate BankCardId values are not allowed in update payload.");
+
+            var existingById = existingCards.ToDictionary(card => card.BankCardId);
+
+            foreach (var incomingId in incomingIds)
             {
-                var model = bankCardDto.ToModel(0, CurrentOrganizationId, officeId);
+                if (!existingById.ContainsKey(incomingId))
+                    throw new InvalidOperationException($"Bank card {incomingId} does not exist for this office.");
+            }
+
+            foreach (var bankCardDto in incomingCards.Where(card => card.BankCardId > 0))
+            {
+                var model = bankCardDto.ToModel(CurrentOrganizationId, officeId);
+                model.LastFour = ExtractLastFour(model.CardNumber);
+                var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
+                await _accountingRepository.UpdateByIdAsync(model, encrypted);
+            }
+
+            foreach (var bankCardDto in incomingCards.Where(card => card.BankCardId <= 0))
+            {
+                var model = bankCardDto.ToModel(CurrentOrganizationId, officeId);
                 model.LastFour = ExtractLastFour(model.CardNumber);
                 var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
                 await _accountingRepository.CreateAsync(model, encrypted);
+            }
+
+            var idsToDelete = existingCards
+                .Where(existing => !incomingIds.Contains(existing.BankCardId))
+                .Select(existing => existing.BankCardId)
+                .ToList();
+
+            foreach (var idToDelete in idsToDelete)
+            {
+                await _accountingRepository.DeleteBankCardByIdAsync(idToDelete, CurrentOrganizationId, officeId);
             }
         }
 

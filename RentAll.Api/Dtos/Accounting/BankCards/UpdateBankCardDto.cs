@@ -2,6 +2,7 @@ namespace RentAll.Api.Dtos.Accounting.BankCards;
 
 public class UpdateBankCardDto
 {
+    public int BankCardId { get; set; }
     public int CardTypeId { get; set; }
     public string CardName { get; set; } = string.Empty;
     public string CardNumber { get; set; } = string.Empty;
@@ -9,6 +10,9 @@ public class UpdateBankCardDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (BankCardId < 0)
+            return (false, "BankCardId cannot be negative");
+
         if (!Enum.IsDefined(typeof(CardType), CardTypeId))
             return (false, $"Invalid CardTypeId value: {CardTypeId}");
 
@@ -24,11 +28,11 @@ public class UpdateBankCardDto
         return (true, null);
     }
 
-    public BankCard ToModel(int bankCardId, Guid organizationId, int officeId)
+    public BankCard ToModel(Guid organizationId, int officeId)
     {
         return new BankCard
         {
-            BankCardId = bankCardId,
+            BankCardId = BankCardId,
             OrganizationId = organizationId,
             OfficeId = officeId,
             CardTypeId = CardTypeId,

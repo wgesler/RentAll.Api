@@ -5,10 +5,14 @@ namespace RentAll.Domain.Models;
 
 public class ReceiptSplit
 {
+    public int ReceiptSplitId { get; set; }
     public decimal Amount { get; set; }
     public string? Description { get; set; }
     public string? WorkOrder { get; set; }
-    public int BankCardId { get; set; } = 0;
+    public Guid? WorkOrderId { get; set; }
+    public string? WorkOrderCode { get; set; }
+    public int? BankCardId { get; set; }
+    public string? BankCardDisplayName { get; set; }
     public int ReceiptTypeId { get; set; } = (int)ReceiptType.Tenant;
 
     [JsonIgnore]

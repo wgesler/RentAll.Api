@@ -2,10 +2,14 @@ namespace RentAll.Api.Dtos.Maintenances.Receipts;
 
 public class ReceiptSplitDto
 {
+    public int? ReceiptSplitId { get; set; }
     public decimal Amount { get; set; }
     public string? Description { get; set; }
     public string? WorkOrder { get; set; }
-    public int BankCardId { get; set; }
+    public Guid? WorkOrderId { get; set; }
+    public string? WorkOrderCode { get; set; }
+    public int? BankCardId { get; set; }
+    public string? BankCardDisplayName { get; set; }
     public int ReceiptTypeId { get; set; }
 
     public ReceiptSplitDto()
@@ -14,10 +18,14 @@ public class ReceiptSplitDto
 
     public ReceiptSplitDto(ReceiptSplit split)
     {
+        ReceiptSplitId = split.ReceiptSplitId;
         Amount = split.Amount;
         Description = split.Description;
-        WorkOrder = split.WorkOrder;
+        WorkOrder = split.WorkOrderCode ?? split.WorkOrder;
+        WorkOrderId = split.WorkOrderId;
+        WorkOrderCode = split.WorkOrderCode;
         BankCardId = split.BankCardId;
+        BankCardDisplayName = split.BankCardDisplayName;
         ReceiptTypeId = split.ReceiptTypeId;
     }
 
@@ -33,9 +41,12 @@ public class ReceiptSplitDto
     {
         return new ReceiptSplit
         {
+            ReceiptSplitId = ReceiptSplitId ?? 0,
             Amount = Amount,
             Description = Description,
             WorkOrder = WorkOrder,
+            WorkOrderId = WorkOrderId,
+            WorkOrderCode = WorkOrderCode,
             BankCardId = BankCardId,
             ReceiptType = (ReceiptType)ReceiptTypeId
         };

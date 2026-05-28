@@ -3,6 +3,7 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Infrastructure.Entities.Maintenances;
 using RentAll.Infrastructure.Serialization;
 using System.Text.Json;
 
@@ -205,13 +206,29 @@ public partial class MaintenanceRepository : IMaintenanceRepository
                 Description = split.Description,
                 WorkOrder = split.WorkOrder,
                 ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
-                BankCardId = split.BankCardId ?? 0
+                BankCardId = split.BankCardId is > 0 ? split.BankCardId : null
             }).ToList();
         }
         catch
         {
             return new List<ReceiptSplit>();
         }
+    }
+
+    private static ReceiptSplit ConvertEntityToModel(ReceiptSplitEntity e)
+    {
+        return new ReceiptSplit
+        {
+            ReceiptSplitId = e.ReceiptSplitId,
+            Amount = e.Amount,
+            Description = e.Description,
+            ReceiptTypeId = e.ReceiptTypeId,
+            BankCardId = e.BankCardId,
+            WorkOrderId = e.WorkOrderId,
+            WorkOrderCode = e.WorkOrderCode,
+            WorkOrder = e.WorkOrderCode,
+            BankCardDisplayName = e.BankCardDisplayName
+        };
     }
 
     private static string SerializeReceiptSplits(List<ReceiptSplit>? splits)

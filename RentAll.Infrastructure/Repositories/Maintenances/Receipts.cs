@@ -19,7 +19,11 @@ public partial class MaintenanceRepository
         if (res == null || !res.Any())
             return Enumerable.Empty<Receipt>();
 
-        return res.Select(ConvertEntityToModel);
+        var receipts = res.Select(ConvertEntityToModel).ToList();
+        foreach (var receipt in receipts)
+            receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+
+        return receipts;
     }
 
     public async Task<IEnumerable<Receipt>> GetReceiptsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
@@ -35,7 +39,11 @@ public partial class MaintenanceRepository
         if (res == null || !res.Any())
             return Enumerable.Empty<Receipt>();
 
-        return res.Select(ConvertEntityToModel);
+        var receipts = res.Select(ConvertEntityToModel).ToList();
+        foreach (var receipt in receipts)
+            receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+
+        return receipts;
     }
 
     public async Task<Receipt?> GetReceiptByIdAsync(int receiptId, Guid organizationId)
@@ -50,7 +58,9 @@ public partial class MaintenanceRepository
         if (res == null || !res.Any())
             return null;
 
-        return ConvertEntityToModel(res.First());
+        var receipt = ConvertEntityToModel(res.First());
+        receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+        return receipt;
     }
     #endregion
 
@@ -74,7 +84,10 @@ public partial class MaintenanceRepository
         if (res == null || !res.Any())
             throw new Exception("Receipt record not created");
 
-        return ConvertEntityToModel(res.First());
+        var created = ConvertEntityToModel(res.First());
+        await SyncReceiptSplitRowsAsync(created, receipt.CreatedBy);
+        created.Splits = await GetReceiptSplitsByReceiptIdAsync(created.ReceiptId);
+        return created;
     }
     #endregion
 
@@ -99,7 +112,10 @@ public partial class MaintenanceRepository
         if (res == null || !res.Any())
             throw new Exception("Receipt record not found");
 
-        return ConvertEntityToModel(res.First());
+        var updated = ConvertEntityToModel(res.First());
+        await SyncReceiptSplitRowsAsync(updated, receipt.ModifiedBy);
+        updated.Splits = await GetReceiptSplitsByReceiptIdAsync(updated.ReceiptId);
+        return updated;
     }
     #endregion
 
@@ -113,6 +129,70 @@ public partial class MaintenanceRepository
             OrganizationId = organizationId,
             ModifiedBy = currentUser
         });
+    }
+    #endregion
+
+    #region Private Methods
+    private async Task<List<ReceiptSplit>> GetReceiptSplitsByReceiptIdAsync(int receiptId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var splitRows = await db.DapperProcQueryAsync<ReceiptSplitEntity>("Maintenance.ReceiptSplit_GetByReceiptId", new
+        {
+            ReceiptId = receiptId
+        });
+        if (splitRows == null || !splitRows.Any())
+            return new List<ReceiptSplit>();
+
+        return splitRows.Select(ConvertEntityToModel).ToList();
+    }
+
+    private async Task SyncReceiptSplitRowsAsync(Receipt receipt, Guid auditUser)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Maintenance.ReceiptSplit_DeleteByReceiptId", new
+        {
+            ReceiptId = receipt.ReceiptId
+        });
+
+        var splits = receipt.Splits ?? new List<ReceiptSplit>();
+        if (splits.Count == 0)
+            return;
+
+        Dictionary<string, Guid> workOrderCodeLookup = new(StringComparer.OrdinalIgnoreCase);
+        if (splits.Any(split => !split.WorkOrderId.HasValue && !string.IsNullOrWhiteSpace(split.WorkOrder)))
+        {
+            var workOrders = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetListByOfficeIds", new
+            {
+                OrganizationId = receipt.OrganizationId,
+                Offices = receipt.OfficeId.ToString()
+            });
+            workOrderCodeLookup = (workOrders ?? Enumerable.Empty<WorkOrderEntity>())
+                .Where(workOrder => workOrder.WorkOrderId != Guid.Empty && !string.IsNullOrWhiteSpace(workOrder.WorkOrderCode))
+                .GroupBy(workOrder => workOrder.WorkOrderCode.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().WorkOrderId, StringComparer.OrdinalIgnoreCase);
+        }
+
+        foreach (var split in splits)
+        {
+            var workOrderId = split.WorkOrderId;
+            if (!workOrderId.HasValue && !string.IsNullOrWhiteSpace(split.WorkOrder))
+            {
+                var code = split.WorkOrder.Trim();
+                if (workOrderCodeLookup.TryGetValue(code, out var resolvedWorkOrderId))
+                    workOrderId = resolvedWorkOrderId;
+            }
+
+            await db.DapperProcQueryAsync<ReceiptSplitEntity>("Maintenance.ReceiptSplit_Add", new
+            {
+                ReceiptId = receipt.ReceiptId,
+                Amount = split.Amount,
+                Description = split.Description,
+                ReceiptTypeId = split.ReceiptTypeId,
+                BankCardId = split.BankCardId,
+                WorkOrderId = workOrderId,
+                CreatedBy = auditUser
+            });
+        }
     }
     #endregion
 }
