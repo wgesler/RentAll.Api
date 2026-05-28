@@ -11,10 +11,6 @@ public class ReceiptSplit
     public string? WorkOrder { get; set; }
     public Guid? WorkOrderId { get; set; }
     public string? WorkOrderCode { get; set; }
-    public int? BankCardId { get; set; }
-    public string? BankCardDisplayName { get; set; }
-    public Guid? VendorId { get; set; }
-    public string? VendorName { get; set; }
     public int ReceiptTypeId { get; set; } = (int)ReceiptType.Tenant;
 
     [JsonIgnore]

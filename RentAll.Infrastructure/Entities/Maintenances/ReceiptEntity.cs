@@ -10,6 +10,9 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public DateOnly ReceiptDate { get; set; }
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;
+        public int? BankCardId { get; set; }
+        public Guid? VendorId { get; set; }
+        public string? VendorName { get; set; }
         public string Splits { get; set; } = "[]";
         public string? ReceiptPath { get; set; }
         public bool IsActive { get; set; }

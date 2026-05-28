@@ -146,6 +146,9 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ReceiptDate = e.ReceiptDate,
             Amount = e.Amount,
             Description = e.Description,
+            BankCardId = e.BankCardId,
+            VendorId = e.VendorId,
+            VendorName = e.VendorName,
             Splits = splits,
             ReceiptPath = e.ReceiptPath,
             IsActive = e.IsActive,
@@ -207,10 +210,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 WorkOrder = split.WorkOrder,
-                ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
-                BankCardId = split.BankCardId is > 0 ? split.BankCardId : null,
-                VendorId = split.VendorId,
-                VendorName = split.VendorName
+                ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant
             }).ToList();
         }
         catch
@@ -227,13 +227,9 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             Amount = e.Amount,
             Description = e.Description,
             ReceiptTypeId = e.ReceiptTypeId,
-            BankCardId = e.BankCardId,
             WorkOrderId = e.WorkOrderId,
             WorkOrderCode = e.WorkOrderCode,
-            WorkOrder = e.WorkOrderCode,
-            BankCardDisplayName = e.BankCardDisplayName,
-            VendorId = e.VendorId,
-            VendorName = e.VendorName
+            WorkOrder = e.WorkOrderCode
         };
     }
 
@@ -268,9 +264,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         public string? Description { get; set; }
         public string? WorkOrder { get; set; }
         public int? ReceiptTypeId { get; set; }
-        public int? BankCardId { get; set; }
-        public Guid? VendorId { get; set; }
-        public string? VendorName { get; set; }
     }
 
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)

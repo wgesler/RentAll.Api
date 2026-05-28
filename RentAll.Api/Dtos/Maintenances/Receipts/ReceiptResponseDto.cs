@@ -12,6 +12,9 @@ public class ReceiptResponseDto
     public DateOnly ReceiptDate { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
+    public int? BankCardId { get; set; }
+    public Guid? VendorId { get; set; }
+    public string? VendorName { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
@@ -31,6 +34,9 @@ public class ReceiptResponseDto
         ReceiptDate = receipt.ReceiptDate;
         Amount = receipt.Amount;
         Description = receipt.Description;
+        BankCardId = receipt.BankCardId;
+        VendorId = receipt.VendorId;
+        VendorName = receipt.VendorName;
         Splits = (receipt.Splits ?? new List<ReceiptSplit>()).Select(split => new ReceiptSplitDto(split)).ToList();
         ReceiptPath = receipt.ReceiptPath;
         FileDetails = receipt.FileDetails;

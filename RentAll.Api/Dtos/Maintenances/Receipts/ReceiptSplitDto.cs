@@ -8,10 +8,6 @@ public class ReceiptSplitDto
     public string? WorkOrder { get; set; }
     public Guid? WorkOrderId { get; set; }
     public string? WorkOrderCode { get; set; }
-    public int? BankCardId { get; set; }
-    public string? BankCardDisplayName { get; set; }
-    public Guid? VendorId { get; set; }
-    public string? VendorName { get; set; }
     public int ReceiptTypeId { get; set; }
 
     public ReceiptSplitDto()
@@ -26,10 +22,6 @@ public class ReceiptSplitDto
         WorkOrder = split.WorkOrderCode ?? split.WorkOrder;
         WorkOrderId = split.WorkOrderId;
         WorkOrderCode = split.WorkOrderCode;
-        BankCardId = split.BankCardId;
-        BankCardDisplayName = split.BankCardDisplayName;
-        VendorId = split.VendorId;
-        VendorName = split.VendorName;
         ReceiptTypeId = split.ReceiptTypeId;
     }
 
@@ -51,9 +43,6 @@ public class ReceiptSplitDto
             WorkOrder = WorkOrder,
             WorkOrderId = WorkOrderId,
             WorkOrderCode = WorkOrderCode,
-            BankCardId = BankCardId,
-            VendorId = VendorId,
-            VendorName = VendorName,
             ReceiptType = (ReceiptType)ReceiptTypeId
         };
     }

@@ -11,6 +11,9 @@ public class UpdateReceiptDto
     public DateOnly ReceiptDate { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
+    public int? BankCardId { get; set; }
+    public Guid? VendorId { get; set; }
+    public string? VendorName { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
@@ -63,6 +66,9 @@ public class UpdateReceiptDto
             ReceiptDate = ReceiptDate,
             Description = Description,
             Amount = Amount,
+            BankCardId = BankCardId is > 0 ? BankCardId : null,
+            VendorId = VendorId,
+            VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             ReceiptPath = ReceiptPath,
             IsActive = IsActive,
