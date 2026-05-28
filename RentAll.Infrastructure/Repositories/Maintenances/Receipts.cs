@@ -76,6 +76,9 @@ public partial class MaintenanceRepository
             ReceiptDate = receipt.ReceiptDate,
             Amount = receipt.Amount,
             Description = receipt.Description,
+            BankCardId = receipt.BankCardId,
+            VendorId = receipt.VendorId,
+            VendorName = receipt.VendorName,
             Splits = SerializeReceiptSplits(receipt.Splits),
             ReceiptPath = receipt.ReceiptPath,
             IsActive = receipt.IsActive,
@@ -105,6 +108,9 @@ public partial class MaintenanceRepository
             ReceiptDate = receipt.ReceiptDate,
             Amount = receipt.Amount,
             Description = receipt.Description,
+            BankCardId = receipt.BankCardId,
+            VendorId = receipt.VendorId,
+            VendorName = receipt.VendorName,
             Splits = SerializeReceiptSplits(receipt.Splits),
             ReceiptPath = receipt.ReceiptPath,
             IsActive = receipt.IsActive,
@@ -190,10 +196,7 @@ public partial class MaintenanceRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 ReceiptTypeId = split.ReceiptTypeId,
-                BankCardId = split.BankCardId,
                 WorkOrderId = workOrderId,
-                VendorId = split.VendorId,
-                VendorName = split.VendorName,
                 CreatedBy = auditUser
             });
         }
