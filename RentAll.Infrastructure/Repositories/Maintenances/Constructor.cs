@@ -208,7 +208,9 @@ public partial class MaintenanceRepository : IMaintenanceRepository
                 Description = split.Description,
                 WorkOrder = split.WorkOrder,
                 ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
-                BankCardId = split.BankCardId is > 0 ? split.BankCardId : null
+                BankCardId = split.BankCardId is > 0 ? split.BankCardId : null,
+                VendorId = split.VendorId,
+                VendorName = split.VendorName
             }).ToList();
         }
         catch
@@ -229,7 +231,9 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             WorkOrderId = e.WorkOrderId,
             WorkOrderCode = e.WorkOrderCode,
             WorkOrder = e.WorkOrderCode,
-            BankCardDisplayName = e.BankCardDisplayName
+            BankCardDisplayName = e.BankCardDisplayName,
+            VendorId = e.VendorId,
+            VendorName = e.VendorName
         };
     }
 
@@ -265,6 +269,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         public string? WorkOrder { get; set; }
         public int? ReceiptTypeId { get; set; }
         public int? BankCardId { get; set; }
+        public Guid? VendorId { get; set; }
+        public string? VendorName { get; set; }
     }
 
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)

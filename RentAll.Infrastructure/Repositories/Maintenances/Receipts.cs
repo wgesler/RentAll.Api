@@ -192,6 +192,8 @@ public partial class MaintenanceRepository
                 ReceiptTypeId = split.ReceiptTypeId,
                 BankCardId = split.BankCardId,
                 WorkOrderId = workOrderId,
+                VendorId = split.VendorId,
+                VendorName = split.VendorName,
                 CreatedBy = auditUser
             });
         }
