@@ -1,5 +1,6 @@
 using RentAll.Api.Dtos.Organizations.StateForms;
 using RentAll.Api.Dtos.Properties.PropertyAgreements;
+using RentAll.Api.Dtos.Properties.PropertyInformations;
 using RentAll.Api.Dtos.Contacts;
 using RentAll.Domain.Models.Leads;
 using System.Security.Cryptography;
@@ -308,6 +309,36 @@ namespace RentAll.Api.Controllers
             {
                 _logger.LogError(ex, "Error getting public owner property agreement by token");
                 return ServerError("An error occurred while retrieving owner property agreement");
+            }
+        }
+
+        [HttpGet("owner-form/{token}/property-information")]
+        public async Task<IActionResult> GetPublicOwnerPropertyInformationByTokenAsync(string token)
+        {
+            try
+            {
+                var (_, owner, tokenErrorResult) = await GetOwnerFromTokenAsync(token);
+                if (tokenErrorResult != null)
+                    return tokenErrorResult;
+
+                var propertyCode = (owner.PropertyCode ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(propertyCode))
+                    return Ok();
+
+                var property = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, owner.OrganizationId);
+                if (property == null)
+                    return Ok();
+
+                var propertyInformation = await _propertyRepository.GetPropertyInformationByPropertyIdAsync(property.PropertyId, owner.OrganizationId);
+                if (propertyInformation == null)
+                    return Ok();
+
+                return Ok(new PropertyInformationResponseDto(propertyInformation));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting public owner property information by token");
+                return ServerError("An error occurred while retrieving owner property information");
             }
         }
 
