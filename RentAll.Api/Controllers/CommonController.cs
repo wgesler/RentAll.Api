@@ -23,6 +23,7 @@ namespace RentAll.Api.Controllers
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
+        private readonly IPdfGenerationService _pdfGenerationService;
         private readonly ILogger<CommonController> _logger;
 
         public CommonController(
@@ -37,6 +38,7 @@ namespace RentAll.Api.Controllers
             ICalendarManager calendarManager,
             IPropertyRepository propertyRepository,
             IFileAttachmentHelper fileAttachmentHelper,
+            IPdfGenerationService pdfGenerationService,
             ILogger<CommonController> logger)
         {
             _appSettings = options.Value;
@@ -50,6 +52,7 @@ namespace RentAll.Api.Controllers
             _calendarManager = calendarManager;
             _propertyRepository = propertyRepository;
             _fileAttachmentHelper = fileAttachmentHelper;
+            _pdfGenerationService = pdfGenerationService;
             _logger = logger;
         }
     }

@@ -9,7 +9,7 @@ public partial class TicketController
 {
     private static readonly Guid ExternalTicketSystemUserId = new("99999999-9999-9999-9999-999999999999");
 
-    #region External Ticket Intake
+    #region Create
     [AllowAnonymous]
     [HttpPost("external")]
     public async Task<IActionResult> CreateExternalTicket(
@@ -48,7 +48,9 @@ public partial class TicketController
             return ServerError("An error occurred while creating the ticket");
         }
     }
+    #endregion
 
+    #region Private Support Methods
     private bool IsExternalApiKeyValid(string configuredApiKey)
     {
         if (string.IsNullOrWhiteSpace(configuredApiKey))

@@ -768,7 +768,32 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Post
-        // No POST owner-form endpoints at this time.
+        [HttpPost("owner-form/{token}/generate-download")]
+        public async Task<IActionResult> GeneratePublicOwnerDocumentDownloadByTokenAsync(string token, [FromBody] PublicOwnerDocumentDownloadDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Document data is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var (_, _, tokenErrorResult) = await GetOwnerFromTokenAsync(token);
+                if (tokenErrorResult != null)
+                    return tokenErrorResult;
+
+                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
+                var fileName = string.IsNullOrWhiteSpace(dto.FileName) ? $"document-{Guid.NewGuid()}.pdf" : dto.FileName;
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating public owner document for download");
+                return ServerError("An error occurred while generating the document");
+            }
+        }
         #endregion
 
         #region Delete

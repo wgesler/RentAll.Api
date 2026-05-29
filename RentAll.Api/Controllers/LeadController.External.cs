@@ -113,7 +113,9 @@ public partial class LeadController
             return ServerError("An error occurred while creating the owner lead");
         }
     }
+    #endregion
 
+    #region Private Support Methods
     private async Task<IActionResult?> TryValidateExternalLeadOrgAndOfficeAsync(Guid organizationId, int officeId)
     {
         var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
