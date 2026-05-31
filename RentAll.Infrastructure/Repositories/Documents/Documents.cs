@@ -43,60 +43,17 @@ public partial class DocumentRepository : IDocumentRepository
     }
 
     #region Selects
-    public async Task<IEnumerable<Document>> GetDocumentsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    public async Task<IEnumerable<Document>> GetDocumentsAsync(DocumentGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAllByOfficeIds", new
+        var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetByCriteria", new
         {
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Document>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Document>> GetDocumentsByPropertyTypeAsync(Guid organizationId, Guid propertyId, int documentTypeId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAllByPropertyType", new
-        {
-            OrganizationId = organizationId,
-            PropertyId = propertyId,
-            DocumentTypeId = documentTypeId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Document>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Document>> GetDocumentsByOfficeIdAsync(int officeId, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAllByOfficeId", new
-        {
-            OfficeId = officeId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Document>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Document>> GetDocumentsByDocumentTypeAsync(int documentType, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DocumentEntity>("Organization.Document_GetAllByDocumentType", new
-        {
-            DocumentType = documentType,
-            OrganizationId = organizationId
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            DocumentTypeIds = criteria.DocumentTypeIds,
+            StartDate = criteria.StartDate.HasValue ? criteria.StartDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+            EndDate = criteria.EndDate.HasValue ? criteria.EndDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null
         });
 
         if (res == null || !res.Any())

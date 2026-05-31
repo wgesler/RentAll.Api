@@ -6,91 +6,34 @@ namespace RentAll.Api.Controllers
     {
 
         #region Get
-        [HttpGet]
-        public async Task<IActionResult> GetDocumentsByOfficeIdsAsync()
+        [HttpPost("search")]
+        public async Task<IActionResult> GetDocumentsAsync([FromBody] GetDocumentsDto dto)
         {
+            if (dto == null)
+                return BadRequest("Document search criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
+                return Forbid();
+
             try
             {
-                var documents = await _documentRepository.GetDocumentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var criteria = dto.ToCriteria(CurrentOrganizationId);
+                var documents = await _documentRepository.GetDocumentsAsync(criteria);
                 var response = new List<DocumentResponseDto>();
                 foreach (var document in documents.Where(d => !d.IsDeleted))
                 {
-                    var dto = new DocumentResponseDto(document);
-                    response.Add(dto);
+                    var documentDto = new DocumentResponseDto(document);
+                    response.Add(documentDto);
                 }
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all documents");
-                return ServerError("An error occurred while retrieving documents");
-            }
-        }
-
-        [HttpGet("property/{propertyId:guid}/type/{id:int}")]
-        public async Task<IActionResult> GetDocumentsByPropertyTypeAsync(Guid propertyId, int id)
-        {
-            try
-            {
-                var documents = await _documentRepository.GetDocumentsByPropertyTypeAsync(CurrentOrganizationId, propertyId, id, CurrentOfficeAccess);
-                var response = new List<DocumentResponseDto>();
-                foreach (var document in documents.Where(d => !d.IsDeleted))
-                {
-                    var dto = new DocumentResponseDto(document);
-                    response.Add(dto);
-                }
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all documents");
-                return ServerError("An error occurred while retrieving documents");
-            }
-        }
-
-        [HttpGet("office/{officeId}")]
-        public async Task<IActionResult> GetDocumentsByOfficeIdAsync(int officeId)
-        {
-            if (officeId <= 0)
-                return BadRequest("Office ID is required");
-
-            try
-            {
-                var documents = await _documentRepository.GetDocumentsByOfficeIdAsync(officeId, CurrentOrganizationId);
-                var response = new List<DocumentResponseDto>();
-                foreach (var document in documents.Where(d => !d.IsDeleted))
-                {
-                    var dto = new DocumentResponseDto(document);
-                    dto.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
-                    response.Add(dto);
-                }
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting documents by office ID: {OfficeId}", officeId);
-                return ServerError("An error occurred while retrieving documents");
-            }
-        }
-
-        [HttpGet("type/{documentType}")]
-        public async Task<IActionResult> GetDocumentsByDocumentTypeAsync(int documentType)
-        {
-            try
-            {
-                var documents = await _documentRepository.GetDocumentsByDocumentTypeAsync(documentType, CurrentOrganizationId);
-                var response = new List<DocumentResponseDto>();
-                foreach (var document in documents.Where(d => !d.IsDeleted))
-                {
-                    var dto = new DocumentResponseDto(document);
-                    dto.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(document.OrganizationId, document.OfficeName, document.DocumentPath);
-                    response.Add(dto);
-                }
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting documents by type: {DocumentType}", documentType);
+                _logger.LogError(ex, "Error getting documents");
                 return ServerError("An error occurred while retrieving documents");
             }
         }
@@ -262,6 +205,22 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
+
+        private bool UserHasOfficeAccessForAll(string officeIds)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentOfficeAccess))
+                return true;
+
+            var allowed = CurrentOfficeAccess
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(id => int.TryParse(id, out _))
+                .Select(int.Parse)
+                .ToHashSet();
+
+            return officeIds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .All(id => int.TryParse(id, out var parsed) && allowed.Contains(parsed));
+        }
 
     }
 }
