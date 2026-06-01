@@ -31,8 +31,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 OfficeIds = criteria.OfficeIds,
                 PropertyId = criteria.PropertyId,
                 ReservationId = criteria.ReservationId,
-                StartDate = criteria.StartDate.HasValue ? criteria.StartDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-                EndDate = criteria.EndDate.HasValue ? criteria.EndDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null
+                StartDate = criteria.StartDate,
+                EndDate = criteria.EndDate
             });
 
             if (res == null || !res.Any())

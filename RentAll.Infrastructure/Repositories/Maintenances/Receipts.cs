@@ -7,6 +7,29 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 public partial class MaintenanceRepository
 {
     #region Selects
+    public async Task<IEnumerable<Receipt>> GetReceiptsByCriteriaAsync(ReceiptGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_GetByCriteria", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            IncludeInactive = criteria.IncludeInactive,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<Receipt>();
+
+        var receipts = res.Select(ConvertEntityToModel).ToList();
+        foreach (var receipt in receipts)
+            receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+
+        return receipts;
+    }
+
     public async Task<IEnumerable<Receipt>> GetReceiptsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);

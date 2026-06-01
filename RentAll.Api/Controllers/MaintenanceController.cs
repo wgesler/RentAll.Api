@@ -38,4 +38,20 @@ public partial class MaintenanceController : BaseController
         _fileAttachmentHelper = fileAttachmentHelper;
         _logger = logger;
     }
+
+    private bool UserHasOfficeAccessForAll(string officeIds)
+    {
+        if (string.IsNullOrWhiteSpace(CurrentOfficeAccess))
+            return true;
+
+        var allowed = CurrentOfficeAccess
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(id => int.TryParse(id, out _))
+            .Select(int.Parse)
+            .ToHashSet();
+
+        return officeIds
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .All(id => int.TryParse(id, out var parsed) && allowed.Contains(parsed));
+    }
 }

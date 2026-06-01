@@ -52,6 +52,7 @@ public interface IMaintenanceRepository
     #endregion
 
     #region WorkOrder
+    Task<IEnumerable<WorkOrder>> GetWorkOrdersByCriteriaAsync(WorkOrderGetCriteria criteria);
     Task<IEnumerable<WorkOrder>> GetWorkOrdersByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<WorkOrder>> GetWorkOrdersByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<WorkOrder?> GetWorkOrderByIdAsync(Guid workOrderId, Guid organizationId);
@@ -62,6 +63,7 @@ public interface IMaintenanceRepository
     #endregion
 
     #region Receipt
+    Task<IEnumerable<Receipt>> GetReceiptsByCriteriaAsync(ReceiptGetCriteria criteria);
     Task<IEnumerable<Receipt>> GetReceiptsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Receipt>> GetReceiptsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<Receipt?> GetReceiptByIdAsync(int receiptId, Guid organizationId);

@@ -7,6 +7,25 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 public partial class MaintenanceRepository
 {
     #region Selects
+    public async Task<IEnumerable<WorkOrder>> GetWorkOrdersByCriteriaAsync(WorkOrderGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetByCriteria", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            IncludeInactive = criteria.IncludeInactive,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<WorkOrder>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
     public async Task<IEnumerable<WorkOrder>> GetWorkOrdersByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);

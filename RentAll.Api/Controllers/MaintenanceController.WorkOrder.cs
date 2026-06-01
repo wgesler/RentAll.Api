@@ -5,6 +5,33 @@ namespace RentAll.Api.Controllers;
 public partial class MaintenanceController
 {
     #region Get
+    [HttpPost("work-order/search")]
+    public async Task<IActionResult> SearchWorkOrders([FromBody] GetWorkOrdersDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Work order search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
+            return Forbid();
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var records = await _maintenanceRepository.GetWorkOrdersByCriteriaAsync(criteria);
+            var response = records.Select(o => new WorkOrderResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching work orders");
+            return ServerError("An error occurred while retrieving work orders");
+        }
+    }
+
     [HttpGet("work-order")]
     public async Task<IActionResult> GetAllWorkOrders()
     {
