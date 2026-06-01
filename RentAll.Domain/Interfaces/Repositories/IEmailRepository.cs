@@ -6,6 +6,7 @@ public interface IEmailRepository
 {
     #region Emails
     Task<IEnumerable<Email>> GetEmailsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Email>> GetEmailsAsync(EmailGetCriteria criteria);
     Task<Email?> GetEmailByIdAsync(Guid emailId, Guid organizationId);
     Task<Email> CreateEmailAsync(Email email);
     Task<Email> UpdateEmailByIdAsync(Email email);
@@ -21,6 +22,7 @@ public interface IEmailRepository
 
     #region Alerts
     Task<IEnumerable<Alert>> GetAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Alert>> GetAlertsAsync(AlertGetCriteria criteria);
     Task<IEnumerable<Alert>> GetActiveAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<Alert?> GetAlertByIdAsync(Guid alertId, Guid organizationId);
     Task<IEnumerable<Alert>> GetAlertsByTicketIdAsync(Guid ticketId, Guid organizationId);

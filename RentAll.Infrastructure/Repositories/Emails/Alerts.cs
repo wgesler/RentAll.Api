@@ -22,6 +22,25 @@ namespace RentAll.Infrastructure.Repositories.Emails
             return res.Select(ConvertStoredProcRowToModel);
         }
 
+        public async Task<IEnumerable<Alert>> GetAlertsAsync(AlertGetCriteria criteria)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<AlertStoredProcRow>("Email.Alert_GetByCriteria", new
+            {
+                OrganizationId = criteria.OrganizationId,
+                OfficeIds = criteria.OfficeIds,
+                PropertyId = criteria.PropertyId,
+                ReservationId = criteria.ReservationId,
+                StartDate = criteria.StartDate.HasValue ? criteria.StartDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                EndDate = criteria.EndDate.HasValue ? criteria.EndDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Alert>();
+
+            return res.Select(ConvertStoredProcRowToModel);
+        }
+
         public async Task<IEnumerable<Alert>> GetActiveAlertsByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);

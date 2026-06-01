@@ -1,8 +1,37 @@
+using RentAll.Api.Dtos.Emails.Emails;
+
 namespace RentAll.Api.Controllers
 {
     public partial class EmailController
     {
         #region Get
+
+        [HttpPost("search")]
+        public async Task<IActionResult> GetEmailsAsync([FromBody] GetEmailsDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Email search criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
+                return Forbid();
+
+            try
+            {
+                var criteria = dto.ToCriteria(CurrentOrganizationId);
+                var emails = await _emailRepository.GetEmailsAsync(criteria);
+                var response = emails.Select(email => new EmailResponseDto(email)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting emails");
+                return ServerError("An error occurred while retrieving emails");
+            }
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetEmailsByOfficeIdsAsync()
@@ -106,5 +135,21 @@ namespace RentAll.Api.Controllers
             }
         }
         #endregion
+
+        private bool UserHasOfficeAccessForAll(string officeIds)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentOfficeAccess))
+                return true;
+
+            var allowed = CurrentOfficeAccess
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(id => int.TryParse(id, out _))
+                .Select(int.Parse)
+                .ToHashSet();
+
+            return officeIds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .All(id => int.TryParse(id, out var parsed) && allowed.Contains(parsed));
+        }
     }
 }

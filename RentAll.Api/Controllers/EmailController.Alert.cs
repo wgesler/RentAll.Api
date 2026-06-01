@@ -1,9 +1,37 @@
+using RentAll.Api.Dtos.Emails.Alerts;
 
 namespace RentAll.Api.Controllers
 {
     public partial class EmailController
     {
         #region Get
+
+        [HttpPost("alert/search")]
+        public async Task<IActionResult> GetAlertsAsync([FromBody] GetAlertDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Alert search criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
+                return Forbid();
+
+            try
+            {
+                var criteria = dto.ToCriteria(CurrentOrganizationId);
+                var alerts = await _emailRepository.GetAlertsAsync(criteria);
+                var response = alerts.Select(alert => new AlertResponseDto(alert)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting alerts");
+                return ServerError("An error occurred while retrieving alerts");
+            }
+        }
 
         [HttpGet("alert")]
         public async Task<IActionResult> GetAlertsByOfficeIdsAsync()
