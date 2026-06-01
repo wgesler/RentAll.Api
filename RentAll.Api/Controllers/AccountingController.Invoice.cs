@@ -6,75 +6,29 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
-        [HttpGet("invoice")]
-        public async Task<IActionResult> GetAllInvoices()
+        [HttpPost("invoice/search")]
+        public async Task<IActionResult> SearchInvoices([FromBody] GetInvoiceDto dto)
         {
+            if (dto == null)
+                return BadRequest("Invoice search criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
+                return Forbid();
+
             try
             {
-                var invoices = await _accountingRepository.GetInvoicesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var criteria = dto.ToCriteria(CurrentOrganizationId);
+                var invoices = await _accountingRepository.GetInvoicesAsync(criteria);
                 var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting invoices by office");
-                return ServerError("An error occurred while retrieving invoices");
-            }
-        }
-
-        [HttpGet("invoice/office/{officeId:int}")]
-        public async Task<IActionResult> GetAllInvoicesByOffice(int officeId)
-        {
-            try
-            {
-                if (!CurrentOfficeAccess.Contains(officeId.ToString()))
-                    return Unauthorized("No access to this office");
-
-                var invoices = await _accountingRepository.GetInvoicesByOfficeIdsAsync(CurrentOrganizationId, officeId.ToString());
-                var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting invoices by office");
-                return ServerError("An error occurred while retrieving invoices");
-            }
-        }
-
-        [HttpGet("invoice/reservation/{reservationId}")]
-        public async Task<IActionResult> GetAllInvoicesByReservation(Guid reservationId)
-        {
-            if (reservationId == Guid.Empty)
-                return BadRequest("Reservation ID is required");
-
-            try
-            {
-                var invoices = await _accountingRepository.GetInvoicesByReservationIdAsync(reservationId, CurrentOrganizationId, CurrentOfficeAccess);
-                var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting invoices by reservation ID: {ReservationId}", reservationId);
-                return ServerError("An error occurred while retrieving invoices");
-            }
-        }
-
-        [HttpGet("invoice/property/{propertyId}")]
-        public async Task<IActionResult> GetAllInvoicesByProperty(Guid propertyId)
-        {
-            if (propertyId == Guid.Empty)
-                return BadRequest("Property ID is required");
-
-            try
-            {
-                var invoices = await _accountingRepository.GetInvoicesByPropertyIdAsync(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
-                var response = invoices.Select(i => new InvoiceResponseDto(i)).ToList();
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting invoices by property ID: {PropertyId}", propertyId);
+                _logger.LogError(ex, "Error searching invoices");
                 return ServerError("An error occurred while retrieving invoices");
             }
         }
@@ -97,28 +51,6 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting invoice by ID: {InvoiceId}", invoiceId);
-                return ServerError("An error occurred while retrieving the invoice");
-            }
-        }
-
-        [HttpGet("invoice-code/{invoiceCode}")]
-        public async Task<IActionResult> GetInvoiceByCode(string invoiceCode)
-        {
-            if (string.IsNullOrEmpty(invoiceCode))
-                return BadRequest("Invoice Code is required");
-
-            try
-            {
-                var invoice = await _accountingRepository.GetInvoiceByCodeAsync(invoiceCode, CurrentOrganizationId);
-                if (invoice == null)
-                    return Ok();
-
-                var response = new InvoiceResponseDto(invoice);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting invoice by Code: {InvoiceCode}", invoiceCode);
                 return ServerError("An error occurred while retrieving the invoice");
             }
         }
@@ -282,5 +214,21 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
+
+        bool UserHasOfficeAccessForAll(string officeIds)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentOfficeAccess))
+                return true;
+
+            var allowed = CurrentOfficeAccess
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(id => int.TryParse(id, out _))
+                .Select(int.Parse)
+                .ToHashSet();
+
+            return officeIds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .All(id => int.TryParse(id, out var parsed) && allowed.Contains(parsed));
+        }
     }
 }

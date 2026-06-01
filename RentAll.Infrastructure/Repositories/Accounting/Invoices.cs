@@ -7,45 +7,20 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 public partial class AccountingRepository
 {
     #region Selects
-    public async Task<IEnumerable<Invoice>> GetInvoicesByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    public async Task<IEnumerable<Invoice>> GetInvoicesAsync(InvoiceGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByOfficeIds", new
+        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetByCriteria", new
         {
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetInvoicesByReservationIdAsync(Guid reservationId, Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByReservationAndOfficeIds", new
-        {
-            ReservationId = reservationId,
-            OrganizationId = organizationId,
-            Offices = officeAccess
-        });
-
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
-    }
-
-    public async Task<IEnumerable<Invoice>> GetInvoicesByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetAllByPropertyAndOfficeIds", new
-        {
-            PropertyId = propertyId,
-            OrganizationId = organizationId,
-            Offices = officeAccess
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            ReservationId = criteria.ReservationId,
+            PropertyId = criteria.PropertyId,
+            InvoiceCode = criteria.InvoiceCode,
+            IncludeInactive = criteria.IncludeInactive,
+            IncludePaid = criteria.IncludePaid,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
         });
 
         if (res == null || !res.Any())
@@ -60,21 +35,6 @@ public partial class AccountingRepository
         var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
         {
             InvoiceId = invoiceId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
-    }
-
-    public async Task<Invoice?> GetInvoiceByCodeAsync(string invoiceCode, Guid organizationId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetByCode", new
-        {
-            InvoiceCode = invoiceCode,
             OrganizationId = organizationId
         });
 
