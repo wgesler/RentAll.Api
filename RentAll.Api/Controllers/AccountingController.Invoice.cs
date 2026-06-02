@@ -167,6 +167,44 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPut("invoice/reservation/{reservationId}/deactivate")]
+        public async Task<IActionResult> DeactivateInvoicesByReservationId(Guid reservationId)
+        {
+            if (reservationId == Guid.Empty)
+                return BadRequest("Reservation ID is required");
+
+            try
+            {
+                var deactivatedCount = await _accountingRepository.DeactivateInvoicesByReservationIdAsync(
+                    CurrentOrganizationId, reservationId, CurrentUser);
+                return Ok(new { deactivatedCount });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deactivating invoices for reservation: {ReservationId}", reservationId);
+                return ServerError("An error occurred while deactivating invoices for the reservation");
+            }
+        }
+
+        [HttpPut("invoice/reservation/{reservationId}/reactivate")]
+        public async Task<IActionResult> ReactivateInvoicesByReservationId(Guid reservationId)
+        {
+            if (reservationId == Guid.Empty)
+                return BadRequest("Reservation ID is required");
+
+            try
+            {
+                var reactivatedCount = await _accountingRepository.ReactivateInvoicesByReservationIdAsync(
+                    CurrentOrganizationId, reservationId, CurrentUser);
+                return Ok(new { reactivatedCount });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reactivating invoices for reservation: {ReservationId}", reservationId);
+                return ServerError("An error occurred while reactivating invoices for the reservation");
+            }
+        }
+
         [HttpPut("invoice/payment")]
         public async Task<IActionResult> ApplyPayment([FromBody] InvoicePaymentRequestDto dto)
         {

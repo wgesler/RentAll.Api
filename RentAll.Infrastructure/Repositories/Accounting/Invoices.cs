@@ -226,6 +226,31 @@ public partial class AccountingRepository
             throw;
         }
     }
+    public async Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<int>("Accounting.Invoice_DeactivateByReservationId", new
+        {
+            OrganizationId = organizationId,
+            ReservationId = reservationId,
+            ModifiedBy = modifiedBy
+        });
+
+        return res?.FirstOrDefault() ?? 0;
+    }
+
+    public async Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<int>("Accounting.Invoice_ReactivateByReservationId", new
+        {
+            OrganizationId = organizationId,
+            ReservationId = reservationId,
+            ModifiedBy = modifiedBy
+        });
+
+        return res?.FirstOrDefault() ?? 0;
+    }
     #endregion
 
     #region Deletes
