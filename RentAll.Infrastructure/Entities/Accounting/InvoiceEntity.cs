@@ -9,7 +9,10 @@ public class InvoiceEntity
     public string InvoiceCode { get; set; } = string.Empty;
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ContactId { get; set; }
+    public string? ContactName { get; set; }
     public string? ResponsibleParty { get; set; }
     public DateOnly InvoiceDate { get; set; }
     public DateOnly? DueDate { get; set; }

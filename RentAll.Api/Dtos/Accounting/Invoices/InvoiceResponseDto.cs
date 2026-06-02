@@ -11,7 +11,10 @@ public class InvoiceResponseDto
     public string InvoiceCode { get; set; } = string.Empty;
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
+    public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ContactId { get; set; }
+    public string? ContactName { get; set; }
     public string? ResponsibleParty { get; set; }
     public DateOnly InvoiceDate { get; set; }
     public DateOnly? DueDate { get; set; }
@@ -31,7 +34,10 @@ public class InvoiceResponseDto
         InvoiceCode = invoice.InvoiceCode;
         ReservationId = invoice.ReservationId;
         ReservationCode = invoice.ReservationCode;
+        PropertyId = invoice.PropertyId;
+        PropertyCode = invoice.PropertyCode;
         ContactId = invoice.ContactId;
+        ContactName = invoice.ContactName;
         ResponsibleParty = invoice.ResponsibleParty;
         InvoiceDate = invoice.InvoiceDate;
         DueDate = invoice.DueDate;
