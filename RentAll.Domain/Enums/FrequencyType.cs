@@ -9,7 +9,8 @@ public enum FrequencyType
     Monthly = 4,
     Quarterly = 5,
     BiAnnually = 6,
-    Annually = 7
+    Annually = 7,
+    Daily = 8
 }
 
 

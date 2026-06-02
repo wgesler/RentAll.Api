@@ -379,6 +379,9 @@ public class AccountingManager : IAccountingManager
         int maidServices = 0;
         switch (reservation.Frequency)
         {
+            case FrequencyType.Daily:
+                maidServices = CountDailyDaysInRange(reservation.MaidStartDate, sDate, dDate);
+                break;
             case FrequencyType.Weekly:
                 maidServices = CountNumberOfWeekDaysInMonth(reservation.MaidStartDate, sDate, dDate, requestedYear, startDateMonth);
                 break;
@@ -400,6 +403,9 @@ public class AccountingManager : IAccountingManager
         int fees = 0;
         switch (extraFeeLine.FeeFrequency)
         {
+            case FrequencyType.Daily:
+                fees = CountDailyDaysInRange(startDate, startDate, endDate);
+                break;
             case FrequencyType.Weekly:
                 fees = CountNumberOfWeekDaysInMonth(startDate, startDate, endDate, requestedYear, startDateMonth);
                 break;
@@ -441,6 +447,18 @@ public class AccountingManager : IAccountingManager
            (billingType == BillingType.Nightly && !isDepartureMonthYear && isLastDayOfMonth))
             days++;
         return days;
+    }
+
+    private static int CountDailyDaysInRange(DateOnly startDate, DateOnly rangeStart, DateOnly rangeEnd)
+    {
+        int count = 0;
+        for (var d = startDate; d <= rangeEnd; d = d.AddDays(1))
+        {
+            if (d >= rangeStart && d <= rangeEnd)
+                count++;
+        }
+
+        return count;
     }
 
     private static int CountNumberOfWeekDaysInMonth(DateOnly maidStartDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth)

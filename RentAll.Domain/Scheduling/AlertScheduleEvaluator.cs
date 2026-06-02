@@ -69,6 +69,7 @@ public static class AlertScheduleEvaluator
 
         return alert.Frequency switch
         {
+            FrequencyType.Daily => IsRecurringPeriodDue(anchor, today, alert.SentOn, 1),
             FrequencyType.Weekly => IsRecurringPeriodDue(anchor, today, alert.SentOn, 7),
             FrequencyType.EOW => IsRecurringPeriodDue(anchor, today, alert.SentOn, 14),
             FrequencyType.Monthly => IsRecurringPeriodDue(anchor, today, alert.SentOn, 30),
@@ -125,6 +126,7 @@ public static class AlertScheduleEvaluator
     {
         return frequency switch
         {
+            FrequencyType.Daily => 1,
             FrequencyType.Weekly => 7,
             FrequencyType.EOW => 14,
             FrequencyType.Monthly => 30,
