@@ -92,6 +92,25 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("owner/{ownerId}")]
+        public async Task<IActionResult> GetReservationListByOwnerIdAsync(Guid ownerId)
+        {
+            if (ownerId == Guid.Empty)
+                return Ok(Enumerable.Empty<ReservationListResponseDto>());
+
+            try
+            {
+                var list = await _reservationRepository.GetReservationListByOwnerIdAsync(ownerId, CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(r => new ReservationListResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reservations by OwnerId: {OwnerId}", ownerId);
+                return ServerError("An error occurred while retrieving reservations");
+            }
+        }
+
         [HttpGet("{reservationId}")]
         public async Task<IActionResult> GetReservationByIdAsync(Guid reservationId)
         {

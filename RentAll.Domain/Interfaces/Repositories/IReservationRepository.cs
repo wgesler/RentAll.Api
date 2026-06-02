@@ -6,6 +6,7 @@ public interface IReservationRepository
 {
     #region Reservation
     Task<IEnumerable<ReservationList>> GetReservationListByOfficeIdAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<ReservationList>> GetReservationListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess);
     Task<IEnumerable<ReservationList>> GetReservationActiveListByOfficeIdAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<ReservationCodes>> GetReservationActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Reservation>> GetReservationListByPropertyIdAsync(Guid propertyId, Guid organizationId);
