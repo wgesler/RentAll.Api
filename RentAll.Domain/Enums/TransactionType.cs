@@ -7,5 +7,9 @@ public enum TransactionType
     SecurityDeposit = 2,
     SecurityDepositWaiver = 3,
     Expense = 4,
-    CostOfGoodsSold = 5
+    CostOfGoodsSold = 5,
+    Asset = 6,
+    Liability = 7,
+    Equity = 8,
+    Income = 9
 }
