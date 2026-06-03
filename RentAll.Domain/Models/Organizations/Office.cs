@@ -40,6 +40,15 @@ public class Office
     public decimal MaidHouse { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public int? DefaultMarkup { get; set; }
+    public int? DefaultRevenueSplitOwner { get; set; }
+    public int? DefaultRevenueSplitOffice { get; set; }
+    public decimal? DefaultWorkingCapitalBalance { get; set; }
+    public decimal? DefaultHourlyLaborCost { get; set; }
+    public decimal? DefaultLinenTowelOneBed { get; set; }
+    public decimal? DefaultLinenTowelTwoBed { get; set; }
+    public decimal? DefaultLinenTowelThreeBed { get; set; }
+    public decimal? DefaultLinenTowelFourBed { get; set; }
     public int? TenantChargeCcId { get; set; }
     public int? TenantExpenseCcId { get; set; }
     public int? OwnerChargeCcId { get; set; }

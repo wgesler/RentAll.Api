@@ -38,6 +38,15 @@ public class OfficeCreateDto
     public decimal MaidHouse { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public int? DefaultMarkup { get; set; }
+    public int? DefaultRevenueSplitOwner { get; set; }
+    public int? DefaultRevenueSplitOffice { get; set; }
+    public decimal? DefaultWorkingCapitalBalance { get; set; }
+    public decimal? DefaultHourlyLaborCost { get; set; }
+    public decimal? DefaultLinenTowelOneBed { get; set; }
+    public decimal? DefaultLinenTowelTwoBed { get; set; }
+    public decimal? DefaultLinenTowelThreeBed { get; set; }
+    public decimal? DefaultLinenTowelFourBed { get; set; }
     public int? TenantChargeCcId { get; set; }
     public int? TenantExpenseCcId { get; set; }
     public int? OwnerChargeCcId { get; set; }
@@ -173,6 +182,15 @@ public class OfficeCreateDto
             MaidHouse = MaidHouse,
             ParkingLowEnd = ParkingLowEnd,
             ParkingHighEnd = ParkingHighEnd,
+            DefaultMarkup = DefaultMarkup,
+            DefaultRevenueSplitOwner = DefaultRevenueSplitOwner,
+            DefaultRevenueSplitOffice = DefaultRevenueSplitOffice,
+            DefaultWorkingCapitalBalance = DefaultWorkingCapitalBalance,
+            DefaultHourlyLaborCost = DefaultHourlyLaborCost,
+            DefaultLinenTowelOneBed = DefaultLinenTowelOneBed,
+            DefaultLinenTowelTwoBed = DefaultLinenTowelTwoBed,
+            DefaultLinenTowelThreeBed = DefaultLinenTowelThreeBed,
+            DefaultLinenTowelFourBed = DefaultLinenTowelFourBed,
             TenantChargeCcId = TenantChargeCcId,
             TenantExpenseCcId = TenantExpenseCcId,
             OwnerChargeCcId = OwnerChargeCcId,

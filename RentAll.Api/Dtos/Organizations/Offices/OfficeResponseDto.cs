@@ -40,6 +40,15 @@ public class OfficeResponseDto
     public decimal MaidHouse { get; set; }
     public decimal ParkingLowEnd { get; set; }
     public decimal ParkingHighEnd { get; set; }
+    public int? DefaultMarkup { get; set; }
+    public int? DefaultRevenueSplitOwner { get; set; }
+    public int? DefaultRevenueSplitOffice { get; set; }
+    public decimal? DefaultWorkingCapitalBalance { get; set; }
+    public decimal? DefaultHourlyLaborCost { get; set; }
+    public decimal? DefaultLinenTowelOneBed { get; set; }
+    public decimal? DefaultLinenTowelTwoBed { get; set; }
+    public decimal? DefaultLinenTowelThreeBed { get; set; }
+    public decimal? DefaultLinenTowelFourBed { get; set; }
     public int? TenantChargeCcId { get; set; }
     public int? TenantExpenseCcId { get; set; }
     public int? OwnerChargeCcId { get; set; }
@@ -106,6 +115,15 @@ public class OfficeResponseDto
         MaidHouse = office.MaidHouse;
         ParkingLowEnd = office.ParkingLowEnd;
         ParkingHighEnd = office.ParkingHighEnd;
+        DefaultMarkup = office.DefaultMarkup;
+        DefaultRevenueSplitOwner = office.DefaultRevenueSplitOwner;
+        DefaultRevenueSplitOffice = office.DefaultRevenueSplitOffice;
+        DefaultWorkingCapitalBalance = office.DefaultWorkingCapitalBalance;
+        DefaultHourlyLaborCost = office.DefaultHourlyLaborCost;
+        DefaultLinenTowelOneBed = office.DefaultLinenTowelOneBed;
+        DefaultLinenTowelTwoBed = office.DefaultLinenTowelTwoBed;
+        DefaultLinenTowelThreeBed = office.DefaultLinenTowelThreeBed;
+        DefaultLinenTowelFourBed = office.DefaultLinenTowelFourBed;
         TenantChargeCcId = office.TenantChargeCcId;
         TenantExpenseCcId = office.TenantExpenseCcId;
         OwnerChargeCcId = office.OwnerChargeCcId;
