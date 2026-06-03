@@ -48,6 +48,9 @@ public class OfficeEntity
     public decimal? DefaultLinenTowelTwoBed { get; set; }
     public decimal? DefaultLinenTowelThreeBed { get; set; }
     public decimal? DefaultLinenTowelFourBed { get; set; }
+    public decimal? DefaultOnlineFee { get; set; }
+    public decimal? DefaultOnlineClean { get; set; }
+    public decimal? DefaultOfflineFee { get; set; }
 
     public int? TenantChargeCcId { get; set; }
     public int? TenantExpenseCcId { get; set; }
