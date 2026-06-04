@@ -36,6 +36,7 @@ public class CreateContactDto
     public decimal? RevenueSplitOffice { get; set; }
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
+    public int? PaymentTermsId { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
@@ -68,6 +69,9 @@ public class CreateContactDto
 
         if (VendorTypeId.HasValue && !Enum.IsDefined(typeof(VendorType), VendorTypeId.Value))
             return (false, $"Invalid VendorType value: {VendorTypeId}");
+
+        if (PaymentTermsId.HasValue && !Enum.IsDefined(typeof(TermType), PaymentTermsId.Value))
+            return (false, $"Invalid PaymentTermsId value: {PaymentTermsId}");
 
         return (true, null);
     }
@@ -109,6 +113,7 @@ public class CreateContactDto
             RevenueSplitOffice = RevenueSplitOffice,
             WorkingCapitalBalance = WorkingCapitalBalance,
             LinenAndTowelFee = LinenAndTowelFee,
+            PaymentTerms = PaymentTermsId.HasValue ? (TermType)PaymentTermsId.Value : null,
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,

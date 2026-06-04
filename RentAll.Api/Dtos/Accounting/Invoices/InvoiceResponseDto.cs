@@ -17,13 +17,18 @@ public class InvoiceResponseDto
     public string? ContactName { get; set; }
     public string? ResponsibleParty { get; set; }
     public DateOnly InvoiceDate { get; set; }
-    public DateOnly? DueDate { get; set; }
+    public DateOnly DueDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
     public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public List<LedgerLineResponseDto> LedgerLines { get; set; } = new List<LedgerLineResponseDto>();
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
 
     public InvoiceResponseDto(Invoice invoice)
     {
@@ -41,11 +46,16 @@ public class InvoiceResponseDto
         ResponsibleParty = invoice.ResponsibleParty;
         InvoiceDate = invoice.InvoiceDate;
         DueDate = invoice.DueDate;
+        AccountingPeriod = invoice.AccountingPeriod;
         InvoicePeriod = invoice.InvoicePeriod;
         TotalAmount = invoice.TotalAmount;
         PaidAmount = invoice.PaidAmount;
         Notes = invoice.Notes;
         LedgerLines = invoice.LedgerLines.Select(l => new LedgerLineResponseDto(l)).ToList();
         IsActive = invoice.IsActive;
+        CreatedOn = invoice.CreatedOn;
+        CreatedBy = invoice.CreatedBy;
+        ModifiedOn = invoice.ModifiedOn;
+        ModifiedBy = invoice.ModifiedBy;
     }
 }

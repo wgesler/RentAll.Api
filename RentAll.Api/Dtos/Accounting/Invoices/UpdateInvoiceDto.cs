@@ -12,7 +12,8 @@ public class UpdateInvoiceDto
     public Guid ReservationId { get; set; }
     public string ReservationCode { get; set; } = string.Empty;
     public DateOnly InvoiceDate { get; set; }
-    public DateOnly? DueDate { get; set; }
+    public DateOnly DueDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
     public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
@@ -36,6 +37,12 @@ public class UpdateInvoiceDto
 
         if (InvoiceDate == default)
             return (false, "InvoiceDate is required");
+
+        if (DueDate == default)
+            return (false, "DueDate is required");
+
+        if (AccountingPeriod == default)
+            return (false, "AccountingPeriod is required");
 
         if (LedgerLines != null)
         {
@@ -63,6 +70,7 @@ public class UpdateInvoiceDto
             ReservationCode = ReservationCode,
             InvoiceDate = InvoiceDate,
             DueDate = DueDate,
+            AccountingPeriod = AccountingPeriod,
             InvoicePeriod = InvoicePeriod,
             TotalAmount = TotalAmount,
             PaidAmount = PaidAmount,

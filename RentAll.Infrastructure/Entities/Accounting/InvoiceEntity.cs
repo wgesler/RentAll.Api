@@ -15,15 +15,16 @@ public class InvoiceEntity
     public string? ContactName { get; set; }
     public string? ResponsibleParty { get; set; }
     public DateOnly InvoiceDate { get; set; }
-    public DateOnly? DueDate { get; set; }
+    public DateOnly DueDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
     public string? InvoicePeriod { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public string? LedgerLines { get; set; }
-    public DateOnly CreatedOn { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
-    public DateOnly ModifiedOn { get; set; }
+    public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }

@@ -27,6 +27,8 @@ using RentAll.Infrastructure.Repositories.Tickets;
 using RentAll.Infrastructure.Repositories.Users;
 using RentAll.Infrastructure.Services;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,7 +57,12 @@ var environment = appSettingsSection.GetSection("Environment").Get<string>()!;
 var isDev = environment.ToLower() == "development";
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // Configure CORS
 builder.Services.AddCors(options =>

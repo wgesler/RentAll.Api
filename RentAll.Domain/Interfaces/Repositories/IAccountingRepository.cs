@@ -36,4 +36,17 @@ public interface IAccountingRepository
     Task<BankCard> UpdateByIdAsync(BankCard bankCard, byte[] encryptedCardNumber);
     Task DeleteBankCardByIdAsync(int bankCardId, Guid organizationId, int officeId);
     #endregion
+
+    #region ChartOfAccounts
+    Task<List<ChartOfAccount>> GetChartOfAccountsByOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task<List<ChartOfAccount>> GetChartOfAccountsByOfficeIdAsync(Guid organizationId, int officeId);
+    Task<ChartOfAccount?> GetChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
+    Task<ChartOfAccount?> GetChartOfAccountByAccountNoAsync(Guid organizationId, int officeId, string accountNo);
+    Task<bool> ExistsChartOfAccountByAccountIdAsync(Guid organizationId, int officeId, int accountId);
+    Task<bool> ExistsChartOfAccountByAccountNoAsync(Guid organizationId, int officeId, string accountNo, int? excludeAccountId = null);
+
+    Task<ChartOfAccount> CreateAsync(ChartOfAccount chartOfAccount);
+    Task<ChartOfAccount> UpdateChartOfAccountByIdAsync(ChartOfAccount chartOfAccount);
+    Task DeleteChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
+    #endregion
 }

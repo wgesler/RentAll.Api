@@ -83,6 +83,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 RevenueSplitOffice = e.RevenueSplitOffice,
                 WorkingCapitalBalance = e.WorkingCapitalBalance,
                 LinenAndTowelFee = e.LinenAndTowelFee,
+                PaymentTerms = e.PaymentTermsId.HasValue ? (TermType)e.PaymentTermsId.Value : null,
                 BankName = e.BankName,
                 RoutingNumber = e.RoutingNumber,
                 AccountNumber = e.AccountNumber,

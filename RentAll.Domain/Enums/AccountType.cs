@@ -6,12 +6,15 @@ public enum AccountType
     AccountsReceivable = 1,
     OtherCurrentAsset = 2,
     FixedAsset = 3,
-    AccountsPayable = 4,
-    CreditCard = 5,
-    OtherCurrentLiability = 6,
-    LongTermLiability = 7,
-    Equity = 8,
-    Income = 9,
-    CostOfGoodsSold = 10,
-    Expense = 11
+    OtherAsset = 4,
+    AccountsPayable = 5,
+    CreditCard = 6,
+    OtherCurrentLiability = 7,
+    LongTermLiability = 8,
+    Equity = 9,
+    Income = 10,
+    CostOfGoodsSold = 11,
+    Expense = 12,
+    OtherIncome = 13,
+    OtherExpense = 14
 }

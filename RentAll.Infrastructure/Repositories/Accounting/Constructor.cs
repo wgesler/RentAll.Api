@@ -21,7 +21,7 @@ public partial class AccountingRepository : IAccountingRepository
         _logger = logger;
     }
 
-    #region CostCodes
+    #region BankCards
     private BankCard ConvertEntityToModel(BankCardEntity e)
     {
         return new BankCard
@@ -36,7 +36,9 @@ public partial class AccountingRepository : IAccountingRepository
             CostCodeId = e.CostCodeId
         };
     }
+    #endregion
 
+    #region CostCodes
     private CostCode ConvertEntityToModel(CostCodeEntity e)
     {
         return new CostCode
@@ -48,6 +50,25 @@ public partial class AccountingRepository : IAccountingRepository
             TransactionType = (TransactionType)e.TransactionTypeId,
             Description = e.Description,
             IsActive = e.IsActive
+        };
+    }
+    #endregion
+
+    #region ChartOfAccounts
+    private ChartOfAccount ConvertEntityToModel(ChartOfAccountEntity e)
+    {
+        return new ChartOfAccount
+        {
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            AccountId = e.AccountId,
+            AccountNo = e.AccountNo,
+            AccountType = (AccountType)e.AccountTypeId,
+            Name = e.Name,
+            IsSubaccount = e.IsSubaccount,
+            SubAccountId = e.SubAccountId,
+            Description = e.Description,
+            Note = e.Note
         };
     }
     #endregion
@@ -73,12 +94,17 @@ public partial class AccountingRepository : IAccountingRepository
             ResponsibleParty = e.ResponsibleParty,
             InvoiceDate = e.InvoiceDate,
             DueDate = e.DueDate,
+            AccountingPeriod = e.AccountingPeriod,
             InvoicePeriod = e.InvoicePeriod,
             TotalAmount = e.TotalAmount,
             PaidAmount = e.PaidAmount,
             Notes = e.Notes,
             IsActive = e.IsActive,
-            LedgerLines = lines
+            LedgerLines = lines,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
         };
     }
 
