@@ -87,6 +87,7 @@ public partial class OrganizationRepository
             Unit200Fee = organization.Unit200Fee,
             Unit500Fee = organization.Unit500Fee,
             SendGridName = organization.SendGridName,
+            DocuSignName = organization.DocuSignName,
             IsActive = organization.IsActive,
             CreatedBy = organization.CreatedBy
         });
@@ -128,6 +129,7 @@ public partial class OrganizationRepository
             Unit200Fee = organization.Unit200Fee,
             Unit500Fee = organization.Unit500Fee,
             SendGridName = organization.SendGridName,
+            DocuSignName = organization.DocuSignName,
             IsActive = organization.IsActive,
             ModifiedBy = organization.ModifiedBy
         });

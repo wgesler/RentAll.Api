@@ -47,6 +47,10 @@ builder.Services.AddScoped<StorageSettings>();
 var sendGridSettings = builder.Configuration.GetSection("SendGridSettings");
 builder.Services.Configure<SendGridSettings>(sendGridSettings);
 
+// Configure DocuSign settings
+var docuSignSettings = builder.Configuration.GetSection("DocuSignSettings");
+builder.Services.Configure<DocuSignSettings>(docuSignSettings);
+
 builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
 builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.GetSection("ExternalTicketIntakeSettings"));
 builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
@@ -113,6 +117,8 @@ builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddHttpClient(nameof(DocuSignService));
+builder.Services.AddScoped<IDocuSignService, DocuSignService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
 // Configure File Storage Service (FileSystem or AzureBlob)

@@ -43,6 +43,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             Unit200Fee = e.Unit200Fee,
             Unit500Fee = e.Unit500Fee,
             SendGridName = e.SendGridName,
+            DocuSignName = e.DocuSignName,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,

@@ -29,6 +29,7 @@ public class OrganizationResponseDto
     public decimal Unit200Fee { get; set; }
     public decimal Unit500Fee { get; set; }
     public string? SendGridName { get; set; }
+    public string? DocuSignName { get; set; }
     public bool IsActive { get; set; }
 
 
@@ -59,6 +60,7 @@ public class OrganizationResponseDto
         Unit200Fee = org.Unit200Fee;
         Unit500Fee = org.Unit500Fee;
         SendGridName = org.SendGridName;
+        DocuSignName = org.DocuSignName;
         IsActive = org.IsActive;
     }
 }

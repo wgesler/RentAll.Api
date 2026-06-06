@@ -26,6 +26,7 @@ public class CreateOrganizationDto
     public decimal Unit200Fee { get; set; }
     public decimal Unit500Fee { get; set; }
     public string? SendGridName { get; set; }
+    public string? DocuSignName { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -70,6 +71,7 @@ public class CreateOrganizationDto
             Unit200Fee = Unit200Fee,
             Unit500Fee = Unit500Fee,
             SendGridName = SendGridName,
+            DocuSignName = DocuSignName,
             IsActive = IsActive,
             CreatedBy = currentUser
         };
