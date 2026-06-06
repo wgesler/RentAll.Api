@@ -11,6 +11,9 @@ public class OwnerAgreementInformationResponseDto
     public string? AgreementIntroduction { get; set; }
     public string? Recitals { get; set; }
     public string? SectionOneEmployment { get; set; }
+    public string? SectionOneEmploymentSplit { get; set; }
+    public string? SectionOneEmploymentMinimum { get; set; }
+    public string? SectionOneEmploymentFlat { get; set; }
     public string? SectionTwoAgentDuties { get; set; }
     public string? SectionThreeOwnersDuties { get; set; }
     public string? SectionFourAdvertisingAndPromotion { get; set; }
@@ -40,6 +43,9 @@ public class OwnerAgreementInformationResponseDto
         AgreementIntroduction = ownerAgreementInformation.AgreementIntroduction;
         Recitals = ownerAgreementInformation.Recitals;
         SectionOneEmployment = ownerAgreementInformation.SectionOneEmployment;
+        SectionOneEmploymentSplit = ownerAgreementInformation.SectionOneEmploymentSplit;
+        SectionOneEmploymentMinimum = ownerAgreementInformation.SectionOneEmploymentMinimum;
+        SectionOneEmploymentFlat = ownerAgreementInformation.SectionOneEmploymentFlat;
         SectionTwoAgentDuties = ownerAgreementInformation.SectionTwoAgentDuties;
         SectionThreeOwnersDuties = ownerAgreementInformation.SectionThreeOwnersDuties;
         SectionFourAdvertisingAndPromotion = ownerAgreementInformation.SectionFourAdvertisingAndPromotion;
