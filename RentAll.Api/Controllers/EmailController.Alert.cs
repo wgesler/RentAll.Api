@@ -17,7 +17,7 @@ namespace RentAll.Api.Controllers
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
-                return Forbid();
+                return Ok();
 
             try
             {
