@@ -3,8 +3,10 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 using RentAll.Domain.Scheduling;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RentAll.Infrastructure.Repositories.Emails
 {
@@ -30,32 +32,10 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = e.PropertyCode,
                 ReservationId = e.ReservationId,
                 ReservationCode = e.ReservationCode,
-                ToRecipients = (e.ToRecipients ?? [])
-                    .Select(recipient => new Domain.Models.Common.EmailAddress
-                    {
-                        Email = recipient.Email,
-                        Name = recipient.Name
-                    })
-                    .ToList(),
-                CcRecipients = (e.CcRecipients ?? [])
-                    .Select(recipient => new Domain.Models.Common.EmailAddress
-                    {
-                        Email = recipient.Email,
-                        Name = recipient.Name
-                    })
-                    .ToList(),
-                BccRecipients = (e.BccRecipients ?? [])
-                    .Select(recipient => new Domain.Models.Common.EmailAddress
-                    {
-                        Email = recipient.Email,
-                        Name = recipient.Name
-                    })
-                    .ToList(),
-                FromRecipient = new Domain.Models.Common.EmailAddress
-                {
-                    Email = e.FromRecipient?.Email ?? string.Empty,
-                    Name = e.FromRecipient?.Name ?? string.Empty
-                },
+                ToRecipients = MapDomainAddresses(e.ToRecipients),
+                CcRecipients = MapDomainAddresses(e.CcRecipients),
+                BccRecipients = MapDomainAddresses(e.BccRecipients),
+                FromRecipient = MapDomainAddress(e.FromRecipient),
                 Subject = e.Subject,
                 PlainTextContent = e.PlainTextContent,
                 HtmlContent = e.HtmlContent,
@@ -107,32 +87,10 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PropertyCode = model.PropertyCode,
                 ReservationId = model.ReservationId,
                 ReservationCode = model.ReservationCode,
-                ToRecipients = (model.ToRecipients ?? [])
-                    .Select(recipient => new EmailAddressEntity
-                    {
-                        Email = recipient.Email,
-                        Name = recipient.Name
-                    })
-                    .ToList(),
-                CcRecipients = (model.CcRecipients ?? [])
-                    .Select(recipient => new EmailAddressEntity
-                    {
-                        Email = recipient.Email,
-                        Name = recipient.Name
-                    })
-                    .ToList(),
-                BccRecipients = (model.BccRecipients ?? [])
-                    .Select(recipient => new EmailAddressEntity
-                    {
-                        Email = recipient.Email,
-                        Name = recipient.Name
-                    })
-                    .ToList(),
-                FromRecipient = new EmailAddressEntity
-                {
-                    Email = model.FromRecipient?.Email ?? string.Empty,
-                    Name = model.FromRecipient?.Name ?? string.Empty
-                },
+                ToRecipients = MapEntityAddresses(model.ToRecipients),
+                CcRecipients = MapEntityAddresses(model.CcRecipients),
+                BccRecipients = MapEntityAddresses(model.BccRecipients),
+                FromRecipient = MapEntityAddress(model.FromRecipient),
                 Subject = model.Subject,
                 PlainTextContent = model.PlainTextContent,
                 HtmlContent = model.HtmlContent,
@@ -205,20 +163,10 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 TicketId = e.TicketId,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
-                ToRecipients = (e.ToRecipients ?? [])
-                    .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
-                    .ToList(),
-                CcRecipients = (e.CcRecipients ?? [])
-                    .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
-                    .ToList(),
-                BccRecipients = (e.BccRecipients ?? [])
-                    .Select(r => new Domain.Models.Common.EmailAddress { Email = r.Email, Name = r.Name })
-                    .ToList(),
-                FromRecipient = new Domain.Models.Common.EmailAddress
-                {
-                    Email = e.FromRecipient?.Email ?? string.Empty,
-                    Name = e.FromRecipient?.Name ?? string.Empty
-                },
+                ToRecipients = MapDomainAddresses(e.ToRecipients),
+                CcRecipients = MapDomainAddresses(e.CcRecipients),
+                BccRecipients = MapDomainAddresses(e.BccRecipients),
+                FromRecipient = MapDomainAddress(e.FromRecipient),
                 Subject = e.Subject,
                 PlainTextContent = e.PlainTextContent,
                 EmailType = (EmailType)e.EmailTypeId,
@@ -253,20 +201,10 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 ReservationId = model.ReservationId,
                 ReservationCode = model.ReservationCode,
                 TicketId = model.TicketId,
-                ToRecipients = (model.ToRecipients ?? [])
-                    .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
-                    .ToList(),
-                CcRecipients = (model.CcRecipients ?? [])
-                    .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
-                    .ToList(),
-                BccRecipients = (model.BccRecipients ?? [])
-                    .Select(r => new EmailAddressEntity { Email = r.Email, Name = r.Name })
-                    .ToList(),
-                FromRecipient = new EmailAddressEntity
-                {
-                    Email = model.FromRecipient?.Email ?? string.Empty,
-                    Name = model.FromRecipient?.Name ?? string.Empty
-                },
+                ToRecipients = MapEntityAddresses(model.ToRecipients),
+                CcRecipients = MapEntityAddresses(model.CcRecipients),
+                BccRecipients = MapEntityAddresses(model.BccRecipients),
+                FromRecipient = MapEntityAddress(model.FromRecipient),
                 Subject = model.Subject,
                 PlainTextContent = model.PlainTextContent,
                 EmailTypeId = (int)model.EmailType,
@@ -330,8 +268,45 @@ namespace RentAll.Infrastructure.Repositories.Emails
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
+
+        private static EmailAddress MapDomainAddress(EmailAddressEntity? entity)
+        {
+            if (entity is null)
+                return EmailAddress.Create(string.Empty, null);
+
+            return EmailAddress.Create(entity.Email, entity.Name);
+        }
+
+        private static List<EmailAddress> MapDomainAddresses(IEnumerable<EmailAddressEntity>? entities)
+        {
+            return (entities ?? []).Select(MapDomainAddress).ToList();
+        }
+
+        private static EmailAddressEntity MapEntityAddress(EmailAddress? address)
+        {
+            if (address is null)
+                return new EmailAddressEntity { Email = string.Empty, Name = null };
+
+            return new EmailAddressEntity
+            {
+                Email = address.Email,
+                Name = EmailAddress.NormalizeName(address.Name)
+            };
+        }
+
+        private static List<EmailAddressEntity> MapEntityAddresses(IEnumerable<EmailAddress>? addresses)
+        {
+            return (addresses ?? []).Select(MapEntityAddress).ToList();
+        }
+
+        private static EmailAddressEntity NormalizeEntity(EmailAddressEntity entity)
+        {
+            entity.Name = EmailAddress.NormalizeName(entity.Name);
+            return entity;
+        }
 
         private static List<EmailAddressEntity> DeserializeRecipients(string recipientsJson)
         {
@@ -340,7 +315,8 @@ namespace RentAll.Infrastructure.Repositories.Emails
 
             try
             {
-                return JsonSerializer.Deserialize<List<EmailAddressEntity>>(recipientsJson, SerializerOptions) ?? [];
+                var recipients = JsonSerializer.Deserialize<List<EmailAddressEntity>>(recipientsJson, SerializerOptions) ?? [];
+                return recipients.Select(NormalizeEntity).ToList();
             }
             catch
             {
@@ -356,7 +332,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             try
             {
                 var value = JsonSerializer.Deserialize<EmailAddressEntity>(recipientJson, SerializerOptions);
-                return value ?? new EmailAddressEntity();
+                return NormalizeEntity(value ?? new EmailAddressEntity());
             }
             catch
             {
@@ -366,12 +342,13 @@ namespace RentAll.Infrastructure.Repositories.Emails
 
         private static string SerializeRecipients(IEnumerable<EmailAddressEntity>? recipients)
         {
-            return JsonSerializer.Serialize(recipients ?? Enumerable.Empty<EmailAddressEntity>(), SerializerOptions);
+            var normalized = (recipients ?? []).Select(NormalizeEntity).ToList();
+            return JsonSerializer.Serialize(normalized, SerializerOptions);
         }
 
         private static string SerializeRecipient(EmailAddressEntity? recipient)
         {
-            return JsonSerializer.Serialize(recipient ?? new EmailAddressEntity(), SerializerOptions);
+            return JsonSerializer.Serialize(NormalizeEntity(recipient ?? new EmailAddressEntity()), SerializerOptions);
         }
 
         private sealed class EmailStoredProcRow

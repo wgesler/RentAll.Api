@@ -158,19 +158,15 @@ public class SchedulingHostedService : BackgroundService
             OfficeId = alert.OfficeId,
             PropertyId = alert.PropertyId,
             ReservationId = alert.ReservationId,
-            FromRecipient = new EmailAddress
-            {
-                Email = alert.FromRecipient.Email,
-                Name = alert.FromRecipient.Name
-            },
+            FromRecipient = EmailAddress.Create(alert.FromRecipient.Email, alert.FromRecipient.Name),
             ToRecipients = alert.ToRecipients
-                .Select(r => new EmailAddress { Email = r.Email, Name = r.Name })
+                .Select(r => EmailAddress.Create(r.Email, r.Name))
                 .ToList(),
             CcRecipients = alert.CcRecipients
-                .Select(r => new EmailAddress { Email = r.Email, Name = r.Name })
+                .Select(r => EmailAddress.Create(r.Email, r.Name))
                 .ToList(),
             BccRecipients = alert.BccRecipients
-                .Select(r => new EmailAddress { Email = r.Email, Name = r.Name })
+                .Select(r => EmailAddress.Create(r.Email, r.Name))
                 .ToList(),
             Subject = alert.Subject,
             PlainTextContent = alert.PlainTextContent,

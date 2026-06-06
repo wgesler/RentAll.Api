@@ -39,31 +39,15 @@ public class Email
     {
         return new EmailMessage
         {
-            FromRecipient = new EmailAddress
-            {
-                Email = FromRecipient.Email,
-                Name = FromRecipient.Name
-            },
+            FromRecipient = FromRecipient.WithNormalizedName(),
             ToRecipients = ToRecipients
-                .Select(recipient => new EmailAddress
-                {
-                    Email = recipient.Email,
-                    Name = recipient.Name
-                })
+                .Select(recipient => recipient.WithNormalizedName())
                 .ToList(),
             CcRecipients = CcRecipients
-                .Select(recipient => new EmailAddress
-                {
-                    Email = recipient.Email,
-                    Name = recipient.Name
-                })
+                .Select(recipient => recipient.WithNormalizedName())
                 .ToList(),
             BccRecipients = BccRecipients
-                .Select(recipient => new EmailAddress
-                {
-                    Email = recipient.Email,
-                    Name = recipient.Name
-                })
+                .Select(recipient => recipient.WithNormalizedName())
                 .ToList(),
             Subject = Subject,
             PlainTextContent = PlainTextContent,

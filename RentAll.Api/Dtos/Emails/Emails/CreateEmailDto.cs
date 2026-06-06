@@ -93,31 +93,15 @@ public class CreateEmailDto
             OfficeId = OfficeId,
             PropertyId = PropertyId,
             ReservationId = ReservationId,
-            FromRecipient = new EmailAddress
-            {
-                Email = FromRecipient.Email,
-                Name = FromRecipient.Name
-            },
+            FromRecipient = EmailAddress.Create(FromRecipient.Email, FromRecipient.Name),
             ToRecipients = ToRecipients
-                .Select(recipient => new EmailAddress
-                {
-                    Email = recipient.Email,
-                    Name = recipient.Name
-                })
+                .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
                 .ToList(),
             CcRecipients = CcRecipients
-                .Select(recipient => new EmailAddress
-                {
-                    Email = recipient.Email,
-                    Name = recipient.Name
-                })
+                .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
                 .ToList(),
             BccRecipients = BccRecipients
-                .Select(recipient => new EmailAddress
-                {
-                    Email = recipient.Email,
-                    Name = recipient.Name
-                })
+                .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
                 .ToList(),
             Subject = Subject,
             PlainTextContent = PlainTextContent,

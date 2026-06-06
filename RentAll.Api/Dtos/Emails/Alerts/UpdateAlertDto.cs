@@ -112,31 +112,15 @@ public class UpdateAlertDto
         existing.PropertyId = PropertyId;
         existing.ReservationId = ReservationId;
         existing.TicketId = TicketId;
-        existing.FromRecipient = new EmailAddress
-        {
-            Email = FromRecipient.Email,
-            Name = FromRecipient.Name
-        };
+        existing.FromRecipient = EmailAddress.Create(FromRecipient.Email, FromRecipient.Name);
         existing.ToRecipients = ToRecipients
-            .Select(recipient => new EmailAddress
-            {
-                Email = recipient.Email,
-                Name = recipient.Name
-            })
+            .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
             .ToList();
         existing.CcRecipients = CcRecipients
-            .Select(recipient => new EmailAddress
-            {
-                Email = recipient.Email,
-                Name = recipient.Name
-            })
+            .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
             .ToList();
         existing.BccRecipients = BccRecipients
-            .Select(recipient => new EmailAddress
-            {
-                Email = recipient.Email,
-                Name = recipient.Name
-            })
+            .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
             .ToList();
         existing.Subject = Subject;
         existing.PlainTextContent = PlainTextContent;

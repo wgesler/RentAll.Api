@@ -46,25 +46,27 @@ public class SendGridEmailService : IEmailService
         var apiKey = await GetApiKeyFromKeyVaultAsync(sendGridName, cancellationToken);
         var client = new SendGridClient(apiKey);
 
-        var from = new SendGridEmailAddress(fromEmail, fromName);
-        var toRecipients = message.ToRecipients.Select(recipient => new SendGridEmailAddress(recipient.Email, recipient.Name)).ToList();
+        var from = ToSendGridAddress(fromEmail, fromName);
+        var toRecipients = message.ToRecipients
+            .Select(recipient => ToSendGridAddress(recipient.Email, recipient.Name))
+            .ToList();
         var mail = MailHelper.CreateSingleEmailToMultipleRecipients(from, toRecipients, message.Subject,
             string.IsNullOrWhiteSpace(message.PlainTextContent) ? null : message.PlainTextContent,
             string.IsNullOrWhiteSpace(message.HtmlContent) ? null : message.HtmlContent,
             false);
-        mail.SetReplyTo(new SendGridEmailAddress(fromEmail, fromName));
+        mail.SetReplyTo(ToSendGridAddress(fromEmail, fromName));
 
         if (!_settings.EnableSendGridClickTracking)
             mail.SetClickTracking(false, false);
 
         foreach (var recipient in message.CcRecipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient.Email)))
         {
-            mail.AddCc(new SendGridEmailAddress(recipient.Email, recipient.Name));
+            mail.AddCc(ToSendGridAddress(recipient.Email, recipient.Name));
         }
 
         foreach (var recipient in message.BccRecipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient.Email)))
         {
-            mail.AddBcc(new SendGridEmailAddress(recipient.Email, recipient.Name));
+            mail.AddBcc(ToSendGridAddress(recipient.Email, recipient.Name));
         }
 
         if (message.FileDetails != null)
@@ -102,6 +104,14 @@ public class SendGridEmailService : IEmailService
         throw new InvalidOperationException(
             $"SendGrid email send failed with status code {(int)response.StatusCode}. " +
             $"Response body: {errorBody}");
+    }
+
+    private static SendGridEmailAddress ToSendGridAddress(string email, string? name)
+    {
+        var displayName = RentAll.Domain.Models.Common.EmailAddress.NormalizeName(name);
+        return displayName is null
+            ? new SendGridEmailAddress(email)
+            : new SendGridEmailAddress(email, displayName);
     }
 
     private async Task<string> GetApiKeyFromKeyVaultAsync(string? sendGridName, CancellationToken cancellationToken = default)
