@@ -40,6 +40,9 @@ public class DocuSignService : IDocuSignService
         string fileName,
         string subject,
         IReadOnlyList<DocuSignSigner> signers,
+        string returnUrl,
+        string senderEmail,
+        string senderName,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(pdfBytes);
@@ -52,6 +55,15 @@ public class DocuSignService : IDocuSignService
 
         if (string.IsNullOrWhiteSpace(subject))
             throw new ArgumentException("Subject is required.", nameof(subject));
+
+        if (string.IsNullOrWhiteSpace(returnUrl) || !Uri.TryCreate(returnUrl, UriKind.Absolute, out _))
+            throw new ArgumentException("A valid return URL is required.", nameof(returnUrl));
+
+        if (string.IsNullOrWhiteSpace(senderEmail))
+            throw new ArgumentException("Sender email is required.", nameof(senderEmail));
+
+        if (string.IsNullOrWhiteSpace(senderName))
+            throw new ArgumentException("Sender name is required.", nameof(senderName));
 
         var docuSignSecretName = BuildDocuSignTenantSecretName(companyName);
         var credentials = await GetCredentialsAsync(docuSignSecretName, cancellationToken);
@@ -66,73 +78,20 @@ public class DocuSignService : IDocuSignService
             signers,
             cancellationToken);
 
+        var senderViewUrl = await CreateSenderViewAsync(
+            credentials,
+            accessToken,
+            envelopeId,
+            returnUrl.Trim(),
+            senderEmail.Trim(),
+            senderName.Trim(),
+            cancellationToken);
+
         return new DocuSignEnvelopeResult
         {
             EnvelopeId = envelopeId,
-            Status = "sent"
-        };
-    }
-
-    public static string AppendDocuSignAnchors(string htmlContent, int signerCount)
-    {
-        if (signerCount <= 0 || string.IsNullOrWhiteSpace(htmlContent))
-            return htmlContent;
-
-        var missingAnchorIndexes = Enumerable.Range(1, signerCount)
-            .Where(index => !ContainsDocuSignAnchor(htmlContent, index))
-            .ToList();
-
-        if (missingAnchorIndexes.Count == 0)
-            return htmlContent;
-
-        var anchors = string.Concat(missingAnchorIndexes.Select(index =>
-            $"<div style=\"color:transparent;font-size:1px;line-height:1px;height:1px;overflow:hidden;\">/ds{index}/</div>"));
-
-        if (htmlContent.Contains("</body>", StringComparison.OrdinalIgnoreCase))
-        {
-            return Regex.Replace(
-                htmlContent,
-                "</body>",
-                $"{anchors}</body>",
-                RegexOptions.IgnoreCase);
-        }
-
-        return htmlContent + anchors;
-    }
-
-    private static bool ContainsDocuSignAnchor(string htmlContent, int signerIndex)
-    {
-        return htmlContent.Contains($"/ds{signerIndex}/", StringComparison.Ordinal);
-    }
-
-    private static DocuSignSignerTabs BuildSignerTabs(int signerIndex)
-    {
-        return new DocuSignSignerTabs
-        {
-            SignHereTabs =
-            [
-                CreateAnchorTab($"/ds{signerIndex}/", "20", "10")
-            ],
-            FullNameTabs =
-            [
-                CreateAnchorTab($"/ds{signerIndex}name/", "0", "5")
-            ],
-            DateSignedTabs =
-            [
-                CreateAnchorTab($"/ds{signerIndex}date/", "0", "5")
-            ]
-        };
-    }
-
-    private static DocuSignAnchorTab CreateAnchorTab(string anchorString, string xOffset, string yOffset)
-    {
-        return new DocuSignAnchorTab
-        {
-            DocumentId = "1",
-            AnchorString = anchorString,
-            AnchorUnits = "pixels",
-            AnchorXOffset = xOffset,
-            AnchorYOffset = yOffset
+            Status = "created",
+            SenderViewUrl = senderViewUrl
         };
     }
 
@@ -388,8 +347,7 @@ public class DocuSignService : IDocuSignService
             Email = signer.Email.Trim(),
             Name = signer.Name.Trim(),
             RecipientId = (index + 1).ToString(),
-            RoutingOrder = signer.RoutingOrder.ToString(),
-            Tabs = BuildSignerTabs(index + 1)
+            RoutingOrder = signer.RoutingOrder.ToString()
         }).ToList();
 
         var envelopeRequest = new DocuSignEnvelopeRequest
@@ -409,7 +367,7 @@ public class DocuSignService : IDocuSignService
             {
                 Signers = envelopeSigners
             },
-            Status = "sent"
+            Status = "created"
         };
 
         var apiBaseUrl = $"{credentials.BaseUri}/restapi";
@@ -447,6 +405,59 @@ public class DocuSignService : IDocuSignService
             throw new InvalidOperationException("DocuSign envelope creation returned an empty envelope id.");
 
         return envelopeResponse.EnvelopeId;
+    }
+
+    private async Task<string> CreateSenderViewAsync(
+        DocuSignCredentials credentials,
+        string accessToken,
+        string envelopeId,
+        string returnUrl,
+        string senderEmail,
+        string senderName,
+        CancellationToken cancellationToken)
+    {
+        var apiBaseUrl = $"{credentials.BaseUri}/restapi";
+        var senderViewRequest = new DocuSignSenderViewRequest
+        {
+            ReturnUrl = returnUrl,
+            AuthenticationMethod = "email",
+            Email = senderEmail,
+            UserName = senderName
+        };
+
+        var httpClient = _httpClientFactory.CreateClient(nameof(DocuSignService));
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{apiBaseUrl}/v2.1/accounts/{credentials.AccountId}/envelopes/{envelopeId}/views/sender")
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(senderViewRequest, JsonSerializerOptions),
+                Encoding.UTF8,
+                "application/json")
+        };
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError(
+                "DocuSign sender view failed. StatusCode: {StatusCode}; Response: {ResponseBody}",
+                response.StatusCode,
+                body);
+
+            throw new InvalidOperationException(
+                FormatDocuSignApiError("sender view API", response.StatusCode, body));
+        }
+
+        var senderViewResponse = JsonSerializer.Deserialize<DocuSignSenderViewResponse>(body, JsonSerializerOptions);
+
+        if (senderViewResponse == null || string.IsNullOrWhiteSpace(senderViewResponse.Url))
+            throw new InvalidOperationException("DocuSign sender view returned an empty URL.");
+
+        return senderViewResponse.Url;
     }
 
     private string CreateJwtAssertion(DocuSignCredentials credentials)
@@ -730,28 +741,24 @@ public class DocuSignService : IDocuSignService
         public string Name { get; set; } = string.Empty;
         public string RecipientId { get; set; } = string.Empty;
         public string RoutingOrder { get; set; } = "1";
-        public DocuSignSignerTabs Tabs { get; set; } = new();
-    }
-
-    private sealed class DocuSignSignerTabs
-    {
-        public List<DocuSignAnchorTab> SignHereTabs { get; set; } = [];
-        public List<DocuSignAnchorTab> DateSignedTabs { get; set; } = [];
-        public List<DocuSignAnchorTab> FullNameTabs { get; set; } = [];
-    }
-
-    private sealed class DocuSignAnchorTab
-    {
-        public string DocumentId { get; set; } = "1";
-        public string AnchorString { get; set; } = string.Empty;
-        public string AnchorUnits { get; set; } = "pixels";
-        public string AnchorXOffset { get; set; } = "0";
-        public string AnchorYOffset { get; set; } = "0";
     }
 
     private sealed class DocuSignEnvelopeResponse
     {
         public string EnvelopeId { get; set; } = string.Empty;
+    }
+
+    private sealed class DocuSignSenderViewRequest
+    {
+        public string ReturnUrl { get; set; } = string.Empty;
+        public string AuthenticationMethod { get; set; } = "email";
+        public string Email { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+    }
+
+    private sealed class DocuSignSenderViewResponse
+    {
+        public string Url { get; set; } = string.Empty;
     }
 
     public static string BuildDocuSignTenantSecretName(string companyName)

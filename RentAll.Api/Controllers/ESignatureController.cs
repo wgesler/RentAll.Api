@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.ESignature;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Infrastructure.Services;
-
 namespace RentAll.Api.Controllers;
 
 [ApiController]
@@ -45,8 +43,7 @@ public class ESignatureController : BaseController
                 return BadRequest(new { message = "Organization not found" });
 
             var signers = dto.ToSigners();
-            var htmlWithAnchors = DocuSignService.AppendDocuSignAnchors(dto.HtmlContent, signers.Count);
-            var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(htmlWithAnchors);
+            var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
             var fileName = string.IsNullOrWhiteSpace(dto.FileName) ? "document.pdf" : dto.FileName;
 
             var result = await _docuSignService.SendEnvelopeAsync(
@@ -54,7 +51,10 @@ public class ESignatureController : BaseController
                 pdfBytes,
                 fileName,
                 dto.Subject,
-                signers);
+                signers,
+                dto.ReturnUrl,
+                dto.SenderEmail,
+                dto.SenderName);
 
             return Ok(new SendDocumentForSignatureResponseDto(result));
         }

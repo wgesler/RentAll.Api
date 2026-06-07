@@ -13,6 +13,9 @@ public class SendDocumentForSignatureDto
     public string HtmlContent { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
+    public string ReturnUrl { get; set; } = string.Empty;
+    public string SenderEmail { get; set; } = string.Empty;
+    public string SenderName { get; set; } = string.Empty;
     public List<DocuSignSignerDto> Signers { get; set; } = [];
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId, string officeAccess)
@@ -41,6 +44,16 @@ public class SendDocumentForSignatureDto
 
         if (string.IsNullOrWhiteSpace(Subject))
             return (false, "Subject is required");
+
+        if (string.IsNullOrWhiteSpace(ReturnUrl) || !Uri.TryCreate(ReturnUrl, UriKind.Absolute, out var returnUri)
+            || (returnUri.Scheme != Uri.UriSchemeHttp && returnUri.Scheme != Uri.UriSchemeHttps))
+            return (false, "A valid return URL is required");
+
+        if (string.IsNullOrWhiteSpace(SenderEmail) || !IsValidEmail(SenderEmail))
+            return (false, "Sender email is required");
+
+        if (string.IsNullOrWhiteSpace(SenderName))
+            return (false, "Sender name is required");
 
         if (Signers.Count == 0)
             return (false, "At least one signer is required");

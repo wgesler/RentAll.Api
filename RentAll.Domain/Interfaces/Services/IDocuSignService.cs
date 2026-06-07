@@ -10,5 +10,8 @@ public interface IDocuSignService
         string fileName,
         string subject,
         IReadOnlyList<DocuSignSigner> signers,
+        string returnUrl,
+        string senderEmail,
+        string senderName,
         CancellationToken cancellationToken = default);
 }
