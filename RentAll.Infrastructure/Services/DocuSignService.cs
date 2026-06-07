@@ -19,6 +19,9 @@ namespace RentAll.Infrastructure.Services;
 
 public class DocuSignService : IDocuSignService
 {
+    private const string RentAllClientIdSecretName = "docusign-client-id";
+    private const string RentAllPrivateKeySecretName = "docusign-private-key";
+
     private readonly DocuSignSettings _settings;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DocuSignService> _logger;
@@ -34,7 +37,7 @@ public class DocuSignService : IDocuSignService
     }
 
     public async Task<DocuSignEnvelopeResult> SendEnvelopeAsync(
-        string? docuSignSecretName,
+        string? companyName,
         byte[] pdfBytes,
         string fileName,
         string subject,
@@ -43,8 +46,8 @@ public class DocuSignService : IDocuSignService
     {
         ArgumentNullException.ThrowIfNull(pdfBytes);
 
-        if (string.IsNullOrWhiteSpace(docuSignSecretName))
-            throw new InvalidOperationException("Organization DocuSign configuration is not set.");
+        if (string.IsNullOrWhiteSpace(companyName))
+            throw new InvalidOperationException("Organization name is required for DocuSign configuration.");
 
         if (signers.Count == 0)
             throw new ArgumentException("At least one signer is required.", nameof(signers));
@@ -52,8 +55,10 @@ public class DocuSignService : IDocuSignService
         if (string.IsNullOrWhiteSpace(subject))
             throw new ArgumentException("Subject is required.", nameof(subject));
 
+        var docuSignSecretName = BuildDocuSignTenantSecretName(companyName);
         var credentials = await GetCredentialsFromKeyVaultAsync(docuSignSecretName, cancellationToken);
         var accessToken = await RequestAccessTokenAsync(credentials, cancellationToken);
+
         var envelopeId = await CreateEnvelopeAsync(
             credentials,
             accessToken,
@@ -75,9 +80,15 @@ public class DocuSignService : IDocuSignService
         if (signerCount <= 0 || string.IsNullOrWhiteSpace(htmlContent))
             return htmlContent;
 
-        var anchors = string.Concat(
-            Enumerable.Range(1, signerCount).Select(index =>
-                $"<div style=\"color:transparent;font-size:1px;line-height:1px;height:1px;overflow:hidden;\">/ds{index}/</div>"));
+        var missingAnchorIndexes = Enumerable.Range(1, signerCount)
+            .Where(index => !ContainsDocuSignAnchor(htmlContent, index))
+            .ToList();
+
+        if (missingAnchorIndexes.Count == 0)
+            return htmlContent;
+
+        var anchors = string.Concat(missingAnchorIndexes.Select(index =>
+            $"<div style=\"color:transparent;font-size:1px;line-height:1px;height:1px;overflow:hidden;\">/ds{index}/</div>"));
 
         if (htmlContent.Contains("</body>", StringComparison.OrdinalIgnoreCase))
         {
@@ -91,78 +102,131 @@ public class DocuSignService : IDocuSignService
         return htmlContent + anchors;
     }
 
+    private static bool ContainsDocuSignAnchor(string htmlContent, int signerIndex)
+    {
+        return htmlContent.Contains($"/ds{signerIndex}/", StringComparison.Ordinal);
+    }
+
     private async Task<DocuSignCredentials> GetCredentialsFromKeyVaultAsync(
-        string secretName,
+        string tenantDocuSignSecretName,
         CancellationToken cancellationToken)
     {
-        var kvUri = _settings.KeyVaultUri;
-        if (string.IsNullOrWhiteSpace(kvUri))
+        if (string.IsNullOrWhiteSpace(_settings.KeyVaultUri))
             throw new InvalidOperationException("DocuSignSettings:KeyVaultUri is not set.");
 
-        var client = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
-        var secret = await client.GetSecretAsync(secretName, cancellationToken: cancellationToken);
-        var secretValue = secret.Value.Value;
+        var client = new SecretClient(new Uri(_settings.KeyVaultUri), new DefaultAzureCredential());
 
-        if (string.IsNullOrWhiteSpace(secretValue))
-            throw new InvalidOperationException($"DocuSign Key Vault secret '{secretName}' is empty.");
+        var clientIdSecret = await client.GetSecretAsync(RentAllClientIdSecretName, cancellationToken: cancellationToken);
+        var privateKeySecret = await client.GetSecretAsync(RentAllPrivateKeySecretName, cancellationToken: cancellationToken);
+        var tenantSecret = await client.GetSecretAsync(tenantDocuSignSecretName, cancellationToken: cancellationToken);
 
-        DocuSignCredentials? credentials;
+        var clientId = clientIdSecret.Value.Value;
+        var privateKey = privateKeySecret.Value.Value;
+        var tenantSecretValue = tenantSecret.Value.Value;
+
+        if (string.IsNullOrWhiteSpace(clientId))
+            throw new InvalidOperationException($"DocuSign Key Vault secret '{RentAllClientIdSecretName}' is empty.");
+
+        if (string.IsNullOrWhiteSpace(privateKey))
+            throw new InvalidOperationException($"DocuSign Key Vault secret '{RentAllPrivateKeySecretName}' is empty.");
+
+        if (string.IsNullOrWhiteSpace(tenantSecretValue))
+            throw new InvalidOperationException($"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' is empty.");
+
+        DocuSignTenantCredentials? tenantCredentials;
         try
         {
-            credentials = JsonSerializer.Deserialize<DocuSignCredentials>(secretValue, CredentialJsonOptions);
+            tenantCredentials = JsonSerializer.Deserialize<DocuSignTenantCredentials>(
+                tenantSecretValue,
+                CredentialJsonOptions);
         }
         catch (JsonException ex)
         {
             throw new InvalidOperationException(
-                $"DocuSign Key Vault secret '{secretName}' must be JSON with integrationKey, userId, accountId, and privateKey.",
+                $"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' must be JSON with userId, accountId, and baseUri.",
                 ex);
         }
 
-        if (credentials == null
-            || string.IsNullOrWhiteSpace(credentials.IntegrationKey)
-            || string.IsNullOrWhiteSpace(credentials.UserId)
-            || string.IsNullOrWhiteSpace(credentials.AccountId)
-            || string.IsNullOrWhiteSpace(credentials.PrivateKey))
+        if (tenantCredentials == null
+            || string.IsNullOrWhiteSpace(tenantCredentials.UserId)
+            || string.IsNullOrWhiteSpace(tenantCredentials.AccountId)
+            || string.IsNullOrWhiteSpace(tenantCredentials.BaseUri))
         {
             throw new InvalidOperationException(
-                $"DocuSign Key Vault secret '{secretName}' is missing required fields.");
+                $"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' is missing required fields.");
         }
 
-        return credentials;
+        return new DocuSignCredentials
+        {
+            ClientId = clientId.Trim(),
+            PrivateKey = privateKey,
+            UserId = tenantCredentials.UserId.Trim(),
+            AccountId = tenantCredentials.AccountId.Trim(),
+            BaseUri = tenantCredentials.BaseUri.Trim().TrimEnd('/')
+        };
     }
 
     private async Task<string> RequestAccessTokenAsync(
         DocuSignCredentials credentials,
         CancellationToken cancellationToken)
     {
-        var jwt = CreateJwtAssertion(credentials);
-        var httpClient = _httpClientFactory.CreateClient(nameof(DocuSignService));
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{_settings.AuthServer}/oauth/token")
+        try
         {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                ["assertion"] = jwt
-            })
-        };
+            var jwt = CreateJwtAssertion(credentials);
+            var httpClient = _httpClientFactory.CreateClient(nameof(DocuSignService));
+            var tokenUrl = $"https://{_settings.AuthServer}/oauth/token";
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode)
+            using var request = new HttpRequestMessage(HttpMethod.Post, tokenUrl)
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                    ["assertion"] = jwt
+                })
+            };
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    FormatDocuSignApiError(
+                        "token endpoint",
+                        response.StatusCode,
+                        body,
+                        credentials.ClientId,
+                        _settings.AuthServer));
+            }
+
+            var tokenResponse = JsonSerializer.Deserialize<DocuSignTokenResponse>(body, JsonSerializerOptions);
+
+            if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+                throw new InvalidOperationException($"DocuSign token endpoint returned an empty access token. Response: {body}");
+
+            return tokenResponse.AccessToken;
+        }
+        catch (Exception ex)
         {
             _logger.LogError(
-                "DocuSign token request failed. StatusCode: {StatusCode}; Response: {ResponseBody}",
-                response.StatusCode,
-                body);
+                ex,
+                "DocuSign RequestAccessTokenAsync failed. AuthServer: {AuthServer}, ClientId: {ClientId}, UserId: {UserId}, AccountId: {AccountId}",
+                _settings.AuthServer,
+                credentials.ClientId,
+                credentials.UserId,
+                credentials.AccountId);
+
+            if (ex is InvalidOperationException)
+                throw;
+
+            var detail = ex.InnerException == null
+                ? ex.Message
+                : $"{ex.Message} Inner: {ex.InnerException.Message}";
+
             throw new InvalidOperationException(
-                $"DocuSign authentication failed with status code {(int)response.StatusCode}.");
+                $"DocuSign token request failed: {detail}",
+                ex);
         }
-
-        var tokenResponse = JsonSerializer.Deserialize<DocuSignTokenResponse>(body, JsonSerializerOptions);
-        if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
-            throw new InvalidOperationException("DocuSign authentication returned an empty access token.");
-
-        return tokenResponse.AccessToken;
     }
 
     private async Task<string> CreateEnvelopeAsync(
@@ -221,31 +285,37 @@ public class DocuSignService : IDocuSignService
             Status = "sent"
         };
 
+        var apiBaseUrl = $"{credentials.BaseUri}/restapi";
+
         var httpClient = _httpClientFactory.CreateClient(nameof(DocuSignService));
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"{_settings.ApiBaseUrl.TrimEnd('/')}/v2.1/accounts/{credentials.AccountId}/envelopes")
+            $"{apiBaseUrl}/v2.1/accounts/{credentials.AccountId}/envelopes")
         {
             Content = new StringContent(
                 JsonSerializer.Serialize(envelopeRequest, JsonSerializerOptions),
                 Encoding.UTF8,
                 "application/json")
         };
+
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError(
                 "DocuSign envelope create failed. StatusCode: {StatusCode}; Response: {ResponseBody}",
                 response.StatusCode,
                 body);
+
             throw new InvalidOperationException(
-                $"DocuSign envelope creation failed with status code {(int)response.StatusCode}.");
+                FormatDocuSignApiError("envelope API", response.StatusCode, body));
         }
 
         var envelopeResponse = JsonSerializer.Deserialize<DocuSignEnvelopeResponse>(body, JsonSerializerOptions);
+
         if (envelopeResponse == null || string.IsNullOrWhiteSpace(envelopeResponse.EnvelopeId))
             throw new InvalidOperationException("DocuSign envelope creation returned an empty envelope id.");
 
@@ -254,29 +324,210 @@ public class DocuSignService : IDocuSignService
 
     private string CreateJwtAssertion(DocuSignCredentials credentials)
     {
-        using var rsa = RSA.Create();
-        rsa.ImportFromPem(credentials.PrivateKey.Replace("\\n", "\n", StringComparison.Ordinal));
-
-        var signingCredentials = new SigningCredentials(
-            new RsaSecurityKey(rsa),
-            SecurityAlgorithms.RsaSha256);
-
-        var now = DateTime.UtcNow;
-        var tokenDescriptor = new SecurityTokenDescriptor
+        try
         {
-            Issuer = credentials.IntegrationKey,
-            Audience = _settings.AuthServer,
-            Subject = new ClaimsIdentity(
-            [
-                new Claim(JwtRegisteredClaimNames.Sub, credentials.UserId)
-            ]),
-            NotBefore = now,
-            Expires = now.AddMinutes(55),
-            SigningCredentials = signingCredentials
-        };
+            using var rsa = RSA.Create();
+            ImportDocuSignPrivateKey(rsa, credentials.PrivateKey);
 
-        var handler = new JwtSecurityTokenHandler();
-        return handler.WriteToken(handler.CreateToken(tokenDescriptor));
+            // Copy key material so signing is not tied to the disposable RSA instance.
+            var signingCredentials = new SigningCredentials(
+                new RsaSecurityKey(rsa.ExportParameters(true)),
+                SecurityAlgorithms.RsaSha256);
+
+            var now = DateTime.UtcNow;
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Issuer = credentials.ClientId,
+                Audience = _settings.AuthServer,
+                Subject = new ClaimsIdentity(
+                [
+                    new Claim(JwtRegisteredClaimNames.Sub, credentials.UserId),
+                    new Claim("scope", "signature impersonation")
+                ]),
+                IssuedAt = now,
+                Expires = now.AddMinutes(55),
+                SigningCredentials = signingCredentials
+            };
+
+            var handler = new JwtSecurityTokenHandler();
+            return handler.WriteToken(handler.CreateToken(tokenDescriptor));
+        }
+        catch (Exception ex)
+        {
+            var keyDiagnostics = DescribePrivateKeyDiagnostics(credentials.PrivateKey);
+
+            _logger.LogError(
+                ex,
+                "Failed to build DocuSign JWT assertion. PrivateKey secret '{SecretName}'. {KeyDiagnostics}",
+                RentAllPrivateKeySecretName,
+                keyDiagnostics);
+
+            throw new InvalidOperationException(
+                $"DocuSign JWT signing failed before the token HTTP call. {keyDiagnostics} " +
+                $"Store the full RSA private key from DocuSign in Key Vault secret '{RentAllPrivateKeySecretName}' " +
+                "(including -----BEGIN ... PRIVATE KEY----- headers). Details: {GetExceptionDetail(ex)}",
+                ex);
+        }
+    }
+
+    private static void ImportDocuSignPrivateKey(RSA rsa, string privateKey)
+    {
+        if (string.IsNullOrWhiteSpace(privateKey))
+            throw new InvalidOperationException("DocuSign private key is empty.");
+
+        var normalized = NormalizePrivateKeyText(privateKey);
+        var importErrors = new List<string>();
+
+        if (normalized.Contains("BEGIN", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                rsa.ImportFromPem(normalized);
+                return;
+            }
+            catch (Exception ex)
+            {
+                importErrors.Add($"ImportFromPem failed: {GetExceptionDetail(ex)}");
+            }
+
+            var pemBody = ExtractPemBody(normalized);
+            if (!string.IsNullOrWhiteSpace(pemBody))
+            {
+                try
+                {
+                    ImportRawPrivateKey(rsa, pemBody);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    importErrors.Add($"PEM body import failed: {GetExceptionDetail(ex)}");
+                }
+            }
+        }
+        else
+        {
+            try
+            {
+                ImportRawPrivateKey(rsa, normalized);
+                return;
+            }
+            catch (Exception ex)
+            {
+                importErrors.Add($"Raw base64 import failed: {GetExceptionDetail(ex)}");
+            }
+        }
+
+        throw new CryptographicException(
+            "DocuSign private key could not be imported as RSA. " + string.Join(" ", importErrors));
+    }
+
+    private static void ImportRawPrivateKey(RSA rsa, string base64KeyMaterial)
+    {
+        var rawKey = Convert.FromBase64String(StripBase64Whitespace(base64KeyMaterial));
+        try
+        {
+            rsa.ImportRSAPrivateKey(rawKey, out _);
+        }
+        catch (CryptographicException)
+        {
+            rsa.ImportPkcs8PrivateKey(rawKey, out _);
+        }
+    }
+
+    private static string ExtractPemBody(string pemText)
+    {
+        var match = Regex.Match(
+            pemText,
+            @"-----BEGIN [^-]+-----\s*(?<body>[A-Za-z0-9+/=\s]+?)\s*-----END [^-]+-----",
+            RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        return match.Success ? match.Groups["body"].Value : string.Empty;
+    }
+
+    private static string DescribePrivateKeyDiagnostics(string privateKey)
+    {
+        if (string.IsNullOrWhiteSpace(privateKey))
+            return "KeyVault value is empty.";
+
+        var normalized = NormalizePrivateKeyText(privateKey);
+        var hasPemHeader = normalized.Contains("BEGIN", StringComparison.OrdinalIgnoreCase);
+        var hasPemFooter = normalized.Contains("END", StringComparison.OrdinalIgnoreCase);
+        var lineCount = normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+
+        return
+            $"Key length: {privateKey.Length} chars; PEM header: {hasPemHeader}; PEM footer: {hasPemFooter}; line count: {lineCount}.";
+    }
+
+    private static string GetExceptionDetail(Exception ex)
+    {
+        return ex.InnerException == null
+            ? ex.Message
+            : $"{ex.Message} ({ex.InnerException.Message})";
+    }
+
+    private static string NormalizePrivateKeyText(string privateKey)
+    {
+        return privateKey
+            .Trim()
+            .Trim('\uFEFF')
+            .Trim('"')
+            .Replace("\\r\\n", "\n", StringComparison.Ordinal)
+            .Replace("\\n", "\n", StringComparison.Ordinal)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\r", "\n", StringComparison.Ordinal);
+    }
+
+    private static string StripBase64Whitespace(string value)
+    {
+        return value
+            .Replace("\n", "", StringComparison.Ordinal)
+            .Replace(" ", "", StringComparison.Ordinal)
+            .Trim();
+    }
+
+    private static string FormatDocuSignApiError(
+        string operation,
+        System.Net.HttpStatusCode statusCode,
+        string body,
+        string? clientId = null,
+        string? authServer = null)
+    {
+        var message =
+            $"DocuSign {operation} returned {(int)statusCode} ({statusCode}). Response: {body}";
+
+        if (body.Contains("user_not_found", StringComparison.OrdinalIgnoreCase))
+        {
+            message +=
+                " The tenant secret userId is not a valid DocuSign user GUID for this environment. "
+                + "In DocuSign Admin (demo: https://apps-d.docusign.com), open Apps and Keys → your app → "
+                + "My Account Information and copy API Username (a GUID). Put that in the tenant secret as userId. "
+                + "Do not use an email address, Account ID, or a production user ID when AuthServer is account-d.docusign.com.";
+        }
+        else if (body.Contains("consent_required", StringComparison.OrdinalIgnoreCase)
+                 && !string.IsNullOrWhiteSpace(clientId)
+                 && !string.IsNullOrWhiteSpace(authServer))
+        {
+            message +=
+                " Grant consent once by signing in as the impersonated DocuSign user and visiting: "
+                + BuildDocuSignConsentUrl(authServer, clientId);
+        }
+        else if (body.Contains("invalid_request", StringComparison.OrdinalIgnoreCase))
+        {
+            message +=
+                " Verify JWT settings: iss=Integration Key (docusign-client-id), sub=User GUID (tenant userId), "
+                + $"aud={authServer ?? "account-d.docusign.com or account.docusign.com"} (no https), "
+                + "scope=signature impersonation, demo vs prod environment matches your DocuSign account.";
+        }
+
+        return message;
+    }
+
+    private static string BuildDocuSignConsentUrl(string authServer, string clientId)
+    {
+        var scope = Uri.EscapeDataString("signature impersonation");
+        var redirectUri = Uri.EscapeDataString("https://www.docusign.com");
+        return $"https://{authServer}/oauth/auth?response_type=code&scope={scope}&client_id={clientId}&redirect_uri={redirectUri}";
     }
 
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
@@ -290,6 +541,22 @@ public class DocuSignService : IDocuSignService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true
     };
+
+    private sealed class DocuSignCredentials
+    {
+        public string ClientId { get; set; } = string.Empty;
+        public string PrivateKey { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
+        public string AccountId { get; set; } = string.Empty;
+        public string BaseUri { get; set; } = string.Empty;
+    }
+
+    private sealed class DocuSignTenantCredentials
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string AccountId { get; set; } = string.Empty;
+        public string BaseUri { get; set; } = string.Empty;
+    }
 
     private sealed class DocuSignTokenResponse
     {
@@ -344,5 +611,16 @@ public class DocuSignService : IDocuSignService
     private sealed class DocuSignEnvelopeResponse
     {
         public string EnvelopeId { get; set; } = string.Empty;
+    }
+
+    public static string BuildDocuSignTenantSecretName(string companyName)
+    {
+        var slug = Regex.Replace(companyName.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-")
+            .Trim('-');
+
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new InvalidOperationException("Organization name cannot be used to build a DocuSign tenant secret name.");
+
+        return $"docusign-tenant-{slug}";
     }
 }

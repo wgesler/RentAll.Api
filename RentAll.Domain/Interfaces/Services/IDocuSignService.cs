@@ -5,7 +5,7 @@ namespace RentAll.Domain.Interfaces.Services;
 public interface IDocuSignService
 {
     Task<DocuSignEnvelopeResult> SendEnvelopeAsync(
-        string? docuSignSecretName,
+        string? companyName,
         byte[] pdfBytes,
         string fileName,
         string subject,

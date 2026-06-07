@@ -50,7 +50,7 @@ public class ESignatureController : BaseController
             var fileName = string.IsNullOrWhiteSpace(dto.FileName) ? "document.pdf" : dto.FileName;
 
             var result = await _docuSignService.SendEnvelopeAsync(
-                organization.DocuSignName,
+                organization.Name,
                 pdfBytes,
                 fileName,
                 dto.Subject,
