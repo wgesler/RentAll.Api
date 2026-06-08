@@ -1,7 +1,6 @@
+using RentAll.Api.Dtos.Contacts;
 using RentAll.Api.Dtos.Organizations.StateForms;
 using RentAll.Api.Dtos.Properties.PropertyAgreements;
-using RentAll.Api.Dtos.Properties.PropertyInformations;
-using RentAll.Api.Dtos.Contacts;
 using RentAll.Domain.Models.Leads;
 using System.Security.Cryptography;
 using System.Text;
@@ -46,33 +45,7 @@ namespace RentAll.Api.Controllers
                 var ownerStateCode = (owner.State ?? string.Empty).Trim().ToUpperInvariant();
                 if (ownerStateCode.Length != 2)
                 {
-                    Contact? ownerContact = null;
-                    var ownerEmail = (owner.Email ?? string.Empty).Trim();
-                    if (!string.IsNullOrWhiteSpace(ownerEmail))
-                    {
-                        ownerContact = await _contactRepository.GetContactByEmailAsync(ownerEmail, owner.OrganizationId);
-                        if (ownerContact != null && (ownerContact.OwnerLeadId == null || ownerContact.OwnerLeadId <= 0))
-                        {
-                            ownerContact.OwnerLeadId = owner.OwnerId;
-                            ownerContact.ModifiedBy = Guid.Empty;
-                            ownerContact = await _contactRepository.UpdateByIdAsync(ownerContact);
-                        }
-                    }
-                    if (ownerContact == null)
-                    {
-                        var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
-                        if (!string.IsNullOrWhiteSpace(officeAccess))
-                        {
-                            ownerContact = await _contactRepository.GetContactByLeadAsync(
-                                owner.OrganizationId,
-                                officeAccess,
-                                owner.OwnerId,
-                                owner.FirstName,
-                                owner.LastName,
-                                owner.Address
-                            );
-                        }
-                    }
+                    var ownerContact = await GetOwnerContactAsync(owner);
                     ownerStateCode = (ownerContact?.State ?? string.Empty).Trim().ToUpperInvariant();
                 }
                 var requestedStates = string.IsNullOrWhiteSpace(stateCode)
@@ -282,6 +255,31 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("owner-form/{token}/property/{propertyId}")]
+        public async Task<IActionResult> GetPublicOwnerPropertyByTokenAndPropertyIdAsync(string token, Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("Property ID is required");
+
+            try
+            {
+                var (_, owner, tokenErrorResult) = await GetOwnerFromTokenAsync(token);
+                if (tokenErrorResult != null)
+                    return tokenErrorResult;
+
+                var property = await GetOwnerScopedPropertyByIdAsync(owner, propertyId);
+                if (property == null)
+                    return Ok();
+
+                return Ok(new PropertyResponseDto(property));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting public owner property by token and property id");
+                return ServerError("An error occurred while retrieving owner property");
+            }
+        }
+
         [HttpGet("owner-form/{token}/property-agreement")]
         public async Task<IActionResult> GetPublicOwnerPropertyAgreementByTokenAsync(string token)
         {
@@ -338,6 +336,35 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting public owner property information by token");
+                return ServerError("An error occurred while retrieving owner property information");
+            }
+        }
+
+        [HttpGet("owner-form/{token}/property-information/{propertyId}")]
+        public async Task<IActionResult> GetPublicOwnerPropertyInformationByTokenAndPropertyIdAsync(string token, Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("Property ID is required");
+
+            try
+            {
+                var (_, owner, tokenErrorResult) = await GetOwnerFromTokenAsync(token);
+                if (tokenErrorResult != null)
+                    return tokenErrorResult;
+
+                var property = await GetOwnerScopedPropertyByIdAsync(owner, propertyId);
+                if (property == null)
+                    return Ok();
+
+                var propertyInformation = await _propertyRepository.GetPropertyInformationByPropertyIdAsync(property.PropertyId, owner.OrganizationId);
+                if (propertyInformation == null)
+                    return Ok();
+
+                return Ok(new PropertyInformationResponseDto(propertyInformation));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting public owner property information by token and property id");
                 return ServerError("An error occurred while retrieving owner property information");
             }
         }
@@ -429,33 +456,7 @@ namespace RentAll.Api.Controllers
                 if (tokenErrorResult != null)
                     return tokenErrorResult;
 
-                Contact? contact = null;
-                var email = (owner.Email ?? string.Empty).Trim();
-                if (!string.IsNullOrWhiteSpace(email))
-                {
-                    contact = await _contactRepository.GetContactByEmailAsync(email, owner.OrganizationId);
-                    if (contact != null && (contact.OwnerLeadId == null || contact.OwnerLeadId <= 0))
-                    {
-                        contact.OwnerLeadId = owner.OwnerId;
-                        contact.ModifiedBy = Guid.Empty;
-                        contact = await _contactRepository.UpdateByIdAsync(contact);
-                    }
-                }
-                if (contact == null)
-                {
-                    var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
-                    if (!string.IsNullOrWhiteSpace(officeAccess))
-                    {
-                        contact = await _contactRepository.GetContactByLeadAsync(
-                            owner.OrganizationId,
-                            officeAccess,
-                            owner.OwnerId,
-                            owner.FirstName,
-                            owner.LastName,
-                            owner.Address
-                        );
-                    }
-                }
+                var contact = await GetOwnerContactAsync(owner);
                 if (contact == null)
                     return Ok();
 
@@ -468,6 +469,31 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("owner-form/{token}/properties")]
+        public async Task<IActionResult> GetPublicOwnerPropertiesByTokenAsync(string token)
+        {
+            try
+            {
+                var (_, owner, tokenErrorResult) = await GetOwnerFromTokenAsync(token);
+                if (tokenErrorResult != null)
+                    return tokenErrorResult;
+
+                var contact = await GetOwnerContactAsync(owner);
+                if (contact == null)
+                    return Ok(Array.Empty<PropertyListResponseDto>());
+
+                var ownerOfficeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
+                var properties = await _propertyRepository.GetPropertyListByOwnerIdAsync(contact.ContactId, owner.OrganizationId, ownerOfficeAccess);
+                var response = properties.Select(p => new PropertyListResponseDto(p));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting public owner properties by token");
+                return ServerError("An error occurred while retrieving owner properties");
+            }
+        }
+
         [HttpGet("owner-form/{token}/contacts")]
         public async Task<IActionResult> GetPublicOwnerContactsByTokenAsync(string token)
         {
@@ -477,33 +503,7 @@ namespace RentAll.Api.Controllers
                 if (tokenErrorResult != null)
                     return tokenErrorResult;
 
-                Contact? contact = null;
-                var email = (owner.Email ?? string.Empty).Trim();
-                if (!string.IsNullOrWhiteSpace(email))
-                {
-                    contact = await _contactRepository.GetContactByEmailAsync(email, owner.OrganizationId);
-                    if (contact != null && (contact.OwnerLeadId == null || contact.OwnerLeadId <= 0))
-                    {
-                        contact.OwnerLeadId = owner.OwnerId;
-                        contact.ModifiedBy = Guid.Empty;
-                        contact = await _contactRepository.UpdateByIdAsync(contact);
-                    }
-                }
-                if (contact == null)
-                {
-                    var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
-                    if (!string.IsNullOrWhiteSpace(officeAccess))
-                    {
-                        contact = await _contactRepository.GetContactByLeadAsync(
-                            owner.OrganizationId,
-                            officeAccess,
-                            owner.OwnerId,
-                            owner.FirstName,
-                            owner.LastName,
-                            owner.Address
-                        );
-                    }
-                }
+                var contact = await GetOwnerContactAsync(owner);
                 if (contact == null)
                     return Ok(Array.Empty<ContactResponseDto>());
 
@@ -575,33 +575,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var request = dto ?? new UpsertPublicOwnerContactDto();
-                Contact? contact = null;
-                var email = (owner.Email ?? string.Empty).Trim();
-                if (!string.IsNullOrWhiteSpace(email))
-                {
-                    contact = await _contactRepository.GetContactByEmailAsync(email, owner.OrganizationId);
-                    if (contact != null && (contact.OwnerLeadId == null || contact.OwnerLeadId <= 0))
-                    {
-                        contact.OwnerLeadId = owner.OwnerId;
-                        contact.ModifiedBy = Guid.Empty;
-                        contact = await _contactRepository.UpdateByIdAsync(contact);
-                    }
-                }
-                if (contact == null)
-                {
-                    var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
-                    if (!string.IsNullOrWhiteSpace(officeAccess))
-                    {
-                        contact = await _contactRepository.GetContactByLeadAsync(
-                            owner.OrganizationId,
-                            officeAccess,
-                            owner.OwnerId,
-                            owner.FirstName,
-                            owner.LastName,
-                            owner.Address
-                        );
-                    }
-                }
+                var contact = await GetOwnerContactAsync(owner);
                 var resolvedOfficeId = request.OfficeId.HasValue && request.OfficeId.Value > 0
                     ? request.OfficeId.Value
                     : owner.OfficeId;
@@ -645,33 +619,7 @@ namespace RentAll.Api.Controllers
                 if (requestOrganizationId.HasValue && requestOrganizationId.Value != owner.OrganizationId)
                     return BadRequest("OrganizationId does not match owner form token");
 
-                Contact? ownerContact = null;
-                var ownerEmail = (owner.Email ?? string.Empty).Trim();
-                if (!string.IsNullOrWhiteSpace(ownerEmail))
-                {
-                    ownerContact = await _contactRepository.GetContactByEmailAsync(ownerEmail, owner.OrganizationId);
-                    if (ownerContact != null && (ownerContact.OwnerLeadId == null || ownerContact.OwnerLeadId <= 0))
-                    {
-                        ownerContact.OwnerLeadId = owner.OwnerId;
-                        ownerContact.ModifiedBy = Guid.Empty;
-                        ownerContact = await _contactRepository.UpdateByIdAsync(ownerContact);
-                    }
-                }
-                if (ownerContact == null)
-                {
-                    var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
-                    if (!string.IsNullOrWhiteSpace(officeAccess))
-                    {
-                        ownerContact = await _contactRepository.GetContactByLeadAsync(
-                            owner.OrganizationId,
-                            officeAccess,
-                            owner.OwnerId,
-                            owner.FirstName,
-                            owner.LastName,
-                            owner.Address
-                        );
-                    }
-                }
+                var ownerContact = await GetOwnerContactAsync(owner);
 
                 var createDto = request.ToCreatePropertyDto(owner, ownerContact?.ContactId);
                 createDto.Owner2Id = null;
@@ -876,6 +824,67 @@ namespace RentAll.Api.Controllers
                 return (null!, null!, NotFound("Owner form not found"));
 
             return (share, owner, null);
+        }
+
+        private static string GetOwnerContactEmail(LeadOwner owner)
+        {
+            return (owner.Email ?? string.Empty).Trim();
+        }
+
+        private async Task<Contact?> GetOwnerContactAsync(LeadOwner owner)
+        {
+            Contact? contact = null;
+            var email = GetOwnerContactEmail(owner);
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                contact = await _contactRepository.GetContactByEmailAsync(email, owner.OrganizationId);
+                if (contact != null && (contact.OwnerLeadId == null || contact.OwnerLeadId <= 0))
+                {
+                    contact.OwnerLeadId = owner.OwnerId;
+                    contact.ModifiedBy = Guid.Empty;
+                    contact = await _contactRepository.UpdateByIdAsync(contact);
+                }
+            }
+            if (contact == null)
+            {
+                var officeAccess = owner.OfficeId > 0 ? owner.OfficeId.ToString() : string.Empty;
+                if (!string.IsNullOrWhiteSpace(officeAccess))
+                {
+                    contact = await _contactRepository.GetContactByLeadAsync(
+                        owner.OrganizationId,
+                        officeAccess,
+                        owner.OwnerId,
+                        owner.FirstName,
+                        owner.LastName,
+                        owner.Address
+                    );
+                }
+            }
+            return contact;
+        }
+
+        private async Task<Property?> GetOwnerScopedPropertyByIdAsync(LeadOwner owner, Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return null;
+
+            var contact = await GetOwnerContactAsync(owner);
+            if (contact == null)
+                return null;
+
+            var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, owner.OrganizationId);
+            if (property == null)
+                return null;
+
+            var ownerContactId = contact.ContactId;
+            var isOwnerScoped =
+                property.Owner1Id == ownerContactId ||
+                property.Owner2Id == ownerContactId ||
+                property.Owner3Id == ownerContactId;
+            if (!isOwnerScoped)
+                return null;
+
+            return property;
         }
         #endregion
     }
