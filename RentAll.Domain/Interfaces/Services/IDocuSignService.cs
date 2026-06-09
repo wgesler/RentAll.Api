@@ -13,5 +13,7 @@ public interface IDocuSignService
         string returnUrl,
         string senderEmail,
         string senderName,
+        Guid? userId = null,
+        Guid? apiAccountId = null,
         CancellationToken cancellationToken = default);
 }

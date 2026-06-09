@@ -54,7 +54,9 @@ public class ESignatureController : BaseController
                 signers,
                 dto.ReturnUrl,
                 dto.SenderEmail,
-                dto.SenderName);
+                dto.SenderName,
+                dto.UserId,
+                dto.ApiAccountId);
 
             return Ok(new SendDocumentForSignatureResponseDto(result));
         }

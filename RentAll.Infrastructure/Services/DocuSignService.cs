@@ -43,6 +43,8 @@ public class DocuSignService : IDocuSignService
         string returnUrl,
         string senderEmail,
         string senderName,
+        Guid? userId = null,
+        Guid? apiAccountId = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(pdfBytes);
@@ -66,7 +68,7 @@ public class DocuSignService : IDocuSignService
             throw new ArgumentException("Sender name is required.", nameof(senderName));
 
         var docuSignSecretName = BuildDocuSignTenantSecretName(companyName);
-        var credentials = await GetCredentialsAsync(docuSignSecretName, cancellationToken);
+        var credentials = await GetCredentialsAsync(docuSignSecretName, userId, apiAccountId, cancellationToken);
         var accessToken = await RequestAccessTokenAsync(credentials, cancellationToken);
 
         var envelopeId = await CreateEnvelopeAsync(
@@ -95,9 +97,7 @@ public class DocuSignService : IDocuSignService
         };
     }
 
-    private async Task<DocuSignCredentials> GetCredentialsAsync(
-        string tenantDocuSignSecretName,
-        CancellationToken cancellationToken)
+    private async Task<DocuSignCredentials> GetCredentialsAsync(string tenantDocuSignSecretName, Guid? requestUserId, Guid? requestApiAccountId, CancellationToken cancellationToken)
     {
         SecretClient? keyVaultClient = null;
 
@@ -129,8 +129,12 @@ public class DocuSignService : IDocuSignService
                 GetKeyVaultClientAsync,
                 cancellationToken));
 
+        var userId = FirstNonEmpty(ToGuidStringOrNull(requestUserId), _settings.UserId);
+        var accountId = FirstNonEmpty(ToGuidStringOrNull(requestApiAccountId), _settings.AccountId);
+        var baseUri = ResolveBaseUri(_settings.BaseUri, null);
+
         DocuSignTenantCredentials? tenantCredentials = null;
-        if (NeedsTenantCredentialsFromKeyVault())
+        if (NeedsTenantCredentialsFromKeyVault(userId, accountId, baseUri))
         {
             var client = await GetKeyVaultClientAsync();
             var tenantSecret = await client.GetSecretAsync(tenantDocuSignSecretName, cancellationToken: cancellationToken);
@@ -160,11 +164,11 @@ public class DocuSignService : IDocuSignService
                 throw new InvalidOperationException(
                     $"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' is missing required fields.");
             }
-        }
 
-        var userId = FirstNonEmpty(_settings.UserId, tenantCredentials?.UserId);
-        var accountId = FirstNonEmpty(_settings.AccountId, tenantCredentials?.AccountId);
-        var baseUri = ResolveBaseUri(_settings.BaseUri, tenantCredentials?.BaseUri);
+            userId = FirstNonEmpty(userId, tenantCredentials.UserId);
+            accountId = FirstNonEmpty(accountId, tenantCredentials.AccountId);
+            baseUri = ResolveBaseUri(_settings.BaseUri, tenantCredentials.BaseUri);
+        }
 
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -189,11 +193,13 @@ public class DocuSignService : IDocuSignService
         ValidateDocuSignGuid(clientId, "clientId");
 
         _logger.LogInformation(
-            "DocuSign credentials resolved. AuthServer={AuthServer}, ClientId source: {ClientIdSource}, PrivateKey source: {PrivateKeySource}, Tenant source: {TenantSource}, {KeyDiagnostics}",
+            "DocuSign credentials resolved. AuthServer={AuthServer}, ClientId source: {ClientIdSource}, PrivateKey source: {PrivateKeySource}, UserId source: {UserIdSource}, AccountId source: {AccountIdSource}, Tenant source: {TenantSource}, {KeyDiagnostics}",
             _settings.AuthServer,
             GetCredentialSource(_settings.ClientId),
             GetCredentialSource(_settings.PrivateKey),
-            NeedsTenantCredentialsFromKeyVault() ? $"KeyVault:{tenantDocuSignSecretName}" : "AppSettings",
+            GetDocuSignIdentitySource(requestUserId, _settings.UserId, tenantCredentials?.UserId),
+            GetDocuSignIdentitySource(requestApiAccountId, _settings.AccountId, tenantCredentials?.AccountId),
+            tenantCredentials != null ? $"KeyVault:{tenantDocuSignSecretName}" : "NotUsed",
             DescribePrivateKeyDiagnostics(privateKey));
 
         return new DocuSignCredentials
@@ -206,11 +212,32 @@ public class DocuSignService : IDocuSignService
         };
     }
 
-    private bool NeedsTenantCredentialsFromKeyVault()
+    private static bool NeedsTenantCredentialsFromKeyVault(string? userId, string? accountId, string? baseUri)
     {
-        return string.IsNullOrWhiteSpace(_settings.UserId)
-            || string.IsNullOrWhiteSpace(_settings.AccountId)
-            || string.IsNullOrWhiteSpace(_settings.BaseUri);
+        return string.IsNullOrWhiteSpace(userId)
+            || string.IsNullOrWhiteSpace(accountId)
+            || string.IsNullOrWhiteSpace(baseUri);
+    }
+
+    private static string? ToGuidStringOrNull(Guid? value)
+    {
+        return value.HasValue && value.Value != Guid.Empty
+            ? value.Value.ToString()
+            : null;
+    }
+
+    private static string GetDocuSignIdentitySource(Guid? requestValue, string? settingsValue, string? tenantValue)
+    {
+        if (requestValue.HasValue && requestValue.Value != Guid.Empty)
+            return "Office";
+
+        if (!string.IsNullOrWhiteSpace(settingsValue))
+            return "AppSettings";
+
+        if (!string.IsNullOrWhiteSpace(tenantValue))
+            return "KeyVault";
+
+        return "Missing";
     }
 
     private async Task<string> ResolveCredentialValueAsync(
