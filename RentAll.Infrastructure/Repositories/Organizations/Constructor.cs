@@ -127,6 +127,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             QuotePetFee = e.QuotePetFee,
             QuoteDepartureFee = e.QuoteDepartureFee,
             QuoteMaidFee = e.QuoteMaidFee,
+            DocuSignUserId = e.DocuSignUserId,
+            DocuSignApiAccountId = e.DocuSignApiAccountId,
             EmailListForReservations = e.EmailListForReservations,
             IsInternational = e.IsInternational,
             IsActive = e.IsActive

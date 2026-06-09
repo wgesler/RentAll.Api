@@ -75,6 +75,8 @@ public class OfficeResponseDto
     public bool QuotePetFee { get; set; }
     public bool QuoteDepartureFee { get; set; }
     public bool QuoteMaidFee { get; set; }
+    public Guid? DocuSignUserId { get; set; }
+    public Guid? DocuSignApiAccountId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -153,6 +155,8 @@ public class OfficeResponseDto
         QuotePetFee = office.QuotePetFee;
         QuoteDepartureFee = office.QuoteDepartureFee;
         QuoteMaidFee = office.QuoteMaidFee;
+        DocuSignUserId = office.DocuSignUserId;
+        DocuSignApiAccountId = office.DocuSignApiAccountId;
         EmailListForReservations = office.EmailListForReservations;
         FileDetails = office.FileDetails;
         IsInternational = office.IsInternational;

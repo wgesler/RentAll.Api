@@ -154,6 +154,8 @@ public partial class OrganizationRepository
             QuotePetFee = office.QuotePetFee,
             QuoteDepartureFee = office.QuoteDepartureFee,
             QuoteMaidFee = office.QuoteMaidFee,
+            DocuSignUserId = office.DocuSignUserId,
+            DocuSignApiAccountId = office.DocuSignApiAccountId,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
@@ -243,6 +245,8 @@ public partial class OrganizationRepository
             QuotePetFee = office.QuotePetFee,
             QuoteDepartureFee = office.QuoteDepartureFee,
             QuoteMaidFee = office.QuoteMaidFee,
+            DocuSignUserId = office.DocuSignUserId,
+            DocuSignApiAccountId = office.DocuSignApiAccountId,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive

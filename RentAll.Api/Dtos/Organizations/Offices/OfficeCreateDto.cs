@@ -73,6 +73,8 @@ public class OfficeCreateDto
     public bool QuotePetFee { get; set; }
     public bool QuoteDepartureFee { get; set; }
     public bool QuoteMaidFee { get; set; }
+    public Guid? DocuSignUserId { get; set; }
+    public Guid? DocuSignApiAccountId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -220,6 +222,8 @@ public class OfficeCreateDto
             QuotePetFee = QuotePetFee,
             QuoteDepartureFee = QuoteDepartureFee,
             QuoteMaidFee = QuoteMaidFee,
+            DocuSignUserId = DocuSignUserId,
+            DocuSignApiAccountId = DocuSignApiAccountId,
             EmailListForReservations = EmailListForReservations,
             IsInternational = IsInternational,
             IsActive = IsActive
