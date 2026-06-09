@@ -28,7 +28,7 @@ public class UpdateAccountingOfficeDto
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
-    public List<UpdateBankCardDto> BankCards { get; set; } = new();
+    public List<UpdateBankCardDto>? BankCards { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -78,7 +78,7 @@ public class UpdateAccountingOfficeDto
             return (false, "Email is required");
 
         if (BankCards == null)
-            return (false, "BankCards is required");
+            return (true, null);
 
         foreach (var bankCard in BankCards)
         {

@@ -129,7 +129,8 @@ namespace RentAll.Api.Controllers
                     ImageType.Logos, existing.LogoPath, dto.LogoPath);
 
                 var updated = await _organizationRepository.UpdateAccountingAsync(accountingOffice);
-                await ReplaceBankCardsForOfficeAsync(updated.OfficeId, dto.BankCards);
+                if (dto.BankCards != null)
+                    await ReplaceBankCardsForOfficeAsync(updated.OfficeId, dto.BankCards);
 
                 var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(updated.OfficeId);
                 if (refreshedAccountingOffice == null)
