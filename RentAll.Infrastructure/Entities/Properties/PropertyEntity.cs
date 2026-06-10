@@ -40,8 +40,6 @@ public class PropertyEntity
     public decimal DepartureFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public decimal PetFee { get; set; }
-    public decimal ExtraFee { get; set; }
-    public string ExtraFeeName { get; set; } = string.Empty;
     public int UnitLevel { get; set; }
     public string? BldgNo { get; set; }
     public int Bedrooms { get; set; }

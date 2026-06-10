@@ -44,8 +44,6 @@ public class PropertyResponseDto
     public decimal DepartureFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public decimal PetFee { get; set; }
-    public decimal ExtraFee { get; set; }
-    public string ExtraFeeName { get; set; } = string.Empty;
     public string? BldgNo { get; set; }
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
@@ -193,8 +191,6 @@ public class PropertyResponseDto
         DepartureFee = property.DepartureFee;
         MaidServiceFee = property.MaidServiceFee;
         PetFee = property.PetFee;
-        ExtraFee = property.ExtraFee;
-        ExtraFeeName = property.ExtraFeeName;
         BldgNo = property.BldgNo;
         UnitLevel = property.UnitLevel;
         Bedrooms = property.Bedrooms;

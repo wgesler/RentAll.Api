@@ -39,8 +39,6 @@ public class UpdatePropertyDto
     public decimal DepartureFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public decimal PetFee { get; set; }
-    public decimal ExtraFee { get; set; }
-    public string ExtraFeeName { get; set; } = string.Empty;
     public string? BldgNo { get; set; }
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
@@ -232,8 +230,6 @@ public class UpdatePropertyDto
             DepartureFee = DepartureFee,
             MaidServiceFee = MaidServiceFee,
             PetFee = PetFee,
-            ExtraFee = ExtraFee,
-            ExtraFeeName = ExtraFeeName ?? string.Empty,
             BldgNo = BldgNo,
             UnitLevel = UnitLevel,
             Bedrooms = Bedrooms,

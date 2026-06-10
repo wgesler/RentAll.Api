@@ -30,14 +30,13 @@ public class UpsertPublicOwnerPropertyDto
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+    public string? ExternalCalendar { get; set; }
 
     public decimal? MonthlyRate { get; set; }
     public decimal? DailyRate { get; set; }
     public decimal? DepartureFee { get; set; }
     public decimal? MaidServiceFee { get; set; }
     public decimal? PetFee { get; set; }
-    public decimal? ExtraFee { get; set; }
-    public string? ExtraFeeName { get; set; }
     public string? BldgNo { get; set; }
     public int? UnitLevel { get; set; }
     public int? Bedrooms { get; set; }
@@ -162,13 +161,12 @@ public class UpsertPublicOwnerPropertyDto
             AreaId = AreaId,
             Latitude = Latitude,
             Longitude = Longitude,
+            ExternalCalendar = TrimOrNull(ExternalCalendar),
             MonthlyRate = MonthlyRate ?? 0,
             DailyRate = DailyRate ?? 0,
             DepartureFee = DepartureFee ?? 0,
             MaidServiceFee = MaidServiceFee ?? 0,
             PetFee = PetFee ?? 0,
-            ExtraFee = ExtraFee ?? 0,
-            ExtraFeeName = (ExtraFeeName ?? string.Empty).Trim(),
             BldgNo = TrimOrNull(BldgNo),
             UnitLevel = UnitLevel ?? 1,
             Bedrooms = Bedrooms ?? 0,
