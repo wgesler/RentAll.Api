@@ -199,6 +199,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offInspectingDate = e.offInspectingDate,
                 OnlineChecked = e.OnlineChecked,
                 OfflineChecked = e.OfflineChecked,
+                ExternalCalendar = e.ExternalCalendar,
                 IsActive = e.IsActive
             };
         }
