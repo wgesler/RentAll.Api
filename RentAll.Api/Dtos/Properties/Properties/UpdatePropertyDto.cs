@@ -31,6 +31,7 @@ public class UpdatePropertyDto
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+    public string? ExternalCalendar { get; set; }
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }
@@ -225,6 +226,7 @@ public class UpdatePropertyDto
             AreaId = AreaId,
             Latitude = Latitude,
             Longitude = Longitude,
+            ExternalCalendar = ExternalCalendar,
             MonthlyRate = MonthlyRate,
             DailyRate = DailyRate,
             DepartureFee = DepartureFee,

@@ -32,6 +32,7 @@ public class PropertyEntity
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+    public string? ExternalCalendar { get; set; }
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }

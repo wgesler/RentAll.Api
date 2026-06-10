@@ -36,6 +36,7 @@ public class PropertyResponseDto
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+    public string? ExternalCalendar { get; set; }
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }
@@ -186,6 +187,7 @@ public class PropertyResponseDto
         AreaId = property.AreaId;
         Latitude = property.Latitude;
         Longitude = property.Longitude;
+        ExternalCalendar = property.ExternalCalendar;
         MonthlyRate = property.MonthlyRate;
         DailyRate = property.DailyRate;
         DepartureFee = property.DepartureFee;

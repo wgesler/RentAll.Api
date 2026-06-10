@@ -49,6 +49,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 AreaId = e.AreaId,
                 Latitude = e.Latitude,
                 Longitude = e.Longitude,
+                ExternalCalendar = e.ExternalCalendar,
                 MonthlyRate = e.MonthlyRate,
                 DailyRate = e.DailyRate,
                 DepartureFee = e.DepartureFee,
