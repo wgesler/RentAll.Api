@@ -77,6 +77,8 @@ public class OfficeUpdateDto
     public bool QuoteMaidFee { get; set; }
     public Guid? DocuSignUserId { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
+    public int? QbNameTypeId { get; set; }
+    public int? QbClassTypeId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -150,6 +152,12 @@ public class OfficeUpdateDto
 
         if (SecurityDepositWaiverCcId.HasValue && SecurityDepositWaiverCcId.Value <= 0)
             return (false, "SecurityDepositWaiverCcId must be greater than 0 when provided");
+
+        if (QbNameTypeId.HasValue && !Enum.IsDefined(typeof(QbNameType), QbNameTypeId.Value))
+            return (false, $"Invalid QbNameTypeId value: {QbNameTypeId.Value}");
+
+        if (QbClassTypeId.HasValue && !Enum.IsDefined(typeof(QbClassType), QbClassTypeId.Value))
+            return (false, $"Invalid QbClassTypeId value: {QbClassTypeId.Value}");
 
         return (true, null);
     }
@@ -231,6 +239,8 @@ public class OfficeUpdateDto
             QuoteMaidFee = QuoteMaidFee,
             DocuSignUserId = DocuSignUserId,
             DocuSignApiAccountId = DocuSignApiAccountId,
+            QbNameType = QbNameTypeId.HasValue ? (QbNameType)QbNameTypeId.Value : null,
+            QbClassType = QbClassTypeId.HasValue ? (QbClassType)QbClassTypeId.Value : null,
             EmailListForReservations = EmailListForReservations,
             IsInternational = IsInternational,
             IsActive = IsActive

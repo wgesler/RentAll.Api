@@ -156,6 +156,8 @@ public partial class OrganizationRepository
             QuoteMaidFee = office.QuoteMaidFee,
             DocuSignUserId = office.DocuSignUserId,
             DocuSignApiAccountId = office.DocuSignApiAccountId,
+            QbNameTypeId = office.QbNameType.HasValue ? (int?)office.QbNameType.Value : null,
+            QbClassTypeId = office.QbClassType.HasValue ? (int?)office.QbClassType.Value : null,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive
@@ -247,6 +249,8 @@ public partial class OrganizationRepository
             QuoteMaidFee = office.QuoteMaidFee,
             DocuSignUserId = office.DocuSignUserId,
             DocuSignApiAccountId = office.DocuSignApiAccountId,
+            QbNameTypeId = office.QbNameType.HasValue ? (int?)office.QbNameType.Value : null,
+            QbClassTypeId = office.QbClassType.HasValue ? (int?)office.QbClassType.Value : null,
             EmailListForReservations = office.EmailListForReservations,
             IsInternational = office.IsInternational,
             IsActive = office.IsActive

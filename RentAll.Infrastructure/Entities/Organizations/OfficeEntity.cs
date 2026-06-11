@@ -81,6 +81,9 @@ public class OfficeEntity
     public Guid? DocuSignUserId { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
 
+    public int? QbNameTypeId { get; set; }
+    public int? QbClassTypeId { get; set; }
+
     public string? EmailListForReservations { get; set; }
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }

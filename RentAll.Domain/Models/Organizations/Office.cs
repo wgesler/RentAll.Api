@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Domain.Models;
@@ -77,6 +78,8 @@ public class Office
     public bool QuoteMaidFee { get; set; }
     public Guid? DocuSignUserId { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
+    public QbNameType? QbNameType { get; set; }
+    public QbClassType? QbClassType { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }

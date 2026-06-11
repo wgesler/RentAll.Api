@@ -129,6 +129,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             QuoteMaidFee = e.QuoteMaidFee,
             DocuSignUserId = e.DocuSignUserId,
             DocuSignApiAccountId = e.DocuSignApiAccountId,
+            QbNameType = e.QbNameTypeId.HasValue ? (QbNameType)e.QbNameTypeId.Value : null,
+            QbClassType = e.QbClassTypeId.HasValue ? (QbClassType)e.QbClassTypeId.Value : null,
             EmailListForReservations = e.EmailListForReservations,
             IsInternational = e.IsInternational,
             IsActive = e.IsActive

@@ -77,6 +77,8 @@ public class OfficeResponseDto
     public bool QuoteMaidFee { get; set; }
     public Guid? DocuSignUserId { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
+    public int? QbNameTypeId { get; set; }
+    public int? QbClassTypeId { get; set; }
     public string? EmailListForReservations { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -157,6 +159,8 @@ public class OfficeResponseDto
         QuoteMaidFee = office.QuoteMaidFee;
         DocuSignUserId = office.DocuSignUserId;
         DocuSignApiAccountId = office.DocuSignApiAccountId;
+        QbNameTypeId = office.QbNameType.HasValue ? (int?)office.QbNameType.Value : null;
+        QbClassTypeId = office.QbClassType.HasValue ? (int?)office.QbClassType.Value : null;
         EmailListForReservations = office.EmailListForReservations;
         FileDetails = office.FileDetails;
         IsInternational = office.IsInternational;
