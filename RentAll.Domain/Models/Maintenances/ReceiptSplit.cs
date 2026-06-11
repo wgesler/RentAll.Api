@@ -12,6 +12,8 @@ public class ReceiptSplit
     public Guid? WorkOrderId { get; set; }
     public string? WorkOrderCode { get; set; }
     public int ReceiptTypeId { get; set; } = (int)ReceiptType.Tenant;
+    public int? ChartOfAccountId { get; set; }
+    public string ChartOfAccountDisplayName { get; set; } = string.Empty;
 
     [JsonIgnore]
     public ReceiptType ReceiptType

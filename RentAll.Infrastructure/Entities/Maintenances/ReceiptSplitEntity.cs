@@ -9,6 +9,8 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public int ReceiptTypeId { get; set; }
         public Guid? WorkOrderId { get; set; }
         public string? WorkOrderCode { get; set; }
+        public int? ChartOfAccountId { get; set; }
+        public string ChartOfAccountDisplayName { get; set; } = string.Empty;
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }
         public DateTimeOffset ModifiedOn { get; set; }

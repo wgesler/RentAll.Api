@@ -144,6 +144,9 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             OfficeName = e.OfficeName,
             PropertyIds = propertyIds,
             ReceiptDate = e.ReceiptDate,
+            DueDate = e.DueDate,
+            AccountingPeriod = e.AccountingPeriod,
+            BillNumber = e.BillNumber,
             Amount = e.Amount,
             Description = e.Description,
             BankCardId = e.BankCardId,
@@ -207,10 +210,13 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             var splitRows = JsonSerializer.Deserialize<List<ReceiptSplitJson>>(splitsJson, JsonOptions) ?? new List<ReceiptSplitJson>();
             return splitRows.Select(split => new ReceiptSplit
             {
+                ReceiptSplitId = split.ReceiptSplitId ?? 0,
                 Amount = split.Amount,
                 Description = split.Description,
                 WorkOrder = split.WorkOrder,
-                ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant
+                WorkOrderId = split.WorkOrderId,
+                ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
+                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
             }).ToList();
         }
         catch
@@ -229,14 +235,26 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ReceiptTypeId = e.ReceiptTypeId,
             WorkOrderId = e.WorkOrderId,
             WorkOrderCode = e.WorkOrderCode,
-            WorkOrder = e.WorkOrderCode
+            WorkOrder = e.WorkOrderCode,
+            ChartOfAccountId = e.ChartOfAccountId,
+            ChartOfAccountDisplayName = e.ChartOfAccountDisplayName
         };
     }
 
     private static string SerializeReceiptSplits(List<ReceiptSplit>? splits)
     {
-        var s = JsonSerializer.Serialize(splits ?? new List<ReceiptSplit>(), JsonOptions);
-        return s;
+        var rows = (splits ?? new List<ReceiptSplit>()).Select(split => new ReceiptSplitJson
+        {
+            ReceiptSplitId = split.ReceiptSplitId > 0 ? split.ReceiptSplitId : null,
+            Amount = split.Amount,
+            Description = split.Description,
+            WorkOrder = split.WorkOrderCode ?? split.WorkOrder,
+            WorkOrderId = split.WorkOrderId,
+            ReceiptTypeId = split.ReceiptTypeId,
+            ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
+        }).ToList();
+
+        return JsonSerializer.Serialize(rows, JsonOptions);
     }
 
     private static string SerializeReceiptPropertyIds(List<Guid>? properties)
@@ -260,10 +278,13 @@ public partial class MaintenanceRepository : IMaintenanceRepository
 
     private sealed class ReceiptSplitJson
     {
+        public int? ReceiptSplitId { get; set; }
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public string? WorkOrder { get; set; }
+        public Guid? WorkOrderId { get; set; }
         public int? ReceiptTypeId { get; set; }
+        public int? ChartOfAccountId { get; set; }
     }
 
     private static WorkOrder ConvertEntityToModel(WorkOrderEntity e)

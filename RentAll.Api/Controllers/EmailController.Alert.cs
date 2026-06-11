@@ -16,9 +16,6 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
-            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
-                return Ok();
-
             try
             {
                 var criteria = dto.ToCriteria(CurrentOrganizationId);

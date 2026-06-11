@@ -8,6 +8,9 @@ public class CreateReceiptDto
     public int OfficeId { get; set; }
     public List<Guid> PropertyIds { get; set; } = new List<Guid>();
     public DateOnly ReceiptDate { get; set; }
+    public DateOnly? DueDate { get; set; }
+    public DateOnly? AccountingPeriod { get; set; }
+    public string? BillNumber { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
@@ -41,9 +44,10 @@ public class CreateReceiptDto
         if (Splits == null || Splits.Count == 0)
             return (false, "At least one split is required");
 
+        var isBill = BankCardId is null or <= 0;
         foreach (var split in Splits)
         {
-            var (isValid, errorMessage) = split.IsValid();
+            var (isValid, errorMessage) = split.IsValid(requireChartOfAccount: isBill);
             if (!isValid)
                 return (false, $"Split validation failed: {errorMessage}");
         }
@@ -59,6 +63,11 @@ public class CreateReceiptDto
             OfficeId = OfficeId,
             PropertyIds = PropertyIds,
             ReceiptDate = ReceiptDate,
+            DueDate = DueDate is { } dueDate && dueDate != default ? dueDate : null,
+            AccountingPeriod = AccountingPeriod is { } accountingPeriod && accountingPeriod != default
+                ? accountingPeriod
+                : null,
+            BillNumber = string.IsNullOrWhiteSpace(BillNumber) ? null : BillNumber.Trim(),
             Amount = Amount,
             Description = Description,
             BankCardId = BankCardId is > 0 ? BankCardId : null,

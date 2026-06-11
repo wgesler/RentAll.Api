@@ -15,9 +15,6 @@ public partial class MaintenanceController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
-            return Forbid();
-
         try
         {
             var criteria = dto.ToCriteria(CurrentOrganizationId);

@@ -8,9 +8,13 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string OfficeName { get; set; } = string.Empty;
         public string Properties { get; set; } = "[]";
         public DateOnly ReceiptDate { get; set; }
+        public DateOnly? DueDate { get; set; }
+        public DateOnly? AccountingPeriod { get; set; }
+        public string? BillNumber { get; set; }
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;
         public int? BankCardId { get; set; }
+        public string BankCardDisplayName { get; set; } = string.Empty;
         public Guid? VendorId { get; set; }
         public string? VendorName { get; set; }
         public string Splits { get; set; } = "[]";
@@ -22,6 +26,5 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public DateTimeOffset ModifiedOn { get; set; }
         public Guid ModifiedBy { get; set; }
         public string ModifiedByName { get; set; } = string.Empty;
-        public string BankCardDisplayName { get; set; } = string.Empty;
     }
 }

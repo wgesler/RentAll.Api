@@ -1,0 +1,123 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using RentAll.Domain.Configuration;
+using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Models;
+using RentAll.Infrastructure.Entities.Accounting;
+using RentAll.Infrastructure.Serialization;
+using System.Text.Json;
+
+namespace RentAll.Infrastructure.Repositories.Accounting;
+
+public partial class JournalEntryRepository : IJournalEntryRepository
+{
+    private static readonly JsonSerializerOptions JsonOptions = SqlColumnJsonSerializerOptions.CaseInsensitive;
+    private readonly string _dbConnectionString;
+    private readonly ILogger<JournalEntryRepository> _logger;
+
+    public JournalEntryRepository(IOptions<AppSettings> appSettings, ILogger<JournalEntryRepository> logger)
+    {
+        _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
+        _logger = logger;
+    }
+
+    private JournalEntry ConvertEntityToModel(JournalEntryEntity e)
+    {
+        var lines = ParseJournalEntryLinesJson(e.JournalEntryLines, e.JournalEntryId);
+
+        return new JournalEntry
+        {
+            JournalEntryId = e.JournalEntryId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            TransactionDate = e.TransactionDate,
+            PostingDate = e.PostingDate,
+            TransactionTypeId = e.TransactionTypeId,
+            SourceTypeId = e.SourceTypeId,
+            SourceId = e.SourceId,
+            Memo = e.Memo,
+            IsPosted = e.IsPosted,
+            IsVoided = e.IsVoided,
+            JournalEntryLines = lines,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+
+    private List<JournalEntryLine> ParseJournalEntryLinesJson(string? json, Guid journalEntryId)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new List<JournalEntryLine>();
+
+        try
+        {
+            var entityLines = DeserializeJournalEntryLineEntities(json);
+            return entityLines.Select(ConvertJournalEntryLineEntityToModel).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Could not deserialize JournalEntryLines JSON for journal entry {JournalEntryId}. First 240 chars: {Preview}",
+                journalEntryId,
+                json.Length <= 240 ? json : json[..240]);
+            return new List<JournalEntryLine>();
+        }
+    }
+
+    private static List<JournalEntryLineEntity> DeserializeJournalEntryLineEntities(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<JournalEntryLineEntity>>(json, JsonOptions) ?? new List<JournalEntryLineEntity>();
+        }
+        catch (JsonException)
+        {
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        if (root.ValueKind == JsonValueKind.Array)
+            return JsonSerializer.Deserialize<List<JournalEntryLineEntity>>(root.GetRawText(), JsonOptions) ?? new List<JournalEntryLineEntity>();
+
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            ReadOnlySpan<string> knownArrayProps = ["JournalEntryLines", "journalEntryLines", "lines", "value"];
+            foreach (var name in knownArrayProps)
+            {
+                if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Array)
+                    return JsonSerializer.Deserialize<List<JournalEntryLineEntity>>(el.GetRawText(), JsonOptions) ?? new List<JournalEntryLineEntity>();
+            }
+
+            foreach (var prop in root.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.Array)
+                    return JsonSerializer.Deserialize<List<JournalEntryLineEntity>>(prop.Value.GetRawText(), JsonOptions) ?? new List<JournalEntryLineEntity>();
+            }
+        }
+
+        throw new JsonException("JournalEntryLines JSON is not an array and no array property was found.");
+    }
+
+    private JournalEntryLine ConvertJournalEntryLineEntityToModel(JournalEntryLineEntity e)
+    {
+        return new JournalEntryLine
+        {
+            JournalEntryLineId = e.JournalEntryLineId,
+            JournalEntryId = e.JournalEntryId,
+            ChartOfAccountId = e.ChartOfAccountId,
+            CostCodeId = e.CostCodeId,
+            PropertyId = e.PropertyId,
+            ReservationId = e.ReservationId,
+            ContactId = e.ContactId,
+            Debit = e.Debit,
+            Credit = e.Credit,
+            Memo = e.Memo,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+}

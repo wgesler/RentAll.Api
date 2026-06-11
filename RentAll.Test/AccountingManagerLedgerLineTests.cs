@@ -458,7 +458,8 @@ public class AccountingManagerLedgerLineTests
             organizationRepository: null!,
             propertyRepository: null!,
             accountingRepository: null!,
-            reservationRepository: null!);
+            reservationRepository: null!,
+            journalEntryRepository: null!);
     }
 
     private static decimal GetBillingRate(BillingType billingType)

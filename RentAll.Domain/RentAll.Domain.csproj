@@ -6,4 +6,16 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Update="Managers\AccountingManager.Invoices.cs">
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Managers\AccountingManager.JournalEntries.cs">
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Managers\AccountingManager.InvoiceJournalEntry.cs">
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
 </Project>

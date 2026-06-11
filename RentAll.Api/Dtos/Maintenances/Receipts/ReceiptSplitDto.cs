@@ -9,6 +9,9 @@ public class ReceiptSplitDto
     public Guid? WorkOrderId { get; set; }
     public string? WorkOrderCode { get; set; }
     public int ReceiptTypeId { get; set; }
+    public int? ChartOfAccountId { get; set; }
+    public int? AccountId { get; set; }
+    public string? ChartOfAccountDisplayName { get; set; }
 
     public ReceiptSplitDto()
     {
@@ -23,14 +26,31 @@ public class ReceiptSplitDto
         WorkOrderId = split.WorkOrderId;
         WorkOrderCode = split.WorkOrderCode;
         ReceiptTypeId = split.ReceiptTypeId;
+        ChartOfAccountId = split.ChartOfAccountId;
+        AccountId = split.ChartOfAccountId;
+        ChartOfAccountDisplayName = split.ChartOfAccountDisplayName;
     }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid(bool requireChartOfAccount = false)
     {
         if (!Enum.IsDefined(typeof(ReceiptType), ReceiptTypeId))
             return (false, $"Invalid ReceiptTypeId value: {ReceiptTypeId}");
 
+        if (requireChartOfAccount && ResolveChartOfAccountId() is not > 0)
+            return (false, "ChartOfAccountId is required on bill split lines");
+
         return (true, null);
+    }
+
+    public int? ResolveChartOfAccountId()
+    {
+        if (ChartOfAccountId is > 0)
+            return ChartOfAccountId;
+
+        if (AccountId is > 0)
+            return AccountId;
+
+        return null;
     }
 
     public ReceiptSplit ToModel()
@@ -43,7 +63,8 @@ public class ReceiptSplitDto
             WorkOrder = WorkOrder,
             WorkOrderId = WorkOrderId,
             WorkOrderCode = WorkOrderCode,
-            ReceiptType = (ReceiptType)ReceiptTypeId
+            ReceiptType = (ReceiptType)ReceiptTypeId,
+            ChartOfAccountId = ResolveChartOfAccountId()
         };
     }
 }

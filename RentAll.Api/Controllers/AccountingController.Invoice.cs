@@ -16,9 +16,6 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
-            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
-                return Ok();
-
             try
             {
                 var criteria = dto.ToCriteria(CurrentOrganizationId);
@@ -73,6 +70,16 @@ namespace RentAll.Api.Controllers
                 var invoice = dto.ToModel(CurrentUser);
                 invoice.OrganizationId = CurrentOrganizationId;
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
+
+                try
+                {
+                    // await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Invoice {InvoiceId} was created but journal entry creation failed", createdInvoice.InvoiceId);
+                    return BadRequest($"Invoice was created but general ledger entry creation failed: {journalEntryEx.Message}");
+                }
 
                 var response = new InvoiceResponseDto(createdInvoice);
                 return Ok(response);
@@ -219,6 +226,17 @@ namespace RentAll.Api.Controllers
             {
                 var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
+
+                try
+                {
+                    // await _accountingManager.CreateJournalEntriesFromInvoicePaymentAsync(invoicePayment, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Payment was applied but journal entry creation failed");
+                    return BadRequest($"Payment was applied but general ledger entry creation failed: {journalEntryEx.Message}");
+                }
+
                 var response = new InvoicePaymentResponseDto(invoicePayment);
                 return Ok(response);
             }
@@ -252,21 +270,5 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
-
-        bool UserHasOfficeAccessForAll(string officeIds)
-        {
-            if (string.IsNullOrWhiteSpace(CurrentOfficeAccess))
-                return true;
-
-            var allowed = CurrentOfficeAccess
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(id => int.TryParse(id, out _))
-                .Select(int.Parse)
-                .ToHashSet();
-
-            return officeIds
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .All(id => int.TryParse(id, out var parsed) && allowed.Contains(parsed));
-        }
     }
 }

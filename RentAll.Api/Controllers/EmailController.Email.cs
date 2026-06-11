@@ -16,9 +16,6 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
-            if (!UserHasOfficeAccessForAll(dto.ResolvedOfficeIds))
-                return Ok();
-
             try
             {
                 var criteria = dto.ToCriteria(CurrentOrganizationId);
@@ -135,21 +132,5 @@ namespace RentAll.Api.Controllers
             }
         }
         #endregion
-
-        private bool UserHasOfficeAccessForAll(string officeIds)
-        {
-            if (string.IsNullOrWhiteSpace(CurrentOfficeAccess))
-                return true;
-
-            var allowed = CurrentOfficeAccess
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(id => int.TryParse(id, out _))
-                .Select(int.Parse)
-                .ToHashSet();
-
-            return officeIds
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .All(id => int.TryParse(id, out var parsed) && allowed.Contains(parsed));
-        }
     }
 }

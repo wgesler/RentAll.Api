@@ -10,9 +10,13 @@ public class Receipt
     public string OfficeName { get; set; } = string.Empty;
     public List<Guid> PropertyIds { get; set; } = new();
     public DateOnly ReceiptDate { get; set; }
+    public DateOnly? DueDate { get; set; }
+    public DateOnly? AccountingPeriod { get; set; }
+    public string? BillNumber { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
+    public string BankCardDisplayName { get; set; } = string.Empty;
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
     public List<ReceiptSplit> Splits { get; set; } = new();
@@ -25,5 +29,4 @@ public class Receipt
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public string ModifiedByName { get; set; } = string.Empty;
-    public string BankCardDisplayName { get; set; } = string.Empty;
 }

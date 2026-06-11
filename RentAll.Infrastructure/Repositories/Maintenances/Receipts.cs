@@ -97,6 +97,9 @@ public partial class MaintenanceRepository
             OfficeId = receipt.OfficeId,
             Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
             ReceiptDate = receipt.ReceiptDate,
+            DueDate = receipt.DueDate,
+            AccountingPeriod = receipt.AccountingPeriod,
+            BillNumber = receipt.BillNumber,
             Amount = receipt.Amount,
             Description = receipt.Description,
             BankCardId = receipt.BankCardId,
@@ -112,7 +115,7 @@ public partial class MaintenanceRepository
             throw new Exception("Receipt record not created");
 
         var created = ConvertEntityToModel(res.First());
-        await SyncReceiptSplitRowsAsync(created, receipt.CreatedBy);
+        await SyncReceiptSplitRowsAsync(created, receipt.Splits, receipt.CreatedBy);
         created.Splits = await GetReceiptSplitsByReceiptIdAsync(created.ReceiptId);
         return created;
     }
@@ -129,6 +132,9 @@ public partial class MaintenanceRepository
             OfficeId = receipt.OfficeId,
             Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
             ReceiptDate = receipt.ReceiptDate,
+            DueDate = receipt.DueDate,
+            AccountingPeriod = receipt.AccountingPeriod,
+            BillNumber = receipt.BillNumber,
             Amount = receipt.Amount,
             Description = receipt.Description,
             BankCardId = receipt.BankCardId,
@@ -144,7 +150,7 @@ public partial class MaintenanceRepository
             throw new Exception("Receipt record not found");
 
         var updated = ConvertEntityToModel(res.First());
-        await SyncReceiptSplitRowsAsync(updated, receipt.ModifiedBy);
+        await SyncReceiptSplitRowsAsync(updated, receipt.Splits, receipt.ModifiedBy);
         updated.Splits = await GetReceiptSplitsByReceiptIdAsync(updated.ReceiptId);
         return updated;
     }
@@ -174,10 +180,15 @@ public partial class MaintenanceRepository
         if (splitRows == null || !splitRows.Any())
             return new List<ReceiptSplit>();
 
-        return splitRows.Select(ConvertEntityToModel).ToList();
+        return splitRows
+            .Select(ConvertEntityToModel)
+            .GroupBy(split => split.ReceiptSplitId)
+            .Select(group => group.First())
+            .OrderBy(split => split.ReceiptSplitId)
+            .ToList();
     }
 
-    private async Task SyncReceiptSplitRowsAsync(Receipt receipt, Guid auditUser)
+    private async Task SyncReceiptSplitRowsAsync(Receipt receipt, List<ReceiptSplit>? splitsToSync, Guid auditUser)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.ReceiptSplit_DeleteByReceiptId", new
@@ -185,7 +196,7 @@ public partial class MaintenanceRepository
             ReceiptId = receipt.ReceiptId
         });
 
-        var splits = receipt.Splits ?? new List<ReceiptSplit>();
+        var splits = splitsToSync ?? new List<ReceiptSplit>();
         if (splits.Count == 0)
             return;
 
@@ -220,6 +231,7 @@ public partial class MaintenanceRepository
                 Description = split.Description,
                 ReceiptTypeId = split.ReceiptTypeId,
                 WorkOrderId = workOrderId,
+                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
                 CreatedBy = auditUser
             });
         }

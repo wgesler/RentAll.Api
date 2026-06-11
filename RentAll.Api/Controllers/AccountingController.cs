@@ -10,6 +10,7 @@ namespace RentAll.Api.Controllers
     public partial class AccountingController : BaseController
     {
         private readonly IAccountingRepository _accountingRepository;
+        private readonly IJournalEntryRepository _journalEntryRepository;
         private readonly IReservationRepository _reservationRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IAccountingManager _accountingManager;
@@ -17,12 +18,14 @@ namespace RentAll.Api.Controllers
 
         public AccountingController(
             IAccountingRepository accountingRepository,
+            IJournalEntryRepository journalEntryRepository,
             IReservationRepository reservationRepository,
             IOrganizationRepository organizationRepository,
             IAccountingManager accountingManager,
             ILogger<AccountingController> logger)
         {
             _accountingRepository = accountingRepository;
+            _journalEntryRepository = journalEntryRepository;
             _reservationRepository = reservationRepository;
             _organizationRepository = organizationRepository;
             _accountingManager = accountingManager;
