@@ -8,8 +8,8 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string OfficeName { get; set; } = string.Empty;
         public string Properties { get; set; } = "[]";
         public DateOnly ReceiptDate { get; set; }
-        public DateOnly? DueDate { get; set; }
-        public DateOnly? AccountingPeriod { get; set; }
+        public DateOnly DueDate { get; set; }
+        public DateOnly AccountingPeriod { get; set; }
         public string? BillNumber { get; set; }
         public decimal Amount { get; set; }
         public string Description { get; set; } = string.Empty;

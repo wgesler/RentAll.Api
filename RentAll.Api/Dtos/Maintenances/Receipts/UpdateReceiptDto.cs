@@ -9,9 +9,9 @@ public class UpdateReceiptDto
     public int OfficeId { get; set; }
     public List<Guid> PropertyIds { get; set; } = new List<Guid>();
     public DateOnly ReceiptDate { get; set; }
-    public DateOnly? DueDate { get; set; }
-    public DateOnly? AccountingPeriod { get; set; }
-    public string? BillNumber { get; set; }
+    public DateOnly DueDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
+    public string BillNumber { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
@@ -68,11 +68,9 @@ public class UpdateReceiptDto
             OfficeId = OfficeId,
             PropertyIds = PropertyIds,
             ReceiptDate = ReceiptDate,
-            DueDate = DueDate is { } dueDate && dueDate != default ? dueDate : null,
-            AccountingPeriod = AccountingPeriod is { } accountingPeriod && accountingPeriod != default
-                ? accountingPeriod
-                : null,
-            BillNumber = string.IsNullOrWhiteSpace(BillNumber) ? null : BillNumber.Trim(),
+            DueDate = DueDate,
+            AccountingPeriod = AccountingPeriod,
+            BillNumber = BillNumber,
             Description = Description,
             Amount = Amount,
             BankCardId = BankCardId is > 0 ? BankCardId : null,
