@@ -14,6 +14,7 @@ namespace RentAll.Api.Controllers
     {
         private readonly AppSettings _appSettings;
         private readonly IDailyQuoteService _dailyQuoteService;
+        private readonly ICalendarService _calendarService;
         private readonly ICalendarManager _calendarManager;
         private readonly ICommonRepository _commonRepository;
         private readonly ILeadRepository _leadRepository;
@@ -29,6 +30,7 @@ namespace RentAll.Api.Controllers
         public CommonController(
             IOptions<AppSettings> options,
             IDailyQuoteService dailyQuoteService,
+            ICalendarService calendarService,
             ICommonRepository commonRepository,
             ILeadRepository leadRepository,
             IContactManager contactManager,
@@ -43,6 +45,7 @@ namespace RentAll.Api.Controllers
         {
             _appSettings = options.Value;
             _dailyQuoteService = dailyQuoteService;
+            _calendarService = calendarService;
             _commonRepository = commonRepository;
             _leadRepository = leadRepository;
             _contactManager = contactManager;
