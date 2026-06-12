@@ -45,10 +45,9 @@ public class CreateReceiptDto
         if (Splits == null || Splits.Count == 0)
             return (false, "At least one split is required");
 
-        var isBill = BankCardId is null or <= 0;
         foreach (var split in Splits)
         {
-            var (isValid, errorMessage) = split.IsValid(requireChartOfAccount: isBill);
+            var (isValid, errorMessage) = split.IsValid();
             if (!isValid)
                 return (false, $"Split validation failed: {errorMessage}");
         }

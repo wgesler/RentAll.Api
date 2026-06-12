@@ -31,13 +31,16 @@ public class ReceiptSplitDto
         ChartOfAccountDisplayName = split.ChartOfAccountDisplayName;
     }
 
-    public (bool IsValid, string? ErrorMessage) IsValid(bool requireChartOfAccount = false)
+    public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (!Enum.IsDefined(typeof(ReceiptType), ReceiptTypeId))
             return (false, $"Invalid ReceiptTypeId value: {ReceiptTypeId}");
 
-        if (requireChartOfAccount && ResolveChartOfAccountId() is not > 0)
-            return (false, "ChartOfAccountId is required on bill split lines");
+        if (ChartOfAccountId.HasValue && ChartOfAccountId.Value <= 0)
+            return (false, "ChartOfAccountId must be greater than 0 when provided");
+
+        if (AccountId.HasValue && AccountId.Value <= 0)
+            return (false, "AccountId must be greater than 0 when provided");
 
         return (true, null);
     }
