@@ -69,6 +69,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             Phone = e.Phone,
             Fax = e.Fax,
             Website = e.Website,
+            YearEndMonth = e.YearEndMonth,
+            YearEndDay = e.YearEndDay,
             LogoPath = e.LogoPath,
             MaintenanceEmail = e.MaintenanceEmail,
             AfterHoursPhone = e.AfterHoursPhone,

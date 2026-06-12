@@ -17,6 +17,8 @@ public class OfficeResponseDto
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
     public string? Website { get; set; }
+    public int YearEndMonth { get; set; }
+    public int YearEndDay { get; set; }
     public string? LogoPath { get; set; }
     public string? MaintenanceEmail { get; set; }
     public string? AfterHoursPhone { get; set; }
@@ -99,6 +101,8 @@ public class OfficeResponseDto
         Phone = office.Phone;
         Fax = office.Fax;
         Website = office.Website;
+        YearEndMonth = office.YearEndMonth;
+        YearEndDay = office.YearEndDay;
         LogoPath = office.LogoPath;
         MaintenanceEmail = office.MaintenanceEmail;
         AfterHoursPhone = office.AfterHoursPhone;
