@@ -13,6 +13,8 @@ public class UpdateReceiptDto
     public DateOnly AccountingPeriod { get; set; }
     public string BillNumber { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    public decimal PaidAmount { get; set; }
+    public DateOnly? PaidDate { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
     public Guid? VendorId { get; set; }
@@ -73,6 +75,8 @@ public class UpdateReceiptDto
             BillNumber = BillNumber,
             Description = Description,
             Amount = Amount,
+            PaidAmount = PaidAmount,
+            PaidDate = PaidDate,
             BankCardId = BankCardId is > 0 ? BankCardId : null,
             VendorId = VendorId,
             VendorName = VendorName,

@@ -12,6 +12,7 @@ public class CreateReceiptDto
     public DateOnly AccountingPeriod { get; set; }
     public string BillNumber { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    public DateOnly? PaidDate { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
     public Guid? VendorId { get; set; }
@@ -67,6 +68,8 @@ public class CreateReceiptDto
             AccountingPeriod = AccountingPeriod,
             BillNumber = BillNumber,
             Amount = Amount,
+            PaidAmount = 0,
+            PaidDate = PaidDate,
             Description = Description,
             BankCardId = BankCardId is > 0 ? BankCardId : null,
             VendorId = VendorId,

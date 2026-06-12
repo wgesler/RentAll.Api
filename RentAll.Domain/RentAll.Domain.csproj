@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Update="Managers\AccountingManager.Bills.cs">
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+    </Compile>
     <Compile Update="Managers\AccountingManager.Invoices.cs">
       <DependentUpon>AccountingManager.cs</DependentUpon>
     </Compile>

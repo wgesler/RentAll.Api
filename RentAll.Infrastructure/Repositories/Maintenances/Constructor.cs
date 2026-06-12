@@ -148,6 +148,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             AccountingPeriod = e.AccountingPeriod,
             BillNumber = e.BillNumber,
             Amount = e.Amount,
+            PaidAmount = e.PaidAmount,
+            PaidDate = e.PaidDate,
             Description = e.Description,
             BankCardId = e.BankCardId,
             VendorId = e.VendorId,
