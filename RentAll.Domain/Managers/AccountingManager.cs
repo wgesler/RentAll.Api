@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 
@@ -14,6 +15,7 @@ public partial class AccountingManager : IAccountingManager
     private readonly IMaintenanceRepository _maintenanceRepository;
     private readonly IReservationRepository _reservationRepository;
     private readonly IJournalEntryRepository _journalEntryRepository;
+    private readonly IOrganizationManager _organizationManager;
 
     public AccountingManager(
         IOrganizationRepository organizationRepository,
@@ -21,7 +23,8 @@ public partial class AccountingManager : IAccountingManager
         IAccountingRepository accountingRepository,
         IMaintenanceRepository maintenanceRepository,
         IReservationRepository reservationRepository,
-        IJournalEntryRepository journalEntryRepository)
+        IJournalEntryRepository journalEntryRepository,
+        IOrganizationManager organizationManager)
     {
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
@@ -29,5 +32,6 @@ public partial class AccountingManager : IAccountingManager
         _maintenanceRepository = maintenanceRepository;
         _reservationRepository = reservationRepository;
         _journalEntryRepository = journalEntryRepository;
+        _organizationManager = organizationManager;
     }
 }

@@ -8,11 +8,13 @@ public class JournalEntryResponseDto
     public Guid JournalEntryId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
+    public string JournalEntryCode { get; set; } = string.Empty;
     public DateOnly TransactionDate { get; set; }
     public DateOnly PostingDate { get; set; }
-    public int TransactionTypeId { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
+    public int? SourceReceiptId { get; set; }
+    public int? SourcePaymentSequence { get; set; }
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
@@ -27,11 +29,13 @@ public class JournalEntryResponseDto
         JournalEntryId = journalEntry.JournalEntryId;
         OrganizationId = journalEntry.OrganizationId;
         OfficeId = journalEntry.OfficeId;
+        JournalEntryCode = journalEntry.JournalEntryCode;
         TransactionDate = journalEntry.TransactionDate;
         PostingDate = journalEntry.PostingDate;
-        TransactionTypeId = journalEntry.TransactionTypeId;
         SourceTypeId = journalEntry.SourceTypeId;
         SourceId = journalEntry.SourceId;
+        SourceReceiptId = journalEntry.SourceReceiptId;
+        SourcePaymentSequence = journalEntry.SourcePaymentSequence;
         Memo = journalEntry.Memo;
         IsPosted = journalEntry.IsPosted;
         IsVoided = journalEntry.IsVoided;

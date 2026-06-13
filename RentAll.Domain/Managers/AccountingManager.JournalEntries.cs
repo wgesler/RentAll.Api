@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
@@ -8,6 +9,14 @@ public partial class AccountingManager
     {
         journalEntry.IsPosted = false;
         journalEntry.IsVoided = false;
+
+        if (string.IsNullOrWhiteSpace(journalEntry.JournalEntryCode))
+        {
+            journalEntry.JournalEntryCode = await _organizationManager.GenerateEntityCodeAsync(
+                journalEntry.OrganizationId,
+                EntityType.JournalEntry);
+        }
+
         ValidateJournalEntryForSave(journalEntry, requireActiveLines: true);
         return await _journalEntryRepository.CreateJournalEntryAsync(journalEntry);
     }
@@ -20,8 +29,11 @@ public partial class AccountingManager
 
         EnsureJournalEntryIsEditable(existing);
 
+        journalEntry.JournalEntryCode = existing.JournalEntryCode;
         journalEntry.SourceTypeId = existing.SourceTypeId;
         journalEntry.SourceId = existing.SourceId;
+        journalEntry.SourceReceiptId = existing.SourceReceiptId;
+        journalEntry.SourcePaymentSequence = existing.SourcePaymentSequence;
         journalEntry.IsPosted = existing.IsPosted;
         journalEntry.IsVoided = existing.IsVoided;
         journalEntry.CreatedBy = existing.CreatedBy;
@@ -75,15 +87,32 @@ public partial class AccountingManager
         if (journalEntry == null)
             throw new Exception("Journal entry not found");
 
+        if (journalEntry.IsPosted)
+            throw new Exception("Posted journal entries cannot be deleted");
+
         EnsureJournalEntryIsEditable(journalEntry);
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
     }
 
+    public async Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry == null)
+            throw new Exception("Journal entry not found");
+
+        if (journalEntry.IsVoided)
+            throw new Exception("A voided journal entry cannot be unposted");
+
+        if (!journalEntry.IsPosted)
+            throw new Exception("Journal entry is not posted");
+
+        journalEntry.IsPosted = false;
+        journalEntry.ModifiedBy = currentUser;
+        return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+    }
+
     static void EnsureJournalEntryIsEditable(JournalEntry journalEntry)
     {
-        if (journalEntry.IsPosted)
-            throw new Exception("Posted journal entries cannot be changed");
-
         if (journalEntry.IsVoided)
             throw new Exception("Voided journal entries cannot be changed");
     }

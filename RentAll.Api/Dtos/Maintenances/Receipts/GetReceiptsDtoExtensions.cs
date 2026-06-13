@@ -13,7 +13,8 @@ public static class GetReceiptsDtoExtensions
             PropertyId = dto.PropertyId,
             IncludeInactive = dto.IncludeInactive,
             StartDate = dto.StartDate,
-            EndDate = dto.EndDate
+            EndDate = dto.EndDate,
+            ReceiptKind = dto.ReceiptKind
         };
     }
 }

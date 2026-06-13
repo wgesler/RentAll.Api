@@ -5,7 +5,10 @@ namespace RentAll.Domain.Interfaces.Repositories;
 public interface IJournalEntryRepository
 {
     Task<IEnumerable<JournalEntry>> GetJournalEntriesAsync(JournalEntryGetCriteria criteria);
+    Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria);
     Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
+    Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId);
+    Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId);
     Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> UpdateJournalEntryByIdAsync(JournalEntry journalEntry);
     Task DeleteJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);

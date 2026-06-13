@@ -57,6 +57,8 @@ public class CreateReceiptDto
 
     public Receipt ToModel(Guid currentUser)
     {
+        var normalizedBankCardId = BankCardId is > 0 ? BankCardId : null;
+        var initialPaidAmount = normalizedBankCardId.HasValue ? Amount : 0;
         return new Receipt
         {
             OrganizationId = OrganizationId,
@@ -67,10 +69,10 @@ public class CreateReceiptDto
             AccountingPeriod = AccountingPeriod,
             BillNumber = BillNumber,
             Amount = Amount,
-            PaidAmount = 0,
+            PaidAmount = initialPaidAmount,
             PaidDate = PaidDate,
             Description = Description,
-            BankCardId = BankCardId is > 0 ? BankCardId : null,
+            BankCardId = normalizedBankCardId,
             VendorId = VendorId,
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),

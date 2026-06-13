@@ -131,6 +131,32 @@ public partial class MaintenanceController
             receipt.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
 
             var created = await _maintenanceRepository.CreateReceiptAsync(receipt);
+
+            if (created.BankCardId == null)
+            {
+                try
+                {
+                    await _accountingManager.CreateJournalEntryFromBillAsync(created, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Bill {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
+                    return BadRequest($"Bill was created but general ledger entry creation failed: {journalEntryEx.Message}");
+                }
+            }
+            else
+            {
+                try
+                {
+                    await _accountingManager.CreateJournalEntryFromReceiptAsync(created, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Receipt {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
+                    return BadRequest($"Receipt was created but general ledger entry creation failed: {journalEntryEx.Message}");
+                }
+            }
+
             var response = new ReceiptResponseDto(created);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
 

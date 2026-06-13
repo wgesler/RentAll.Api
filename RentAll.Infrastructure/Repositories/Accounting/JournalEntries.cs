@@ -16,7 +16,8 @@ public partial class JournalEntryRepository
             OfficeIds = criteria.OfficeIds,
             SourceTypeId = criteria.SourceTypeId,
             SourceId = criteria.SourceId,
-            TransactionTypeId = criteria.TransactionTypeId,
+            SourceReceiptId = criteria.SourceReceiptId,
+            SourcePaymentSequence = criteria.SourcePaymentSequence,
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             StartDate = criteria.StartDate,
@@ -27,6 +28,33 @@ public partial class JournalEntryRepository
             return Enumerable.Empty<JournalEntry>();
 
         return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<JournalEntryLineSearchEntity>("Accounting.JournalEntryLine_GetByCriteria", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            ChartOfAccountId = criteria.ChartOfAccountId,
+            SourceTypeId = criteria.SourceTypeId,
+            SourceId = criteria.SourceId,
+            SourceReceiptId = criteria.SourceReceiptId,
+            SourcePaymentSequence = criteria.SourcePaymentSequence,
+            ReservationId = criteria.ReservationId,
+            PropertyId = criteria.PropertyId,
+            ContactId = criteria.ContactId,
+            IncludeVoided = criteria.IncludeVoided,
+            IncludeUnposted = criteria.IncludeUnposted,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<JournalEntryLineSearchResult>();
+
+        return res.Select(ConvertLineSearchEntityToModel);
     }
 
     public async Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId)
@@ -44,6 +72,33 @@ public partial class JournalEntryRepository
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
 
+    public async Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetByCode", new
+        {
+            JournalEntryCode = journalEntryCode,
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryScalarAsync<int>("Accounting.JournalEntry_ExistsByCode", new
+        {
+            JournalEntryCode = journalEntryCode,
+            OrganizationId = organizationId
+        });
+
+        return result == 1;
+    }
+
     public async Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -56,11 +111,14 @@ public partial class JournalEntryRepository
             {
                 OrganizationId = journalEntry.OrganizationId,
                 OfficeId = journalEntry.OfficeId,
+                JournalEntryCode = journalEntry.JournalEntryCode,
                 TransactionDate = journalEntry.TransactionDate,
                 PostingDate = journalEntry.PostingDate,
-                TransactionTypeId = journalEntry.TransactionTypeId,
+                TransactionTypeId = DefaultJournalEntryTransactionTypeId,
                 SourceTypeId = journalEntry.SourceTypeId,
                 SourceId = journalEntry.SourceId,
+                SourceReceiptId = journalEntry.SourceReceiptId,
+                SourcePaymentSequence = journalEntry.SourcePaymentSequence,
                 Memo = journalEntry.Memo,
                 IsPosted = journalEntry.IsPosted,
                 IsVoided = journalEntry.IsVoided,
@@ -124,7 +182,8 @@ public partial class JournalEntryRepository
             if (currentEntryResult == null || !currentEntryResult.Any())
                 throw new Exception("Journal entry not found");
 
-            var currentEntry = ConvertEntityToModel(currentEntryResult.FirstOrDefault()!);
+            var currentEntity = currentEntryResult.FirstOrDefault()!;
+            var currentEntry = ConvertEntityToModel(currentEntity);
             var currentLineIds = currentEntry.JournalEntryLines.Select(l => l.JournalEntryLineId).ToHashSet();
             var incomingActiveLines = journalEntry.JournalEntryLines.Where(l => l.Debit != 0 || l.Credit != 0).ToList();
             var incomingLineIds = incomingActiveLines.Where(l => l.JournalEntryLineId != Guid.Empty).Select(l => l.JournalEntryLineId).ToHashSet();
@@ -136,7 +195,7 @@ public partial class JournalEntryRepository
                 OfficeId = journalEntry.OfficeId,
                 TransactionDate = journalEntry.TransactionDate,
                 PostingDate = journalEntry.PostingDate,
-                TransactionTypeId = journalEntry.TransactionTypeId,
+                TransactionTypeId = currentEntity.TransactionTypeId,
                 SourceTypeId = journalEntry.SourceTypeId,
                 SourceId = journalEntry.SourceId,
                 Memo = journalEntry.Memo,

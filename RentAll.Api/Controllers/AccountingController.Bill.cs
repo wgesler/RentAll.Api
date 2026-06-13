@@ -21,7 +21,7 @@ namespace RentAll.Api.Controllers
 
                 try
                 {
-                    // await _accountingManager.CreateJournalEntriesFromBillPaymentAsync(billPayment, CurrentUser);
+                    await _accountingManager.CreateJournalEntriesFromBillPaymentAsync(billPayment, CurrentUser);
                 }
                 catch (Exception journalEntryEx)
                 {

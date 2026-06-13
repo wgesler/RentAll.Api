@@ -17,7 +17,8 @@ public partial class MaintenanceRepository
             PropertyId = criteria.PropertyId,
             IncludeInactive = criteria.IncludeInactive,
             StartDate = criteria.StartDate,
-            EndDate = criteria.EndDate
+            EndDate = criteria.EndDate,
+            ReceiptKind = criteria.ReceiptKind.HasValue ? (byte?)criteria.ReceiptKind.Value : null
         });
 
         if (res == null || !res.Any())

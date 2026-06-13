@@ -17,7 +17,7 @@ public partial class AccountingManager
     int PARKING_EXPENSE_COST_CODE = 0;
 
 
-    #region Billing
+    #region Setup
     public async Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate)
     {
         var lineItems = new List<LedgerLine>();
@@ -83,9 +83,7 @@ public partial class AccountingManager
             }
         }
     }
-    #endregion
 
-    #region Cost Codes
     public async Task CreateDefaultCostCodeAsync(Guid organizationId, int officeId)
     {
         var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);

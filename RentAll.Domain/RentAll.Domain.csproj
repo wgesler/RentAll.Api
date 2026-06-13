@@ -1,24 +1,67 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+
+
   <PropertyGroup>
+
     <TargetFramework>net8.0</TargetFramework>
+
     <ImplicitUsings>enable</ImplicitUsings>
+
     <Nullable>enable</Nullable>
+
   </PropertyGroup>
 
+
+
   <ItemGroup>
-    <Compile Update="Managers\AccountingManager.Bills.cs">
+
+    <Compile Update="Managers\AccountingManager.JournalEntryBill.cs">
+
       <DependentUpon>AccountingManager.cs</DependentUpon>
+
     </Compile>
-    <Compile Update="Managers\AccountingManager.Invoices.cs">
+
+    <Compile Update="Managers\AccountingManager.JournalEntryInvoices.cs">
+
       <DependentUpon>AccountingManager.cs</DependentUpon>
+
     </Compile>
+
+    <Compile Update="Managers\AccountingManager.JournalEntryReceipt.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
+    <Compile Update="Managers\AccountingManager.JournalEntrySync.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
     <Compile Update="Managers\AccountingManager.JournalEntries.cs">
+
       <DependentUpon>AccountingManager.cs</DependentUpon>
+
     </Compile>
-    <Compile Update="Managers\AccountingManager.InvoiceJournalEntry.cs">
+
+    <Compile Update="Managers\AccountingManager.PaymentBills.cs">
+
       <DependentUpon>AccountingManager.cs</DependentUpon>
+
     </Compile>
+
+    <Compile Update="Managers\AccountingManager.PaymentInvoices.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
   </ItemGroup>
 
+
+
 </Project>
+
+

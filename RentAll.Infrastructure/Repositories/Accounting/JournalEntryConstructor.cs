@@ -11,6 +11,7 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 
 public partial class JournalEntryRepository : IJournalEntryRepository
 {
+    private const int DefaultJournalEntryTransactionTypeId = 0;
     private static readonly JsonSerializerOptions JsonOptions = SqlColumnJsonSerializerOptions.CaseInsensitive;
     private readonly string _dbConnectionString;
     private readonly ILogger<JournalEntryRepository> _logger;
@@ -30,11 +31,13 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             JournalEntryId = e.JournalEntryId,
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
+            JournalEntryCode = e.JournalEntryCode,
             TransactionDate = e.TransactionDate,
             PostingDate = e.PostingDate,
-            TransactionTypeId = e.TransactionTypeId,
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
+            SourceReceiptId = e.SourceReceiptId,
+            SourcePaymentSequence = e.SourcePaymentSequence,
             Memo = e.Memo,
             IsPosted = e.IsPosted,
             IsVoided = e.IsVoided,
@@ -118,6 +121,38 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
             ModifiedBy = e.ModifiedBy
+        };
+    }
+
+    private JournalEntryLineSearchResult ConvertLineSearchEntityToModel(JournalEntryLineSearchEntity e)
+    {
+        return new JournalEntryLineSearchResult
+        {
+            JournalEntryLineId = e.JournalEntryLineId,
+            JournalEntryId = e.JournalEntryId,
+            ChartOfAccountId = e.ChartOfAccountId,
+            CostCodeId = e.CostCodeId,
+            PropertyId = e.PropertyId,
+            ReservationId = e.ReservationId,
+            ContactId = e.ContactId,
+            Debit = e.Debit,
+            Credit = e.Credit,
+            Memo = e.Memo,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy,
+            OfficeId = e.OfficeId,
+            JournalEntryCode = e.JournalEntryCode,
+            TransactionDate = e.TransactionDate,
+            PostingDate = e.PostingDate,
+            SourceTypeId = e.SourceTypeId,
+            SourceId = e.SourceId,
+            SourceReceiptId = e.SourceReceiptId,
+            SourcePaymentSequence = e.SourcePaymentSequence,
+            JournalEntryMemo = e.JournalEntryMemo,
+            IsPosted = e.IsPosted,
+            IsVoided = e.IsVoided
         };
     }
 }

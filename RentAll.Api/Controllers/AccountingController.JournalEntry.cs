@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.JournalEntries;
+using RentAll.Api.Dtos.Accounting.JournalEntryLines;
 
 namespace RentAll.Api.Controllers
 {
@@ -6,11 +7,11 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
-        [HttpPost("journal-entry/search")]
-        public async Task<IActionResult> SearchJournalEntries([FromBody] GetJournalEntryDto dto)
+        [HttpPost("journal-entry-line/search")]
+        public async Task<IActionResult> SearchJournalEntryLines([FromBody] GetJournalEntryLineDto dto)
         {
             if (dto == null)
-                return BadRequest("Journal entry search criteria is required");
+                return BadRequest("Journal entry line search criteria is required");
 
             var (isValid, errorMessage) = dto.IsValid();
             if (!isValid)
@@ -19,14 +20,36 @@ namespace RentAll.Api.Controllers
             try
             {
                 var criteria = dto.ToCriteria(CurrentOrganizationId);
-                var journalEntries = await _journalEntryRepository.GetJournalEntriesAsync(criteria);
-                var response = journalEntries.Select(j => new JournalEntryResponseDto(j)).ToList();
+                var journalEntryLines = await _journalEntryRepository.GetJournalEntryLinesAsync(criteria);
+                var response = journalEntryLines.Select(l => new JournalEntryLineSearchResponseDto(l)).ToList();
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching journal entries");
-                return ServerError("An error occurred while retrieving journal entries");
+                _logger.LogError(ex, "Error searching journal entry lines");
+                return ServerError("An error occurred while retrieving journal entry lines");
+            }
+        }
+
+        [HttpGet("journal-entry/code/{journalEntryCode}")]
+        public async Task<IActionResult> GetJournalEntryByCode(string journalEntryCode)
+        {
+            if (string.IsNullOrWhiteSpace(journalEntryCode))
+                return BadRequest("Journal entry code is required");
+
+            try
+            {
+                var journalEntry = await _journalEntryRepository.GetJournalEntryByCodeAsync(journalEntryCode.Trim(), CurrentOrganizationId);
+                if (journalEntry == null)
+                    return NotFound("Journal entry not found");
+
+                var response = new JournalEntryResponseDto(journalEntry);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting journal entry by code: {JournalEntryCode}", journalEntryCode);
+                return ServerError("An error occurred while retrieving the journal entry");
             }
         }
 
@@ -132,6 +155,25 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error posting journal entry: {JournalEntryId}", journalEntryId);
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("journal-entry/{journalEntryId}/unpost")]
+        public async Task<IActionResult> UnpostJournalEntry(Guid journalEntryId)
+        {
+            if (journalEntryId == Guid.Empty)
+                return BadRequest("Journal entry ID is required");
+
+            try
+            {
+                var journalEntry = await _accountingManager.UnpostJournalEntryAsync(journalEntryId, CurrentOrganizationId, CurrentUser);
+                var response = new JournalEntryResponseDto(journalEntry);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unposting journal entry: {JournalEntryId}", journalEntryId);
                 return BadRequest(ex.Message);
             }
         }

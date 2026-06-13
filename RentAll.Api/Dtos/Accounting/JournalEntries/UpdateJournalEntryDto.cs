@@ -10,9 +10,10 @@ public class UpdateJournalEntryDto
     public int OfficeId { get; set; }
     public DateOnly TransactionDate { get; set; }
     public DateOnly PostingDate { get; set; }
-    public int TransactionTypeId { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
+    public int? SourceReceiptId { get; set; }
+    public int? SourcePaymentSequence { get; set; }
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
@@ -57,9 +58,10 @@ public class UpdateJournalEntryDto
             OfficeId = OfficeId,
             TransactionDate = TransactionDate,
             PostingDate = PostingDate,
-            TransactionTypeId = TransactionTypeId,
             SourceTypeId = SourceTypeId,
             SourceId = SourceId,
+            SourceReceiptId = SourceReceiptId,
+            SourcePaymentSequence = SourcePaymentSequence,
             Memo = Memo,
             IsPosted = IsPosted,
             IsVoided = IsVoided,

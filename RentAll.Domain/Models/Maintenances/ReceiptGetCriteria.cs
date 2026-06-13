@@ -1,3 +1,5 @@
+using RentAll.Domain.Enums;
+
 namespace RentAll.Domain.Models;
 
 public class ReceiptGetCriteria
@@ -8,4 +10,5 @@ public class ReceiptGetCriteria
     public bool IncludeInactive { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+    public ReceiptKind? ReceiptKind { get; set; }
 }

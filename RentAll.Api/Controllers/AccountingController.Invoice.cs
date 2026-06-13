@@ -73,7 +73,7 @@ namespace RentAll.Api.Controllers
 
                 try
                 {
-                    // await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
+                    await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
                 }
                 catch (Exception journalEntryEx)
                 {
@@ -229,7 +229,7 @@ namespace RentAll.Api.Controllers
 
                 try
                 {
-                    // await _accountingManager.CreateJournalEntriesFromInvoicePaymentAsync(invoicePayment, CurrentUser);
+                    await _accountingManager.CreateJournalEntriesFromInvoicePaymentAsync(invoicePayment, CurrentUser);
                 }
                 catch (Exception journalEntryEx)
                 {

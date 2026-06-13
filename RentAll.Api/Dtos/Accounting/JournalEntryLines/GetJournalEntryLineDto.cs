@@ -1,17 +1,24 @@
-namespace RentAll.Api.Dtos.Accounting.JournalEntries;
+namespace RentAll.Api.Dtos.Accounting.JournalEntryLines;
 
-public class GetJournalEntryDto
+public class GetJournalEntryLineDto
 {
     public int[] OfficeIds { get; set; } = [];
+    public int? ChartOfAccountId { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
-    public int? TransactionTypeId { get; set; }
+    public Guid? ReservationId { get; set; }
+    public Guid? PropertyId { get; set; }
+    public Guid? ContactId { get; set; }
     public bool IncludeVoided { get; set; }
     public bool IncludeUnposted { get; set; } = true;
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 
     public string ResolvedOfficeIds => string.Join(",", OfficeIds);
+
+    /// <summary>Null or non-positive values mean all accounts.</summary>
+    public int? ResolvedChartOfAccountId =>
+        ChartOfAccountId is > 0 ? ChartOfAccountId : null;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {

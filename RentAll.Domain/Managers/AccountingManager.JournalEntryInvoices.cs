@@ -5,10 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    const int InvoiceSourceTypeId = 0;
-    const int ReceiptSourceTypeId = 1;
-
-    #region External Triggers
+    #region Triggers
     public async Task<JournalEntry> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         if (invoice.InvoiceId == Guid.Empty)
@@ -18,7 +15,7 @@ public partial class AccountingManager
         {
             OrganizationId = invoice.OrganizationId,
             OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = InvoiceSourceTypeId,
+            SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
             IncludeVoided = true,
             IncludeUnposted = true
@@ -41,7 +38,7 @@ public partial class AccountingManager
         {
             OrganizationId = invoice.OrganizationId,
             OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = ReceiptSourceTypeId,
+            SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
             IncludeVoided = true,
             IncludeUnposted = true
@@ -72,7 +69,7 @@ public partial class AccountingManager
     }
     #endregion
 
-    #region Invoice Journal Entry
+    #region Journal Entry
     async Task<JournalEntry> BuildJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
@@ -107,25 +104,25 @@ public partial class AccountingManager
             ? $"Invoice {invoice.InvoiceCode}"
             : invoice.Notes.Trim();
 
-        var journalEntryLines = new List<JournalEntryLine>
+        var journalEntryLines = new List<JournalEntryLine>();
+        var accountsReceivableAmount = Math.Abs(totalAmount);
+        journalEntryLines.Add(new JournalEntryLine
         {
-            new()
-            {
-                ChartOfAccountId = accountsReceivableAccountId,
-                ReservationId = invoice.ReservationId,
-                PropertyId = invoice.PropertyId,
-                ContactId = invoice.ContactId,
-                Debit = totalAmount,
-                Credit = 0,
-                Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
-                CreatedBy = currentUser
-            }
-        };
+            ChartOfAccountId = accountsReceivableAccountId,
+            ReservationId = invoice.ReservationId,
+            PropertyId = invoice.PropertyId,
+            ContactId = invoice.ContactId,
+            Debit = totalAmount > 0 ? accountsReceivableAmount : 0,
+            Credit = totalAmount < 0 ? accountsReceivableAmount : 0,
+            Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
+            CreatedBy = currentUser
+        });
 
         foreach (var line in chargeLines)
         {
             costCodeById.TryGetValue(line.CostCodeId, out var costCode);
             var incomeAccountId = ResolveChartOfAccountIdForCostCode(costCode, chartOfAccounts, invoice.OfficeId, defaultIncomeAccountId);
+            var lineAmount = Math.Abs(line.Amount);
 
             journalEntryLines.Add(new JournalEntryLine
             {
@@ -134,8 +131,8 @@ public partial class AccountingManager
                 ReservationId = line.ReservationId ?? invoice.ReservationId,
                 PropertyId = invoice.PropertyId,
                 ContactId = invoice.ContactId,
-                Debit = 0,
-                Credit = line.Amount,
+                Debit = line.Amount < 0 ? lineAmount : 0,
+                Credit = line.Amount > 0 ? lineAmount : 0,
                 Memo = line.Description,
                 CreatedBy = currentUser
             });
@@ -147,8 +144,7 @@ public partial class AccountingManager
             OfficeId = invoice.OfficeId,
             TransactionDate = transactionDate,
             PostingDate = postingDate,
-            TransactionTypeId = (int)TransactionType.Charge,
-            SourceTypeId = InvoiceSourceTypeId,
+            SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
             Memo = memo,
             JournalEntryLines = journalEntryLines,
@@ -171,24 +167,23 @@ public partial class AccountingManager
 
         var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var accountsReceivableAccountId = ResolveAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId);
-        var defaultBankAccountId = ResolveDefaultBankAccountId(chartOfAccounts, invoice.OfficeId);
-        var cashAccountId = ResolveChartOfAccountIdForCostCode(paymentCostCode, chartOfAccounts, invoice.OfficeId, defaultBankAccountId);
+        var undepositedFundsAccountId = ResolveUndepositedFundsAccountId(chartOfAccounts, invoice.OfficeId);
 
         var amount = Math.Abs(paymentLedgerLine.Amount);
         var transactionDate = paymentLedgerLine.LedgerLineDate;
         var postingDate = paymentLedgerLine.LedgerLineDate;
         var memo = string.IsNullOrWhiteSpace(paymentLedgerLine.Description)
-            ? $"Receipt - {invoice.InvoiceCode}"
+            ? $"Invoice Payment - {invoice.InvoiceCode}"
             : paymentLedgerLine.Description.Trim();
 
-        JournalEntryLine cashLine;
+        JournalEntryLine undepositedFundsLine;
         JournalEntryLine accountsReceivableLine;
 
         if (paymentLedgerLine.Amount > 0)
         {
-            cashLine = new JournalEntryLine
+            undepositedFundsLine = new JournalEntryLine
             {
-                ChartOfAccountId = cashAccountId,
+                ChartOfAccountId = undepositedFundsAccountId,
                 CostCodeId = paymentLedgerLine.CostCodeId,
                 ReservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId,
                 PropertyId = invoice.PropertyId,
@@ -212,9 +207,9 @@ public partial class AccountingManager
         }
         else
         {
-            cashLine = new JournalEntryLine
+            undepositedFundsLine = new JournalEntryLine
             {
-                ChartOfAccountId = cashAccountId,
+                ChartOfAccountId = undepositedFundsAccountId,
                 CostCodeId = paymentLedgerLine.CostCodeId,
                 ReservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId,
                 PropertyId = invoice.PropertyId,
@@ -243,11 +238,10 @@ public partial class AccountingManager
             OfficeId = invoice.OfficeId,
             TransactionDate = transactionDate,
             PostingDate = postingDate,
-            TransactionTypeId = (int)TransactionType.Payment,
-            SourceTypeId = ReceiptSourceTypeId,
+            SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine> { cashLine, accountsReceivableLine },
+            JournalEntryLines = new List<JournalEntryLine> { undepositedFundsLine, accountsReceivableLine },
             CreatedBy = currentUser
         };
     }
@@ -281,6 +275,26 @@ public partial class AccountingManager
 
         if (account == null)
             throw new Exception($"No Income chart of account is configured for office {officeId}");
+
+        return account.AccountId;
+    }
+
+    static int ResolveUndepositedFundsAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
+    {
+        var account = chartOfAccounts
+            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
+            .Where(a =>
+                a.Name.Contains("Undeposited", StringComparison.OrdinalIgnoreCase) ||
+                a.AccountNo.Contains("Undeposited", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => a.AccountId)
+            .FirstOrDefault()
+            ?? chartOfAccounts
+                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
+                .OrderBy(a => a.AccountId)
+                .FirstOrDefault();
+
+        if (account == null)
+            throw new Exception($"No Undeposited Funds chart of account is configured for office {officeId}");
 
         return account.AccountId;
     }

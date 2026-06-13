@@ -22,6 +22,7 @@ public partial class AccountingManager
         bills = bills.Where(b => b.IsActive).OrderBy(b => b.DueDate).ThenBy(b => b.ReceiptId).ToList();
 
         var availableAmount = amountPaid;
+        var paymentApplications = new List<BillPaymentApplication>();
         for (var billIndex = 0; billIndex < bills.Count && availableAmount != 0; billIndex++)
         {
             var bill = bills[billIndex];
@@ -53,12 +54,23 @@ public partial class AccountingManager
             bill.ModifiedOn = DateTimeOffset.UtcNow;
 
             availableAmount -= amountForBill;
-            bills[billIndex] = await _maintenanceRepository.UpdateReceiptAsync(bill);
+            var updatedBill = await _maintenanceRepository.UpdateReceiptAsync(bill);
+            bills[billIndex] = updatedBill;
+            paymentApplications.Add(new BillPaymentApplication
+            {
+                Bill = updatedBill,
+                AmountApplied = amountForBill,
+                PaymentDate = paymentDate,
+                CostCodeId = costCodeId,
+                Description = description,
+                PaymentSequence = await GetNextBillPaymentSequenceAsync(updatedBill)
+            });
         }
 
         return new BillPayment
         {
-            Bills = bills
+            Bills = bills,
+            PaymentApplications = paymentApplications
         };
     }
     #endregion
