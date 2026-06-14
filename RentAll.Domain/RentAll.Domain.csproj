@@ -16,43 +16,55 @@
 
   <ItemGroup>
 
-    <Compile Update="Managers\AccountingManager.JournalEntryBill.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntries.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager.JournalEntryInvoices.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryBill.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager.JournalEntryReceipt.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryDeposits.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager.JournalEntrySync.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryInvoices.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager.JournalEntries.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryReceipt.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager.PaymentBills.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryRefresh.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager.PaymentInvoices.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntrySync.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
+    <Compile Update="Managers\AccountingManager\AccountingManager.PaymentBills.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
+    <Compile Update="Managers\AccountingManager\AccountingManager.PaymentInvoices.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
@@ -63,5 +75,4 @@
 
 
 </Project>
-
 

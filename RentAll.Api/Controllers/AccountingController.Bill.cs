@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.Bills;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -17,7 +18,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var billPayment = await _accountingManager.ApplyPaymentToBillsAsync(dto.Bills, CurrentOrganizationId, CurrentOfficeAccess,
-                    dto.ChartOfAccountId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
+                    dto.ChartOfAccountId, dto.Description, dto.Amount, dto.PaymentDate, (PaymentType)dto.PaymentTypeId, CurrentUser);
 
                 try
                 {

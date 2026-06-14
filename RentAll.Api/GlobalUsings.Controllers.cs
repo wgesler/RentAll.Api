@@ -3,6 +3,7 @@ global using RentAll.Api.Dtos.Common;
 global using RentAll.Api.Dtos.Emails.Alerts;
 global using RentAll.Api.Dtos.Emails.EmailHtmls;
 global using RentAll.Api.Dtos.Emails.Emails;
+global using RentAll.Api.Dtos.Accounting.CheckHtmls;
 global using RentAll.Api.Dtos.Leads.Owners;
 global using RentAll.Api.Dtos.Organizations.Accounting;
 global using RentAll.Api.Dtos.Organizations.Agents;

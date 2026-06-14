@@ -49,4 +49,13 @@ public interface IAccountingRepository
     Task<ChartOfAccount> UpdateChartOfAccountByIdAsync(ChartOfAccount chartOfAccount);
     Task DeleteChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
     #endregion
+
+    #region CheckHtml
+    Task<CheckHtml?> GetCheckHtmlByScopeAsync(Guid organizationId, int? officeId);
+    Task<CheckHtml?> GetCheckHtmlByIdAsync(Guid checkHtmlId);
+    Task<List<CheckHtml>> GetCheckHtmlAllAsync(Guid? organizationId = null);
+    Task<CheckHtml> CreateCheckHtmlAsync(CheckHtml checkHtml);
+    Task<CheckHtml> UpdateCheckHtmlByIdAsync(CheckHtml checkHtml);
+    Task DeleteCheckHtmlByIdAsync(Guid checkHtmlId);
+    #endregion
 }

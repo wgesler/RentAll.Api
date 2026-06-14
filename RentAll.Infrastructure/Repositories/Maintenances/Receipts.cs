@@ -111,6 +111,8 @@ public partial class MaintenanceRepository
             VendorName = receipt.VendorName,
             Splits = SerializeReceiptSplits(receipt.Splits),
             ReceiptPath = receipt.ReceiptPath,
+            PaymentTypeId = receipt.PaymentTypeId,
+            CheckPaid = receipt.CheckPaid,
             IsActive = receipt.IsActive,
             CreatedBy = receipt.CreatedBy
         });
@@ -148,6 +150,8 @@ public partial class MaintenanceRepository
             VendorName = receipt.VendorName,
             Splits = SerializeReceiptSplits(receipt.Splits),
             ReceiptPath = receipt.ReceiptPath,
+            PaymentTypeId = receipt.PaymentTypeId,
+            CheckPaid = receipt.CheckPaid,
             IsActive = receipt.IsActive,
             ModifiedBy = receipt.ModifiedBy
         });

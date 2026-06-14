@@ -78,6 +78,8 @@ public class CreateReceiptDto
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             ReceiptPath = null, 
+            PaymentTypeId = 0,
+            CheckPaid = false,
             IsActive = true,
             CreatedBy = currentUser
         };

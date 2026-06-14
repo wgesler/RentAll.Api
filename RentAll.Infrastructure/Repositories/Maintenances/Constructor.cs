@@ -158,6 +158,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             VendorName = e.VendorName,
             Splits = splits,
             ReceiptPath = e.ReceiptPath,
+            PaymentTypeId = e.PaymentTypeId,
+            CheckPaid = e.CheckPaid,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,
             CreatedByName = e.CreatedByName,

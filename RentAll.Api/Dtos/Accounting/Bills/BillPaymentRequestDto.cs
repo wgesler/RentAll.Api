@@ -6,6 +6,7 @@ public class BillPaymentRequestDto
     public int ChartOfAccountId { get; set; }
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    public int PaymentTypeId { get; set; }
     public List<int> Bills { get; set; } = new List<int>();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -15,6 +16,9 @@ public class BillPaymentRequestDto
 
         if (ChartOfAccountId <= 0)
             return (false, "ChartOfAccountId is required");
+
+        if (PaymentTypeId < 0 || PaymentTypeId > 4)
+            return (false, "Invalid payment type");
 
         if (Amount == 0)
             return (false, "No payment submitted");

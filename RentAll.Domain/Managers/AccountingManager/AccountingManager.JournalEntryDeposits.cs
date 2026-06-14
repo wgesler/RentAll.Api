@@ -5,15 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task<JournalEntry> CreateJournalEntryFromDepositAsync(
-        int officeId,
-        Guid organizationId,
-        int bankChartOfAccountId,
-        string description,
-        decimal amount,
-        DateOnly depositDate,
-        List<Guid> journalEntryLineIds,
-        Guid currentUser)
+    public async Task<JournalEntry> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId,
+        string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser)
     {
         if (officeId <= 0)
             throw new Exception("OfficeId is required");
@@ -104,11 +97,7 @@ public partial class AccountingManager
         return await CreateJournalEntryAsync(journalEntry);
     }
 
-    async Task<List<JournalEntryLineSearchResult>> LoadDepositSourceLinesAsync(
-        Guid organizationId,
-        int officeId,
-        List<Guid> journalEntryLineIds,
-        HashSet<int> undepositedFundsAccountIds)
+    async Task<List<JournalEntryLineSearchResult>> LoadDepositSourceLinesAsync(Guid organizationId, int officeId, List<Guid> journalEntryLineIds, HashSet<int> undepositedFundsAccountIds)
     {
         var lineIdSet = journalEntryLineIds.ToHashSet();
         var matchingLines = (await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria

@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
@@ -6,7 +7,7 @@ public partial class AccountingManager
 {
     #region Bills
     public async Task<BillPayment> ApplyPaymentToBillsAsync(List<int> billIds, Guid organizationId, string offices, int chartOfAccountId,
-        string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser)
+        string description, decimal amountPaid, DateOnly paymentDate, PaymentType paymentType, Guid currentUser)
     {
         var bills = new List<Receipt>();
         foreach (var billId in billIds)
@@ -50,6 +51,8 @@ public partial class AccountingManager
 
             bill.PaidAmount += amountForBill;
             bill.PaidDate = DateOnly.FromDateTime(DateTime.Today);
+            bill.PaymentTypeId = (int)paymentType;
+            bill.CheckPaid = false;
             bill.ModifiedBy = currentUser;
             bill.ModifiedOn = DateTimeOffset.UtcNow;
 

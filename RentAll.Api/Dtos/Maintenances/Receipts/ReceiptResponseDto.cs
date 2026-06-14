@@ -26,6 +26,8 @@ public class ReceiptResponseDto
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public int PaymentTypeId { get; set; }
+    public bool CheckPaid { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
@@ -56,6 +58,8 @@ public class ReceiptResponseDto
         Splits = (receipt.Splits ?? new List<ReceiptSplit>()).Select(split => new ReceiptSplitDto(split)).ToList();
         ReceiptPath = receipt.ReceiptPath;
         FileDetails = receipt.FileDetails;
+        PaymentTypeId = receipt.PaymentTypeId;
+        CheckPaid = receipt.CheckPaid;
         IsActive = receipt.IsActive;
         CreatedOn = receipt.CreatedOn;
         CreatedBy = receipt.CreatedByName;

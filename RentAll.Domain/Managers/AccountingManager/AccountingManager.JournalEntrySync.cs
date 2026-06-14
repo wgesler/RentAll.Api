@@ -222,7 +222,7 @@ public partial class AccountingManager
             Bill = bill,
             AmountApplied = bill.PaidAmount,
             PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            ChartOfAccountId = ResolveAccountsPayableAccountId(chartOfAccounts, bill.OfficeId),
+            ChartOfAccountId = ResolveDefaultBankAccountId(chartOfAccounts, bill.OfficeId),
             Description = $"Bill Payment - {billLabel}",
             PaymentSequence = 0
         };

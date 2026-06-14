@@ -26,6 +26,8 @@ public class Receipt
     public List<ReceiptSplit> Splits { get; set; } = new();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public int PaymentTypeId { get; set; }
+    public bool CheckPaid { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

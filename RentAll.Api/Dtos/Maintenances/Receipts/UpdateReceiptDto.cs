@@ -22,6 +22,8 @@ public class UpdateReceiptDto
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public int PaymentTypeId { get; set; }
+    public bool CheckPaid { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -81,6 +83,8 @@ public class UpdateReceiptDto
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             ReceiptPath = ReceiptPath,
+            PaymentTypeId = PaymentTypeId,
+            CheckPaid = CheckPaid,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

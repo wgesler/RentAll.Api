@@ -1,3 +1,6 @@
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
+
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
 
 public class ReceiptSplitDto

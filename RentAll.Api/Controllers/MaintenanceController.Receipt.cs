@@ -196,6 +196,8 @@ public partial class MaintenanceController
                 return NotFound("Receipt record not found");
 
             var receipt = dto.ToModel(CurrentUser);
+            receipt.PaymentTypeId = existing.PaymentTypeId;
+            receipt.CheckPaid = existing.CheckPaid;
             receipt.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                 existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
 

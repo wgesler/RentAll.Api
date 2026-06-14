@@ -25,6 +25,7 @@ namespace RentAll.Api.Controllers
         private readonly IPropertyRepository _propertyRepository;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly IPdfGenerationService _pdfGenerationService;
+        private readonly IFeatureFlagService _featureFlagService;
         private readonly ILogger<CommonController> _logger;
 
         public CommonController(
@@ -41,6 +42,7 @@ namespace RentAll.Api.Controllers
             IPropertyRepository propertyRepository,
             IFileAttachmentHelper fileAttachmentHelper,
             IPdfGenerationService pdfGenerationService,
+            IFeatureFlagService featureFlagService,
             ILogger<CommonController> logger)
         {
             _appSettings = options.Value;
@@ -56,6 +58,7 @@ namespace RentAll.Api.Controllers
             _propertyRepository = propertyRepository;
             _fileAttachmentHelper = fileAttachmentHelper;
             _pdfGenerationService = pdfGenerationService;
+            _featureFlagService = featureFlagService;
             _logger = logger;
         }
     }
