@@ -52,7 +52,7 @@ public partial class AccountingManager
             bill.PaidAmount += amountForBill;
             bill.PaidDate = DateOnly.FromDateTime(DateTime.Today);
             bill.PaymentTypeId = (int)paymentType;
-            bill.CheckPaid = false;
+            bill.CheckPrinted = false;
             bill.ModifiedBy = currentUser;
             bill.ModifiedOn = DateTimeOffset.UtcNow;
 

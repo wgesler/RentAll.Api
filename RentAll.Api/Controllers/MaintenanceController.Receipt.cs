@@ -204,7 +204,7 @@ public partial class MaintenanceController
 
             var receipt = dto.ToModel(CurrentUser);
             receipt.PaymentTypeId = existing.PaymentTypeId;
-            receipt.CheckPaid = existing.CheckPaid;
+            receipt.CheckPrinted = existing.CheckPrinted;
             receipt.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                 existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
 

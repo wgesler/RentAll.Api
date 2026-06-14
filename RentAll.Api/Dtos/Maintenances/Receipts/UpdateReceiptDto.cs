@@ -23,7 +23,7 @@ public class UpdateReceiptDto
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
-    public bool CheckPaid { get; set; }
+    public bool CheckPrinted { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -84,7 +84,7 @@ public class UpdateReceiptDto
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             ReceiptPath = ReceiptPath,
             PaymentTypeId = PaymentTypeId,
-            CheckPaid = CheckPaid,
+            CheckPrinted = CheckPrinted,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

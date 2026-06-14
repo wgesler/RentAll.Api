@@ -27,7 +27,7 @@ public class Receipt
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
-    public bool CheckPaid { get; set; }
+    public bool CheckPrinted { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
