@@ -1,6 +1,8 @@
 using RentAll.Domain.Enums;
+using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Interfaces.Services;
 
 namespace RentAll.Domain.Managers;
 
@@ -16,6 +18,7 @@ public partial class AccountingManager : IAccountingManager
     private readonly IReservationRepository _reservationRepository;
     private readonly IJournalEntryRepository _journalEntryRepository;
     private readonly IOrganizationManager _organizationManager;
+    private readonly IFeatureFlagService _featureFlagService;
 
     public AccountingManager(
         IOrganizationRepository organizationRepository,
@@ -24,7 +27,8 @@ public partial class AccountingManager : IAccountingManager
         IMaintenanceRepository maintenanceRepository,
         IReservationRepository reservationRepository,
         IJournalEntryRepository journalEntryRepository,
-        IOrganizationManager organizationManager)
+        IOrganizationManager organizationManager,
+        IFeatureFlagService featureFlagService)
     {
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
@@ -33,5 +37,9 @@ public partial class AccountingManager : IAccountingManager
         _reservationRepository = reservationRepository;
         _journalEntryRepository = journalEntryRepository;
         _organizationManager = organizationManager;
+        _featureFlagService = featureFlagService;
     }
+
+    bool IsAccountingFeatureEnabled()
+        => _featureFlagService.IsEnabled(FeatureFlagKeys.Accounting);
 }

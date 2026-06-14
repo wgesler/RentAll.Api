@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.Deposits;
+using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers
 {
@@ -13,6 +14,9 @@ namespace RentAll.Api.Controllers
             var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
+
+            if (!_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+                return NotFound(new { message = "Accounting is not enabled in this environment." });
 
             try
             {

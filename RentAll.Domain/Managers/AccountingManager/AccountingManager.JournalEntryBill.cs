@@ -34,6 +34,9 @@ public partial class AccountingManager
     {
         var journalEntries = new List<JournalEntry>();
 
+        if (!IsAccountingFeatureEnabled())
+            return journalEntries;
+
         foreach (var paymentApplication in billPayment.PaymentApplications)
         {
             var journalEntry = await CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);

@@ -80,13 +80,16 @@ public partial class AccountingManager
                 ledgerLineId);
         }
 
-        await CreateJournalEntryFromInvoiceAsync(invoice, invoice.ModifiedBy);
-
-        foreach (var paymentLedgerLine in invoice.LedgerLines
-                     .Where(l => l.Amount != 0)
-                     .Where(l => costCodeById.TryGetValue(l.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode)))
+        if (IsAccountingFeatureEnabled())
         {
-            await CreateJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, invoice.ModifiedBy);
+            await CreateJournalEntryFromInvoiceAsync(invoice, invoice.ModifiedBy);
+
+            foreach (var paymentLedgerLine in invoice.LedgerLines
+                         .Where(l => l.Amount != 0)
+                         .Where(l => costCodeById.TryGetValue(l.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode)))
+            {
+                await CreateJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, invoice.ModifiedBy);
+            }
         }
     }
 
@@ -105,7 +108,8 @@ public partial class AccountingManager
             (int)SourceType.Bill,
             bill.ReceiptGuid);
 
-        await CreateJournalEntryFromBillAsync(bill, currentUser);
+        if (IsAccountingFeatureEnabled())
+            await CreateJournalEntryFromBillAsync(bill, currentUser);
 
         if (bill.PaidAmount == 0)
             return;

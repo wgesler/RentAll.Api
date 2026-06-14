@@ -1,5 +1,5 @@
 using RentAll.Api.Dtos.Accounting.Bills;
-using RentAll.Domain.Enums;
+using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers
 {
@@ -20,14 +20,17 @@ namespace RentAll.Api.Controllers
                 var billPayment = await _accountingManager.ApplyPaymentToBillsAsync(dto.Bills, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.ChartOfAccountId, dto.Description, dto.Amount, dto.PaymentDate, (PaymentType)dto.PaymentTypeId, CurrentUser);
 
-                try
+                if (_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
                 {
-                    await _accountingManager.CreateJournalEntriesFromBillPaymentAsync(billPayment, CurrentUser);
-                }
-                catch (Exception journalEntryEx)
-                {
-                    _logger.LogError(journalEntryEx, "Bill payment was applied but journal entry creation failed");
-                    return BadRequest($"Bill payment was applied but general ledger entry creation failed: {journalEntryEx.Message}");
+                    try
+                    {
+                        await _accountingManager.CreateJournalEntriesFromBillPaymentAsync(billPayment, CurrentUser);
+                    }
+                    catch (Exception journalEntryEx)
+                    {
+                        _logger.LogError(journalEntryEx, "Bill payment was applied but journal entry creation failed");
+                        return BadRequest($"Bill payment was applied but general ledger entry creation failed: {journalEntryEx.Message}");
+                    }
                 }
 
                 var response = new BillPaymentResponseDto(billPayment);

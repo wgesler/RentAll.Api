@@ -1,4 +1,6 @@
+using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
 using System.Globalization;
@@ -461,7 +463,20 @@ public class AccountingManagerLedgerLineTests
             maintenanceRepository: null!,
             reservationRepository: null!,
             journalEntryRepository: null!,
-            organizationManager: null!);
+            organizationManager: null!,
+            featureFlagService: new EnabledFeatureFlagService());
+    }
+
+    private sealed class EnabledFeatureFlagService : IFeatureFlagService
+    {
+        public IReadOnlyDictionary<string, bool> GetAll()
+            => new Dictionary<string, bool> { [FeatureFlagKeys.Accounting] = true };
+
+        public bool IsEnabled(string featureName) => true;
+
+        public void Set(string featureName, bool enabled)
+        {
+        }
     }
 
     private static decimal GetBillingRate(BillingType billingType)
