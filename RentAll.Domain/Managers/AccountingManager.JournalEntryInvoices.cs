@@ -77,6 +77,7 @@ public partial class AccountingManager
         var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var accountsReceivableAccountId = ResolveAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId);
         var defaultIncomeAccountId = ResolveDefaultIncomeAccountId(chartOfAccounts, invoice.OfficeId);
+        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
 
         var chargeLines = invoice.LedgerLines
             .Where(l => l.Amount != 0)
@@ -110,7 +111,7 @@ public partial class AccountingManager
         {
             ChartOfAccountId = accountsReceivableAccountId,
             ReservationId = invoice.ReservationId,
-            PropertyId = invoice.PropertyId,
+            PropertyId = propertyId,
             ContactId = invoice.ContactId,
             Debit = totalAmount > 0 ? accountsReceivableAmount : 0,
             Credit = totalAmount < 0 ? accountsReceivableAmount : 0,
@@ -129,7 +130,7 @@ public partial class AccountingManager
                 ChartOfAccountId = incomeAccountId,
                 CostCodeId = line.CostCodeId,
                 ReservationId = line.ReservationId ?? invoice.ReservationId,
-                PropertyId = invoice.PropertyId,
+                PropertyId = propertyId,
                 ContactId = invoice.ContactId,
                 Debit = line.Amount < 0 ? lineAmount : 0,
                 Credit = line.Amount > 0 ? lineAmount : 0,
@@ -168,6 +169,8 @@ public partial class AccountingManager
         var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var accountsReceivableAccountId = ResolveAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId);
         var undepositedFundsAccountId = ResolveUndepositedFundsAccountId(chartOfAccounts, invoice.OfficeId);
+        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
+        var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
 
         var amount = Math.Abs(paymentLedgerLine.Amount);
         var transactionDate = paymentLedgerLine.LedgerLineDate;
@@ -185,8 +188,8 @@ public partial class AccountingManager
             {
                 ChartOfAccountId = undepositedFundsAccountId,
                 CostCodeId = paymentLedgerLine.CostCodeId,
-                ReservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId,
-                PropertyId = invoice.PropertyId,
+                ReservationId = reservationId,
+                PropertyId = propertyId,
                 ContactId = invoice.ContactId,
                 Debit = amount,
                 Credit = 0,
@@ -196,8 +199,8 @@ public partial class AccountingManager
             accountsReceivableLine = new JournalEntryLine
             {
                 ChartOfAccountId = accountsReceivableAccountId,
-                ReservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId,
-                PropertyId = invoice.PropertyId,
+                ReservationId = reservationId,
+                PropertyId = propertyId,
                 ContactId = invoice.ContactId,
                 Debit = 0,
                 Credit = amount,
@@ -211,8 +214,8 @@ public partial class AccountingManager
             {
                 ChartOfAccountId = undepositedFundsAccountId,
                 CostCodeId = paymentLedgerLine.CostCodeId,
-                ReservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId,
-                PropertyId = invoice.PropertyId,
+                ReservationId = reservationId,
+                PropertyId = propertyId,
                 ContactId = invoice.ContactId,
                 Debit = 0,
                 Credit = amount,
@@ -222,8 +225,8 @@ public partial class AccountingManager
             accountsReceivableLine = new JournalEntryLine
             {
                 ChartOfAccountId = accountsReceivableAccountId,
-                ReservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId,
-                PropertyId = invoice.PropertyId,
+                ReservationId = reservationId,
+                PropertyId = propertyId,
                 ContactId = invoice.ContactId,
                 Debit = amount,
                 Credit = 0,
@@ -336,6 +339,24 @@ public partial class AccountingManager
     {
         return string.Join(' ',
             value.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
+    }
+
+    async Task<Guid?> ResolveInvoicePropertyIdAsync(Invoice invoice)
+    {
+        if (invoice.PropertyId.HasValue && invoice.PropertyId != Guid.Empty)
+            return invoice.PropertyId;
+
+        if (!invoice.ReservationId.HasValue || invoice.ReservationId == Guid.Empty)
+            return null;
+
+        if (invoice.ReservationId == SystemOrganization)
+            return null;
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId);
+        if (reservation == null || reservation.PropertyId == Guid.Empty)
+            return null;
+
+        return reservation.PropertyId;
     }
     #endregion
 }
