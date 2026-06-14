@@ -55,7 +55,7 @@ public class CreateReceiptDto
         return (true, null);
     }
 
-    public Receipt ToModel(Guid currentUser)
+    public Receipt ToModel(string receiptCode, Guid currentUser)
     {
         var normalizedBankCardId = BankCardId is > 0 ? BankCardId : null;
         var initialPaidAmount = normalizedBankCardId.HasValue ? Amount : 0;
@@ -63,6 +63,7 @@ public class CreateReceiptDto
         {
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
+            ReceiptCode = receiptCode.Trim(),
             PropertyIds = PropertyIds,
             ReceiptDate = ReceiptDate,
             DueDate = DueDate,
@@ -76,7 +77,7 @@ public class CreateReceiptDto
             VendorId = VendorId,
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
-            ReceiptPath = null, // Will be set by controller after file save
+            ReceiptPath = null, 
             IsActive = true,
             CreatedBy = currentUser
         };

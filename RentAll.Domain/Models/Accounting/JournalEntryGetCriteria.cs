@@ -6,8 +6,6 @@ public class JournalEntryGetCriteria
     public string OfficeIds { get; set; } = string.Empty;
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
-    public int? SourceReceiptId { get; set; }
-    public int? SourcePaymentSequence { get; set; }
     public bool IncludeVoided { get; set; }
     public bool IncludeUnposted { get; set; } = true;
     public DateOnly? StartDate { get; set; }

@@ -96,6 +96,7 @@ public partial class MaintenanceRepository
         {
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
+            ReceiptCode = receipt.ReceiptCode.Trim(),
             Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
             ReceiptDate = receipt.ReceiptDate,
             DueDate = receipt.DueDate,

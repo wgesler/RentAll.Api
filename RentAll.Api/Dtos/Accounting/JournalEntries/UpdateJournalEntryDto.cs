@@ -12,8 +12,6 @@ public class UpdateJournalEntryDto
     public DateOnly PostingDate { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
-    public int? SourceReceiptId { get; set; }
-    public int? SourcePaymentSequence { get; set; }
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
@@ -60,8 +58,6 @@ public class UpdateJournalEntryDto
             PostingDate = PostingDate,
             SourceTypeId = SourceTypeId,
             SourceId = SourceId,
-            SourceReceiptId = SourceReceiptId,
-            SourcePaymentSequence = SourcePaymentSequence,
             Memo = Memo,
             IsPosted = IsPosted,
             IsVoided = IsVoided,

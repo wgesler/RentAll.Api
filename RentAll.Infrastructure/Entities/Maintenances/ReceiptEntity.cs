@@ -3,6 +3,8 @@ namespace RentAll.Infrastructure.Entities.Maintenances
     public class ReceiptEntity
     {
         public int ReceiptId { get; set; }
+        public Guid ReceiptGuid { get; set; }
+        public string ReceiptCode { get; set; } = string.Empty;
         public Guid OrganizationId { get; set; }
         public int OfficeId { get; set; }
         public string OfficeName { get; set; } = string.Empty;

@@ -32,8 +32,6 @@ public partial class AccountingManager
         journalEntry.JournalEntryCode = existing.JournalEntryCode;
         journalEntry.SourceTypeId = existing.SourceTypeId;
         journalEntry.SourceId = existing.SourceId;
-        journalEntry.SourceReceiptId = existing.SourceReceiptId;
-        journalEntry.SourcePaymentSequence = existing.SourcePaymentSequence;
         journalEntry.IsPosted = existing.IsPosted;
         journalEntry.IsVoided = existing.IsVoided;
         journalEntry.CreatedBy = existing.CreatedBy;

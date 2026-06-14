@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Api.Dtos.Maintenances.Receipts;
 
 namespace RentAll.Api.Controllers;
@@ -126,7 +127,11 @@ public partial class MaintenanceController
 
         try
         {
-            var receipt = dto.ToModel(CurrentUser);
+            var receiptCode = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Receipt);
+            if (string.IsNullOrWhiteSpace(receiptCode))
+                return ServerError("Unable to generate receipt code");
+
+            var receipt = dto.ToModel(receiptCode, CurrentUser);
             var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
             receipt.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
 

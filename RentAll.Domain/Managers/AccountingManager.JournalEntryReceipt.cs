@@ -8,9 +8,6 @@ public partial class AccountingManager
     #region Triggers
     public async Task<JournalEntry> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
     {
-        if (receipt.ReceiptId <= 0)
-            throw new Exception("ReceiptId is required to create a receipt journal entry");
-
         EnsureReceiptIsCardReceipt(receipt);
 
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
@@ -18,7 +15,7 @@ public partial class AccountingManager
             OrganizationId = receipt.OrganizationId,
             OfficeIds = receipt.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Receipt,
-            SourceReceiptId = receipt.ReceiptId,
+            SourceId = receipt.ReceiptGuid,
             IncludeVoided = true,
             IncludeUnposted = true
         });
@@ -59,7 +56,7 @@ public partial class AccountingManager
 
         var transactionDate = receipt.ReceiptDate != default ? receipt.ReceiptDate : receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
-        var receiptLabel = receipt.ReceiptId.ToString();
+        var receiptLabel = receipt.ReceiptCode.Trim();
         var memo = string.IsNullOrWhiteSpace(receipt.Description)
             ? $"Receipt {receiptLabel}"
             : receipt.Description.Trim();
@@ -107,7 +104,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Receipt,
-            SourceReceiptId = receipt.ReceiptId,
+            SourceId = receipt.ReceiptGuid,
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser

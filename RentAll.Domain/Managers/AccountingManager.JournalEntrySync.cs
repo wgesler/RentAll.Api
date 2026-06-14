@@ -116,7 +116,7 @@ public partial class AccountingManager
                         OrganizationId = bill.OrganizationId,
                         OfficeIds = bill.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Bill,
-                        SourceReceiptId = bill.ReceiptId,
+                        SourceId = bill.ReceiptGuid,
                         IncludeVoided = true,
                         IncludeUnposted = true
                     },
@@ -130,18 +130,18 @@ public partial class AccountingManager
                     }
                     catch (Exception paymentEx)
                     {
-                        var paymentBillLabel = string.IsNullOrWhiteSpace(billSummary.BillNumber)
-                            ? billSummary.ReceiptId.ToString()
-                            : billSummary.BillNumber;
+                        var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
+                            ? billSummary.BillNumber
+                            : billSummary.ReceiptCode;
                         result.Errors.Add($"Bill {paymentBillLabel} payment: {paymentEx.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                var billLabel = string.IsNullOrWhiteSpace(billSummary.BillNumber)
-                    ? billSummary.ReceiptId.ToString()
-                    : billSummary.BillNumber;
+                var billLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
+                    ? billSummary.BillNumber
+                    : billSummary.ReceiptCode;
                 result.Errors.Add($"Bill {billLabel}: {ex.Message}");
             }
         }
@@ -188,7 +188,7 @@ public partial class AccountingManager
                         OrganizationId = receipt.OrganizationId,
                         OfficeIds = receipt.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Receipt,
-                        SourceReceiptId = receipt.ReceiptId,
+                        SourceId = receipt.ReceiptGuid,
                         IncludeVoided = true,
                         IncludeUnposted = true
                     },
@@ -196,7 +196,7 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                result.Errors.Add($"Receipt {receiptSummary.ReceiptId}: {ex.Message}");
+                result.Errors.Add($"Receipt {receiptSummary.ReceiptCode}: {ex.Message}");
             }
         }
 
@@ -215,7 +215,9 @@ public partial class AccountingManager
     {
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
         var paymentCostCodeId = ResolveDefaultPaymentCostCodeId(costCodes);
-        var billLabel = string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.ReceiptId.ToString() : bill.BillNumber.Trim();
+        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
+            ? bill.BillNumber.Trim()
+            : bill.ReceiptCode.Trim();
         var paymentApplication = new BillPaymentApplication
         {
             Bill = bill,
@@ -233,8 +235,7 @@ public partial class AccountingManager
                 OrganizationId = bill.OrganizationId,
                 OfficeIds = bill.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.BillPayment,
-                SourceReceiptId = bill.ReceiptId,
-                SourcePaymentSequence = paymentApplication.PaymentSequence,
+                SourceId = CreateBillPaymentSourceId(bill.ReceiptGuid, paymentApplication.PaymentSequence),
                 IncludeVoided = true,
                 IncludeUnposted = true
             },

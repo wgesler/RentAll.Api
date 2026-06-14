@@ -5,6 +5,8 @@ namespace RentAll.Api.Dtos.Maintenances.Receipts;
 public class ReceiptResponseDto
 {
     public int ReceiptId { get; set; }
+    public Guid ReceiptGuid { get; set; }
+    public string ReceiptCode { get; set; } = string.Empty;
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
@@ -33,6 +35,8 @@ public class ReceiptResponseDto
     public ReceiptResponseDto(Receipt receipt)
     {
         ReceiptId = receipt.ReceiptId;
+        ReceiptGuid = receipt.ReceiptGuid;
+        ReceiptCode = receipt.ReceiptCode;
         OrganizationId = receipt.OrganizationId;
         OfficeId = receipt.OfficeId;
         OfficeName = receipt.OfficeName;

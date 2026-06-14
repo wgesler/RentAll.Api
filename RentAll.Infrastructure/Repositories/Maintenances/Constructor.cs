@@ -139,6 +139,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         return new Receipt
         {
             ReceiptId = e.ReceiptId,
+            ReceiptGuid = e.ReceiptGuid,
+            ReceiptCode = e.ReceiptCode,
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             OfficeName = e.OfficeName,
