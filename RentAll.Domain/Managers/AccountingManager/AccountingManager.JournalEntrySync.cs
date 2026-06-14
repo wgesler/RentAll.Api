@@ -88,6 +88,7 @@ public partial class AccountingManager
         return await ClearJournalEntriesBySourceTypesAsync(
             organizationId,
             officeIds,
+            deletePostedEntries: true,
             (int)SourceType.Invoice,
             (int)SourceType.InvoicePayment);
     }
@@ -163,6 +164,7 @@ public partial class AccountingManager
         return await ClearJournalEntriesBySourceTypesAsync(
             organizationId,
             officeIds,
+            deletePostedEntries: false,
             (int)SourceType.Bill,
             (int)SourceType.BillPayment);
     }
@@ -220,7 +222,25 @@ public partial class AccountingManager
         return await ClearJournalEntriesBySourceTypesAsync(
             organizationId,
             officeIds,
+            deletePostedEntries: false,
             (int)SourceType.Receipt);
+    }
+
+    public async Task<JournalEntrySyncResult> ClearAllJournalEntriesAsync(Guid organizationId)
+    {
+        var result = new JournalEntrySyncResult();
+
+        try
+        {
+            result.JournalEntriesDeleted = await _journalEntryRepository.DeleteAllJournalEntriesByOrganizationIdAsync(organizationId);
+            await _organizationManager.ResetEntityCodeSequenceAsync(organizationId, EntityType.JournalEntry, 0);
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add(ex.Message);
+        }
+
+        return result;
     }
 
     async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
@@ -256,6 +276,7 @@ public partial class AccountingManager
     async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(
         Guid organizationId,
         string officeIds,
+        bool deletePostedEntries,
         params int[] sourceTypeIds)
     {
         var result = new JournalEntrySyncResult();
@@ -275,13 +296,17 @@ public partial class AccountingManager
             {
                 try
                 {
-                    if (entry.IsPosted)
+                    if (entry.IsPosted && !deletePostedEntries)
                     {
                         result.Errors.Add($"Cannot delete posted journal entry {entry.JournalEntryCode}");
                         continue;
                     }
 
-                    await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+                    if (deletePostedEntries && entry.IsPosted)
+                        await DeleteJournalEntryIgnoringPostedStatusAsync(entry.JournalEntryId, organizationId);
+                    else
+                        await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+
                     result.JournalEntriesDeleted++;
                 }
                 catch (Exception ex)

@@ -92,6 +92,22 @@ public partial class AccountingManager
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
     }
 
+    async Task DeleteJournalEntryIgnoringPostedStatusAsync(Guid journalEntryId, Guid organizationId)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry == null)
+            throw new Exception("Journal entry not found");
+
+        if (journalEntry.IsPosted)
+        {
+            journalEntry.IsPosted = false;
+            await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+        }
+
+        EnsureJournalEntryIsEditable(journalEntry);
+        await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
+    }
+
     public async Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);

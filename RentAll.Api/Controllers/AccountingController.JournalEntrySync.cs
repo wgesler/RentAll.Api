@@ -142,6 +142,21 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/clear/all")]
+    public async Task<IActionResult> ClearAllJournalEntries()
+    {
+        try
+        {
+            var result = await _accountingManager.ClearAllJournalEntriesAsync(CurrentOrganizationId);
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing all journal entries");
+            return ServerError("An error occurred while clearing journal entries");
+        }
+    }
+
     string ResolveOfficeIdsForJournalEntrySync(int[] requestedOfficeIds)
     {
         var allowedOfficeIds = CurrentOfficeAccess

@@ -33,4 +33,5 @@ public interface IAccountingManager
     Task<JournalEntrySyncResult> ClearBillJournalEntriesAsync(Guid organizationId, string officeIds);
     Task<JournalEntrySyncResult> SyncReceiptJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser);
     Task<JournalEntrySyncResult> ClearReceiptJournalEntriesAsync(Guid organizationId, string officeIds);
+    Task<JournalEntrySyncResult> ClearAllJournalEntriesAsync(Guid organizationId);
 }
