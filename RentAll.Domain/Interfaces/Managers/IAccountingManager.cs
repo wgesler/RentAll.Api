@@ -19,6 +19,8 @@ public interface IAccountingManager
     Task<JournalEntry> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser);
     Task<JournalEntry> CreateJournalEntryFromBillAsync(Receipt bill, Guid currentUser);
     Task<JournalEntry> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser);
+    Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
+    Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<JournalEntry> CreateJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);

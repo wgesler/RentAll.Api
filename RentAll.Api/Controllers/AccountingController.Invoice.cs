@@ -160,9 +160,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Invoice not found");
 
                 var invoice = dto.ToModel(CurrentUser);
-                invoice.OrganizationId = CurrentOrganizationId;
-
-                var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
+                var updatedInvoice = await _accountingManager.UpdateInvoiceAsync(invoice);
 
                 var response = new InvoiceResponseDto(updatedInvoice);
                 return Ok(response);

@@ -199,7 +199,23 @@ public partial class MaintenanceController
             receipt.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                 existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
 
-            var updated = await _maintenanceRepository.UpdateReceiptAsync(receipt);
+            Receipt updated;
+            if (receipt.BankCardId == null)
+            {
+                try
+                {
+                    updated = await _accountingManager.UpdateBillAsync(receipt, CurrentUser);
+                }
+                catch (InvalidOperationException journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Bill {ReceiptId} was updated but journal entry refresh failed", receipt.ReceiptId);
+                    return BadRequest(journalEntryEx.Message);
+                }
+            }
+            else
+            {
+                updated = await _maintenanceRepository.UpdateReceiptAsync(receipt);
+            }
 
             var response = new ReceiptResponseDto(updated);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
