@@ -6,5 +6,6 @@ namespace RentAll.Domain.Interfaces.Managers
     {
         Task<string> GenerateEntityCodeAsync();
         Task<string> GenerateEntityCodeAsync(Guid organizationId, EntityType entityType);
+        Task ResetEntityCodeSequenceAsync(Guid organizationId, EntityType entityType, int nextNumber = 0);
     }
 }
