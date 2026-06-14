@@ -213,8 +213,7 @@ public partial class AccountingManager
 
     async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
     {
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
-        var paymentCostCodeId = ResolveDefaultPaymentCostCodeId(costCodes);
+        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
             ? bill.BillNumber.Trim()
             : bill.ReceiptCode.Trim();
@@ -223,7 +222,7 @@ public partial class AccountingManager
             Bill = bill,
             AmountApplied = bill.PaidAmount,
             PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            CostCodeId = paymentCostCodeId,
+            ChartOfAccountId = ResolveAccountsPayableAccountId(chartOfAccounts, bill.OfficeId),
             Description = $"Bill Payment - {billLabel}",
             PaymentSequence = 0
         };

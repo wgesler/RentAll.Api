@@ -204,15 +204,12 @@ public partial class AccountingManager
         if (paymentApplication.PaymentDate == default)
             throw new Exception("Payment date is required to create a bill payment journal entry");
 
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
-        if (!costCodeById.TryGetValue(paymentApplication.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
-            throw new Exception("Bill payment must use a payment cost code");
-
         var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
         var liabilityAccountId = await ResolveBillLiabilityAccountIdAsync(bill, chartOfAccounts);
-        var defaultCashAccountId = ResolveDefaultBankAccountId(chartOfAccounts, bill.OfficeId);
-        var cashAccountId = ResolveChartOfAccountIdForCostCode(paymentCostCode, chartOfAccounts, bill.OfficeId, defaultCashAccountId);
+        var offsetAccountId = ResolveBillPaymentChartOfAccountId(
+            paymentApplication.ChartOfAccountId,
+            chartOfAccounts,
+            bill.OfficeId);
 
         var amount = Math.Abs(paymentApplication.AmountApplied);
         var transactionDate = paymentApplication.PaymentDate;
@@ -228,7 +225,7 @@ public partial class AccountingManager
             ? $"Credit Card - {bill.BankCardDisplayName}".Trim()
             : $"Accounts Payable - {billLabel}";
 
-        JournalEntryLine cashLine;
+        JournalEntryLine offsetLine;
         JournalEntryLine liabilityLine;
 
         if (paymentApplication.AmountApplied > 0)
@@ -243,10 +240,9 @@ public partial class AccountingManager
                 Memo = liabilityMemo,
                 CreatedBy = currentUser
             };
-            cashLine = new JournalEntryLine
+            offsetLine = new JournalEntryLine
             {
-                ChartOfAccountId = cashAccountId,
-                CostCodeId = paymentApplication.CostCodeId,
+                ChartOfAccountId = offsetAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
                 Debit = 0,
@@ -267,10 +263,9 @@ public partial class AccountingManager
                 Memo = liabilityMemo,
                 CreatedBy = currentUser
             };
-            cashLine = new JournalEntryLine
+            offsetLine = new JournalEntryLine
             {
-                ChartOfAccountId = cashAccountId,
-                CostCodeId = paymentApplication.CostCodeId,
+                ChartOfAccountId = offsetAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
                 Debit = amount,
@@ -289,13 +284,27 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = CreateBillPaymentSourceId(bill.ReceiptGuid, paymentApplication.PaymentSequence),
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine> { liabilityLine, cashLine },
+            JournalEntryLines = new List<JournalEntryLine> { liabilityLine, offsetLine },
             CreatedBy = currentUser
         };
     }
     #endregion
 
     #region Static Helpers
+    static int ResolveBillPaymentChartOfAccountId(int chartOfAccountId, List<ChartOfAccount> chartOfAccounts, int officeId)
+    {
+        if (chartOfAccountId <= 0)
+            throw new Exception("Chart of account is required for bill payment");
+
+        var account = chartOfAccounts.FirstOrDefault(a =>
+            a.AccountId == chartOfAccountId && a.OfficeId == officeId);
+
+        if (account == null)
+            throw new Exception("Invalid chart of account for bill payment");
+
+        return account.AccountId;
+    }
+
     async Task<int> ResolveBillLiabilityAccountIdAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts)
     {
         if (bill.BankCardId is > 0)

@@ -7,8 +7,11 @@ public class JournalEntryLineEntity
     public int ChartOfAccountId { get; set; }
     public int? CostCodeId { get; set; }
     public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public Guid? ContactId { get; set; }
+    public string? ContactName { get; set; }
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }

@@ -3,7 +3,7 @@ namespace RentAll.Api.Dtos.Accounting.Bills;
 public class BillPaymentRequestDto
 {
     public DateOnly PaymentDate { get; set; }
-    public int CostCodeId { get; set; }
+    public int ChartOfAccountId { get; set; }
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public List<int> Bills { get; set; } = new List<int>();
@@ -13,8 +13,8 @@ public class BillPaymentRequestDto
         if (PaymentDate == default)
             return (false, "PaymentDate is required");
 
-        if (CostCodeId < 0)
-            return (false, "CostCodeId is required");
+        if (ChartOfAccountId <= 0)
+            return (false, "ChartOfAccountId is required");
 
         if (Amount == 0)
             return (false, "No payment submitted");

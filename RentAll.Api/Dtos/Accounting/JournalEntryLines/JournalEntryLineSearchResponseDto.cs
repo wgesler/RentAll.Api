@@ -9,8 +9,11 @@ public class JournalEntryLineSearchResponseDto
     public int ChartOfAccountId { get; set; }
     public int? CostCodeId { get; set; }
     public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
     public Guid? ReservationId { get; set; }
+    public string? ReservationCode { get; set; }
     public Guid? ContactId { get; set; }
+    public string? ContactName { get; set; }
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
@@ -35,8 +38,11 @@ public class JournalEntryLineSearchResponseDto
         ChartOfAccountId = result.ChartOfAccountId;
         CostCodeId = result.CostCodeId;
         PropertyId = result.PropertyId;
+        PropertyCode = result.PropertyCode;
         ReservationId = result.ReservationId;
+        ReservationCode = result.ReservationCode;
         ContactId = result.ContactId;
+        ContactName = result.ContactName;
         Debit = result.Debit;
         Credit = result.Credit;
         Memo = result.Memo;

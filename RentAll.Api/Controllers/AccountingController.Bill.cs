@@ -17,7 +17,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var billPayment = await _accountingManager.ApplyPaymentToBillsAsync(dto.Bills, CurrentOrganizationId, CurrentOfficeAccess,
-                    dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
+                    dto.ChartOfAccountId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
 
                 try
                 {
