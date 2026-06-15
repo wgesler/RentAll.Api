@@ -6,5 +6,7 @@ public enum FeatureType
     Ticketing = 1,
     DocuSign = 2,
     QuickBooks = 3,
-    Accounting = 4
+    Accounting = 4,
+    Leads = 5,
+    Owners = 6
 }
