@@ -255,6 +255,23 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 
+    #region Features
+    private Feature ConvertEntityToModel(FeatureEntity e)
+    {
+        return new Feature
+        {
+            FeatureId = e.FeatureId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            FeatureTypeId = (FeatureType)e.FeatureTypeId,
+            FeatureCode = e.FeatureCode,
+            FeatureTypeDescription = e.FeatureTypeDescription,
+            HasAccess = e.HasAccess
+        };
+    }
+    #endregion
+
     #region Colors
     private Colour ConvertEntityToModel(ColorEntity e)
     {

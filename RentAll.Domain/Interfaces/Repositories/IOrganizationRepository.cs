@@ -69,6 +69,15 @@ public interface IOrganizationRepository
     Task DeleteBuildingByIdAsync(int buildingId);
     #endregion
 
+    #region Features
+    Task<IEnumerable<Feature>> GetFeaturesByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<Feature?> GetFeatureByIdAsync(int featureId, Guid organizationId);
+    Task<bool> ExistsFeatureByOfficeAndFeatureTypeAsync(Guid organizationId, int officeId, int featureTypeId, int? excludeFeatureId = null);
+    Task<Feature> CreateFeatureAsync(Feature feature);
+    Task<Feature> UpdateFeatureByIdAsync(Feature feature);
+    Task DeleteFeatureByIdAsync(int featureId);
+    #endregion
+
     #region Colors
     Task<IEnumerable<Colour>> GetColorsByOrganizationIdAsync(Guid organizationId);
     Task<Colour?> GetColorByIdAsync(int colorId, Guid organizationId);
