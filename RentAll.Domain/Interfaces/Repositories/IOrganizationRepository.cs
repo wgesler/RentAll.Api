@@ -70,9 +70,9 @@ public interface IOrganizationRepository
     #endregion
 
     #region Features
-    Task<IEnumerable<Feature>> GetFeaturesByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Feature>> GetFeaturesByOrganizationIdAsync(Guid organizationId);
     Task<Feature?> GetFeatureByIdAsync(int featureId, Guid organizationId);
-    Task<bool> ExistsFeatureByOfficeAndFeatureTypeAsync(Guid organizationId, int officeId, int featureTypeId, int? excludeFeatureId = null);
+    Task<bool> ExistsFeatureByOrganizationAndFeatureTypeAsync(Guid organizationId, int featureTypeId, int? excludeFeatureId = null);
     Task<Feature> CreateFeatureAsync(Feature feature);
     Task<Feature> UpdateFeatureByIdAsync(Feature feature);
     Task DeleteFeatureByIdAsync(int featureId);

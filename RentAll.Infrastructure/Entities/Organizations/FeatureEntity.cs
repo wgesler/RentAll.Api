@@ -4,8 +4,6 @@ public class FeatureEntity
 {
     public int FeatureId { get; set; }
     public Guid OrganizationId { get; set; }
-    public int OfficeId { get; set; }
-    public string OfficeName { get; set; } = string.Empty;
     public int FeatureTypeId { get; set; }
     public string FeatureCode { get; set; } = string.Empty;
     public string FeatureTypeDescription { get; set; } = string.Empty;

@@ -59,7 +59,8 @@ public class AuthTokenService : IAuthTokenService
             userGroups = userGroupsString,
             officeAccess = officeAccessString,
             properties = propertiesString,
-            startupPageId = (int)user.StartupPage
+            startupPageId = (int)user.StartupPage,
+            defaultOfficeId = user.DefaultOfficeId
         };
 
         // Serialize and base64 encode the user object

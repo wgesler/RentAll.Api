@@ -262,8 +262,6 @@ public partial class OrganizationRepository : IOrganizationRepository
         {
             FeatureId = e.FeatureId,
             OrganizationId = e.OrganizationId,
-            OfficeId = e.OfficeId,
-            OfficeName = e.OfficeName,
             FeatureTypeId = (FeatureType)e.FeatureTypeId,
             FeatureCode = e.FeatureCode,
             FeatureTypeDescription = e.FeatureTypeDescription,

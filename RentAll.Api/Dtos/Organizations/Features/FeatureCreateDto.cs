@@ -3,7 +3,6 @@ namespace RentAll.Api.Dtos.Organizations.Features;
 public class FeatureCreateDto
 {
     public Guid OrganizationId { get; set; }
-    public int OfficeId { get; set; }
     public int FeatureTypeId { get; set; }
     public bool HasAccess { get; set; }
 
@@ -11,9 +10,6 @@ public class FeatureCreateDto
     {
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
-
-        if (OfficeId <= 0)
-            return (false, "OfficeId is required");
 
         if (!Enum.IsDefined(typeof(FeatureType), FeatureTypeId))
             return (false, $"Invalid FeatureTypeId value: {FeatureTypeId}");
@@ -26,7 +22,6 @@ public class FeatureCreateDto
         return new Feature
         {
             OrganizationId = OrganizationId,
-            OfficeId = OfficeId,
             FeatureTypeId = (FeatureType)FeatureTypeId,
             HasAccess = HasAccess
         };

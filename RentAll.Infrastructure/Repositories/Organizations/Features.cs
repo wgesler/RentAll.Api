@@ -7,13 +7,12 @@ namespace RentAll.Infrastructure.Repositories.Organizations;
 public partial class OrganizationRepository
 {
     #region Selects
-    public async Task<IEnumerable<Feature>> GetFeaturesByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    public async Task<IEnumerable<Feature>> GetFeaturesByOrganizationIdAsync(Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<FeatureEntity>("Organization.Feature_GetAllByOfficeIds", new
+        var res = await db.DapperProcQueryAsync<FeatureEntity>("Organization.Feature_GetAllByOrganizationId", new
         {
-            OrganizationId = organizationId,
-            Offices = officeAccess
+            OrganizationId = organizationId
         });
 
         if (res == null || !res.Any())
@@ -37,13 +36,12 @@ public partial class OrganizationRepository
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
 
-    public async Task<bool> ExistsFeatureByOfficeAndFeatureTypeAsync(Guid organizationId, int officeId, int featureTypeId, int? excludeFeatureId = null)
+    public async Task<bool> ExistsFeatureByOrganizationAndFeatureTypeAsync(Guid organizationId, int featureTypeId, int? excludeFeatureId = null)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var result = await db.DapperProcQueryScalarAsync<int>("Organization.Feature_ExistsByOfficeAndFeatureType", new
+        var result = await db.DapperProcQueryScalarAsync<int>("Organization.Feature_ExistsByOrganizationAndFeatureType", new
         {
             OrganizationId = organizationId,
-            OfficeId = officeId,
             FeatureTypeId = featureTypeId,
             ExcludeFeatureId = excludeFeatureId
         });
@@ -59,7 +57,6 @@ public partial class OrganizationRepository
         var res = await db.DapperProcQueryAsync<FeatureEntity>("Organization.Feature_Add", new
         {
             OrganizationId = feature.OrganizationId,
-            OfficeId = feature.OfficeId,
             FeatureTypeId = (int)feature.FeatureTypeId,
             HasAccess = feature.HasAccess
         });
@@ -79,7 +76,6 @@ public partial class OrganizationRepository
         {
             FeatureId = feature.FeatureId,
             OrganizationId = feature.OrganizationId,
-            OfficeId = feature.OfficeId,
             FeatureTypeId = (int)feature.FeatureTypeId,
             HasAccess = feature.HasAccess
         });

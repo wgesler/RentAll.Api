@@ -4,8 +4,6 @@ public class FeatureResponseDto
 {
     public int FeatureId { get; set; }
     public Guid OrganizationId { get; set; }
-    public int OfficeId { get; set; }
-    public string OfficeName { get; set; } = string.Empty;
     public int FeatureTypeId { get; set; }
     public string FeatureCode { get; set; } = string.Empty;
     public string FeatureTypeDescription { get; set; } = string.Empty;
@@ -15,8 +13,6 @@ public class FeatureResponseDto
     {
         FeatureId = feature.FeatureId;
         OrganizationId = feature.OrganizationId;
-        OfficeId = feature.OfficeId;
-        OfficeName = feature.OfficeName;
         FeatureTypeId = (int)feature.FeatureTypeId;
         FeatureCode = feature.FeatureCode;
         FeatureTypeDescription = feature.FeatureTypeDescription;

@@ -6,23 +6,27 @@ namespace RentAll.Api.Controllers
 
         #region Get
 
-        [HttpGet("feature")]
-        public async Task<IActionResult> GetFeaturesByOfficeIdsAsync()
+        [HttpGet("feature/{organizationId:guid}")]
+        public async Task<IActionResult> GetFeaturesByOrganizationIdAsync(Guid organizationId)
         {
             try
             {
-                var features = await _organizationRepository.GetFeaturesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var resolvedOrganizationId = IsSuperAdmin() ? organizationId : CurrentOrganizationId;
+                if (!IsSuperAdmin() && organizationId != CurrentOrganizationId)
+                    return Unauthorized();
+
+                var features = await _organizationRepository.GetFeaturesByOrganizationIdAsync(resolvedOrganizationId);
                 var response = features.Select(f => new FeatureResponseDto(f));
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all features");
+                _logger.LogError(ex, "Error getting features for organization: {OrganizationId}", organizationId);
                 return ServerError("An error occurred while retrieving features");
             }
         }
 
-        [HttpGet("feature/{featureId}")]
+        [HttpGet("feature/{featureId:int}")]
         public async Task<IActionResult> GetFeatureById(int featureId)
         {
             if (featureId <= 0)
@@ -50,6 +54,9 @@ namespace RentAll.Api.Controllers
         [HttpPost("feature")]
         public async Task<IActionResult> CreateFeature([FromBody] FeatureCreateDto dto)
         {
+            if (!IsSuperAdmin())
+                return Unauthorized("NoAccess");
+
             if (dto == null)
                 return BadRequest("Feature data is required");
 
@@ -59,8 +66,8 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                if (await _organizationRepository.ExistsFeatureByOfficeAndFeatureTypeAsync(CurrentOrganizationId, dto.OfficeId, dto.FeatureTypeId))
-                    return Conflict("Feature already exists for this office and feature type");
+                if (await _organizationRepository.ExistsFeatureByOrganizationAndFeatureTypeAsync(dto.OrganizationId, dto.FeatureTypeId))
+                    return Conflict("Feature already exists for this organization and feature type");
 
                 var feature = dto.ToModel();
                 var createdFeature = await _organizationRepository.CreateFeatureAsync(feature);
@@ -82,6 +89,9 @@ namespace RentAll.Api.Controllers
         [HttpPut("feature")]
         public async Task<IActionResult> UpdateFeature([FromBody] FeatureUpdateDto dto)
         {
+            if (!IsSuperAdmin())
+                return Unauthorized("NoAccess");
+
             if (dto == null)
                 return BadRequest("Feature data is required");
 
@@ -91,14 +101,14 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var existingFeature = await _organizationRepository.GetFeatureByIdAsync(dto.FeatureId, CurrentOrganizationId);
+                var existingFeature = await _organizationRepository.GetFeatureByIdAsync(dto.FeatureId, dto.OrganizationId);
                 if (existingFeature == null)
                     return NotFound("Feature not found");
 
-                if (existingFeature.OfficeId != dto.OfficeId || (int)existingFeature.FeatureTypeId != dto.FeatureTypeId)
+                if ((int)existingFeature.FeatureTypeId != dto.FeatureTypeId)
                 {
-                    if (await _organizationRepository.ExistsFeatureByOfficeAndFeatureTypeAsync(CurrentOrganizationId, dto.OfficeId, dto.FeatureTypeId, dto.FeatureId))
-                        return Conflict("Feature already exists for this office and feature type");
+                    if (await _organizationRepository.ExistsFeatureByOrganizationAndFeatureTypeAsync(dto.OrganizationId, dto.FeatureTypeId, dto.FeatureId))
+                        return Conflict("Feature already exists for this organization and feature type");
                 }
 
                 var feature = dto.ToModel();
@@ -116,9 +126,12 @@ namespace RentAll.Api.Controllers
 
         #region Delete
 
-        [HttpDelete("feature/{featureId}")]
+        [HttpDelete("feature/{featureId:int}")]
         public async Task<IActionResult> DeleteFeatureByIdAsync(int featureId)
         {
+            if (!IsSuperAdmin())
+                return Unauthorized("NoAccess");
+
             if (featureId <= 0)
                 return BadRequest("Feature ID is required");
 
