@@ -25,6 +25,14 @@ public class UpdateAccountingOfficeDto
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
     public int WorkOrderNo { get; set; }
+    public int? DefaultDepositAccountId { get; set; }
+    public int? DefaultEscrowAccountId { get; set; }
+    public int? DefaultUndepFundsAccountId { get; set; }
+    public int? DefaultBankAccountId { get; set; }
+    public int? DefaultPayOutAccountId { get; set; }
+    public int? DefaultTenantExpAccountId { get; set; }
+    public int? DefaultOwnerExpAccountId { get; set; }
+    public int? DefaultCompanyExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -114,6 +122,14 @@ public class UpdateAccountingOfficeDto
             BankAddress = BankAddress,
             BankPhone = BankPhone,
             WorkOrderNo = WorkOrderNo,
+            DefaultDepositAccountId = DefaultDepositAccountId,
+            DefaultEscrowAccountId = DefaultEscrowAccountId,
+            DefaultUndepFundsAccountId = DefaultUndepFundsAccountId,
+            DefaultBankAccountId = DefaultBankAccountId,
+            DefaultPayOutAccountId = DefaultPayOutAccountId,
+            DefaultTenantExpAccountId = DefaultTenantExpAccountId,
+            DefaultOwnerExpAccountId = DefaultOwnerExpAccountId,
+            DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             IsActive = IsActive,
             ModifiedBy = currentUser

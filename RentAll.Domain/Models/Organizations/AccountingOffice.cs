@@ -22,6 +22,14 @@ public class AccountingOffice
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
     public int WorkOrderNo { get; set; }
+    public int? DefaultDepositAccountId { get; set; }
+    public int? DefaultEscrowAccountId { get; set; }
+    public int? DefaultUndepFundsAccountId { get; set; }
+    public int? DefaultBankAccountId { get; set; }
+    public int? DefaultPayOutAccountId { get; set; }
+    public int? DefaultTenantExpAccountId { get; set; }
+    public int? DefaultOwnerExpAccountId { get; set; }
+    public int? DefaultCompanyExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
