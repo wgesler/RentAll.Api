@@ -25,11 +25,11 @@ public class AccountingOfficeResponseDto
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
     public int WorkOrderNo { get; set; }
-    public int? DefaultDepositAccountId { get; set; }
+    public int? DefaultActRecvAccountId { get; set; }
     public int? DefaultEscrowAccountId { get; set; }
     public int? DefaultUndepFundsAccountId { get; set; }
     public int? DefaultBankAccountId { get; set; }
-    public int? DefaultPayOutAccountId { get; set; }
+    public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
@@ -64,11 +64,11 @@ public class AccountingOfficeResponseDto
         BankAddress = accountingOffice.BankAddress;
         BankPhone = accountingOffice.BankPhone;
         WorkOrderNo = accountingOffice.WorkOrderNo;
-        DefaultDepositAccountId = accountingOffice.DefaultDepositAccountId;
+        DefaultActRecvAccountId = accountingOffice.DefaultActRecvAccountId;
         DefaultEscrowAccountId = accountingOffice.DefaultEscrowAccountId;
         DefaultUndepFundsAccountId = accountingOffice.DefaultUndepFundsAccountId;
         DefaultBankAccountId = accountingOffice.DefaultBankAccountId;
-        DefaultPayOutAccountId = accountingOffice.DefaultPayOutAccountId;
+        DefaultActPayableAccountId = accountingOffice.DefaultActPayableAccountId;
         DefaultTenantExpAccountId = accountingOffice.DefaultTenantExpAccountId;
         DefaultOwnerExpAccountId = accountingOffice.DefaultOwnerExpAccountId;
         DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId;
