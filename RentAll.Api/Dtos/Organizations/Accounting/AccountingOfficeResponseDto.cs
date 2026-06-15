@@ -30,8 +30,11 @@ public class AccountingOfficeResponseDto
     public int? DefaultUndepFundsAccountId { get; set; }
     public int? DefaultBankAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
+    public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
+    public int? DefaultTenantChgAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
+    public int? DefaultOwnerChgAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
@@ -69,8 +72,11 @@ public class AccountingOfficeResponseDto
         DefaultUndepFundsAccountId = accountingOffice.DefaultUndepFundsAccountId;
         DefaultBankAccountId = accountingOffice.DefaultBankAccountId;
         DefaultActPayableAccountId = accountingOffice.DefaultActPayableAccountId;
+        DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId;
         DefaultTenantExpAccountId = accountingOffice.DefaultTenantExpAccountId;
+        DefaultTenantChgAccountId = accountingOffice.DefaultTenantChgAccountId;
         DefaultOwnerExpAccountId = accountingOffice.DefaultOwnerExpAccountId;
+        DefaultOwnerChgAccountId = accountingOffice.DefaultOwnerChgAccountId;
         DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId;
         LogoPath = accountingOffice.LogoPath;
         IsActive = accountingOffice.IsActive;

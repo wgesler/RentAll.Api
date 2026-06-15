@@ -27,8 +27,11 @@ public class AccountingOffice
     public int? DefaultUndepFundsAccountId { get; set; }
     public int? DefaultBankAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
+    public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
+    public int? DefaultTenantChgAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
+    public int? DefaultOwnerChgAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public bool IsActive { get; set; }

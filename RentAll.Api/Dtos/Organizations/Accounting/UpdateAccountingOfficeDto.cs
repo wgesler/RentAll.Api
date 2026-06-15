@@ -30,8 +30,11 @@ public class UpdateAccountingOfficeDto
     public int? DefaultUndepFundsAccountId { get; set; }
     public int? DefaultBankAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
+    public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
+    public int? DefaultTenantChgAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
+    public int? DefaultOwnerChgAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
@@ -127,8 +130,11 @@ public class UpdateAccountingOfficeDto
             DefaultUndepFundsAccountId = DefaultUndepFundsAccountId,
             DefaultBankAccountId = DefaultBankAccountId,
             DefaultActPayableAccountId = DefaultActPayableAccountId,
+            DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,
+            DefaultTenantChgAccountId = DefaultTenantChgAccountId,
             DefaultOwnerExpAccountId = DefaultOwnerExpAccountId,
+            DefaultOwnerChgAccountId = DefaultOwnerChgAccountId,
             DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             IsActive = IsActive,
