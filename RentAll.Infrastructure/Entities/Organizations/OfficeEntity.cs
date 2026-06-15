@@ -54,11 +54,6 @@ public class OfficeEntity
     public decimal? DefaultOnlineClean { get; set; }
     public decimal? DefaultOfflineFee { get; set; }
 
-    public int? TenantChargeCcId { get; set; }
-    public int? TenantExpenseCcId { get; set; }
-    public int? OwnerChargeCcId { get; set; }
-    public int? OwnerExpenseCcId { get; set; }
-
     public int? FurnishedRentChargeCcId { get; set; }
     public int? FurnishedRentExpenseCcId { get; set; }
     public int? UnfurnishedRentChargeCcId { get; set; }

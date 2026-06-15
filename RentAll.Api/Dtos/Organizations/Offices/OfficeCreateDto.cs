@@ -52,10 +52,6 @@ public class OfficeCreateDto
     public decimal? DefaultOnlineFee { get; set; }
     public decimal? DefaultOnlineClean { get; set; }
     public decimal? DefaultOfflineFee { get; set; }
-    public int? TenantChargeCcId { get; set; }
-    public int? TenantExpenseCcId { get; set; }
-    public int? OwnerChargeCcId { get; set; }
-    public int? OwnerExpenseCcId { get; set; }
     public int? FurnishedRentChargeCcId { get; set; }
     public int? FurnishedRentExpenseCcId { get; set; }
     public int? UnfurnishedRentChargeCcId { get; set; }
@@ -111,18 +107,6 @@ public class OfficeCreateDto
         var maxDay = DateTime.DaysInMonth(2024, YearEndMonth);
         if (YearEndDay > maxDay)
             return (false, $"YearEndDay must be between 1 and {maxDay} for month {YearEndMonth:00}");
-
-        if (TenantChargeCcId.HasValue && TenantChargeCcId.Value <= 0)
-            return (false, "TenantChargeCcId must be greater than 0 when provided");
-
-        if (TenantExpenseCcId.HasValue && TenantExpenseCcId.Value <= 0)
-            return (false, "TenantExpenseCcId must be greater than 0 when provided");
-
-        if (OwnerChargeCcId.HasValue && OwnerChargeCcId.Value <= 0)
-            return (false, "OwnerChargeCcId must be greater than 0 when provided");
-
-        if (OwnerExpenseCcId.HasValue && OwnerExpenseCcId.Value <= 0)
-            return (false, "OwnerExpenseCcId must be greater than 0 when provided");
 
         if (FurnishedRentChargeCcId.HasValue && FurnishedRentChargeCcId.Value <= 0)
             return (false, "FurnishedRentChargeCcId must be greater than 0 when provided");
@@ -221,10 +205,6 @@ public class OfficeCreateDto
             DefaultOnlineFee = DefaultOnlineFee,
             DefaultOnlineClean = DefaultOnlineClean,
             DefaultOfflineFee = DefaultOfflineFee,
-            TenantChargeCcId = TenantChargeCcId,
-            TenantExpenseCcId = TenantExpenseCcId,
-            OwnerChargeCcId = OwnerChargeCcId,
-            OwnerExpenseCcId = OwnerExpenseCcId,
             FurnishedRentChargeCcId = FurnishedRentChargeCcId,
             FurnishedRentExpenseCcId = FurnishedRentExpenseCcId,
             UnfurnishedRentChargeCcId = UnfurnishedRentChargeCcId,
