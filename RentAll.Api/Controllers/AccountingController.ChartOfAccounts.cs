@@ -105,9 +105,6 @@ namespace RentAll.Api.Controllers
                 var chartOfAccount = dto.ToModel();
                 chartOfAccount.OrganizationId = CurrentOrganizationId;
 
-                if (await _accountingRepository.ExistsChartOfAccountByAccountIdAsync(chartOfAccount.OrganizationId, chartOfAccount.OfficeId, chartOfAccount.AccountId))
-                    return BadRequest("AccountId already exists");
-
                 if (await _accountingRepository.ExistsChartOfAccountByAccountNoAsync(chartOfAccount.OrganizationId, chartOfAccount.OfficeId, chartOfAccount.AccountNo))
                     return BadRequest("AccountNo already exists");
 

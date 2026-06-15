@@ -105,7 +105,6 @@ public partial class AccountingRepository
         {
             OrganizationId = chartOfAccount.OrganizationId,
             OfficeId = chartOfAccount.OfficeId,
-            AccountId = chartOfAccount.AccountId,
             AccountNo = chartOfAccount.AccountNo,
             AccountTypeId = (int)chartOfAccount.AccountType,
             Name = chartOfAccount.Name,

@@ -6,7 +6,6 @@ public class CreateChartOfAccountDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public int AccountId { get; set; }
     public string AccountNo { get; set; } = string.Empty;
     public int AccountTypeId { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -26,9 +25,6 @@ public class CreateChartOfAccountDto
         if (!currentOffices.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == OfficeId))
             return (false, "Unauthorized");
 
-        if (AccountId < 0)
-            return (false, "AccountId is required");
-
         if (string.IsNullOrWhiteSpace(AccountNo))
             return (false, "AccountNo is required");
 
@@ -38,7 +34,7 @@ public class CreateChartOfAccountDto
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 
-        return ValidateSubaccount(AccountId, IsSubaccount, SubAccountId);
+        return ValidateSubaccount(IsSubaccount, SubAccountId);
     }
 
     public ChartOfAccount ToModel()
@@ -47,7 +43,6 @@ public class CreateChartOfAccountDto
         {
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
-            AccountId = AccountId,
             AccountNo = AccountNo.Trim(),
             AccountType = (AccountType)AccountTypeId,
             Name = Name.Trim(),
@@ -58,20 +53,29 @@ public class CreateChartOfAccountDto
         };
     }
 
-    internal static (bool IsValid, string? ErrorMessage) ValidateSubaccount(int accountId, bool isSubaccount, int? subAccountId)
+    internal static (bool IsValid, string? ErrorMessage) ValidateSubaccount(bool isSubaccount, int? subAccountId)
     {
         if (isSubaccount)
         {
             if (!subAccountId.HasValue)
                 return (false, "SubAccountId is required when IsSubaccount is true");
-
-            if (subAccountId.Value == accountId)
-                return (false, "SubAccountId cannot equal AccountId");
         }
         else if (subAccountId.HasValue)
         {
             return (false, "SubAccountId must be null when IsSubaccount is false");
         }
+
+        return (true, null);
+    }
+
+    internal static (bool IsValid, string? ErrorMessage) ValidateSubaccount(int accountId, bool isSubaccount, int? subAccountId)
+    {
+        var result = ValidateSubaccount(isSubaccount, subAccountId);
+        if (!result.IsValid)
+            return result;
+
+        if (isSubaccount && subAccountId!.Value == accountId)
+            return (false, "SubAccountId cannot equal AccountId");
 
         return (true, null);
     }
