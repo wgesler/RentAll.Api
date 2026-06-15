@@ -32,9 +32,9 @@ public class CreateAccountingOfficeDto
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
-    public int? DefaultTenantChgAccountId { get; set; }
+    public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
-    public int? DefaultOwnerChgAccountId { get; set; }
+    public int? DefaultOwnerIncAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -131,9 +131,9 @@ public class CreateAccountingOfficeDto
             DefaultActPayableAccountId = DefaultActPayableAccountId,
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,
-            DefaultTenantChgAccountId = DefaultTenantChgAccountId,
+            DefaultTenantIncAccountId = DefaultTenantIncAccountId,
             DefaultOwnerExpAccountId = DefaultOwnerExpAccountId,
-            DefaultOwnerChgAccountId = DefaultOwnerChgAccountId,
+            DefaultOwnerIncAccountId = DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
             LogoPath = null, // Will be set by controller after file save
             IsActive = IsActive,
