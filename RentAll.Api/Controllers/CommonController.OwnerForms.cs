@@ -674,8 +674,6 @@ namespace RentAll.Api.Controllers
                                 BankName = null,
                                 RoutingNumber = null,
                                 AccountNumber = null,
-                                RentalIncomeCcId = null,
-                                RentalExpenseCcId = null,
                                 Notes = null,
                                 AgreementLines = new List<AgreementLine>()
                             });
@@ -729,8 +727,6 @@ namespace RentAll.Api.Controllers
                             BankName = null,
                             RoutingNumber = null,
                             AccountNumber = null,
-                            RentalIncomeCcId = null,
-                            RentalExpenseCcId = null,
                             Notes = null,
                             AgreementLines = new List<AgreementLine>()
                         });

@@ -53,8 +53,6 @@ public partial class PropertyRepository
                 BankName = agreement.BankName,
                 RoutingNumber = agreement.RoutingNumber,
                 AccountNumber = agreement.AccountNumber,
-                RentalIncomeCcId = agreement.RentalIncomeCcId,
-                RentalExpenseCcId = agreement.RentalExpenseCcId,
                 Notes = agreement.Notes
             }, transaction: transaction);
 
@@ -143,8 +141,6 @@ public partial class PropertyRepository
                 BankName = agreement.BankName,
                 RoutingNumber = agreement.RoutingNumber,
                 AccountNumber = agreement.AccountNumber,
-                RentalIncomeCcId = agreement.RentalIncomeCcId,
-                RentalExpenseCcId = agreement.RentalExpenseCcId,
                 Notes = agreement.Notes
             }, transaction: transaction);
 
