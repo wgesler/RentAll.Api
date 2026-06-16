@@ -10,7 +10,7 @@ public class BankCardResponseDto
     public string DisplayName { get; set; } = string.Empty;
     public string CardNumber { get; set; } = string.Empty;
     public string LastFour { get; set; } = string.Empty;
-    public int ChartOfAccountId { get; set; }
+    public int? ChartOfAccountId { get; set; }
 
     public BankCardResponseDto(BankCard bankCard)
     {
