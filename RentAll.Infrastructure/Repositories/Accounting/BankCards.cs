@@ -80,7 +80,7 @@ public partial class AccountingRepository
             CardName = bankCard.CardName,
             CardNumber = encryptedCardNumber,
             LastFour = bankCard.LastFour,
-            CostCodeId = bankCard.CostCodeId
+            ChartOfAccountId = bankCard.ChartOfAccountId
         });
 
         if (res == null || !res.Any())
@@ -106,7 +106,7 @@ public partial class AccountingRepository
             CardName = bankCard.CardName,
             CardNumber = encryptedCardNumber,
             LastFour = bankCard.LastFour,
-            CostCodeId = bankCard.CostCodeId
+            ChartOfAccountId = bankCard.ChartOfAccountId
         });
 
         if (res == null || !res.Any())

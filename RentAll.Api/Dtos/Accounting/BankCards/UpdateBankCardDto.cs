@@ -6,7 +6,7 @@ public class UpdateBankCardDto
     public int CardTypeId { get; set; }
     public string CardName { get; set; } = string.Empty;
     public string CardNumber { get; set; } = string.Empty;
-    public int CostCodeId { get; set; }
+    public int ChartOfAccountId { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -22,8 +22,8 @@ public class UpdateBankCardDto
         if (string.IsNullOrWhiteSpace(CardNumber))
             return (false, "CardNumber is required");
 
-        if (CostCodeId <= 0)
-            return (false, "CostCodeId is required");
+        if (ChartOfAccountId <= 0)
+            return (false, "ChartOfAccountId is required");
 
         return (true, null);
     }
@@ -38,7 +38,7 @@ public class UpdateBankCardDto
             CardTypeId = CardTypeId,
             CardName = CardName,
             CardNumber = CardNumber,
-            CostCodeId = CostCodeId
+            ChartOfAccountId = ChartOfAccountId
         };
     }
 }

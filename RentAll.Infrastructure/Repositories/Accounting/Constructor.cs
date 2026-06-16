@@ -33,7 +33,7 @@ public partial class AccountingRepository : IAccountingRepository
             CardName = e.CardName,
             DisplayName = e.DisplayName,
             LastFour = e.LastFour,
-            CostCodeId = e.CostCodeId
+            ChartOfAccountId = e.ChartOfAccountId
         };
     }
     #endregion

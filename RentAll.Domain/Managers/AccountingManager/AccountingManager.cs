@@ -398,10 +398,19 @@ public partial class AccountingManager : IAccountingManager
         if (bankCard == null)
             throw new Exception("Bank card not found");
 
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(receipt.OrganizationId, receipt.OfficeId);
-        var costCode = costCodes.FirstOrDefault(c => c.CostCodeId == bankCard.CostCodeId);
-        var creditCardAccountId = GetCreditCardAccountIdByNameOrType(chartOfAccounts, receipt.OfficeId);
-        return GetChartOfAccountIdForCostCode(chartOfAccounts, receipt.OfficeId, costCode, creditCardAccountId);
+        if (bankCard.ChartOfAccountId <= 0)
+            throw new Exception("Bank card chart of account is not configured");
+
+        var account = chartOfAccounts.FirstOrDefault(a =>
+            a.AccountId == bankCard.ChartOfAccountId && a.OfficeId == receipt.OfficeId);
+
+        if (account == null)
+            throw new Exception("Bank card chart of account not found");
+
+        if (account.AccountType != AccountType.CreditCard)
+            throw new Exception("Bank card chart of account must be a credit card account");
+
+        return account.AccountId;
     }
 
     private async Task<int> GetBillLiabilityAccountIdAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)

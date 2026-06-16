@@ -10,5 +10,5 @@ public class BankCardEntity
     public string DisplayName { get; set; } = string.Empty;
     public byte[] CardNumber { get; set; } = [];
     public string LastFour { get; set; } = string.Empty;
-    public int CostCodeId { get; set; }
+    public int ChartOfAccountId { get; set; }
 }
