@@ -158,7 +158,7 @@ public partial class AccountingManager
 
     async Task<int?> DeleteBillPaymentJournalEntriesAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
-        var liabilityAccountId = await GetBillLiabilityAccountIdAsync(bill, chartOfAccounts, accountingOffice);
+        var liabilityAccountId = GetBillLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
 
         var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {

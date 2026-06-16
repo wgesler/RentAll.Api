@@ -47,7 +47,7 @@ public partial class AccountingManager
         if (receipt.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a receipt");
 
-        var creditCardAccountId = await GetCreditCardAccountIdAsync(receipt, chartOfAccounts, accountingOffice);
+        var creditCardAccountId = GetCreditCardAccountId(receipt, chartOfAccounts, accountingOffice);
         var defaultExpenseAccountId = GetCompanyExpenseAccountId(chartOfAccounts, receipt.OfficeId, accountingOffice);
         var defaultCostOfGoodsSoldAccountId = GetCostOfGoodsSoldAccountIdByNameOrType(chartOfAccounts, receipt.OfficeId);
 

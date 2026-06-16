@@ -48,10 +48,15 @@ public partial class AccountingManager : IAccountingManager
     {
         var chartOfAccountsTask = _accountingRepository.GetChartOfAccountsByOfficeIdAsync(organizationId, officeId);
         var accountingOfficeTask = _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
+        var bankCardsTask = _accountingRepository.GetBankCardsByOfficeIdAsync(organizationId, officeId);
 
-        await Task.WhenAll(chartOfAccountsTask, accountingOfficeTask);
+        await Task.WhenAll(chartOfAccountsTask, accountingOfficeTask, bankCardsTask);
 
-        return (await chartOfAccountsTask, await accountingOfficeTask);
+        var accountingOffice = await accountingOfficeTask;
+        if (accountingOffice != null)
+            accountingOffice.BankCards = await bankCardsTask;
+
+        return (await chartOfAccountsTask, accountingOffice);
     }
     #endregion
 
@@ -385,18 +390,16 @@ public partial class AccountingManager : IAccountingManager
         return defaultExpenseAccountId;
     }
 
-    private async Task<int> GetCreditCardAccountIdAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
+    private int GetCreditCardAccountId(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
         if (receipt.BankCardId is not > 0)
             throw new Exception("BankCardId is required to resolve a credit card account");
 
-        var bankCard = await _accountingRepository.GetBankCardByIdAsync(
-            receipt.BankCardId.Value,
-            receipt.OrganizationId,
-            receipt.OfficeId);
+        var bankCard = accountingOffice?.BankCards
+            .FirstOrDefault(card => card.BankCardId == receipt.BankCardId.Value);
 
         if (bankCard == null)
-            throw new Exception("Bank card not found");
+            throw new Exception("Bank card not found on accounting office");
 
         if (bankCard.ChartOfAccountId is > 0)
         {
@@ -415,10 +418,10 @@ public partial class AccountingManager : IAccountingManager
         return GetCreditCardAccountIdByNameOrType(chartOfAccounts, receipt.OfficeId);
     }
 
-    private async Task<int> GetBillLiabilityAccountIdAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
+    private int GetBillLiabilityAccountId(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
         if (bill.BankCardId is > 0)
-            return await GetCreditCardAccountIdAsync(bill, chartOfAccounts, accountingOffice);
+            return GetCreditCardAccountId(bill, chartOfAccounts, accountingOffice);
 
         return GetAccountsPayableAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
     }

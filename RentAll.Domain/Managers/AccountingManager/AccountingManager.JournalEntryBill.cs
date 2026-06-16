@@ -209,7 +209,7 @@ public partial class AccountingManager
         if (paymentApplication.PaymentDate == default)
             throw new Exception("Payment date is required to create a bill payment journal entry");
 
-        var liabilityAccountId = await GetBillLiabilityAccountIdAsync(bill, chartOfAccounts, accountingOffice);
+        var liabilityAccountId = GetBillLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
         var offsetAccountId = GetBillPaymentChartOfAccountId(
             chartOfAccounts,
             bill.OfficeId,
