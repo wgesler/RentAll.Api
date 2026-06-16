@@ -47,9 +47,7 @@ public partial class AccountingManager
         return updatedBill;
     }
 
-    async Task ReplaceJournalEntriesFromInvoiceAsync(
-        Invoice invoice,
-        IEnumerable<Guid> priorPaymentLedgerLineIds)
+    async Task ReplaceJournalEntriesFromInvoiceAsync(Invoice invoice, IEnumerable<Guid> priorPaymentLedgerLineIds)
     {
         if (invoice.InvoiceId == Guid.Empty)
             throw new Exception("InvoiceId is required to refresh journal entries");
@@ -100,7 +98,8 @@ public partial class AccountingManager
         if (bill.ReceiptGuid == Guid.Empty)
             throw new Exception("ReceiptGuid is required to refresh journal entries");
 
-        var paymentOffsetAccountId = await DeleteBillPaymentJournalEntriesAsync(bill);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
+        var paymentOffsetAccountId = await DeleteBillPaymentJournalEntriesAsync(bill, chartOfAccounts, accountingOffice);
 
         await DeleteJournalEntriesForSourceAsync(
             bill.OrganizationId,
@@ -109,12 +108,14 @@ public partial class AccountingManager
             bill.ReceiptGuid);
 
         if (IsAccountingFeatureEnabled())
-            await CreateJournalEntryFromBillAsync(bill, currentUser);
+        {
+            var billJournalEntry = await BuildJournalEntryFromBillAsync(bill, chartOfAccounts, accountingOffice, currentUser);
+            await CreateJournalEntryAsync(billJournalEntry);
+        }
 
         if (bill.PaidAmount == 0)
             return;
 
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
             ? bill.BillNumber.Trim()
             : bill.ReceiptCode.Trim();
@@ -123,19 +124,16 @@ public partial class AccountingManager
             Bill = bill,
             AmountApplied = bill.PaidAmount,
             PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            ChartOfAccountId = paymentOffsetAccountId ?? ResolveDefaultBankAccountId(chartOfAccounts, bill.OfficeId),
+            ChartOfAccountId = paymentOffsetAccountId ?? GetBankAccountId(chartOfAccounts, bill.OfficeId, accountingOffice),
             Description = $"Bill Payment - {billLabel}",
             PaymentSequence = 0
         };
 
-        await CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);
+        var paymentJournalEntry = await BuildJournalEntryFromBillPaymentAsync(paymentApplication, chartOfAccounts, accountingOffice, currentUser);
+        await CreateJournalEntryAsync(paymentJournalEntry);
     }
 
-    async Task DeleteJournalEntriesForSourceAsync(
-        Guid organizationId,
-        int officeId,
-        int sourceTypeId,
-        Guid sourceId)
+    async Task DeleteJournalEntriesForSourceAsync(Guid organizationId, int officeId, int sourceTypeId, Guid sourceId)
     {
         var entries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
@@ -156,10 +154,9 @@ public partial class AccountingManager
         }
     }
 
-    async Task<int?> DeleteBillPaymentJournalEntriesAsync(Receipt bill)
+    async Task<int?> DeleteBillPaymentJournalEntriesAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
-        var liabilityAccountId = await ResolveBillLiabilityAccountIdAsync(bill, chartOfAccounts);
+        var liabilityAccountId = await GetBillLiabilityAccountIdAsync(bill, chartOfAccounts, accountingOffice);
 
         var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {

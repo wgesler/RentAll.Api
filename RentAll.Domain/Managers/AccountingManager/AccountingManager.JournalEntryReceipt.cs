@@ -24,13 +24,14 @@ public partial class AccountingManager
         if (existingEntry != null)
             return existingEntry;
 
-        var journalEntry = await BuildJournalEntryFromReceiptAsync(receipt, currentUser);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
+        var journalEntry = await BuildJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
         return await CreateJournalEntryAsync(journalEntry);
     }
     #endregion
 
     #region Journal Entry
-    async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
+    async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         EnsureReceiptIsCardReceipt(receipt);
 
@@ -49,10 +50,9 @@ public partial class AccountingManager
         if (receipt.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a receipt");
 
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(receipt.OrganizationId, receipt.OfficeId);
-        var creditCardAccountId = await ResolveCreditCardAccountIdAsync(receipt, chartOfAccounts);
-        var defaultExpenseAccountId = ResolveDefaultExpenseAccountId(chartOfAccounts, receipt.OfficeId);
-        var defaultCostOfGoodsSoldAccountId = ResolveDefaultCostOfGoodsSoldAccountId(chartOfAccounts, receipt.OfficeId);
+        var creditCardAccountId = await GetCreditCardAccountIdAsync(receipt, chartOfAccounts, accountingOffice);
+        var defaultExpenseAccountId = GetCompanyExpenseAccountId(chartOfAccounts, receipt.OfficeId, accountingOffice);
+        var defaultCostOfGoodsSoldAccountId = GetCostOfGoodsSoldAccountIdByNameOrType(chartOfAccounts, receipt.OfficeId);
 
         var transactionDate = receipt.ReceiptDate != default ? receipt.ReceiptDate : receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
@@ -78,10 +78,10 @@ public partial class AccountingManager
 
         foreach (var split in splitLines)
         {
-            var expenseAccountId = ResolveExpenseOrCogsAccountId(
-                split,
+            var expenseAccountId = GetExpenseOrCogsAccountId(
                 chartOfAccounts,
                 receipt.OfficeId,
+                split,
                 defaultCostOfGoodsSoldAccountId,
                 defaultExpenseAccountId);
 
@@ -119,36 +119,5 @@ public partial class AccountingManager
             throw new Exception("Receipt is not a card receipt");
     }
 
-    async Task<int> ResolveCreditCardAccountIdAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts)
-    {
-        if (receipt.BankCardId is not > 0)
-            throw new Exception("BankCardId is required to resolve a credit card account");
-
-        var bankCard = await _accountingRepository.GetBankCardByIdAsync(
-            receipt.BankCardId.Value,
-            receipt.OrganizationId,
-            receipt.OfficeId);
-
-        if (bankCard == null)
-            throw new Exception("Bank card not found");
-
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(receipt.OrganizationId, receipt.OfficeId);
-        var costCode = costCodes.FirstOrDefault(c => c.CostCodeId == bankCard.CostCodeId);
-        var defaultCreditCardAccountId = ResolveDefaultCreditCardAccountId(chartOfAccounts, receipt.OfficeId);
-        return ResolveChartOfAccountIdForCostCode(costCode, chartOfAccounts, receipt.OfficeId, defaultCreditCardAccountId);
-    }
-
-    static int ResolveDefaultCreditCardAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.CreditCard)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Credit Card chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
     #endregion
 }

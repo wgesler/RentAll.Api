@@ -5,8 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task<JournalEntry> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId,
-        string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser)
+    public async Task<JournalEntry> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser)
     {
         if (officeId <= 0)
             throw new Exception("OfficeId is required");
@@ -34,9 +33,9 @@ public partial class AccountingManager
         if (distinctLineIds.Count != journalEntryLineIds.Count)
             throw new Exception("Duplicate journal entry lines were submitted for deposit");
 
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(organizationId, officeId);
-        var bankAccountId = ResolveDepositBankAccountId(bankChartOfAccountId, chartOfAccounts, officeId);
-        var undepositedFundsAccountIds = ResolveUndepositedFundsAccountIds(chartOfAccounts, officeId);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
+        var bankAccountId = GetDepositBankAccountId(chartOfAccounts, officeId, bankChartOfAccountId);
+        var undepositedFundsAccountIds = GetUndepositedFundsAccountIds(chartOfAccounts, officeId, accountingOffice);
 
         var sourceLines = await LoadDepositSourceLinesAsync(
             organizationId,
@@ -132,39 +131,5 @@ public partial class AccountingManager
     static decimal GetJournalEntryLineNetAmount(JournalEntryLineSearchResult line)
     {
         return Math.Round(line.Debit - line.Credit, 2, MidpointRounding.AwayFromZero);
-    }
-
-    static int ResolveDepositBankAccountId(int chartOfAccountId, List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts.FirstOrDefault(a =>
-            a.AccountId == chartOfAccountId && a.OfficeId == officeId);
-
-        if (account == null)
-            throw new Exception("Invalid bank chart of account for deposit");
-
-        if (account.AccountType != AccountType.Bank)
-            throw new Exception("Deposit target account must be a bank account");
-
-        return account.AccountId;
-    }
-
-    static HashSet<int> ResolveUndepositedFundsAccountIds(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var accountIds = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && IsUndepositedFundsChartOfAccount(a))
-            .Select(a => a.AccountId)
-            .ToHashSet();
-
-        if (accountIds.Count == 0)
-            throw new Exception($"No Undeposited Funds chart of account is configured for office {officeId}");
-
-        return accountIds;
-    }
-
-    static bool IsUndepositedFundsChartOfAccount(ChartOfAccount account)
-    {
-        return account.AccountType == AccountType.OtherCurrentAsset
-            && (account.Name.Contains("Undeposited", StringComparison.OrdinalIgnoreCase)
-                || account.AccountNo.Contains("Undeposited", StringComparison.OrdinalIgnoreCase));
     }
 }

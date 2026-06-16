@@ -22,6 +22,20 @@ public partial class OrganizationRepository
         return res.Select(ConvertEntityToModel);
     }
 
+    public async Task<IEnumerable<AccountingOffice>> GetAccountingOfficesByOrganizationIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_GetAllByOrganizationId", new
+        {
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<AccountingOffice>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
     public async Task<AccountingOffice?> GetAccountingOfficeByIdAsync(Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

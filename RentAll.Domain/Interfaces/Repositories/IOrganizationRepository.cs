@@ -29,6 +29,7 @@ public interface IOrganizationRepository
 
     #region Accounting Offices
     Task<IEnumerable<AccountingOffice>> GetAccountingOfficesByOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task<IEnumerable<AccountingOffice>> GetAccountingOfficesByOrganizationIdAsync(Guid organizationId);
     Task<AccountingOffice?> GetAccountingOfficeByIdAsync(Guid organizationId, int officeId);
 
     Task<AccountingOffice> CreateAccountingAsync(AccountingOffice accountingOffice);

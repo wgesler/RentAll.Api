@@ -26,7 +26,8 @@ public partial class AccountingManager
         if (existingEntry != null)
             return existingEntry;
 
-        var journalEntry = await BuildJournalEntryFromBillAsync(bill, currentUser);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
+        var journalEntry = await BuildJournalEntryFromBillAsync(bill, chartOfAccounts, accountingOffice, currentUser);
         return await CreateJournalEntryAsync(journalEntry);
     }
 
@@ -48,7 +49,7 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    async Task<JournalEntry> BuildJournalEntryFromBillAsync(Receipt bill, Guid currentUser)
+    async Task<JournalEntry> BuildJournalEntryFromBillAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         EnsureReceiptIsBill(bill);
 
@@ -67,16 +68,11 @@ public partial class AccountingManager
         if (bill.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a bill");
 
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
-        var accountsPayableAccountId = ResolveAccountsPayableAccountId(chartOfAccounts, bill.OfficeId);
-        var accountsReceivableAccountId = ResolveAccountsReceivableAccountId(chartOfAccounts, bill.OfficeId);
-        var undepositedFundsAccountId = ResolveUndepositedFundsAccountId(chartOfAccounts, bill.OfficeId);
-        var defaultExpenseAccountId = ResolveDefaultExpenseAccountId(chartOfAccounts, bill.OfficeId);
-        var defaultCostOfGoodsSoldAccountId = chartOfAccounts
-            .Where(a => a.OfficeId == bill.OfficeId && a.AccountType == AccountType.CostOfGoodsSold)
-            .OrderBy(a => a.AccountId)
-            .Select(a => a.AccountId)
-            .FirstOrDefault();
+        var accountsPayableAccountId = GetAccountsPayableAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var undepositedFundsAccountId = GetUndepositedFundsAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var defaultExpenseAccountId = GetCompanyExpenseAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var defaultCostOfGoodsSoldAccountId = GetCostOfGoodsSoldAccountIdByNameOrType(chartOfAccounts, bill.OfficeId);
 
         var transactionDate = bill.ReceiptDate != default ? bill.ReceiptDate : bill.AccountingPeriod;
         var postingDate = bill.AccountingPeriod;
@@ -108,10 +104,10 @@ public partial class AccountingManager
 
             foreach (var split in positiveSplits)
             {
-                var expenseAccountId = ResolveExpenseOrCogsAccountId(
-                    split,
+                var expenseAccountId = GetExpenseOrCogsAccountId(
                     chartOfAccounts,
                     bill.OfficeId,
+                    split,
                     defaultCostOfGoodsSoldAccountId,
                     defaultExpenseAccountId);
 
@@ -196,11 +192,12 @@ public partial class AccountingManager
         if (existingEntry != null)
             return existingEntry;
 
-        var journalEntry = await BuildJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
+        var journalEntry = await BuildJournalEntryFromBillPaymentAsync(paymentApplication, chartOfAccounts, accountingOffice, currentUser);
         return await CreateJournalEntryAsync(journalEntry);
     }
 
-    async Task<JournalEntry> BuildJournalEntryFromBillPaymentAsync(BillPaymentApplication paymentApplication, Guid currentUser)
+    async Task<JournalEntry> BuildJournalEntryFromBillPaymentAsync(BillPaymentApplication paymentApplication, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         var bill = paymentApplication.Bill;
         if (paymentApplication.AmountApplied == 0)
@@ -209,12 +206,11 @@ public partial class AccountingManager
         if (paymentApplication.PaymentDate == default)
             throw new Exception("Payment date is required to create a bill payment journal entry");
 
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
-        var liabilityAccountId = await ResolveBillLiabilityAccountIdAsync(bill, chartOfAccounts);
-        var offsetAccountId = ResolveBillPaymentChartOfAccountId(
-            paymentApplication.ChartOfAccountId,
+        var liabilityAccountId = await GetBillLiabilityAccountIdAsync(bill, chartOfAccounts, accountingOffice);
+        var offsetAccountId = GetBillPaymentChartOfAccountId(
             chartOfAccounts,
-            bill.OfficeId);
+            bill.OfficeId,
+            paymentApplication.ChartOfAccountId);
 
         var amount = Math.Abs(paymentApplication.AmountApplied);
         var transactionDate = paymentApplication.PaymentDate;
@@ -328,56 +324,6 @@ public partial class AccountingManager
     #endregion
 
     #region Static Helpers
-    static int ResolveBillPaymentChartOfAccountId(int chartOfAccountId, List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        if (chartOfAccountId <= 0)
-            throw new Exception("Chart of account is required for bill payment");
-
-        var account = chartOfAccounts.FirstOrDefault(a =>
-            a.AccountId == chartOfAccountId && a.OfficeId == officeId);
-
-        if (account == null)
-            throw new Exception("Invalid chart of account for bill payment");
-
-        if (account.AccountType != AccountType.Bank)
-            throw new Exception("Bill payment offset account must be a bank account");
-
-        return account.AccountId;
-    }
-
-    async Task<int> ResolveBillLiabilityAccountIdAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts)
-    {
-        if (bill.BankCardId is > 0)
-            return await ResolveCreditCardAccountIdAsync(bill, chartOfAccounts);
-
-        return ResolveAccountsPayableAccountId(chartOfAccounts, bill.OfficeId);
-    }
-
-    static int ResolveExpenseOrCogsAccountId(
-        ReceiptSplit split,
-        List<ChartOfAccount> chartOfAccounts,
-        int officeId,
-        int defaultCostOfGoodsSoldAccountId,
-        int defaultExpenseAccountId)
-    {
-        if (split.ChartOfAccountId is > 0)
-        {
-            var account = chartOfAccounts.FirstOrDefault(a =>
-                a.AccountId == split.ChartOfAccountId.Value && a.OfficeId == officeId);
-
-            if (account?.AccountType == AccountType.CostOfGoodsSold)
-                return account.AccountId;
-
-            if (account?.AccountType == AccountType.Expense)
-                return account.AccountId;
-        }
-
-        if (defaultCostOfGoodsSoldAccountId > 0)
-            return defaultCostOfGoodsSoldAccountId;
-
-        return defaultExpenseAccountId;
-    }
-
     async Task<int> GetNextBillPaymentSequenceAsync(Receipt bill)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
@@ -401,45 +347,6 @@ public partial class AccountingManager
     {
         if (bill.BankCardId != null)
             throw new Exception("Receipt is not a bill");
-    }
-
-    static int ResolveAccountsPayableAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Accounts Payable chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
-
-    static int ResolveDefaultExpenseAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Expense chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
-
-    static int ResolveDefaultCostOfGoodsSoldAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.CostOfGoodsSold)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Cost of Goods Sold chart of account is configured for office {officeId}");
-
-        return account.AccountId;
     }
     #endregion
 }

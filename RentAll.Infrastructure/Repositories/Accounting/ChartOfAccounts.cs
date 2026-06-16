@@ -37,6 +37,20 @@ public partial class AccountingRepository
         return res.Select(ConvertEntityToModel).ToList();
     }
 
+    public async Task<List<ChartOfAccount>> GetChartOfAccountsByOrganizationIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ChartOfAccountEntity>("Accounting.ChartOfAccounts_GetAllByOrganizationId", new
+        {
+            OrganizationId = organizationId
+        });
+
+        if (res == null || !res.Any())
+            return new List<ChartOfAccount>();
+
+        return res.Select(ConvertEntityToModel).ToList();
+    }
+
     public async Task<ChartOfAccount?> GetChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

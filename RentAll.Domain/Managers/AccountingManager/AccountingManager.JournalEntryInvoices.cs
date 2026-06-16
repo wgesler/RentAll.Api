@@ -25,7 +25,8 @@ public partial class AccountingManager
         if (existingEntry != null)
             return existingEntry;
 
-        var journalEntry = await BuildJournalEntryFromInvoiceAsync(invoice, currentUser);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        var journalEntry = await BuildJournalEntryFromInvoiceAsync(invoice, chartOfAccounts, accountingOffice, currentUser);
         return await CreateJournalEntryAsync(journalEntry);
     }
 
@@ -48,7 +49,8 @@ public partial class AccountingManager
         if (existingEntry != null)
             return existingEntry;
 
-        var journalEntry = await BuildJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, currentUser);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        var journalEntry = await BuildJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
         return await CreateJournalEntryAsync(journalEntry);
     }
 
@@ -73,13 +75,12 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    async Task<JournalEntry> BuildJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser)
+    async Task<JournalEntry> BuildJournalEntryFromInvoiceAsync(Invoice invoice, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var accountsReceivableAccountId = ResolveAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId);
-        var defaultIncomeAccountId = ResolveDefaultIncomeAccountId(chartOfAccounts, invoice.OfficeId);
+        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var defaultIncomeAccountId = GetTenantIncomeAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
 
         var chargeLines = invoice.LedgerLines
@@ -125,7 +126,11 @@ public partial class AccountingManager
         foreach (var line in chargeLines)
         {
             costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-            var incomeAccountId = ResolveChartOfAccountIdForCostCode(costCode, chartOfAccounts, invoice.OfficeId, defaultIncomeAccountId);
+            var incomeAccountId = GetChartOfAccountIdForCostCode(
+                chartOfAccounts,
+                invoice.OfficeId,
+                costCode,
+                defaultIncomeAccountId);
             var lineAmount = Math.Abs(line.Amount);
 
             journalEntryLines.Add(new JournalEntryLine
@@ -156,7 +161,7 @@ public partial class AccountingManager
         };
     }
 
-    async Task<JournalEntry> BuildJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, Guid currentUser)
+    async Task<JournalEntry> BuildJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         if (paymentLedgerLine.Amount == 0)
             throw new Exception("Payment amount cannot be zero");
@@ -169,9 +174,8 @@ public partial class AccountingManager
         if (!costCodeById.TryGetValue(paymentLedgerLine.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
             throw new Exception("Payment ledger line must use a payment cost code");
 
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var accountsReceivableAccountId = ResolveAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId);
-        var undepositedFundsAccountId = ResolveUndepositedFundsAccountId(chartOfAccounts, invoice.OfficeId);
+        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var undepositedFundsAccountId = GetUndepositedFundsAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
 
@@ -257,91 +261,6 @@ public partial class AccountingManager
     static bool IsPaymentLedgerLine(CostCode? costCode)
     {
         return costCode?.TransactionType == TransactionType.Payment;
-    }
-
-    static int ResolveAccountsReceivableAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsReceivable)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Accounts Receivable chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
-
-    static int ResolveDefaultIncomeAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Income chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
-
-    static int ResolveUndepositedFundsAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
-            .Where(a =>
-                a.Name.Contains("Undeposited", StringComparison.OrdinalIgnoreCase) ||
-                a.AccountNo.Contains("Undeposited", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Undeposited Funds chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
-
-    static int ResolveDefaultBankAccountId(List<ChartOfAccount> chartOfAccounts, int officeId)
-    {
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Bank)
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault();
-
-        if (account == null)
-            throw new Exception($"No Bank chart of account is configured for office {officeId}");
-
-        return account.AccountId;
-    }
-
-    static int ResolveChartOfAccountIdForCostCode(
-        CostCode? costCode,
-        List<ChartOfAccount> chartOfAccounts,
-        int officeId,
-        int defaultAccountId)
-    {
-        if (costCode == null || string.IsNullOrWhiteSpace(costCode.Code))
-            return defaultAccountId;
-
-        var accountCode = NormalizeAccountCode(costCode.Code);
-        if (string.IsNullOrWhiteSpace(accountCode))
-            return defaultAccountId;
-
-        var account = chartOfAccounts.FirstOrDefault(a =>
-            a.OfficeId == officeId &&
-            NormalizeAccountCode(a.AccountNo).Equals(accountCode, StringComparison.OrdinalIgnoreCase));
-
-        return account?.AccountId ?? defaultAccountId;
-    }
-
-    static string NormalizeAccountCode(string value)
-    {
-        return string.Join(' ',
-            value.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)).Trim();
     }
 
     async Task<Guid?> ResolveInvoicePropertyIdAsync(Invoice invoice)

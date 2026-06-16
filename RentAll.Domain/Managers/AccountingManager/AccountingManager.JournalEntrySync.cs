@@ -245,7 +245,7 @@ public partial class AccountingManager
 
     async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
     {
-        var chartOfAccounts = await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(bill.OrganizationId, bill.OfficeId);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
             ? bill.BillNumber.Trim()
             : bill.ReceiptCode.Trim();
@@ -254,7 +254,7 @@ public partial class AccountingManager
             Bill = bill,
             AmountApplied = bill.PaidAmount,
             PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            ChartOfAccountId = ResolveDefaultBankAccountId(chartOfAccounts, bill.OfficeId),
+            ChartOfAccountId = GetBankAccountId(chartOfAccounts, bill.OfficeId, accountingOffice),
             Description = $"Bill Payment - {billLabel}",
             PaymentSequence = 0
         };
@@ -273,11 +273,7 @@ public partial class AccountingManager
             result);
     }
 
-    async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(
-        Guid organizationId,
-        string officeIds,
-        bool deletePostedEntries,
-        params int[] sourceTypeIds)
+    async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(Guid organizationId, string officeIds, bool deletePostedEntries, params int[] sourceTypeIds)
     {
         var result = new JournalEntrySyncResult();
 
@@ -321,10 +317,7 @@ public partial class AccountingManager
         return result;
     }
 
-    async Task TrackJournalEntryCreateAsync(
-        Func<Task<JournalEntry>> createJournalEntry,
-        JournalEntryGetCriteria existingCriteria,
-        JournalEntrySyncResult result)
+    async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(existingCriteria);
         var hadExisting = existingEntries.Any(e => !e.IsVoided);

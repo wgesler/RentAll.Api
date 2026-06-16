@@ -40,6 +40,7 @@ public interface IAccountingRepository
     #region ChartOfAccounts
     Task<List<ChartOfAccount>> GetChartOfAccountsByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<List<ChartOfAccount>> GetChartOfAccountsByOfficeIdAsync(Guid organizationId, int officeId);
+    Task<List<ChartOfAccount>> GetChartOfAccountsByOrganizationIdAsync(Guid organizationId);
     Task<ChartOfAccount?> GetChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
     Task<ChartOfAccount?> GetChartOfAccountByAccountNoAsync(Guid organizationId, int officeId, string accountNo);
     Task<bool> ExistsChartOfAccountByAccountIdAsync(Guid organizationId, int officeId, int accountId);
