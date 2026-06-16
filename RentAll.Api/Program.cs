@@ -55,7 +55,6 @@ builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection
 builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.GetSection("ExternalTicketIntakeSettings"));
 builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
 builder.Services.Configure<EncryptionSettings>(builder.Configuration.GetSection("EncryptionSettings"));
-builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection("FeatureFlags"));
 builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
 
 var allowedHosts = appSettingsSection.GetSection("AllowedHostNames").Get<string[]>()!;

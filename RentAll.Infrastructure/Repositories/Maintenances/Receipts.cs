@@ -26,7 +26,7 @@ public partial class MaintenanceRepository
 
         var receipts = res.Select(ConvertEntityToModel).ToList();
         foreach (var receipt in receipts)
-            receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+            await ApplyReceiptSplitsAsync(receipt);
 
         return receipts;
     }
@@ -45,7 +45,7 @@ public partial class MaintenanceRepository
 
         var receipts = res.Select(ConvertEntityToModel).ToList();
         foreach (var receipt in receipts)
-            receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+            await ApplyReceiptSplitsAsync(receipt);
 
         return receipts;
     }
@@ -65,7 +65,7 @@ public partial class MaintenanceRepository
 
         var receipts = res.Select(ConvertEntityToModel).ToList();
         foreach (var receipt in receipts)
-            receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+            await ApplyReceiptSplitsAsync(receipt);
 
         return receipts;
     }
@@ -83,7 +83,7 @@ public partial class MaintenanceRepository
             return null;
 
         var receipt = ConvertEntityToModel(res.First());
-        receipt.Splits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+        await ApplyReceiptSplitsAsync(receipt);
         return receipt;
     }
     #endregion
@@ -180,6 +180,13 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Private Methods
+    private async Task ApplyReceiptSplitsAsync(Receipt receipt)
+    {
+        var tableSplits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
+        if (tableSplits.Count > 0)
+            receipt.Splits = tableSplits;
+    }
+
     private async Task<List<ReceiptSplit>> GetReceiptSplitsByReceiptIdAsync(int receiptId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

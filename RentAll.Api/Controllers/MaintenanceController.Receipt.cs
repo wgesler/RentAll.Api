@@ -140,7 +140,7 @@ public partial class MaintenanceController
 
             if (created.BankCardId == null)
             {
-                if (_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
                 {
                     try
                     {
@@ -155,7 +155,7 @@ public partial class MaintenanceController
             }
             else
             {
-                if (_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
                 {
                     try
                     {

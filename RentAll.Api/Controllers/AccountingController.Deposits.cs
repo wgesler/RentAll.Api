@@ -15,7 +15,7 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
-            if (!_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+            if (!await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
                 return NotFound(new { message = "Accounting is not enabled in this environment." });
 
             try

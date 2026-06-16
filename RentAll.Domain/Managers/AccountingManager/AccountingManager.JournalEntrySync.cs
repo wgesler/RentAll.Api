@@ -28,7 +28,7 @@ public partial class AccountingManager
                 if (invoice == null)
                     continue;
 
-                if (IsAccountingFeatureEnabled())
+                if (await IsAccountingFeatureEnabledAsync(organizationId))
                 {
                     await TrackJournalEntryCreateAsync(
                         () => CreateJournalEntryFromInvoiceAsync(invoice, currentUser),
@@ -57,7 +57,7 @@ public partial class AccountingManager
                     if (!IsPaymentLedgerLine(costCode))
                         continue;
 
-                    if (IsAccountingFeatureEnabled())
+                    if (await IsAccountingFeatureEnabledAsync(organizationId))
                     {
                         await TrackJournalEntryCreateAsync(
                             () => CreateJournalEntryFromPaymentAsync(invoice, line, currentUser),
@@ -116,7 +116,7 @@ public partial class AccountingManager
 
                 EnsureReceiptIsBill(bill);
 
-                if (IsAccountingFeatureEnabled())
+                if (await IsAccountingFeatureEnabledAsync(organizationId))
                 {
                     await TrackJournalEntryCreateAsync(
                         () => CreateJournalEntryFromBillAsync(bill, currentUser),
@@ -132,7 +132,7 @@ public partial class AccountingManager
                         result);
                 }
 
-                if (bill.PaidAmount != 0)
+                if (bill.PaidAmount != 0 && await IsAccountingFeatureEnabledAsync(organizationId))
                 {
                     try
                     {
@@ -192,7 +192,7 @@ public partial class AccountingManager
 
                 EnsureReceiptIsCardReceipt(receipt);
 
-                if (IsAccountingFeatureEnabled())
+                if (await IsAccountingFeatureEnabledAsync(organizationId))
                 {
                     await TrackJournalEntryCreateAsync(
                         () => CreateJournalEntryFromReceiptAsync(receipt, currentUser),

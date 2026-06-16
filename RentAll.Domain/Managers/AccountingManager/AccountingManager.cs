@@ -40,8 +40,8 @@ public partial class AccountingManager : IAccountingManager
         _featureFlagService = featureFlagService;
     }
 
-    private bool IsAccountingFeatureEnabled()
-        => _featureFlagService.IsEnabled(FeatureFlagKeys.Accounting);
+    private Task<bool> IsAccountingFeatureEnabledAsync(Guid organizationId)
+        => _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, organizationId);
 
     #region Account Context
     private async Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)> LoadAccountContextAsync(Guid organizationId, int officeId)

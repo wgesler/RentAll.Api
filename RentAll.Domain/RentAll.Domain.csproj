@@ -34,6 +34,12 @@
 
     </Compile>
 
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryHelpers.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
     <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryInvoices.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>

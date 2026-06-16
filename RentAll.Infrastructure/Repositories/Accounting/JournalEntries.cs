@@ -97,66 +97,69 @@ public partial class JournalEntryRepository
 
     public async Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry)
     {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.OpenAsync();
-        await using var transaction = await db.BeginTransactionAsync();
-
-        try
+        return await SqlDeadlockRetry.ExecuteAsync(async () =>
         {
-            var response = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_Add", new
-            {
-                OrganizationId = journalEntry.OrganizationId,
-                OfficeId = journalEntry.OfficeId,
-                JournalEntryCode = journalEntry.JournalEntryCode,
-                TransactionDate = journalEntry.TransactionDate,
-                PostingDate = journalEntry.PostingDate,
-                TransactionTypeId = DefaultJournalEntryTransactionTypeId,
-                SourceTypeId = journalEntry.SourceTypeId,
-                SourceId = journalEntry.SourceId,
-                Memo = journalEntry.Memo,
-                IsPosted = journalEntry.IsPosted,
-                IsVoided = journalEntry.IsVoided,
-                CreatedBy = journalEntry.CreatedBy
-            }, transaction: transaction);
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.OpenAsync();
+            await using var transaction = await db.BeginTransactionAsync();
 
-            if (response == null || !response.Any())
-                throw new Exception("Journal entry not created");
-
-            var entry = ConvertEntityToModel(response.FirstOrDefault()!);
-            foreach (var line in journalEntry.JournalEntryLines)
+            try
             {
-                await db.DapperProcQueryAsync<JournalEntryLineEntity>("Accounting.JournalEntryLine_Add", new
+                var response = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_Add", new
                 {
-                    JournalEntryId = entry.JournalEntryId,
-                    ChartOfAccountId = line.ChartOfAccountId,
-                    CostCodeId = line.CostCodeId,
-                    PropertyId = line.PropertyId,
-                    ReservationId = line.ReservationId,
-                    ContactId = line.ContactId,
-                    Debit = line.Debit,
-                    Credit = line.Credit,
-                    Memo = line.Memo,
+                    OrganizationId = journalEntry.OrganizationId,
+                    OfficeId = journalEntry.OfficeId,
+                    JournalEntryCode = journalEntry.JournalEntryCode,
+                    TransactionDate = journalEntry.TransactionDate,
+                    PostingDate = journalEntry.PostingDate,
+                    TransactionTypeId = DefaultJournalEntryTransactionTypeId,
+                    SourceTypeId = journalEntry.SourceTypeId,
+                    SourceId = journalEntry.SourceId,
+                    Memo = journalEntry.Memo,
+                    IsPosted = journalEntry.IsPosted,
+                    IsVoided = journalEntry.IsVoided,
                     CreatedBy = journalEntry.CreatedBy
                 }, transaction: transaction);
+
+                if (response == null || !response.Any())
+                    throw new Exception("Journal entry not created");
+
+                var entry = ConvertEntityToModel(response.FirstOrDefault()!);
+                foreach (var line in journalEntry.JournalEntryLines)
+                {
+                    await db.DapperProcQueryAsync<JournalEntryLineEntity>("Accounting.JournalEntryLine_Add", new
+                    {
+                        JournalEntryId = entry.JournalEntryId,
+                        ChartOfAccountId = line.ChartOfAccountId,
+                        CostCodeId = line.CostCodeId,
+                        PropertyId = line.PropertyId,
+                        ReservationId = line.ReservationId,
+                        ContactId = line.ContactId,
+                        Debit = line.Debit,
+                        Credit = line.Credit,
+                        Memo = line.Memo,
+                        CreatedBy = journalEntry.CreatedBy
+                    }, transaction: transaction);
+                }
+
+                var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetById", new
+                {
+                    JournalEntryId = entry.JournalEntryId,
+                    OrganizationId = entry.OrganizationId
+                }, transaction: transaction);
+
+                if (res == null || !res.Any())
+                    throw new Exception("Journal entry not found");
+
+                await transaction.CommitAsync();
+                return ConvertEntityToModel(res.FirstOrDefault()!);
             }
-
-            var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetById", new
+            catch
             {
-                JournalEntryId = entry.JournalEntryId,
-                OrganizationId = entry.OrganizationId
-            }, transaction: transaction);
-
-            if (res == null || !res.Any())
-                throw new Exception("Journal entry not found");
-
-            await transaction.CommitAsync();
-            return ConvertEntityToModel(res.FirstOrDefault()!);
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public async Task<JournalEntry> UpdateJournalEntryByIdAsync(JournalEntry journalEntry)

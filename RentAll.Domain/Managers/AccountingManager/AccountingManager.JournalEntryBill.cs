@@ -35,7 +35,8 @@ public partial class AccountingManager
     {
         var journalEntries = new List<JournalEntry>();
 
-        if (!IsAccountingFeatureEnabled())
+        if (billPayment.PaymentApplications.Count == 0
+            || !await IsAccountingFeatureEnabledAsync(billPayment.PaymentApplications[0].Bill.OrganizationId))
             return journalEntries;
 
         foreach (var paymentApplication in billPayment.PaymentApplications)
@@ -53,10 +54,7 @@ public partial class AccountingManager
     {
         EnsureReceiptIsBill(bill);
 
-        var splitLines = bill.Splits
-            .Where(s => s.Amount != 0)
-            .OrderBy(s => s.ReceiptSplitId)
-            .ToList();
+        var splitLines = ResolveDocumentSplitLines(bill);
 
         if (splitLines.Count == 0)
             throw new Exception("Bill has no split lines to create a journal entry");
@@ -91,13 +89,14 @@ public partial class AccountingManager
         var positiveTotal = positiveSplits.Sum(s => s.Amount);
         if (positiveTotal > 0)
         {
+            var (accountsPayableDebit, accountsPayableCredit) = SignedAmountToDebitCredit(positiveTotal, positiveIsDebit: false);
             journalEntryLines.Add(new JournalEntryLine
             {
                 ChartOfAccountId = accountsPayableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
-                Debit = 0,
-                Credit = positiveTotal,
+                Debit = accountsPayableDebit,
+                Credit = accountsPayableCredit,
                 Memo = $"Accounts Payable - {billLabel}",
                 CreatedBy = currentUser
             });
@@ -110,14 +109,15 @@ public partial class AccountingManager
                     split,
                     defaultCostOfGoodsSoldAccountId,
                     defaultExpenseAccountId);
+                var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
 
                 journalEntryLines.Add(new JournalEntryLine
                 {
                     ChartOfAccountId = expenseAccountId,
                     PropertyId = propertyId == Guid.Empty ? null : propertyId,
                     ContactId = bill.VendorId,
-                    Debit = split.Amount,
-                    Credit = 0,
+                    Debit = expenseDebit,
+                    Credit = expenseCredit,
                     Memo = split.Description,
                     CreatedBy = currentUser
                 });
@@ -177,6 +177,9 @@ public partial class AccountingManager
         if (bill == null)
             throw new Exception("Bill is required to create a bill payment journal entry");
 
+        if (!await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
+            throw new Exception("Accounting is not enabled for this organization");
+
         var sourceId = CreateBillPaymentSourceId(bill.ReceiptGuid, paymentApplication.PaymentSequence);
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
@@ -212,7 +215,7 @@ public partial class AccountingManager
             bill.OfficeId,
             paymentApplication.ChartOfAccountId);
 
-        var amount = Math.Abs(paymentApplication.AmountApplied);
+        var amount = paymentApplication.AmountApplied;
         var transactionDate = paymentApplication.PaymentDate;
         var postingDate = paymentApplication.PaymentDate;
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
@@ -226,55 +229,29 @@ public partial class AccountingManager
             ? $"Credit Card - {bill.BankCardDisplayName}".Trim()
             : $"Accounts Payable - {billLabel}";
 
-        JournalEntryLine offsetLine;
-        JournalEntryLine liabilityLine;
+        var (liabilityDebit, liabilityCredit) = SignedAmountToDebitCredit(amount, positiveIsDebit: true);
+        var (offsetDebit, offsetCredit) = SignedAmountToDebitCredit(-amount, positiveIsDebit: true);
 
-        if (paymentApplication.AmountApplied > 0)
+        var liabilityLine = new JournalEntryLine
         {
-            liabilityLine = new JournalEntryLine
-            {
-                ChartOfAccountId = liabilityAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = amount,
-                Credit = 0,
-                Memo = liabilityMemo,
-                CreatedBy = currentUser
-            };
-            offsetLine = new JournalEntryLine
-            {
-                ChartOfAccountId = offsetAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = 0,
-                Credit = amount,
-                Memo = memo,
-                CreatedBy = currentUser
-            };
-        }
-        else
+            ChartOfAccountId = liabilityAccountId,
+            PropertyId = propertyId == Guid.Empty ? null : propertyId,
+            ContactId = bill.VendorId,
+            Debit = liabilityDebit,
+            Credit = liabilityCredit,
+            Memo = liabilityMemo,
+            CreatedBy = currentUser
+        };
+        var offsetLine = new JournalEntryLine
         {
-            liabilityLine = new JournalEntryLine
-            {
-                ChartOfAccountId = liabilityAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = 0,
-                Credit = amount,
-                Memo = liabilityMemo,
-                CreatedBy = currentUser
-            };
-            offsetLine = new JournalEntryLine
-            {
-                ChartOfAccountId = offsetAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = amount,
-                Credit = 0,
-                Memo = memo,
-                CreatedBy = currentUser
-            };
-        }
+            ChartOfAccountId = offsetAccountId,
+            PropertyId = propertyId == Guid.Empty ? null : propertyId,
+            ContactId = bill.VendorId,
+            Debit = offsetDebit,
+            Credit = offsetCredit,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
 
         return new JournalEntry
         {

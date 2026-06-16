@@ -78,7 +78,7 @@ public partial class AccountingManager
                 ledgerLineId);
         }
 
-        if (IsAccountingFeatureEnabled())
+        if (await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
         {
             await CreateJournalEntryFromInvoiceAsync(invoice, invoice.ModifiedBy);
 
@@ -107,13 +107,16 @@ public partial class AccountingManager
             (int)SourceType.Bill,
             bill.ReceiptGuid);
 
-        if (IsAccountingFeatureEnabled())
+        if (await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
         {
             var billJournalEntry = await BuildJournalEntryFromBillAsync(bill, chartOfAccounts, accountingOffice, currentUser);
             await CreateJournalEntryAsync(billJournalEntry);
         }
 
         if (bill.PaidAmount == 0)
+            return;
+
+        if (!await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
             return;
 
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
@@ -129,8 +132,7 @@ public partial class AccountingManager
             PaymentSequence = 0
         };
 
-        var paymentJournalEntry = await BuildJournalEntryFromBillPaymentAsync(paymentApplication, chartOfAccounts, accountingOffice, currentUser);
-        await CreateJournalEntryAsync(paymentJournalEntry);
+        await CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);
     }
 
     async Task DeleteJournalEntriesForSourceAsync(Guid organizationId, int officeId, int sourceTypeId, Guid sourceId)

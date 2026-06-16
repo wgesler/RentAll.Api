@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Enums;
+using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 
 namespace RentAll.Infrastructure.Services;
@@ -9,12 +11,12 @@ public class FeatureFlagService : IFeatureFlagService
 {
     private static readonly string[] KnownFlags = [FeatureFlagKeys.Accounting];
 
-    private readonly IOptionsMonitor<FeatureFlags> _options;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentDictionary<string, bool> _overrides = new(StringComparer.OrdinalIgnoreCase);
 
-    public FeatureFlagService(IOptionsMonitor<FeatureFlags> options)
+    public FeatureFlagService(IServiceScopeFactory scopeFactory)
     {
-        _options = options;
+        _scopeFactory = scopeFactory;
     }
 
     public IReadOnlyDictionary<string, bool> GetAll()
@@ -27,14 +29,21 @@ public class FeatureFlagService : IFeatureFlagService
         if (string.IsNullOrWhiteSpace(featureName))
             return false;
 
-        if (_overrides.TryGetValue(featureName, out var overridden))
-            return overridden;
+        return _overrides.TryGetValue(featureName, out var overridden) && overridden;
+    }
 
-        return featureName switch
-        {
-            FeatureFlagKeys.Accounting => _options.CurrentValue.Accounting,
-            _ => false
-        };
+    public async Task<bool> IsEnabledAsync(string featureName, Guid organizationId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(featureName))
+            return false;
+
+        if (_overrides.TryGetValue(featureName, out var overridden) && !overridden)
+            return false;
+
+        if (organizationId != Guid.Empty && TryMapToFeatureType(featureName, out var featureType))
+            return await OrganizationHasFeatureAccessAsync(organizationId, featureType, cancellationToken);
+
+        return _overrides.TryGetValue(featureName, out overridden) && overridden;
     }
 
     public void Set(string featureName, bool enabled)
@@ -46,5 +55,29 @@ public class FeatureFlagService : IFeatureFlagService
             throw new ArgumentException($"Unknown feature flag '{featureName}'.", nameof(featureName));
 
         _overrides[featureName] = enabled;
+    }
+
+    private async Task<bool> OrganizationHasFeatureAccessAsync(Guid organizationId, FeatureType featureType, CancellationToken cancellationToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var organizationRepository = scope.ServiceProvider.GetRequiredService<IOrganizationRepository>();
+        var features = await organizationRepository.GetFeaturesByOrganizationIdAsync(organizationId);
+
+        return features.Any(feature =>
+            feature.FeatureTypeId == featureType
+            && feature.HasAccess);
+    }
+
+    private static bool TryMapToFeatureType(string featureName, out FeatureType featureType)
+    {
+        switch (featureName)
+        {
+            case FeatureFlagKeys.Accounting:
+                featureType = FeatureType.Accounting;
+                return true;
+            default:
+                featureType = default;
+                return false;
+        }
     }
 }

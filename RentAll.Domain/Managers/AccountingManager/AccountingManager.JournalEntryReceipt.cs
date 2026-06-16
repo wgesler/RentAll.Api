@@ -35,10 +35,7 @@ public partial class AccountingManager
     {
         EnsureReceiptIsCardReceipt(receipt);
 
-        var splitLines = receipt.Splits
-            .Where(s => s.Amount != 0)
-            .OrderBy(s => s.ReceiptSplitId)
-            .ToList();
+        var splitLines = ResolveDocumentSplitLines(receipt);
 
         if (splitLines.Count == 0)
             throw new Exception("Receipt has no split lines to create a journal entry");
@@ -62,19 +59,18 @@ public partial class AccountingManager
             : receipt.Description.Trim();
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
 
-        var journalEntryLines = new List<JournalEntryLine>
+        var journalEntryLines = new List<JournalEntryLine>();
+        var (creditCardDebit, creditCardCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: false);
+        journalEntryLines.Add(new JournalEntryLine
         {
-            new()
-            {
-                ChartOfAccountId = creditCardAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = receipt.VendorId,
-                Debit = 0,
-                Credit = totalAmount,
-                Memo = $"Credit Card - {receipt.BankCardDisplayName}".Trim(),
-                CreatedBy = currentUser
-            }
-        };
+            ChartOfAccountId = creditCardAccountId,
+            PropertyId = propertyId == Guid.Empty ? null : propertyId,
+            ContactId = receipt.VendorId,
+            Debit = creditCardDebit,
+            Credit = creditCardCredit,
+            Memo = $"Credit Card - {receipt.BankCardDisplayName}".Trim(),
+            CreatedBy = currentUser
+        });
 
         foreach (var split in splitLines)
         {
@@ -84,15 +80,18 @@ public partial class AccountingManager
                 split,
                 defaultCostOfGoodsSoldAccountId,
                 defaultExpenseAccountId);
+            var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
 
             journalEntryLines.Add(new JournalEntryLine
             {
                 ChartOfAccountId = expenseAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = receipt.VendorId,
-                Debit = split.Amount,
-                Credit = 0,
-                Memo = split.Description,
+                Debit = expenseDebit,
+                Credit = expenseCredit,
+                Memo = split.Amount < 0 && string.IsNullOrWhiteSpace(split.Description)
+                    ? $"Receipt Credit - {receiptLabel}"
+                    : split.Description,
                 CreatedBy = currentUser
             });
         }
@@ -118,6 +117,5 @@ public partial class AccountingManager
         if (receipt.BankCardId is not > 0)
             throw new Exception("Receipt is not a card receipt");
     }
-
     #endregion
 }

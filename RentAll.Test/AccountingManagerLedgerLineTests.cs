@@ -474,6 +474,9 @@ public class AccountingManagerLedgerLineTests
 
         public bool IsEnabled(string featureName) => true;
 
+        public Task<bool> IsEnabledAsync(string featureName, Guid organizationId, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
         public void Set(string featureName, bool enabled)
         {
         }

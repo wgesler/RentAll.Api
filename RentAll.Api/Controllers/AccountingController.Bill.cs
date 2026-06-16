@@ -20,7 +20,7 @@ namespace RentAll.Api.Controllers
                 var billPayment = await _accountingManager.ApplyPaymentToBillsAsync(dto.Bills, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.ChartOfAccountId, dto.Description, dto.Amount, dto.PaymentDate, (PaymentType)dto.PaymentTypeId, CurrentUser);
 
-                if (_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
                 {
                     try
                     {

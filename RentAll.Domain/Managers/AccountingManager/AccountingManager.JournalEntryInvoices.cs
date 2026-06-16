@@ -58,7 +58,8 @@ public partial class AccountingManager
     {
         var journalEntries = new List<JournalEntry>();
 
-        if (!IsAccountingFeatureEnabled())
+        if (invoicePayment.PaymentApplications.Count == 0
+            || !await IsAccountingFeatureEnabledAsync(invoicePayment.PaymentApplications[0].Invoice.OrganizationId))
             return journalEntries;
 
         foreach (var paymentApplication in invoicePayment.PaymentApplications)
@@ -110,15 +111,15 @@ public partial class AccountingManager
             : invoice.Notes.Trim();
 
         var journalEntryLines = new List<JournalEntryLine>();
-        var accountsReceivableAmount = Math.Abs(totalAmount);
+        var (accountsReceivableDebit, accountsReceivableCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: true);
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = accountsReceivableAccountId,
             ReservationId = invoice.ReservationId,
             PropertyId = propertyId,
             ContactId = invoice.ContactId,
-            Debit = totalAmount > 0 ? accountsReceivableAmount : 0,
-            Credit = totalAmount < 0 ? accountsReceivableAmount : 0,
+            Debit = accountsReceivableDebit,
+            Credit = accountsReceivableCredit,
             Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
             CreatedBy = currentUser
         });
@@ -131,7 +132,7 @@ public partial class AccountingManager
                 invoice.OfficeId,
                 costCode,
                 defaultIncomeAccountId);
-            var lineAmount = Math.Abs(line.Amount);
+            var (incomeDebit, incomeCredit) = SignedAmountToDebitCredit(line.Amount, positiveIsDebit: false);
 
             journalEntryLines.Add(new JournalEntryLine
             {
@@ -140,8 +141,8 @@ public partial class AccountingManager
                 ReservationId = line.ReservationId ?? invoice.ReservationId,
                 PropertyId = propertyId,
                 ContactId = invoice.ContactId,
-                Debit = line.Amount < 0 ? lineAmount : 0,
-                Credit = line.Amount > 0 ? lineAmount : 0,
+                Debit = incomeDebit,
+                Credit = incomeCredit,
                 Memo = line.Description,
                 CreatedBy = currentUser
             });
@@ -179,68 +180,39 @@ public partial class AccountingManager
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
 
-        var amount = Math.Abs(paymentLedgerLine.Amount);
+        var amount = paymentLedgerLine.Amount;
         var transactionDate = paymentLedgerLine.LedgerLineDate;
         var postingDate = paymentLedgerLine.LedgerLineDate;
         var memo = string.IsNullOrWhiteSpace(paymentLedgerLine.Description)
             ? $"Invoice Payment - {invoice.InvoiceCode}"
             : paymentLedgerLine.Description.Trim();
 
-        JournalEntryLine undepositedFundsLine;
-        JournalEntryLine accountsReceivableLine;
+        var (undepositedFundsDebit, undepositedFundsCredit) = SignedAmountToDebitCredit(amount, positiveIsDebit: true);
+        var (accountsReceivableDebit, accountsReceivableCredit) = SignedAmountToDebitCredit(-amount, positiveIsDebit: true);
 
-        if (paymentLedgerLine.Amount > 0)
+        var undepositedFundsLine = new JournalEntryLine
         {
-            undepositedFundsLine = new JournalEntryLine
-            {
-                ChartOfAccountId = undepositedFundsAccountId,
-                CostCodeId = paymentLedgerLine.CostCodeId,
-                ReservationId = reservationId,
-                PropertyId = propertyId,
-                ContactId = invoice.ContactId,
-                Debit = amount,
-                Credit = 0,
-                Memo = memo,
-                CreatedBy = currentUser
-            };
-            accountsReceivableLine = new JournalEntryLine
-            {
-                ChartOfAccountId = accountsReceivableAccountId,
-                ReservationId = reservationId,
-                PropertyId = propertyId,
-                ContactId = invoice.ContactId,
-                Debit = 0,
-                Credit = amount,
-                Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
-                CreatedBy = currentUser
-            };
-        }
-        else
+            ChartOfAccountId = undepositedFundsAccountId,
+            CostCodeId = paymentLedgerLine.CostCodeId,
+            ReservationId = reservationId,
+            PropertyId = propertyId,
+            ContactId = invoice.ContactId,
+            Debit = undepositedFundsDebit,
+            Credit = undepositedFundsCredit,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        var accountsReceivableLine = new JournalEntryLine
         {
-            undepositedFundsLine = new JournalEntryLine
-            {
-                ChartOfAccountId = undepositedFundsAccountId,
-                CostCodeId = paymentLedgerLine.CostCodeId,
-                ReservationId = reservationId,
-                PropertyId = propertyId,
-                ContactId = invoice.ContactId,
-                Debit = 0,
-                Credit = amount,
-                Memo = memo,
-                CreatedBy = currentUser
-            };
-            accountsReceivableLine = new JournalEntryLine
-            {
-                ChartOfAccountId = accountsReceivableAccountId,
-                ReservationId = reservationId,
-                PropertyId = propertyId,
-                ContactId = invoice.ContactId,
-                Debit = amount,
-                Credit = 0,
-                Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
-                CreatedBy = currentUser
-            };
-        }
+            ChartOfAccountId = accountsReceivableAccountId,
+            ReservationId = reservationId,
+            PropertyId = propertyId,
+            ContactId = invoice.ContactId,
+            Debit = accountsReceivableDebit,
+            Credit = accountsReceivableCredit,
+            Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
+            CreatedBy = currentUser
+        };
 
         return new JournalEntry
         {

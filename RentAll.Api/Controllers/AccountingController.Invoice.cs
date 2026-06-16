@@ -72,7 +72,7 @@ namespace RentAll.Api.Controllers
                 invoice.OrganizationId = CurrentOrganizationId;
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
-                if (_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
                 {
                     try
                     {
@@ -229,7 +229,7 @@ namespace RentAll.Api.Controllers
                 var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
 
-                if (_featureFlagService.IsEnabled(FeatureFlagKeys.Accounting))
+                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
                 {
                     try
                     {

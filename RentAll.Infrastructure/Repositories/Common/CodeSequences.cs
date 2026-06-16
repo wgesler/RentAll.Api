@@ -6,17 +6,20 @@ namespace RentAll.Infrastructure.Repositories.Common
     public partial class CommonRepository
     {
         #region Selects
-        public async Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType)
+        public Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType)
         {
-            await using var db = new SqlConnection(_dbConnectionString);
-            var result = await db.DapperProcQueryScalarAsync<int>("Organization.CodeSequence_GetNext", new
+            return SqlDeadlockRetry.ExecuteAsync(async () =>
             {
-                OrganizationId = organizationId,
-                EntityTypeId = entityTypeId,
-                EntityType = entityType
-            });
+                await using var db = new SqlConnection(_dbConnectionString);
+                var result = await db.DapperProcQueryScalarAsync<int>("Organization.CodeSequence_GetNext", new
+                {
+                    OrganizationId = organizationId,
+                    EntityTypeId = entityTypeId,
+                    EntityType = entityType
+                });
 
-            return result;
+                return result;
+            });
         }
 
         public async Task ResetCodeSequenceAsync(Guid organizationId, int entityTypeId, string entityType, int nextNumber = 0)
