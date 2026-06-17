@@ -9,15 +9,18 @@ namespace RentAll.Domain.Managers;
 public class AuthManager
 {
     private readonly IUserRepository _userRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IAuthTokenService _tokenService;
 
     public AuthManager(
         IUserRepository userRepository,
+        IOrganizationRepository organizationRepository,
         IPasswordHasher passwordHasher,
         IAuthTokenService tokenService)
     {
         _userRepository = userRepository;
+        _organizationRepository = organizationRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
     }
@@ -35,7 +38,8 @@ public class AuthManager
         if (!user.IsActive)
             return (false, null, null, null);
 
-        var accessToken = _tokenService.GenerateToken(user);
+        var enabledFeatures = await GetEnabledFeaturesClaimAsync(user.OrganizationId);
+        var accessToken = _tokenService.GenerateToken(user, enabledFeatures);
         var refreshToken = await CreateRefreshTokenAsync(user.UserId);
 
         return (true, user, accessToken, refreshToken);
@@ -59,7 +63,8 @@ public class AuthManager
         };
 
         var createdUser = await _userRepository.CreateAsync(user);
-        var accessToken = _tokenService.GenerateToken(createdUser);
+        var enabledFeatures = await GetEnabledFeaturesClaimAsync(createdUser.OrganizationId);
+        var accessToken = _tokenService.GenerateToken(createdUser, enabledFeatures);
         var refreshToken = await CreateRefreshTokenAsync(createdUser.UserId);
 
         return (true, createdUser, accessToken, refreshToken, null);
@@ -97,8 +102,8 @@ public class AuthManager
         if (user == null)
             return (false, null, null, null, "User not found");
 
-        // Generate new access token
-        var accessToken = _tokenService.GenerateToken(user);
+        var enabledFeatures = await GetEnabledFeaturesClaimAsync(user.OrganizationId);
+        var accessToken = _tokenService.GenerateToken(user, enabledFeatures);
 
         // Generate new refresh token
         var newRefreshToken = GenerateRefreshToken();
@@ -177,6 +182,21 @@ public class AuthManager
         var bytes = Encoding.UTF8.GetBytes(token);
         var hash = sha256.ComputeHash(bytes);
         return Convert.ToHexString(hash);
+    }
+
+    private async Task<string> GetEnabledFeaturesClaimAsync(Guid organizationId)
+    {
+        if (organizationId == Guid.Empty)
+            return string.Empty;
+
+        var features = await _organizationRepository.GetFeaturesByOrganizationIdAsync(organizationId);
+        var enabledTypeIds = features
+            .Where(feature => feature.HasAccess)
+            .Select(feature => (int)feature.FeatureTypeId)
+            .Distinct()
+            .OrderBy(id => id);
+
+        return string.Join(",", enabledTypeIds);
     }
 }
 

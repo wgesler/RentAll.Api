@@ -4,7 +4,7 @@ namespace RentAll.Domain.Interfaces.Auth;
 
 public interface IAuthTokenService
 {
-    string GenerateToken(User user);
+    string GenerateToken(User user, string enabledFeatures = "");
 }
 
 

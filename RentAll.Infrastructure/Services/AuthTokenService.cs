@@ -18,7 +18,7 @@ public class AuthTokenService : IAuthTokenService
         _configuration = configuration;
     }
 
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, string enabledFeatures = "")
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
@@ -60,7 +60,8 @@ public class AuthTokenService : IAuthTokenService
             officeAccess = officeAccessString,
             properties = propertiesString,
             startupPageId = (int)user.StartupPage,
-            defaultOfficeId = user.DefaultOfficeId
+            defaultOfficeId = user.DefaultOfficeId,
+            enabledFeatures = enabledFeatures ?? string.Empty
         };
 
         // Serialize and base64 encode the user object
