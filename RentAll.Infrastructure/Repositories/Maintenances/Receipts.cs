@@ -70,7 +70,7 @@ public partial class MaintenanceRepository
         return receipts;
     }
 
-    public async Task<Receipt?> GetReceiptByIdAsync(int receiptId, Guid organizationId)
+    public async Task<Receipt?> GetReceiptByIdAsync(Guid receiptId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_GetById", new
@@ -167,7 +167,7 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Deletes
-    public async Task DeleteReceiptByIdAsync(int receiptId, Guid organizationId, Guid currentUser)
+    public async Task DeleteReceiptByIdAsync(Guid receiptId, Guid organizationId, Guid currentUser)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Maintenance.Receipt_DeleteById", new
@@ -187,7 +187,7 @@ public partial class MaintenanceRepository
             receipt.Splits = tableSplits;
     }
 
-    private async Task<List<ReceiptSplit>> GetReceiptSplitsByReceiptIdAsync(int receiptId)
+    private async Task<List<ReceiptSplit>> GetReceiptSplitsByReceiptIdAsync(Guid receiptId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var splitRows = await db.DapperProcQueryAsync<ReceiptSplitEntity>("Maintenance.ReceiptSplit_GetByReceiptId", new

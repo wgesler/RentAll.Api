@@ -3,7 +3,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
     public class ReceiptSplitEntity
     {
         public int ReceiptSplitId { get; set; }
-        public int ReceiptId { get; set; }
+        public Guid ReceiptId { get; set; }
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public int ReceiptTypeId { get; set; }

@@ -4,7 +4,7 @@ namespace RentAll.Api.Dtos.Maintenances.Receipts;
 
 public class UpdateReceiptDto
 {
-    public int ReceiptId { get; set; }
+    public Guid ReceiptId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public List<Guid> PropertyIds { get; set; } = new List<Guid>();
@@ -28,7 +28,7 @@ public class UpdateReceiptDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (ReceiptId <= 0)
+        if (ReceiptId == Guid.Empty)
             return (false, "ReceiptId is required");
 
         if (OrganizationId == Guid.Empty)

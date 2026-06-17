@@ -6,7 +6,7 @@ namespace RentAll.Domain.Interfaces.Managers;
 public interface IAccountingManager
 {
     Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser);
-    Task<BillPayment> ApplyPaymentToBillsAsync(List<int> billIds, Guid organizationId, string offices, int chartOfAccountId,
+    Task<BillPayment> ApplyPaymentToBillsAsync(List<Guid> billIds, Guid organizationId, string offices, int chartOfAccountId,
         string description, decimal amountPaid, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
     Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly invoiceDate, DateOnly startDate, DateOnly endDate);
     Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate);
@@ -23,6 +23,7 @@ public interface IAccountingManager
     Task<JournalEntry> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser);
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
+    Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
     Task<JournalEntry> CreateJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);

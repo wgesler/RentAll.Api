@@ -47,6 +47,107 @@ public partial class AccountingManager
         return updatedBill;
     }
 
+    public async Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser)
+    {
+        EnsureReceiptIsCardReceipt(receipt);
+
+        var existingReceipt = await _maintenanceRepository.GetReceiptByIdAsync(receipt.ReceiptId, receipt.OrganizationId);
+        var priorReceiptDate = existingReceipt?.ReceiptDate;
+        var priorAccountingPeriod = existingReceipt?.AccountingPeriod;
+
+        var updatedReceipt = await _maintenanceRepository.UpdateReceiptAsync(receipt);
+        var freshReceipt = await _maintenanceRepository.GetReceiptByIdAsync(updatedReceipt.ReceiptId, updatedReceipt.OrganizationId)
+            ?? throw new Exception("Receipt not found after update");
+
+        try
+        {
+            await ReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser, priorReceiptDate, priorAccountingPeriod);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Receipt was updated but general ledger entry refresh failed: {ex.Message}", ex);
+        }
+
+        return freshReceipt;
+    }
+
+    async Task ReplaceJournalEntriesFromReceiptAsync(
+        Receipt receipt,
+        Guid currentUser,
+        DateOnly? priorReceiptDate = null,
+        DateOnly? priorAccountingPeriod = null)
+    {
+        EnsureReceiptIsCardReceipt(receipt);
+
+        if (receipt.ReceiptId == Guid.Empty)
+            throw new Exception("ReceiptId is required to refresh journal entries");
+
+        if (!await IsAccountingFeatureEnabledAsync(receipt.OrganizationId))
+        {
+            await DeleteJournalEntriesForSourceAsync(
+                receipt.OrganizationId,
+                receipt.OfficeId,
+                (int)SourceType.Receipt,
+                receipt.ReceiptId);
+            return;
+        }
+
+        var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = receipt.OrganizationId,
+            OfficeIds = receipt.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.Receipt,
+            SourceId = receipt.ReceiptId,
+            IncludeVoided = true,
+            IncludeUnposted = true
+        })).Where(e => !e.IsVoided).ToList();
+
+        foreach (var entry in existingEntries.Where(e => e.IsPosted))
+            throw new Exception($"Cannot refresh journal entries because {entry.JournalEntryCode} is posted");
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
+        var rebuiltJournalEntry = await BuildJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
+
+        while (existingEntries.Count > 1)
+        {
+            var duplicate = existingEntries[^1];
+            await DeleteJournalEntryAsync(duplicate.JournalEntryId, receipt.OrganizationId);
+            existingEntries.RemoveAt(existingEntries.Count - 1);
+        }
+
+        var existingEntry = existingEntries.FirstOrDefault();
+        if (existingEntry != null)
+        {
+            rebuiltJournalEntry.JournalEntryId = existingEntry.JournalEntryId;
+            rebuiltJournalEntry.OrganizationId = receipt.OrganizationId;
+            rebuiltJournalEntry.OfficeId = receipt.OfficeId;
+            rebuiltJournalEntry.CreatedBy = existingEntry.CreatedBy;
+            rebuiltJournalEntry.ModifiedBy = currentUser;
+
+            foreach (var line in rebuiltJournalEntry.JournalEntryLines)
+            {
+                line.JournalEntryId = existingEntry.JournalEntryId;
+                line.JournalEntryLineId = Guid.Empty;
+            }
+
+            var receiptPeriodUnchanged = priorReceiptDate != null
+                && priorAccountingPeriod != null
+                && receipt.ReceiptDate == priorReceiptDate.Value
+                && receipt.AccountingPeriod == priorAccountingPeriod.Value;
+            if (receiptPeriodUnchanged)
+            {
+                rebuiltJournalEntry.TransactionDate = existingEntry.TransactionDate;
+                if (existingEntry.PostingDate != default)
+                    rebuiltJournalEntry.PostingDate = existingEntry.PostingDate;
+            }
+
+            await UpdateJournalEntryAsync(rebuiltJournalEntry);
+            return;
+        }
+
+        await CreateJournalEntryAsync(rebuiltJournalEntry);
+    }
+
     async Task ReplaceJournalEntriesFromInvoiceAsync(Invoice invoice, IEnumerable<Guid> priorPaymentLedgerLineIds)
     {
         if (invoice.InvoiceId == Guid.Empty)
@@ -95,8 +196,8 @@ public partial class AccountingManager
     {
         EnsureReceiptIsBill(bill);
 
-        if (bill.ReceiptGuid == Guid.Empty)
-            throw new Exception("ReceiptGuid is required to refresh journal entries");
+        if (bill.ReceiptId == Guid.Empty)
+            throw new Exception("ReceiptId is required to refresh journal entries");
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
         var paymentOffsetAccountId = await DeleteBillPaymentJournalEntriesAsync(bill, chartOfAccounts, accountingOffice);
@@ -105,7 +206,7 @@ public partial class AccountingManager
             bill.OrganizationId,
             bill.OfficeId,
             (int)SourceType.Bill,
-            bill.ReceiptGuid);
+            bill.ReceiptId);
 
         if (await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
         {
@@ -171,7 +272,7 @@ public partial class AccountingManager
 
         int? paymentOffsetAccountId = null;
 
-        foreach (var entry in existingEntries.Where(e => !e.IsVoided && e.SourceId is Guid sourceId && TryGetBillPaymentSequence(sourceId, bill.ReceiptGuid) >= 0))
+        foreach (var entry in existingEntries.Where(e => !e.IsVoided && e.SourceId == bill.ReceiptId))
         {
             paymentOffsetAccountId ??= ResolveBillPaymentOffsetAccountId(entry, liabilityAccountId);
 

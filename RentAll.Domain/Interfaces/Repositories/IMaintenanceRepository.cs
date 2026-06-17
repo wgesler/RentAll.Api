@@ -66,10 +66,10 @@ public interface IMaintenanceRepository
     Task<IEnumerable<Receipt>> GetReceiptsByCriteriaAsync(ReceiptGetCriteria criteria);
     Task<IEnumerable<Receipt>> GetReceiptsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Receipt>> GetReceiptsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
-    Task<Receipt?> GetReceiptByIdAsync(int receiptId, Guid organizationId);
+    Task<Receipt?> GetReceiptByIdAsync(Guid receiptId, Guid organizationId);
 
     Task<Receipt> CreateReceiptAsync(Receipt receipt);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt);
-    Task DeleteReceiptByIdAsync(int receiptId, Guid organizationId, Guid currentUser);
+    Task DeleteReceiptByIdAsync(Guid receiptId, Guid organizationId, Guid currentUser);
     #endregion
 }

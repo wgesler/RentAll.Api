@@ -87,10 +87,10 @@ public partial class MaintenanceController
         }
     }
 
-    [HttpGet("receipt/{receiptId:int}")]
-    public async Task<IActionResult> GetReceiptById(int receiptId)
+    [HttpGet("receipt/{receiptId:guid}")]
+    public async Task<IActionResult> GetReceiptById(Guid receiptId)
     {
-        if (receiptId <= 0)
+        if (receiptId == Guid.Empty)
             return BadRequest("ReceiptId is required");
 
         try
@@ -223,7 +223,15 @@ public partial class MaintenanceController
             }
             else
             {
-                updated = await _maintenanceRepository.UpdateReceiptAsync(receipt);
+                try
+                {
+                    updated = await _accountingManager.UpdateReceiptAsync(receipt, CurrentUser);
+                }
+                catch (InvalidOperationException journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Receipt {ReceiptId} was updated but journal entry refresh failed", receipt.ReceiptId);
+                    return BadRequest(journalEntryEx.Message);
+                }
             }
 
             var response = new ReceiptResponseDto(updated);
@@ -239,10 +247,10 @@ public partial class MaintenanceController
     #endregion
 
     #region Delete
-    [HttpDelete("receipt/{receiptId:int}")]
-    public async Task<IActionResult> DeleteReceiptByIdAsync(int receiptId)
+    [HttpDelete("receipt/{receiptId:guid}")]
+    public async Task<IActionResult> DeleteReceiptByIdAsync(Guid receiptId)
     {
-        if (receiptId <= 0)
+        if (receiptId == Guid.Empty)
             return BadRequest("ReceiptId is required");
 
         try

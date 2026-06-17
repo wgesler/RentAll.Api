@@ -125,7 +125,7 @@ public partial class AccountingManager
                             OrganizationId = bill.OrganizationId,
                             OfficeIds = bill.OfficeId.ToString(),
                             SourceTypeId = (int)SourceType.Bill,
-                            SourceId = bill.ReceiptGuid,
+                            SourceId = bill.ReceiptId,
                             IncludeVoided = true,
                             IncludeUnposted = true
                         },
@@ -201,7 +201,7 @@ public partial class AccountingManager
                             OrganizationId = receipt.OrganizationId,
                             OfficeIds = receipt.OfficeId.ToString(),
                             SourceTypeId = (int)SourceType.Receipt,
-                            SourceId = receipt.ReceiptGuid,
+                            SourceId = receipt.ReceiptId,
                             IncludeVoided = true,
                             IncludeUnposted = true
                         },
@@ -266,7 +266,7 @@ public partial class AccountingManager
                 OrganizationId = bill.OrganizationId,
                 OfficeIds = bill.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.BillPayment,
-                SourceId = CreateBillPaymentSourceId(bill.ReceiptGuid, paymentApplication.PaymentSequence),
+                SourceId = bill.ReceiptId,
                 IncludeVoided = true,
                 IncludeUnposted = true
             },

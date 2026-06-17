@@ -7,7 +7,7 @@ public class BillPaymentRequestDto
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public int PaymentTypeId { get; set; }
-    public List<int> Bills { get; set; } = new List<int>();
+    public List<Guid> Bills { get; set; } = new List<Guid>();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -26,7 +26,7 @@ public class BillPaymentRequestDto
         if (Bills.Count <= 0)
             return (false, "No bills submitted for payment");
 
-        if (Bills.Any(billId => billId <= 0))
+        if (Bills.Any(billId => billId == Guid.Empty))
             return (false, "Invalid bill id submitted for payment");
 
         return (true, null);

@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -17,7 +15,7 @@ public partial class AccountingManager
             OrganizationId = bill.OrganizationId,
             OfficeIds = bill.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Bill,
-            SourceId = bill.ReceiptGuid,
+            SourceId = bill.ReceiptId,
             IncludeVoided = true,
             IncludeUnposted = true
         });
@@ -161,7 +159,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Bill,
-            SourceId = bill.ReceiptGuid,
+            SourceId = bill.ReceiptId,
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -177,23 +175,11 @@ public partial class AccountingManager
         if (bill == null)
             throw new Exception("Bill is required to create a bill payment journal entry");
 
+        if (bill.ReceiptId == Guid.Empty)
+            throw new Exception("ReceiptId is required to create a bill payment journal entry");
+
         if (!await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
             throw new Exception("Accounting is not enabled for this organization");
-
-        var sourceId = CreateBillPaymentSourceId(bill.ReceiptGuid, paymentApplication.PaymentSequence);
-        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = bill.OrganizationId,
-            OfficeIds = bill.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.BillPayment,
-            SourceId = sourceId,
-            IncludeVoided = true,
-            IncludeUnposted = true
-        });
-
-        var existingEntry = existingEntries.FirstOrDefault(e => !e.IsVoided);
-        if (existingEntry != null)
-            return existingEntry;
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
         var journalEntry = await BuildJournalEntryFromBillPaymentAsync(paymentApplication, chartOfAccounts, accountingOffice, currentUser);
@@ -260,43 +246,11 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             PostingDate = postingDate,
             SourceTypeId = (int)SourceType.BillPayment,
-            SourceId = CreateBillPaymentSourceId(bill.ReceiptGuid, paymentApplication.PaymentSequence),
+            SourceId = bill.ReceiptId,
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine> { liabilityLine, offsetLine },
             CreatedBy = currentUser
         };
-    }
-    #endregion
-
-    #region Bill Payment Source Id
-    static readonly Guid BillPaymentSourceNamespace = Guid.Parse("7f3e2a1b-9c4d-4e5f-8a6b-1d2e3f4a5b6c");
-
-    static Guid CreateBillPaymentSourceId(Guid receiptGuid, int paymentSequence)
-    {
-        if (receiptGuid == Guid.Empty)
-            throw new Exception("ReceiptGuid is required to create a bill payment source id");
-
-        if (paymentSequence < 0)
-            throw new Exception("PaymentSequence is required to create a bill payment source id");
-
-        var input = $"{BillPaymentSourceNamespace:N}:{receiptGuid:N}:{paymentSequence}";
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        Span<byte> guidBytes = stackalloc byte[16];
-        hash.AsSpan(0, 16).CopyTo(guidBytes);
-        guidBytes[6] = (byte)((guidBytes[6] & 0x0F) | 0x50);
-        guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
-        return new Guid(guidBytes);
-    }
-
-    static int TryGetBillPaymentSequence(Guid sourceId, Guid receiptGuid)
-    {
-        for (var sequence = 0; sequence <= 999; sequence++)
-        {
-            if (CreateBillPaymentSourceId(receiptGuid, sequence) == sourceId)
-                return sequence;
-        }
-
-        return -1;
     }
     #endregion
 
@@ -308,16 +262,12 @@ public partial class AccountingManager
             OrganizationId = bill.OrganizationId,
             OfficeIds = bill.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.BillPayment,
+            SourceId = bill.ReceiptId,
             IncludeVoided = true,
             IncludeUnposted = true
         });
 
-        return existingEntries
-            .Where(e => !e.IsVoided && e.SourceId is Guid sourceId)
-            .Select(e => TryGetBillPaymentSequence(e.SourceId!.Value, bill.ReceiptGuid))
-            .Where(sequence => sequence >= 0)
-            .DefaultIfEmpty(-1)
-            .Max() + 1;
+        return existingEntries.Count(e => !e.IsVoided);
     }
 
     static void EnsureReceiptIsBill(Receipt bill)

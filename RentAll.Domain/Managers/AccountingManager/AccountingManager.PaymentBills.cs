@@ -6,7 +6,7 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Bills
-    public async Task<BillPayment> ApplyPaymentToBillsAsync(List<int> billIds, Guid organizationId, string offices, int chartOfAccountId,
+    public async Task<BillPayment> ApplyPaymentToBillsAsync(List<Guid> billIds, Guid organizationId, string offices, int chartOfAccountId,
         string description, decimal amountPaid, DateOnly paymentDate, PaymentType paymentType, Guid currentUser)
     {
         var bills = new List<Receipt>();
