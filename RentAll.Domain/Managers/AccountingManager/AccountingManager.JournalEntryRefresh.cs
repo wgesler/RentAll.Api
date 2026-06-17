@@ -171,13 +171,7 @@ public partial class AccountingManager
             invoice.InvoiceId);
 
         foreach (var ledgerLineId in paymentLedgerLineIds)
-        {
-            await DeleteJournalEntriesForSourceAsync(
-                invoice.OrganizationId,
-                invoice.OfficeId,
-                (int)SourceType.InvoicePayment,
-                ledgerLineId);
-        }
+            await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice.OrganizationId, invoice.OfficeId, ledgerLineId);
 
         if (await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
         {

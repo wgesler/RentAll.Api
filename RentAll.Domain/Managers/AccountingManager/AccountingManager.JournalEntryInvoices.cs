@@ -35,6 +35,11 @@ public partial class AccountingManager
         if (paymentLedgerLine.LedgerLineId == Guid.Empty)
             throw new Exception("LedgerLineId is required to create a payment journal entry");
 
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+
+        if (IsInvoicePrePayment(invoice, paymentLedgerLine))
+            return await CreateJournalEntriesFromPrePaymentAsync(invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
+
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
             OrganizationId = invoice.OrganizationId,
@@ -49,8 +54,73 @@ public partial class AccountingManager
         if (existingEntry != null)
             return existingEntry;
 
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var journalEntry = await BuildJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
+        return await CreateJournalEntryAsync(journalEntry);
+    }
+
+    public async Task<JournalEntry> CreateJournalEntriesFromPrePaymentAsync(
+        Invoice invoice,
+        LedgerLine paymentLedgerLine,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Guid currentUser)
+    {
+        var receivedEntry = await GetOrCreatePrePaymentReceivedJournalEntryAsync(
+            invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
+        await GetOrCreatePrePaymentApplyJournalEntryAsync(
+            invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
+        return receivedEntry;
+    }
+
+    public async Task<JournalEntry> GetOrCreatePrePaymentReceivedJournalEntryAsync(
+        Invoice invoice,
+        LedgerLine paymentLedgerLine,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Guid currentUser)
+    {
+        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeIds = invoice.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.InvoicePayment,
+            SourceId = paymentLedgerLine.LedgerLineId,
+            IncludeVoided = true,
+            IncludeUnposted = true
+        });
+
+        var existingEntry = existingEntries.FirstOrDefault(e => !e.IsVoided);
+        if (existingEntry != null)
+            return existingEntry;
+
+        var journalEntry = await BuildJournalEntryFromPrePaymentReceivedAsync(
+            invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
+        return await CreateJournalEntryAsync(journalEntry);
+    }
+
+    public async Task<JournalEntry> GetOrCreatePrePaymentApplyJournalEntryAsync(
+        Invoice invoice,
+        LedgerLine paymentLedgerLine,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Guid currentUser)
+    {
+        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeIds = invoice.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.Invoice,
+            SourceId = paymentLedgerLine.LedgerLineId,
+            IncludeVoided = true,
+            IncludeUnposted = true
+        });
+
+        var existingEntry = existingEntries.FirstOrDefault(e => !e.IsVoided);
+        if (existingEntry != null)
+            return existingEntry;
+
+        var journalEntry = await BuildJournalEntryFromPrePaymentApplyAsync(
+            invoice, paymentLedgerLine, chartOfAccounts, accountingOffice, currentUser);
         return await CreateJournalEntryAsync(journalEntry);
     }
 
@@ -227,9 +297,150 @@ public partial class AccountingManager
             CreatedBy = currentUser
         };
     }
+
+    async Task<JournalEntry> BuildJournalEntryFromPrePaymentReceivedAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
+    {
+        await ValidatePrePaymentLedgerLineForJournalEntry(invoice, paymentLedgerLine);
+
+        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var prePaymentAccountId = GetPrePaymentAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
+        var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
+        var amount = paymentLedgerLine.Amount;
+        var transactionDate = paymentLedgerLine.LedgerLineDate;
+        var memo = string.IsNullOrWhiteSpace(paymentLedgerLine.Description)
+            ? $"Invoice Pre-Payment - {invoice.InvoiceCode}"
+            : paymentLedgerLine.Description.Trim();
+
+        var (accountsReceivableDebit, accountsReceivableCredit) = SignedAmountToDebitCredit(amount, positiveIsDebit: true);
+        var (prePaymentDebit, prePaymentCredit) = SignedAmountToDebitCredit(amount, positiveIsDebit: false);
+
+        return new JournalEntry
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeId = invoice.OfficeId,
+            TransactionDate = transactionDate,
+            PostingDate = transactionDate,
+            SourceTypeId = (int)SourceType.InvoicePayment,
+            SourceId = paymentLedgerLine.LedgerLineId,
+            Memo = memo,
+            JournalEntryLines = new List<JournalEntryLine>
+            {
+                new()
+                {
+                    ChartOfAccountId = accountsReceivableAccountId,
+                    ReservationId = reservationId,
+                    PropertyId = propertyId,
+                    ContactId = invoice.ContactId,
+                    Debit = accountsReceivableDebit,
+                    Credit = accountsReceivableCredit,
+                    Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
+                    CreatedBy = currentUser
+                },
+                new()
+                {
+                    ChartOfAccountId = prePaymentAccountId,
+                    CostCodeId = paymentLedgerLine.CostCodeId,
+                    ReservationId = reservationId,
+                    PropertyId = propertyId,
+                    ContactId = invoice.ContactId,
+                    Debit = prePaymentDebit,
+                    Credit = prePaymentCredit,
+                    Memo = memo,
+                    CreatedBy = currentUser
+                }
+            },
+            CreatedBy = currentUser
+        };
+    }
+
+    async Task<JournalEntry> BuildJournalEntryFromPrePaymentApplyAsync( Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
+    {
+        await ValidatePrePaymentLedgerLineForJournalEntry(invoice, paymentLedgerLine);
+
+        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var prePaymentAccountId = GetPrePaymentAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
+        var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
+        var amount = paymentLedgerLine.Amount;
+        var postingDate = invoice.AccountingPeriod;
+        var memo = $"Invoice Pre-Payment Apply - {invoice.InvoiceCode}";
+
+        var (prePaymentDebit, prePaymentCredit) = SignedAmountToDebitCredit(amount, positiveIsDebit: true);
+        var (accountsReceivableDebit, accountsReceivableCredit) = SignedAmountToDebitCredit(-amount, positiveIsDebit: true);
+
+        return new JournalEntry
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeId = invoice.OfficeId,
+            TransactionDate = postingDate,
+            PostingDate = postingDate,
+            SourceTypeId = (int)SourceType.Invoice,
+            SourceId = paymentLedgerLine.LedgerLineId,
+            Memo = memo,
+            JournalEntryLines = new List<JournalEntryLine>
+            {
+                new()
+                {
+                    ChartOfAccountId = prePaymentAccountId,
+                    CostCodeId = paymentLedgerLine.CostCodeId,
+                    ReservationId = reservationId,
+                    PropertyId = propertyId,
+                    ContactId = invoice.ContactId,
+                    Debit = prePaymentDebit,
+                    Credit = prePaymentCredit,
+                    Memo = memo,
+                    CreatedBy = currentUser
+                },
+                new()
+                {
+                    ChartOfAccountId = accountsReceivableAccountId,
+                    ReservationId = reservationId,
+                    PropertyId = propertyId,
+                    ContactId = invoice.ContactId,
+                    Debit = accountsReceivableDebit,
+                    Credit = accountsReceivableCredit,
+                    Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
+                    CreatedBy = currentUser
+                }
+            },
+            CreatedBy = currentUser
+        };
+    }
     #endregion
 
     #region Static Helpers
+    static bool IsInvoicePrePayment(Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        if (invoice.AccountingPeriod == default || paymentLedgerLine.LedgerLineDate == default)
+            return false;
+
+        return paymentLedgerLine.LedgerLineDate < invoice.AccountingPeriod;
+    }
+
+    async Task ValidatePrePaymentLedgerLineForJournalEntry(Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        if (paymentLedgerLine.Amount == 0)
+            throw new Exception("Payment amount cannot be zero");
+
+        if (paymentLedgerLine.LedgerLineDate == default)
+            throw new Exception("Payment date is required to create a payment journal entry");
+
+        if (invoice.AccountingPeriod == default)
+            throw new Exception("AccountingPeriod is required to create pre-payment journal entries");
+
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        if (!costCodeById.TryGetValue(paymentLedgerLine.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
+            throw new Exception("Payment ledger line must use a payment cost code");
+    }
+
+    async Task DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(Guid organizationId, int officeId, Guid ledgerLineId)
+    {
+        await DeleteJournalEntriesForSourceAsync(organizationId, officeId, (int)SourceType.InvoicePayment, ledgerLineId);
+        await DeleteJournalEntriesForSourceAsync(organizationId, officeId, (int)SourceType.Invoice, ledgerLineId);
+    }
+
     static bool IsPaymentLedgerLine(CostCode? costCode)
     {
         return costCode?.TransactionType == TransactionType.Payment;

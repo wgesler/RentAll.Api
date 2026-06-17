@@ -208,6 +208,31 @@ public partial class AccountingManager : IAccountingManager
     }
     #endregion
 
+    #region PrePayment Account
+    private static int? GetDefaultPrePaymentAccountId(AccountingOffice? accountingOffice)
+        => accountingOffice?.DefaultPrePayAccountId is > 0 ? accountingOffice.DefaultPrePayAccountId : null;
+
+    private static int GetPrePaymentAccountIdByNameOrType(List<ChartOfAccount> chartOfAccounts, int officeId)
+    {
+        var account = chartOfAccounts
+            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
+            .Where(a =>
+                a.Name.Contains("Pre-Payment", StringComparison.OrdinalIgnoreCase) ||
+                a.Name.Contains("Prepayment", StringComparison.OrdinalIgnoreCase) ||
+                a.Name.Contains("Pre Payment", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => a.AccountId)
+            .FirstOrDefault();
+
+        if (account == null)
+            throw new Exception($"No Pre-Payment chart of account is configured for office {officeId}");
+
+        return account.AccountId;
+    }
+
+    private static int GetPrePaymentAccountId(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+        => GetDefaultOrByNameOrTypeAccountId(chartOfAccounts, officeId, GetDefaultPrePaymentAccountId(accountingOffice), () => GetPrePaymentAccountIdByNameOrType(chartOfAccounts, officeId));
+    #endregion
+
     #region Bank Account
     private static int? GetDefaultBankAccountId(AccountingOffice? accountingOffice)
         => accountingOffice?.DefaultBankAccountId is > 0 ? accountingOffice.DefaultBankAccountId : null;
