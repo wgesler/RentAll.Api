@@ -28,6 +28,7 @@ public class AccountingOffice
     public int? DefaultBankAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
+    public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }

@@ -15,8 +15,8 @@ public class UpdatePropertyAgreementDto
     public string? AgreementPath { get; set; }
     public FileDetails? AgreementFileDetails { get; set; }
     public int? Markup { get; set; }
-    public int? RevenueSplitOwner { get; set; }
-    public int? RevenueSplitOffice { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
     public decimal? HourlyLaborCost { get; set; }
@@ -50,7 +50,7 @@ public class UpdatePropertyAgreementDto
             return (false, "RevenueSplitOffice must be between 0 and 100");
 
         if (RevenueSplitOwner.HasValue && RevenueSplitOffice.HasValue
-            && RevenueSplitOwner.Value + RevenueSplitOffice.Value != 100)
+            && Math.Abs(RevenueSplitOwner.Value + RevenueSplitOffice.Value - 100m) > 0.01m)
             return (false, "When both splits are provided, RevenueSplitOwner and RevenueSplitOffice must sum to 100");
 
         foreach (var line in AgreementLines ?? new List<UpdatePropertyAgreementLineDto>())

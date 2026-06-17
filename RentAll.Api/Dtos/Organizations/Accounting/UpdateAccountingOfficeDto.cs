@@ -31,6 +31,7 @@ public class UpdateAccountingOfficeDto
     public int? DefaultBankAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
+    public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
@@ -131,6 +132,7 @@ public class UpdateAccountingOfficeDto
             DefaultBankAccountId = DefaultBankAccountId,
             DefaultActPayableAccountId = DefaultActPayableAccountId,
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
+            DefaultPrePayAccountId = DefaultPrePayAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,
             DefaultTenantIncAccountId = DefaultTenantIncAccountId,
             DefaultOwnerExpAccountId = DefaultOwnerExpAccountId,

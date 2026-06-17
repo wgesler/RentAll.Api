@@ -11,8 +11,8 @@ public class PropertyAgreementEntity
     public int ManagementFeeTypeId { get; set; }
     public decimal FlatRateAmount { get; set; }
     public int Markup { get; set; }
-    public int RevenueSplitOwner { get; set; }
-    public int RevenueSplitOffice { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
     public decimal WorkingCapitalBalance { get; set; }
     public decimal LinenAndTowelFee { get; set; }
     public decimal HourlyLaborCost { get; set; }

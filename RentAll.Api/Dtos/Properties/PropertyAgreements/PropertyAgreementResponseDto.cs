@@ -16,8 +16,8 @@ public class PropertyAgreementResponseDto
     public string? AgreementPath { get; set; }
     public FileDetails? AgreementFileDetails { get; set; }
     public int Markup { get; set; }
-    public int RevenueSplitOwner { get; set; }
-    public int RevenueSplitOffice { get; set; }
+    public decimal RevenueSplitOwner { get; set; }
+    public decimal RevenueSplitOffice { get; set; }
     public decimal WorkingCapitalBalance { get; set; }
     public decimal LinenAndTowelFee { get; set; }
     public decimal HourlyLaborCost { get; set; }
