@@ -15,7 +15,7 @@ namespace RentAll.Api.Controllers
                 var accountingOffices = await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var accountingOfficeList = accountingOffices.ToList();
                 foreach (var accountingOffice in accountingOfficeList)
-                    accountingOffice.BankCards = await LoadBankCardsAsync(accountingOffice.OfficeId);
+                    accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(accountingOffice.OfficeId);
 
                 var response = new List<AccountingOfficeResponseDto>();
                 foreach (var accountingOffice in accountingOfficeList)
@@ -178,6 +178,12 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Private Methods
+        private async Task<List<BankCard>> LoadBankCardsNoDecryptionAsync(int officeId)
+        {
+            var bankCards = await _accountingRepository.GetBankCardsByOfficeIdAsync(CurrentOrganizationId, officeId);
+            return bankCards;
+        }
+
         private async Task<List<BankCard>> LoadBankCardsAsync(int officeId)
         {
             var bankCards = await _accountingRepository.GetBankCardsByOfficeIdAsync(CurrentOrganizationId, officeId);
@@ -191,7 +197,7 @@ namespace RentAll.Api.Controllers
             if (accountingOffice == null)
                 return null;
 
-            accountingOffice.BankCards = await LoadBankCardsAsync(officeId);
+            accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(officeId);
             return accountingOffice;
         }
 
