@@ -101,6 +101,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 Notes = e.Notes,
                 ExtraFeeLines = extraFeeLines,
                 AllowExtensions = e.AllowExtensions,
+                CollapseCharges = e.CollapseCharges,
                 aCleanerUserId = e.aCleanerUserId,
                 aCleaningDate = e.aCleaningDate,
                 aCarpetUserId = e.aCarpetUserId,

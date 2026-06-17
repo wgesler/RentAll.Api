@@ -47,6 +47,7 @@ public class ReservationResponseDto
     public string? Notes { get; set; }
     public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
     public bool AllowExtensions { get; set; }
+    public bool CollapseCharges { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -115,6 +116,7 @@ public class ReservationResponseDto
         Notes = reservation.Notes;
         ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();
         AllowExtensions = reservation.AllowExtensions;
+        CollapseCharges = reservation.CollapseCharges;
         aCleanerUserId = reservation.aCleanerUserId;
         aCleaningDate = reservation.aCleaningDate;
         aCarpetUserId = reservation.aCarpetUserId;

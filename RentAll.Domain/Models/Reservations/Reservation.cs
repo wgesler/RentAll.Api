@@ -47,6 +47,7 @@ public class Reservation
     public string? Notes { get; set; }
     public List<ExtraFeeLine> ExtraFeeLines { get; set; } = new List<ExtraFeeLine>();
     public bool AllowExtensions { get; set; }
+    public bool CollapseCharges { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }

@@ -44,6 +44,7 @@ public class UpdateReservationDto
     public string? Notes { get; set; }
     public List<UpdateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<UpdateExtraFeeLineDto>();
     public bool AllowExtensions { get; set; }
+    public bool CollapseCharges { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -182,6 +183,7 @@ public class UpdateReservationDto
             Notes = Notes,
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
             AllowExtensions = AllowExtensions,
+            CollapseCharges = CollapseCharges,
             aCleanerUserId = aCleanerUserId,
             aCleaningDate = aCleaningDate,
             aCarpetUserId = aCarpetUserId,

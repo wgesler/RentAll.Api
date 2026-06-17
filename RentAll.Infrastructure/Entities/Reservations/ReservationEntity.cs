@@ -51,6 +51,7 @@ public class ReservationEntity
     // Payment Fields
     public string? ExtraFeeLines { get; set; }
     public bool AllowExtensions { get; set; }
+    public bool CollapseCharges { get; set; }
     public int CurrentInvoiceNo { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
