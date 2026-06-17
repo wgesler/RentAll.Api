@@ -164,11 +164,7 @@ public partial class AccountingManager
             .Distinct()
             .ToList();
 
-        await DeleteJournalEntriesForSourceAsync(
-            invoice.OrganizationId,
-            invoice.OfficeId,
-            (int)SourceType.Invoice,
-            invoice.InvoiceId);
+        await DeleteJournalEntriesForInvoiceChargesAsync(invoice);
 
         foreach (var ledgerLineId in paymentLedgerLineIds)
             await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice.OrganizationId, invoice.OfficeId, ledgerLineId);

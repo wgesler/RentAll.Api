@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -10,6 +13,13 @@ public partial class AccountingManager
     {
         if (invoice.InvoiceId == Guid.Empty)
             throw new Exception("InvoiceId is required to create a journal entry");
+
+        if (InvoiceCrossesAccountingPeriodBoundary(invoice))
+        {
+            var crossPeriodEntry = await CreateJournalEntriesFromCrossPeriodInvoiceAsync(invoice, currentUser);
+            if (crossPeriodEntry != null)
+                return crossPeriodEntry;
+        }
 
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
@@ -146,7 +156,13 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    async Task<JournalEntry> BuildJournalEntryFromInvoiceAsync(Invoice invoice, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
+    async Task<JournalEntry> BuildJournalEntryFromInvoiceAsync(
+        Invoice invoice,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Guid currentUser,
+        Guid? sourceIdOverride = null,
+        string? memoSuffix = null)
     {
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
@@ -179,6 +195,8 @@ public partial class AccountingManager
         var memo = string.IsNullOrWhiteSpace(invoice.Notes)
             ? $"Invoice {invoice.InvoiceCode}"
             : invoice.Notes.Trim();
+        if (!string.IsNullOrWhiteSpace(memoSuffix))
+            memo = $"{memo} ({memoSuffix.Trim()})";
 
         var journalEntryLines = new List<JournalEntryLine>();
         var (accountsReceivableDebit, accountsReceivableCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: true);
@@ -225,7 +243,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Invoice,
-            SourceId = invoice.InvoiceId,
+            SourceId = sourceIdOverride ?? invoice.InvoiceId,
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -409,7 +427,618 @@ public partial class AccountingManager
     }
     #endregion
 
+    #region Cross-Period Invoice Journal Entries
+    async Task<JournalEntry?> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
+    {
+        if (!invoice.ReservationId.HasValue || invoice.ReservationId == Guid.Empty)
+            return null;
+
+        if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
+            return null;
+
+        var secondSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
+        var existingFirst = await GetNonVoidedJournalEntryAsync(invoice, invoice.InvoiceId);
+        var existingSecond = await GetNonVoidedJournalEntryAsync(invoice, secondSourceId);
+        if (existingFirst != null && existingSecond != null)
+            return existingFirst;
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId);
+        if (reservation == null)
+            return null;
+
+        if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(firstPeriodInvoice, reservation))
+            return null;
+
+        if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(secondPeriodInvoice, reservation))
+            return null;
+
+        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation))
+            return null;
+
+        var originalChargeTotal = await SumInvoiceChargeLinesAsync(invoice);
+        var splitChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice)
+            + await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
+
+        if (originalChargeTotal != splitChargeTotal)
+            return null;
+
+        var firstSliceChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
+        var secondSliceChargeTotal = await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
+        if (firstSliceChargeTotal == 0 || secondSliceChargeTotal == 0)
+            return null;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+
+        var firstEntry = existingFirst
+            ?? await CreateCrossPeriodSliceJournalEntryAsync(
+                firstPeriodInvoice,
+                invoice.InvoiceId,
+                chartOfAccounts,
+                accountingOffice,
+                currentUser);
+
+        await CreateCrossPeriodSliceJournalEntryAsync(
+            secondPeriodInvoice,
+            secondSourceId,
+            chartOfAccounts,
+            accountingOffice,
+            currentUser,
+            memoSuffix: secondPeriodInvoice.AccountingPeriod.ToString("MM/yyyy"));
+
+        return firstEntry;
+    }
+
+    async Task<JournalEntry?> GetNonVoidedJournalEntryAsync(Invoice invoice, Guid sourceId)
+    {
+        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeIds = invoice.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.Invoice,
+            SourceId = sourceId,
+            IncludeVoided = true,
+            IncludeUnposted = true
+        });
+
+        return existingEntries.FirstOrDefault(e => !e.IsVoided);
+    }
+
+    async Task<JournalEntry> CreateCrossPeriodSliceJournalEntryAsync(
+        Invoice sliceInvoice,
+        Guid sourceId,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Guid currentUser,
+        string? memoSuffix = null)
+    {
+        var existingEntry = await GetNonVoidedJournalEntryAsync(sliceInvoice, sourceId);
+        if (existingEntry != null)
+            return existingEntry;
+
+        var journalEntry = await BuildJournalEntryFromInvoiceAsync(
+            sliceInvoice,
+            chartOfAccounts,
+            accountingOffice,
+            currentUser,
+            sourceId,
+            memoSuffix);
+        return await CreateJournalEntryAsync(journalEntry);
+    }
+
+    async Task<bool> TryPopulateCrossPeriodInvoiceLedgerLinesAsync(Invoice sliceInvoice, Reservation reservation)
+    {
+        if (!TryParseInvoicePeriod(sliceInvoice.InvoicePeriod, out var periodStart, out var periodEnd))
+            return false;
+
+        var invoiceDate = sliceInvoice.InvoiceDate != default ? sliceInvoice.InvoiceDate : sliceInvoice.AccountingPeriod;
+        var ledgerLines = await CreateLedgerLinesForReservationIdAsync(reservation, invoiceDate, periodStart, periodEnd);
+        if (ledgerLines.Count == 0)
+            return false;
+
+        sliceInvoice.LedgerLines = ledgerLines;
+        sliceInvoice.TotalAmount = ledgerLines.Sum(l => l.Amount);
+        return true;
+    }
+
+    static bool TryApplyApportionedCrossPeriodLinesFromOriginal(
+        Invoice originalInvoice,
+        Invoice firstSlice,
+        Invoice secondSlice,
+        Reservation reservation)
+    {
+        var referenceYear = originalInvoice.AccountingPeriod != default
+            ? originalInvoice.AccountingPeriod.Year
+            : originalInvoice.InvoiceDate.Year;
+
+        var crossingRentals = originalInvoice.LedgerLines
+            .Where(l => l.Amount != 0 && IsCrossMonthRentalLine(l, referenceYear))
+            .ToList();
+
+        if (crossingRentals.Count == 0)
+            return true;
+
+        var primaryRental = crossingRentals[0];
+        if (!TryGetCrossMonthApportionmentDays(primaryRental, referenceYear, reservation, out var firstDays, out var totalDays))
+            return false;
+
+        foreach (var originalRental in crossingRentals)
+        {
+            if (!TryApportionCrossMonthRentalLine(originalRental, referenceYear, reservation, out var firstPart, out var secondPart))
+                return false;
+
+            RemoveGeneratedRentalFeeLines(firstSlice);
+            RemoveGeneratedRentalFeeLines(secondSlice);
+
+            firstSlice.LedgerLines.Add(firstPart);
+            secondSlice.LedgerLines.Add(secondPart);
+        }
+
+        foreach (var feeLine in GetApportionableNonDateSpecificFeeLines(originalInvoice, reservation))
+        {
+            if (!TryApportionAmountByDayRatio(feeLine.Amount, firstDays, totalDays, out var firstFeeAmount, out var secondFeeAmount))
+                return false;
+
+            RemoveMatchingFeeLine(firstSlice, feeLine);
+            RemoveMatchingFeeLine(secondSlice, feeLine);
+
+            firstSlice.LedgerLines.Add(CreateApportionedFeeLine(feeLine, firstFeeAmount));
+            secondSlice.LedgerLines.Add(CreateApportionedFeeLine(feeLine, secondFeeAmount));
+        }
+
+        firstSlice.TotalAmount = firstSlice.LedgerLines.Sum(l => l.Amount);
+        secondSlice.TotalAmount = secondSlice.LedgerLines.Sum(l => l.Amount);
+        return true;
+    }
+
+    static IEnumerable<LedgerLine> GetApportionableNonDateSpecificFeeLines(Invoice originalInvoice, Reservation reservation)
+    {
+        var monthlyExtraDescriptions = reservation.ExtraFeeLines
+            .Where(f => f.FeeFrequency == FrequencyType.Monthly)
+            .Select(f => f.FeeDescription)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var line in originalInvoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (line.Description == "Security Deposit Waiver")
+            {
+                yield return line;
+                continue;
+            }
+
+            if (monthlyExtraDescriptions.Contains(line.Description))
+                yield return line;
+        }
+    }
+
+    static bool TryGetCrossMonthApportionmentDays(
+        LedgerLine originalRental,
+        int referenceYear,
+        Reservation reservation,
+        out int firstDays,
+        out int totalDays)
+    {
+        firstDays = 0;
+        totalDays = 0;
+
+        if (!TryParseRentalFeeDateRange(originalRental.Description, referenceYear, out var rentalStart, out var rentalEnd))
+            return false;
+
+        if (rentalStart.Year == rentalEnd.Year && rentalStart.Month == rentalEnd.Month)
+            return false;
+
+        var departureDate = reservation.DepartureDate;
+        totalDays = CalculateNumberOfDays(
+            rentalStart,
+            rentalEnd,
+            reservation.BillingType,
+            IsDepartureMonthYear(rentalEnd, departureDate),
+            IsLastDayOfMonth(rentalEnd));
+
+        if (totalDays <= 0)
+            return false;
+
+        var firstMonthEnd = LastDayOfMonth(rentalStart);
+        var firstPeriodEnd = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
+
+        firstDays = CalculateNumberOfDays(
+            rentalStart,
+            firstPeriodEnd,
+            reservation.BillingType,
+            IsDepartureMonthYear(firstPeriodEnd, departureDate),
+            IsLastDayOfMonth(firstPeriodEnd));
+
+        return firstDays > 0 && firstDays <= totalDays;
+    }
+
+    static bool TryApportionAmountByDayRatio(
+        decimal originalAmount,
+        int firstDays,
+        int totalDays,
+        out decimal firstAmount,
+        out decimal secondAmount)
+    {
+        firstAmount = 0;
+        secondAmount = 0;
+
+        if (totalDays <= 0 || firstDays < 0 || firstDays > totalDays)
+            return false;
+
+        var dailyRate = originalAmount / totalDays;
+        firstAmount = dailyRate * firstDays;
+        secondAmount = originalAmount - firstAmount;
+        return true;
+    }
+
+    static void RemoveMatchingFeeLine(Invoice slice, LedgerLine template)
+        => slice.LedgerLines.RemoveAll(l =>
+            l.Amount != 0
+            && l.CostCodeId == template.CostCodeId
+            && string.Equals(l.Description, template.Description, StringComparison.Ordinal));
+
+    static LedgerLine CreateApportionedFeeLine(LedgerLine template, decimal amount)
+        => new()
+        {
+            LedgerLineId = template.LedgerLineId,
+            InvoiceId = template.InvoiceId,
+            LineNumber = template.LineNumber,
+            ReservationId = template.ReservationId,
+            CostCodeId = template.CostCodeId,
+            Amount = amount,
+            Description = template.Description,
+            LedgerLineDate = template.LedgerLineDate,
+            CreatedOn = template.CreatedOn,
+            CreatedBy = template.CreatedBy,
+            ModifiedOn = template.ModifiedOn,
+            ModifiedBy = template.ModifiedBy
+        };
+
+    static bool IsCrossMonthRentalLine(LedgerLine line, int referenceYear)
+    {
+        if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out var rentalStart, out var rentalEnd))
+            return false;
+
+        return rentalStart.Year != rentalEnd.Year || rentalStart.Month != rentalEnd.Month;
+    }
+
+    static bool TryApportionCrossMonthRentalLine(
+        LedgerLine originalRental,
+        int referenceYear,
+        Reservation reservation,
+        out LedgerLine firstMonthLine,
+        out LedgerLine secondMonthLine)
+    {
+        firstMonthLine = null!;
+        secondMonthLine = null!;
+
+        if (!TryParseRentalFeeDateRange(originalRental.Description, referenceYear, out var rentalStart, out var rentalEnd))
+            return false;
+
+        if (rentalStart.Year == rentalEnd.Year && rentalStart.Month == rentalEnd.Month)
+            return false;
+
+        var departureDate = reservation.DepartureDate;
+        var totalDays = CalculateNumberOfDays(
+            rentalStart,
+            rentalEnd,
+            reservation.BillingType,
+            IsDepartureMonthYear(rentalEnd, departureDate),
+            IsLastDayOfMonth(rentalEnd));
+
+        if (totalDays <= 0)
+            return false;
+
+        var firstMonthEnd = LastDayOfMonth(rentalStart);
+        var secondMonthStart = FirstDayOfMonth(rentalEnd);
+        var firstPeriodEnd = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
+        var secondPeriodStart = rentalStart > secondMonthStart ? rentalStart : secondMonthStart;
+
+        var firstDays = CalculateNumberOfDays(
+            rentalStart,
+            firstPeriodEnd,
+            reservation.BillingType,
+            IsDepartureMonthYear(firstPeriodEnd, departureDate),
+            IsLastDayOfMonth(firstPeriodEnd));
+
+        var secondDays = totalDays - firstDays;
+        if (secondDays < 0)
+            return false;
+
+        var dailyRate = originalRental.Amount / totalDays;
+        var firstAmount = dailyRate * firstDays;
+        var secondAmount = originalRental.Amount - firstAmount;
+
+        firstMonthLine = CreateApportionedRentalLine(originalRental, firstAmount, rentalStart, firstPeriodEnd);
+        secondMonthLine = CreateApportionedRentalLine(originalRental, secondAmount, secondPeriodStart, rentalEnd);
+        return true;
+    }
+
+    static bool IsDepartureMonthYear(DateOnly date, DateOnly departureDate)
+        => date.Year == departureDate.Year && date.Month == departureDate.Month;
+
+    static bool IsLastDayOfMonth(DateOnly date)
+        => date == LastDayOfMonth(date);
+
+    static LedgerLine CreateApportionedRentalLine(LedgerLine template, decimal amount, DateOnly start, DateOnly end)
+        => new()
+        {
+            LedgerLineId = template.LedgerLineId,
+            InvoiceId = template.InvoiceId,
+            LineNumber = template.LineNumber,
+            ReservationId = template.ReservationId,
+            CostCodeId = template.CostCodeId,
+            Amount = amount,
+            Description = $"Rental Fee ({start:MM/dd}-{end:MM/dd})",
+            LedgerLineDate = template.LedgerLineDate,
+            CreatedOn = template.CreatedOn,
+            CreatedBy = template.CreatedBy,
+            ModifiedOn = template.ModifiedOn,
+            ModifiedBy = template.ModifiedBy
+        };
+
+    static void RemoveGeneratedRentalFeeLines(Invoice slice)
+        => slice.LedgerLines.RemoveAll(l => l.Amount != 0 && RentalFeePeriodRegex.IsMatch(l.Description.Trim()));
+
+    async Task<decimal> SumInvoiceChargeLinesAsync(Invoice invoice)
+    {
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+
+        return invoice.LedgerLines
+            .Where(l => l.Amount != 0)
+            .Where(l =>
+            {
+                costCodeById.TryGetValue(l.CostCodeId, out var costCode);
+                return !IsPaymentLedgerLine(costCode);
+            })
+            .Sum(l => l.Amount);
+    }
+
+    async Task DeleteJournalEntriesForInvoiceChargesAsync(Invoice invoice)
+    {
+        await DeleteJournalEntriesForSourceAsync(
+            invoice.OrganizationId,
+            invoice.OfficeId,
+            (int)SourceType.Invoice,
+            invoice.InvoiceId);
+
+        if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out var secondPeriodInvoice))
+            return;
+
+        var secondSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
+        await DeleteJournalEntriesForSourceAsync(
+            invoice.OrganizationId,
+            invoice.OfficeId,
+            (int)SourceType.Invoice,
+            secondSourceId);
+    }
+
+    static bool TryCreateCrossPeriodInvoiceSlices(Invoice source, out Invoice firstPeriodInvoice, out Invoice secondPeriodInvoice)
+    {
+        firstPeriodInvoice = null!;
+        secondPeriodInvoice = null!;
+
+        if (!TryResolveCrossPeriodBounds(source, out var slice1Start, out var slice1End, out var slice2Start, out var slice2End))
+            return false;
+
+        var slice1AccountingPeriod = FirstDayOfMonth(slice1Start);
+        var slice2AccountingPeriod = FirstDayOfMonth(slice2Start);
+
+        firstPeriodInvoice = CloneInvoiceForCrossPeriodSlice(source, slice1Start, slice1End, slice1AccountingPeriod);
+        secondPeriodInvoice = CloneInvoiceForCrossPeriodSlice(source, slice2Start, slice2End, slice2AccountingPeriod);
+        return true;
+    }
+
+    static bool TryResolveCrossPeriodBounds(
+        Invoice invoice,
+        out DateOnly slice1Start,
+        out DateOnly slice1End,
+        out DateOnly slice2Start,
+        out DateOnly slice2End)
+    {
+        slice1Start = default;
+        slice1End = default;
+        slice2Start = default;
+        slice2End = default;
+
+        if (!TryParseInvoicePeriod(invoice.InvoicePeriod, out var periodStart, out var periodEnd))
+            return false;
+
+        slice1Start = periodStart;
+        slice1End = LastDayOfMonth(periodStart);
+
+        if (periodStart.Year != periodEnd.Year || periodStart.Month != periodEnd.Month)
+        {
+            slice2Start = FirstDayOfMonth(periodEnd);
+            slice2End = periodEnd;
+        }
+        else if (TryGetCrossingRentalEndDate(invoice, out var rentalEnd))
+        {
+            slice2Start = FirstDayOfMonth(rentalEnd);
+            slice2End = rentalEnd;
+        }
+        else
+        {
+            return false;
+        }
+
+        return slice1Start <= slice1End && slice2Start <= slice2End;
+    }
+
+    static bool TryGetCrossingRentalEndDate(Invoice invoice, out DateOnly rentalEnd)
+    {
+        rentalEnd = default;
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
+        var found = false;
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out var rentalStart, out var endDate))
+                continue;
+
+            if (rentalStart.Year == endDate.Year && rentalStart.Month == endDate.Month)
+                continue;
+
+            if (!found || endDate > rentalEnd)
+            {
+                rentalEnd = endDate;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    static Invoice CloneInvoiceForCrossPeriodSlice(
+        Invoice source,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        DateOnly accountingPeriod)
+    {
+        return new Invoice
+        {
+            InvoiceId = source.InvoiceId,
+            OrganizationId = source.OrganizationId,
+            OfficeId = source.OfficeId,
+            OfficeName = source.OfficeName,
+            InvoiceCode = source.InvoiceCode,
+            ReservationId = source.ReservationId,
+            ReservationCode = source.ReservationCode,
+            PropertyId = source.PropertyId,
+            PropertyCode = source.PropertyCode,
+            ContactId = source.ContactId,
+            ContactName = source.ContactName,
+            ResponsibleParty = source.ResponsibleParty,
+            InvoiceDate = source.InvoiceDate,
+            DueDate = source.DueDate,
+            AccountingPeriod = accountingPeriod,
+            InvoicePeriod = FormatInvoicePeriod(periodStart, periodEnd),
+            TotalAmount = 0,
+            PaidAmount = source.PaidAmount,
+            Notes = source.Notes,
+            IsActive = source.IsActive,
+            LedgerLines = new List<LedgerLine>(),
+            CreatedOn = source.CreatedOn,
+            CreatedBy = source.CreatedBy,
+            ModifiedOn = source.ModifiedOn,
+            ModifiedBy = source.ModifiedBy
+        };
+    }
+
+    static string FormatInvoicePeriod(DateOnly periodStart, DateOnly periodEnd)
+        => $"{periodStart:MM/dd/yyyy} - {periodEnd:MM/dd/yyyy}";
+
+    static DateOnly FirstDayOfMonth(DateOnly date)
+        => new(date.Year, date.Month, 1);
+
+    static DateOnly LastDayOfMonth(DateOnly date)
+        => new(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month));
+
+    static Guid GetInvoiceAccountingPeriodSourceId(Guid invoiceId, DateOnly accountingPeriod)
+    {
+        var input = $"{invoiceId:D}|{accountingPeriod:yyyy-MM-dd}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        var guidBytes = new byte[16];
+        Array.Copy(hash, guidBytes, 16);
+        guidBytes[6] = (byte)((guidBytes[6] & 0x0F) | 0x50);
+        guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
+        return new Guid(guidBytes);
+    }
+    #endregion
+
     #region Static Helpers
+    static readonly Regex RentalFeePeriodRegex = new(
+        @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    static bool InvoiceCrossesAccountingPeriodBoundary(Invoice invoice)
+    {
+        if (TryParseInvoicePeriod(invoice.InvoicePeriod, out var periodStart, out var periodEnd)
+            && (periodStart.Year != periodEnd.Year || periodStart.Month != periodEnd.Month))
+        {
+            return true;
+        }
+
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out var rentalStart, out var rentalEnd))
+                continue;
+
+            if (rentalStart.Year != rentalEnd.Year || rentalStart.Month != rentalEnd.Month)
+                return true;
+        }
+
+        return false;
+    }
+
+    static bool TryParseInvoicePeriod(string? invoicePeriod, out DateOnly periodStart, out DateOnly periodEnd)
+    {
+        periodStart = default;
+        periodEnd = default;
+
+        if (string.IsNullOrWhiteSpace(invoicePeriod))
+            return false;
+
+        var parts = invoicePeriod.Split('-', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2)
+            return false;
+
+        if (!DateOnly.TryParse(parts[0], out periodStart) || !DateOnly.TryParse(parts[1], out periodEnd))
+            return false;
+
+        return periodEnd >= periodStart;
+    }
+
+    static bool TryParseRentalFeeDateRange(string? description, int referenceYear, out DateOnly rentalStart, out DateOnly rentalEnd)
+    {
+        rentalStart = default;
+        rentalEnd = default;
+
+        if (string.IsNullOrWhiteSpace(description))
+            return false;
+
+        var match = RentalFeePeriodRegex.Match(description.Trim());
+        if (!match.Success)
+            return false;
+
+        if (!TryParseMonthDay(match.Groups["start"].Value, referenceYear, out rentalStart))
+            return false;
+
+        if (!TryParseMonthDay(match.Groups["end"].Value, referenceYear, out rentalEnd))
+            return false;
+
+        if (rentalEnd < rentalStart)
+            rentalEnd = rentalEnd.AddYears(1);
+
+        return true;
+    }
+
+    static bool TryParseMonthDay(string monthDay, int year, out DateOnly date)
+    {
+        date = default;
+        var parts = monthDay.Split('/');
+        if (parts.Length != 2)
+            return false;
+
+        if (!int.TryParse(parts[0], out var month) || !int.TryParse(parts[1], out var day))
+            return false;
+
+        try
+        {
+            date = new DateOnly(year, month, day);
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
     static bool IsInvoicePrePayment(Invoice invoice, LedgerLine paymentLedgerLine)
     {
         if (invoice.AccountingPeriod == default || paymentLedgerLine.LedgerLineDate == default)
