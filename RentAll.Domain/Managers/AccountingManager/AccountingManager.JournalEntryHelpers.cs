@@ -60,13 +60,4 @@ public partial class AccountingManager
 
         return allSplits;
     }
-
-    static void EnsureSplitLinesHaveConfiguredAccounts(IEnumerable<ReceiptSplit> splitLines)
-    {
-        foreach (var split in splitLines.Where(split => split.Amount != 0))
-        {
-            if (split.ChartOfAccountId is not > 0)
-                throw new Exception("ChartOfAccountId is required on each split line to create a journal entry");
-        }
-    }
 }

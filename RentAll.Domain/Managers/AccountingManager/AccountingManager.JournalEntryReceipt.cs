@@ -43,7 +43,6 @@ public partial class AccountingManager
         receipt = await LoadReceiptWithSplitsAsync(receipt);
 
         var splitLines = ResolveDocumentSplitLines(receipt);
-        EnsureSplitLinesHaveConfiguredAccounts(splitLines);
 
         if (receipt.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a receipt");
@@ -73,7 +72,7 @@ public partial class AccountingManager
 
         foreach (var split in splitLines)
         {
-            var expenseAccountId = GetBillReceiptExpenseAccountId(split);
+            var expenseAccountId = GetBillReceiptExpenseAccountId(split, receipt.OfficeId, chartOfAccounts, accountingOffice);
             var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
 
             journalEntryLines.Add(new JournalEntryLine

@@ -354,12 +354,19 @@ public partial class AccountingManager : IAccountingManager
         return bankCard.ChartOfAccountId.Value;
     }
 
-    private static int GetBillReceiptExpenseAccountId(ReceiptSplit split)
+    private static int GetBillReceiptExpenseAccountId(ReceiptSplit split, int officeId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
-        if (split.ChartOfAccountId is not > 0)
-            throw new Exception("ChartOfAccountId is required on each split line to create a journal entry");
+        // If the split has a chart of account, use it
+        if (split.ChartOfAccountId > 0)
+            return split.ChartOfAccountId.Value;
 
-        return split.ChartOfAccountId.Value;
+        // Otherwise get defaults
+        return split.ReceiptType switch
+        {
+            ReceiptType.Tenant => GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice),
+            ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice),
+            _ => GetDefaultCompanyExpense(chartOfAccounts, officeId, accountingOffice)
+        };
     }
 
     private int GetBillReceiptLiabilityAccountId(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
