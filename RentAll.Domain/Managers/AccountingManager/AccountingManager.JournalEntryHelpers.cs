@@ -21,20 +21,29 @@ public partial class AccountingManager
 
     static List<ReceiptSplit> ResolveDocumentSplitLines(Receipt document)
     {
-        var splitLines = (document.Splits ?? new List<ReceiptSplit>())
-            .Where(s => s.Amount != 0)
+        var allSplits = (document.Splits ?? new List<ReceiptSplit>())
             .OrderBy(s => s.ReceiptSplitId)
             .ToList();
 
-        if (splitLines.Count == 0 && document.Amount != 0)
+        var nonZeroSplits = allSplits.Where(s => s.Amount != 0).ToList();
+        if (nonZeroSplits.Count > 0)
+            return nonZeroSplits;
+
+        if (allSplits.Count > 0)
+            return allSplits;
+
+        if (document.Amount != 0)
         {
-            splitLines.Add(new ReceiptSplit
-            {
-                Amount = document.Amount,
-                Description = document.Description
-            });
+            return
+            [
+                new ReceiptSplit
+                {
+                    Amount = document.Amount,
+                    Description = document.Description
+                }
+            ];
         }
 
-        return splitLines;
+        return allSplits;
     }
 }

@@ -31,6 +31,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         decimal petFee = 250m,
         decimal departureFee = -1m,
         decimal maidServiceFee = 100m,
+        decimal? billingRate = null,
         IReadOnlyList<ExtraFeeLine>? extraFeeLines = null)
     {
         return new Reservation
@@ -43,7 +44,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             DepartureDate = departure,
             BillingType = billingType,
             ProrateType = prorateType,
-            BillingRate = billingType == BillingType.Monthly ? 3000m : 100m,
+            BillingRate = billingRate ?? (billingType == BillingType.Monthly ? 3000m : 100m),
             Deposit = deposit,
             DepositType = depositType,
             HasPets = hasPets,

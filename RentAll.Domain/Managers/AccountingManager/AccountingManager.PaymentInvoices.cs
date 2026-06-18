@@ -366,47 +366,89 @@ public partial class AccountingManager
     {
         var sDate = reservation.MaidStartDate > startDate ? reservation.MaidStartDate : startDate;
         var dDate = endDate > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : endDate;
+        var maidServices = CountMaidServicesInPeriod(reservation, sDate, dDate);
 
-        int maidServices = 0;
-        switch (reservation.Frequency)
+        if (maidServices > 0)
+            lines.Add(CreateMaidServiceLedgerLine(maidServices, reservation.MaidServiceFee, lineNumber++, MAID_SERVICE_EXPENSE_COST_CODE));
+    }
+
+    static LedgerLine CreateMaidServiceLedgerLine(int visitCount, decimal feePerVisit, int lineNumber, int costCodeId)
+        => new()
+        {
+            LineNumber = lineNumber,
+            Description = $"Maid Service ({visitCount} times)",
+            Amount = visitCount * feePerVisit,
+            CostCodeId = costCodeId
+        };
+
+    static int CountMaidServicesInPeriod(Reservation reservation, DateOnly rangeStart, DateOnly rangeEnd)
+        => GetMaidServiceOccurrenceDates(reservation, rangeStart, rangeEnd).Count;
+
+    static List<DateOnly> GetMaidServiceOccurrenceDates(Reservation reservation, DateOnly rangeStart, DateOnly rangeEnd)
+        => GetScheduledOccurrenceDates(reservation.MaidStartDate, rangeStart, rangeEnd, reservation.Frequency);
+
+    static int CountScheduledOccurrences(DateOnly scheduleStart, DateOnly rangeStart, DateOnly rangeEnd, FrequencyType frequency)
+        => GetScheduledOccurrenceDates(scheduleStart, rangeStart, rangeEnd, frequency).Count;
+
+    static List<DateOnly> GetScheduledOccurrenceDates(DateOnly scheduleStart, DateOnly rangeStart, DateOnly rangeEnd, FrequencyType frequency)
+    {
+        if (rangeStart > rangeEnd)
+            return [];
+
+        var dates = new List<DateOnly>();
+        switch (frequency)
         {
             case FrequencyType.Daily:
-                maidServices = CountDailyDaysInRange(reservation.MaidStartDate, sDate, dDate);
+                for (var d = scheduleStart; d <= rangeEnd; d = d.AddDays(1))
+                {
+                    if (d >= rangeStart)
+                        dates.Add(d);
+                }
                 break;
             case FrequencyType.Weekly:
-                maidServices = CountNumberOfWeekDaysInMonth(reservation.MaidStartDate, sDate, dDate, requestedYear, startDateMonth);
+                for (var d = scheduleStart; d <= rangeEnd; d = d.AddDays(7))
+                {
+                    if (d >= rangeStart)
+                        dates.Add(d);
+                }
                 break;
             case FrequencyType.EOW:
-                maidServices = CountEowDaysInMonth(reservation.MaidStartDate, sDate, dDate, requestedYear, startDateMonth);
+                for (var d = scheduleStart; d <= rangeEnd; d = d.AddDays(14))
+                {
+                    if (d >= rangeStart)
+                        dates.Add(d);
+                }
                 break;
             default:
-                maidServices = CountNumberOfMonths(reservation.MaidStartDate, sDate, dDate, requestedYear, startDateMonth, reservation.Frequency);
+                var monthInterval = GetScheduledMonthInterval(frequency);
+                if (monthInterval == 0)
+                    break;
+
+                for (var d = scheduleStart; d <= rangeEnd; d = d.AddMonths(monthInterval))
+                {
+                    if (d >= rangeStart)
+                        dates.Add(d);
+                }
                 break;
         }
 
-        if (maidServices > 0)
-            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Maid Service ({maidServices} times)", Amount = maidServices * reservation.MaidServiceFee, CostCodeId = MAID_SERVICE_EXPENSE_COST_CODE });
+        return dates;
     }
+
+    static int GetScheduledMonthInterval(FrequencyType frequency)
+        => frequency switch
+        {
+            FrequencyType.Monthly => 1,
+            FrequencyType.Quarterly => 3,
+            FrequencyType.BiAnnually => 6,
+            FrequencyType.Annually => 12,
+            _ => 0
+        };
 
     private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, bool isProratedMonth, int days,
         List<LedgerLine> lines, ref int lineNumber)
     {
-        int fees = 0;
-        switch (extraFeeLine.FeeFrequency)
-        {
-            case FrequencyType.Daily:
-                fees = CountDailyDaysInRange(startDate, startDate, endDate);
-                break;
-            case FrequencyType.Weekly:
-                fees = CountNumberOfWeekDaysInMonth(startDate, startDate, endDate, requestedYear, startDateMonth);
-                break;
-            case FrequencyType.EOW:
-                fees = CountEowDaysInMonth(startDate, startDate, endDate, requestedYear, startDateMonth);
-                break;
-            default:
-                fees = CountNumberOfMonths(startDate, startDate, endDate, requestedYear, startDateMonth, extraFeeLine.FeeFrequency);
-                break;
-        }
+        var fees = CountScheduledOccurrences(startDate, startDate, endDate, extraFeeLine.FeeFrequency);
 
         if (fees > 0)
         {
@@ -438,74 +480,6 @@ public partial class AccountingManager
            (billingType == BillingType.Nightly && !isDepartureMonthYear && isLastDayOfMonth))
             days++;
         return days;
-    }
-
-    private static int CountDailyDaysInRange(DateOnly startDate, DateOnly rangeStart, DateOnly rangeEnd)
-    {
-        int count = 0;
-        for (var d = startDate; d <= rangeEnd; d = d.AddDays(1))
-        {
-            if (d >= rangeStart && d <= rangeEnd)
-                count++;
-        }
-
-        return count;
-    }
-
-    private static int CountNumberOfWeekDaysInMonth(DateOnly maidStartDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth)
-    {
-        int count = 0;
-        for (var d = maidStartDate; d <= dDate; d = d.AddDays(7))
-        {
-            if (d >= sDate && d <= dDate)
-                count++;
-        }
-
-        return count;
-    }
-
-    private static int CountEowDaysInMonth(DateOnly maidStartDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth)
-    {
-        int count = 0;
-        for (var d = maidStartDate; d <= dDate; d = d.AddDays(14))
-        {
-            if (d >= sDate && d <= dDate)
-                count++;
-        }
-
-        return count;
-    }
-
-    private static int CountNumberOfMonths(DateOnly startDate, DateOnly sDate, DateOnly dDate, int currentYear, int currentMonth, FrequencyType frequency)
-    {
-        // Determine the interval based on frequency
-        int monthInterval;
-        switch (frequency)
-        {
-            case FrequencyType.Monthly:
-                monthInterval = 1;
-                break;
-            case FrequencyType.Quarterly:
-                monthInterval = 3;
-                break;
-            case FrequencyType.BiAnnually:
-                monthInterval = 6;
-                break;
-            case FrequencyType.Annually:
-                monthInterval = 12;
-                break;
-            default:
-                return 0;
-        }
-
-        int count = 0;
-        for (var d = startDate; d <= dDate; d = d.AddMonths(monthInterval))
-        {
-            if (d >= sDate && d <= dDate)
-                count++;
-        }
-
-        return count;
     }
     #endregion
 }
