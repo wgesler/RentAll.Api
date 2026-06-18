@@ -176,7 +176,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         Assert.Equal(AccountingManagerJournalEntryTestSupport.JournalEntryInvoicePath.CrossPeriodFallback,
             AccountingManagerJournalEntryTestSupport.ClassifyJournalEntryPath(invoice, context.CreatedJournalEntries.Count));
-        Assert.Single(context.ActiveJournalEntries.Where(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+        Assert.Single(context.ActiveJournalEntries, entry => entry.SourceTypeId == (int)SourceType.Invoice);
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
     }
 

@@ -43,15 +43,13 @@ public partial class AccountingManager
         receipt = await LoadReceiptWithSplitsAsync(receipt);
 
         var splitLines = ResolveDocumentSplitLines(receipt);
+        EnsureSplitLinesHaveConfiguredAccounts(splitLines);
 
         if (receipt.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a receipt");
 
         var creditCardAccountId = GetCreditCardAccountId(receipt, chartOfAccounts, accountingOffice);
-        var defaultExpenseAccountId = GetCompanyExpenseAccountId(chartOfAccounts, receipt.OfficeId, accountingOffice);
-        var defaultCostOfGoodsSoldAccountId = GetCostOfGoodsSoldAccountIdByNameOrType(chartOfAccounts, receipt.OfficeId);
-
-        var transactionDate = receipt.ReceiptDate != default ? receipt.ReceiptDate : receipt.AccountingPeriod;
+        var transactionDate = receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
         var receiptLabel = receipt.ReceiptCode.Trim();
         var memo = string.IsNullOrWhiteSpace(receipt.Description)
@@ -75,12 +73,7 @@ public partial class AccountingManager
 
         foreach (var split in splitLines)
         {
-            var expenseAccountId = GetExpenseOrCogsAccountId(
-                chartOfAccounts,
-                receipt.OfficeId,
-                split,
-                defaultCostOfGoodsSoldAccountId,
-                defaultExpenseAccountId);
+            var expenseAccountId = GetBillReceiptExpenseAccountId(split);
             var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
 
             journalEntryLines.Add(new JournalEntryLine

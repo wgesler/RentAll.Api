@@ -13,7 +13,6 @@ public class ReceiptSplitDto
     public string? WorkOrderCode { get; set; }
     public int ReceiptTypeId { get; set; }
     public int? ChartOfAccountId { get; set; }
-    public int? AccountId { get; set; }
     public string? ChartOfAccountDisplayName { get; set; }
 
     public ReceiptSplitDto()
@@ -30,7 +29,6 @@ public class ReceiptSplitDto
         WorkOrderCode = split.WorkOrderCode;
         ReceiptTypeId = split.ReceiptTypeId;
         ChartOfAccountId = split.ChartOfAccountId;
-        AccountId = split.ChartOfAccountId;
         ChartOfAccountDisplayName = split.ChartOfAccountDisplayName;
     }
 
@@ -42,21 +40,7 @@ public class ReceiptSplitDto
         if (ChartOfAccountId.HasValue && ChartOfAccountId.Value <= 0)
             return (false, "ChartOfAccountId must be greater than 0 when provided");
 
-        if (AccountId.HasValue && AccountId.Value <= 0)
-            return (false, "AccountId must be greater than 0 when provided");
-
         return (true, null);
-    }
-
-    public int? ResolveChartOfAccountId()
-    {
-        if (ChartOfAccountId is > 0)
-            return ChartOfAccountId;
-
-        if (AccountId is > 0)
-            return AccountId;
-
-        return null;
     }
 
     public ReceiptSplit ToModel()
@@ -70,7 +54,7 @@ public class ReceiptSplitDto
             WorkOrderId = WorkOrderId,
             WorkOrderCode = WorkOrderCode,
             ReceiptType = (ReceiptType)ReceiptTypeId,
-            ChartOfAccountId = ResolveChartOfAccountId()
+            ChartOfAccountId = ChartOfAccountId is > 0 ? ChartOfAccountId : null
         };
     }
 }

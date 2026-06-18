@@ -254,7 +254,7 @@ public partial class AccountingManager
             Bill = bill,
             AmountApplied = bill.PaidAmount,
             PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            ChartOfAccountId = GetBankAccountId(chartOfAccounts, bill.OfficeId, accountingOffice),
+            ChartOfAccountId = GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice),
             Description = $"Bill Payment - {billLabel}",
             PaymentSequence = 0
         };

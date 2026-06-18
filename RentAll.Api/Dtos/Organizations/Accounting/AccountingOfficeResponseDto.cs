@@ -37,6 +37,8 @@ public class AccountingOfficeResponseDto
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
+    public int? DefaultDepartureIncAccountId { get; set; }
+    public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -80,6 +82,8 @@ public class AccountingOfficeResponseDto
         DefaultOwnerExpAccountId = accountingOffice.DefaultOwnerExpAccountId;
         DefaultOwnerIncAccountId = accountingOffice.DefaultOwnerIncAccountId;
         DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId;
+        DefaultDepartureIncAccountId = accountingOffice.DefaultDepartureIncAccountId;
+        DefaultDepartureExpAccountId = accountingOffice.DefaultDepartureExpAccountId;
         LogoPath = accountingOffice.LogoPath;
         IsActive = accountingOffice.IsActive;
         CreatedOn = accountingOffice.CreatedOn;

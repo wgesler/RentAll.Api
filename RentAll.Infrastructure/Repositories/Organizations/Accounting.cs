@@ -90,6 +90,8 @@ public partial class OrganizationRepository
             DefaultOwnerExpAccountId = accountingOffice.DefaultOwnerExpAccountId,
             DefaultOwnerIncAccountId = accountingOffice.DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId,
+            DefaultDepartureIncAccountId = accountingOffice.DefaultDepartureIncAccountId,
+            DefaultDepartureExpAccountId = accountingOffice.DefaultDepartureExpAccountId,
             LogoPath = accountingOffice.LogoPath,
             IsActive = accountingOffice.IsActive,
             CreatedBy = accountingOffice.CreatedBy
@@ -140,6 +142,8 @@ public partial class OrganizationRepository
             DefaultOwnerExpAccountId = accountingOffice.DefaultOwnerExpAccountId,
             DefaultOwnerIncAccountId = accountingOffice.DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId,
+            DefaultDepartureIncAccountId = accountingOffice.DefaultDepartureIncAccountId,
+            DefaultDepartureExpAccountId = accountingOffice.DefaultDepartureExpAccountId,
             LogoPath = accountingOffice.LogoPath,
             IsActive = accountingOffice.IsActive,
             ModifiedBy = accountingOffice.ModifiedBy

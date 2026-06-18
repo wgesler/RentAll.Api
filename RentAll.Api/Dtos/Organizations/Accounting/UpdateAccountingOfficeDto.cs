@@ -36,6 +36,8 @@ public class UpdateAccountingOfficeDto
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
+    public int? DefaultDepartureIncAccountId { get; set; }
+    public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
@@ -126,6 +128,8 @@ public class UpdateAccountingOfficeDto
             DefaultOwnerExpAccountId = DefaultOwnerExpAccountId,
             DefaultOwnerIncAccountId = DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
+            DefaultDepartureIncAccountId = DefaultDepartureIncAccountId,
+            DefaultDepartureExpAccountId = DefaultDepartureExpAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             IsActive = IsActive,
             ModifiedBy = currentUser

@@ -173,6 +173,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             DefaultOwnerExpAccountId = e.DefaultOwnerExpAccountId,
             DefaultOwnerIncAccountId = e.DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = e.DefaultCompanyExpAccountId,
+            DefaultDepartureIncAccountId = e.DefaultDepartureIncAccountId,
+            DefaultDepartureExpAccountId = e.DefaultDepartureExpAccountId,
             LogoPath = e.LogoPath,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,

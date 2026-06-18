@@ -60,17 +60,15 @@ public partial class AccountingManager
         bill = await LoadReceiptWithSplitsAsync(bill);
 
         var splitLines = ResolveDocumentSplitLines(bill);
+        EnsureSplitLinesHaveConfiguredAccounts(splitLines);
 
         if (bill.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a bill");
 
-        var accountsPayableAccountId = GetAccountsPayableAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var undepositedFundsAccountId = GetUndepositedFundsAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var defaultExpenseAccountId = GetCompanyExpenseAccountId(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var defaultCostOfGoodsSoldAccountId = GetCostOfGoodsSoldAccountIdByNameOrType(chartOfAccounts, bill.OfficeId);
-
-        var transactionDate = bill.ReceiptDate != default ? bill.ReceiptDate : bill.AccountingPeriod;
+        var accountsPayableAccountId = GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var transactionDate = bill.AccountingPeriod;
         var postingDate = bill.AccountingPeriod;
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
             ? bill.BillNumber.Trim()
@@ -90,6 +88,7 @@ public partial class AccountingManager
             var (accountsPayableDebit, accountsPayableCredit) = SignedAmountToDebitCredit(positiveTotal, positiveIsDebit: false);
             journalEntryLines.Add(new JournalEntryLine
             {
+                // Credit Accounts payable
                 ChartOfAccountId = accountsPayableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
@@ -101,16 +100,12 @@ public partial class AccountingManager
 
             foreach (var split in positiveSplits)
             {
-                var expenseAccountId = GetExpenseOrCogsAccountId(
-                    chartOfAccounts,
-                    bill.OfficeId,
-                    split,
-                    defaultCostOfGoodsSoldAccountId,
-                    defaultExpenseAccountId);
+                var expenseAccountId = GetBillReceiptExpenseAccountId(split);
                 var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
 
                 journalEntryLines.Add(new JournalEntryLine
                 {
+                    // Debit Expense Account
                     ChartOfAccountId = expenseAccountId,
                     PropertyId = propertyId == Guid.Empty ? null : propertyId,
                     ContactId = bill.VendorId,
@@ -131,6 +126,7 @@ public partial class AccountingManager
 
             journalEntryLines.Add(new JournalEntryLine
             {
+                // Debit Undeposited Funds
                 ChartOfAccountId = undepositedFundsAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
@@ -142,6 +138,7 @@ public partial class AccountingManager
 
             journalEntryLines.Add(new JournalEntryLine
             {
+                // Credit Accounts Receivable
                 ChartOfAccountId = accountsReceivableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
@@ -195,11 +192,11 @@ public partial class AccountingManager
         if (paymentApplication.PaymentDate == default)
             throw new Exception("Payment date is required to create a bill payment journal entry");
 
-        var liabilityAccountId = GetBillLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
-        var offsetAccountId = GetBillPaymentChartOfAccountId(
-            chartOfAccounts,
-            bill.OfficeId,
-            paymentApplication.ChartOfAccountId);
+        if (paymentApplication.ChartOfAccountId <= 0)
+            throw new Exception("Chart of account is required for bill payment");
+
+        var liabilityAccountId = GetBillReceiptLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
+        var offsetAccountId = paymentApplication.ChartOfAccountId;
 
         var amount = paymentApplication.AmountApplied;
         var transactionDate = paymentApplication.PaymentDate;

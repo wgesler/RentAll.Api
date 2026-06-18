@@ -34,6 +34,8 @@ public class AccountingOfficeEntity
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
+    public int? DefaultDepartureIncAccountId { get; set; }
+    public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

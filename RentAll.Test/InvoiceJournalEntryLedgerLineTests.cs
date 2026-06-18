@@ -7,9 +7,7 @@ namespace RentAll.Test;
 public class InvoiceJournalEntryLedgerLineTests
 {
     [Theory]
-    [MemberData(
-        nameof(AccountingManagerLedgerLineTests.LedgerLineScenarioMatrix),
-        MemberType = typeof(AccountingManagerLedgerLineTests))]
+    [MemberData(nameof(JournalEntryLedgerLineScenarioMatrix))]
     public async Task CreateJournalEntryFromInvoice_LedgerLineMatrix_JournalEntriesBalanceInvoice(
         string caseId,
         ProrateType prorateType,
@@ -19,9 +17,7 @@ public class InvoiceJournalEntryLedgerLineTests
         DateOnly startDate,
         DateOnly endDate,
         string expectedDescription,
-        int _expectedDays,
-        decimal expectedAmount,
-        int _expectedCostCodeId)
+        decimal expectedAmount)
     {
         await AssertJournalEntriesBalanceForScenarioAsync(
             "Ledger",
@@ -37,9 +33,7 @@ public class InvoiceJournalEntryLedgerLineTests
     }
 
     [Theory]
-    [MemberData(
-        nameof(AccountingManagerLedgerLineTests.LeapYearScenarioMatrix),
-        MemberType = typeof(AccountingManagerLedgerLineTests))]
+    [MemberData(nameof(JournalEntryLeapYearScenarioMatrix))]
     public async Task CreateJournalEntryFromInvoice_LeapYearMatrix_JournalEntriesBalanceInvoice(
         string caseId,
         ProrateType prorateType,
@@ -49,9 +43,7 @@ public class InvoiceJournalEntryLedgerLineTests
         DateOnly startDate,
         DateOnly endDate,
         string expectedDescription,
-        int _expectedDays,
-        decimal expectedAmount,
-        int _expectedCostCodeId)
+        decimal expectedAmount)
     {
         await AssertJournalEntriesBalanceForScenarioAsync(
             "LeapYear",
@@ -67,9 +59,7 @@ public class InvoiceJournalEntryLedgerLineTests
     }
 
     [Theory]
-    [MemberData(
-        nameof(AccountingManagerLedgerLineTests.CrossYearScenarioMatrix),
-        MemberType = typeof(AccountingManagerLedgerLineTests))]
+    [MemberData(nameof(JournalEntryCrossYearScenarioMatrix))]
     public async Task CreateJournalEntryFromInvoice_CrossYearMatrix_JournalEntriesBalanceInvoice(
         string caseId,
         ProrateType prorateType,
@@ -79,9 +69,7 @@ public class InvoiceJournalEntryLedgerLineTests
         DateOnly startDate,
         DateOnly endDate,
         string expectedDescription,
-        int _expectedDays,
-        decimal expectedAmount,
-        int _expectedCostCodeId)
+        decimal expectedAmount)
     {
         await AssertJournalEntriesBalanceForScenarioAsync(
             "CrossYear",
@@ -145,4 +133,27 @@ public class InvoiceJournalEntryLedgerLineTests
             invoice,
             $"{matrixName}-{caseId}");
     }
+
+    public static IEnumerable<object[]> JournalEntryLedgerLineScenarioMatrix() =>
+        ProjectJournalEntryScenarioMatrix(AccountingManagerLedgerLineTests.LedgerLineScenarioMatrix());
+
+    public static IEnumerable<object[]> JournalEntryLeapYearScenarioMatrix() =>
+        ProjectJournalEntryScenarioMatrix(AccountingManagerLedgerLineTests.LeapYearScenarioMatrix());
+
+    public static IEnumerable<object[]> JournalEntryCrossYearScenarioMatrix() =>
+        ProjectJournalEntryScenarioMatrix(AccountingManagerLedgerLineTests.CrossYearScenarioMatrix());
+
+    private static IEnumerable<object[]> ProjectJournalEntryScenarioMatrix(IEnumerable<object[]> source) =>
+        source.Select(row => new object[]
+        {
+            row[0],
+            row[1],
+            row[2],
+            row[3],
+            row[4],
+            row[5],
+            row[6],
+            row[7],
+            row[9]
+        });
 }

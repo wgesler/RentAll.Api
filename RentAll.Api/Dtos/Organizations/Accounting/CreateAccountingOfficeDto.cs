@@ -36,6 +36,8 @@ public class CreateAccountingOfficeDto
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
+    public int? DefaultDepartureIncAccountId { get; set; }
+    public int? DefaultDepartureExpAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -125,6 +127,8 @@ public class CreateAccountingOfficeDto
             DefaultOwnerExpAccountId = DefaultOwnerExpAccountId,
             DefaultOwnerIncAccountId = DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
+            DefaultDepartureIncAccountId = DefaultDepartureIncAccountId,
+            DefaultDepartureExpAccountId = DefaultDepartureExpAccountId,
             LogoPath = null, // Will be set by controller after file save
             IsActive = IsActive,
             CreatedBy = currentUser

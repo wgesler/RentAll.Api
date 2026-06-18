@@ -261,6 +261,7 @@ public partial class MaintenanceRepository
         foreach (var split in splits)
         {
             var workOrderId = ResolveSplitWorkOrderId(split, existing: null, workOrderCodeLookup);
+            var chartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null;
             await db.DapperProcQueryAsync<ReceiptSplitEntity>("Maintenance.ReceiptSplit_Add", new
             {
                 ReceiptId = receipt.ReceiptId,
@@ -268,7 +269,7 @@ public partial class MaintenanceRepository
                 Description = split.Description,
                 ReceiptTypeId = split.ReceiptTypeId,
                 WorkOrderId = workOrderId,
-                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
+                ChartOfAccountId = chartOfAccountId is > 0 ? chartOfAccountId : null,
                 CreatedBy = auditUser
             }, transaction: transaction);
         }

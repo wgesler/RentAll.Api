@@ -34,14 +34,13 @@ public partial class AccountingManager
             throw new Exception("Duplicate journal entry lines were submitted for deposit");
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
-        var bankAccountId = GetDepositBankAccountId(chartOfAccounts, officeId, bankChartOfAccountId);
-        var undepositedFundsAccountIds = GetUndepositedFundsAccountIds(chartOfAccounts, officeId, accountingOffice);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, officeId, accountingOffice);
 
         var sourceLines = await LoadDepositSourceLinesAsync(
             organizationId,
             officeId,
             distinctLineIds,
-            undepositedFundsAccountIds);
+            undepositedFundsAccountId);
 
         var selectedTotal = sourceLines.Sum(GetJournalEntryLineNetAmount);
         if (Math.Abs(selectedTotal - amount) > 0.005m)
@@ -55,7 +54,7 @@ public partial class AccountingManager
         {
             new()
             {
-                ChartOfAccountId = bankAccountId,
+                ChartOfAccountId = bankChartOfAccountId,
                 Debit = Math.Abs(amount),
                 Credit = 0,
                 Memo = memo,
@@ -68,7 +67,7 @@ public partial class AccountingManager
             var lineAmount = GetJournalEntryLineNetAmount(sourceLine);
             journalEntryLines.Add(new JournalEntryLine
             {
-                ChartOfAccountId = sourceLine.ChartOfAccountId,
+                ChartOfAccountId = undepositedFundsAccountId,
                 CostCodeId = sourceLine.CostCodeId,
                 PropertyId = sourceLine.PropertyId,
                 ReservationId = sourceLine.ReservationId,
@@ -96,7 +95,7 @@ public partial class AccountingManager
         return await CreateJournalEntryAsync(journalEntry);
     }
 
-    async Task<List<JournalEntryLineSearchResult>> LoadDepositSourceLinesAsync(Guid organizationId, int officeId, List<Guid> journalEntryLineIds, HashSet<int> undepositedFundsAccountIds)
+    async Task<List<JournalEntryLineSearchResult>> LoadDepositSourceLinesAsync(Guid organizationId, int officeId, List<Guid> journalEntryLineIds, int undepositedFundsAccountId)
     {
         var lineIdSet = journalEntryLineIds.ToHashSet();
         var matchingLines = (await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
@@ -109,7 +108,7 @@ public partial class AccountingManager
             .Where(line =>
                 lineIdSet.Contains(line.JournalEntryLineId)
                 && !line.IsVoided
-                && undepositedFundsAccountIds.Contains(line.ChartOfAccountId))
+                && line.ChartOfAccountId == undepositedFundsAccountId)
             .ToList();
 
         if (matchingLines.Count != journalEntryLineIds.Count)

@@ -141,6 +141,9 @@ internal static class AccountingManagerJournalEntryTestSupport
 
     internal static bool InvoiceCrossesAccountingPeriod(Invoice invoice)
     {
+        if (string.IsNullOrWhiteSpace(invoice.InvoicePeriod))
+            return false;
+
         var periodParts = invoice.InvoicePeriod.Split('-', StringSplitOptions.TrimEntries);
         var periodStart = DateOnly.Parse(periodParts[0]);
         var periodEnd = DateOnly.Parse(periodParts[1]);

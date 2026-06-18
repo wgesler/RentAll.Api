@@ -138,8 +138,8 @@ public partial class AccountingManager
     {
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
-        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var defaultIncomeAccountId = GetTenantIncomeAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var defaultIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
 
         var chargeLines = invoice.LedgerLines
@@ -182,7 +182,7 @@ public partial class AccountingManager
         foreach (var line in chargeLines)
         {
             costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-            var incomeAccountId = GetChartOfAccountIdForCostCode(
+            var incomeAccountId = GetChartOfAccountIdByCostCode(
                 chartOfAccounts,
                 invoice.OfficeId,
                 costCode,
@@ -230,8 +230,8 @@ public partial class AccountingManager
         if (!costCodeById.TryGetValue(paymentLedgerLine.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
             throw new Exception("Payment ledger line must use a payment cost code");
 
-        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var undepositedFundsAccountId = GetUndepositedFundsAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
 
@@ -287,8 +287,8 @@ public partial class AccountingManager
     {
         await ValidatePrePaymentLedgerLineForJournalEntry(invoice, paymentLedgerLine);
 
-        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var prePaymentAccountId = GetPrePaymentAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
         var amount = paymentLedgerLine.Amount;
@@ -343,8 +343,8 @@ public partial class AccountingManager
     {
         await ValidatePrePaymentLedgerLineForJournalEntry(invoice, paymentLedgerLine);
 
-        var accountsReceivableAccountId = GetAccountsReceivableAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var prePaymentAccountId = GetPrePaymentAccountId(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
         var amount = paymentLedgerLine.Amount;

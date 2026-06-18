@@ -221,7 +221,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
                 WorkOrder = split.WorkOrder,
                 WorkOrderId = split.WorkOrderId,
                 ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
-                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
+                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
             }).ToList();
         }
         catch
