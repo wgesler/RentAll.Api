@@ -61,6 +61,17 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         Assert.Equal(2500m, firstPeriodAr);
         Assert.Equal(500m, secondPeriodAr);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.PostingDate)
+            .ToList();
+
+        Assert.All(chargeEntries, entry => Assert.Equal(invoice.InvoiceId, entry.SourceId));
+        Assert.Equal(new DateOnly(2026, 2, 1), chargeEntries[0].TransactionDate);
+        Assert.Equal(new DateOnly(2026, 3, 1), chargeEntries[1].TransactionDate);
+        Assert.Equal(chargeEntries[0].TransactionDate, chargeEntries[0].PostingDate);
+        Assert.Equal(chargeEntries[1].TransactionDate, chargeEntries[1].PostingDate);
     }
 
     [Fact]

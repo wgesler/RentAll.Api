@@ -399,14 +399,9 @@ public partial class AccountingManager : IAccountingManager
     {
         if (split.ChartOfAccountId is > 0)
         {
-            var account = chartOfAccounts.FirstOrDefault(a =>
-                a.AccountId == split.ChartOfAccountId.Value && a.OfficeId == officeId);
-
-            if (account?.AccountType == AccountType.CostOfGoodsSold)
-                return account.AccountId;
-
-            if (account?.AccountType == AccountType.Expense)
-                return account.AccountId;
+            var configuredAccountId = TryResolveReceiptSplitChartOfAccountId(chartOfAccounts, officeId, split.ChartOfAccountId.Value);
+            if (configuredAccountId is > 0)
+                return configuredAccountId.Value;
         }
 
         if (defaultCostOfGoodsSoldAccountId > 0)
@@ -414,6 +409,24 @@ public partial class AccountingManager : IAccountingManager
 
         return defaultExpenseAccountId;
     }
+
+    private static int? TryResolveReceiptSplitChartOfAccountId(List<ChartOfAccount> chartOfAccounts, int officeId, int chartOfAccountId)
+    {
+        var account = chartOfAccounts.FirstOrDefault(a =>
+            a.AccountId == chartOfAccountId && a.OfficeId == officeId);
+
+        if (account == null || !IsReceiptSplitExpenseAccountType(account.AccountType))
+            return null;
+
+        return account.AccountId;
+    }
+
+    private static bool IsReceiptSplitExpenseAccountType(AccountType accountType) =>
+        accountType is AccountType.Expense
+            or AccountType.CostOfGoodsSold
+            or AccountType.OtherExpense
+            or AccountType.Income
+            or AccountType.OtherIncome;
 
     private int GetCreditCardAccountId(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {

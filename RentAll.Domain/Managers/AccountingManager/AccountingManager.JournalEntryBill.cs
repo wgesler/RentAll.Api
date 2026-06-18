@@ -22,7 +22,13 @@ public partial class AccountingManager
 
         var existingEntry = existingEntries.FirstOrDefault(e => !e.IsVoided);
         if (existingEntry != null)
-            return existingEntry;
+        {
+            if (existingEntry.IsPosted)
+                return existingEntry;
+
+            await ReplaceJournalEntriesFromBillAsync(bill, currentUser);
+            return (await _journalEntryRepository.GetJournalEntryByIdAsync(existingEntry.JournalEntryId, bill.OrganizationId))!;
+        }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
         var journalEntry = await BuildJournalEntryFromBillAsync(bill, chartOfAccounts, accountingOffice, currentUser);
@@ -51,6 +57,7 @@ public partial class AccountingManager
     async Task<JournalEntry> BuildJournalEntryFromBillAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         EnsureReceiptIsBill(bill);
+        bill = await LoadReceiptWithSplitsAsync(bill);
 
         var splitLines = ResolveDocumentSplitLines(bill);
 

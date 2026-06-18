@@ -157,7 +157,7 @@ public partial class AccountingManager
         if (invoice.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for an invoice");
 
-        var transactionDate = invoice.InvoiceDate != default ? invoice.InvoiceDate : invoice.AccountingPeriod;
+        var transactionDate = invoice.AccountingPeriod;
         var postingDate = invoice.AccountingPeriod;
         var memo = string.IsNullOrWhiteSpace(invoice.Notes)
             ? $"Invoice {invoice.InvoiceCode}"
@@ -444,9 +444,8 @@ public partial class AccountingManager
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
             return null;
 
-        var secondSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
-        var existingFirst = await GetNonVoidedJournalEntryAsync(invoice, invoice.InvoiceId);
-        var existingSecond = await GetNonVoidedJournalEntryAsync(invoice, secondSourceId);
+        var existingFirst = await GetNonVoidedJournalEntryAsync(invoice, invoice.InvoiceId, firstPeriodInvoice.AccountingPeriod);
+        var existingSecond = await GetNonVoidedJournalEntryAsync(invoice, invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
         if (existingFirst != null && existingSecond != null)
             return existingFirst;
 
@@ -487,7 +486,7 @@ public partial class AccountingManager
 
         await CreateCrossPeriodSliceJournalEntryAsync(
             secondPeriodInvoice,
-            secondSourceId,
+            invoice.InvoiceId,
             chartOfAccounts,
             accountingOffice,
             currentUser,
@@ -496,7 +495,7 @@ public partial class AccountingManager
         return firstEntry;
     }
 
-    private async Task<JournalEntry?> GetNonVoidedJournalEntryAsync(Invoice invoice, Guid sourceId)
+    private async Task<JournalEntry?> GetNonVoidedJournalEntryAsync(Invoice invoice, Guid sourceId, DateOnly? postingDate = null)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
@@ -508,12 +507,16 @@ public partial class AccountingManager
             IncludeUnposted = true
         });
 
-        return existingEntries.FirstOrDefault(e => !e.IsVoided);
+        return existingEntries
+            .Where(e => !e.IsVoided)
+            .Where(e => !postingDate.HasValue || e.PostingDate == postingDate.Value)
+            .OrderBy(e => e.PostingDate)
+            .FirstOrDefault();
     }
 
     private async Task<JournalEntry> CreateCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser, string? memoSuffix = null)
     {
-        var existingEntry = await GetNonVoidedJournalEntryAsync(sliceInvoice, sourceId);
+        var existingEntry = await GetNonVoidedJournalEntryAsync(sliceInvoice, sourceId, sliceInvoice.AccountingPeriod);
         if (existingEntry != null)
             return existingEntry;
 
@@ -566,12 +569,12 @@ public partial class AccountingManager
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out var secondPeriodInvoice))
             return;
 
-        var secondSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
+        var legacySecondSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
         await DeleteJournalEntriesForSourceAsync(
             invoice.OrganizationId,
             invoice.OfficeId,
             (int)SourceType.Invoice,
-            secondSourceId);
+            legacySecondSourceId);
     }
     #endregion
 

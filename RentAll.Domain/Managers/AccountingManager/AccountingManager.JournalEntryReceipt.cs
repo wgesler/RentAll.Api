@@ -40,6 +40,7 @@ public partial class AccountingManager
     async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         EnsureReceiptIsCardReceipt(receipt);
+        receipt = await LoadReceiptWithSplitsAsync(receipt);
 
         var splitLines = ResolveDocumentSplitLines(receipt);
 

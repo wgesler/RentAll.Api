@@ -4,6 +4,15 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    async Task<Receipt> LoadReceiptWithSplitsAsync(Receipt receipt)
+    {
+        if (receipt.ReceiptId == Guid.Empty)
+            return receipt;
+
+        return await _maintenanceRepository.GetReceiptByIdAsync(receipt.ReceiptId, receipt.OrganizationId)
+            ?? receipt;
+    }
+
     /// <summary>
     /// Converts a signed amount into non-negative debit/credit values.
     /// Use positiveIsDebit=true for assets/expenses and false for liabilities/income.
@@ -34,12 +43,17 @@ public partial class AccountingManager
 
         if (document.Amount != 0)
         {
+            var configuredChartOfAccountId = allSplits
+                .Select(split => split.ChartOfAccountId)
+                .FirstOrDefault(id => id is > 0);
+
             return
             [
                 new ReceiptSplit
                 {
                     Amount = document.Amount,
-                    Description = document.Description
+                    Description = document.Description,
+                    ChartOfAccountId = configuredChartOfAccountId
                 }
             ];
         }
