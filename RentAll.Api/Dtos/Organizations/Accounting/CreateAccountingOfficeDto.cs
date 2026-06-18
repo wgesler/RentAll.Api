@@ -1,5 +1,4 @@
 using RentAll.Domain.Models.Common;
-using RentAll.Api.Dtos.Accounting.BankCards;
 
 namespace RentAll.Api.Dtos.Organizations.Accounting;
 
@@ -39,7 +38,6 @@ public class CreateAccountingOfficeDto
     public int? DefaultCompanyExpAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
-    public List<CreateBankCardDto> BankCards { get; set; } = new();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -87,16 +85,6 @@ public class CreateAccountingOfficeDto
 
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
-
-        if (BankCards == null)
-            return (false, "BankCards is required");
-
-        foreach (var bankCard in BankCards)
-        {
-            var (bankCardValid, bankCardError) = bankCard.IsValid();
-            if (!bankCardValid)
-                return (false, bankCardError ?? "Invalid bank card data");
-        }
 
         return (true, null);
     }

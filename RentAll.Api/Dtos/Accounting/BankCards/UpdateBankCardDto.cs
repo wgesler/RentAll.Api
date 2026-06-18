@@ -10,17 +10,14 @@ public class UpdateBankCardDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (BankCardId < 0)
-            return (false, "BankCardId cannot be negative");
+        if (BankCardId <= 0)
+            return (false, "BankCardId is required");
 
         if (!Enum.IsDefined(typeof(CardType), CardTypeId))
             return (false, $"Invalid CardTypeId value: {CardTypeId}");
 
         if (string.IsNullOrWhiteSpace(CardName))
             return (false, "CardName is required");
-
-        if (string.IsNullOrWhiteSpace(CardNumber))
-            return (false, "CardNumber is required");
 
         if (ChartOfAccountId is < 0)
             return (false, "Invalid ChartOfAccountId value");
