@@ -1,6 +1,4 @@
-using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
-using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
 
@@ -8,8 +6,6 @@ namespace RentAll.Test;
 
 public class CrossPeriodInvoiceJournalEntryTests
 {
-    // Weekly maid from Feb 25: partial first slice (through cross-month rent end) → 2 visits;
-    // full March window → 4 visits.
     private static readonly DateOnly FebArrival = new(2026, 2, 4);
     private static readonly DateOnly FebMaidStart = new(2026, 2, 25);
     private static readonly DateOnly FebSliceStart = new(2026, 2, 1);
@@ -18,7 +14,6 @@ public class CrossPeriodInvoiceJournalEntryTests
     private static readonly DateOnly MarSliceEnd = new(2026, 3, 31);
     private static readonly DateOnly MarSliceEndForCrossMonthRent = new(2026, 3, 14);
 
-    // Weekly maid from Jan 22 → Jan 22 & 29 (2), then Feb 5, 12, 19 & 26 (4) in a full February window.
     private static readonly DateOnly JanArrival = new(2026, 1, 15);
     private static readonly DateOnly JanMaidStart = new(2026, 1, 22);
     private static readonly DateOnly JanSliceStart = new(2026, 1, 15);
@@ -26,16 +21,301 @@ public class CrossPeriodInvoiceJournalEntryTests
     private static readonly DateOnly FebShortSliceStart = new(2026, 2, 1);
     private static readonly DateOnly FebShortSliceEnd = new(2026, 2, 14);
     private static readonly DateOnly FebFullSliceEnd = new(2026, 2, 28);
+    private static readonly DateOnly JanFebPeriodStart = new(2026, 1, 15);
+    private static readonly DateOnly JanFebPeriodEnd = new(2026, 2, 14);
+
+    private static readonly DateOnly JuneArrival = new(2026, 6, 21);
+    private static readonly DateOnly JunePeriodStart = new(2026, 6, 1);
+    private static readonly DateOnly JunePeriodEnd = new(2026, 6, 30);
+
+    #region Journal entry pipeline
 
     [Fact]
-    public void CrossPeriodSplit_SecondMonthProrate_FebInvoiceWithCrossMonthRent_TotalsDoNotReconcile()
+    public async Task CrossMonthRentOnly_CreatesTwoBalancedJournalEntries()
     {
-        var reservation = CreateReservationWithFees(
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
             FebArrival,
             new DateOnly(2026, 3, 31),
             ProrateType.SecondMonth,
             BillingType.Monthly,
-            FebMaidStart);
+            3000m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+        var rental = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee"));
+        Assert.Equal("Rental Fee (02/04-03/05)", rental.Description);
+        Assert.Equal(3000m, rental.Amount);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(2, context.CreatedJournalEntries.Count);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.CreatedJournalEntries, invoice);
+
+        var firstPeriodAr = context.CreatedJournalEntries[0].JournalEntryLines
+            .Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Debit;
+        var secondPeriodAr = context.CreatedJournalEntries[1].JournalEntryLines
+            .Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Debit;
+
+        Assert.Equal(2500m, firstPeriodAr);
+        Assert.Equal(500m, secondPeriodAr);
+    }
+
+    [Fact]
+    public async Task CrossPeriodWithFees_FebInvoice_SplitsMaidServiceByOccurrenceMonth()
+    {
+        var reservation = CreateFebReservationWithFees();
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+
+        AssertMaidServiceCount(invoice.LedgerLines, expectedTimes: 2, feePerVisit: 100m);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(AccountingManagerJournalEntryTestSupport.JournalEntryInvoicePath.CrossPeriodSplit,
+            AccountingManagerJournalEntryTestSupport.ClassifyJournalEntryPath(invoice, context.CreatedJournalEntries.Count));
+        Assert.Equal(2, context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.PostingDate)
+            .ToList();
+
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Maid Service (1 times)" && line.Credit == 100m);
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo == "Maid Service (1 times)" && line.Credit == 100m);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Security Deposit" && line.Credit == 500m);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Pet Fee" && line.Credit == 250m);
+        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => line.Memo == "Security Deposit");
+        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => line.Memo == "Pet Fee");
+    }
+
+    [Fact]
+    public async Task CrossPeriodWithFees_JanFebInvoicePeriod_FallsBackToSingleJeThatBalancesFullInvoice()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            JanArrival,
+            new DateOnly(2026, 4, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            JanMaidStart);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, JanFebPeriodStart, JanFebPeriodEnd);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(AccountingManagerJournalEntryTestSupport.JournalEntryInvoicePath.CrossPeriodFallback,
+            AccountingManagerJournalEntryTestSupport.ClassifyJournalEntryPath(invoice, context.CreatedJournalEntries.Count));
+        Assert.Single(context.ActiveJournalEntries.Where(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
+    }
+
+    [Fact]
+    public async Task SdwCrossMonthRental_FebInvoice_CrossPeriodSplitBalancesRentAndWaiver()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            FebArrival,
+            new DateOnly(2026, 3, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.SDW,
+            hasPets: false);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+
+        Assert.Contains(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee (02/04-03/"));
+        var originalSdw = Assert.Single(invoice.LedgerLines, line => line.Description == "Security Deposit Waiver");
+        Assert.Equal(500m, originalSdw.Amount);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(2, context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+        Assert.Equal(AccountingManagerJournalEntryTestSupport.JournalEntryInvoicePath.CrossPeriodSplit,
+            AccountingManagerJournalEntryTestSupport.ClassifyJournalEntryPath(invoice, context.CreatedJournalEntries.Count));
+
+        var sdwCredits = context.ActiveJournalEntries
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.CostCodeId == AccountingManagerJournalEntryFeeTestSupport.SdwCostCodeId)
+            .Sum(line => line.Credit);
+
+        Assert.Equal(originalSdw.Amount, sdwCredits);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
+    }
+
+    [Fact]
+    public async Task MonthlyExtraFeeCrossMonthRental_FebInvoice_CrossPeriodSplitApportionsFeeWithRent()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            FebArrival,
+            new DateOnly(2026, 3, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            hasPets: false,
+            depositType: DepositType.CLR,
+            extraFeeLines:
+            [
+                new ExtraFeeLine
+                {
+                    FeeDescription = "Parking Fee",
+                    FeeAmount = 300m,
+                    FeeFrequency = FrequencyType.Monthly,
+                    CostCodeId = AccountingManagerJournalEntryFeeTestSupport.ExtraFeeCostCodeId
+                }
+            ]);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+        var originalParking = Assert.Single(invoice.LedgerLines, line => line.Description == "Parking Fee");
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(2, context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+        Assert.Equal(AccountingManagerJournalEntryTestSupport.JournalEntryInvoicePath.CrossPeriodSplit,
+            AccountingManagerJournalEntryTestSupport.ClassifyJournalEntryPath(invoice, context.CreatedJournalEntries.Count));
+
+        var parkingCredits = context.ActiveJournalEntries
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.Memo == "Parking Fee")
+            .Sum(line => line.Credit);
+
+        Assert.Equal(originalParking.Amount, parkingCredits);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
+    }
+
+    [Fact]
+    public async Task ApportionmentRounding_NightlyCrossMonthSplit_RentCreditsSumExactlyToOriginal()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2026, 4, 5),
+            new DateOnly(2026, 6, 15),
+            ProrateType.SecondMonth,
+            BillingType.Nightly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            hasPets: false,
+            depositType: DepositType.CLR);
+
+        var periodStart = new DateOnly(2026, 4, 1);
+        var periodEnd = new DateOnly(2026, 4, 30);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, periodStart, periodEnd);
+        var originalRental = Assert.Single(invoice.LedgerLines, line => line.Description == "Rental Fee (04/05-05/04)");
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(2, context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+
+        var rentalCredits = context.ActiveJournalEntries
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId
+                && line.Memo!.StartsWith("Rental Fee", StringComparison.Ordinal))
+            .Sum(line => line.Credit);
+
+        Assert.Equal(originalRental.Amount, rentalCredits);
+        Assert.Equal(originalRental.Amount,
+            context.ActiveJournalEntries.Sum(entry => entry.JournalEntryLines
+                .Where(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+                .Sum(line => line.Debit)));
+    }
+
+    [Fact]
+    public async Task UpdateInvoice_CrossMonthRentOnly_RefreshRecreatesTwoChargeJournalEntries()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            FebArrival,
+            new DateOnly(2026, 3, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            3000m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+        var originalEntryIds = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .Select(entry => entry.JournalEntryId)
+            .ToHashSet();
+
+        Assert.Equal(2, originalEntryIds.Count);
+
+        var rentalLine = invoice.LedgerLines.Single(line => line.Description.StartsWith("Rental Fee"));
+        rentalLine.Amount += 30m;
+        invoice.TotalAmount += 30m;
+        invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        await manager.UpdateInvoiceAsync(invoice);
+
+        var chargeEntries = context.ActiveJournalEntries.Where(entry => entry.SourceTypeId == (int)SourceType.Invoice).ToList();
+        Assert.Equal(2, chargeEntries.Count);
+        Assert.DoesNotContain(chargeEntries.Select(entry => entry.JournalEntryId), id => originalEntryIds.Contains(id));
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
+    }
+
+    [Fact]
+    public async Task June21ToJuly20_AmortizesMonthlyChargesAndKeepsDepartureOnFirstMonth()
+    {
+        var reservation = CreateJuneReservation();
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, JunePeriodStart, JunePeriodEnd);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(2, context.ActiveJournalEntries.Count(e => e.SourceTypeId == (int)SourceType.Invoice));
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(e => e.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(e => e.PostingDate)
+            .ToList();
+
+        var firstMonthTotal = chargeEntries[0].JournalEntryLines
+            .Where(l => l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Sum(l => l.Debit);
+        var secondMonthTotal = chargeEntries[1].JournalEntryLines
+            .Where(l => l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Sum(l => l.Debit);
+
+        Assert.Equal(3520m, firstMonthTotal);
+        Assert.Equal(6040m, secondMonthTotal);
+
+        var firstMonthIncome = chargeEntries[0].JournalEntryLines
+            .Where(l => l.Credit > 0)
+            .ToDictionary(l => l.Memo!, l => l.Credit);
+
+        Assert.Equal(3000m, firstMonthIncome["Rental Fee (06/21-06/30)"]);
+        Assert.Equal(20m, firstMonthIncome["Security Deposit Waiver"]);
+        Assert.Equal(500m, firstMonthIncome["Departure Fee"]);
+
+        var secondMonthIncome = chargeEntries[1].JournalEntryLines
+            .Where(l => l.Credit > 0)
+            .ToDictionary(l => l.Memo!, l => l.Credit);
+
+        Assert.Equal(6000m, secondMonthIncome["Rental Fee (07/01-07/20)"]);
+        Assert.Equal(40m, secondMonthIncome["Security Deposit Waiver"]);
+        Assert.DoesNotContain(secondMonthIncome, kvp => kvp.Key == "Departure Fee");
+    }
+
+    #endregion
+
+    #region Ledger line slice behavior
+
+    [Fact]
+    public void CrossPeriodSplit_SecondMonthProrate_FebInvoiceWithCrossMonthRent_TotalsDoNotReconcile()
+    {
+        var reservation = CreateFebReservationWithFees();
 
         AssertCrossPeriodSplitDoesNotReconcile(
             reservation,
@@ -50,7 +330,7 @@ public class CrossPeriodInvoiceJournalEntryTests
     [Fact]
     public void CrossPeriodSplit_InvoicePeriodSpansTwoMonths_TotalsDoNotReconcileDueToFirstMonthFees()
     {
-        var reservation = CreateReservationWithFees(
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
             JanArrival,
             new DateOnly(2026, 4, 30),
             ProrateType.FirstMonth,
@@ -70,14 +350,8 @@ public class CrossPeriodInvoiceJournalEntryTests
     [Fact]
     public void CrossPeriodSplit_SecondMonthProrate_FirstMonthFeesAndMaid_OnlyOnFirstSlice()
     {
-        var reservation = CreateReservationWithFees(
-            FebArrival,
-            new DateOnly(2026, 3, 31),
-            ProrateType.SecondMonth,
-            BillingType.Monthly,
-            FebMaidStart);
-
-        var manager = CreateManager();
+        var reservation = CreateFebReservationWithFees();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
         var slice1Lines = GetLines(manager, reservation, FebSliceStart, FebSliceEnd);
         var slice2Lines = GetLines(manager, reservation, MarSliceStart, MarSliceEnd);
 
@@ -93,14 +367,14 @@ public class CrossPeriodInvoiceJournalEntryTests
     [Fact]
     public void CrossPeriodSplit_InvoicePeriodSpansTwoMonths_FirstMonthFeesOnlyOnJanuarySlice()
     {
-        var reservation = CreateReservationWithFees(
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
             JanArrival,
             new DateOnly(2026, 4, 30),
             ProrateType.FirstMonth,
             BillingType.Monthly,
             JanMaidStart);
 
-        var manager = CreateManager();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
         var slice1Lines = GetLines(manager, reservation, JanSliceStart, JanSliceEnd);
         var slice2Lines = GetLines(manager, reservation, FebShortSliceStart, FebFullSliceEnd);
 
@@ -116,14 +390,8 @@ public class CrossPeriodInvoiceJournalEntryTests
     [Fact]
     public void CrossPeriodSplit_SecondMonthProrate_OriginalInvoiceIncludesDepositPetAndMaid()
     {
-        var reservation = CreateReservationWithFees(
-            FebArrival,
-            new DateOnly(2026, 3, 31),
-            ProrateType.SecondMonth,
-            BillingType.Monthly,
-            FebMaidStart);
-
-        var manager = CreateManager();
+        var reservation = CreateFebReservationWithFees();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
         var originalLines = GetLines(manager, reservation, FebSliceStart, FebSliceEnd);
 
         AssertLineAmount(originalLines, "Security Deposit", 500m);
@@ -133,9 +401,26 @@ public class CrossPeriodInvoiceJournalEntryTests
     }
 
     [Fact]
+    public void OriginalInvoice_IncludesCrossMonthRentSdwAndDepartureFee()
+    {
+        var reservation = CreateJuneReservation();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
+        var lines = GetLines(manager, reservation, JunePeriodStart, JunePeriodEnd);
+
+        AssertLineAmount(lines, "Rental Fee (06/21-07/20)", 9000m);
+        AssertLineAmount(lines, "Security Deposit Waiver", 60m);
+        AssertLineAmount(lines, "Departure Fee", 500m);
+        Assert.Equal(9560m, lines.Sum(l => l.Amount));
+    }
+
+    #endregion
+
+    #region Apportionment math
+
+    [Fact]
     public void CrossPeriodSplit_AportionedSdw_Feb4ToMar5_SplitsBySameDailyRateAsRent()
     {
-        var reservation = CreateReservationWithFees(
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
             FebArrival,
             new DateOnly(2026, 3, 31),
             ProrateType.SecondMonth,
@@ -144,7 +429,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             depositType: DepositType.SDW,
             hasPets: false);
 
-        var manager = CreateManager();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
         var originalLines = GetLines(manager, reservation, FebSliceStart, FebSliceEnd);
         var originalRental = Assert.Single(originalLines, line => line.Description == "Rental Fee (02/04-03/05)");
         var originalSdw = Assert.Single(originalLines, line => line.Description == "Security Deposit Waiver");
@@ -162,14 +447,8 @@ public class CrossPeriodInvoiceJournalEntryTests
     [Fact]
     public void CrossPeriodSplit_AportionedRental_Feb4ToMar5_SplitsByDailyRate()
     {
-        var reservation = CreateReservationWithFees(
-            FebArrival,
-            new DateOnly(2026, 3, 31),
-            ProrateType.SecondMonth,
-            BillingType.Monthly,
-            FebMaidStart);
-
-        var manager = CreateManager();
+        var reservation = CreateFebReservationWithFees();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
         var originalLines = GetLines(manager, reservation, FebSliceStart, FebSliceEnd);
         var originalRental = Assert.Single(originalLines, line => line.Description == "Rental Fee (02/04-03/05)");
         Assert.Equal(3000m, originalRental.Amount);
@@ -181,9 +460,51 @@ public class CrossPeriodInvoiceJournalEntryTests
         Assert.Equal(originalRental.Amount, firstMonthRent + secondMonthRent);
     }
 
-    /// <summary>
-    /// Mirrors cross-period rental apportionment: original amount / total rental days × days in each calendar month.
-    /// </summary>
+    [Fact]
+    public void PooledMonthlyRecurring_June21ToJuly20_Amortizes9060OverThirtyDays()
+    {
+        var reservation = CreateJuneReservation();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
+        var originalLines = GetLines(manager, reservation, JunePeriodStart, JunePeriodEnd);
+
+        var rental = Assert.Single(originalLines, l => l.Description == "Rental Fee (06/21-07/20)");
+        var sdw = Assert.Single(originalLines, l => l.Description == "Security Deposit Waiver");
+        var monthlyTotal = rental.Amount + sdw.Amount;
+
+        Assert.Equal(9060m, monthlyTotal);
+
+        const int totalDays = 30;
+        const int juneDays = 10;
+        const int julyDays = 20;
+
+        Assert.Equal(3020m, monthlyTotal / totalDays * juneDays);
+        Assert.Equal(6040m, monthlyTotal / totalDays * julyDays);
+        Assert.Equal(3520m, monthlyTotal / totalDays * juneDays + 500m);
+    }
+
+    #endregion
+
+    private static Reservation CreateFebReservationWithFees()
+        => AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            FebArrival,
+            new DateOnly(2026, 3, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            FebMaidStart);
+
+    private static Reservation CreateJuneReservation()
+        => AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            JuneArrival,
+            new DateOnly(2026, 12, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.SDW,
+            deposit: 60m,
+            hasPets: false,
+            departureFee: 500m,
+            billingRate: 9000m);
+
     private static (decimal FirstMonthRent, decimal SecondMonthRent) ApportionCrossMonthRental(
         LedgerLine originalRental,
         Reservation reservation)
@@ -208,7 +529,6 @@ public class CrossPeriodInvoiceJournalEntryTests
             IsLastDayOfMonth(rentalEnd));
 
         var firstMonthEnd = new DateOnly(rentalStart.Year, rentalStart.Month, DateTime.DaysInMonth(rentalStart.Year, rentalStart.Month));
-        var secondMonthStart = new DateOnly(rentalEnd.Year, rentalEnd.Month, 1);
         var firstPeriodEnd = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
 
         var firstDays = CalculateBillingDays(
@@ -276,7 +596,7 @@ public class CrossPeriodInvoiceJournalEntryTests
         DateOnly slice2Start,
         DateOnly slice2End)
     {
-        var manager = CreateManager();
+        var manager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
 
         var originalLines = GetLines(manager, reservation, originalStart, originalEnd);
         var slice1Lines = GetLines(manager, reservation, slice1Start, slice1End);
@@ -332,64 +652,5 @@ public class CrossPeriodInvoiceJournalEntryTests
             throw new InvalidOperationException($"Unexpected maid service description: {description}");
 
         return int.Parse(description.Substring(open + 1, close - open - 1));
-    }
-
-    private static Reservation CreateReservationWithFees(
-        DateOnly arrival,
-        DateOnly departure,
-        ProrateType prorateType,
-        BillingType billingType,
-        DateOnly maidStartDate,
-        DepositType depositType = DepositType.Deposit,
-        bool hasPets = true)
-    {
-        return new Reservation
-        {
-            OrganizationId = Guid.NewGuid(),
-            OfficeId = 1,
-            PropertyId = Guid.NewGuid(),
-            ArrivalDate = arrival,
-            DepartureDate = departure,
-            ProrateType = prorateType,
-            BillingType = billingType,
-            BillingRate = billingType == BillingType.Monthly ? 3000m : 100m,
-            Deposit = 500m,
-            DepositType = depositType,
-            HasPets = hasPets,
-            PetFee = 250m,
-            DepartureFee = -1m,
-            MaidServiceFee = 100m,
-            Frequency = FrequencyType.Weekly,
-            MaidStartDate = maidStartDate,
-            ExtraFeeLines = []
-        };
-    }
-
-    private static AccountingManager CreateManager()
-    {
-        return new AccountingManager(
-            organizationRepository: null!,
-            propertyRepository: null!,
-            accountingRepository: null!,
-            maintenanceRepository: null!,
-            reservationRepository: null!,
-            journalEntryRepository: null!,
-            organizationManager: null!,
-            featureFlagService: new EnabledFeatureFlagService());
-    }
-
-    private sealed class EnabledFeatureFlagService : IFeatureFlagService
-    {
-        public IReadOnlyDictionary<string, bool> GetAll()
-            => new Dictionary<string, bool> { [FeatureFlagKeys.Accounting] = true };
-
-        public bool IsEnabled(string featureName) => true;
-
-        public Task<bool> IsEnabledAsync(string featureName, Guid organizationId, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
-
-        public void Set(string featureName, bool enabled)
-        {
-        }
     }
 }

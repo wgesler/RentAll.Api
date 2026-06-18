@@ -96,59 +96,6 @@ public class InvoiceJournalEntryLedgerLineTests
             expectedAmount);
     }
 
-    [Fact]
-    public async Task CreateJournalEntryFromInvoice_CrossMonthRentOnly_CreatesTwoBalancedJournalEntries()
-    {
-        var arrival = new DateOnly(2026, 2, 4);
-        var departure = new DateOnly(2026, 3, 31);
-        var periodStart = new DateOnly(2026, 2, 1);
-        var periodEnd = new DateOnly(2026, 2, 28);
-
-        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
-            arrival,
-            departure,
-            ProrateType.SecondMonth,
-            BillingType.Monthly,
-            3000m);
-
-        var ledgerManager = AccountingManagerJournalEntryTestSupport.CreateLedgerLineManager();
-        var ledgerLines = ledgerManager.GetLedgerLinesByReservationIdAsync(
-            reservation,
-            periodStart,
-            periodEnd,
-            AccountingManagerJournalEntryTestSupport.RentalCostCodeId);
-
-        var rental = Assert.Single(ledgerLines, line => line.Description.StartsWith("Rental Fee"));
-        Assert.Equal("Rental Fee (02/04-03/05)", rental.Description);
-        Assert.Equal(3000m, rental.Amount);
-
-        var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(reservation, periodStart, periodEnd, ledgerLines);
-        var testContext = AccountingManagerJournalEntryTestSupport.CreateJournalEntryTestContext(reservation);
-        var journalEntryManager = testContext.CreateManager();
-
-        await journalEntryManager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
-
-        AccountingManagerJournalEntryTestSupport.PrintJournalEntryPath(
-            "Focused CrossMonthRentOnly",
-            invoice,
-            testContext.CreatedJournalEntries,
-            rental.Description,
-            rental.Amount);
-
-        Assert.Equal(2, testContext.CreatedJournalEntries.Count);
-        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(testContext.CreatedJournalEntries, invoice);
-
-        var firstPeriodAr = testContext.CreatedJournalEntries[0].JournalEntryLines
-            .Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
-            .Debit;
-        var secondPeriodAr = testContext.CreatedJournalEntries[1].JournalEntryLines
-            .Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
-            .Debit;
-
-        Assert.Equal(2500m, firstPeriodAr);
-        Assert.Equal(500m, secondPeriodAr);
-    }
-
     private static async Task AssertJournalEntriesBalanceForScenarioAsync(
         string matrixName,
         string caseId,

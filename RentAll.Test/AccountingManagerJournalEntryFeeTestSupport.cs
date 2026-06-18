@@ -85,6 +85,19 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation)
         => new(reservation);
 
+    internal static async Task<(Invoice Invoice, FeeJournalEntryTestContext Context)> BuildTrackedFeeInvoiceAsync(
+        Reservation reservation,
+        DateOnly periodStart,
+        DateOnly periodEnd)
+    {
+        var context = CreateFeeJournalEntryTestContext(reservation);
+        var manager = context.CreateManager();
+        var ledgerLines = await GetInvoiceLedgerLinesAsync(manager, reservation, periodStart, periodEnd);
+        var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(reservation, periodStart, periodEnd, ledgerLines);
+        context.TrackInvoice(invoice);
+        return (invoice, context);
+    }
+
     internal sealed class FeeJournalEntryTestContext
     {
         private readonly Reservation _reservation;
