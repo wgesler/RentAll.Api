@@ -106,6 +106,40 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Put
+        [HttpPut("accounting-office/{officeId}/work-order-no")]
+        public async Task<IActionResult> UpdateAccountingOfficeWorkOrderNoAsync(int officeId, [FromBody] UpdateAccountingOfficeWorkOrderNoDto dto)
+        {
+            if (officeId <= 0)
+                return BadRequest("Office ID is required");
+
+            if (dto == null)
+                return BadRequest("Work order number data is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid work order number data");
+
+            try
+            {
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+                if (existing == null)
+                    return NotFound("Accounting office not found");
+
+                var updated = await _organizationRepository.UpdateAccountingOfficeWorkOrderNoByIdAsync(
+                    CurrentOrganizationId,
+                    officeId,
+                    dto.WorkOrderNo,
+                    CurrentUser);
+
+                return Ok(new AccountingOfficeWorkOrderNoResponseDto(updated.OfficeId, updated.WorkOrderNo));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating accounting office work order number: {OfficeId}", officeId);
+                return ServerError("An error occurred while updating the accounting office work order number");
+            }
+        }
+
         [HttpPut("accounting-office")]
         public async Task<IActionResult> UpdateAccountingOffice([FromBody] UpdateAccountingOfficeDto dto)
         {

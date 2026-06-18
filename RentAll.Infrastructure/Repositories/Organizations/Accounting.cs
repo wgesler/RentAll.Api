@@ -150,6 +150,23 @@ public partial class OrganizationRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+
+    public async Task<AccountingOffice> UpdateAccountingOfficeWorkOrderNoByIdAsync(Guid organizationId, int officeId, int workOrderNo, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_UpdateWorkOrderNoById", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            WorkOrderNo = workOrderNo,
+            ModifiedBy = modifiedBy
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("AccountingOffice not found");
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
     #endregion
 
     #region Deletes

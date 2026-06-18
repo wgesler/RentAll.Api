@@ -34,6 +34,7 @@ public interface IOrganizationRepository
 
     Task<AccountingOffice> CreateAccountingAsync(AccountingOffice accountingOffice);
     Task<AccountingOffice> UpdateAccountingAsync(AccountingOffice accountingOffice);
+    Task<AccountingOffice> UpdateAccountingOfficeWorkOrderNoByIdAsync(Guid organizationId, int officeId, int workOrderNo, Guid modifiedBy);
     Task DeleteAccountingOfficeByIdAsync(Guid organizationId, int officeId);
     #endregion
 

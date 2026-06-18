@@ -805,30 +805,32 @@ public partial class AccountingManager
         if (maidTemplate == null)
             return true;
 
+        if (!TryParseInvoicePeriod(originalInvoice.InvoicePeriod, out var invoicePeriodStart, out var invoicePeriodEnd))
+            return false;
+
         if (!TryParseInvoicePeriod(firstSlice.InvoicePeriod, out var slice1Start, out var slice1End))
             return false;
 
         if (!TryParseInvoicePeriod(secondSlice.InvoicePeriod, out var slice2Start, out var slice2End))
             return false;
 
-        var maidRangeStart = reservation.MaidStartDate > rentalStart ? reservation.MaidStartDate : rentalStart;
-        var maidRangeEnd = rentalEnd > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : rentalEnd;
-        if (maidRangeStart > maidRangeEnd)
-        {
-            RemoveMaidServiceLines(firstSlice);
-            RemoveMaidServiceLines(secondSlice);
-            return maidTemplate.Amount == 0;
-        }
+        if (!TryParseMaidServiceVisitCount(maidTemplate.Description, out var originalVisitCount))
+            return false;
 
-        var occurrenceDates = GetMaidServiceOccurrenceDates(reservation, maidRangeStart, maidRangeEnd);
+        if (!TryResolveBilledMaidServiceOccurrenceDates(
+                reservation,
+                invoicePeriodStart,
+                invoicePeriodEnd,
+                rentalStart,
+                rentalEnd,
+                originalVisitCount,
+                out var occurrenceDates))
+            return false;
+
         var slice1Count = occurrenceDates.Count(d => d >= slice1Start && d <= slice1End);
         var slice2Count = occurrenceDates.Count(d => d >= slice2Start && d <= slice2End);
 
         if (slice1Count + slice2Count != occurrenceDates.Count)
-            return false;
-
-        if (!TryParseMaidServiceVisitCount(maidTemplate.Description, out var originalVisitCount)
-            || originalVisitCount != occurrenceDates.Count)
             return false;
 
         RemoveMaidServiceLines(firstSlice);
@@ -841,6 +843,40 @@ public partial class AccountingManager
             secondSlice.LedgerLines.Add(CreateApportionedMaidServiceLine(maidTemplate, slice2Count, reservation.MaidServiceFee));
 
         return true;
+    }
+
+    private static bool TryResolveBilledMaidServiceOccurrenceDates(Reservation reservation, DateOnly invoicePeriodStart, DateOnly invoicePeriodEnd, DateOnly rentalStart, DateOnly rentalEnd, int originalVisitCount, out List<DateOnly> occurrenceDates)
+    {
+        occurrenceDates = [];
+
+        var invoiceBounds = GetMaidServicePeriodBounds(reservation, invoicePeriodStart, invoicePeriodEnd);
+        if (invoiceBounds.Start <= invoiceBounds.End)
+        {
+            var invoicePeriodDates = GetMaidServiceOccurrenceDates(reservation, invoiceBounds.Start, invoiceBounds.End);
+            if (invoicePeriodDates.Count == originalVisitCount)
+            {
+                occurrenceDates = invoicePeriodDates;
+                return true;
+            }
+        }
+
+        var rentalBounds = GetMaidServicePeriodBounds(reservation, rentalStart, rentalEnd);
+        if (rentalBounds.Start > rentalBounds.End)
+            return originalVisitCount == 0;
+
+        var rentalPeriodDates = GetMaidServiceOccurrenceDates(reservation, rentalBounds.Start, rentalBounds.End);
+        if (rentalPeriodDates.Count != originalVisitCount)
+            return false;
+
+        occurrenceDates = rentalPeriodDates;
+        return true;
+    }
+
+    private static (DateOnly Start, DateOnly End) GetMaidServicePeriodBounds(Reservation reservation, DateOnly periodStart, DateOnly periodEnd)
+    {
+        var startDate = reservation.MaidStartDate > periodStart ? reservation.MaidStartDate : periodStart;
+        var endDate = periodEnd > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : periodEnd;
+        return (startDate, endDate);
     }
 
     private static IEnumerable<LedgerLine> GetOneTimeFeeLines(Invoice originalInvoice, Reservation reservation)
