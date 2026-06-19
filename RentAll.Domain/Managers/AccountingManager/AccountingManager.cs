@@ -169,6 +169,48 @@ public partial class AccountingManager : IAccountingManager
         return account.AccountId;
     }
 
+    private static int GetDefaultDepartureIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    {
+        if (accountingOffice?.DefaultDepartureIncAccountId is > 0)
+            return accountingOffice.DefaultDepartureIncAccountId.Value;
+
+        var account = chartOfAccounts
+            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+            .Where(a => a.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => a.AccountId)
+            .FirstOrDefault()
+            ?? chartOfAccounts
+                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                .OrderBy(a => a.AccountId)
+                .FirstOrDefault();
+
+        if (account == null)
+            throw new Exception($"No Departure Income chart of account is configured for office {officeId}");
+
+        return account.AccountId;
+    }
+
+    private static int GetDefaultDepartureExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    {
+        if (accountingOffice?.DefaultDepartureExpAccountId is > 0)
+            return accountingOffice.DefaultDepartureExpAccountId.Value;
+
+        var account = chartOfAccounts
+            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+            .Where(a => a.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => a.AccountId)
+            .FirstOrDefault()
+            ?? chartOfAccounts
+                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                .OrderBy(a => a.AccountId)
+                .FirstOrDefault();
+
+        if (account == null)
+            throw new Exception($"No Departure Expense chart of account is configured for office {officeId}");
+
+        return account.AccountId;
+    }
+
     // Bank & Balance Sheet Accounts
     private static int GetDefaultBankAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
@@ -364,6 +406,7 @@ public partial class AccountingManager : IAccountingManager
         return split.ReceiptType switch
         {
             ReceiptType.Tenant => GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice),
+            ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, officeId, accountingOffice),
             ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice),
             _ => GetDefaultCompanyExpense(chartOfAccounts, officeId, accountingOffice)
         };
