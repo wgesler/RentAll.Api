@@ -84,7 +84,6 @@ public class UpdatePropertyDto
     public string? BldgMstrCode { get; set; }
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }
-    public string? GarageCode { get; set; }
     public string? GateCode { get; set; }
     public string? TrashCode { get; set; }
     public string? StorageCode { get; set; }
@@ -271,7 +270,6 @@ public class UpdatePropertyDto
             BldgMstrCode = BldgMstrCode,
             BldgTenantCode = BldgTenantCode,
             MailRoomCode = MailRoomCode,
-            GarageCode = GarageCode,
             GateCode = GateCode,
             TrashCode = TrashCode,
             StorageCode = StorageCode,

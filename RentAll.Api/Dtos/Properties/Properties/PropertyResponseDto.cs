@@ -89,7 +89,6 @@ public class PropertyResponseDto
     public string? BldgMstrCode { get; set; }
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }
-    public string? GarageCode { get; set; }
     public string? GateCode { get; set; }
     public string? TrashCode { get; set; }
     public string? StorageCode { get; set; }
@@ -232,7 +231,6 @@ public class PropertyResponseDto
         BldgMstrCode = property.BldgMstrCode;
         BldgTenantCode = property.BldgTenantCode;
         MailRoomCode = property.MailRoomCode;
-        GarageCode = property.GarageCode;
         GateCode = property.GateCode;
         TrashCode = property.TrashCode;
         StorageCode = property.StorageCode;

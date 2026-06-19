@@ -27,6 +27,7 @@ public class Reservation
     public CheckOutTime CheckOutTime { get; set; }
     public string? LockBoxCode { get; set; }
     public string? UnitTenantCode { get; set; }
+    public string? GarageCode { get; set; }
     public BillingMethod BillingMethod { get; set; }
     public ProrateType ProrateType { get; set; }
     public BillingType BillingType { get; set; }

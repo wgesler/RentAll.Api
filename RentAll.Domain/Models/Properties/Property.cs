@@ -86,7 +86,6 @@ public class Property
     public string? BldgMstrCode { get; set; }
     public string? BldgTenantCode { get; set; }
     public string? MailRoomCode { get; set; }
-    public string? GarageCode { get; set; }
     public string? GateCode { get; set; }
     public string? TrashCode { get; set; }
     public string? StorageCode { get; set; }

@@ -25,6 +25,7 @@ public class ReservationEntity
     public int CheckOutTimeId { get; set; }
     public string? LockBoxCode { get; set; }
     public string? UnitTenantCode { get; set; }
+    public string? GarageCode { get; set; }
 
     // Billing Fields
     public int BillingMethodId { get; set; }

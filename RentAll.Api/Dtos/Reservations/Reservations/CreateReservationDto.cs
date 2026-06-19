@@ -22,6 +22,7 @@ public class CreateReservationDto
     public int CheckOutTimeId { get; set; }
     public string? LockBoxCode { get; set; }
     public string? UnitTenantCode { get; set; }
+    public string? GarageCode { get; set; }
     public int BillingMethodId { get; set; }
     public int ProrateTypeId { get; set; }
     public int BillingTypeId { get; set; }
@@ -155,6 +156,7 @@ public class CreateReservationDto
             CheckOutTime = (CheckOutTime)CheckOutTimeId,
             LockBoxCode = LockBoxCode,
             UnitTenantCode = UnitTenantCode,
+            GarageCode = GarageCode,
             BillingMethod = (BillingMethod)BillingMethodId,
             ProrateType = (ProrateType)ProrateTypeId,
             BillingType = (BillingType)BillingTypeId,

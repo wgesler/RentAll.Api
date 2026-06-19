@@ -96,7 +96,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 BldgMstrCode = e.BldgMstrCode,
                 BldgTenantCode = e.BldgTenantCode,
                 MailRoomCode = e.MailRoomCode,
-                GarageCode = e.GarageCode,
                 GateCode = e.GateCode,
                 TrashCode = e.TrashCode,
                 StorageCode = e.StorageCode,
