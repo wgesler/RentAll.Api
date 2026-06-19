@@ -464,6 +464,7 @@ public class AccountingManagerLedgerLineTests
             reservationRepository: null!,
             journalEntryRepository: null!,
             organizationManager: null!,
+            contactRepository: null!,
             featureFlagService: new EnabledFeatureFlagService());
     }
 

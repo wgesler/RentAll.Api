@@ -305,6 +305,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 reservationRepository.Object,
                 journalEntryRepository.Object,
                 organizationManager.Object,
+                contactRepository: null!,
                 new AccountingManagerJournalEntryTestSupport.EnabledFeatureFlagService());
         }
 

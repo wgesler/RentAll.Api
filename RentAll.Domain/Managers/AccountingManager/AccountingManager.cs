@@ -18,6 +18,7 @@ public partial class AccountingManager : IAccountingManager
     private readonly IReservationRepository _reservationRepository;
     private readonly IJournalEntryRepository _journalEntryRepository;
     private readonly IOrganizationManager _organizationManager;
+    private readonly IContactRepository _contactRepository;
     private readonly IFeatureFlagService _featureFlagService;
 
     public AccountingManager(
@@ -28,6 +29,7 @@ public partial class AccountingManager : IAccountingManager
         IReservationRepository reservationRepository,
         IJournalEntryRepository journalEntryRepository,
         IOrganizationManager organizationManager,
+        IContactRepository contactRepository,
         IFeatureFlagService featureFlagService)
     {
         _organizationRepository = organizationRepository;
@@ -37,6 +39,7 @@ public partial class AccountingManager : IAccountingManager
         _reservationRepository = reservationRepository;
         _journalEntryRepository = journalEntryRepository;
         _organizationManager = organizationManager;
+        _contactRepository = contactRepository;
         _featureFlagService = featureFlagService;
     }
 
