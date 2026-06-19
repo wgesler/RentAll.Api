@@ -95,7 +95,7 @@ public partial class AccountingManager
         return await CreateJournalEntryAsync(journalEntry);
     }
 
-    async Task<List<JournalEntryLineSearchResult>> LoadDepositSourceLinesAsync(Guid organizationId, int officeId, List<Guid> journalEntryLineIds, int undepositedFundsAccountId)
+    private async Task<List<JournalEntryLineSearchResult>> LoadDepositSourceLinesAsync(Guid organizationId, int officeId, List<Guid> journalEntryLineIds, int undepositedFundsAccountId)
     {
         var lineIdSet = journalEntryLineIds.ToHashSet();
         var matchingLines = (await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
@@ -127,7 +127,7 @@ public partial class AccountingManager
             .ToList();
     }
 
-    static decimal GetJournalEntryLineNetAmount(JournalEntryLineSearchResult line)
+    private static decimal GetJournalEntryLineNetAmount(JournalEntryLineSearchResult line)
     {
         return Math.Round(line.Debit - line.Credit, 2, MidpointRounding.AwayFromZero);
     }

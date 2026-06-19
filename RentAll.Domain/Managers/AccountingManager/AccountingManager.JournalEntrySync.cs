@@ -243,7 +243,7 @@ public partial class AccountingManager
         return result;
     }
 
-    async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
+    private async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
     {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
@@ -273,7 +273,7 @@ public partial class AccountingManager
             result);
     }
 
-    async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(Guid organizationId, string officeIds, bool deletePostedEntries, params int[] sourceTypeIds)
+    private async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(Guid organizationId, string officeIds, bool deletePostedEntries, params int[] sourceTypeIds)
     {
         var result = new JournalEntrySyncResult();
 
@@ -317,7 +317,7 @@ public partial class AccountingManager
         return result;
     }
 
-    async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
+    private async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(existingCriteria);
         var hadExisting = existingEntries.Any(e => !e.IsVoided);
@@ -330,7 +330,7 @@ public partial class AccountingManager
             result.JournalEntriesCreated++;
     }
 
-    static int ResolveDefaultPaymentCostCodeId(List<CostCode> costCodes)
+    private static int ResolveDefaultPaymentCostCodeId(List<CostCode> costCodes)
     {
         var paymentCostCode = costCodes
             .Where(c => c.TransactionType == TransactionType.Payment)

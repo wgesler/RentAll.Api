@@ -1,0 +1,29 @@
+---
+description: C# access modifier requirements for API code
+globs: **/*.cs
+alwaysApply: true
+---
+
+# C# Access Modifiers (API only)
+
+- This rule applies to `RentAll.Api` C# code. It does NOT apply to `RentAll.Ui` Angular/TypeScript.
+- Always declare an explicit access modifier on every method, property, field, and constructor.
+- Use `public`, `private`, `protected`, `internal`, or `protected internal` as appropriate.
+- Always include `static` when the member is static.
+- Do NOT rely on default visibility for methods, properties, or fields.
+- `public` for interface implementations, controllers, DTOs exposed to callers, and manager methods required by `I*` contracts.
+- `private` for internal helpers, builders, orchestration, and implementation details within a class or partial class.
+- `private static` for static helpers that do not use instance state.
+
+# Practical Example
+
+```csharp
+// ✅ GOOD
+public async Task<JournalEntry> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
+private async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
+private static bool IsCrossOfficeBankCardReceipt(Receipt receipt, BankCard bankCard)
+
+// ❌ BAD
+async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(...)
+static bool IsCrossOfficeBankCardReceipt(...)
+```

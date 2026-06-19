@@ -4,7 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    async Task<Receipt> LoadReceiptWithSplitsAsync(Receipt receipt)
+    private async Task<Receipt> LoadReceiptWithSplitsAsync(Receipt receipt)
     {
         if (receipt.ReceiptId == Guid.Empty)
             return receipt;
@@ -17,7 +17,7 @@ public partial class AccountingManager
     /// Converts a signed amount into non-negative debit/credit values.
     /// Use positiveIsDebit=true for assets/expenses and false for liabilities/income.
     /// </summary>
-    static (decimal Debit, decimal Credit) SignedAmountToDebitCredit(decimal signedAmount, bool positiveIsDebit)
+    private static (decimal Debit, decimal Credit) SignedAmountToDebitCredit(decimal signedAmount, bool positiveIsDebit)
     {
         if (signedAmount == 0)
             return (0, 0);
@@ -28,7 +28,7 @@ public partial class AccountingManager
             : signedAmount > 0 ? (0, amount) : (amount, 0);
     }
 
-    static List<ReceiptSplit> ResolveDocumentSplitLines(Receipt document)
+    private static List<ReceiptSplit> ResolveDocumentSplitLines(Receipt document)
     {
         var allSplits = (document.Splits ?? new List<ReceiptSplit>())
             .OrderBy(s => s.ReceiptSplitId)
