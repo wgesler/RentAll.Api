@@ -230,7 +230,7 @@ namespace RentAll.Api.Controllers
         }
 
         [HttpGet("owner-form/{token}/property")]
-        public async Task<IActionResult> GetPublicOwnerPropertyByTokenAsync(string token)
+        public async Task<IActionResult> GetPublicOwnerPropertyByTokenAsync(string token, [FromQuery] string? propertyCode = null)
         {
             try
             {
@@ -238,11 +238,11 @@ namespace RentAll.Api.Controllers
                 if (tokenErrorResult != null)
                     return tokenErrorResult;
 
-                var propertyCode = (owner.PropertyCode ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(propertyCode))
+                var resolvedPropertyCode = (propertyCode ?? owner.PropertyCode ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(resolvedPropertyCode))
                     return Ok();
 
-                var property = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, owner.OrganizationId);
+                var property = await _propertyRepository.GetPropertyByCodeAsync(resolvedPropertyCode, owner.OrganizationId);
                 if (property == null)
                     return Ok();
 
@@ -398,7 +398,7 @@ namespace RentAll.Api.Controllers
         }
 
         [HttpGet("owner-form/{token}/templates")]
-        public async Task<IActionResult> GetPublicOwnerTemplateHtmlByTokenAsync(string token)
+        public async Task<IActionResult> GetPublicOwnerTemplateHtmlByTokenAsync(string token, [FromQuery] string? propertyCode = null)
         {
             try
             {
@@ -406,11 +406,8 @@ namespace RentAll.Api.Controllers
                 if (tokenErrorResult != null)
                     return tokenErrorResult;
 
-                var property = await _propertyRepository.GetPropertyByCodeAsync(owner.PropertyCode!, owner.OrganizationId);
-                if (property == null)
-                    return Ok();
-
-                var ownerHtml = await _leadRepository.GetOwnerHtmlByPropertyIdAsync(property.PropertyId, owner.OrganizationId);
+                var propertyId = await ResolvePublicOwnerHtmlPropertyIdAsync(owner, propertyCode);
+                var ownerHtml = await _leadRepository.GetOwnerHtmlByPropertyIdAsync(propertyId, owner.OrganizationId);
                 if (ownerHtml == null)
                     return Ok();
 
@@ -419,6 +416,33 @@ namespace RentAll.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting public owner template html by token");
+                return ServerError("An error occurred while retrieving owner template");
+            }
+        }
+
+        [HttpGet("owner-form/{token}/property/{propertyId}/templates")]
+        public async Task<IActionResult> GetPublicOwnerTemplateHtmlByTokenAndPropertyIdAsync(string token, Guid propertyId)
+        {
+            if (propertyId == Guid.Empty)
+                return BadRequest("Property ID is required");
+
+            try
+            {
+                var (_, owner, tokenErrorResult) = await GetOwnerFromTokenAsync(token);
+                if (tokenErrorResult != null)
+                    return tokenErrorResult;
+
+                var property = await GetOwnerScopedPropertyByIdAsync(owner, propertyId);
+                var resolvedPropertyId = property?.PropertyId ?? Guid.Empty;
+                var ownerHtml = await _leadRepository.GetOwnerHtmlByPropertyIdAsync(resolvedPropertyId, owner.OrganizationId);
+                if (ownerHtml == null)
+                    return Ok();
+
+                return Ok(new OwnerHtmlResponseDto(ownerHtml));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting public owner template html by token and property id");
                 return ServerError("An error occurred while retrieving owner template");
             }
         }
@@ -825,6 +849,16 @@ namespace RentAll.Api.Controllers
         private static string GetOwnerContactEmail(LeadOwner owner)
         {
             return (owner.Email ?? string.Empty).Trim();
+        }
+
+        private async Task<Guid> ResolvePublicOwnerHtmlPropertyIdAsync(LeadOwner owner, string? propertyCodeOverride = null)
+        {
+            var propertyCode = (propertyCodeOverride ?? owner.PropertyCode ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(propertyCode))
+                return Guid.Empty;
+
+            var property = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, owner.OrganizationId);
+            return property?.PropertyId ?? Guid.Empty;
         }
 
         private async Task<Contact?> GetOwnerContactAsync(LeadOwner owner)
