@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Accounting.Invoices;
-using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers
 {
@@ -72,17 +71,14 @@ namespace RentAll.Api.Controllers
                 invoice.OrganizationId = CurrentOrganizationId;
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
-                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
+                try
                 {
-                    try
-                    {
-                        await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
-                    }
-                    catch (Exception journalEntryEx)
-                    {
-                        _logger.LogError(journalEntryEx, "Invoice {InvoiceId} was created but journal entry creation failed", createdInvoice.InvoiceId);
-                        return BadRequest($"Invoice was created but general ledger entry creation failed: {journalEntryEx.Message}");
-                    }
+                    await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Invoice {InvoiceId} was created but journal entry creation failed", createdInvoice.InvoiceId);
+                    return BadRequest($"Invoice was created but general ledger entry creation failed: {journalEntryEx.Message}");
                 }
 
                 var response = new InvoiceResponseDto(createdInvoice);
@@ -229,17 +225,14 @@ namespace RentAll.Api.Controllers
                 var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
 
-                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
+                try
                 {
-                    try
-                    {
-                        await _accountingManager.CreateJournalEntriesFromInvoicePaymentAsync(invoicePayment, CurrentUser);
-                    }
-                    catch (Exception journalEntryEx)
-                    {
-                        _logger.LogError(journalEntryEx, "Payment was applied but journal entry creation failed");
-                        return BadRequest($"Payment was applied but general ledger entry creation failed: {journalEntryEx.Message}");
-                    }
+                    await _accountingManager.CreateJournalEntriesFromInvoicePaymentAsync(invoicePayment, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Payment was applied but journal entry creation failed");
+                    return BadRequest($"Payment was applied but general ledger entry creation failed: {journalEntryEx.Message}");
                 }
 
                 var response = new InvoicePaymentResponseDto(invoicePayment);

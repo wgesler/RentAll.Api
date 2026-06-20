@@ -5,8 +5,11 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task<JournalEntry> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser)
+    public async Task<JournalEntry?> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser)
     {
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return null;
+
         if (officeId <= 0)
             throw new Exception("OfficeId is required");
 

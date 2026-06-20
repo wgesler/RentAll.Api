@@ -12,22 +12,22 @@ public interface IAccountingManager
     Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate);
     Task CreateDefaultCostCodeAsync(Guid organizationId, int officeId);
 
-    Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry);
+    Task<JournalEntry?> CreateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> UpdateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<JournalEntry> VoidJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task DeleteJournalEntryAsync(Guid journalEntryId, Guid organizationId);
-    Task<JournalEntry> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser);
-    Task<JournalEntry> CreateJournalEntryFromBillAsync(Receipt bill, Guid currentUser);
-    Task<JournalEntry> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromBillAsync(Receipt bill, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser);
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
-    Task<JournalEntry> CreateJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);
-    Task<JournalEntry> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser);
     Task<JournalEntrySyncResult> SyncInvoiceJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser);
     Task<JournalEntrySyncResult> ClearInvoiceJournalEntriesAsync(Guid organizationId, string officeIds);
     Task<JournalEntrySyncResult> SyncBillJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser);

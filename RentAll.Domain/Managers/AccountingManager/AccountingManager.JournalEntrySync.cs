@@ -28,21 +28,18 @@ public partial class AccountingManager
                 if (invoice == null)
                     continue;
 
-                if (await IsAccountingFeatureEnabledAsync(organizationId))
-                {
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromInvoiceAsync(invoice, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = invoice.OrganizationId,
-                            OfficeIds = invoice.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.Invoice,
-                            SourceId = invoice.InvoiceId,
-                            IncludeVoided = true,
-                            IncludeUnposted = true
-                        },
-                        result);
-                }
+                await TrackJournalEntryCreateAsync(
+                    () => CreateJournalEntryFromInvoiceAsync(invoice, currentUser),
+                    new JournalEntryGetCriteria
+                    {
+                        OrganizationId = invoice.OrganizationId,
+                        OfficeIds = invoice.OfficeId.ToString(),
+                        SourceTypeId = (int)SourceType.Invoice,
+                        SourceId = invoice.InvoiceId,
+                        IncludeVoided = true,
+                        IncludeUnposted = true
+                    },
+                    result);
 
                 if (!costCodesByOffice.TryGetValue(invoice.OfficeId, out var costCodeById))
                 {
@@ -57,21 +54,18 @@ public partial class AccountingManager
                     if (!IsPaymentLedgerLine(costCode))
                         continue;
 
-                    if (await IsAccountingFeatureEnabledAsync(organizationId))
-                    {
-                        await TrackJournalEntryCreateAsync(
-                            () => CreateJournalEntryFromPaymentAsync(invoice, line, currentUser),
-                            new JournalEntryGetCriteria
-                            {
-                                OrganizationId = invoice.OrganizationId,
-                                OfficeIds = invoice.OfficeId.ToString(),
-                                SourceTypeId = (int)SourceType.InvoicePayment,
-                                SourceId = line.LedgerLineId,
-                                IncludeVoided = true,
-                                IncludeUnposted = true
-                            },
-                            result);
-                    }
+                    await TrackJournalEntryCreateAsync(
+                        () => CreateJournalEntryFromPaymentAsync(invoice, line, currentUser),
+                        new JournalEntryGetCriteria
+                        {
+                            OrganizationId = invoice.OrganizationId,
+                            OfficeIds = invoice.OfficeId.ToString(),
+                            SourceTypeId = (int)SourceType.InvoicePayment,
+                            SourceId = line.LedgerLineId,
+                            IncludeVoided = true,
+                            IncludeUnposted = true
+                        },
+                        result);
                 }
             }
             catch (Exception ex)
@@ -116,23 +110,20 @@ public partial class AccountingManager
 
                 EnsureReceiptIsBill(bill);
 
-                if (await IsAccountingFeatureEnabledAsync(organizationId))
-                {
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromBillAsync(bill, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = bill.OrganizationId,
-                            OfficeIds = bill.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.Bill,
-                            SourceId = bill.ReceiptId,
-                            IncludeVoided = true,
-                            IncludeUnposted = true
-                        },
-                        result);
-                }
+                await TrackJournalEntryCreateAsync(
+                    () => CreateJournalEntryFromBillAsync(bill, currentUser),
+                    new JournalEntryGetCriteria
+                    {
+                        OrganizationId = bill.OrganizationId,
+                        OfficeIds = bill.OfficeId.ToString(),
+                        SourceTypeId = (int)SourceType.Bill,
+                        SourceId = bill.ReceiptId,
+                        IncludeVoided = true,
+                        IncludeUnposted = true
+                    },
+                    result);
 
-                if (bill.PaidAmount != 0 && await IsAccountingFeatureEnabledAsync(organizationId))
+                if (bill.PaidAmount != 0)
                 {
                     try
                     {
@@ -192,21 +183,18 @@ public partial class AccountingManager
 
                 EnsureReceiptIsCardReceipt(receipt);
 
-                if (await IsAccountingFeatureEnabledAsync(organizationId))
-                {
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromReceiptAsync(receipt, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = receipt.OrganizationId,
-                            OfficeIds = receipt.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.Receipt,
-                            SourceId = receipt.ReceiptId,
-                            IncludeVoided = true,
-                            IncludeUnposted = true
-                        },
-                        result);
-                }
+                await TrackJournalEntryCreateAsync(
+                    () => CreateJournalEntryFromReceiptAsync(receipt, currentUser),
+                    new JournalEntryGetCriteria
+                    {
+                        OrganizationId = receipt.OrganizationId,
+                        OfficeIds = receipt.OfficeId.ToString(),
+                        SourceTypeId = (int)SourceType.Receipt,
+                        SourceId = receipt.ReceiptId,
+                        IncludeVoided = true,
+                        IncludeUnposted = true
+                    },
+                    result);
             }
             catch (Exception ex)
             {
@@ -317,12 +305,14 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
+    private async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry?>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(existingCriteria);
         var hadExisting = existingEntries.Any(e => !e.IsVoided);
 
-        await createJournalEntry();
+        var created = await createJournalEntry();
+        if (created == null)
+            return;
 
         if (hadExisting)
             result.JournalEntriesSkipped++;

@@ -1,6 +1,5 @@
 using RentAll.Domain.Enums;
 using RentAll.Api.Dtos.Maintenances.Receipts;
-using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers;
 
@@ -140,32 +139,26 @@ public partial class MaintenanceController
 
             if (created.BankCardId == null)
             {
-                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
+                try
                 {
-                    try
-                    {
-                        await _accountingManager.CreateJournalEntryFromBillAsync(created, CurrentUser);
-                    }
-                    catch (Exception journalEntryEx)
-                    {
-                        _logger.LogError(journalEntryEx, "Bill {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
-                        return BadRequest($"Bill was created but general ledger entry creation failed: {journalEntryEx.Message}");
-                    }
+                    await _accountingManager.CreateJournalEntryFromBillAsync(created, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Bill {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
+                    return BadRequest($"Bill was created but general ledger entry creation failed: {journalEntryEx.Message}");
                 }
             }
             else
             {
-                if (await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
+                try
                 {
-                    try
-                    {
-                        await _accountingManager.CreateJournalEntryFromReceiptAsync(created, CurrentUser);
-                    }
-                    catch (Exception journalEntryEx)
-                    {
-                        _logger.LogError(journalEntryEx, "Receipt {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
-                        return BadRequest($"Receipt was created but general ledger entry creation failed: {journalEntryEx.Message}");
-                    }
+                    await _accountingManager.CreateJournalEntryFromReceiptAsync(created, CurrentUser);
+                }
+                catch (Exception journalEntryEx)
+                {
+                    _logger.LogError(journalEntryEx, "Receipt {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
+                    return BadRequest($"Receipt was created but general ledger entry creation failed: {journalEntryEx.Message}");
                 }
             }
 

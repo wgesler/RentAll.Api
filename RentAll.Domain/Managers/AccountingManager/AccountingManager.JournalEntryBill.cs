@@ -6,8 +6,11 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Triggers
-    public async Task<JournalEntry> CreateJournalEntryFromBillAsync(Receipt bill, Guid currentUser)
+    public async Task<JournalEntry?> CreateJournalEntryFromBillAsync(Receipt bill, Guid currentUser)
     {
+        if (!await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
+            return null;
+
         EnsureReceiptIsBill(bill);
 
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
@@ -39,14 +42,14 @@ public partial class AccountingManager
     {
         var journalEntries = new List<JournalEntry>();
 
-        if (billPayment.PaymentApplications.Count == 0
-            || !await IsAccountingFeatureEnabledAsync(billPayment.PaymentApplications[0].Bill.OrganizationId))
+        if (billPayment.PaymentApplications.Count == 0)
             return journalEntries;
 
         foreach (var paymentApplication in billPayment.PaymentApplications)
         {
             var journalEntry = await CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);
-            journalEntries.Add(journalEntry);
+            if (journalEntry != null)
+                journalEntries.Add(journalEntry);
         }
 
         return journalEntries;
@@ -162,7 +165,7 @@ public partial class AccountingManager
         };
     }
 
-    private async Task<JournalEntry> CreateJournalEntryFromBillPaymentAsync(BillPaymentApplication paymentApplication, Guid currentUser)
+    private async Task<JournalEntry?> CreateJournalEntryFromBillPaymentAsync(BillPaymentApplication paymentApplication, Guid currentUser)
     {
         if (paymentApplication.PaymentSequence < 0)
             throw new Exception("PaymentSequence is required to create a bill payment journal entry");
@@ -175,7 +178,7 @@ public partial class AccountingManager
             throw new Exception("ReceiptId is required to create a bill payment journal entry");
 
         if (!await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
-            throw new Exception("Accounting is not enabled for this organization");
+            return null;
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
         var journalEntry = await BuildJournalEntryFromBillPaymentAsync(paymentApplication, chartOfAccounts, accountingOffice, currentUser);

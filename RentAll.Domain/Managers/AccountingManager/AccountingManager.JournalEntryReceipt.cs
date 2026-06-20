@@ -6,8 +6,11 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Triggers
-    public async Task<JournalEntry> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
+    public async Task<JournalEntry?> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
     {
+        if (!await IsAccountingFeatureEnabledAsync(receipt.OrganizationId))
+            return null;
+
         EnsureReceiptIsCardReceipt(receipt);
 
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
@@ -36,7 +39,7 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    private async Task<JournalEntry> CreateReceiptJournalEntriesAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
+    private async Task<JournalEntry?> CreateReceiptJournalEntriesAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         var bankCard = await ResolveReceiptBankCardAsync(receipt, accountingOffice);
         var receiptJournalEntry = await BuildJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, currentUser);

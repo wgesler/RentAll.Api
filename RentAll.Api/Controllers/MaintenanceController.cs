@@ -19,7 +19,6 @@ public partial class MaintenanceController : BaseController
     private readonly IPropertyRepository _propertyRepository;
     private readonly IFileService _fileService;
     private readonly IFileAttachmentHelper _fileAttachmentHelper;
-    private readonly IFeatureFlagService _featureFlagService;
     private readonly ILogger<MaintenanceController> _logger;
 
     public MaintenanceController(
@@ -32,7 +31,6 @@ public partial class MaintenanceController : BaseController
         IPropertyRepository propertyRepository,
         IFileService fileService,
         IFileAttachmentHelper fileAttachmentHelper,
-        IFeatureFlagService featureFlagService,
         ILogger<MaintenanceController> logger)
     {
         _organizationRepository = organizationRepository;
@@ -44,7 +42,6 @@ public partial class MaintenanceController : BaseController
         _propertyRepository = propertyRepository;
         _fileService = fileService;
         _fileAttachmentHelper = fileAttachmentHelper;
-        _featureFlagService = featureFlagService;
         _logger = logger;
     }
 }

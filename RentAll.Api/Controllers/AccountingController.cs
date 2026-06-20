@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Interfaces.Services;
 
 namespace RentAll.Api.Controllers
 {
@@ -15,7 +14,6 @@ namespace RentAll.Api.Controllers
         private readonly IReservationRepository _reservationRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IAccountingManager _accountingManager;
-        private readonly IFeatureFlagService _featureFlagService;
         private readonly ILogger<AccountingController> _logger;
 
         public AccountingController(
@@ -24,7 +22,6 @@ namespace RentAll.Api.Controllers
             IReservationRepository reservationRepository,
             IOrganizationRepository organizationRepository,
             IAccountingManager accountingManager,
-            IFeatureFlagService featureFlagService,
             ILogger<AccountingController> logger)
         {
             _accountingRepository = accountingRepository;
@@ -32,7 +29,6 @@ namespace RentAll.Api.Controllers
             _reservationRepository = reservationRepository;
             _organizationRepository = organizationRepository;
             _accountingManager = accountingManager;
-            _featureFlagService = featureFlagService;
             _logger = logger;
         }
     }
