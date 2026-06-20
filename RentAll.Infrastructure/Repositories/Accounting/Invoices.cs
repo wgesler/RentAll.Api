@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
 
@@ -122,111 +123,142 @@ public partial class AccountingRepository
 
         try
         {
-            // Get current invoice with LedgerLines
-            var currentInvoiceResult = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-            {
-                InvoiceId = invoice.InvoiceId,
-                OrganizationId = invoice.OrganizationId
-            }, transaction: transaction);
-
-            if (currentInvoiceResult == null || !currentInvoiceResult.Any())
-                throw new Exception("Invoice not found");
-
-            var currentInvoice = ConvertEntityToModel(currentInvoiceResult.FirstOrDefault()!);
-            var currentLedgerLineIds = currentInvoice.LedgerLines.Select(ll => ll.LedgerLineId).ToHashSet();
-            // Zero-amount lines from update requests are treated as "removed" rows (e.g. UI x-out behavior).
-            var incomingActiveLedgerLines = invoice.LedgerLines.Where(ll => ll.Amount != 0).ToList();
-            var incomingLedgerLineIds = incomingActiveLedgerLines.Where(ll => ll.LedgerLineId != Guid.Empty).Select(ll => ll.LedgerLineId).ToHashSet();
-
-            // Update the Invoice
-            var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_UpdateById", new
-            {
-                InvoiceId = invoice.InvoiceId,
-                OrganizationId = invoice.OrganizationId,
-                OfficeId = invoice.OfficeId,
-                OfficeName = invoice.OfficeName,
-                InvoiceCode = invoice.InvoiceCode,
-                ReservationId = invoice.ReservationId,
-                ReservationCode = invoice.ReservationCode,
-                InvoiceDate = invoice.InvoiceDate,
-                DueDate = invoice.DueDate,
-                AccountingPeriod = invoice.AccountingPeriod,
-                InvoicePeriod = invoice.InvoicePeriod,
-                TotalAmount = invoice.TotalAmount,
-                PaidAmount = invoice.PaidAmount,
-                Notes = invoice.Notes,
-                IsActive = invoice.IsActive,
-                ModifiedBy = invoice.ModifiedBy
-            }, transaction: transaction);
-
-            if (response == null || !response.Any())
-                throw new Exception("Invoice not updated");
-
-            // Delete LedgerLines that are no longer in the incoming list
-            var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
-            foreach (var ledgerLineId in ledgerLinesToDelete)
-            {
-                await db.DapperProcExecuteAsync("Accounting.LedgerLine_DeleteById", new
-                {
-                    LedgerLineId = ledgerLineId
-                }, transaction: transaction);
-            }
-
-            // Sync LedgerLines after deletes so line-number uniqueness cannot collide
-            // with rows being replaced from UI payloads that use Guid.Empty for new items.
-            foreach (var line in incomingActiveLedgerLines)
-            {
-                if (line.LedgerLineId == Guid.Empty)
-                {
-                    // Create new LedgerLine
-                    await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_Add", new
-                    {
-                        InvoiceId = invoice.InvoiceId,
-                        LineNumber = line.LineNumber,
-                        ReservationId = line.ReservationId,
-                        CostCodeId = line.CostCodeId,
-                        Amount = line.Amount,
-                        Description = line.Description,
-                        LedgerLineDate = line.LedgerLineDate,
-                        CreatedBy = invoice.CreatedBy
-                    }, transaction: transaction);
-                }
-                else if (currentLedgerLineIds.Contains(line.LedgerLineId))
-                {
-                    // Update existing LedgerLine
-                    await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_UpdateById", new
-                    {
-                        LedgerLineId = line.LedgerLineId,
-                        InvoiceId = invoice.InvoiceId,
-                        LineNumber = line.LineNumber,
-                        ReservationId = line.ReservationId,
-                        CostCodeId = line.CostCodeId,
-                        Amount = line.Amount,
-                        Description = line.Description,
-                        LedgerLineDate = line.LedgerLineDate,
-                        ModifiedBy = invoice.ModifiedBy
-                    }, transaction: transaction);
-                }
-            }
-
-            // Get fully populated invoice
-            var updatedInvoiceResult = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-            {
-                InvoiceId = invoice.InvoiceId,
-                OrganizationId = invoice.OrganizationId
-            }, transaction: transaction);
-
-            if (updatedInvoiceResult == null || !updatedInvoiceResult.Any())
-                throw new Exception("Invoice not updated");
-
+            var updatedInvoice = await UpdateByIdCoreAsync(db, transaction, invoice);
             await transaction.CommitAsync();
-            return ConvertEntityToModel(updatedInvoiceResult.FirstOrDefault()!);
+            return updatedInvoice;
         }
         catch
         {
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<IReadOnlyList<Invoice>> UpdateByIdsInTransactionAsync(IReadOnlyList<Invoice> invoices)
+    {
+        if (invoices.Count == 0)
+            return invoices;
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.OpenAsync();
+        await using var transaction = await db.BeginTransactionAsync();
+
+        try
+        {
+            var updatedInvoices = new List<Invoice>(invoices.Count);
+            foreach (var invoice in invoices)
+                updatedInvoices.Add(await UpdateByIdCoreAsync(db, transaction, invoice));
+
+            await transaction.CommitAsync();
+            return updatedInvoices;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    private async Task<Invoice> UpdateByIdCoreAsync(SqlConnection db, IDbTransaction transaction, Invoice invoice)
+    {
+        // Get current invoice with LedgerLines
+        var currentInvoiceResult = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
+        {
+            InvoiceId = invoice.InvoiceId,
+            OrganizationId = invoice.OrganizationId
+        }, transaction: transaction);
+
+        if (currentInvoiceResult == null || !currentInvoiceResult.Any())
+            throw new Exception("Invoice not found");
+
+        var currentInvoice = ConvertEntityToModel(currentInvoiceResult.FirstOrDefault()!);
+        var currentLedgerLineIds = currentInvoice.LedgerLines.Select(ll => ll.LedgerLineId).ToHashSet();
+        // Zero-amount lines from update requests are treated as "removed" rows (e.g. UI x-out behavior).
+        var incomingActiveLedgerLines = invoice.LedgerLines.Where(ll => ll.Amount != 0).ToList();
+        var incomingLedgerLineIds = incomingActiveLedgerLines.Where(ll => ll.LedgerLineId != Guid.Empty).Select(ll => ll.LedgerLineId).ToHashSet();
+
+        // Update the Invoice
+        var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_UpdateById", new
+        {
+            InvoiceId = invoice.InvoiceId,
+            OrganizationId = invoice.OrganizationId,
+            OfficeId = invoice.OfficeId,
+            OfficeName = invoice.OfficeName,
+            InvoiceCode = invoice.InvoiceCode,
+            ReservationId = invoice.ReservationId,
+            ReservationCode = invoice.ReservationCode,
+            InvoiceDate = invoice.InvoiceDate,
+            DueDate = invoice.DueDate,
+            AccountingPeriod = invoice.AccountingPeriod,
+            InvoicePeriod = invoice.InvoicePeriod,
+            TotalAmount = invoice.TotalAmount,
+            PaidAmount = invoice.PaidAmount,
+            Notes = invoice.Notes,
+            IsActive = invoice.IsActive,
+            ModifiedBy = invoice.ModifiedBy
+        }, transaction: transaction);
+
+        if (response == null || !response.Any())
+            throw new Exception("Invoice not updated");
+
+        // Delete LedgerLines that are no longer in the incoming list
+        var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
+        foreach (var ledgerLineId in ledgerLinesToDelete)
+        {
+            await db.DapperProcExecuteAsync("Accounting.LedgerLine_DeleteById", new
+            {
+                LedgerLineId = ledgerLineId
+            }, transaction: transaction);
+        }
+
+        // Sync LedgerLines after deletes so line-number uniqueness cannot collide
+        // with rows being replaced from UI payloads that use Guid.Empty for new items.
+        foreach (var line in incomingActiveLedgerLines)
+        {
+            if (line.LedgerLineId == Guid.Empty)
+            {
+                // Create new LedgerLine
+                await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_Add", new
+                {
+                    InvoiceId = invoice.InvoiceId,
+                    LineNumber = line.LineNumber,
+                    ReservationId = line.ReservationId,
+                    CostCodeId = line.CostCodeId,
+                    Amount = line.Amount,
+                    Description = line.Description,
+                    LedgerLineDate = line.LedgerLineDate,
+                    CreatedBy = invoice.CreatedBy
+                }, transaction: transaction);
+            }
+            else if (currentLedgerLineIds.Contains(line.LedgerLineId))
+            {
+                // Update existing LedgerLine
+                await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_UpdateById", new
+                {
+                    LedgerLineId = line.LedgerLineId,
+                    InvoiceId = invoice.InvoiceId,
+                    LineNumber = line.LineNumber,
+                    ReservationId = line.ReservationId,
+                    CostCodeId = line.CostCodeId,
+                    Amount = line.Amount,
+                    Description = line.Description,
+                    LedgerLineDate = line.LedgerLineDate,
+                    ModifiedBy = invoice.ModifiedBy
+                }, transaction: transaction);
+            }
+        }
+
+        // Get fully populated invoice
+        var updatedInvoiceResult = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
+        {
+            InvoiceId = invoice.InvoiceId,
+            OrganizationId = invoice.OrganizationId
+        }, transaction: transaction);
+
+        if (updatedInvoiceResult == null || !updatedInvoiceResult.Any())
+            throw new Exception("Invoice not updated");
+
+        return ConvertEntityToModel(updatedInvoiceResult.FirstOrDefault()!);
     }
     public async Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
     {

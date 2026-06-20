@@ -94,6 +94,8 @@ namespace RentAll.Api.Controllers
                 var journalEntry = dto.ToModel(CurrentUser);
                 journalEntry.OrganizationId = CurrentOrganizationId;
                 var createdJournalEntry = await _accountingManager.CreateJournalEntryAsync(journalEntry);
+                if (createdJournalEntry == null)
+                    return NotFound(new { message = "Accounting is not enabled in this environment." });
 
                 var response = new JournalEntryResponseDto(createdJournalEntry);
                 return Ok(response);

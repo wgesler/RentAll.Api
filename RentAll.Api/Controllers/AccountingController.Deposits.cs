@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Accounting.Deposits;
-using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers
 {
@@ -15,9 +14,6 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
-            if (!await _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, CurrentOrganizationId))
-                return NotFound(new { message = "Accounting is not enabled in this environment." });
-
             try
             {
                 var journalEntry = await _accountingManager.CreateJournalEntryFromDepositAsync(
@@ -29,6 +25,9 @@ namespace RentAll.Api.Controllers
                     dto.DepositDate,
                     dto.JournalEntryLineIds,
                     CurrentUser);
+
+                if (journalEntry == null)
+                    return NotFound(new { message = "Accounting is not enabled in this environment." });
 
                 return Ok(new DepositResponseDto(journalEntry));
             }

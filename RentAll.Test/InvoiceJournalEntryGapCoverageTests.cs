@@ -196,6 +196,7 @@ public class InvoiceJournalEntryGapCoverageTests
             invoice,
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
+        Assert.NotNull(journalEntry);
         Assert.NotEqual(Guid.Empty, journalEntry.JournalEntryId);
         Assert.Equal((int)SourceType.Invoice, journalEntry.SourceTypeId);
         Assert.Equal(invoice.InvoiceId, journalEntry.SourceId);

@@ -70,6 +70,7 @@ public interface IMaintenanceRepository
 
     Task<Receipt> CreateReceiptAsync(Receipt receipt);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt);
+    Task<IReadOnlyList<Receipt>> UpdateReceiptsInTransactionAsync(IReadOnlyList<Receipt> receipts);
     Task DeleteReceiptByIdAsync(Guid receiptId, Guid organizationId, Guid currentUser);
     #endregion
 }

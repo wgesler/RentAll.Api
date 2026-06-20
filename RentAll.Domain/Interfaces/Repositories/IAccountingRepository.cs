@@ -10,6 +10,7 @@ public interface IAccountingRepository
 
     Task<Invoice> CreateAsync(Invoice invoice);
     Task<Invoice> UpdateByIdAsync(Invoice invoice);
+    Task<IReadOnlyList<Invoice>> UpdateByIdsInTransactionAsync(IReadOnlyList<Invoice> invoices);
     Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
     Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
     Task DeleteInvoiceByIdAsync(Guid invoiceId, Guid organizationId);

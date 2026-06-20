@@ -23,7 +23,7 @@ public partial class AccountingManager
         bills = bills.Where(b => b.IsActive).OrderBy(b => b.DueDate).ThenBy(b => b.ReceiptId).ToList();
 
         var availableAmount = amountPaid;
-        var paymentApplications = new List<BillPaymentApplication>();
+        var pendingPaymentUpdates = new List<(Receipt Bill, BillPaymentApplication Application)>();
         for (var billIndex = 0; billIndex < bills.Count && availableAmount != 0; billIndex++)
         {
             var bill = bills[billIndex];
@@ -57,17 +57,33 @@ public partial class AccountingManager
             bill.ModifiedOn = DateTimeOffset.UtcNow;
 
             availableAmount -= amountForBill;
-            var updatedBill = await _maintenanceRepository.UpdateReceiptAsync(bill);
-            bills[billIndex] = updatedBill;
-            paymentApplications.Add(new BillPaymentApplication
+            pendingPaymentUpdates.Add((bill, new BillPaymentApplication
             {
-                Bill = updatedBill,
+                Bill = bill,
                 AmountApplied = amountForBill,
                 PaymentDate = paymentDate,
                 ChartOfAccountId = chartOfAccountId,
                 Description = description,
-                PaymentSequence = await GetNextBillPaymentSequenceAsync(updatedBill)
-            });
+                PaymentSequence = await GetNextBillPaymentSequenceAsync(bill)
+            }));
+        }
+
+        var paymentApplications = new List<BillPaymentApplication>();
+        if (pendingPaymentUpdates.Count > 0)
+        {
+            var updatedBills = await _maintenanceRepository.UpdateReceiptsInTransactionAsync(
+                pendingPaymentUpdates.Select(p => p.Bill).ToList());
+
+            foreach (var (bill, application) in pendingPaymentUpdates)
+            {
+                var updatedBill = updatedBills.Single(b => b.ReceiptId == bill.ReceiptId);
+                var billIndex = bills.FindIndex(b => b.ReceiptId == updatedBill.ReceiptId);
+                if (billIndex >= 0)
+                    bills[billIndex] = updatedBill;
+
+                application.Bill = updatedBill;
+                paymentApplications.Add(application);
+            }
         }
 
         return new BillPayment

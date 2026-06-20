@@ -118,7 +118,7 @@ public partial class AccountingManager
         invoices = invoices.Where(i => i.IsActive).OrderBy(i => i.InvoiceDate).ToList();
 
         var availableAmount = amountPaid;
-        var paymentApplications = new List<InvoicePaymentApplication>();
+        var pendingPaymentUpdates = new List<(Invoice Invoice, int PaymentLineNumber)>();
         for (var invoiceIndex = 0; invoiceIndex < invoices.Count && availableAmount != 0; invoiceIndex++)
         {
             var invoice = invoices[invoiceIndex];
@@ -160,15 +160,29 @@ public partial class AccountingManager
             });
 
             availableAmount -= amountForInvoice;
-            var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
-            invoices[invoiceIndex] = updatedInvoice;
+            pendingPaymentUpdates.Add((invoice, paymentLineNumber));
+        }
 
-            var paymentLedgerLine = updatedInvoice.LedgerLines.Single(l => l.LineNumber == paymentLineNumber);
-            paymentApplications.Add(new InvoicePaymentApplication
+        var paymentApplications = new List<InvoicePaymentApplication>();
+        if (pendingPaymentUpdates.Count > 0)
+        {
+            var updatedInvoices = await _accountingRepository.UpdateByIdsInTransactionAsync(
+                pendingPaymentUpdates.Select(p => p.Invoice).ToList());
+
+            foreach (var (invoice, paymentLineNumber) in pendingPaymentUpdates)
             {
-                Invoice = updatedInvoice,
-                PaymentLedgerLine = paymentLedgerLine
-            });
+                var updatedInvoice = updatedInvoices.Single(i => i.InvoiceId == invoice.InvoiceId);
+                var invoiceIndex = invoices.FindIndex(i => i.InvoiceId == updatedInvoice.InvoiceId);
+                if (invoiceIndex >= 0)
+                    invoices[invoiceIndex] = updatedInvoice;
+
+                var paymentLedgerLine = updatedInvoice.LedgerLines.Single(l => l.LineNumber == paymentLineNumber);
+                paymentApplications.Add(new InvoicePaymentApplication
+                {
+                    Invoice = updatedInvoice,
+                    PaymentLedgerLine = paymentLedgerLine
+                });
+            }
         }
 
         var response = new InvoicePayment

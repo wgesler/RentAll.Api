@@ -31,6 +31,7 @@ internal static class AccountingManagerJournalEntryTestSupport
             reservationRepository: null!,
             journalEntryRepository: null!,
             organizationManager: null!,
+            contactRepository: null!,
             featureFlagService: new EnabledFeatureFlagService());
 
     internal static JournalEntryTestContext CreateJournalEntryTestContext(Reservation reservation)

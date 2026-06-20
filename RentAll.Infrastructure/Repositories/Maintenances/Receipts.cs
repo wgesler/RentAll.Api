@@ -149,45 +149,7 @@ public partial class MaintenanceRepository
 
         try
         {
-            var currentSplits = await GetReceiptSplitsByReceiptIdAsync(db, transaction, receipt.ReceiptId);
-
-            var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_UpdateById", new
-            {
-                ReceiptId = receipt.ReceiptId,
-                OrganizationId = receipt.OrganizationId,
-                OfficeId = receipt.OfficeId,
-                Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
-                ReceiptDate = receipt.ReceiptDate,
-                DueDate = receipt.DueDate,
-                AccountingPeriod = receipt.AccountingPeriod,
-                BillNumber = receipt.BillNumber,
-                Amount = receipt.Amount,
-                PaidAmount = receipt.PaidAmount,
-                PaidDate = receipt.PaidDate,
-                Description = receipt.Description,
-                BankCardId = receipt.BankCardId,
-                VendorId = receipt.VendorId,
-                VendorName = receipt.VendorName,
-                Splits = SerializeReceiptSplits(receipt.Splits),
-                ReceiptPath = receipt.ReceiptPath,
-                PaymentTypeId = receipt.PaymentTypeId,
-                CheckPrinted = receipt.CheckPrinted,
-                IsActive = receipt.IsActive,
-                ModifiedBy = receipt.ModifiedBy
-            }, transaction: transaction);
-
-            if (res == null || !res.Any())
-                throw new Exception("Receipt record not found");
-
-            var updated = ConvertEntityToModel(res.First());
-            await SyncReceiptSplitRowsForUpdateAsync(
-                db,
-                transaction,
-                updated,
-                receipt.Splits ?? new List<ReceiptSplit>(),
-                currentSplits,
-                receipt.ModifiedBy);
-            updated.Splits = await GetReceiptSplitsByReceiptIdAsync(db, transaction, updated.ReceiptId);
+            var updated = await UpdateReceiptCoreAsync(db, transaction, receipt);
             await transaction.CommitAsync();
             return updated;
         }
@@ -196,6 +158,75 @@ public partial class MaintenanceRepository
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<IReadOnlyList<Receipt>> UpdateReceiptsInTransactionAsync(IReadOnlyList<Receipt> receipts)
+    {
+        if (receipts.Count == 0)
+            return receipts;
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.OpenAsync();
+        await using var transaction = await db.BeginTransactionAsync();
+
+        try
+        {
+            var updatedReceipts = new List<Receipt>(receipts.Count);
+            foreach (var receipt in receipts)
+                updatedReceipts.Add(await UpdateReceiptCoreAsync(db, transaction, receipt));
+
+            await transaction.CommitAsync();
+            return updatedReceipts;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    private static async Task<Receipt> UpdateReceiptCoreAsync(SqlConnection db, IDbTransaction transaction, Receipt receipt)
+    {
+        var currentSplits = await GetReceiptSplitsByReceiptIdAsync(db, transaction, receipt.ReceiptId);
+
+        var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_UpdateById", new
+        {
+            ReceiptId = receipt.ReceiptId,
+            OrganizationId = receipt.OrganizationId,
+            OfficeId = receipt.OfficeId,
+            Properties = SerializeReceiptPropertyIds(receipt.PropertyIds),
+            ReceiptDate = receipt.ReceiptDate,
+            DueDate = receipt.DueDate,
+            AccountingPeriod = receipt.AccountingPeriod,
+            BillNumber = receipt.BillNumber,
+            Amount = receipt.Amount,
+            PaidAmount = receipt.PaidAmount,
+            PaidDate = receipt.PaidDate,
+            Description = receipt.Description,
+            BankCardId = receipt.BankCardId,
+            VendorId = receipt.VendorId,
+            VendorName = receipt.VendorName,
+            Splits = SerializeReceiptSplits(receipt.Splits),
+            ReceiptPath = receipt.ReceiptPath,
+            PaymentTypeId = receipt.PaymentTypeId,
+            CheckPrinted = receipt.CheckPrinted,
+            IsActive = receipt.IsActive,
+            ModifiedBy = receipt.ModifiedBy
+        }, transaction: transaction);
+
+        if (res == null || !res.Any())
+            throw new Exception("Receipt record not found");
+
+        var updated = ConvertEntityToModel(res.First());
+        await SyncReceiptSplitRowsForUpdateAsync(
+            db,
+            transaction,
+            updated,
+            receipt.Splits ?? new List<ReceiptSplit>(),
+            currentSplits,
+            receipt.ModifiedBy);
+        updated.Splits = await GetReceiptSplitsByReceiptIdAsync(db, transaction, updated.ReceiptId);
+        return updated;
     }
     #endregion
 
