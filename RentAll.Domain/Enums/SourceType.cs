@@ -23,7 +23,8 @@ public enum SourceType
     PayrollLiabilityCheck = 18,
     YtdAdjustment = 19,
     LiabilityAdjustment = 20,
-    Transfer = 21
+    Transfer = 21,
+    WorkOrder = 22
 }
 
 public static class SourceTypeExtensions
@@ -52,6 +53,7 @@ public static class SourceTypeExtensions
         { SourceType.YtdAdjustment, "YADJ" },
         { SourceType.LiabilityAdjustment, "LADJ" },
         { SourceType.Transfer, "TRAN" },
+        { SourceType.WorkOrder, "WO"},
     };
 
     private static readonly Dictionary<string, SourceType> CodeToSourceType = new()
@@ -75,6 +77,7 @@ public static class SourceTypeExtensions
         { "YADJ", SourceType.YtdAdjustment },
         { "LADJ", SourceType.LiabilityAdjustment },
         { "TRAN", SourceType.Transfer },
+        { "WO", SourceType.WorkOrder},
     };
 
     public static string ToCode(this SourceType sourceType)
