@@ -190,8 +190,8 @@ public partial class AccountingManager
             ReservationId = invoice.ReservationId,
             PropertyId = propertyId,
             ContactId = invoice.ContactId,
-            Debit = totalAmount,
-            Credit = 0,
+            Debit = totalAmount > 0 ? totalAmount : 0,
+            Credit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
             Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
             CreatedBy = currentUser
         });
@@ -205,8 +205,8 @@ public partial class AccountingManager
                 ReservationId = line.ReservationId ?? invoice.ReservationId,
                 PropertyId = propertyId,
                 ContactId = invoice.ContactId,
-                Debit = 0,
-                Credit = line.Amount,
+                Debit = line.Amount < 0 ? Math.Abs(line.Amount) : 0,
+                Credit = line.Amount > 0 ? line.Amount : 0,
                 Memo = line.Description,
                 CreatedBy = currentUser
             });
@@ -264,8 +264,8 @@ public partial class AccountingManager
             ReservationId = reservationId,
             PropertyId = propertyId,
             ContactId = invoice.ContactId,
-            Debit = amount,
-            Credit = 0,
+            Debit = amount > 0 ? amount : 0,
+            Credit = amount < 0 ? Math.Abs(amount) : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
@@ -275,8 +275,8 @@ public partial class AccountingManager
             ReservationId = reservationId,
             PropertyId = propertyId,
             ContactId = invoice.ContactId,
-            Debit = 0,
-            Credit = amount,
+            Debit = amount < 0 ? Math.Abs(amount) : 0,
+            Credit = amount > 0 ? amount : 0,
             Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
             CreatedBy = currentUser
         };
@@ -332,8 +332,8 @@ public partial class AccountingManager
                     ReservationId = reservationId,
                     PropertyId = propertyId,
                     ContactId = invoice.ContactId,
-                    Debit = amount,
-                    Credit = 0,
+                    Debit = amount > 0 ? amount : 0,
+                    Credit = amount < 0 ? Math.Abs(amount) : 0,
                     Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
                     CreatedBy = currentUser
                 },
@@ -344,8 +344,8 @@ public partial class AccountingManager
                     ReservationId = reservationId,
                     PropertyId = propertyId,
                     ContactId = invoice.ContactId,
-                    Debit = 0,
-                    Credit = amount,
+                    Debit = amount < 0 ? Math.Abs(amount) : 0,
+                    Credit = amount > 0 ? amount : 0,
                     Memo = memo,
                     CreatedBy = currentUser
                 }
@@ -390,8 +390,8 @@ public partial class AccountingManager
                     ReservationId = reservationId,
                     PropertyId = propertyId,
                     ContactId = invoice.ContactId,
-                    Debit = amount,
-                    Credit = 0,
+                    Debit = amount > 0 ? amount : 0,
+                    Credit = amount < 0 ? Math.Abs(amount) : 0,
                     Memo = memo,
                     CreatedBy = currentUser
                 },
@@ -401,8 +401,8 @@ public partial class AccountingManager
                     ReservationId = reservationId,
                     PropertyId = propertyId,
                     ContactId = invoice.ContactId,
-                    Debit = 0,
-                    Credit = amount,
+                    Debit = amount < 0 ? Math.Abs(amount) : 0,
+                    Credit = amount > 0 ? amount : 0,
                     Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
                     CreatedBy = currentUser
                 }

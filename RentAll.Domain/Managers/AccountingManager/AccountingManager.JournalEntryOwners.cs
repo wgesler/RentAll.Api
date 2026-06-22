@@ -176,8 +176,8 @@ public partial class AccountingManager
             PropertyId = propertyId,
             ReservationId = invoice.ReservationId,
             ContactId = invoice.ContactId,
-            Debit = ownerAmount,
-            Credit = 0,
+            Debit = ownerAmount > 0 ? ownerAmount : 0,
+            Credit = ownerAmount < 0 ? Math.Abs(ownerAmount) : 0,
             Memo = memo,
             CreatedBy = currentUser
         });
@@ -189,8 +189,8 @@ public partial class AccountingManager
             PropertyId = propertyId,
             ReservationId = invoice.ReservationId,
             ContactId = invoice.ContactId,
-            Debit = 0,
-            Credit = ownerAmount,
+            Debit = ownerAmount < 0 ? Math.Abs(ownerAmount) : 0,
+            Credit = ownerAmount > 0 ? ownerAmount : 0,
             Memo = memo,
             CreatedBy = currentUser
         });
