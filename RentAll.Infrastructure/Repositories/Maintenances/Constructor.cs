@@ -159,6 +159,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ReceiptPath = e.ReceiptPath,
             PaymentTypeId = e.PaymentTypeId,
             CheckPrinted = e.CheckPrinted,
+            IsUtility = e.IsUtility,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,
             CreatedByName = e.CreatedByName,

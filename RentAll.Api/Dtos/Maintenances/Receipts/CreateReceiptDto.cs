@@ -20,6 +20,7 @@ public class CreateReceiptDto
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public bool IsUtility { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -80,6 +81,7 @@ public class CreateReceiptDto
             ReceiptPath = null, 
             PaymentTypeId = 0,
             CheckPrinted = false,
+            IsUtility = IsUtility,
             IsActive = true,
             CreatedBy = currentUser
         };

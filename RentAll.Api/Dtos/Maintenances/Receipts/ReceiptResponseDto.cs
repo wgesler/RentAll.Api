@@ -27,6 +27,7 @@ public class ReceiptResponseDto
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
     public bool CheckPrinted { get; set; }
+    public bool IsUtility { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
@@ -58,6 +59,7 @@ public class ReceiptResponseDto
         FileDetails = receipt.FileDetails;
         PaymentTypeId = receipt.PaymentTypeId;
         CheckPrinted = receipt.CheckPrinted;
+        IsUtility = receipt.IsUtility;
         IsActive = receipt.IsActive;
         CreatedOn = receipt.CreatedOn;
         CreatedBy = receipt.CreatedByName;
