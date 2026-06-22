@@ -152,8 +152,8 @@ public partial class AccountingManager
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // OWNER-SHARE-JE-ACCOUNTS
-        // Line 1 — Debit: Tenant rental income for the invoice rental ledger line (GetDefaultTenantIncomeByCostCodeId).
-        // Line 2 — Credit: Furnished or unfurnished rent expense.
+        // Line 1 — Debit: Tenant rental expense for the invoice rental ledger line.
+        // Line 2 — Credit: Default Own.
         // END OWNER-SHARE-JE-ACCOUNTS
 
         var journalEntryLines = new List<JournalEntryLine>();
@@ -163,7 +163,9 @@ public partial class AccountingManager
 
         var isFurnished = !property.Unfurnished;
         var memo = $"Owner Share - {invoice.InvoiceCode}";
-        var rentalIncomeAccountId = GetDefaultTenantIncomeByCostCodeId(chartOfAccounts, invoice.OfficeId, rentalLine.CostCodeId, costCodeById, accountingOffice);
+        var ownerContactId = property.Owner1Id;
+        costCodeById.TryGetValue(rentalLine.CostCodeId, out var rentalCostCode);
+        var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var ownerRentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
         var ownerRentExpenseAccountId = isFurnished
             ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
@@ -171,11 +173,11 @@ public partial class AccountingManager
 
         journalEntryLines.Add(new JournalEntryLine
         {
-            ChartOfAccountId = rentalIncomeAccountId,
+            ChartOfAccountId = ownerRentExpenseAccountId,
             CostCodeId = rentalLine.CostCodeId,
             PropertyId = propertyId,
             ReservationId = invoice.ReservationId,
-            ContactId = invoice.ContactId,
+            ContactId = ownerContactId,
             Debit = ownerAmount > 0 ? ownerAmount : 0,
             Credit = ownerAmount < 0 ? Math.Abs(ownerAmount) : 0,
             Memo = memo,
@@ -184,11 +186,11 @@ public partial class AccountingManager
 
         journalEntryLines.Add(new JournalEntryLine
         {
-            ChartOfAccountId = ownerRentExpenseAccountId,
+            ChartOfAccountId = ownerAccountsPayableId,
             CostCodeId = ownerRentExpenseCostCodeId is > 0 ? ownerRentExpenseCostCodeId : null,
             PropertyId = propertyId,
             ReservationId = invoice.ReservationId,
-            ContactId = invoice.ContactId,
+            ContactId = ownerContactId,
             Debit = ownerAmount < 0 ? Math.Abs(ownerAmount) : 0,
             Credit = ownerAmount > 0 ? ownerAmount : 0,
             Memo = memo,

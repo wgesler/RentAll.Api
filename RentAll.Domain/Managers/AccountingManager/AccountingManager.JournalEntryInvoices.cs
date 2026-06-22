@@ -198,9 +198,10 @@ public partial class AccountingManager
 
         foreach (var line in chargeLines)
         {
+            costCodeById.TryGetValue(line.CostCodeId, out var costCode);
             journalEntryLines.Add(new JournalEntryLine
             {
-                ChartOfAccountId = GetDefaultTenantIncomeByCostCodeId(chartOfAccounts, invoice.OfficeId, line.CostCodeId, costCodeById, accountingOffice),
+                ChartOfAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, costCode),
                 CostCodeId = line.CostCodeId,
                 ReservationId = line.ReservationId ?? invoice.ReservationId,
                 PropertyId = propertyId,
