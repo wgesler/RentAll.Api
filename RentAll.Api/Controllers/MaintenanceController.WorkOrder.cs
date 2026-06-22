@@ -121,6 +121,17 @@ public partial class MaintenanceController
         {
             var workOrder = dto.ToModel(CurrentUser);
             var created = await _maintenanceRepository.CreateWorkOrderAsync(workOrder);
+
+            try
+            {
+                await _accountingManager.CreateJournalEntryFromWorkOrderAsync(created, CurrentUser);
+            }
+            catch (Exception journalEntryEx)
+            {
+                _logger.LogError(journalEntryEx, "Work order {WorkOrderId} was created but journal entry creation failed", created.WorkOrderId);
+                return BadRequest($"Work order was created but general ledger entry creation failed: {journalEntryEx.Message}");
+            }
+
             return Ok(new WorkOrderResponseDto(created));
         }
         catch (Exception ex)
@@ -145,7 +156,18 @@ public partial class MaintenanceController
         try
         {
             var workOrder = dto.ToModel(CurrentUser);
-            var updated = await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
+
+            WorkOrder updated;
+            try
+            {
+                updated = await _accountingManager.UpdateWorkOrderAsync(workOrder, CurrentUser);
+            }
+            catch (InvalidOperationException journalEntryEx)
+            {
+                _logger.LogError(journalEntryEx, "Work order {WorkOrderId} was updated but journal entry refresh failed", workOrder.WorkOrderId);
+                return BadRequest(journalEntryEx.Message);
+            }
+
             return Ok(new WorkOrderResponseDto(updated));
         }
         catch (Exception ex)

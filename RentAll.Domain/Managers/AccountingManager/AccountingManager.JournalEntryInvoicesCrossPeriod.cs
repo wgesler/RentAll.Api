@@ -62,6 +62,19 @@ public partial class AccountingManager
             currentUser,
             memoSuffix: secondPeriodInvoice.AccountingPeriod.ToString("MM/yyyy"));
 
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
+        if (invoice.LedgerLines.Any(l => l.Amount != 0 && IsCrossMonthRentalLine(l, referenceYear)))
+        {
+            if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out var firstRentalAmount))
+                await CreateJournalEntryFromInvoiceOwnerShareAsync(firstPeriodInvoice, firstRentalAmount, currentUser);
+
+            if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out var secondRentalAmount))
+                await CreateJournalEntryFromInvoiceOwnerShareAsync(secondPeriodInvoice, secondRentalAmount, currentUser);
+        }
+
         return firstEntry;
     }
 
@@ -186,6 +199,35 @@ public partial class AccountingManager
         }
 
         return false;
+    }
+
+    private static bool TryGetInvoiceRentalLedgerLine(Invoice invoice, out LedgerLine rentalLine)
+    {
+        rentalLine = null!;
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out _, out _))
+                continue;
+
+            rentalLine = line;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetInvoiceRentalLineAmount(Invoice invoice, out decimal rentalAmount)
+    {
+        rentalAmount = 0m;
+        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+            return false;
+
+        rentalAmount = rentalLine.Amount;
+        return true;
     }
 
     private static bool TryParseInvoicePeriod(string? invoicePeriod, out DateOnly periodStart, out DateOnly periodEnd)

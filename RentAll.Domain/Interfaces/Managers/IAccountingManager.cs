@@ -35,12 +35,14 @@ public interface IAccountingManager
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     #endregion
 
     #region Document Updates
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
+    Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     #endregion
 
     #region Journal Entry Sync

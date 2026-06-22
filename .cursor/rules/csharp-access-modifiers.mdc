@@ -15,6 +15,13 @@ alwaysApply: true
 - `private` for internal helpers, builders, orchestration, and implementation details within a class or partial class.
 - `private static` for static helpers that do not use instance state.
 
+# One-Line Signatures and Calls
+
+- Keep method and constructor **declarations** on one line, including the full parameter list.
+- Keep method **calls** on one line, including the full argument list.
+- Do not wrap parameters or arguments onto separate lines unless syntax makes a single line impossible.
+- Match existing `AccountingManager` partial-class style.
+
 # Practical Example
 
 ```csharp
@@ -22,8 +29,18 @@ alwaysApply: true
 public async Task<JournalEntry> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
 private async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
 private static bool IsCrossOfficeBankCardReceipt(Receipt receipt, BankCard bankCard)
+await DeleteJournalEntriesForSourceAsync(workOrder.OrganizationId, workOrder.OfficeId, (int)SourceType.WorkOrder, workOrder.WorkOrderId)
 
 // ❌ BAD
 async Task<JournalEntry> BuildJournalEntryFromReceiptAsync(...)
-static bool IsCrossOfficeBankCardReceipt(...)
+private Task<JournalEntry> BuildJournalEntryFromWorkOrderAsync(
+    WorkOrder workOrder,
+    List<ChartOfAccount> chartOfAccounts,
+    AccountingOffice? accountingOffice,
+    Guid currentUser)
+await DeleteJournalEntriesForSourceAsync(
+    workOrder.OrganizationId,
+    workOrder.OfficeId,
+    (int)SourceType.WorkOrder,
+    workOrder.WorkOrderId)
 ```
