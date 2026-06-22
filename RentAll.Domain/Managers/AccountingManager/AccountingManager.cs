@@ -96,6 +96,18 @@ public partial class AccountingManager : IAccountingManager
         return account.AccountId;
     }
 
+    private static int GetDefaultTenantIncomeByCostCode(List<ChartOfAccount> chartOfAccounts, int officeId, CostCode? costCode, AccountingOffice? accountingOffice)
+    {
+        var defaultAccountId = GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice);
+        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+    }
+
+    private static int GetDefaultTenantIncomeByCostCodeId(List<ChartOfAccount> chartOfAccounts, int officeId, int costCodeId, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        costCodeById.TryGetValue(costCodeId, out var costCode);
+        return GetDefaultTenantIncomeByCostCode(chartOfAccounts, officeId, costCode, accountingOffice);
+    }
+
     private static int GetDefaultTenantExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
         if (accountingOffice?.DefaultTenantExpAccountId is > 0)
@@ -224,44 +236,34 @@ public partial class AccountingManager : IAccountingManager
         return account.AccountId;
     }
 
-    private static (int AccountId, int? ExpenseCostCodeId) GetDefaultFurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private static int GetDefaultOfficeExpenseAccount(List<ChartOfAccount> chartOfAccounts, int officeId, int? officeExpenseCostCodeId, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
-        if (office?.FurnishedRentExpenseCcId is not > 0)
-            return (defaultAccountId, null);
+        if (officeExpenseCostCodeId is not > 0)
+            return defaultAccountId;
 
-        costCodeById.TryGetValue(office.FurnishedRentExpenseCcId.Value, out var costCode);
-        return (GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId), office.FurnishedRentExpenseCcId);
+        costCodeById.TryGetValue(officeExpenseCostCodeId.Value, out var costCode);
+        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
-    private static (int AccountId, int? ExpenseCostCodeId) GetDefaultUnfurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private static int GetDefaultFurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
-        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
-        if (office?.UnfurnishedRentExpenseCcId is not > 0)
-            return (defaultAccountId, null);
+        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.FurnishedRentExpenseCcId, costCodeById, accountingOffice);
+    }
 
-        costCodeById.TryGetValue(office.UnfurnishedRentExpenseCcId.Value, out var costCode);
-        return (GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId), office.UnfurnishedRentExpenseCcId);
+    private static int GetDefaultUnfurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.UnfurnishedRentExpenseCcId, costCodeById, accountingOffice);
     }
 
     private static int GetDefaultMaidServiceExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
-        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
-        if (office?.MaidServiceExpenseCcId is not > 0)
-            return defaultAccountId;
-
-        costCodeById.TryGetValue(office.MaidServiceExpenseCcId.Value, out var costCode);
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.MaidServiceExpenseCcId, costCodeById, accountingOffice);
     }
 
     private static int GetDefaultParkingExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
-        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
-        if (office?.ParkingExpenseCcId is not > 0)
-            return defaultAccountId;
-
-        costCodeById.TryGetValue(office.ParkingExpenseCcId.Value, out var costCode);
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.ParkingExpenseCcId, costCodeById, accountingOffice);
     }
 
     // Bank & Balance Sheet Accounts

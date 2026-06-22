@@ -158,7 +158,6 @@ public partial class AccountingManager
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var tenantIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
 
         var chargeLines = invoice.LedgerLines
@@ -201,7 +200,7 @@ public partial class AccountingManager
         {
             journalEntryLines.Add(new JournalEntryLine
             {
-                ChartOfAccountId = tenantIncomeAccountId,
+                ChartOfAccountId = GetDefaultTenantIncomeByCostCodeId(chartOfAccounts, invoice.OfficeId, line.CostCodeId, costCodeById, accountingOffice),
                 CostCodeId = line.CostCodeId,
                 ReservationId = line.ReservationId ?? invoice.ReservationId,
                 PropertyId = propertyId,

@@ -41,13 +41,6 @@ public partial class AccountingManager
 
     private async Task<JournalEntry?> CreateJournalEntryFromInvoiceOwnerShareAsync(Invoice invoice, decimal amount, Guid currentUser)
     {
-        // AGENT-NOTE: DO NOT TOUCH.
-        // OWNER-SHARE-JE-HEADER (DO NOT MODIFY)
-        // Creates a companion journal entry when an invoice is posted for a property-management lease.
-        // SourceType = Invoice (same source id as the invoice; NOT OwnerDistribution — distributions are not implemented).
-        // Memo / line memo prefix = "Owner Share" (NOT "Owner Distribution").
-        // END OWNER-SHARE-JE-HEADER
-
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         if (propertyId == null || propertyId == Guid.Empty)
             return null;
@@ -57,8 +50,14 @@ public partial class AccountingManager
         if (property == null || propertyAgreement == null)
             return null;
 
-        List<JournalEntryLine>? journalEntryLines = null;
+        var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
+        var (chartOfAccounts, accountingOffice) = await accountContextTask;
+        var (office, costCodeById) = await officeCostCodeContextTask;
 
+        decimal ownerAmount = 0m;
+        List<JournalEntryLine>? journalEntryLines = new List<JournalEntryLine>();
         switch (property.PropertyLeaseType)
         {
             case PropertyLeaseType.PropertyManagement:
@@ -66,12 +65,29 @@ public partial class AccountingManager
                 if (!TryGetInvoiceRentalLedgerLine(invoice, out _))
                     return null;
 
-                var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-                var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
-                await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
-                var (chartOfAccounts, accountingOffice) = await accountContextTask;
-                var (office, costCodeById) = await officeCostCodeContextTask;
-                journalEntryLines = BuildJournalEntryLinesForPropertyManagement(invoice, amount, property, propertyAgreement, chartOfAccounts, accountingOffice, office, costCodeById, propertyId.Value, currentUser);
+                switch (propertyAgreement.ManagementFeeType)
+                {
+                    case ManagementFeeType.FlatRate:
+                        ownerAmount = propertyAgreement.FlatRateAmount;
+                        break;
+
+                    case ManagementFeeType.Percentage:
+                        ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
+                        break;
+
+                    case ManagementFeeType.Minimum:
+                        ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
+                        if (ownerAmount < propertyAgreement.FlatRateAmount)
+                            ownerAmount = propertyAgreement.FlatRateAmount;
+                        break;
+
+                    default:
+                        break;
+                }
+
+                if (ownerAmount != 0)
+                    journalEntryLines = BuildJournalEntryLinesForPropertyManagement(invoice, ownerAmount, property, chartOfAccounts, accountingOffice, office, costCodeById, propertyId.Value, currentUser);
+
                 break;
             }
 
@@ -132,70 +148,27 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    private List<JournalEntryLine> BuildJournalEntryLinesForPropertyManagement(Invoice invoice, decimal amount, Property property, PropertyAgreement propertyAgreement, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, Guid currentUser)
+    private List<JournalEntryLine> BuildJournalEntryLinesForPropertyManagement(Invoice invoice, decimal ownerAmount, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, Guid currentUser)
     {
         // AGENT-NOTE: DO NOT TOUCH.
-        // OWNER-SHARE-JE-ACCOUNTS (DO NOT MODIFY)
-        //
-        // Line 1 — DEBIT (positiveIsDebit: true):
-        //   Account: Tenant rental INCOME for the invoice rental ledger line.
-        //   Resolve via GetChartOfAccountIdByCostCode(rental line cost code, fallback GetDefaultTenantIncome).
-        //   CostCodeId: invoice rental ledger line CostCodeId (furnished/unfurnished rent CHARGE code on the invoice).
-        //
-        // Line 2 — CREDIT (positiveIsDebit: false):
-        //   Account: Furnished or unfurnished rent EXPENSE from Office.FurnishedRentExpenseCcId / UnfurnishedRentExpenseCcId.
-        //   Resolve via GetDefaultFurnishedRentExpense or GetDefaultUnfurnishedRentExpense (property.Unfurnished).
-        //   CostCodeId: matching Office *RentExpenseCcId.
-        //   NOT Owner Accounts Payable.
-        //
+        // OWNER-SHARE-JE-ACCOUNTS
+        // Line 1 — Debit: Tenant rental income for the invoice rental ledger line (GetDefaultTenantIncomeByCostCodeId).
+        // Line 2 — Credit: Furnished or unfurnished rent expense.
         // END OWNER-SHARE-JE-ACCOUNTS
 
-        decimal ownerAmount = 0m;
         var journalEntryLines = new List<JournalEntryLine>();
-
-        switch (propertyAgreement.ManagementFeeType)
-        {
-            case ManagementFeeType.FlatRate:
-                ownerAmount = propertyAgreement.FlatRateAmount;
-                break;
-
-            case ManagementFeeType.Percentage:
-                ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
-                break;
-
-            case ManagementFeeType.Minimum:
-                ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
-                if (ownerAmount < propertyAgreement.FlatRateAmount)
-                    ownerAmount = propertyAgreement.FlatRateAmount;
-                break;
-
-            default:
-                return new List<JournalEntryLine>();
-        }
-
-        if (ownerAmount == 0)
-            return journalEntryLines;
 
         if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
             return journalEntryLines;
 
         var isFurnished = !property.Unfurnished;
-
-        // AGENT-NOTE: DO NOT TOUCH.
-        // Line 1 account — see OWNER-SHARE-JE-ACCOUNTS (DO NOT MODIFY)
-        costCodeById.TryGetValue(rentalLine.CostCodeId, out var rentalCostCode);
-        var defaultIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var rentalIncomeAccountId = GetChartOfAccountIdByCostCode(chartOfAccounts, invoice.OfficeId, rentalCostCode, defaultIncomeAccountId);
-
-        // AGENT-NOTE: DO NOT TOUCH.
-        // Line 2 account — see OWNER-SHARE-JE-ACCOUNTS (DO NOT MODIFY)
-        (int ownerRentExpenseAccountId, int? ownerRentExpenseCostCodeId) = isFurnished
+        var memo = $"Owner Share - {invoice.InvoiceCode}";
+        var rentalIncomeAccountId = GetDefaultTenantIncomeByCostCodeId(chartOfAccounts, invoice.OfficeId, rentalLine.CostCodeId, costCodeById, accountingOffice);
+        var ownerRentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
+        var ownerRentExpenseAccountId = isFurnished
             ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
             : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
-        var memo = $"Owner Share - {invoice.InvoiceCode}";
 
-        // AGENT-NOTE: DO NOT TOUCH.
-        // Line 1 — DEBIT rental income (OWNER-SHARE-JE-ACCOUNTS)
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = rentalIncomeAccountId,
@@ -209,8 +182,6 @@ public partial class AccountingManager
             CreatedBy = currentUser
         });
 
-        // AGENT-NOTE: DO NOT TOUCH.
-        // Line 2 — CREDIT rent expense (OWNER-SHARE-JE-ACCOUNTS)
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = ownerRentExpenseAccountId,

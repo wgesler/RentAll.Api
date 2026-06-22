@@ -72,7 +72,7 @@ public partial class AccountingManager
         EnsureReceiptIsBill(bill);
         bill = await LoadReceiptWithSplitsAsync(bill);
 
-        var splitLines = ResolveDocumentSplitLines(bill);
+        var splitLines = ResolveReceiptSplitLines(bill);
 
         if (bill.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a bill");

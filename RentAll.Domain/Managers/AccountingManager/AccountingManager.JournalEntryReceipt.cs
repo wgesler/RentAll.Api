@@ -99,7 +99,7 @@ public partial class AccountingManager
         //            GetDefaultOwnerExpense, or GetDefaultCompanyExpense based on split receipt type).
         // END SAME-OFFICE-RECEIPT-JE-ACCOUNTS
 
-        var splitLines = ResolveDocumentSplitLines(receipt);
+        var splitLines = ResolveReceiptSplitLines(receipt);
         var creditCardAccountId = GetCreditCardAccountId(bankCard);
         var transactionDate = receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
@@ -171,7 +171,7 @@ public partial class AccountingManager
         // Final line — Credit: Accounts Payable (GetDefaultAccountsPayable) to the bank card office.
         // END CROSS-OFFICE-RECEIPT-JE-ACCOUNTS
 
-        var splitLines = ResolveDocumentSplitLines(receipt);
+        var splitLines = ResolveReceiptSplitLines(receipt);
         var accountsPayableAccountId = GetDefaultAccountsPayable(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice);
         var transactionDate = receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
@@ -241,7 +241,7 @@ public partial class AccountingManager
         // Line 2 — Credit: Credit card account on the bank card (BankCard.ChartOfAccountId).
         // END CROSS-OFFICE-RECEIPT-LIABILITY-JE-ACCOUNTS
 
-        var splitLines = ResolveDocumentSplitLines(receipt);
+        var splitLines = ResolveReceiptSplitLines(receipt);
         var accountsPayableAccountId = GetDefaultAccountsPayable(bankCardOfficeChartOfAccounts, bankCardOfficeId, bankCardAccountingOffice);
         var creditCardAccountId = GetCreditCardAccountId(bankCard);
         var transactionDate = receipt.AccountingPeriod;
@@ -288,6 +288,50 @@ public partial class AccountingManager
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
+    }
+    #endregion
+
+    #region Receipt And Bill Helpers
+    private async Task<Receipt> LoadReceiptWithSplitsAsync(Receipt receipt)
+    {
+        if (receipt.ReceiptId == Guid.Empty)
+            return receipt;
+
+        return await _maintenanceRepository.GetReceiptByIdAsync(receipt.ReceiptId, receipt.OrganizationId)
+            ?? receipt;
+    }
+
+    private static List<ReceiptSplit> ResolveReceiptSplitLines(Receipt receipt)
+    {
+        var allSplits = (receipt.Splits ?? new List<ReceiptSplit>())
+            .OrderBy(s => s.ReceiptSplitId)
+            .ToList();
+
+        var nonZeroSplits = allSplits.Where(s => s.Amount != 0).ToList();
+        if (nonZeroSplits.Count > 0)
+            return nonZeroSplits;
+
+        if (allSplits.Count > 0)
+            return allSplits;
+
+        if (receipt.Amount != 0)
+        {
+            var configuredChartOfAccountId = allSplits
+                .Select(split => split.ChartOfAccountId)
+                .FirstOrDefault(id => id is > 0);
+
+            return
+            [
+                new ReceiptSplit
+                {
+                    Amount = receipt.Amount,
+                    Description = receipt.Description,
+                    ChartOfAccountId = configuredChartOfAccountId
+                }
+            ];
+        }
+
+        return allSplits;
     }
     #endregion
 

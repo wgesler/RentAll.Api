@@ -34,12 +34,6 @@
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryHelpers.cs">
-
-      <DependentUpon>AccountingManager.cs</DependentUpon>
-
-    </Compile>
-
     <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryInvoices.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
@@ -52,19 +46,25 @@
 
     </Compile>
 
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryOwners.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
     <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryReceipt.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntryRefresh.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntriesRefresh.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
     </Compile>
 
-    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntrySync.cs">
+    <Compile Update="Managers\AccountingManager\AccountingManager.JournalEntriesSync.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
 
