@@ -59,6 +59,16 @@ public partial class AccountingManager
     #region Journal Entry
     private async Task<JournalEntry> BuildJournalEntryFromBillAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // BILL-JE-ACCOUNTS
+        // Positive splits:
+        //   Credit - Accounts Payable (GetDefaultAccountsPayable) for the split total.
+        //   Debit  - Expense account per split (GetDefaultTenantExpense, GetDefaultDepartureExpense,
+        //           GetDefaultOwnerExpense, or GetDefaultCompanyExpense based on split receipt type).
+        // Negative splits (bill credits):
+        //   Exact opposite
+        // END BILL-JE-ACCOUNTS
+
         EnsureReceiptIsBill(bill);
         bill = await LoadReceiptWithSplitsAsync(bill);
 
@@ -68,16 +78,10 @@ public partial class AccountingManager
             throw new Exception("AccountingPeriod is required to create a journal entry for a bill");
 
         var accountsPayableAccountId = GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, bill.OfficeId, accountingOffice);
         var transactionDate = bill.AccountingPeriod;
         var postingDate = bill.AccountingPeriod;
-        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
-            ? bill.BillNumber.Trim()
-            : bill.ReceiptCode.Trim();
-        var memo = string.IsNullOrWhiteSpace(bill.Description)
-            ? $"Bill {billLabel}"
-            : bill.Description.Trim();
+        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
+        var memo = string.IsNullOrWhiteSpace(bill.Description) ? $"Bill {billLabel}" : bill.Description.Trim();
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
 
         var positiveSplits = splitLines.Where(s => s.Amount > 0).ToList();
@@ -87,68 +91,86 @@ public partial class AccountingManager
         var positiveTotal = positiveSplits.Sum(s => s.Amount);
         if (positiveTotal > 0)
         {
-            var (accountsPayableDebit, accountsPayableCredit) = SignedAmountToDebitCredit(positiveTotal, positiveIsDebit: false);
             journalEntryLines.Add(new JournalEntryLine
             {
-                // Credit Accounts payable
+                // Credit Accounts Payable
                 ChartOfAccountId = accountsPayableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
-                Debit = accountsPayableDebit,
-                Credit = accountsPayableCredit,
+                Debit = 0,
+                Credit = positiveTotal,
                 Memo = $"Accounts Payable - {billLabel}",
                 CreatedBy = currentUser
             });
 
             foreach (var split in positiveSplits)
             {
-                var expenseAccountId = GetBillReceiptExpenseAccountId(split, bill.OfficeId, chartOfAccounts, accountingOffice);
-                var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
+                var expenseAccountId = split.ChartOfAccountId > 0
+                    ? split.ChartOfAccountId.Value
+                    : split.ReceiptType switch
+                    {
+                        ReceiptType.Tenant => GetDefaultTenantExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
+                        ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
+                        ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
+                        _ => GetDefaultCompanyExpense(chartOfAccounts, bill.OfficeId, accountingOffice)
+                    };
 
                 journalEntryLines.Add(new JournalEntryLine
                 {
-                    // Debit Expense Account
+                    // Debit Expense
                     ChartOfAccountId = expenseAccountId,
                     PropertyId = propertyId == Guid.Empty ? null : propertyId,
                     ContactId = bill.VendorId,
-                    Debit = expenseDebit,
-                    Credit = expenseCredit,
+                    Debit = split.Amount,
+                    Credit = 0,
                     Memo = split.Description,
                     CreatedBy = currentUser
                 });
             }
         }
 
-        foreach (var split in negativeSplits)
+        var negativeTotal = negativeSplits.Sum(s => s.Amount);
+        if (negativeTotal < 0)
         {
-            var creditAmount = Math.Abs(split.Amount);
-            var billCreditMemo = string.IsNullOrWhiteSpace(split.Description)
-                ? $"Bill Credit - {billLabel}"
-                : split.Description.Trim();
-
             journalEntryLines.Add(new JournalEntryLine
             {
-                // Debit Undeposited Funds
-                ChartOfAccountId = undepositedFundsAccountId,
+                // Debit Accounts Payable
+                ChartOfAccountId = accountsPayableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
-                Debit = creditAmount,
+                Debit = Math.Abs(negativeTotal),
                 Credit = 0,
-                Memo = billCreditMemo,
+                Memo = $"Accounts Payable - {billLabel}",
                 CreatedBy = currentUser
             });
 
-            journalEntryLines.Add(new JournalEntryLine
+            foreach (var split in negativeSplits)
             {
-                // Credit Accounts Receivable
-                ChartOfAccountId = accountsReceivableAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = 0,
-                Credit = creditAmount,
-                Memo = billCreditMemo,
-                CreatedBy = currentUser
-            });
+                var expenseAccountId = split.ChartOfAccountId > 0
+                    ? split.ChartOfAccountId.Value
+                    : split.ReceiptType switch
+                    {
+                        ReceiptType.Tenant => GetDefaultTenantExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
+                        ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
+                        ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
+                        _ => GetDefaultCompanyExpense(chartOfAccounts, bill.OfficeId, accountingOffice)
+                    };
+                var splitMemo = string.IsNullOrWhiteSpace(split.Description)
+                    ? $"Bill Credit - {billLabel}"
+                    : split.Description.Trim();
+
+                journalEntryLines.Add(new JournalEntryLine
+                {
+                    // Credit Expense
+                    ChartOfAccountId = expenseAccountId,
+                    PropertyId = propertyId == Guid.Empty ? null : propertyId,
+                    ContactId = bill.VendorId,
+                    Debit = 0,
+                    Credit = Math.Abs(split.Amount),
+                    Memo = splitMemo,
+                    CreatedBy = currentUser
+                });
+            }
         }
 
         return new JournalEntry
@@ -187,6 +209,12 @@ public partial class AccountingManager
 
     private async Task<JournalEntry> BuildJournalEntryFromBillPaymentAsync(BillPaymentApplication paymentApplication, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // BILL-PAYMENT-JE-ACCOUNTS
+        // Line 1 — Debit: Accounts Payable (GetDefaultAccountsPayable) or the credit card account on the bill's bank card.
+        // Line 2 — Credit: Bank account selected on the payment (paymentApplication.ChartOfAccountId).
+        // END BILL-PAYMENT-JE-ACCOUNTS
+
         var bill = paymentApplication.Bill;
         if (paymentApplication.AmountApplied == 0)
             throw new Exception("Bill payment amount cannot be zero");
@@ -197,7 +225,9 @@ public partial class AccountingManager
         if (paymentApplication.ChartOfAccountId <= 0)
             throw new Exception("Chart of account is required for bill payment");
 
-        var liabilityAccountId = GetBillReceiptLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
+        var liabilityAccountId = bill.BankCardId is > 0
+            ? GetCreditCardAccountId(bill, chartOfAccounts, accountingOffice)
+            : GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
         var offsetAccountId = paymentApplication.ChartOfAccountId;
 
         var amount = paymentApplication.AmountApplied;
@@ -214,16 +244,13 @@ public partial class AccountingManager
             ? $"Credit Card - {bill.BankCardDisplayName}".Trim()
             : $"Accounts Payable - {billLabel}";
 
-        var (liabilityDebit, liabilityCredit) = SignedAmountToDebitCredit(amount, positiveIsDebit: true);
-        var (offsetDebit, offsetCredit) = SignedAmountToDebitCredit(-amount, positiveIsDebit: true);
-
         var liabilityLine = new JournalEntryLine
         {
             ChartOfAccountId = liabilityAccountId,
             PropertyId = propertyId == Guid.Empty ? null : propertyId,
             ContactId = bill.VendorId,
-            Debit = liabilityDebit,
-            Credit = liabilityCredit,
+            Debit = amount,
+            Credit = 0,
             Memo = liabilityMemo,
             CreatedBy = currentUser
         };
@@ -232,8 +259,8 @@ public partial class AccountingManager
             ChartOfAccountId = offsetAccountId,
             PropertyId = propertyId == Guid.Empty ? null : propertyId,
             ContactId = bill.VendorId,
-            Debit = offsetDebit,
-            Credit = offsetCredit,
+            Debit = 0,
+            Credit = amount,
             Memo = memo,
             CreatedBy = currentUser
         };

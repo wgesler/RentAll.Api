@@ -46,7 +46,7 @@ public partial class AccountingManager : IAccountingManager
     private Task<bool> IsAccountingFeatureEnabledAsync(Guid organizationId)
         => _featureFlagService.IsEnabledAsync(FeatureFlagKeys.Accounting, organizationId);
 
-    #region Account Context
+    #region Load Context
     private async Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)> LoadAccountContextAsync(Guid organizationId, int officeId)
     {
         var chartOfAccountsTask = _accountingRepository.GetChartOfAccountsByOfficeIdAsync(organizationId, officeId);
@@ -60,6 +60,16 @@ public partial class AccountingManager : IAccountingManager
             accountingOffice.BankCards = await bankCardsTask;
 
         return (await chartOfAccountsTask, accountingOffice);
+    }
+
+    private async Task<(Office? Office, IReadOnlyDictionary<int, CostCode> CostCodeById)> LoadOfficeCostCodeContextAsync(Guid organizationId, int officeId)
+    {
+        var officeTask = _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
+        var costCodesTask = _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, officeId);
+
+        await Task.WhenAll(officeTask, costCodesTask);
+
+        return (await officeTask, (await costCodesTask).ToDictionary(c => c.CostCodeId));
     }
     #endregion
 
@@ -212,6 +222,46 @@ public partial class AccountingManager : IAccountingManager
             throw new Exception($"No Departure Expense chart of account is configured for office {officeId}");
 
         return account.AccountId;
+    }
+
+    private static (int AccountId, int? ExpenseCostCodeId) GetDefaultFurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
+        if (office?.FurnishedRentExpenseCcId is not > 0)
+            return (defaultAccountId, null);
+
+        costCodeById.TryGetValue(office.FurnishedRentExpenseCcId.Value, out var costCode);
+        return (GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId), office.FurnishedRentExpenseCcId);
+    }
+
+    private static (int AccountId, int? ExpenseCostCodeId) GetDefaultUnfurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
+        if (office?.UnfurnishedRentExpenseCcId is not > 0)
+            return (defaultAccountId, null);
+
+        costCodeById.TryGetValue(office.UnfurnishedRentExpenseCcId.Value, out var costCode);
+        return (GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId), office.UnfurnishedRentExpenseCcId);
+    }
+
+    private static int GetDefaultMaidServiceExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
+        if (office?.MaidServiceExpenseCcId is not > 0)
+            return defaultAccountId;
+
+        costCodeById.TryGetValue(office.MaidServiceExpenseCcId.Value, out var costCode);
+        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+    }
+
+    private static int GetDefaultParkingExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        var defaultAccountId = GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice);
+        if (office?.ParkingExpenseCcId is not > 0)
+            return defaultAccountId;
+
+        costCodeById.TryGetValue(office.ParkingExpenseCcId.Value, out var costCode);
+        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
     // Bank & Balance Sheet Accounts

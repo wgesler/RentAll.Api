@@ -91,6 +91,8 @@ public partial class AccountingRepository : IAccountingRepository
             PropertyCode = e.PropertyCode,
             ContactId = e.ContactId,
             ContactName = e.ContactName,
+            CompanyId = e.CompanyId,
+            CompanyName = e.CompanyName,
             ResponsibleParty = e.ResponsibleParty,
             InvoiceDate = e.InvoiceDate,
             DueDate = e.DueDate,

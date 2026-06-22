@@ -39,6 +39,12 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, officeId, accountingOffice);
 
+        // AGENT-NOTE: DO NOT TOUCH.
+        // DEPOSIT-JE-ACCOUNTS
+        // Line 1 — Debit: Bank account selected for the deposit (bankChartOfAccountId parameter).
+        // Lines 2+ — Credit: Undeposited Funds (GetDefaultUndepositedFunds) for each selected source line.
+        // END DEPOSIT-JE-ACCOUNTS
+
         var sourceLines = await LoadDepositSourceLinesAsync(
             organizationId,
             officeId,

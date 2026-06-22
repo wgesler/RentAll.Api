@@ -92,10 +92,14 @@ public partial class AccountingManager
 
         return existingEntries
             .Where(e => !e.IsVoided)
+            .Where(e => !IsInvoiceOwnerShareJournalEntry(e))
             .Where(e => !postingDate.HasValue || e.PostingDate == postingDate.Value)
             .OrderBy(e => e.PostingDate)
             .FirstOrDefault();
     }
+
+    private static bool IsInvoiceOwnerShareJournalEntry(JournalEntry entry)
+        => entry.Memo != null && entry.Memo.StartsWith("Owner Share", StringComparison.OrdinalIgnoreCase);
 
     private async Task<JournalEntry?> CreateCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser, string? memoSuffix = null)
     {
@@ -147,6 +151,12 @@ public partial class AccountingManager
             invoice.OrganizationId,
             invoice.OfficeId,
             (int)SourceType.Invoice,
+            invoice.InvoiceId);
+
+        await DeleteJournalEntriesForSourceAsync(
+            invoice.OrganizationId,
+            invoice.OfficeId,
+            (int)SourceType.OwnerDistribution,
             invoice.InvoiceId);
 
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out var secondPeriodInvoice))

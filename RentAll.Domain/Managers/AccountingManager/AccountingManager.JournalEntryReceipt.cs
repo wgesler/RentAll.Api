@@ -92,6 +92,13 @@ public partial class AccountingManager
 
     private JournalEntry BuildSameOfficeBankCardJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, BankCard bankCard, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // SAME-OFFICE-RECEIPT-JE-ACCOUNTS
+        // Line 1 — Credit: Credit card account on the bank card (BankCard.ChartOfAccountId).
+        // Lines 2+ — Debit: Expense account per split (GetDefaultTenantExpense, GetDefaultDepartureExpense,
+        //            GetDefaultOwnerExpense, or GetDefaultCompanyExpense based on split receipt type).
+        // END SAME-OFFICE-RECEIPT-JE-ACCOUNTS
+
         var splitLines = ResolveDocumentSplitLines(receipt);
         var creditCardAccountId = GetCreditCardAccountId(bankCard);
         var transactionDate = receipt.AccountingPeriod;
@@ -104,30 +111,36 @@ public partial class AccountingManager
 
         var totalAmount = splitLines.Sum(s => s.Amount);
         var journalEntryLines = new List<JournalEntryLine>();
-        var (creditCardDebit, creditCardCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: false);
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = creditCardAccountId,
             PropertyId = propertyId == Guid.Empty ? null : propertyId,
             ContactId = receipt.VendorId,
-            Debit = creditCardDebit,
-            Credit = creditCardCredit,
+            Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
+            Credit = totalAmount > 0 ? totalAmount : 0,
             Memo = $"Credit Card - {receipt.BankCardDisplayName}".Trim(),
             CreatedBy = currentUser
         });
 
         foreach (var split in splitLines)
         {
-            var expenseAccountId = GetBillReceiptExpenseAccountId(split, receipt.OfficeId, chartOfAccounts, accountingOffice);
-            var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
+            var expenseAccountId = split.ChartOfAccountId > 0
+                ? split.ChartOfAccountId.Value
+                : split.ReceiptType switch
+                {
+                    ReceiptType.Tenant => GetDefaultTenantExpense(chartOfAccounts, receipt.OfficeId, accountingOffice),
+                    ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, receipt.OfficeId, accountingOffice),
+                    ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, receipt.OfficeId, accountingOffice),
+                    _ => GetDefaultCompanyExpense(chartOfAccounts, receipt.OfficeId, accountingOffice)
+                };
 
             journalEntryLines.Add(new JournalEntryLine
             {
                 ChartOfAccountId = expenseAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = receipt.VendorId,
-                Debit = expenseDebit,
-                Credit = expenseCredit,
+                Debit = split.Amount > 0 ? split.Amount : 0,
+                Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
                 Memo = split.Amount < 0 && string.IsNullOrWhiteSpace(split.Description)
                     ? $"Receipt Credit - {receiptLabel}"
                     : split.Description,
@@ -151,6 +164,13 @@ public partial class AccountingManager
 
     private JournalEntry BuildCrossOfficeBankCardJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> receiptChartOfAccounts, AccountingOffice? receiptAccountingOffice, Guid? bankCardOfficeVendorId, string bankCardOfficeName, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // CROSS-OFFICE-RECEIPT-JE-ACCOUNTS (receipt office)
+        // Lines 1..N — Debit: Expense account per split (GetDefaultTenantExpense, GetDefaultDepartureExpense,
+        //              GetDefaultOwnerExpense, or GetDefaultCompanyExpense based on split receipt type).
+        // Final line — Credit: Accounts Payable (GetDefaultAccountsPayable) to the bank card office.
+        // END CROSS-OFFICE-RECEIPT-JE-ACCOUNTS
+
         var splitLines = ResolveDocumentSplitLines(receipt);
         var accountsPayableAccountId = GetDefaultAccountsPayable(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice);
         var transactionDate = receipt.AccountingPeriod;
@@ -165,16 +185,22 @@ public partial class AccountingManager
 
         foreach (var split in splitLines)
         {
-            var expenseAccountId = GetBillReceiptExpenseAccountId(split, receipt.OfficeId, receiptChartOfAccounts, receiptAccountingOffice);
-            var (expenseDebit, expenseCredit) = SignedAmountToDebitCredit(split.Amount, positiveIsDebit: true);
-
+            var expenseAccountId = split.ChartOfAccountId > 0
+                ? split.ChartOfAccountId.Value
+                : split.ReceiptType switch
+                {
+                    ReceiptType.Tenant => GetDefaultTenantExpense(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice),
+                    ReceiptType.Departure => GetDefaultDepartureExpense(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice),
+                    ReceiptType.Owner => GetDefaultOwnerExpense(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice),
+                    _ => GetDefaultCompanyExpense(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice)
+                };
             journalEntryLines.Add(new JournalEntryLine
             {
                 ChartOfAccountId = expenseAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = receipt.VendorId,
-                Debit = expenseDebit,
-                Credit = expenseCredit,
+                Debit = split.Amount > 0 ? split.Amount : 0,
+                Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
                 Memo = split.Amount < 0 && string.IsNullOrWhiteSpace(split.Description)
                     ? $"Receipt Credit - {receiptLabel}"
                     : split.Description,
@@ -182,14 +208,13 @@ public partial class AccountingManager
             });
         }
 
-        var (accountsPayableCreditDebit, accountsPayableCreditCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: false);
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = accountsPayableAccountId,
             PropertyId = propertyId == Guid.Empty ? null : propertyId,
             ContactId = bankCardOfficeVendorId,
-            Debit = accountsPayableCreditDebit,
-            Credit = accountsPayableCreditCredit,
+            Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
+            Credit = totalAmount > 0 ? totalAmount : 0,
             Memo = $"Accounts Payable - {bankCardOfficeName}",
             CreatedBy = currentUser
         });
@@ -210,6 +235,12 @@ public partial class AccountingManager
 
     private JournalEntry BuildCrossOfficeBankCardLiabilityJournalEntryFromReceiptAsync(Receipt receipt, int bankCardOfficeId, List<ChartOfAccount> bankCardOfficeChartOfAccounts, AccountingOffice? bankCardAccountingOffice, BankCard bankCard, Guid? receiptOfficeVendorId, string receiptOfficeName, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // CROSS-OFFICE-RECEIPT-LIABILITY-JE-ACCOUNTS (bank card office)
+        // Line 1 — Debit: Accounts Payable (GetDefaultAccountsPayable) to the receipt office.
+        // Line 2 — Credit: Credit card account on the bank card (BankCard.ChartOfAccountId).
+        // END CROSS-OFFICE-RECEIPT-LIABILITY-JE-ACCOUNTS
+
         var splitLines = ResolveDocumentSplitLines(receipt);
         var accountsPayableAccountId = GetDefaultAccountsPayable(bankCardOfficeChartOfAccounts, bankCardOfficeId, bankCardAccountingOffice);
         var creditCardAccountId = GetCreditCardAccountId(bankCard);
@@ -223,26 +254,24 @@ public partial class AccountingManager
         var totalAmount = splitLines.Sum(s => s.Amount);
         var journalEntryLines = new List<JournalEntryLine>();
 
-        var (accountsPayableDebitDebit, accountsPayableDebitCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: true);
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = accountsPayableAccountId,
             PropertyId = propertyId == Guid.Empty ? null : propertyId,
             ContactId = receiptOfficeVendorId,
-            Debit = accountsPayableDebitDebit,
-            Credit = accountsPayableDebitCredit,
+            Debit = totalAmount > 0 ? totalAmount : 0,
+            Credit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
             Memo = $"Accounts Payable - {receiptOfficeName}",
             CreatedBy = currentUser
         });
 
-        var (creditCardDebit, creditCardCredit) = SignedAmountToDebitCredit(totalAmount, positiveIsDebit: false);
         journalEntryLines.Add(new JournalEntryLine
         {
             ChartOfAccountId = creditCardAccountId,
             PropertyId = propertyId == Guid.Empty ? null : propertyId,
             ContactId = receiptOfficeVendorId,
-            Debit = creditCardDebit,
-            Credit = creditCardCredit,
+            Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
+            Credit = totalAmount > 0 ? totalAmount : 0,
             Memo = $"Credit Card - {receipt.BankCardDisplayName}".Trim(),
             CreatedBy = currentUser
         });
