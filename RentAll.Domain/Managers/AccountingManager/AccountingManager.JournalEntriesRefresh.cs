@@ -16,16 +16,7 @@ public partial class AccountingManager
             .Select(l => l.LedgerLineId);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
-
-        try
-        {
-            await ReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, priorPaymentLedgerLineIds);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Invoice was updated but general ledger entry refresh failed: {ex.Message}", ex);
-        }
-
+        await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, priorPaymentLedgerLineIds);
         return updatedInvoice;
     }
 
@@ -34,16 +25,7 @@ public partial class AccountingManager
         EnsureReceiptIsBill(bill);
 
         var updatedBill = await _maintenanceRepository.UpdateReceiptAsync(bill);
-
-        try
-        {
-            await ReplaceJournalEntriesFromBillAsync(updatedBill, currentUser);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Bill was updated but general ledger entry refresh failed: {ex.Message}", ex);
-        }
-
+        await TryReplaceJournalEntriesFromBillAsync(updatedBill, currentUser);
         return updatedBill;
     }
 
@@ -55,15 +37,7 @@ public partial class AccountingManager
         var freshReceipt = await _maintenanceRepository.GetReceiptByIdAsync(updatedReceipt.ReceiptId, updatedReceipt.OrganizationId)
             ?? throw new Exception("Receipt not found after update");
 
-        try
-        {
-            await ReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Receipt was updated but general ledger entry refresh failed: {ex.Message}", ex);
-        }
-
+        await TryReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser);
         return freshReceipt;
     }
 
@@ -73,204 +47,268 @@ public partial class AccountingManager
         var freshWorkOrder = await _maintenanceRepository.GetWorkOrderByIdAsync(updatedWorkOrder.WorkOrderId, updatedWorkOrder.OrganizationId)
             ?? throw new Exception("Work order not found after update");
 
-        try
-        {
-            await ReplaceJournalEntriesFromWorkOrderAsync(freshWorkOrder, currentUser);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Work order was updated but general ledger entry refresh failed: {ex.Message}", ex);
-        }
-
+        await TryReplaceJournalEntriesFromWorkOrderAsync(freshWorkOrder, currentUser);
         return freshWorkOrder;
     }
 
-    private async Task ReplaceJournalEntriesFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser)
+    private async Task TryReplaceJournalEntriesFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser)
     {
-        if (workOrder.WorkOrderId == Guid.Empty)
-            throw new Exception("WorkOrderId is required to refresh journal entries");
-
-        if (!await IsAccountingFeatureEnabledAsync(workOrder.OrganizationId) || !ShouldCreateJournalEntryForWorkOrder(workOrder))
+        try
         {
-            await DeleteJournalEntriesForSourceAsync(
-                workOrder.OrganizationId,
-                workOrder.OfficeId,
-                (int)SourceType.WorkOrder,
-                workOrder.WorkOrderId);
-            return;
-        }
+            if (workOrder.WorkOrderId == Guid.Empty)
+                return;
 
-        var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = workOrder.OrganizationId,
-            OfficeIds = workOrder.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.WorkOrder,
-            SourceId = workOrder.WorkOrderId,
-            IncludeVoided = true,
-            IncludeUnposted = true
-        })).ToList();
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(workOrder.OrganizationId, workOrder.OfficeId);
-        var rebuiltJournalEntry = await BuildJournalEntryFromWorkOrderAsync(workOrder, chartOfAccounts, accountingOffice, currentUser);
-
-        while (existingEntries.Count > 1)
-        {
-            var duplicate = existingEntries[^1];
-            await DeleteJournalEntryAsync(duplicate.JournalEntryId, workOrder.OrganizationId);
-            existingEntries.RemoveAt(existingEntries.Count - 1);
-        }
-
-        var existingEntry = existingEntries.FirstOrDefault();
-        if (existingEntry != null)
-        {
-            rebuiltJournalEntry.JournalEntryId = existingEntry.JournalEntryId;
-            rebuiltJournalEntry.OrganizationId = workOrder.OrganizationId;
-            rebuiltJournalEntry.OfficeId = workOrder.OfficeId;
-            rebuiltJournalEntry.CreatedBy = existingEntry.CreatedBy;
-            rebuiltJournalEntry.ModifiedBy = currentUser;
-
-            foreach (var line in rebuiltJournalEntry.JournalEntryLines)
+            if (!await IsAccountingFeatureEnabledAsync(workOrder.OrganizationId) || !ShouldCreateJournalEntryForWorkOrder(workOrder))
             {
-                line.JournalEntryId = existingEntry.JournalEntryId;
-                line.JournalEntryLineId = Guid.Empty;
+                await DeleteJournalEntriesForSourceAsync(
+                    workOrder.OrganizationId,
+                    workOrder.OfficeId,
+                    (int)SourceType.WorkOrder,
+                    workOrder.WorkOrderId);
+                return;
             }
 
-            await UpdateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
-            return;
-        }
+            var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+            {
+                OrganizationId = workOrder.OrganizationId,
+                OfficeIds = workOrder.OfficeId.ToString(),
+                SourceTypeId = (int)SourceType.WorkOrder,
+                SourceId = workOrder.WorkOrderId,
+                IncludeVoided = true,
+                IncludeUnposted = true
+            })).ToList();
 
-        await CreateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(workOrder.OrganizationId, workOrder.OfficeId);
+            var rebuiltJournalEntry = await BuildJournalEntryFromWorkOrderAsync(workOrder, chartOfAccounts, accountingOffice, currentUser);
+
+            while (existingEntries.Count > 1)
+            {
+                var duplicate = existingEntries[^1];
+                await DeleteJournalEntryAsync(duplicate.JournalEntryId, workOrder.OrganizationId);
+                existingEntries.RemoveAt(existingEntries.Count - 1);
+            }
+
+            var existingEntry = existingEntries.FirstOrDefault();
+            if (existingEntry != null)
+            {
+                rebuiltJournalEntry.JournalEntryId = existingEntry.JournalEntryId;
+                rebuiltJournalEntry.OrganizationId = workOrder.OrganizationId;
+                rebuiltJournalEntry.OfficeId = workOrder.OfficeId;
+                rebuiltJournalEntry.CreatedBy = existingEntry.CreatedBy;
+                rebuiltJournalEntry.ModifiedBy = currentUser;
+
+                foreach (var line in rebuiltJournalEntry.JournalEntryLines)
+                {
+                    line.JournalEntryId = existingEntry.JournalEntryId;
+                    line.JournalEntryLineId = Guid.Empty;
+                }
+
+                await UpdateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
+                return;
+            }
+
+            await CreateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
+        }
+        catch (Exception ex)
+        {
+            await LogAccountingErrorAsync(
+                trigger: "WorkOrder",
+                organizationId: workOrder.OrganizationId,
+                officeId: workOrder.OfficeId,
+                sourceTypeId: (int)SourceType.WorkOrder,
+                sourceId: workOrder.WorkOrderId,
+                documentCode: workOrder.WorkOrderCode,
+                accountingPeriod: null,
+                amount: null,
+                message: $"Work order {workOrder.WorkOrderCode} journal entry refresh failed: {ex.Message}",
+                currentUser: currentUser);
+        }
     }
 
-    private async Task ReplaceJournalEntriesFromReceiptAsync(Receipt receipt, Guid currentUser)
+    private async Task TryReplaceJournalEntriesFromReceiptAsync(Receipt receipt, Guid currentUser)
     {
-        EnsureReceiptIsCardReceipt(receipt);
-
-        if (receipt.ReceiptId == Guid.Empty)
-            throw new Exception("ReceiptId is required to refresh journal entries");
-
-        if (!await IsAccountingFeatureEnabledAsync(receipt.OrganizationId))
+        try
         {
-            await DeleteJournalEntriesForSourceAsync(
-                receipt.OrganizationId,
-                receipt.OfficeId,
-                (int)SourceType.Receipt,
-                receipt.ReceiptId);
-            await DeleteAllCrossOfficeReceiptCompanionEntriesAsync(receipt);
-            return;
-        }
+            EnsureReceiptIsCardReceipt(receipt);
 
-        var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = receipt.OrganizationId,
-            OfficeIds = receipt.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Receipt,
-            SourceId = receipt.ReceiptId,
-            IncludeVoided = true,
-            IncludeUnposted = true
-        })).ToList();
+            if (receipt.ReceiptId == Guid.Empty)
+                return;
 
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
-        var bankCard = await ResolveReceiptBankCardAsync(receipt, accountingOffice);
-        var rebuiltJournalEntry = await BuildJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
-
-        while (existingEntries.Count > 1)
-        {
-            var duplicate = existingEntries[^1];
-            await DeleteJournalEntryAsync(duplicate.JournalEntryId, receipt.OrganizationId);
-            existingEntries.RemoveAt(existingEntries.Count - 1);
-        }
-
-        var existingEntry = existingEntries.FirstOrDefault();
-        if (existingEntry != null)
-        {
-            rebuiltJournalEntry.JournalEntryId = existingEntry.JournalEntryId;
-            rebuiltJournalEntry.OrganizationId = receipt.OrganizationId;
-            rebuiltJournalEntry.OfficeId = receipt.OfficeId;
-            rebuiltJournalEntry.CreatedBy = existingEntry.CreatedBy;
-            rebuiltJournalEntry.ModifiedBy = currentUser;
-
-            foreach (var line in rebuiltJournalEntry.JournalEntryLines)
+            if (!await IsAccountingFeatureEnabledAsync(receipt.OrganizationId))
             {
-                line.JournalEntryId = existingEntry.JournalEntryId;
-                line.JournalEntryLineId = Guid.Empty;
+                await DeleteJournalEntriesForSourceAsync(
+                    receipt.OrganizationId,
+                    receipt.OfficeId,
+                    (int)SourceType.Receipt,
+                    receipt.ReceiptId);
+                await DeleteAllCrossOfficeReceiptCompanionEntriesAsync(receipt);
+                return;
             }
 
-            await UpdateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
+            var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+            {
+                OrganizationId = receipt.OrganizationId,
+                OfficeIds = receipt.OfficeId.ToString(),
+                SourceTypeId = (int)SourceType.Receipt,
+                SourceId = receipt.ReceiptId,
+                IncludeVoided = true,
+                IncludeUnposted = true
+            })).ToList();
+
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
+            var bankCard = await ResolveReceiptBankCardAsync(receipt, accountingOffice);
+            var rebuiltJournalEntry = await BuildJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
+
+            while (existingEntries.Count > 1)
+            {
+                var duplicate = existingEntries[^1];
+                await DeleteJournalEntryAsync(duplicate.JournalEntryId, receipt.OrganizationId);
+                existingEntries.RemoveAt(existingEntries.Count - 1);
+            }
+
+            var existingEntry = existingEntries.FirstOrDefault();
+            if (existingEntry != null)
+            {
+                rebuiltJournalEntry.JournalEntryId = existingEntry.JournalEntryId;
+                rebuiltJournalEntry.OrganizationId = receipt.OrganizationId;
+                rebuiltJournalEntry.OfficeId = receipt.OfficeId;
+                rebuiltJournalEntry.CreatedBy = existingEntry.CreatedBy;
+                rebuiltJournalEntry.ModifiedBy = currentUser;
+
+                foreach (var line in rebuiltJournalEntry.JournalEntryLines)
+                {
+                    line.JournalEntryId = existingEntry.JournalEntryId;
+                    line.JournalEntryLineId = Guid.Empty;
+                }
+
+                await UpdateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
+                await SyncCrossOfficeReceiptCompanionJournalEntryAsync(receipt, accountingOffice, bankCard, currentUser);
+                return;
+            }
+
+            await CreateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
             await SyncCrossOfficeReceiptCompanionJournalEntryAsync(receipt, accountingOffice, bankCard, currentUser);
-            return;
         }
-
-        await CreateAutoGeneratedJournalEntryAsync(rebuiltJournalEntry);
-        await SyncCrossOfficeReceiptCompanionJournalEntryAsync(receipt, accountingOffice, bankCard, currentUser);
-    }
-
-    private async Task ReplaceJournalEntriesFromInvoiceAsync(Invoice invoice, IEnumerable<Guid> priorPaymentLedgerLineIds)
-    {
-        if (invoice.InvoiceId == Guid.Empty)
-            throw new Exception("InvoiceId is required to refresh journal entries");
-
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
-
-        var paymentLedgerLineIds = priorPaymentLedgerLineIds
-            .Concat(invoice.LedgerLines
-                .Where(l => l.LedgerLineId != Guid.Empty)
-                .Where(l => costCodeById.TryGetValue(l.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode))
-                .Select(l => l.LedgerLineId))
-            .Distinct()
-            .ToList();
-
-        await DeleteJournalEntriesForInvoiceChargesAsync(invoice);
-
-        foreach (var ledgerLineId in paymentLedgerLineIds)
-            await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice.OrganizationId, invoice.OfficeId, ledgerLineId);
-
-        await CreateJournalEntryFromInvoiceAsync(invoice, invoice.ModifiedBy);
-
-        foreach (var paymentLedgerLine in invoice.LedgerLines
-                     .Where(l => l.Amount != 0)
-                     .Where(l => costCodeById.TryGetValue(l.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode)))
+        catch (Exception ex)
         {
-            await CreateJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, invoice.ModifiedBy);
+            var receiptLabel = receipt.ReceiptCode.Trim();
+            await LogAccountingErrorAsync(
+                trigger: "Receipt",
+                organizationId: receipt.OrganizationId,
+                officeId: receipt.OfficeId,
+                sourceTypeId: (int)SourceType.Receipt,
+                sourceId: receipt.ReceiptId,
+                documentCode: receiptLabel,
+                accountingPeriod: receipt.AccountingPeriod == default ? null : receipt.AccountingPeriod,
+                amount: receipt.Amount,
+                message: $"Receipt {receiptLabel} journal entry refresh failed: {ex.Message}",
+                currentUser: currentUser);
         }
     }
 
-    private async Task ReplaceJournalEntriesFromBillAsync(Receipt bill, Guid currentUser)
+    private async Task TryReplaceJournalEntriesFromInvoiceAsync(Invoice invoice, IEnumerable<Guid> priorPaymentLedgerLineIds)
     {
-        EnsureReceiptIsBill(bill);
-
-        if (bill.ReceiptId == Guid.Empty)
-            throw new Exception("ReceiptId is required to refresh journal entries");
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
-        var paymentOffsetAccountId = await DeleteBillPaymentJournalEntriesAsync(bill, chartOfAccounts, accountingOffice);
-
-        await DeleteJournalEntriesForSourceAsync(
-            bill.OrganizationId,
-            bill.OfficeId,
-            (int)SourceType.Bill,
-            bill.ReceiptId);
-
-        await CreateJournalEntryFromBillAsync(bill, currentUser);
-
-        if (bill.PaidAmount == 0)
-            return;
-
-        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
-            ? bill.BillNumber.Trim()
-            : bill.ReceiptCode.Trim();
-        var paymentApplication = new BillPaymentApplication
+        try
         {
-            Bill = bill,
-            AmountApplied = bill.PaidAmount,
-            PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            ChartOfAccountId = paymentOffsetAccountId ?? GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice),
-            Description = $"Bill Payment - {billLabel}",
-            PaymentSequence = 0
-        };
+            if (invoice.InvoiceId == Guid.Empty)
+                return;
 
-        await CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);
+            var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+            var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+
+            var paymentLedgerLineIds = priorPaymentLedgerLineIds
+                .Concat(invoice.LedgerLines
+                    .Where(l => l.LedgerLineId != Guid.Empty)
+                    .Where(l => costCodeById.TryGetValue(l.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode))
+                    .Select(l => l.LedgerLineId))
+                .Distinct()
+                .ToList();
+
+            await DeleteJournalEntriesForInvoiceChargesAsync(invoice);
+
+            foreach (var ledgerLineId in paymentLedgerLineIds)
+                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice.OrganizationId, invoice.OfficeId, ledgerLineId);
+
+            await CreateJournalEntryFromInvoiceAsync(invoice, invoice.ModifiedBy);
+
+            foreach (var paymentLedgerLine in invoice.LedgerLines
+                         .Where(l => l.Amount != 0)
+                         .Where(l => costCodeById.TryGetValue(l.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode)))
+            {
+                await CreateJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, invoice.ModifiedBy);
+            }
+        }
+        catch (Exception ex)
+        {
+            await LogAccountingErrorAsync(
+                trigger: "Invoice",
+                organizationId: invoice.OrganizationId,
+                officeId: invoice.OfficeId,
+                sourceTypeId: (int)SourceType.Invoice,
+                sourceId: invoice.InvoiceId,
+                documentCode: invoice.InvoiceCode,
+                accountingPeriod: invoice.AccountingPeriod == default ? null : invoice.AccountingPeriod,
+                amount: invoice.TotalAmount,
+                message: $"Invoice {invoice.InvoiceCode} journal entry refresh failed: {ex.Message}",
+                currentUser: invoice.ModifiedBy);
+        }
+    }
+
+    private async Task TryReplaceJournalEntriesFromBillAsync(Receipt bill, Guid currentUser)
+    {
+        try
+        {
+            EnsureReceiptIsBill(bill);
+
+            if (bill.ReceiptId == Guid.Empty)
+                return;
+
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
+            var paymentOffsetAccountId = await DeleteBillPaymentJournalEntriesAsync(bill, chartOfAccounts, accountingOffice);
+
+            await DeleteJournalEntriesForSourceAsync(
+                bill.OrganizationId,
+                bill.OfficeId,
+                (int)SourceType.Bill,
+                bill.ReceiptId);
+
+            await CreateJournalEntryFromBillAsync(bill, currentUser);
+
+            if (bill.PaidAmount == 0)
+                return;
+
+            var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
+                ? bill.BillNumber.Trim()
+                : bill.ReceiptCode.Trim();
+            var paymentApplication = new BillPaymentApplication
+            {
+                Bill = bill,
+                AmountApplied = bill.PaidAmount,
+                PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
+                ChartOfAccountId = paymentOffsetAccountId ?? GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice),
+                Description = $"Bill Payment - {billLabel}",
+                PaymentSequence = 0
+            };
+
+            await CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser);
+        }
+        catch (Exception ex)
+        {
+            var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
+                ? bill.BillNumber.Trim()
+                : bill.ReceiptCode.Trim();
+            await LogAccountingErrorAsync(
+                trigger: "Bill",
+                organizationId: bill.OrganizationId,
+                officeId: bill.OfficeId,
+                sourceTypeId: (int)SourceType.Bill,
+                sourceId: bill.ReceiptId,
+                documentCode: billLabel,
+                accountingPeriod: bill.AccountingPeriod == default ? null : bill.AccountingPeriod,
+                amount: bill.Amount,
+                message: $"Bill {billLabel} journal entry refresh failed: {ex.Message}",
+                currentUser: currentUser);
+        }
     }
 
     private async Task DeleteJournalEntriesForSourceAsync(Guid organizationId, int officeId, int sourceTypeId, Guid sourceId)

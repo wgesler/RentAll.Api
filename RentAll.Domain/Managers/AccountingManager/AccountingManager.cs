@@ -498,6 +498,35 @@ public partial class AccountingManager : IAccountingManager
     }
     #endregion
 
+    #region Accounting Error Logging
+    private async Task LogAccountingErrorAsync(
+        string trigger,
+        Guid organizationId,
+        int? officeId,
+        int? sourceTypeId,
+        Guid? sourceId,
+        string? documentCode,
+        DateOnly? accountingPeriod,
+        decimal? amount,
+        string message,
+        Guid currentUser)
+    {
+        await _accountingRepository.LogAccountingErrorAsync(new AccountingError
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            Trigger = trigger,
+            SourceTypeId = sourceTypeId,
+            SourceId = sourceId,
+            DocumentCode = documentCode,
+            AccountingPeriod = accountingPeriod,
+            Amount = amount,
+            Message = message,
+            CreatedBy = currentUser
+        });
+    }
+    #endregion
+
     #region Account Helpers
     private static string NormalizeAccountCode(string value)
     {

@@ -7,14 +7,37 @@ public partial class AccountingManager
 {
     #region Triggers
     public async Task<JournalEntry?> CreateJournalEntryFromReceiptAsync(Receipt receipt, Guid currentUser)
+        => (await CreateJournalEntryFromReceiptWithResultAsync(receipt, currentUser)).JournalEntry;
+
+    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromReceiptWithResultAsync(Receipt receipt, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(receipt.OrganizationId))
-            return null;
+            return AccountingJournalEntryResult.Success();
 
-        EnsureReceiptIsCardReceipt(receipt);
+        try
+        {
+            EnsureReceiptIsCardReceipt(receipt);
 
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
-        return await CreateReceiptJournalEntriesAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
+            var created = await CreateReceiptJournalEntriesAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
+            return AccountingJournalEntryResult.Success(created);
+        }
+        catch (Exception ex)
+        {
+            var receiptLabel = receipt.ReceiptCode.Trim();
+            await LogAccountingErrorAsync(
+                trigger: "Receipt",
+                organizationId: receipt.OrganizationId,
+                officeId: receipt.OfficeId,
+                sourceTypeId: (int)SourceType.Receipt,
+                sourceId: receipt.ReceiptId,
+                documentCode: receiptLabel,
+                accountingPeriod: receipt.AccountingPeriod == default ? null : receipt.AccountingPeriod,
+                amount: receipt.Amount,
+                message: ex.Message,
+                currentUser: currentUser);
+            return AccountingJournalEntryResult.WarningResult(ex.Message);
+        }
     }
     #endregion
 

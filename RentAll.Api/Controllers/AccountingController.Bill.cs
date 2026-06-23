@@ -19,15 +19,7 @@ namespace RentAll.Api.Controllers
                 var billPayment = await _accountingManager.ApplyPaymentToBillsAsync(dto.Bills, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.ChartOfAccountId, dto.Description, dto.Amount, dto.PaymentDate, (PaymentType)dto.PaymentTypeId, CurrentUser);
 
-                try
-                {
-                    await _accountingManager.CreateJournalEntriesFromBillPaymentAsync(billPayment, CurrentUser);
-                }
-                catch (Exception journalEntryEx)
-                {
-                    _logger.LogError(journalEntryEx, "Bill payment was applied but journal entry creation failed");
-                    return BadRequest($"Bill payment was applied but general ledger entry creation failed: {journalEntryEx.Message}");
-                }
+                await _accountingManager.CreateJournalEntriesFromBillPaymentAsync(billPayment, CurrentUser);
 
                 var response = new BillPaymentResponseDto(billPayment);
                 return Ok(response);

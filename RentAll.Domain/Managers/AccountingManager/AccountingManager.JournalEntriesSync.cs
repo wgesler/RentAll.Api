@@ -29,7 +29,7 @@ public partial class AccountingManager
                     continue;
 
                 await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromInvoiceAsync(invoice, currentUser),
+                    () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser),
                     new JournalEntryGetCriteria
                     {
                         OrganizationId = invoice.OrganizationId,
@@ -55,7 +55,7 @@ public partial class AccountingManager
                         continue;
 
                     await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromPaymentAsync(invoice, line, currentUser),
+                        () => CreateJournalEntryFromPaymentWithResultAsync(invoice, line, currentUser),
                         new JournalEntryGetCriteria
                         {
                             OrganizationId = invoice.OrganizationId,
@@ -70,7 +70,19 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                result.Errors.Add($"Invoice {invoiceSummary.InvoiceCode}: {ex.Message}");
+                var message = $"Invoice {invoiceSummary.InvoiceCode}: {ex.Message}";
+                result.Errors.Add(message);
+                await LogAccountingErrorAsync(
+                    trigger: "Invoice",
+                    organizationId: organizationId,
+                    officeId: invoiceSummary.OfficeId,
+                    sourceTypeId: (int)SourceType.Invoice,
+                    sourceId: invoiceSummary.InvoiceId,
+                    documentCode: invoiceSummary.InvoiceCode,
+                    accountingPeriod: null,
+                    amount: invoiceSummary.TotalAmount,
+                    message: message,
+                    currentUser: currentUser);
             }
         }
 
@@ -110,7 +122,7 @@ public partial class AccountingManager
                 EnsureReceiptIsBill(bill);
 
                 await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromBillAsync(bill, currentUser),
+                    () => CreateJournalEntryFromBillWithResultAsync(bill, currentUser),
                     new JournalEntryGetCriteria
                     {
                         OrganizationId = bill.OrganizationId,
@@ -133,7 +145,19 @@ public partial class AccountingManager
                         var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
                             ? billSummary.BillNumber
                             : billSummary.ReceiptCode;
-                        result.Errors.Add($"Bill {paymentBillLabel} payment: {paymentEx.Message}");
+                        var message = $"Bill {paymentBillLabel} payment: {paymentEx.Message}";
+                        result.Errors.Add(message);
+                        await LogAccountingErrorAsync(
+                            trigger: "BillPayment",
+                            organizationId: organizationId,
+                            officeId: billSummary.OfficeId,
+                            sourceTypeId: (int)SourceType.BillPayment,
+                            sourceId: billSummary.ReceiptId,
+                            documentCode: paymentBillLabel,
+                            accountingPeriod: null,
+                            amount: billSummary.PaidAmount,
+                            message: message,
+                            currentUser: currentUser);
                     }
                 }
             }
@@ -142,7 +166,19 @@ public partial class AccountingManager
                 var billLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
                     ? billSummary.BillNumber
                     : billSummary.ReceiptCode;
-                result.Errors.Add($"Bill {billLabel}: {ex.Message}");
+                var message = $"Bill {billLabel}: {ex.Message}";
+                result.Errors.Add(message);
+                await LogAccountingErrorAsync(
+                    trigger: "Bill",
+                    organizationId: organizationId,
+                    officeId: billSummary.OfficeId,
+                    sourceTypeId: (int)SourceType.Bill,
+                    sourceId: billSummary.ReceiptId,
+                    documentCode: billLabel,
+                    accountingPeriod: null,
+                    amount: billSummary.Amount,
+                    message: message,
+                    currentUser: currentUser);
             }
         }
 
@@ -182,7 +218,7 @@ public partial class AccountingManager
                 EnsureReceiptIsCardReceipt(receipt);
 
                 await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromReceiptAsync(receipt, currentUser),
+                    () => CreateJournalEntryFromReceiptWithResultAsync(receipt, currentUser),
                     new JournalEntryGetCriteria
                     {
                         OrganizationId = receipt.OrganizationId,
@@ -196,7 +232,19 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                result.Errors.Add($"Receipt {receiptSummary.ReceiptCode}: {ex.Message}");
+                var message = $"Receipt {receiptSummary.ReceiptCode}: {ex.Message}";
+                result.Errors.Add(message);
+                await LogAccountingErrorAsync(
+                    trigger: "Receipt",
+                    organizationId: organizationId,
+                    officeId: receiptSummary.OfficeId,
+                    sourceTypeId: (int)SourceType.Receipt,
+                    sourceId: receiptSummary.ReceiptId,
+                    documentCode: receiptSummary.ReceiptCode,
+                    accountingPeriod: null,
+                    amount: receiptSummary.Amount,
+                    message: message,
+                    currentUser: currentUser);
             }
         }
 
@@ -245,7 +293,7 @@ public partial class AccountingManager
         };
 
         await TrackJournalEntryCreateAsync(
-            () => CreateJournalEntryFromBillPaymentAsync(paymentApplication, currentUser),
+            () => CreateJournalEntryFromBillPaymentWithResultAsync(paymentApplication, currentUser),
             new JournalEntryGetCriteria
             {
                 OrganizationId = bill.OrganizationId,
@@ -292,7 +340,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry?>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
+    private async Task TrackJournalEntryCreateAsync(Func<Task<AccountingJournalEntryResult>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(existingCriteria);
         if (existingEntries.Any())
@@ -301,11 +349,12 @@ public partial class AccountingManager
             return;
         }
 
-        var created = await createJournalEntry();
-        if (created == null)
-            return;
+        var createResult = await createJournalEntry();
+        if (createResult.JournalEntry != null)
+            result.JournalEntriesCreated++;
 
-        result.JournalEntriesCreated++;
+        if (createResult.HasWarning)
+            result.Errors.Add(createResult.Warning!);
     }
 
     private static int ResolveDefaultPaymentCostCodeId(List<CostCode> costCodes)

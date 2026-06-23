@@ -159,7 +159,7 @@ public class CrossPeriodInvoiceJournalEntryTests
     }
 
     [Fact]
-    public async Task CrossPeriodWithFees_JanFebInvoicePeriod_WhenSplitFails_LogsAndThrowsWithoutWritingEntries()
+    public async Task CrossPeriodWithFees_JanFebInvoicePeriod_WhenSplitFails_LogsAndReturnsNullWithoutWritingEntries()
     {
         var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
             JanArrival,
@@ -171,11 +171,10 @@ public class CrossPeriodInvoiceJournalEntryTests
         var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
             reservation, JanFebPeriodStart, JanFebPeriodEnd);
 
-        var exception = await Assert.ThrowsAsync<Exception>(() =>
-            context.CreateManager().CreateJournalEntryFromInvoiceAsync(
-                invoice, AccountingManagerJournalEntryTestSupport.CurrentUser));
+        var result = await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.Contains("spans two accounting periods but the split failed", exception.Message);
+        Assert.Null(result);
         Assert.Empty(context.CreatedJournalEntries);
     }
 

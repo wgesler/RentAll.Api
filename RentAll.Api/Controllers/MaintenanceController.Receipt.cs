@@ -138,29 +138,9 @@ public partial class MaintenanceController
             var created = await _maintenanceRepository.CreateReceiptAsync(receipt);
 
             if (created.BankCardId == null)
-            {
-                try
-                {
-                    await _accountingManager.CreateJournalEntryFromBillAsync(created, CurrentUser);
-                }
-                catch (Exception journalEntryEx)
-                {
-                    _logger.LogError(journalEntryEx, "Bill {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
-                    return BadRequest($"Bill was created but general ledger entry creation failed: {journalEntryEx.Message}");
-                }
-            }
+                await _accountingManager.CreateJournalEntryFromBillAsync(created, CurrentUser);
             else
-            {
-                try
-                {
-                    await _accountingManager.CreateJournalEntryFromReceiptAsync(created, CurrentUser);
-                }
-                catch (Exception journalEntryEx)
-                {
-                    _logger.LogError(journalEntryEx, "Receipt {ReceiptId} was created but journal entry creation failed", created.ReceiptId);
-                    return BadRequest($"Receipt was created but general ledger entry creation failed: {journalEntryEx.Message}");
-                }
-            }
+                await _accountingManager.CreateJournalEntryFromReceiptAsync(created, CurrentUser);
 
             var response = new ReceiptResponseDto(created);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
@@ -203,29 +183,9 @@ public partial class MaintenanceController
 
             Receipt updated;
             if (receipt.BankCardId == null)
-            {
-                try
-                {
-                    updated = await _accountingManager.UpdateBillAsync(receipt, CurrentUser);
-                }
-                catch (InvalidOperationException journalEntryEx)
-                {
-                    _logger.LogError(journalEntryEx, "Bill {ReceiptId} was updated but journal entry refresh failed", receipt.ReceiptId);
-                    return BadRequest(journalEntryEx.Message);
-                }
-            }
+                updated = await _accountingManager.UpdateBillAsync(receipt, CurrentUser);
             else
-            {
-                try
-                {
-                    updated = await _accountingManager.UpdateReceiptAsync(receipt, CurrentUser);
-                }
-                catch (InvalidOperationException journalEntryEx)
-                {
-                    _logger.LogError(journalEntryEx, "Receipt {ReceiptId} was updated but journal entry refresh failed", receipt.ReceiptId);
-                    return BadRequest(journalEntryEx.Message);
-                }
-            }
+                updated = await _accountingManager.UpdateReceiptAsync(receipt, CurrentUser);
 
             var response = new ReceiptResponseDto(updated);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
