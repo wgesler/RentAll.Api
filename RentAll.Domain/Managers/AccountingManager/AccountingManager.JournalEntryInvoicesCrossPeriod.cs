@@ -24,8 +24,8 @@ public partial class AccountingManager
         if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(secondPeriodInvoice, reservation))
             return (null, $"Could not regenerate ledger lines for the second accounting period ({secondPeriodInvoice.AccountingPeriod:MM/yyyy}).");
 
-        var rentAccountMatchedLines = await GetRentAccountMatchedChargeLinesAsync(invoice);
-        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, rentAccountMatchedLines))
+        var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice);
+        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, apportionableIncomeLines))
             return (null, "Could not apportion the invoice charges across the two accounting periods.");
 
         var originalChargeTotal = await SumInvoiceChargeLinesAsync(invoice);
@@ -104,27 +104,15 @@ public partial class AccountingManager
         return true;
     }
 
-    private async Task<List<LedgerLine>> GetRentAccountMatchedChargeLinesAsync(Invoice invoice)
+    private async Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(Invoice invoice)
     {
-        // Cross-month invoices must split every charge that posts to the SAME income account as the
-        // rental line (e.g. a monthly pet fee on the furnished/unfurnished rent account) across both
-        // accounting periods, exactly like rent. The account is resolved from each line's cost code,
-        // the same way the journal entry assigns it, so the description/name is irrelevant and
-        // furnished vs unfurnished rent stay distinct. Rentals and maid service are excluded because
-        // they have their own dedicated apportionment.
+        // Cross-month invoices split every charge whose COST CODE is a rental-income code (code in the
+        // 4000-4999 range) across both accounting periods, exactly like rent. Everything else is a
+        // one-time fee that stays on the first period. Cost codes are used for this split directly;
+        // the AccountId is only resolved later when the journal entry is created. Rentals and maid
+        // service are excluded here because they have their own dedicated apportionment.
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-
-        var rentalAccountIds = new HashSet<int>();
-        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0 && RentalFeePeriodRegex.IsMatch(l.Description.Trim())))
-        {
-            costCodeById.TryGetValue(line.CostCodeId, out var rentalCostCode);
-            rentalAccountIds.Add(GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, rentalCostCode));
-        }
-
-        if (rentalAccountIds.Count == 0)
-            return new List<LedgerLine>();
 
         var matchedLines = new List<LedgerLine>();
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
@@ -139,12 +127,17 @@ public partial class AccountingManager
             if (IsPaymentLedgerLine(costCode))
                 continue;
 
-            var accountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, costCode);
-            if (rentalAccountIds.Contains(accountId))
+            if (costCode != null && IsRentalIncomeCostCode(costCode))
                 matchedLines.Add(line);
         }
 
         return matchedLines;
+    }
+
+    private static bool IsRentalIncomeCostCode(CostCode costCode)
+    {
+        var normalized = NormalizeAccountCode(costCode.Code);
+        return int.TryParse(normalized, out var number) && number is >= 4000 and < 5000;
     }
 
     private async Task<decimal> SumInvoiceChargeLinesAsync(Invoice invoice)
@@ -320,7 +313,7 @@ public partial class AccountingManager
         }
     }
 
-    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, IReadOnlyList<LedgerLine> rentAccountMatchedLines)
+    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, IReadOnlyList<LedgerLine> apportionableIncomeLines)
     {
         var referenceYear = originalInvoice.AccountingPeriod != default
             ? originalInvoice.AccountingPeriod.Year
@@ -351,7 +344,7 @@ public partial class AccountingManager
         var monthlyRecurringLines = crossingRentals
             .Cast<LedgerLine>()
             .Concat(GetApportionableNonDateSpecificFeeLines(originalInvoice, reservation))
-            .Concat(rentAccountMatchedLines)
+            .Concat(apportionableIncomeLines)
             .GroupBy(l => (l.CostCodeId, l.Description))
             .Select(g => g.First())
             .ToList();
@@ -541,7 +534,9 @@ public partial class AccountingManager
 
         foreach (var line in originalInvoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            if (line.Description is "Departure Fee" or "Security Deposit" or "Pet Fee")
+            // Security Deposit Waiver is a deposit-type charge, not rental income, so it stays on the
+            // first accounting period exactly like the Security Deposit instead of being apportioned.
+            if (line.Description is "Departure Fee" or "Security Deposit" or "Security Deposit Waiver" or "Pet Fee")
             {
                 yield return line;
                 continue;
@@ -561,12 +556,6 @@ public partial class AccountingManager
 
         foreach (var line in originalInvoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            if (line.Description == "Security Deposit Waiver")
-            {
-                yield return line;
-                continue;
-            }
-
             if (monthlyExtraDescriptions.Contains(line.Description))
                 yield return line;
         }

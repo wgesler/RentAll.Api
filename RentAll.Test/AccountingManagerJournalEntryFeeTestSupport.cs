@@ -85,14 +85,14 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         };
     }
 
-    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "4200")
+    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080")
         => new(reservation, petFeeAccountCode);
 
     internal static async Task<(Invoice Invoice, FeeJournalEntryTestContext Context)> BuildTrackedFeeInvoiceAsync(
         Reservation reservation,
         DateOnly periodStart,
         DateOnly periodEnd,
-        string petFeeAccountCode = "4200")
+        string petFeeAccountCode = "2080")
     {
         var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode);
         var manager = context.CreateManager();
@@ -110,7 +110,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private int _journalEntryCodeSequence;
 
-        internal FeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "4200")
+        internal FeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080")
         {
             _reservation = reservation;
             _petFeeAccountCode = petFeeAccountCode;
@@ -202,8 +202,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 ChargeCostCode(SecurityDepositCostCodeId, "2200", "Security Deposit", TransactionType.SecurityDeposit),
                 ChargeCostCode(PetFeeCostCodeId, _petFeeAccountCode, "Pet Fee"),
                 ChargeCostCode(MaidServiceCostCodeId, "4000", "Maid Service"),
-                ChargeCostCode(SdwCostCodeId, "4000", "Security Deposit Waiver", TransactionType.SecurityDepositWaiver),
-                ChargeCostCode(DepartureFeeCostCodeId, "4100", "Departure Fee"),
+                ChargeCostCode(SdwCostCodeId, "2067", "Security Deposit Waiver", TransactionType.SecurityDepositWaiver),
+                ChargeCostCode(DepartureFeeCostCodeId, "2075", "Departure Fee"),
                 ChargeCostCode(ExtraFeeCostCodeId, "4000", "Extra Fee"),
                 new()
                 {

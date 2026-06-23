@@ -176,7 +176,7 @@ public partial class AccountingManager
             return total;
 
         var recurringTotal = GetApportionableNonDateSpecificFeeLines(invoice, reservation)
-            .Concat(await GetRentAccountMatchedChargeLinesAsync(invoice))
+            .Concat(await GetApportionableIncomeChargeLinesAsync(invoice))
             .GroupBy(l => (l.CostCodeId, l.Description))
             .Select(g => g.First())
             .Sum(l => l.Amount);

@@ -352,15 +352,17 @@ public class CrossPeriodInvoiceJournalEntryTests
             .Where(l => l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
             .Sum(l => l.Debit);
 
-        Assert.Equal(3520m, firstMonthTotal);
-        Assert.Equal(6040m, secondMonthTotal);
+        Assert.Equal(3560m, firstMonthTotal);
+        Assert.Equal(6000m, secondMonthTotal);
 
         var firstMonthIncome = chargeEntries[0].JournalEntryLines
             .Where(l => l.Credit > 0)
             .ToDictionary(l => l.Memo!, l => l.Credit);
 
         Assert.Equal(3000m, firstMonthIncome["Rental Fee (06/21-06/30)"]);
-        Assert.Equal(20m, firstMonthIncome["Security Deposit Waiver"]);
+        // Security Deposit Waiver is a deposit-type charge, so the full amount stays on the first
+        // accounting period (like the Security Deposit) instead of being split across periods.
+        Assert.Equal(60m, firstMonthIncome["Security Deposit Waiver"]);
         Assert.Equal(500m, firstMonthIncome["Departure Fee"]);
 
         var secondMonthIncome = chargeEntries[1].JournalEntryLines
@@ -368,7 +370,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToDictionary(l => l.Memo!, l => l.Credit);
 
         Assert.Equal(6000m, secondMonthIncome["Rental Fee (07/01-07/20)"]);
-        Assert.Equal(40m, secondMonthIncome["Security Deposit Waiver"]);
+        Assert.DoesNotContain(secondMonthIncome, kvp => kvp.Key == "Security Deposit Waiver");
         Assert.DoesNotContain(secondMonthIncome, kvp => kvp.Key == "Departure Fee");
     }
 
