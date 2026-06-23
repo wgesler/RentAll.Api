@@ -33,7 +33,10 @@ public partial class AccountingManager
             + await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
 
         if (originalChargeTotal != splitChargeTotal)
-            return (null, $"Split charge total ({splitChargeTotal:0.00}) does not match the original invoice charge total ({originalChargeTotal:0.00}).");
+        {
+            var breakdown = await BuildCrossPeriodChargeBreakdownAsync(invoice, firstPeriodInvoice, secondPeriodInvoice);
+            return (null, $"Split charge total ({splitChargeTotal:0.00}) does not match the original invoice charge total ({originalChargeTotal:0.00}). {breakdown}");
+        }
 
         var firstSliceChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
         var secondSliceChargeTotal = await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
@@ -153,6 +156,41 @@ public partial class AccountingManager
                 return !IsPaymentLedgerLine(costCode);
             })
             .Sum(l => l.Amount);
+    }
+
+    private async Task<string> BuildCrossPeriodChargeBreakdownAsync(Invoice original, Invoice firstSlice, Invoice secondSlice)
+    {
+        // Diagnostic detail for split mismatches: dump every non-payment charge line (description, amount,
+        // cost code) for the original invoice and both regenerated period slices so the offending line is
+        // obvious. The Message column is VARCHAR(2500), so each section is capped to stay within bounds.
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(original.OrganizationId, original.OfficeId);
+        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+
+        string FormatSection(string label, Invoice invoice)
+        {
+            var parts = invoice.LedgerLines
+                .Where(l => l.Amount != 0)
+                .Where(l =>
+                {
+                    costCodeById.TryGetValue(l.CostCodeId, out var costCode);
+                    return !IsPaymentLedgerLine(costCode);
+                })
+                .Select(l =>
+                {
+                    costCodeById.TryGetValue(l.CostCodeId, out var costCode);
+                    var code = costCode?.Code ?? "?";
+                    return $"{l.Description}={l.Amount:0.00}[cc {code}]";
+                });
+
+            return $"{label}: {string.Join("; ", parts)}";
+        }
+
+        var message = string.Join(" || ",
+            FormatSection("ORIGINAL", original),
+            FormatSection($"P1 {firstSlice.AccountingPeriod:MM/yyyy}", firstSlice),
+            FormatSection($"P2 {secondSlice.AccountingPeriod:MM/yyyy}", secondSlice));
+
+        return message.Length > 2000 ? message[..2000] : message;
     }
 
     private async Task DeleteJournalEntriesForInvoiceChargesAsync(Invoice invoice)
