@@ -18,6 +18,9 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     internal const int ExtraFeeCostCodeId = 84;
     internal const int UndepositedFundsAccountId = 300;
     internal const int PrePaymentAccountId = 400;
+    internal const int DepartureIncomeAccountId = 410;
+    internal const int PetFeeIncomeAccountId = 420;
+    internal const int SecurityDepositLiabilityAccountId = 220;
 
     internal static Reservation CreateReservationWithFees(
         DateOnly arrival,
@@ -82,15 +85,16 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         };
     }
 
-    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation)
-        => new(reservation);
+    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "4200")
+        => new(reservation, petFeeAccountCode);
 
     internal static async Task<(Invoice Invoice, FeeJournalEntryTestContext Context)> BuildTrackedFeeInvoiceAsync(
         Reservation reservation,
         DateOnly periodStart,
-        DateOnly periodEnd)
+        DateOnly periodEnd,
+        string petFeeAccountCode = "4200")
     {
-        var context = CreateFeeJournalEntryTestContext(reservation);
+        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode);
         var manager = context.CreateManager();
         var ledgerLines = await GetInvoiceLedgerLinesAsync(manager, reservation, periodStart, periodEnd);
         var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(reservation, periodStart, periodEnd, ledgerLines);
@@ -101,13 +105,15 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     internal sealed class FeeJournalEntryTestContext
     {
         private readonly Reservation _reservation;
+        private readonly string _petFeeAccountCode;
         private readonly List<JournalEntry> _journalEntries = [];
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private int _journalEntryCodeSequence;
 
-        internal FeeJournalEntryTestContext(Reservation reservation)
+        internal FeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "4200")
         {
             _reservation = reservation;
+            _petFeeAccountCode = petFeeAccountCode;
         }
 
         internal IReadOnlyList<JournalEntry> CreatedJournalEntries => _journalEntries;
@@ -157,17 +163,47 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     AccountType = AccountType.OtherCurrentLiability,
                     Name = "Pre-Payment",
                     AccountNo = "2100"
+                },
+                new()
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = DepartureIncomeAccountId,
+                    AccountType = AccountType.Income,
+                    Name = "Departure Income",
+                    AccountNo = "4100"
+                },
+                new()
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = PetFeeIncomeAccountId,
+                    AccountType = AccountType.Income,
+                    Name = "Pet Income",
+                    AccountNo = "4200"
+                },
+                new()
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = SecurityDepositLiabilityAccountId,
+                    AccountType = AccountType.OtherCurrentLiability,
+                    Name = "Security Deposit",
+                    AccountNo = "2200"
                 }
             };
 
+            // One-time fees post to their own accounts; only charges sharing the rent/tenant-income
+            // account ("4000") are split across accounting periods. The pet fee account is configurable
+            // so a pet fee that posts to the rent account can be exercised.
             var costCodes = new List<CostCode>
             {
                 ChargeCostCode(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, "4000", "Rent"),
-                ChargeCostCode(SecurityDepositCostCodeId, "4000", "Security Deposit", TransactionType.SecurityDeposit),
-                ChargeCostCode(PetFeeCostCodeId, "4000", "Pet Fee"),
+                ChargeCostCode(SecurityDepositCostCodeId, "2200", "Security Deposit", TransactionType.SecurityDeposit),
+                ChargeCostCode(PetFeeCostCodeId, _petFeeAccountCode, "Pet Fee"),
                 ChargeCostCode(MaidServiceCostCodeId, "4000", "Maid Service"),
                 ChargeCostCode(SdwCostCodeId, "4000", "Security Deposit Waiver", TransactionType.SecurityDepositWaiver),
-                ChargeCostCode(DepartureFeeCostCodeId, "4000", "Departure Fee"),
+                ChargeCostCode(DepartureFeeCostCodeId, "4100", "Departure Fee"),
                 ChargeCostCode(ExtraFeeCostCodeId, "4000", "Extra Fee"),
                 new()
                 {

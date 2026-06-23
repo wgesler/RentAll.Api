@@ -13,26 +13,6 @@ public partial class AccountingManager
 
         EnsureReceiptIsCardReceipt(receipt);
 
-        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = receipt.OrganizationId,
-            OfficeIds = receipt.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Receipt,
-            SourceId = receipt.ReceiptId,
-            IncludeVoided = true,
-            IncludeUnposted = true
-        });
-
-        var existingEntry = existingEntries.FirstOrDefault(e => !e.IsVoided);
-        if (existingEntry != null)
-        {
-            if (existingEntry.IsPosted)
-                return existingEntry;
-
-            await ReplaceJournalEntriesFromReceiptAsync(receipt, currentUser);
-            return (await _journalEntryRepository.GetJournalEntryByIdAsync(existingEntry.JournalEntryId, receipt.OrganizationId))!;
-        }
-
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
         return await CreateReceiptJournalEntriesAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
     }

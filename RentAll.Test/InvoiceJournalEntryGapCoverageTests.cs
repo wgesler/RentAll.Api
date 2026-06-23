@@ -97,11 +97,23 @@ public class InvoiceJournalEntryGapCoverageTests
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
+        // Pre-payments produce three journal entries: the standard payment JE that keeps the cash in
+        // Undeposited Funds, the "received" JE that moves it into the Pre-Payment liability on the
+        // payment date, and the future-dated "apply" JE that reverses the liability on the accounting
+        // period date. The standard payment and received entries share the InvoicePayment source, so
+        // they are distinguished by the account they touch.
+        var standardPaymentEntry = Assert.Single(context.ActiveJournalEntries,
+            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.LedgerLineId
+                && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId));
         var receivedEntry = Assert.Single(context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment && entry.SourceId == payment.LedgerLineId);
+            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.LedgerLineId
+                && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId));
         var applyEntry = Assert.Single(context.ActiveJournalEntries,
             entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.SourceId == payment.LedgerLineId);
 
+        AssertBalancedJournalEntry(standardPaymentEntry);
         AssertBalancedJournalEntry(receivedEntry);
         AssertBalancedJournalEntry(applyEntry);
         Assert.Equal(new DateOnly(2026, 1, 25), receivedEntry.TransactionDate);

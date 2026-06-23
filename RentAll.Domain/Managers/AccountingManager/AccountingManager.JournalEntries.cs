@@ -49,13 +49,9 @@ public partial class AccountingManager
         if (existing == null)
             throw new Exception("Journal entry not found");
 
-        EnsureJournalEntryIsEditable(existing);
-
         journalEntry.JournalEntryCode = existing.JournalEntryCode;
         journalEntry.SourceTypeId = existing.SourceTypeId;
         journalEntry.SourceId = existing.SourceId;
-        journalEntry.IsPosted = existing.IsPosted;
-        journalEntry.IsVoided = existing.IsVoided;
         journalEntry.CreatedBy = existing.CreatedBy;
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
@@ -107,26 +103,6 @@ public partial class AccountingManager
         if (journalEntry == null)
             throw new Exception("Journal entry not found");
 
-        if (journalEntry.IsPosted)
-            throw new Exception("Posted journal entries cannot be deleted");
-
-        EnsureJournalEntryIsEditable(journalEntry);
-        await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
-    }
-
-    private async Task DeleteJournalEntryIgnoringPostedStatusAsync(Guid journalEntryId, Guid organizationId)
-    {
-        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
-        if (journalEntry == null)
-            throw new Exception("Journal entry not found");
-
-        if (journalEntry.IsPosted)
-        {
-            journalEntry.IsPosted = false;
-            await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
-        }
-
-        EnsureJournalEntryIsEditable(journalEntry);
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
     }
 
@@ -145,12 +121,6 @@ public partial class AccountingManager
         journalEntry.IsPosted = false;
         journalEntry.ModifiedBy = currentUser;
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
-    }
-
-    private static void EnsureJournalEntryIsEditable(JournalEntry journalEntry)
-    {
-        if (journalEntry.IsVoided)
-            throw new Exception("Voided journal entries cannot be changed");
     }
 
     private static bool HasActiveJournalEntryLines(JournalEntry journalEntry)

@@ -116,7 +116,6 @@ public partial class AccountingManager
         }))
             .Where(line =>
                 lineIdSet.Contains(line.JournalEntryLineId)
-                && !line.IsVoided
                 && line.ChartOfAccountId == undepositedFundsAccountId)
             .ToList();
 

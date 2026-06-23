@@ -165,6 +165,11 @@ namespace RentAll.Api.Controllers
                 var response = new InvoiceResponseDto(updatedInvoice);
                 return Ok(response);
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Error updating invoice general ledger entries: {InvoiceId}", dto.InvoiceId);
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating invoice: {InvoiceId}", dto.InvoiceId);

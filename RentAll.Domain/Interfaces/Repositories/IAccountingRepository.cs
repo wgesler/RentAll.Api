@@ -52,6 +52,10 @@ public interface IAccountingRepository
     Task DeleteChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
     #endregion
 
+    #region AccountingErrors
+    Task LogAccountingErrorAsync(AccountingError error);
+    #endregion
+
     #region CheckHtml
     Task<CheckHtml?> GetCheckHtmlByScopeAsync(Guid organizationId, int? officeId);
     Task<CheckHtml?> GetCheckHtmlByIdAsync(Guid checkHtmlId);

@@ -108,10 +108,7 @@ public partial class AccountingManager
             SourceId = workOrder.WorkOrderId,
             IncludeVoided = true,
             IncludeUnposted = true
-        })).Where(e => !e.IsVoided).ToList();
-
-        foreach (var entry in existingEntries.Where(e => e.IsPosted))
-            throw new Exception($"Cannot refresh journal entries because {entry.JournalEntryCode} is posted");
+        })).ToList();
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(workOrder.OrganizationId, workOrder.OfficeId);
         var rebuiltJournalEntry = await BuildJournalEntryFromWorkOrderAsync(workOrder, chartOfAccounts, accountingOffice, currentUser);
@@ -171,10 +168,7 @@ public partial class AccountingManager
             SourceId = receipt.ReceiptId,
             IncludeVoided = true,
             IncludeUnposted = true
-        })).Where(e => !e.IsVoided).ToList();
-
-        foreach (var entry in existingEntries.Where(e => e.IsPosted))
-            throw new Exception($"Cannot refresh journal entries because {entry.JournalEntryCode} is posted");
+        })).ToList();
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
         var bankCard = await ResolveReceiptBankCardAsync(receipt, accountingOffice);
@@ -291,13 +285,8 @@ public partial class AccountingManager
             IncludeUnposted = true
         })).ToList();
 
-        foreach (var entry in entries.Where(e => !e.IsVoided))
-        {
-            if (entry.IsPosted)
-                throw new Exception($"Cannot refresh journal entries because {entry.JournalEntryCode} is posted");
-
+        foreach (var entry in entries)
             await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
-        }
     }
 
     private async Task<int?> DeleteBillPaymentJournalEntriesAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
@@ -315,13 +304,9 @@ public partial class AccountingManager
 
         int? paymentOffsetAccountId = null;
 
-        foreach (var entry in existingEntries.Where(e => !e.IsVoided && e.SourceId == bill.ReceiptId))
+        foreach (var entry in existingEntries.Where(e => e.SourceId == bill.ReceiptId))
         {
             paymentOffsetAccountId ??= ResolveBillPaymentOffsetAccountId(entry, liabilityAccountId);
-
-            if (entry.IsPosted)
-                throw new Exception($"Cannot refresh journal entries because {entry.JournalEntryCode} is posted");
-
             await DeleteJournalEntryAsync(entry.JournalEntryId, bill.OrganizationId);
         }
 

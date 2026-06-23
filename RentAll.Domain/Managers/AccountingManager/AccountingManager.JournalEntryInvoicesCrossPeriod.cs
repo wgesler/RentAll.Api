@@ -9,50 +9,45 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Cross-Period Invoice Journal Entries
-    private async Task<JournalEntry?> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
+    private async Task<(JournalEntry? Entry, string? Error)> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
-            return null;
-
-        var existingFirst = await GetNonVoidedJournalEntryAsync(invoice, invoice.InvoiceId, firstPeriodInvoice.AccountingPeriod);
-        var existingSecond = await GetNonVoidedJournalEntryAsync(invoice, invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
-        if (existingFirst != null && existingSecond != null)
-            return existingFirst;
+            return (null, "Could not resolve the two accounting-period date ranges from the invoice period.");
 
         var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId!.Value, invoice.OrganizationId);
         if (reservation == null)
-            return null;
+            return (null, $"Reservation {invoice.ReservationId} was not found; cannot regenerate cross-period ledger lines.");
 
         if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(firstPeriodInvoice, reservation))
-            return null;
+            return (null, $"Could not regenerate ledger lines for the first accounting period ({firstPeriodInvoice.AccountingPeriod:MM/yyyy}).");
 
         if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(secondPeriodInvoice, reservation))
-            return null;
+            return (null, $"Could not regenerate ledger lines for the second accounting period ({secondPeriodInvoice.AccountingPeriod:MM/yyyy}).");
 
-        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation))
-            return null;
+        var rentAccountMatchedLines = await GetRentAccountMatchedChargeLinesAsync(invoice);
+        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, rentAccountMatchedLines))
+            return (null, "Could not apportion the invoice charges across the two accounting periods.");
 
         var originalChargeTotal = await SumInvoiceChargeLinesAsync(invoice);
         var splitChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice)
             + await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
 
         if (originalChargeTotal != splitChargeTotal)
-            return null;
+            return (null, $"Split charge total ({splitChargeTotal:0.00}) does not match the original invoice charge total ({originalChargeTotal:0.00}).");
 
         var firstSliceChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
         var secondSliceChargeTotal = await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
         if (firstSliceChargeTotal == 0 || secondSliceChargeTotal == 0)
-            return null;
+            return (null, "One accounting-period slice has a zero charge total; refusing to split the invoice.");
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
 
-        var firstEntry = existingFirst
-            ?? await CreateCrossPeriodSliceJournalEntryAsync(
-                firstPeriodInvoice,
-                invoice.InvoiceId,
-                chartOfAccounts,
-                accountingOffice,
-                currentUser);
+        var firstEntry = await CreateCrossPeriodSliceJournalEntryAsync(
+            firstPeriodInvoice,
+            invoice.InvoiceId,
+            chartOfAccounts,
+            accountingOffice,
+            currentUser);
 
         await CreateCrossPeriodSliceJournalEntryAsync(
             secondPeriodInvoice,
@@ -68,45 +63,24 @@ public partial class AccountingManager
 
         if (invoice.LedgerLines.Any(l => l.Amount != 0 && IsCrossMonthRentalLine(l, referenceYear)))
         {
-            if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out var firstRentalAmount))
-                await CreateJournalEntryFromInvoiceOwnerShareAsync(firstPeriodInvoice, firstRentalAmount, currentUser);
+            if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out _))
+            {
+                var firstOwnerBase = await GetOwnerPercentageBaseAsync(firstPeriodInvoice);
+                await CreateJournalEntryFromInvoiceOwnerShareAsync(firstPeriodInvoice, firstOwnerBase, currentUser);
+            }
 
-            if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out var secondRentalAmount))
-                await CreateJournalEntryFromInvoiceOwnerShareAsync(secondPeriodInvoice, secondRentalAmount, currentUser);
+            if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out _))
+            {
+                var secondOwnerBase = await GetOwnerPercentageBaseAsync(secondPeriodInvoice);
+                await CreateJournalEntryFromInvoiceOwnerShareAsync(secondPeriodInvoice, secondOwnerBase, currentUser);
+            }
         }
 
-        return firstEntry;
+        return (firstEntry, null);
     }
-
-    private async Task<JournalEntry?> GetNonVoidedJournalEntryAsync(Invoice invoice, Guid sourceId, DateOnly? postingDate = null)
-    {
-        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = invoice.OrganizationId,
-            OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            SourceId = sourceId,
-            IncludeVoided = true,
-            IncludeUnposted = true
-        });
-
-        return existingEntries
-            .Where(e => !e.IsVoided)
-            .Where(e => !IsInvoiceOwnerShareJournalEntry(e))
-            .Where(e => !postingDate.HasValue || e.PostingDate == postingDate.Value)
-            .OrderBy(e => e.PostingDate)
-            .FirstOrDefault();
-    }
-
-    private static bool IsInvoiceOwnerShareJournalEntry(JournalEntry entry)
-        => entry.Memo != null && entry.Memo.StartsWith("Owner Share", StringComparison.OrdinalIgnoreCase);
 
     private async Task<JournalEntry?> CreateCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser, string? memoSuffix = null)
     {
-        var existingEntry = await GetNonVoidedJournalEntryAsync(sliceInvoice, sourceId, sliceInvoice.AccountingPeriod);
-        if (existingEntry != null)
-            return existingEntry;
-
         var journalEntry = await BuildJournalEntryFromInvoiceAsync(
             sliceInvoice,
             chartOfAccounts,
@@ -128,6 +102,49 @@ public partial class AccountingManager
         sliceInvoice.LedgerLines = ledgerLines;
         sliceInvoice.TotalAmount = ledgerLines.Sum(l => l.Amount);
         return true;
+    }
+
+    private async Task<List<LedgerLine>> GetRentAccountMatchedChargeLinesAsync(Invoice invoice)
+    {
+        // Cross-month invoices must split every charge that posts to the SAME income account as the
+        // rental line (e.g. a monthly pet fee on the furnished/unfurnished rent account) across both
+        // accounting periods, exactly like rent. The account is resolved from each line's cost code,
+        // the same way the journal entry assigns it, so the description/name is irrelevant and
+        // furnished vs unfurnished rent stay distinct. Rentals and maid service are excluded because
+        // they have their own dedicated apportionment.
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+
+        var rentalAccountIds = new HashSet<int>();
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0 && RentalFeePeriodRegex.IsMatch(l.Description.Trim())))
+        {
+            costCodeById.TryGetValue(line.CostCodeId, out var rentalCostCode);
+            rentalAccountIds.Add(GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, rentalCostCode));
+        }
+
+        if (rentalAccountIds.Count == 0)
+            return new List<LedgerLine>();
+
+        var matchedLines = new List<LedgerLine>();
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (RentalFeePeriodRegex.IsMatch(line.Description.Trim()))
+                continue;
+
+            if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
+                continue;
+
+            costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+            if (IsPaymentLedgerLine(costCode))
+                continue;
+
+            var accountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, costCode);
+            if (rentalAccountIds.Contains(accountId))
+                matchedLines.Add(line);
+        }
+
+        return matchedLines;
     }
 
     private async Task<decimal> SumInvoiceChargeLinesAsync(Invoice invoice)
@@ -303,7 +320,7 @@ public partial class AccountingManager
         }
     }
 
-    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation)
+    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, IReadOnlyList<LedgerLine> rentAccountMatchedLines)
     {
         var referenceYear = originalInvoice.AccountingPeriod != default
             ? originalInvoice.AccountingPeriod.Year
@@ -334,7 +351,14 @@ public partial class AccountingManager
         var monthlyRecurringLines = crossingRentals
             .Cast<LedgerLine>()
             .Concat(GetApportionableNonDateSpecificFeeLines(originalInvoice, reservation))
+            .Concat(rentAccountMatchedLines)
+            .GroupBy(l => (l.CostCodeId, l.Description))
+            .Select(g => g.First())
             .ToList();
+
+        var pooledLineKeys = monthlyRecurringLines
+            .Select(l => (l.CostCodeId, l.Description))
+            .ToHashSet();
 
         foreach (var feeLine in monthlyRecurringLines)
         {
@@ -344,6 +368,9 @@ public partial class AccountingManager
 
         foreach (var oneTimeLine in GetOneTimeFeeLines(originalInvoice, reservation))
         {
+            if (pooledLineKeys.Contains((oneTimeLine.CostCodeId, oneTimeLine.Description)))
+                continue;
+
             RemoveMatchingFeeLine(firstSlice, oneTimeLine);
             RemoveMatchingFeeLine(secondSlice, oneTimeLine);
         }
@@ -366,7 +393,12 @@ public partial class AccountingManager
             secondPeriodStart);
 
         foreach (var oneTimeLine in GetOneTimeFeeLines(originalInvoice, reservation))
+        {
+            if (pooledLineKeys.Contains((oneTimeLine.CostCodeId, oneTimeLine.Description)))
+                continue;
+
             firstSlice.LedgerLines.Add(CreateApportionedFeeLine(oneTimeLine, oneTimeLine.Amount));
+        }
 
         if (!TryApplyMaidServiceToCrossPeriodSlices(
                 originalInvoice,
@@ -401,7 +433,7 @@ public partial class AccountingManager
             {
                 firstAmount = totalMonthlyRecurring == 0
                     ? 0
-                    : firstMonthPool * line.Amount / totalMonthlyRecurring;
+                    : Math.Round(firstMonthPool * line.Amount / totalMonthlyRecurring, 2, MidpointRounding.AwayFromZero);
                 secondAmount = line.Amount - firstAmount;
                 distributedFirst += firstAmount;
             }
@@ -584,7 +616,7 @@ public partial class AccountingManager
             return false;
 
         var dailyRate = originalAmount / totalDays;
-        firstAmount = dailyRate * firstDays;
+        firstAmount = Math.Round(dailyRate * firstDays, 2, MidpointRounding.AwayFromZero);
         secondAmount = originalAmount - firstAmount;
         return true;
     }

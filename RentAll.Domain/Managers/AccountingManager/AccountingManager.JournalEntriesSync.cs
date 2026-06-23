@@ -82,7 +82,6 @@ public partial class AccountingManager
         return await ClearJournalEntriesBySourceTypesAsync(
             organizationId,
             officeIds,
-            deletePostedEntries: true,
             (int)SourceType.Invoice,
             (int)SourceType.InvoicePayment);
     }
@@ -155,7 +154,6 @@ public partial class AccountingManager
         return await ClearJournalEntriesBySourceTypesAsync(
             organizationId,
             officeIds,
-            deletePostedEntries: false,
             (int)SourceType.Bill,
             (int)SourceType.BillPayment);
     }
@@ -210,7 +208,6 @@ public partial class AccountingManager
         return await ClearJournalEntriesBySourceTypesAsync(
             organizationId,
             officeIds,
-            deletePostedEntries: false,
             (int)SourceType.Receipt);
     }
 
@@ -261,7 +258,7 @@ public partial class AccountingManager
             result);
     }
 
-    private async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(Guid organizationId, string officeIds, bool deletePostedEntries, params int[] sourceTypeIds)
+    private async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(Guid organizationId, string officeIds, params int[] sourceTypeIds)
     {
         var result = new JournalEntrySyncResult();
 
@@ -280,17 +277,7 @@ public partial class AccountingManager
             {
                 try
                 {
-                    if (entry.IsPosted && !deletePostedEntries)
-                    {
-                        result.Errors.Add($"Cannot delete posted journal entry {entry.JournalEntryCode}");
-                        continue;
-                    }
-
-                    if (deletePostedEntries && entry.IsPosted)
-                        await DeleteJournalEntryIgnoringPostedStatusAsync(entry.JournalEntryId, organizationId);
-                    else
-                        await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
-
+                    await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
                     result.JournalEntriesDeleted++;
                 }
                 catch (Exception ex)
@@ -308,16 +295,17 @@ public partial class AccountingManager
     private async Task TrackJournalEntryCreateAsync(Func<Task<JournalEntry?>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
     {
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(existingCriteria);
-        var hadExisting = existingEntries.Any(e => !e.IsVoided);
+        if (existingEntries.Any())
+        {
+            result.JournalEntriesSkipped++;
+            return;
+        }
 
         var created = await createJournalEntry();
         if (created == null)
             return;
 
-        if (hadExisting)
-            result.JournalEntriesSkipped++;
-        else
-            result.JournalEntriesCreated++;
+        result.JournalEntriesCreated++;
     }
 
     private static int ResolveDefaultPaymentCostCodeId(List<CostCode> costCodes)
