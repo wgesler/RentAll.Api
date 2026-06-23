@@ -175,8 +175,8 @@ public partial class AccountingManager
         if (reservation == null)
             return total;
 
-        var recurringTotal = GetApportionableNonDateSpecificFeeLines(invoice, reservation)
-            .Concat(await GetApportionableIncomeChargeLinesAsync(invoice))
+        var recurringTotal = (await GetApportionableIncomeChargeLinesAsync(invoice, reservation))
+            .Concat(GetSplitPoolExtraFeeLines(invoice, reservation))
             .GroupBy(l => (l.CostCodeId, l.Description))
             .Select(g => g.First())
             .Sum(l => l.Amount);

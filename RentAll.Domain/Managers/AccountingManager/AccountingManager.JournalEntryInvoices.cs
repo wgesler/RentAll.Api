@@ -17,9 +17,15 @@ public partial class AccountingManager
             if (crossPeriodEntry != null)
                 return crossPeriodEntry;
 
-            var message = $"Invoice {invoice.InvoiceCode} spans two accounting periods but the split failed: {crossPeriodError}";
-            await LogInvoiceAccountingErrorAsync(invoice, message, currentUser);
-            throw new Exception(message);
+            // (null, error) => the split genuinely failed; log and abort. (null, null) => the invoice does
+            // not actually span two periods (all charges land in one), so fall through to the standard
+            // single journal entry path below.
+            if (crossPeriodError != null)
+            {
+                var message = $"Invoice {invoice.InvoiceCode} spans two accounting periods but the split failed: {crossPeriodError}";
+                await LogInvoiceAccountingErrorAsync(invoice, message, currentUser);
+                throw new Exception(message);
+            }
         }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);

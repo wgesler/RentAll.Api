@@ -24,7 +24,10 @@ public partial class AccountingManager
         if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(secondPeriodInvoice, reservation))
             return (null, $"Could not regenerate ledger lines for the second accounting period ({secondPeriodInvoice.AccountingPeriod:MM/yyyy}).");
 
-        var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice);
+        if (TryGetNaFrequencyExtraFee(invoice, reservation, out var naFeeDescription))
+            return (null, $"Extra fee '{naFeeDescription}' has an unsupported (NA) frequency; cannot determine how to split it across accounting periods.");
+
+        var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation);
         if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, apportionableIncomeLines))
             return (null, "Could not apportion the invoice charges across the two accounting periods.");
 
@@ -41,7 +44,12 @@ public partial class AccountingManager
         var firstSliceChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
         var secondSliceChargeTotal = await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
         if (firstSliceChargeTotal == 0 || secondSliceChargeTotal == 0)
-            return (null, "One accounting-period slice has a zero charge total; refusing to split the invoice.");
+        {
+            // Every charge actually falls in a single accounting period (e.g. a nightly rental whose
+            // checkout day is the 1st of the next month has 0 billable nights in that month). This is not
+            // a real cross-period invoice; signal the caller to post it as one standard journal entry.
+            return (null, null);
+        }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
 
@@ -107,13 +115,82 @@ public partial class AccountingManager
         return true;
     }
 
-    private async Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(Invoice invoice)
+    private static Dictionary<string, FrequencyType> BuildExtraFeeFrequencyByDescription(Reservation reservation)
     {
-        // Cross-month invoices split every charge whose COST CODE is a rental-income code (code in the
-        // 4000-4999 range) across both accounting periods, exactly like rent. Everything else is a
-        // one-time fee that stays on the first period. Cost codes are used for this split directly;
-        // the AccountId is only resolved later when the journal entry is created. Rentals and maid
-        // service are excluded here because they have their own dedicated apportionment.
+        // Extra fees are matched to invoice ledger lines by description (the cost code on the reservation
+        // can drift away from what the invoice recorded, so it is not a reliable key). The ExtraFeeLine's
+        // frequency is the authoritative signal for how the charge splits across accounting periods.
+        var map = new Dictionary<string, FrequencyType>(StringComparer.Ordinal);
+        foreach (var fee in reservation.ExtraFeeLines)
+            map[fee.FeeDescription] = fee.FeeFrequency;
+        return map;
+    }
+
+    private static IEnumerable<LedgerLine> GetSplitPoolExtraFeeLines(Invoice invoice, Reservation reservation)
+    {
+        // Daily and Monthly extra fees follow the tenant's days in each accounting period, exactly like
+        // rent: Daily prorates naturally by day, Monthly splits by the day ratio. They join the rent
+        // apportionment pool.
+        var frequencyByDescription = BuildExtraFeeFrequencyByDescription(reservation);
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (frequencyByDescription.TryGetValue(line.Description, out var frequency)
+                && frequency is FrequencyType.Daily or FrequencyType.Monthly)
+            {
+                yield return line;
+            }
+        }
+    }
+
+    private static IEnumerable<LedgerLine> GetOccurrenceExtraFeeLines(Invoice invoice, Reservation reservation)
+    {
+        // Weekly (and rarer EOW/Quarterly/BiAnnually/Annually) extra fees are billed in the month each
+        // occurrence falls, exactly like maid service.
+        var frequencyByDescription = BuildExtraFeeFrequencyByDescription(reservation);
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (frequencyByDescription.TryGetValue(line.Description, out var frequency)
+                && IsOccurrenceFrequency(frequency))
+            {
+                yield return line;
+            }
+        }
+    }
+
+    private static bool IsOccurrenceFrequency(FrequencyType frequency)
+        => frequency is FrequencyType.Weekly
+            or FrequencyType.EOW
+            or FrequencyType.Quarterly
+            or FrequencyType.BiAnnually
+            or FrequencyType.Annually;
+
+    private static bool TryGetNaFrequencyExtraFee(Invoice invoice, Reservation reservation, out string description)
+    {
+        var frequencyByDescription = BuildExtraFeeFrequencyByDescription(reservation);
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (frequencyByDescription.TryGetValue(line.Description, out var frequency)
+                && frequency == FrequencyType.NA)
+            {
+                description = line.Description;
+                return true;
+            }
+        }
+
+        description = string.Empty;
+        return false;
+    }
+
+    private async Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(Invoice invoice, Reservation reservation)
+    {
+        // Charges that are NOT extra-fee lines are still classified by COST CODE: anything on a rental-income
+        // code (4000-4999) splits across both accounting periods like rent, everything else is a one-time
+        // up-front charge. Extra-fee lines are excluded here because they are now routed by their frequency
+        // instead. Rentals, maid service, and payments have their own dedicated handling.
+        var extraFeeDescriptions = reservation.ExtraFeeLines
+            .Select(f => f.FeeDescription)
+            .ToHashSet(StringComparer.Ordinal);
+
         var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
 
@@ -124,6 +201,9 @@ public partial class AccountingManager
                 continue;
 
             if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
+                continue;
+
+            if (extraFeeDescriptions.Contains(line.Description))
                 continue;
 
             costCodeById.TryGetValue(line.CostCodeId, out var costCode);
@@ -376,61 +456,51 @@ public partial class AccountingManager
         var firstPeriodEnd = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
         var secondPeriodStart = rentalStart > secondMonthStart ? rentalStart : secondMonthStart;
 
-        RemoveGeneratedRentalFeeLines(firstSlice);
-        RemoveGeneratedRentalFeeLines(secondSlice);
+        // Rebuild both accounting-period slices purely from the ORIGINAL invoice's charge lines. This
+        // deliberately discards the reservation-regenerated seed so a slice can never carry a charge the
+        // invoice did not actually have (e.g. a maid line that was never billed, or a fee whose cost code
+        // drifted on the reservation). Every charge is re-added in apportioned form, so the two slices
+        // always sum back to the original invoice.
+        firstSlice.LedgerLines.Clear();
+        secondSlice.LedgerLines.Clear();
 
-        var monthlyRecurringLines = crossingRentals
+        // Day-ratio pool (splits with the tenant's days, like rent): the crossing rental, every non-extra
+        // charge on a rental-income cost code (4000-4999), and Daily/Monthly extra fees.
+        var pooledLines = crossingRentals
             .Cast<LedgerLine>()
-            .Concat(GetApportionableNonDateSpecificFeeLines(originalInvoice, reservation))
             .Concat(apportionableIncomeLines)
+            .Concat(GetSplitPoolExtraFeeLines(originalInvoice, reservation))
             .GroupBy(l => (l.CostCodeId, l.Description))
             .Select(g => g.First())
             .ToList();
 
-        var pooledLineKeys = monthlyRecurringLines
-            .Select(l => (l.CostCodeId, l.Description))
-            .ToHashSet();
-
-        foreach (var feeLine in monthlyRecurringLines)
-        {
-            RemoveMatchingFeeLine(firstSlice, feeLine);
-            RemoveMatchingFeeLine(secondSlice, feeLine);
-        }
-
-        foreach (var oneTimeLine in GetOneTimeFeeLines(originalInvoice, reservation))
-        {
-            if (pooledLineKeys.Contains((oneTimeLine.CostCodeId, oneTimeLine.Description)))
-                continue;
-
-            RemoveMatchingFeeLine(firstSlice, oneTimeLine);
-            RemoveMatchingFeeLine(secondSlice, oneTimeLine);
-        }
-
-        var totalMonthlyRecurring = monthlyRecurringLines.Sum(l => l.Amount);
-        if (!TryApportionAmountByDayRatio(totalMonthlyRecurring, firstDays, totalDays, out var firstMonthPool, out var secondMonthPool))
+        var totalPool = pooledLines.Sum(l => l.Amount);
+        if (!TryApportionAmountByDayRatio(totalPool, firstDays, totalDays, out var firstPool, out var secondPool))
             return false;
 
         ApplyPooledMonthlyRecurringApportionment(
             firstSlice,
             secondSlice,
-            monthlyRecurringLines,
-            firstMonthPool,
-            secondMonthPool,
-            totalMonthlyRecurring,
+            pooledLines,
+            firstPool,
+            secondPool,
+            totalPool,
             referenceYear,
             rentalStart,
             rentalEnd,
             firstPeriodEnd,
             secondPeriodStart);
 
+        // One-time / up-front charges (deposits, departure, pet, and OneTime extra fees) stay entirely on
+        // the first accounting period.
         foreach (var oneTimeLine in GetOneTimeFeeLines(originalInvoice, reservation))
-        {
-            if (pooledLineKeys.Contains((oneTimeLine.CostCodeId, oneTimeLine.Description)))
-                continue;
-
             firstSlice.LedgerLines.Add(CreateApportionedFeeLine(oneTimeLine, oneTimeLine.Amount));
-        }
 
+        // Occurrence-based extra fees (weekly, EOW, quarterly, ...) bill in the month each occurrence falls.
+        if (!TryApplyOccurrenceExtraFeesToCrossPeriodSlices(originalInvoice, firstSlice, secondSlice, reservation))
+            return false;
+
+        // Maid service bills per visit in the month each visit occurs.
         if (!TryApplyMaidServiceToCrossPeriodSlices(
                 originalInvoice,
                 firstSlice,
@@ -480,6 +550,61 @@ public partial class AccountingManager
                 secondSlice.LedgerLines.Add(CreateApportionedFeeLine(line, secondAmount));
             }
         }
+    }
+
+    private static bool TryApplyOccurrenceExtraFeesToCrossPeriodSlices(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation)
+    {
+        var occurrenceLines = GetOccurrenceExtraFeeLines(originalInvoice, reservation).ToList();
+        if (occurrenceLines.Count == 0)
+            return true;
+
+        if (!TryParseInvoicePeriod(originalInvoice.InvoicePeriod, out var periodStart, out var periodEnd))
+            return false;
+
+        if (!TryParseInvoicePeriod(firstSlice.InvoicePeriod, out var slice1Start, out var slice1End))
+            return false;
+
+        if (!TryParseInvoicePeriod(secondSlice.InvoicePeriod, out var slice2Start, out var slice2End))
+            return false;
+
+        var frequencyByDescription = BuildExtraFeeFrequencyByDescription(reservation);
+
+        foreach (var line in occurrenceLines)
+        {
+            if (!frequencyByDescription.TryGetValue(line.Description, out var frequency))
+                return false;
+
+            // Occurrences are anchored at the invoice period start, matching how the original line was
+            // billed, then assigned to whichever accounting period each occurrence date falls in.
+            var occurrences = GetScheduledOccurrenceDates(periodStart, periodStart, periodEnd, frequency);
+            var totalOccurrences = occurrences.Count;
+            if (totalOccurrences == 0)
+                return false;
+
+            var firstCount = occurrences.Count(d => d >= slice1Start && d <= slice1End);
+            var secondCount = occurrences.Count(d => d >= slice2Start && d <= slice2End);
+            if (firstCount + secondCount != totalOccurrences)
+                return false;
+
+            if (secondCount == 0)
+            {
+                firstSlice.LedgerLines.Add(CreateApportionedFeeLine(line, line.Amount));
+            }
+            else if (firstCount == 0)
+            {
+                secondSlice.LedgerLines.Add(CreateApportionedFeeLine(line, line.Amount));
+            }
+            else
+            {
+                var perOccurrence = line.Amount / totalOccurrences;
+                var firstAmount = Math.Round(perOccurrence * firstCount, 2, MidpointRounding.AwayFromZero);
+                var secondAmount = line.Amount - firstAmount;
+                firstSlice.LedgerLines.Add(CreateApportionedFeeLine(line, firstAmount));
+                secondSlice.LedgerLines.Add(CreateApportionedFeeLine(line, secondAmount));
+            }
+        }
+
+        return true;
     }
 
     private static bool TryApplyMaidServiceToCrossPeriodSlices(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, DateOnly rentalStart, DateOnly rentalEnd)
@@ -581,20 +706,6 @@ public partial class AccountingManager
             }
 
             if (oneTimeExtraDescriptions.Contains(line.Description))
-                yield return line;
-        }
-    }
-
-    private static IEnumerable<LedgerLine> GetApportionableNonDateSpecificFeeLines(Invoice originalInvoice, Reservation reservation)
-    {
-        var monthlyExtraDescriptions = reservation.ExtraFeeLines
-            .Where(f => f.FeeFrequency == FrequencyType.Monthly)
-            .Select(f => f.FeeDescription)
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (var line in originalInvoice.LedgerLines.Where(l => l.Amount != 0))
-        {
-            if (monthlyExtraDescriptions.Contains(line.Description))
                 yield return line;
         }
     }
