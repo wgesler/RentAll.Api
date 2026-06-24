@@ -253,7 +253,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 EndDate = e.EndDate,
                 Deposit = e.Deposit,
                 OneTime = e.OneTime,
-                Monthly = e.Monthly
+                Monthly = e.Monthly,
+                Daily = e.Daily,
+                ChartOfAccountId = e.ChartOfAccountId
             };
         }
 

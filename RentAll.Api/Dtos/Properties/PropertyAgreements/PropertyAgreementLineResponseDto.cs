@@ -11,6 +11,7 @@ public class PropertyAgreementLineResponseDto
     public decimal OneTime { get; set; }
     public decimal Monthly { get; set; }
     public decimal Daily { get; set; }
+    public int? ChartOfAccountId { get; set; }
 
     public PropertyAgreementLineResponseDto(AgreementLine model)
     {
@@ -23,5 +24,6 @@ public class PropertyAgreementLineResponseDto
         OneTime = model.OneTime;
         Monthly = model.Monthly;
         Daily = model.Daily;
+        ChartOfAccountId = model.ChartOfAccountId;
     }
 }

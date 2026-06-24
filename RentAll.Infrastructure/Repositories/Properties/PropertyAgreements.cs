@@ -74,7 +74,8 @@ public partial class PropertyRepository
                         Deposit = line.Deposit,
                         OneTime = line.OneTime,
                         Monthly = line.Monthly,
-                        Daily = line.Daily
+                        Daily = line.Daily,
+                        ChartOfAccountId = line.ChartOfAccountId
                     }, transaction: transaction);
                 }
             }
@@ -160,7 +161,8 @@ public partial class PropertyRepository
                         Deposit = line.Deposit,
                         OneTime = line.OneTime,
                         Monthly = line.Monthly,
-                        Daily = line.Daily
+                        Daily = line.Daily,
+                        ChartOfAccountId = line.ChartOfAccountId
                     }, transaction: transaction);
                 }
                 else if (currentLineIds.Contains(line.AgreementLineId))
@@ -175,7 +177,8 @@ public partial class PropertyRepository
                         Deposit = line.Deposit,
                         OneTime = line.OneTime,
                         Monthly = line.Monthly,
-                        Daily = line.Daily
+                        Daily = line.Daily,
+                        ChartOfAccountId = line.ChartOfAccountId
                     }, transaction: transaction);
                 }
             }
@@ -243,7 +246,8 @@ public partial class PropertyRepository
             Deposit = line.Deposit,
             OneTime = line.OneTime,
             Monthly = line.Monthly,
-            Daily = line.Daily
+            Daily = line.Daily,
+            ChartOfAccountId = line.ChartOfAccountId
         }).ToList();
     }
 }

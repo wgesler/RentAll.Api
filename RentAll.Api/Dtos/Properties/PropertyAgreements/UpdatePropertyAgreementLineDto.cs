@@ -10,6 +10,7 @@ public class UpdatePropertyAgreementLineDto
     public decimal? OneTime { get; set; }
     public decimal? Monthly { get; set; }
     public decimal? Daily { get; set; }
+    public int? ChartOfAccountId { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -52,7 +53,8 @@ public class UpdatePropertyAgreementLineDto
             Deposit = Deposit!.Value,
             OneTime = OneTime!.Value,
             Monthly = Monthly!.Value,
-            Daily = Daily!.Value
+            Daily = Daily!.Value,
+            ChartOfAccountId = ChartOfAccountId
         };
     }
 }

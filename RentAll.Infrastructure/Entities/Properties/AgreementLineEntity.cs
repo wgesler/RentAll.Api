@@ -11,4 +11,5 @@ public class AgreementLineEntity
     public decimal OneTime { get; set; }
     public decimal Monthly { get; set; }
     public decimal Daily { get; set; }
+    public int? ChartOfAccountId { get; set; }
 }
