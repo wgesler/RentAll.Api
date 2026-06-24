@@ -142,15 +142,6 @@ internal static class AccountingManagerJournalEntryTestSupport
 
     internal static bool InvoiceCrossesAccountingPeriod(Invoice invoice)
     {
-        if (string.IsNullOrWhiteSpace(invoice.InvoicePeriod))
-            return false;
-
-        var periodParts = invoice.InvoicePeriod.Split('-', StringSplitOptions.TrimEntries);
-        var periodStart = DateOnly.Parse(periodParts[0]);
-        var periodEnd = DateOnly.Parse(periodParts[1]);
-        if (periodStart.Year != periodEnd.Year || periodStart.Month != periodEnd.Month)
-            return true;
-
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
         {
             var match = RentalFeePeriodRegex.Match(line.Description.Trim());
@@ -172,6 +163,7 @@ internal static class AccountingManagerJournalEntryTestSupport
             (false, 1) => JournalEntryInvoicePath.StandardSingleJe,
             (true, 2) => JournalEntryInvoicePath.CrossPeriodSplit,
             (true, 1) => JournalEntryInvoicePath.CrossPeriodFallback,
+            (false, 2) => JournalEntryInvoicePath.CrossPeriodSplit,
             _ => throw new InvalidOperationException(
                 $"Unexpected journal entry path: crosses={crosses}, journalEntryCount={journalEntryCount}")
         };

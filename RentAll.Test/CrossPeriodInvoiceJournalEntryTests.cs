@@ -174,8 +174,29 @@ public class CrossPeriodInvoiceJournalEntryTests
         var result = await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
             invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.Null(result);
-        Assert.Empty(context.CreatedJournalEntries);
+        Assert.NotNull(result);
+        Assert.Equal(1, context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.Invoice));
+    }
+
+    [Fact]
+    public async Task CrossMonthRentOnly_BlankInvoicePeriod_CreatesTwoBalancedJournalEntries()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            FebArrival,
+            new DateOnly(2026, 3, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            3000m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+        invoice.InvoicePeriod = null;
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Equal(2, context.CreatedJournalEntries.Count);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.CreatedJournalEntries, invoice);
     }
 
     [Fact]

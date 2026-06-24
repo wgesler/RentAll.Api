@@ -12,7 +12,7 @@ public partial class AccountingManager
     private async Task<(JournalEntry? Entry, string? DecisionMessage, bool PostAsStandardInvoice)> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
-            return (null, "Could not resolve the two accounting-period date ranges from the invoice period.", false);
+            return (null, "Could not resolve cross-period date ranges from the rental fee ledger line.", false);
 
         var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId!.Value, invoice.OrganizationId);
         if (reservation == null)
@@ -321,7 +321,7 @@ public partial class AccountingManager
         }
         else
         {
-            firstPeriod = invoice.InvoicePeriod;
+            firstPeriod = TryFormatBillingPeriodFromRental(invoice) ?? invoice.InvoicePeriod;
             firstAmount = chargeTotal;
         }
 
@@ -364,7 +364,7 @@ public partial class AccountingManager
 
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out _))
         {
-            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Could not resolve the two accounting-period date ranges from the invoice period.");
+            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Could not resolve cross-period date ranges from the rental fee ledger line.");
             return false;
         }
 
@@ -372,12 +372,12 @@ public partial class AccountingManager
     }
 
     private static bool InvoiceCrossesAccountingPeriodBoundary(Invoice invoice)
+        => TryGetPrimaryCrossMonthRentalDateRange(invoice, out _, out _);
+
+    private static bool TryGetPrimaryCrossMonthRentalDateRange(Invoice invoice, out DateOnly rentalStart, out DateOnly rentalEnd)
     {
-        if (TryParseInvoicePeriod(invoice.InvoicePeriod, out var periodStart, out var periodEnd)
-            && (periodStart.Year != periodEnd.Year || periodStart.Month != periodEnd.Month))
-        {
-            return true;
-        }
+        rentalStart = default;
+        rentalEnd = default;
 
         var referenceYear = invoice.AccountingPeriod != default
             ? invoice.AccountingPeriod.Year
@@ -385,14 +385,44 @@ public partial class AccountingManager
 
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out var rentalStart, out var rentalEnd))
+            if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out var start, out var end))
                 continue;
 
-            if (rentalStart.Year != rentalEnd.Year || rentalStart.Month != rentalEnd.Month)
-                return true;
+            if (start.Year == end.Year && start.Month == end.Month)
+                continue;
+
+            rentalStart = start;
+            rentalEnd = end;
+            return true;
         }
 
         return false;
+    }
+
+    private static string? TryFormatBillingPeriodFromRental(Invoice invoice)
+    {
+        if (!TryGetPrimaryCrossMonthRentalDateRange(invoice, out var rentalStart, out var rentalEnd)
+            && !TryGetAnyRentalDateRange(invoice, out rentalStart, out rentalEnd))
+        {
+            return null;
+        }
+
+        return FormatInvoicePeriod(rentalStart, rentalEnd);
+    }
+
+    private static bool TryGetAnyRentalDateRange(Invoice invoice, out DateOnly rentalStart, out DateOnly rentalEnd)
+    {
+        rentalStart = default;
+        rentalEnd = default;
+
+        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+            return false;
+
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
+        return TryParseRentalFeeDateRange(rentalLine.Description, referenceYear, out rentalStart, out rentalEnd);
     }
 
     private static bool TryGetInvoiceRentalLedgerLine(Invoice invoice, out LedgerLine rentalLine)
@@ -614,14 +644,14 @@ public partial class AccountingManager
         if (occurrenceLines.Count == 0)
             return true;
 
-        if (!TryParseInvoicePeriod(originalInvoice.InvoicePeriod, out var periodStart, out var periodEnd))
+        if (!TryGetSliceDateRange(firstSlice, out var slice1Start, out var slice1End))
             return false;
 
-        if (!TryParseInvoicePeriod(firstSlice.InvoicePeriod, out var slice1Start, out var slice1End))
+        if (!TryGetSliceDateRange(secondSlice, out var slice2Start, out var slice2End))
             return false;
 
-        if (!TryParseInvoicePeriod(secondSlice.InvoicePeriod, out var slice2Start, out var slice2End))
-            return false;
+        var billingPeriodStart = slice1Start;
+        var billingPeriodEnd = slice2End;
 
         var frequencyByDescription = BuildExtraFeeFrequencyByDescription(reservation);
 
@@ -630,9 +660,9 @@ public partial class AccountingManager
             if (!frequencyByDescription.TryGetValue(line.Description, out var frequency))
                 return false;
 
-            // Occurrences are anchored at the invoice period start, matching how the original line was
+            // Occurrences are anchored at the rental billing start, matching how the original line was
             // billed, then assigned to whichever accounting period each occurrence date falls in.
-            var occurrences = GetScheduledOccurrenceDates(periodStart, periodStart, periodEnd, frequency);
+            var occurrences = GetScheduledOccurrenceDates(billingPeriodStart, billingPeriodStart, billingPeriodEnd, frequency);
             var totalOccurrences = occurrences.Count;
             if (totalOccurrences == 0)
                 return false;
@@ -670,13 +700,10 @@ public partial class AccountingManager
         if (maidTemplate == null)
             return true;
 
-        if (!TryParseInvoicePeriod(originalInvoice.InvoicePeriod, out var invoicePeriodStart, out var invoicePeriodEnd))
+        if (!TryGetSliceDateRange(firstSlice, out var slice1Start, out var slice1End))
             return false;
 
-        if (!TryParseInvoicePeriod(firstSlice.InvoicePeriod, out var slice1Start, out var slice1End))
-            return false;
-
-        if (!TryParseInvoicePeriod(secondSlice.InvoicePeriod, out var slice2Start, out var slice2End))
+        if (!TryGetSliceDateRange(secondSlice, out var slice2Start, out var slice2End))
             return false;
 
         if (!TryParseMaidServiceVisitCount(maidTemplate.Description, out var originalVisitCount))
@@ -684,8 +711,8 @@ public partial class AccountingManager
 
         if (!TryResolveBilledMaidServiceOccurrenceDates(
                 reservation,
-                invoicePeriodStart,
-                invoicePeriodEnd,
+                slice1Start,
+                slice2End,
                 rentalStart,
                 rentalEnd,
                 originalVisitCount,
@@ -926,54 +953,28 @@ public partial class AccountingManager
         slice2Start = default;
         slice2End = default;
 
-        if (!TryParseInvoicePeriod(invoice.InvoicePeriod, out var periodStart, out var periodEnd))
+        if (!TryGetPrimaryCrossMonthRentalDateRange(invoice, out var rentalStart, out var rentalEnd))
             return false;
 
-        slice1Start = periodStart;
-        slice1End = LastDayOfMonth(periodStart);
+        var firstMonthEnd = LastDayOfMonth(rentalStart);
+        var secondMonthStart = FirstDayOfMonth(rentalEnd);
 
-        if (periodStart.Year != periodEnd.Year || periodStart.Month != periodEnd.Month)
-        {
-            slice2Start = FirstDayOfMonth(periodEnd);
-            slice2End = periodEnd;
-        }
-        else if (TryGetCrossingRentalEndDate(invoice, out var rentalEnd))
-        {
-            slice2Start = FirstDayOfMonth(rentalEnd);
-            slice2End = rentalEnd;
-        }
-        else
-        {
-            return false;
-        }
+        slice1Start = rentalStart;
+        slice1End = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
+        slice2Start = rentalStart > secondMonthStart ? rentalStart : secondMonthStart;
+        slice2End = rentalEnd;
 
         return slice1Start <= slice1End && slice2Start <= slice2End;
     }
 
-    private static bool TryGetCrossingRentalEndDate(Invoice invoice, out DateOnly rentalEnd)
+    private static bool TryGetSliceDateRange(Invoice sliceInvoice, out DateOnly periodStart, out DateOnly periodEnd)
     {
-        rentalEnd = default;
-        var referenceYear = invoice.AccountingPeriod != default
-            ? invoice.AccountingPeriod.Year
-            : invoice.InvoiceDate.Year;
+        if (TryParseInvoicePeriod(sliceInvoice.InvoicePeriod, out periodStart, out periodEnd))
+            return true;
 
-        var found = false;
-        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
-        {
-            if (!TryParseRentalFeeDateRange(line.Description, referenceYear, out var rentalStart, out var endDate))
-                continue;
-
-            if (rentalStart.Year == endDate.Year && rentalStart.Month == endDate.Month)
-                continue;
-
-            if (!found || endDate > rentalEnd)
-            {
-                rentalEnd = endDate;
-                found = true;
-            }
-        }
-
-        return found;
+        periodStart = default;
+        periodEnd = default;
+        return false;
     }
 
     private static Invoice CloneInvoiceForCrossPeriodSlice(Invoice source, DateOnly periodStart, DateOnly periodEnd, DateOnly accountingPeriod)

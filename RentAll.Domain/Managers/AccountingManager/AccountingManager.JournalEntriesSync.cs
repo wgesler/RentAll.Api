@@ -265,6 +265,7 @@ public partial class AccountingManager
 
         try
         {
+            await _accountingRepository.DeleteAllAccountingLogsByOrganizationIdAsync(organizationId);
             result.JournalEntriesDeleted = await _journalEntryRepository.DeleteAllJournalEntriesByOrganizationIdAsync(organizationId);
             await _organizationManager.ResetEntityCodeSequenceAsync(organizationId, EntityType.JournalEntry, 0);
         }

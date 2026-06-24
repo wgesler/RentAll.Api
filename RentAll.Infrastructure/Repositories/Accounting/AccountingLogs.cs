@@ -35,4 +35,13 @@ public partial class AccountingRepository
             Message = log.Message
         });
     }
+
+    public async Task DeleteAllAccountingLogsByOrganizationIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.AccountingLog_DeleteAllByOrganizationId", new
+        {
+            OrganizationId = organizationId
+        });
+    }
 }

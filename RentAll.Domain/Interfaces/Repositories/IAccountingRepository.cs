@@ -58,6 +58,7 @@ public interface IAccountingRepository
 
     #region AccountingLogs
     Task LogAccountingLogAsync(AccountingLog log);
+    Task DeleteAllAccountingLogsByOrganizationIdAsync(Guid organizationId);
     #endregion
 
     #region CheckHtml
