@@ -241,6 +241,13 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
+                if (invoice == null)
+                    return NotFound("Invoice not found");
+
+                if (invoice.PaidAmount != 0)
+                    return BadRequest("Invoices with payments applied may not be deleted.");
+
                 await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
                 return NoContent();
             }

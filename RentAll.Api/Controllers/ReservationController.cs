@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {
@@ -12,6 +13,7 @@ namespace RentAll.Api.Controllers
     {
         private readonly IOrganizationManager _organizationManager;
         private readonly IReservationRepository _reservationRepository;
+        private readonly IAccountingRepository _accountingRepository;
         private readonly IAccountingManager _accountingManager;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
@@ -20,6 +22,7 @@ namespace RentAll.Api.Controllers
         public ReservationController(
             IOrganizationManager organizationManager,
             IReservationRepository reservationRepository,
+            IAccountingRepository accountingRepository,
             IAccountingManager accountingManager,
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
@@ -27,6 +30,7 @@ namespace RentAll.Api.Controllers
         {
             _organizationManager = organizationManager;
             _reservationRepository = reservationRepository;
+            _accountingRepository = accountingRepository;
             _accountingManager = accountingManager;
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;
