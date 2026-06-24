@@ -498,6 +498,13 @@ public partial class AccountingManager : IAccountingManager
     }
     #endregion
 
+    #region Accounting Log Logging
+    private async Task LogAccountingLogAsync(AccountingLog log)
+    {
+        await _accountingRepository.LogAccountingLogAsync(log);
+    }
+    #endregion
+
     #region Accounting Error Logging
     private async Task LogAccountingErrorAsync(
         string trigger,

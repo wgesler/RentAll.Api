@@ -56,6 +56,10 @@ public interface IAccountingRepository
     Task LogAccountingErrorAsync(AccountingError error);
     #endregion
 
+    #region AccountingLogs
+    Task LogAccountingLogAsync(AccountingLog log);
+    #endregion
+
     #region CheckHtml
     Task<CheckHtml?> GetCheckHtmlByScopeAsync(Guid organizationId, int? officeId);
     Task<CheckHtml?> GetCheckHtmlByIdAsync(Guid checkHtmlId);

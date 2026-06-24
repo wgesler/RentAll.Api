@@ -9,27 +9,27 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Cross-Period Invoice Journal Entries
-    private async Task<(JournalEntry? Entry, string? Error)> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
+    private async Task<(JournalEntry? Entry, string? DecisionMessage, bool PostAsStandardInvoice)> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
-            return (null, "Could not resolve the two accounting-period date ranges from the invoice period.");
+            return (null, "Could not resolve the two accounting-period date ranges from the invoice period.", false);
 
         var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId!.Value, invoice.OrganizationId);
         if (reservation == null)
-            return (null, $"Reservation {invoice.ReservationId} was not found; cannot regenerate cross-period ledger lines.");
+            return (null, $"Reservation {invoice.ReservationId} was not found; cannot regenerate cross-period ledger lines.", false);
 
         if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(firstPeriodInvoice, reservation))
-            return (null, $"Could not regenerate ledger lines for the first accounting period ({firstPeriodInvoice.AccountingPeriod:MM/yyyy}).");
+            return (null, $"Could not regenerate ledger lines for the first accounting period ({firstPeriodInvoice.AccountingPeriod:MM/yyyy}).", false);
 
         if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(secondPeriodInvoice, reservation))
-            return (null, $"Could not regenerate ledger lines for the second accounting period ({secondPeriodInvoice.AccountingPeriod:MM/yyyy}).");
+            return (null, $"Could not regenerate ledger lines for the second accounting period ({secondPeriodInvoice.AccountingPeriod:MM/yyyy}).", false);
 
         if (TryGetNaFrequencyExtraFee(invoice, reservation, out var naFeeDescription))
-            return (null, $"Extra fee '{naFeeDescription}' has an unsupported (NA) frequency; cannot determine how to split it across accounting periods.");
+            return (null, $"Extra fee '{naFeeDescription}' has an unsupported (NA) frequency; cannot determine how to split it across accounting periods.", false);
 
         var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation);
         if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, apportionableIncomeLines))
-            return (null, "Could not apportion the invoice charges across the two accounting periods.");
+            return (null, "Could not apportion the invoice charges across the two accounting periods.", false);
 
         var originalChargeTotal = await SumInvoiceChargeLinesAsync(invoice);
         var splitChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice)
@@ -38,7 +38,7 @@ public partial class AccountingManager
         if (originalChargeTotal != splitChargeTotal)
         {
             var breakdown = await BuildCrossPeriodChargeBreakdownAsync(invoice, firstPeriodInvoice, secondPeriodInvoice);
-            return (null, $"Split charge total ({splitChargeTotal:0.00}) does not match the original invoice charge total ({originalChargeTotal:0.00}). {breakdown}");
+            return (null, $"Split charge total ({splitChargeTotal:0.00}) does not match the original invoice charge total ({originalChargeTotal:0.00}). {breakdown}", false);
         }
 
         var firstSliceChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
@@ -48,7 +48,7 @@ public partial class AccountingManager
             // Every charge actually falls in a single accounting period (e.g. a nightly rental whose
             // checkout day is the 1st of the next month has 0 billable nights in that month). This is not
             // a real cross-period invoice; signal the caller to post it as one standard journal entry.
-            return (null, null);
+            return (null, "Both period slices have zero charges on at least one side; posting as a single journal entry.", true);
         }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
@@ -87,7 +87,9 @@ public partial class AccountingManager
             }
         }
 
-        return (firstEntry, null);
+        await LogInvoiceSplitDecisionAsync(invoice, split: true, firstPeriodInvoice, secondPeriodInvoice, message: "Cross-period split applied.");
+
+        return (firstEntry, null, false);
     }
 
     private async Task<JournalEntry?> CreateCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser, string? memoSuffix = null)
@@ -297,6 +299,48 @@ public partial class AccountingManager
             (int)SourceType.Invoice,
             legacySecondSourceId);
     }
+
+    private async Task LogInvoiceSplitDecisionAsync(Invoice invoice, bool split, Invoice? firstPeriodInvoice = null, Invoice? secondPeriodInvoice = null, string? message = null)
+    {
+        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
+        TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine);
+        var chargeTotal = await SumInvoiceChargeLinesAsync(invoice);
+        var originalAmount = TryGetInvoiceRentalLineAmount(invoice, out var rentalAmount) ? rentalAmount : chargeTotal;
+
+        decimal? firstAmount = null;
+        decimal? secondAmount = null;
+        string? firstPeriod = null;
+        string? secondPeriod = null;
+
+        if (split && firstPeriodInvoice != null && secondPeriodInvoice != null)
+        {
+            firstPeriod = firstPeriodInvoice.InvoicePeriod;
+            secondPeriod = secondPeriodInvoice.InvoicePeriod;
+            firstAmount = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
+            secondAmount = await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
+        }
+        else
+        {
+            firstPeriod = invoice.InvoicePeriod;
+            firstAmount = chargeTotal;
+        }
+
+        await LogAccountingLogAsync(new AccountingLog
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeId = invoice.OfficeId,
+            PropertyId = propertyId,
+            InvoiceId = invoice.InvoiceId,
+            OriginalAmount = originalAmount,
+            RentalLine = rentalLine?.Description,
+            Split = split,
+            FirstPeriod = firstPeriod,
+            SecondPeriod = secondPeriod,
+            FirstAmount = firstAmount,
+            SecondAmount = secondAmount,
+            Message = message
+        });
+    }
     #endregion
 
     #region Cross-Period Invoice Journal Entry Static Helpers
@@ -304,15 +348,27 @@ public partial class AccountingManager
         @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static bool CanUseCrossPeriodInvoiceJournalEntryPath(Invoice invoice)
+    private async Task<bool> TryUseCrossPeriodInvoiceJournalEntryPathAsync(Invoice invoice)
     {
         if (!InvoiceCrossesAccountingPeriodBoundary(invoice))
+        {
+            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Invoice does not cross an accounting period boundary.");
             return false;
+        }
 
         if (!invoice.ReservationId.HasValue || invoice.ReservationId == Guid.Empty)
+        {
+            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Invoice has no reservation; cross-period split requires a reservation.");
             return false;
+        }
 
-        return TryCreateCrossPeriodInvoiceSlices(invoice, out _, out _);
+        if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out _))
+        {
+            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Could not resolve the two accounting-period date ranges from the invoice period.");
+            return false;
+        }
+
+        return true;
     }
 
     private static bool InvoiceCrossesAccountingPeriodBoundary(Invoice invoice)

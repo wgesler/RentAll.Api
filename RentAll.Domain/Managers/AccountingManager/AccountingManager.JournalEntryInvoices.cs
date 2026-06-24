@@ -37,15 +37,17 @@ public partial class AccountingManager
 
     private async Task<AccountingJournalEntryResult> CreateJournalEntryFromInvoiceCoreAsync(Invoice invoice, Guid currentUser)
     {
-        if (CanUseCrossPeriodInvoiceJournalEntryPath(invoice))
+        if (await TryUseCrossPeriodInvoiceJournalEntryPathAsync(invoice))
         {
-            var (crossPeriodEntry, crossPeriodError) = await CreateJournalEntriesFromCrossPeriodInvoiceAsync(invoice, currentUser);
+            var (crossPeriodEntry, decisionMessage, postAsStandardInvoice) = await CreateJournalEntriesFromCrossPeriodInvoiceAsync(invoice, currentUser);
             if (crossPeriodEntry != null)
                 return AccountingJournalEntryResult.Success(crossPeriodEntry);
 
-            if (crossPeriodError != null)
+            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: decisionMessage);
+
+            if (!postAsStandardInvoice)
             {
-                var message = $"Invoice {invoice.InvoiceCode} spans two accounting periods but the split failed: {crossPeriodError}";
+                var message = $"Invoice {invoice.InvoiceCode} spans two accounting periods but the split failed: {decisionMessage}";
                 await LogAccountingErrorAsync(
                     trigger: "Invoice",
                     organizationId: invoice.OrganizationId,
