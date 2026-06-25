@@ -370,3 +370,4 @@ FodyWeavers.xsd
 /RentAll.Infrastructure/RentAll.Infrastructure.csproj.Backup.tmp
 /RentAll.Api/appsettings.Development.json
 /.tmpbuild/api-verify
+/tmp-build
