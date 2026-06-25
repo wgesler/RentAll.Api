@@ -42,6 +42,7 @@ public interface IPropertyRepository
 
     #region Property Agreement
     Task<PropertyAgreement?> GetPropertyAgreementByPropertyIdAsync(Guid propertyId);
+    Task<IEnumerable<PropertyAgreementRentRoll>> GetPropertyAgreementRentRollByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<PropertyAgreement> CreatePropertyAgreementAsync(PropertyAgreement agreement);
     Task<PropertyAgreement> UpdatePropertyAgreementByPropertyIdAsync(PropertyAgreement agreement);
     Task DeletePropertyAgreementByPropertyIdAsync(Guid propertyId);

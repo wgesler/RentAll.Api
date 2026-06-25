@@ -23,6 +23,46 @@ public partial class PropertyRepository
         return model;
     }
 
+    public async Task<IEnumerable<PropertyAgreementRentRoll>> GetPropertyAgreementRentRollByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<PropertyAgreementRentRollEntity>("Property.PropertyAgreements_GetRentRollByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (result == null || !result.Any())
+            return Enumerable.Empty<PropertyAgreementRentRoll>();
+
+        return result
+            .GroupBy(item => new { item.PropertyId, item.PropertyCode, item.OfficeId })
+            .Select(group => new PropertyAgreementRentRoll
+            {
+                PropertyId = group.Key.PropertyId,
+                PropertyCode = group.Key.PropertyCode,
+                OfficeId = group.Key.OfficeId,
+                AgreementLines = group.Select(item => new AgreementLine
+                {
+                    AgreementLineId = item.AgreementLineId,
+                    AgreementId = item.AgreementId,
+                    Title = item.Title,
+                    VendorId = item.VendorId,
+                    VendorName = item.VendorName,
+                    TermsId = item.TermsId,
+                    Terms = string.IsNullOrWhiteSpace(item.Terms) ? "Due on receipt" : item.Terms,
+                    StartDate = item.StartDate,
+                    EndDate = item.EndDate,
+                    Deposit = item.Deposit,
+                    OneTime = item.OneTime,
+                    Monthly = item.Monthly,
+                    Daily = item.Daily,
+                    ChartOfAccountId = item.ChartOfAccountId
+                }).ToList()
+            })
+            .OrderBy(item => item.PropertyCode);
+    }
+
     #endregion
 
     #region Creates

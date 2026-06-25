@@ -16,8 +16,7 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveOfficeIdsForJournalEntrySync(dto.OfficeIds);
-            var result = await _accountingManager.SyncInvoiceJournalEntriesAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            var result = await _accountingManager.SyncInvoiceJournalEntriesAsync(CurrentOrganizationId, CurrentOfficeAccess, CurrentUser);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
@@ -39,8 +38,7 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveOfficeIdsForJournalEntrySync(dto.OfficeIds);
-            var result = await _accountingManager.ClearInvoiceJournalEntriesAsync(CurrentOrganizationId, officeIds);
+            var result = await _accountingManager.ClearInvoiceJournalEntriesAsync(CurrentOrganizationId, CurrentOfficeAccess);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
@@ -62,8 +60,7 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveOfficeIdsForJournalEntrySync(dto.OfficeIds);
-            var result = await _accountingManager.SyncBillJournalEntriesAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            var result = await _accountingManager.SyncBillJournalEntriesAsync(CurrentOrganizationId, CurrentOfficeAccess, CurrentUser);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
@@ -85,8 +82,7 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveOfficeIdsForJournalEntrySync(dto.OfficeIds);
-            var result = await _accountingManager.ClearBillJournalEntriesAsync(CurrentOrganizationId, officeIds);
+            var result = await _accountingManager.ClearBillJournalEntriesAsync(CurrentOrganizationId, CurrentOfficeAccess);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
@@ -108,8 +104,7 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveOfficeIdsForJournalEntrySync(dto.OfficeIds);
-            var result = await _accountingManager.SyncReceiptJournalEntriesAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            var result = await _accountingManager.SyncReceiptJournalEntriesAsync(CurrentOrganizationId, CurrentOfficeAccess, CurrentUser);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
@@ -131,8 +126,7 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveOfficeIdsForJournalEntrySync(dto.OfficeIds);
-            var result = await _accountingManager.ClearReceiptJournalEntriesAsync(CurrentOrganizationId, officeIds);
+            var result = await _accountingManager.ClearReceiptJournalEntriesAsync(CurrentOrganizationId, CurrentOfficeAccess);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
@@ -157,20 +151,4 @@ public partial class AccountingController
         }
     }
 
-    string ResolveOfficeIdsForJournalEntrySync(int[] requestedOfficeIds)
-    {
-        var allowedOfficeIds = CurrentOfficeAccess
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(id => int.Parse(id))
-            .ToHashSet();
-
-        if (requestedOfficeIds == null || requestedOfficeIds.Length == 0)
-            return CurrentOfficeAccess;
-
-        var filteredOfficeIds = requestedOfficeIds.Where(allowedOfficeIds.Contains).Distinct().ToArray();
-        if (filteredOfficeIds.Length == 0)
-            throw new Exception("No accessible offices were provided");
-
-        return string.Join(",", filteredOfficeIds);
-    }
 }

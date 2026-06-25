@@ -5,6 +5,24 @@ namespace RentAll.Api.Controllers;
 public partial class PropertyController
 {
     #region Get
+    [HttpGet("property-agreement/rent-roll")]
+    public async Task<IActionResult> GetRentRollByOfficeIdsAsync()
+    {
+        try
+        {
+            var rentRoll = await _propertyRepository.GetPropertyAgreementRentRollByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            var response = rentRoll.Select(item => new PropertyAgreementRentRollResponseDto(item))
+                .ToList();
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting rent roll by offices");
+            return ServerError("An error occurred while retrieving rent roll");
+        }
+    }
+
     [HttpGet("property-agreement/{propertyId:guid}")]
     public async Task<IActionResult> GetPropertyAgreementByPropertyIdAsync(Guid propertyId)
     {

@@ -6,10 +6,7 @@ public class SyncJournalEntriesRequestDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (OfficeIds == null)
-            return (false, "OfficeIds is required");
-
-        if (OfficeIds.Any(id => id <= 0))
+        if (OfficeIds != null && OfficeIds.Any(id => id <= 0))
             return (false, "Each office ID must be a positive integer");
 
         return (true, null);
