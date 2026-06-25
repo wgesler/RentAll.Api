@@ -8,6 +8,13 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    private sealed class CrossPeriodInvoiceAccountingContext
+    {
+        public required IReadOnlyList<ChartOfAccount> ChartOfAccounts { get; init; }
+        public required AccountingOffice? AccountingOffice { get; init; }
+        public required IReadOnlyDictionary<int, CostCode> CostCodeById { get; init; }
+    }
+
     #region Cross-Period Invoice Journal Entries
     private async Task<(JournalEntry? Entry, string? DecisionMessage, bool PostAsStandardInvoice)> CreateJournalEntriesFromCrossPeriodInvoiceAsync(Invoice invoice, Guid currentUser)
     {
@@ -27,22 +34,24 @@ public partial class AccountingManager
         if (TryGetNaFrequencyExtraFee(invoice, reservation, out var naFeeDescription))
             return (null, $"Extra fee '{naFeeDescription}' has an unsupported (NA) frequency; cannot determine how to split it across accounting periods.", false);
 
-        var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation);
+        var accountingContext = await LoadCrossPeriodInvoiceAccountingContextAsync(invoice);
+
+        var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation, accountingContext);
         if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, apportionableIncomeLines))
             return (null, "Could not apportion the invoice charges across the two accounting periods.", false);
 
-        var originalChargeTotal = await SumInvoiceChargeLinesAsync(invoice);
-        var splitChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice)
-            + await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
+        var originalChargeTotal = SumInvoiceChargeLines(invoice, accountingContext.CostCodeById);
+        var splitChargeTotal = SumInvoiceChargeLines(firstPeriodInvoice, accountingContext.CostCodeById)
+            + SumInvoiceChargeLines(secondPeriodInvoice, accountingContext.CostCodeById);
 
         if (originalChargeTotal != splitChargeTotal)
         {
-            var breakdown = await BuildCrossPeriodChargeBreakdownAsync(invoice, firstPeriodInvoice, secondPeriodInvoice);
+            var breakdown = BuildCrossPeriodChargeBreakdown(invoice, firstPeriodInvoice, secondPeriodInvoice, accountingContext.CostCodeById);
             return (null, $"Split charge total ({splitChargeTotal:0.00}) does not match the original invoice charge total ({originalChargeTotal:0.00}). {breakdown}", false);
         }
 
-        var firstSliceChargeTotal = await SumInvoiceChargeLinesAsync(firstPeriodInvoice);
-        var secondSliceChargeTotal = await SumInvoiceChargeLinesAsync(secondPeriodInvoice);
+        var firstSliceChargeTotal = SumInvoiceChargeLines(firstPeriodInvoice, accountingContext.CostCodeById);
+        var secondSliceChargeTotal = SumInvoiceChargeLines(secondPeriodInvoice, accountingContext.CostCodeById);
         if (firstSliceChargeTotal == 0 || secondSliceChargeTotal == 0)
         {
             // Every charge actually falls in a single accounting period (e.g. a nightly rental whose
@@ -51,20 +60,18 @@ public partial class AccountingManager
             return (null, "Both period slices have zero charges on at least one side; posting as a single journal entry.", true);
         }
 
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-
         var firstEntry = await CreateCrossPeriodSliceJournalEntryAsync(
             firstPeriodInvoice,
             invoice.InvoiceId,
-            chartOfAccounts,
-            accountingOffice,
+            accountingContext.ChartOfAccounts.ToList(),
+            accountingContext.AccountingOffice,
             currentUser);
 
         await CreateCrossPeriodSliceJournalEntryAsync(
             secondPeriodInvoice,
             invoice.InvoiceId,
-            chartOfAccounts,
-            accountingOffice,
+            accountingContext.ChartOfAccounts.ToList(),
+            accountingContext.AccountingOffice,
             currentUser,
             memoSuffix: secondPeriodInvoice.AccountingPeriod.ToString("MM/yyyy"));
 
@@ -90,6 +97,23 @@ public partial class AccountingManager
         await LogInvoiceSplitDecisionAsync(invoice, split: true, firstPeriodInvoice, secondPeriodInvoice, message: "Cross-period split applied.");
 
         return (firstEntry, null, false);
+    }
+
+    private async Task<CrossPeriodInvoiceAccountingContext> LoadCrossPeriodInvoiceAccountingContextAsync(Invoice invoice)
+    {
+        var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        var costCodesTask = _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        await Task.WhenAll(accountContextTask, costCodesTask);
+
+        var (chartOfAccounts, accountingOffice) = await accountContextTask;
+        var costCodeById = (await costCodesTask).ToDictionary(c => c.CostCodeId);
+
+        return new CrossPeriodInvoiceAccountingContext
+        {
+            ChartOfAccounts = chartOfAccounts,
+            AccountingOffice = accountingOffice,
+            CostCodeById = costCodeById
+        };
     }
 
     private async Task<JournalEntry?> CreateCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser, string? memoSuffix = null)
@@ -185,16 +209,22 @@ public partial class AccountingManager
 
     private async Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(Invoice invoice, Reservation reservation)
     {
+        var accountingContext = await LoadCrossPeriodInvoiceAccountingContextAsync(invoice);
+        return await GetApportionableIncomeChargeLinesAsync(invoice, reservation, accountingContext);
+    }
+
+    private Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(
+        Invoice invoice,
+        Reservation reservation,
+        CrossPeriodInvoiceAccountingContext accountingContext)
+    {
         // Charges that are NOT extra-fee lines are still classified by COST CODE: anything on a rental-income
-        // code (4000-4999) splits across both accounting periods like rent, everything else is a one-time
+        // code mapped under the 4000 parent account splits across both accounting periods like rent, everything else is a one-time
         // up-front charge. Extra-fee lines are excluded here because they are now routed by their frequency
         // instead. Rentals, maid service, and payments have their own dedicated handling.
         var extraFeeDescriptions = reservation.ExtraFeeLines
             .Select(f => f.FeeDescription)
             .ToHashSet(StringComparer.Ordinal);
-
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
 
         var matchedLines = new List<LedgerLine>();
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
@@ -208,28 +238,57 @@ public partial class AccountingManager
             if (extraFeeDescriptions.Contains(line.Description))
                 continue;
 
-            costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+            accountingContext.CostCodeById.TryGetValue(line.CostCodeId, out var costCode);
             if (IsPaymentLedgerLine(costCode))
                 continue;
 
-            if (costCode != null && IsRentalIncomeCostCode(costCode))
+            if (costCode != null && IsRentalIncomeCostCode(costCode, accountingContext.ChartOfAccounts, invoice.OfficeId))
                 matchedLines.Add(line);
         }
 
-        return matchedLines;
+        return Task.FromResult(matchedLines);
     }
 
-    private static bool IsRentalIncomeCostCode(CostCode costCode)
+    private static bool IsRentalIncomeCostCode(CostCode costCode, IReadOnlyList<ChartOfAccount> chartOfAccounts, int officeId)
     {
         var normalized = NormalizeAccountCode(costCode.Code);
-        return int.TryParse(normalized, out var number) && number is >= 4000 and < 5000;
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        var account = chartOfAccounts.FirstOrDefault(a =>
+            a.OfficeId == officeId &&
+            NormalizeAccountCode(a.AccountNo).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        if (account == null)
+            return false;
+
+        // Rental-income pool is based on the 4000 parent account hierarchy.
+        var visitedAccountIds = new HashSet<int>();
+        var current = account;
+        while (current != null && visitedAccountIds.Add(current.AccountId))
+        {
+            if (NormalizeAccountCode(current.AccountNo).Equals("4000", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (!current.IsSubaccount || !current.SubAccountId.HasValue)
+                return false;
+
+            current = chartOfAccounts.FirstOrDefault(a =>
+                a.OfficeId == officeId &&
+                a.AccountId == current.SubAccountId.Value);
+        }
+
+        return false;
     }
 
     private async Task<decimal> SumInvoiceChargeLinesAsync(Invoice invoice)
     {
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        var costCodeById = (await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId))
+            .ToDictionary(c => c.CostCodeId);
+        return SumInvoiceChargeLines(invoice, costCodeById);
+    }
 
+    private static decimal SumInvoiceChargeLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
         return invoice.LedgerLines
             .Where(l => l.Amount != 0)
             .Where(l =>
@@ -245,8 +304,17 @@ public partial class AccountingManager
         // Diagnostic detail for split mismatches: dump every non-payment charge line (description, amount,
         // cost code) for the original invoice and both regenerated period slices so the offending line is
         // obvious. The Message column is VARCHAR(2500), so each section is capped to stay within bounds.
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(original.OrganizationId, original.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        var costCodeById = (await _accountingRepository.GetCostCodesByOfficeIdAsync(original.OrganizationId, original.OfficeId))
+            .ToDictionary(c => c.CostCodeId);
+        return BuildCrossPeriodChargeBreakdown(original, firstSlice, secondSlice, costCodeById);
+    }
+
+    private static string BuildCrossPeriodChargeBreakdown(
+        Invoice original,
+        Invoice firstSlice,
+        Invoice secondSlice,
+        IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
 
         string FormatSection(string label, Invoice invoice)
         {
@@ -551,7 +619,7 @@ public partial class AccountingManager
         secondSlice.LedgerLines.Clear();
 
         // Day-ratio pool (splits with the tenant's days, like rent): the crossing rental, every non-extra
-        // charge on a rental-income cost code (4000-4999), and Daily/Monthly extra fees.
+        // charge on chart accounts that roll up to parent 4000, and Daily/Monthly extra fees.
         var pooledLines = crossingRentals
             .Cast<LedgerLine>()
             .Concat(apportionableIncomeLines)
