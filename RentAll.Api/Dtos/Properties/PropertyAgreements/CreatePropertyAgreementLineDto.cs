@@ -2,7 +2,8 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 
 public class CreatePropertyAgreementLineDto
 {
-    public string Title { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public Guid? VendorId { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public decimal? Deposit { get; set; }
@@ -13,9 +14,6 @@ public class CreatePropertyAgreementLineDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (string.IsNullOrWhiteSpace(Title))
-            return (false, "Title is required");
-
         if (!StartDate.HasValue)
             return (false, "StartDate is required");
 
@@ -45,7 +43,8 @@ public class CreatePropertyAgreementLineDto
         return new AgreementLine
         {
             AgreementId = agreementId,
-            Title = Title.Trim(),
+            Title = string.IsNullOrWhiteSpace(Title) ? null : Title.Trim(),
+            VendorId = VendorId,
             StartDate = StartDate!.Value,
             EndDate = EndDate,
             Deposit = Deposit!.Value,

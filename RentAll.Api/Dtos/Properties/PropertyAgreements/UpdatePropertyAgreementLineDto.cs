@@ -3,7 +3,8 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 public class UpdatePropertyAgreementLineDto
 {
     public int? AgreementLineId { get; set; }
-    public string Title { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public Guid? VendorId { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public decimal? Deposit { get; set; }
@@ -14,9 +15,6 @@ public class UpdatePropertyAgreementLineDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (string.IsNullOrWhiteSpace(Title))
-            return (false, "Title is required");
-
         if (!StartDate.HasValue)
             return (false, "StartDate is required");
 
@@ -47,7 +45,8 @@ public class UpdatePropertyAgreementLineDto
         {
             AgreementLineId = AgreementLineId ?? 0,
             AgreementId = agreementId,
-            Title = Title.Trim(),
+            Title = string.IsNullOrWhiteSpace(Title) ? null : Title.Trim(),
+            VendorId = VendorId,
             StartDate = StartDate!.Value,
             EndDate = EndDate,
             Deposit = Deposit!.Value,
