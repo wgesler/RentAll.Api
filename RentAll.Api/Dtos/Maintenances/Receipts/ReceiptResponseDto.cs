@@ -23,6 +23,8 @@ public class ReceiptResponseDto
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
+    public int? AgreementLineId { get; set; }
+    public string? AgreementLineNotes { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
@@ -55,6 +57,8 @@ public class ReceiptResponseDto
         VendorId = receipt.VendorId;
         VendorName = receipt.VendorName;
         Splits = (receipt.Splits ?? new List<ReceiptSplit>()).Select(split => new ReceiptSplitDto(split)).ToList();
+        AgreementLineId = receipt.AgreementLineId;
+        AgreementLineNotes = receipt.AgreementLineNotes;
         ReceiptPath = receipt.ReceiptPath;
         FileDetails = receipt.FileDetails;
         PaymentTypeId = receipt.PaymentTypeId;

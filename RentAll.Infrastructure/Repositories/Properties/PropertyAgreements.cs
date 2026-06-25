@@ -57,7 +57,9 @@ public partial class PropertyRepository
                     OneTime = item.OneTime,
                     Monthly = item.Monthly,
                     Daily = item.Daily,
-                    ChartOfAccountId = item.ChartOfAccountId
+                    ChartOfAccountId = item.ChartOfAccountId,
+                    IsRent = item.IsRent,
+                    Notes = item.Notes
                 }).ToList()
             })
             .OrderBy(item => item.PropertyCode);
@@ -116,7 +118,9 @@ public partial class PropertyRepository
                         OneTime = line.OneTime,
                         Monthly = line.Monthly,
                         Daily = line.Daily,
-                        ChartOfAccountId = line.ChartOfAccountId
+                        ChartOfAccountId = line.ChartOfAccountId,
+                        IsRent = line.IsRent,
+                        Notes = line.Notes
                     }, transaction: transaction);
                 }
             }
@@ -204,7 +208,9 @@ public partial class PropertyRepository
                         OneTime = line.OneTime,
                         Monthly = line.Monthly,
                         Daily = line.Daily,
-                        ChartOfAccountId = line.ChartOfAccountId
+                        ChartOfAccountId = line.ChartOfAccountId,
+                        IsRent = line.IsRent,
+                        Notes = line.Notes
                     }, transaction: transaction);
                 }
                 else if (currentLineIds.Contains(line.AgreementLineId))
@@ -221,7 +227,9 @@ public partial class PropertyRepository
                         OneTime = line.OneTime,
                         Monthly = line.Monthly,
                         Daily = line.Daily,
-                        ChartOfAccountId = line.ChartOfAccountId
+                        ChartOfAccountId = line.ChartOfAccountId,
+                        IsRent = line.IsRent,
+                        Notes = line.Notes
                     }, transaction: transaction);
                 }
             }
@@ -294,7 +302,9 @@ public partial class PropertyRepository
             OneTime = line.OneTime,
             Monthly = line.Monthly,
             Daily = line.Daily,
-            ChartOfAccountId = line.ChartOfAccountId
+            ChartOfAccountId = line.ChartOfAccountId,
+            IsRent = line.IsRent,
+            Notes = line.Notes
         }).ToList();
     }
 }

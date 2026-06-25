@@ -21,6 +21,8 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public Guid? VendorId { get; set; }
         public string? VendorName { get; set; }
         public string Splits { get; set; } = "[]";
+        public int? AgreementLineId { get; set; }
+        public string? AgreementLineNotes { get; set; }
     public string? ReceiptPath { get; set; }
     public int PaymentTypeId { get; set; }
     public bool CheckPrinted { get; set; }

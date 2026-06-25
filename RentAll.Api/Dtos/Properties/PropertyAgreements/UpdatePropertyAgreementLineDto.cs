@@ -12,6 +12,8 @@ public class UpdatePropertyAgreementLineDto
     public decimal? Monthly { get; set; }
     public decimal? Daily { get; set; }
     public int? ChartOfAccountId { get; set; }
+    public bool? IsRent { get; set; }
+    public string? Notes { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -53,7 +55,9 @@ public class UpdatePropertyAgreementLineDto
             OneTime = OneTime!.Value,
             Monthly = Monthly!.Value,
             Daily = Daily!.Value,
-            ChartOfAccountId = ChartOfAccountId
+            ChartOfAccountId = ChartOfAccountId,
+            IsRent = IsRent ?? false,
+            Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim()
         };
     }
 }

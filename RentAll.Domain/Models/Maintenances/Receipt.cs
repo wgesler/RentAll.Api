@@ -23,6 +23,8 @@ public class Receipt
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
     public List<ReceiptSplit> Splits { get; set; } = new();
+    public int? AgreementLineId { get; set; }
+    public string? AgreementLineNotes { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }

@@ -20,6 +20,7 @@ public class UpdateReceiptDto
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
+    public int? AgreementLineId { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
@@ -83,6 +84,7 @@ public class UpdateReceiptDto
             VendorId = VendorId,
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
+            AgreementLineId = AgreementLineId,
             ReceiptPath = ReceiptPath,
             PaymentTypeId = PaymentTypeId,
             CheckPrinted = CheckPrinted,

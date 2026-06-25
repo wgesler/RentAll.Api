@@ -156,6 +156,8 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             VendorId = e.VendorId,
             VendorName = e.VendorName,
             Splits = splits,
+            AgreementLineId = e.AgreementLineId,
+            AgreementLineNotes = e.AgreementLineNotes,
             ReceiptPath = e.ReceiptPath,
             PaymentTypeId = e.PaymentTypeId,
             CheckPrinted = e.CheckPrinted,

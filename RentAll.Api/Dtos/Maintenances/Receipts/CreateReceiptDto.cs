@@ -18,6 +18,7 @@ public class CreateReceiptDto
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
+    public int? AgreementLineId { get; set; }
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsUtility { get; set; }
@@ -78,6 +79,7 @@ public class CreateReceiptDto
             VendorId = VendorId,
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
+            AgreementLineId = AgreementLineId,
             ReceiptPath = null, 
             PaymentTypeId = 0,
             CheckPrinted = false,

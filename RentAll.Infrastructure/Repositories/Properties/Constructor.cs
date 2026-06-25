@@ -259,7 +259,9 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 OneTime = e.OneTime,
                 Monthly = e.Monthly,
                 Daily = e.Daily,
-                ChartOfAccountId = e.ChartOfAccountId
+                ChartOfAccountId = e.ChartOfAccountId,
+                IsRent = e.IsRent,
+                Notes = e.Notes
             };
         }
 

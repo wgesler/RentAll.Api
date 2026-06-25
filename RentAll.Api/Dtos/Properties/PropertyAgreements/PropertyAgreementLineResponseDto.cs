@@ -16,6 +16,8 @@ public class PropertyAgreementLineResponseDto
     public decimal Monthly { get; set; }
     public decimal Daily { get; set; }
     public int? ChartOfAccountId { get; set; }
+    public bool IsRent { get; set; }
+    public string? Notes { get; set; }
 
     public PropertyAgreementLineResponseDto(AgreementLine model)
     {
@@ -33,5 +35,7 @@ public class PropertyAgreementLineResponseDto
         Monthly = model.Monthly;
         Daily = model.Daily;
         ChartOfAccountId = model.ChartOfAccountId;
+        IsRent = model.IsRent;
+        Notes = model.Notes;
     }
 }
