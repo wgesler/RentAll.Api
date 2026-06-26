@@ -1,5 +1,7 @@
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using Microsoft.Extensions.Options;
+using RentAll.Api.Logging;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 using RentAll.Domain.Scheduling;
@@ -10,13 +12,17 @@ public class SchedulingHostedService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SchedulingHostedService> _logger;
+    private readonly ApplicationLoggingSettings _applicationLoggingSettings;
+    private DateOnly? _lastRetentionRunDateUtc;
 
     public SchedulingHostedService(
         IServiceScopeFactory scopeFactory,
-        ILogger<SchedulingHostedService> logger)
+        ILogger<SchedulingHostedService> logger,
+        IOptions<ApplicationLoggingSettings> applicationLoggingSettings)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _applicationLoggingSettings = applicationLoggingSettings.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,10 +64,12 @@ public class SchedulingHostedService : BackgroundService
         var emailRepository = scope.ServiceProvider.GetRequiredService<IEmailRepository>();
         var reservationRepository = scope.ServiceProvider.GetRequiredService<IReservationRepository>();
         var emailManager = scope.ServiceProvider.GetRequiredService<IEmailManager>();
+        var loggingRepository = scope.ServiceProvider.GetRequiredService<ILoggingRepository>();
 
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
+        await ProcessLogRetentionAsync(loggingRepository, cancellationToken);
     }
 
     #region Alerts
@@ -238,6 +246,30 @@ public class SchedulingHostedService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Owner form share delete-expired job failed");
+        }
+    }
+
+    private async Task ProcessLogRetentionAsync(ILoggingRepository loggingRepository, CancellationToken cancellationToken)
+    {
+        if (!_applicationLoggingSettings.RetentionEnabled)
+            return;
+
+        var todayUtc = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (_lastRetentionRunDateUtc == todayUtc)
+            return;
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var retainDays = Math.Max(1, _applicationLoggingSettings.RetentionDays);
+            await loggingRepository.ApplyLogRetentionAsync(retainDays);
+            _lastRetentionRunDateUtc = todayUtc;
+            _logger.LogInformation("Logging retention applied for {RetainDays} days.", retainDays);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Logging retention job failed");
         }
     }
     #endregion

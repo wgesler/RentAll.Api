@@ -18,7 +18,7 @@ public partial class AccountingRepository
             error.Message);
 
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.AccountingError_Add", new
+        await db.DapperProcExecuteAsync("Logging.AccountingErrorLog_Add", new
         {
             OrganizationId = error.OrganizationId,
             OfficeId = error.OfficeId,

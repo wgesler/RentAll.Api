@@ -19,7 +19,7 @@ public partial class AccountingRepository
             log.Message);
 
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.AccountingLog_Add", new
+        await db.DapperProcExecuteAsync("Logging.AccountingLog_Add", new
         {
             OrganizationId = log.OrganizationId,
             OfficeId = log.OfficeId,
@@ -39,7 +39,7 @@ public partial class AccountingRepository
     public async Task DeleteAllAccountingLogsByOrganizationIdAsync(Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.AccountingLog_DeleteAllByOrganizationId", new
+        await db.DapperProcExecuteAsync("Logging.AccountingLog_DeleteAllByOrganizationId", new
         {
             OrganizationId = organizationId
         });

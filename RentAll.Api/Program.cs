@@ -1,10 +1,14 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RentAll.Api.Filters;
 using RentAll.Api.HostedServices;
+using RentAll.Api.Logging;
+using RentAll.Api.Middleware;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Managers;
@@ -19,6 +23,7 @@ using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.Emails;
 using RentAll.Infrastructure.Repositories.Leads;
+using RentAll.Infrastructure.Repositories.Logging;
 using RentAll.Infrastructure.Repositories.Maintenances;
 using RentAll.Infrastructure.Repositories.Organizations;
 using RentAll.Infrastructure.Repositories.Properties;
@@ -56,13 +61,20 @@ builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.G
 builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
 builder.Services.Configure<EncryptionSettings>(builder.Configuration.GetSection("EncryptionSettings"));
 builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
+builder.Services.Configure<ApplicationLoggingSettings>(builder.Configuration.GetSection("ApplicationLogging"));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IApplicationLogQueue, ApplicationLogQueue>();
+builder.Services.AddSingleton<ILoggerProvider, ApplicationLogLoggerProvider>();
 
 var allowedHosts = appSettingsSection.GetSection("AllowedHostNames").Get<string[]>()!;
 var environment = appSettingsSection.GetSection("Environment").Get<string>()!;
 var isDev = environment.ToLower() == "development";
 
 // Add services to the container.
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ControllerExceptionLoggingFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -201,7 +213,9 @@ builder.Services.AddScoped<IAccountingRepository, AccountingRepository>();
 builder.Services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddScoped<ILoggingRepository, LoggingRepository>();
 
+builder.Services.AddHostedService<ApplicationLogHostedService>();
 builder.Services.AddHostedService<SchedulingHostedService>();
 
 // Configure Swagger/OpenAPI with JWT support
@@ -247,6 +261,8 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "RentAll API v1");
     c.DisplayRequestDuration();
 });
+
+app.UseMiddleware<GlobalExceptionLoggingMiddleware>();
 
 // Map Health Check endpoints
 app.MapHealthChecks("/health");
