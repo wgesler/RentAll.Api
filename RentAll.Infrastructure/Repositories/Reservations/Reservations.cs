@@ -60,7 +60,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
-            });
+            }, commandTimeout: 120);
 
             if (res == null || !res.Any())
                 return Enumerable.Empty<ReservationCodes>();

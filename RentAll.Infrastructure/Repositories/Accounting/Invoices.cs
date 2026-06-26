@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using System.Data;
@@ -173,9 +174,53 @@ public partial class AccountingRepository
 
         var currentInvoice = ConvertEntityToModel(currentInvoiceResult.FirstOrDefault()!);
         var currentLedgerLineIds = currentInvoice.LedgerLines.Select(ll => ll.LedgerLineId).ToHashSet();
+        var currentLedgerLineByLineNumber = currentInvoice.LedgerLines
+            .GroupBy(ll => ll.LineNumber)
+            .ToDictionary(g => g.Key, g => g.First());
         // Zero-amount lines from update requests are treated as "removed" rows (e.g. UI x-out behavior).
         var incomingActiveLedgerLines = invoice.LedgerLines.Where(ll => ll.Amount != 0).ToList();
-        var incomingLedgerLineIds = incomingActiveLedgerLines.Where(ll => ll.LedgerLineId != Guid.Empty).Select(ll => ll.LedgerLineId).ToHashSet();
+        var duplicateIncomingLineNumbers = incomingActiveLedgerLines
+            .GroupBy(ll => ll.LineNumber)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .OrderBy(lineNumber => lineNumber)
+            .ToList();
+        if (duplicateIncomingLineNumbers.Count > 0)
+            _logger.LogWarning("Invoice {InvoiceId} update payload contains duplicate ledger line numbers ({LineNumbers}). Using the last row per line number.", invoice.InvoiceId, string.Join(", ", duplicateIncomingLineNumbers));
+
+        // Normalize duplicate line numbers from the UI payload so the final server state
+        // is one row per line number (last row wins).
+        var dedupedIncomingLedgerLines = incomingActiveLedgerLines
+            .GroupBy(ll => ll.LineNumber)
+            .Select(g => g.Last())
+            .ToList();
+
+        var normalizedIncomingLedgerLines = new List<LedgerLine>(dedupedIncomingLedgerLines.Count);
+        var incomingLedgerLineIds = new HashSet<Guid>();
+        foreach (var line in dedupedIncomingLedgerLines)
+        {
+            if (line.LedgerLineId != Guid.Empty && currentLedgerLineIds.Contains(line.LedgerLineId))
+            {
+                normalizedIncomingLedgerLines.Add(line);
+                incomingLedgerLineIds.Add(line.LedgerLineId);
+                continue;
+            }
+
+            // If the client row id is missing/stale but the line number exists on this invoice,
+            // treat it as an update of that existing line instead of an insert.
+            if (currentLedgerLineByLineNumber.TryGetValue(line.LineNumber, out var existingLineForNumber)
+                && !incomingLedgerLineIds.Contains(existingLineForNumber.LedgerLineId))
+            {
+                line.LedgerLineId = existingLineForNumber.LedgerLineId;
+                normalizedIncomingLedgerLines.Add(line);
+                incomingLedgerLineIds.Add(existingLineForNumber.LedgerLineId);
+                continue;
+            }
+
+            // No matching existing row for this line number: keep as insert candidate.
+            line.LedgerLineId = Guid.Empty;
+            normalizedIncomingLedgerLines.Add(line);
+        }
 
         // Update the Invoice
         var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_UpdateById", new
@@ -213,7 +258,7 @@ public partial class AccountingRepository
 
         // Sync LedgerLines after deletes so line-number uniqueness cannot collide
         // with rows being replaced from UI payloads that use Guid.Empty for new items.
-        foreach (var line in incomingActiveLedgerLines)
+        foreach (var line in normalizedIncomingLedgerLines)
         {
             if (line.LedgerLineId == Guid.Empty)
             {

@@ -45,7 +45,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
-            });
+            }, commandTimeout: 120);
 
             if (res == null || !res.Any())
                 return Enumerable.Empty<PropertyCodes>();
