@@ -6,5 +6,6 @@ public enum PaymentType
     Ach = 1,
     Eft = 2,
     OnlineBanking = 3,
-    WireTransfer = 4
+    WireTransfer = 4,
+    CreditCard = 5
 }
