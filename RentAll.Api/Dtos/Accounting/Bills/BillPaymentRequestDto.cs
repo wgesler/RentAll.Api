@@ -1,3 +1,5 @@
+using RentAll.Domain.Enums;
+
 namespace RentAll.Api.Dtos.Accounting.Bills;
 
 public class BillPaymentRequestDto
@@ -17,8 +19,8 @@ public class BillPaymentRequestDto
         if (ChartOfAccountId <= 0)
             return (false, "ChartOfAccountId is required");
 
-        if (PaymentTypeId < 0 || PaymentTypeId > 4)
-            return (false, "Invalid payment type");
+        if (!Enum.IsDefined(typeof(PaymentType), PaymentTypeId))
+            return (false, $"Invalid PaymentType value: {PaymentTypeId}");
 
         if (Amount == 0)
             return (false, "No payment submitted");
