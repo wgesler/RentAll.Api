@@ -182,6 +182,197 @@ public partial class AccountingManager
         return journalEntryLines;
     }
 
+    private async Task<JournalEntry?> BuildOwnerUtilityJournalEntryFromBillAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
+    {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // BILL-OWNER-UTILITY-JE-ACCOUNTS
+        // Trigger condition: Bill IsUtility = true and at least one split is Owner type.
+        // Line 1 — Debit: Owner Accounts Payable (GetDefaultOwnerAccountsPayable) for owner utility total.
+        // Line 2 — Credit: PM Utility Income (GetDefaultPmUtilityIncome) for owner utility total.
+        // Negative owner utility totals (bill credits) reverse debit/credit direction.
+        // END BILL-OWNER-UTILITY-JE-ACCOUNTS
+
+        EnsureReceiptIsBill(bill);
+        bill = await LoadReceiptWithSplitsAsync(bill);
+
+        if (!ShouldCreateOwnerUtilityJournalEntryForBill(bill))
+            return null;
+
+        if (bill.AccountingPeriod == default)
+            throw new Exception("AccountingPeriod is required to create an owner utility journal entry for a bill");
+
+        var ownerUtilityAmount = ResolveReceiptSplitLines(bill)
+            .Where(split => split.ReceiptType == ReceiptType.Owner)
+            .Sum(split => split.Amount);
+
+        if (ownerUtilityAmount == 0)
+            return null;
+
+        var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var pmUtilityIncomeAccountId = GetDefaultPmUtilityIncome(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
+        var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+        var memo = $"Owner Utility - {billLabel}";
+
+        var ownerAccountsPayableLine = new JournalEntryLine
+        {
+            ChartOfAccountId = ownerAccountsPayableAccountId,
+            PropertyId = propertyId == Guid.Empty ? null : propertyId,
+            ContactId = bill.VendorId,
+            Debit = ownerUtilityAmount > 0 ? ownerUtilityAmount : 0,
+            Credit = ownerUtilityAmount < 0 ? Math.Abs(ownerUtilityAmount) : 0,
+            Memo = $"Owner Accounts Payable - {billLabel}",
+            CreatedBy = currentUser
+        };
+
+        var pmUtilityIncomeLine = new JournalEntryLine
+        {
+            ChartOfAccountId = pmUtilityIncomeAccountId,
+            PropertyId = propertyId == Guid.Empty ? null : propertyId,
+            ContactId = bill.VendorId,
+            Debit = ownerUtilityAmount < 0 ? Math.Abs(ownerUtilityAmount) : 0,
+            Credit = ownerUtilityAmount > 0 ? ownerUtilityAmount : 0,
+            Memo = $"PM Utility Income - {billLabel}",
+            CreatedBy = currentUser
+        };
+
+        return new JournalEntry
+        {
+            OrganizationId = bill.OrganizationId,
+            OfficeId = bill.OfficeId,
+            TransactionDate = bill.AccountingPeriod,
+            PostingDate = bill.AccountingPeriod,
+            SourceTypeId = (int)SourceType.Bill,
+            SourceId = bill.ReceiptId,
+            Memo = memo,
+            JournalEntryLines = new List<JournalEntryLine> { ownerAccountsPayableLine, pmUtilityIncomeLine },
+            CreatedBy = currentUser
+        };
+    }
+
+    private static bool ShouldCreateOwnerUtilityJournalEntryForBill(Receipt bill)
+    {
+        if (!bill.IsUtility)
+            return false;
+
+        return (bill.Splits ?? new List<ReceiptSplit>())
+            .Any(split => split.ReceiptType == ReceiptType.Owner);
+    }
+
+    private static bool HasTenantOverage(decimal tenantOverageAmount)
+        => tenantOverageAmount > 0;
+
+    private async Task<decimal> CalculateTenantOverageAmountAsync(Receipt bill, JournalEntry ownerUtilityJournalEntry)
+    {
+        var propertyId = ownerUtilityJournalEntry.JournalEntryLines
+            .Select(line => line.PropertyId)
+            .FirstOrDefault(id => id.HasValue && id.Value != Guid.Empty)
+            ?? bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+
+        if (propertyId == Guid.Empty)
+            return 0m;
+
+        var officeContextTask = LoadOfficeCostCodeContextAsync(bill.OrganizationId, bill.OfficeId);
+        var propertyTask = _propertyRepository.GetPropertyByIdAsync(propertyId, bill.OrganizationId);
+        await Task.WhenAll(officeContextTask, propertyTask);
+
+        var (office, _) = await officeContextTask;
+        var property = await propertyTask;
+        if (office == null || property == null)
+            return 0m;
+
+        var ownerUtilityAmount = ownerUtilityJournalEntry.JournalEntryLines
+            .Where(line => line.Debit > 0 || line.Credit > 0)
+            .Select(line => Math.Max(line.Debit, line.Credit))
+            .DefaultIfEmpty(0m)
+            .Max();
+
+        if (ownerUtilityAmount <= 0)
+            return 0m;
+
+        var utilityCeiling = ResolveUtilityCeilingForBedrooms(office, property.Bedrooms);
+        if (utilityCeiling <= 0)
+            return 0m;
+
+        var overageAmount = ownerUtilityAmount - utilityCeiling;
+        return overageAmount > 0 ? overageAmount : 0m;
+    }
+
+    private static decimal ResolveUtilityCeilingForBedrooms(Office office, int bedrooms)
+    {
+        return bedrooms switch
+        {
+            1 => office.UtilityOneBed,
+            2 => office.UtilityTwoBed,
+            3 => office.UtilityThreeBed,
+            4 => office.UtilityFourBed,
+            _ => office.UtilityHouse
+        };
+    }
+
+    private static JournalEntry BuildTenantOverageJournalEntryFromBill(
+        Receipt bill,
+        JournalEntry ownerUtilityJournalEntry,
+        decimal tenantOverageAmount,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Guid currentUser)
+    {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // BILL-TENANT-OVERAGE-JE-ACCOUNTS
+        // Trigger condition: owner utility bill posting exists and owner utility exceeds office utility ceiling for property bedrooms.
+        // Line 1 — Debit: Accounts Receivable (GetDefaultAccountsReceivable) for overage amount.
+        // Line 2 — Credit: PM Utility Income (GetDefaultPmUtilityIncome) for overage amount.
+        // END BILL-TENANT-OVERAGE-JE-ACCOUNTS
+
+        if (bill.AccountingPeriod == default)
+            throw new Exception("AccountingPeriod is required to create a tenant overage journal entry for a bill");
+
+        var propertyId = ownerUtilityJournalEntry.JournalEntryLines
+            .Select(line => line.PropertyId)
+            .FirstOrDefault(id => id.HasValue && id.Value != Guid.Empty)
+            ?? bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+        Guid? normalizedPropertyId = propertyId == Guid.Empty ? null : propertyId;
+
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var pmUtilityIncomeAccountId = GetDefaultPmUtilityIncome(chartOfAccounts, bill.OfficeId, accountingOffice);
+        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
+        var memo = $"Tenant Utility Overage - {billLabel}";
+
+        var accountsReceivableLine = new JournalEntryLine
+        {
+            ChartOfAccountId = accountsReceivableAccountId,
+            PropertyId = normalizedPropertyId,
+            Debit = tenantOverageAmount,
+            Credit = 0,
+            Memo = $"Accounts Receivable - {billLabel}",
+            CreatedBy = currentUser
+        };
+
+        var pmUtilityIncomeLine = new JournalEntryLine
+        {
+            ChartOfAccountId = pmUtilityIncomeAccountId,
+            PropertyId = normalizedPropertyId,
+            Debit = 0,
+            Credit = tenantOverageAmount,
+            Memo = $"PM Utility Income - {billLabel}",
+            CreatedBy = currentUser
+        };
+
+        return new JournalEntry
+        {
+            OrganizationId = bill.OrganizationId,
+            OfficeId = bill.OfficeId,
+            TransactionDate = bill.AccountingPeriod,
+            PostingDate = bill.AccountingPeriod,
+            SourceTypeId = (int)SourceType.Bill,
+            SourceId = bill.ReceiptId,
+            Memo = memo,
+            JournalEntryLines = new List<JournalEntryLine> { accountsReceivableLine, pmUtilityIncomeLine },
+            CreatedBy = currentUser
+        };
+    }
+
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
     {
         // The owner's percentage is taken on rent PLUS the recurring monthly charges that follow rent

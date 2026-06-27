@@ -127,6 +127,34 @@ public partial class AccountingManager : IAccountingManager
         return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
+    private static int GetDefaultPmUtilityIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    {
+        int defaultAccountId;
+        if (accountingOffice?.DefaultPmUtilityIncAccountId is > 0)
+            defaultAccountId = accountingOffice.DefaultPmUtilityIncAccountId.Value;
+        else
+        {
+            var account = chartOfAccounts
+                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                .Where(a =>
+                    a.Name.Contains("PM Utility", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.Contains("Utility", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(a => a.AccountId)
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
+
+            if (account == null)
+                throw new Exception($"No PM Utility Income chart of account is configured for office {officeId}");
+
+            defaultAccountId = account.AccountId;
+        }
+
+        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+    }
+
     private static int GetDefaultOwnerIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
         int defaultAccountId;
