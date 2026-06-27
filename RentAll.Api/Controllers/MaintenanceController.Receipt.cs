@@ -208,6 +208,7 @@ public partial class MaintenanceController
 
         try
         {
+            await _accountingManager.DeleteJournalEntriesForReceiptAsync(receipt);
             await _maintenanceRepository.DeleteReceiptByIdAsync(receiptId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }

@@ -36,6 +36,8 @@ public interface IAccountingManager
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
+    Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice);
+    Task DeleteJournalEntriesForReceiptAsync(Receipt receipt);
     #endregion
 
     #region Document Updates

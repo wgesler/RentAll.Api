@@ -106,6 +106,16 @@ public partial class AccountingManager
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
     }
 
+    public async Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice)
+    {
+        await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(invoice.OrganizationId, invoice.InvoiceId);
+    }
+
+    public async Task DeleteJournalEntriesForReceiptAsync(Receipt receipt)
+    {
+        await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(receipt.OrganizationId, receipt.ReceiptId);
+    }
+
     public async Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);

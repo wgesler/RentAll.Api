@@ -12,5 +12,6 @@ public interface IJournalEntryRepository
     Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> UpdateJournalEntryByIdAsync(JournalEntry journalEntry);
     Task DeleteJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
+    Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, Guid sourceId);
     Task<int> DeleteAllJournalEntriesByOrganizationIdAsync(Guid organizationId);
 }

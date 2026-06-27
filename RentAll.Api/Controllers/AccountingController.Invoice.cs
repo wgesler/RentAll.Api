@@ -248,6 +248,7 @@ namespace RentAll.Api.Controllers
                 if (invoice.PaidAmount != 0)
                     return BadRequest("Invoices with payments applied may not be deleted.");
 
+                await _accountingManager.DeleteJournalEntriesForInvoiceAsync(invoice);
                 await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
                 return NoContent();
             }

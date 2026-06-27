@@ -279,6 +279,18 @@ public partial class JournalEntryRepository
         });
     }
 
+    public async Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, Guid sourceId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>("Accounting.JournalEntry_DeleteBySourceId", new
+        {
+            OrganizationId = organizationId,
+            SourceId = sourceId,
+        });
+
+        return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
+    }
+
     public async Task<int> DeleteAllJournalEntriesByOrganizationIdAsync(Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
