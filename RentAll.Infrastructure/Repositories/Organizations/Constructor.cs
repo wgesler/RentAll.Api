@@ -170,6 +170,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             DefaultPrePayAccountId = e.DefaultPrePayAccountId,
             DefaultTenantExpAccountId = e.DefaultTenantExpAccountId,
             DefaultTenantIncAccountId = e.DefaultTenantIncAccountId,
+            DefaultPmUtilityIncAccountId = e.DefaultPmUtilityIncAccountId,
             DefaultOwnerExpAccountId = e.DefaultOwnerExpAccountId,
             DefaultOwnerIncAccountId = e.DefaultOwnerIncAccountId,
             DefaultCompanyExpAccountId = e.DefaultCompanyExpAccountId,

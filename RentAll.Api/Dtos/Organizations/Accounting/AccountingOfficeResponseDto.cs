@@ -34,6 +34,7 @@ public class AccountingOfficeResponseDto
     public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
+    public int? DefaultPmUtilityIncAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
@@ -79,6 +80,7 @@ public class AccountingOfficeResponseDto
         DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId;
         DefaultTenantExpAccountId = accountingOffice.DefaultTenantExpAccountId;
         DefaultTenantIncAccountId = accountingOffice.DefaultTenantIncAccountId;
+        DefaultPmUtilityIncAccountId = accountingOffice.DefaultPmUtilityIncAccountId;
         DefaultOwnerExpAccountId = accountingOffice.DefaultOwnerExpAccountId;
         DefaultOwnerIncAccountId = accountingOffice.DefaultOwnerIncAccountId;
         DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId;
