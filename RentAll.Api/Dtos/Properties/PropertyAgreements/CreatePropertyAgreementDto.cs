@@ -16,6 +16,7 @@ public class CreatePropertyAgreementDto
     public decimal? RevenueSplitOffice { get; set; }
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
+    public bool? IsMonthly { get; set; }
     public decimal? HourlyLaborCost { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
@@ -74,6 +75,7 @@ public class CreatePropertyAgreementDto
             RevenueSplitOffice = RevenueSplitOffice ?? 25m,
             WorkingCapitalBalance = WorkingCapitalBalance ?? 0m,
             LinenAndTowelFee = LinenAndTowelFee ?? 0m,
+            IsMonthly = IsMonthly ?? false,
             HourlyLaborCost = HourlyLaborCost ?? 0m,
             BankName = BankName,
             RoutingNumber = RoutingNumber,

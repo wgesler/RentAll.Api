@@ -219,6 +219,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             RevenueSplitOffice = e.RevenueSplitOffice ?? 0m,
             WorkingCapitalBalance = e.WorkingCapitalBalance,
             LinenAndTowelFee = e.LinenAndTowelFee,
+            IsMonthly = e.IsMonthly,
             HourlyLaborCost = e.HourlyLaborCost,
             BankName = e.BankName,
             RoutingNumber = e.RoutingNumber,

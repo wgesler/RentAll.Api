@@ -20,6 +20,7 @@ public class PropertyAgreementResponseDto
     public decimal RevenueSplitOffice { get; set; }
     public decimal WorkingCapitalBalance { get; set; }
     public decimal LinenAndTowelFee { get; set; }
+    public bool IsMonthly { get; set; }
     public decimal HourlyLaborCost { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
@@ -42,6 +43,7 @@ public class PropertyAgreementResponseDto
         RevenueSplitOffice = a.RevenueSplitOffice;
         WorkingCapitalBalance = a.WorkingCapitalBalance;
         LinenAndTowelFee = a.LinenAndTowelFee;
+        IsMonthly = a.IsMonthly;
         HourlyLaborCost = a.HourlyLaborCost;
         BankName = a.BankName;
         RoutingNumber = a.RoutingNumber;
