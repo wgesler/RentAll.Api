@@ -3,7 +3,6 @@ namespace RentAll.Domain.Models;
 public class ApplicationLog
 {
     public int Id { get; set; }
-    public DateTimeOffset LoggedOn { get; set; }
     public string Level { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public int? EventId { get; set; }
@@ -13,4 +12,5 @@ public class ApplicationLog
     public string Message { get; set; } = string.Empty;
     public string? Exception { get; set; }
     public string? Properties { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
 }
