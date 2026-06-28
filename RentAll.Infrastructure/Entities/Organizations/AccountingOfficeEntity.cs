@@ -29,12 +29,13 @@ public class AccountingOfficeEntity
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
-    public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
-    public int? DefaultPmUtilityIncAccountId { get; set; }
-    public int? DefaultOwnerExpAccountId { get; set; }
+    public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
+    public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultCompanyExpAccountId { get; set; }
+    public int? DefaultPmUtilityIncAccountId { get; set; }
+    public int? DefaultLaborIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }
