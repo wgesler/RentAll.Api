@@ -208,6 +208,10 @@ public partial class MaintenanceController
 
         try
         {
+            var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, CurrentOrganizationId);
+            if (receipt == null)
+                return NotFound("Receipt record not found");
+
             await _accountingManager.DeleteJournalEntriesForReceiptAsync(receipt);
             await _maintenanceRepository.DeleteReceiptByIdAsync(receiptId, CurrentOrganizationId, CurrentUser);
             return NoContent();
