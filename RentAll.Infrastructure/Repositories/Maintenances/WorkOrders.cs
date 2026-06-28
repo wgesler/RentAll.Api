@@ -16,8 +16,6 @@ public partial class MaintenanceRepository
             OfficeIds = criteria.OfficeIds,
             PropertyId = criteria.PropertyId,
             IsActive = criteria.IsActive,
-            IncludeInactive = criteria.IncludeInactive,
-            InactiveOnly = criteria.InactiveOnly,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
         });

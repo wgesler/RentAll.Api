@@ -12,8 +12,6 @@ public static class GetWorkOrdersDtoExtensions
             OfficeIds = dto.ResolvedOfficeIds,
             PropertyId = dto.PropertyId,
             IsActive = dto.IsActive,
-            IncludeInactive = dto.IncludeInactive,
-            InactiveOnly = dto.InactiveOnly,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate
         };

@@ -19,13 +19,11 @@ public partial class MaintenanceController
         {
             var criteria = dto.ToCriteria(CurrentOrganizationId);
             _logger.LogError(
-                "[WorkOrderDebug] Search request org={OrganizationId} offices={OfficeIds} propertyId={PropertyId} isActive={IsActive} includeInactive={IncludeInactive} inactiveOnly={InactiveOnly} startDate={StartDate} endDate={EndDate}",
+                "[WorkOrderDebug] Search request org={OrganizationId} offices={OfficeIds} propertyId={PropertyId} isActive={IsActive} startDate={StartDate} endDate={EndDate}",
                 CurrentOrganizationId,
                 criteria.OfficeIds,
                 criteria.PropertyId,
                 criteria.IsActive,
-                criteria.IncludeInactive,
-                criteria.InactiveOnly,
                 criteria.StartDate,
                 criteria.EndDate);
             var records = await _maintenanceRepository.GetWorkOrdersByCriteriaAsync(criteria);
