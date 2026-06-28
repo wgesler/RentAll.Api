@@ -31,6 +31,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 OfficeIds = criteria.OfficeIds,
                 PropertyId = criteria.PropertyId,
                 ReservationId = criteria.ReservationId,
+                IsActive = criteria.IsActive,
                 StartDate = criteria.StartDate,
                 EndDate = criteria.EndDate
             });

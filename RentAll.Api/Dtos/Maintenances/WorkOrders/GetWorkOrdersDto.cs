@@ -4,7 +4,9 @@ public class GetWorkOrdersDto
 {
     public int[] OfficeIds { get; set; } = [];
     public Guid? PropertyId { get; set; }
+    public bool? IsActive { get; set; }
     public bool IncludeInactive { get; set; }
+    public bool InactiveOnly { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 

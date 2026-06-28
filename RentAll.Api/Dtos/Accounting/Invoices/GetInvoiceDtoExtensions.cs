@@ -13,6 +13,7 @@ public static class GetInvoiceDtoExtensions
             ReservationId = dto.ReservationId,
             PropertyId = dto.PropertyId,
             InvoiceCode = string.IsNullOrWhiteSpace(dto.InvoiceCode) ? null : dto.InvoiceCode.Trim(),
+            IsActive = dto.IsActive,
             IncludeInactive = dto.IncludeInactive,
             IncludePaid = dto.IncludePaid,
             StartDate = dto.StartDate,

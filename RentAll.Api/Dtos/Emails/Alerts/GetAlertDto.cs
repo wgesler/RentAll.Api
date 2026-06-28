@@ -5,6 +5,7 @@ public class GetAlertDto
     public int[] OfficeIds { get; set; } = [];
     public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
+    public bool? IsActive { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 

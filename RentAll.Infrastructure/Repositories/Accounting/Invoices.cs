@@ -19,6 +19,7 @@ public partial class AccountingRepository
             ReservationId = criteria.ReservationId,
             PropertyId = criteria.PropertyId,
             InvoiceCode = criteria.InvoiceCode,
+            IsActive = criteria.IsActive,
             IncludeInactive = criteria.IncludeInactive,
             IncludePaid = criteria.IncludePaid,
             StartDate = criteria.StartDate,

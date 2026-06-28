@@ -7,6 +7,7 @@ public class InvoiceGetCriteria
     public Guid? ReservationId { get; set; }
     public Guid? PropertyId { get; set; }
     public string? InvoiceCode { get; set; }
+    public bool? IsActive { get; set; }
     public bool IncludeInactive { get; set; }
     public bool IncludePaid { get; set; }
     public DateOnly? StartDate { get; set; }

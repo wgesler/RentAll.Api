@@ -12,6 +12,7 @@ public static class GetAlertDtoExtensions
             OfficeIds = dto.ResolvedOfficeIds,
             PropertyId = dto.PropertyId,
             ReservationId = dto.ReservationId,
+            IsActive = dto.IsActive,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate
         };

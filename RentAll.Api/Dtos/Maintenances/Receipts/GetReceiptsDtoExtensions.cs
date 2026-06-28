@@ -11,6 +11,7 @@ public static class GetReceiptsDtoExtensions
             OrganizationId = organizationId,
             OfficeIds = dto.ResolvedOfficeIds,
             PropertyId = dto.PropertyId,
+            IsActive = dto.IsActive,
             IncludeInactive = dto.IncludeInactive,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
