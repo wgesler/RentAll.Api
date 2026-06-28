@@ -77,6 +77,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 Properties = properties,
                 ProfilePath = e.ProfilePath,
                 StartupPage = (StartupPage)e.StartupPageId,
+                DefaultPageSize = e.DefaultPageSize,
                 DefaultOfficeId = e.DefaultOfficeId,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,

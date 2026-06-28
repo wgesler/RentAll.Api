@@ -18,6 +18,7 @@ public class UpdateUserDto
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public int DefaultPageSize { get; set; }
     public int? DefaultOfficeId { get; set; }
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
@@ -48,6 +49,9 @@ public class UpdateUserDto
         if (!Enum.IsDefined(typeof(StartupPage), StartupPageId))
             return (false, $"Invalid StartupPage value: {StartupPageId}");
 
+        if (DefaultPageSize <= 0)
+            return (false, "DefaultPageSize must be greater than 0");
+
         return (true, null);
     }
 
@@ -71,6 +75,7 @@ public class UpdateUserDto
             Properties = d.Properties ?? new List<string>(),
             ProfilePath = d.ProfilePath,
             StartupPage = (StartupPage)d.StartupPageId,
+            DefaultPageSize = d.DefaultPageSize,
             DefaultOfficeId = d.DefaultOfficeId,
             IsActive = d.IsActive,
             ModifiedBy = currentUser

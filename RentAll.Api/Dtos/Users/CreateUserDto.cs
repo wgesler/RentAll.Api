@@ -15,6 +15,7 @@ public class CreateUserDto
     public List<string> Properties { get; set; } = new List<string>();
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public int DefaultPageSize { get; set; }
     public int? DefaultOfficeId { get; set; }
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
@@ -55,6 +56,9 @@ public class CreateUserDto
         if (!Enum.IsDefined(typeof(StartupPage), StartupPageId))
             return (false, $"Invalid StartupPage value: {StartupPageId}");
 
+        if (DefaultPageSize <= 0)
+            return (false, "DefaultPageSize must be greater than 0");
+
         return (true, null);
     }
 
@@ -77,6 +81,7 @@ public class CreateUserDto
             Properties = Properties ?? new List<string>(),
             ProfilePath = null, // Will be set by controller after file save
             StartupPage = (StartupPage)StartupPageId,
+            DefaultPageSize = DefaultPageSize,
             DefaultOfficeId = DefaultOfficeId,
             IsActive = IsActive,
             CreatedBy = currentUser

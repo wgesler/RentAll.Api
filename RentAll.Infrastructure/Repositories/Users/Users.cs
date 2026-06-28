@@ -113,6 +113,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                     Properties = propertiesJson,
                     ProfilePath = user.ProfilePath,
                     StartupPageId = (int)user.StartupPage,
+                    DefaultPageSize = user.DefaultPageSize,
                     DefaultOfficeId = user.DefaultOfficeId,
                     CreatedBy = user.CreatedBy
                 });
@@ -165,6 +166,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 Properties = propertiesJson,
                 ProfilePath = user.ProfilePath,
                 StartupPageId = (int)user.StartupPage,
+                DefaultPageSize = user.DefaultPageSize,
                 DefaultOfficeId = user.DefaultOfficeId,
                 IsActive = user.IsActive,
                 ModifiedBy = user.ModifiedBy

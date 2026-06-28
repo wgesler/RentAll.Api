@@ -21,6 +21,7 @@ public class UserResponseDto
     public string? ProfilePath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int StartupPageId { get; set; }
+    public int DefaultPageSize { get; set; }
     public int? DefaultOfficeId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -46,6 +47,7 @@ public class UserResponseDto
         ProfilePath = user.ProfilePath;
         FileDetails = user.FileDetails;
         StartupPageId = (int)user.StartupPage;
+        DefaultPageSize = user.DefaultPageSize;
         DefaultOfficeId = user.DefaultOfficeId;
         IsActive = user.IsActive;
         CreatedOn = user.CreatedOn;

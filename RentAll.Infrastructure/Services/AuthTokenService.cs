@@ -60,6 +60,7 @@ public class AuthTokenService : IAuthTokenService
             officeAccess = officeAccessString,
             properties = propertiesString,
             startupPageId = (int)user.StartupPage,
+            defaultPageSize = user.DefaultPageSize,
             defaultOfficeId = user.DefaultOfficeId,
             enabledFeatures = enabledFeatures ?? string.Empty
         };
