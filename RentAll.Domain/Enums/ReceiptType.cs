@@ -4,6 +4,6 @@ public enum ReceiptType
 {
     Tenant = 0,
     Owner = 1,
-    Organization = 2,
+    Company = 2,
     Departure = 3
 }
