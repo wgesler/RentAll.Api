@@ -297,12 +297,17 @@ public partial class MaintenanceRepository
         {
             var workOrderId = ResolveSplitWorkOrderId(split, existing: null, workOrderCodeLookup);
             var chartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null;
+            var fallbackPropertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+            Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
+                ? incomingPropertyId
+                : (fallbackPropertyId != Guid.Empty ? fallbackPropertyId : null);
             await db.DapperProcQueryAsync<ReceiptSplitEntity>("Maintenance.ReceiptSplit_Add", new
             {
                 ReceiptId = receipt.ReceiptId,
                 Amount = split.Amount,
                 Description = split.Description,
                 ReceiptTypeId = split.ReceiptTypeId,
+                PropertyId = propertyId,
                 WorkOrderId = workOrderId,
                 ChartOfAccountId = chartOfAccountId is > 0 ? chartOfAccountId : null,
                 CreatedBy = auditUser
@@ -346,6 +351,10 @@ public partial class MaintenanceRepository
                 : null;
             var workOrderId = ResolveSplitWorkOrderId(split, existing, workOrderCodeLookup);
             var chartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null;
+            var fallbackPropertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+            Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
+                ? incomingPropertyId
+                : (fallbackPropertyId != Guid.Empty ? fallbackPropertyId : null);
 
             if (split.ReceiptSplitId > 0 && currentSplitIds.Contains(split.ReceiptSplitId))
             {
@@ -356,6 +365,7 @@ public partial class MaintenanceRepository
                     Amount = split.Amount,
                     Description = split.Description,
                     ReceiptTypeId = split.ReceiptTypeId,
+                    PropertyId = propertyId,
                     WorkOrderId = workOrderId,
                     ChartOfAccountId = chartOfAccountId,
                     ModifiedBy = auditUser
@@ -369,6 +379,7 @@ public partial class MaintenanceRepository
                     Amount = split.Amount,
                     Description = split.Description,
                     ReceiptTypeId = split.ReceiptTypeId,
+                    PropertyId = propertyId,
                     WorkOrderId = workOrderId,
                     ChartOfAccountId = chartOfAccountId,
                     CreatedBy = auditUser

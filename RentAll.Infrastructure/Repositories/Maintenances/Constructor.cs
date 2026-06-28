@@ -222,6 +222,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 WorkOrder = split.WorkOrder,
+                PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
                 WorkOrderId = split.WorkOrderId,
                 ReceiptTypeId = split.ReceiptTypeId ?? (int)ReceiptType.Tenant,
                 ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
@@ -241,6 +242,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             Amount = e.Amount,
             Description = e.Description,
             ReceiptTypeId = e.ReceiptTypeId,
+            PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
             WorkOrderId = e.WorkOrderId,
             WorkOrderCode = e.WorkOrderCode,
             WorkOrder = e.WorkOrderCode,
@@ -257,6 +259,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             Amount = split.Amount,
             Description = split.Description,
             WorkOrder = split.WorkOrderCode ?? split.WorkOrder,
+            PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
             WorkOrderId = split.WorkOrderId,
             ReceiptTypeId = split.ReceiptTypeId,
             ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
@@ -290,6 +293,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public string? WorkOrder { get; set; }
+        public Guid? PropertyId { get; set; }
         public Guid? WorkOrderId { get; set; }
         public int? ReceiptTypeId { get; set; }
         public int? ChartOfAccountId { get; set; }

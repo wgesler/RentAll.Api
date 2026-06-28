@@ -7,6 +7,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public int ReceiptTypeId { get; set; }
+        public Guid? PropertyId { get; set; }
         public Guid? WorkOrderId { get; set; }
         public string? WorkOrderCode { get; set; }
         public int? ChartOfAccountId { get; set; }

@@ -9,6 +9,7 @@ public class ReceiptSplitDto
     public decimal Amount { get; set; }
     public string? Description { get; set; }
     public string? WorkOrder { get; set; }
+    public Guid? PropertyId { get; set; }
     public Guid? WorkOrderId { get; set; }
     public string? WorkOrderCode { get; set; }
     public int ReceiptTypeId { get; set; }
@@ -25,6 +26,7 @@ public class ReceiptSplitDto
         Amount = split.Amount;
         Description = split.Description;
         WorkOrder = split.WorkOrderCode ?? split.WorkOrder;
+        PropertyId = split.PropertyId;
         WorkOrderId = split.WorkOrderId;
         WorkOrderCode = split.WorkOrderCode;
         ReceiptTypeId = split.ReceiptTypeId;
@@ -51,6 +53,7 @@ public class ReceiptSplitDto
             Amount = Amount,
             Description = Description,
             WorkOrder = WorkOrder,
+            PropertyId = PropertyId == Guid.Empty ? null : PropertyId,
             WorkOrderId = WorkOrderId,
             WorkOrderCode = WorkOrderCode,
             ReceiptType = (ReceiptType)ReceiptTypeId,
