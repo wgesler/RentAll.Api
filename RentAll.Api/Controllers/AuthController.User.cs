@@ -59,7 +59,7 @@ public partial class AuthController
         }
     }
 
-    [HttpGet("user/{UserId}")]
+    [HttpGet("user/{UserId:guid}")]
     public async Task<IActionResult> GetUserByIdAsync(Guid UserId)
     {
         try

@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Infrastructure.Configuration;
 
 namespace RentAll.Infrastructure.Repositories.Users;
 
