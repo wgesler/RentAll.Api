@@ -69,4 +69,8 @@ public interface IAccountingRepository
     Task<CheckHtml> UpdateCheckHtmlByIdAsync(CheckHtml checkHtml);
     Task DeleteCheckHtmlByIdAsync(Guid checkHtmlId);
     #endregion
+
+    #region Owner Statements
+    Task<IEnumerable<OwnerStatementSummary>> GetOwnerStatementsAsync(OwnerStatementGetCriteria criteria);
+    #endregion
 }

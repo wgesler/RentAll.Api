@@ -274,7 +274,6 @@ public partial class AccountingManager
             && splitLines.All(split => split.ReceiptType == ReceiptType.Owner);
     }
 
-
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
     {
         // The owner's percentage is taken on rent PLUS the recurring monthly charges that follow rent

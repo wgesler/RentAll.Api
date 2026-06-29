@@ -20,6 +20,7 @@ public enum RoleType
     Inspector = 15,
     OwnerAdmin = 16,
     OfficeAdmin = 17,
+    Realtor = 18
 }
 
 
