@@ -17,6 +17,7 @@ public partial class AccountingManager
         try
         {
             EnsureReceiptIsCardReceipt(receipt);
+            receipt = await LoadReceiptWithSplitsAsync(receipt);
 
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, receipt.OfficeId);
             var created = await CreateReceiptJournalEntriesAsync(receipt, chartOfAccounts, accountingOffice, currentUser);
@@ -112,7 +113,9 @@ public partial class AccountingManager
             : receipt.Description.Trim();
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
 
-        var totalAmount = splitLines.Sum(s => s.Amount);
+        var totalAmount = splitLines
+            .Where(IsJournalEligibleReceiptSplit)
+            .Sum(s => s.Amount);
         var journalEntryLines = new List<JournalEntryLine>();
         journalEntryLines.Add(new JournalEntryLine
         {
@@ -127,6 +130,9 @@ public partial class AccountingManager
 
         foreach (var split in splitLines)
         {
+            if (!IsJournalEligibleReceiptSplit(split))
+                continue;
+
             var expenseAccountId = split.ChartOfAccountId > 0
                 ? split.ChartOfAccountId.Value
                 : split.ReceiptType switch
@@ -183,11 +189,16 @@ public partial class AccountingManager
             ? $"Receipt {receiptLabel}"
             : receipt.Description.Trim();
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
-        var totalAmount = splitLines.Sum(s => s.Amount);
+        var totalAmount = splitLines
+            .Where(IsJournalEligibleReceiptSplit)
+            .Sum(s => s.Amount);
         var journalEntryLines = new List<JournalEntryLine>();
 
         foreach (var split in splitLines)
         {
+            if (!IsJournalEligibleReceiptSplit(split))
+                continue;
+
             var expenseAccountId = split.ChartOfAccountId > 0
                 ? split.ChartOfAccountId.Value
                 : split.ReceiptType switch
@@ -254,7 +265,9 @@ public partial class AccountingManager
             ? $"Receipt {receiptLabel}"
             : receipt.Description.Trim();
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
-        var totalAmount = splitLines.Sum(s => s.Amount);
+        var totalAmount = splitLines
+            .Where(IsJournalEligibleReceiptSplit)
+            .Sum(s => s.Amount);
         var journalEntryLines = new List<JournalEntryLine>();
 
         journalEntryLines.Add(new JournalEntryLine
@@ -310,32 +323,32 @@ public partial class AccountingManager
             .OrderBy(s => s.ReceiptSplitId)
             .ToList();
 
-        var nonZeroSplits = allSplits.Where(s => s.Amount != 0).ToList();
+        var nonZeroSplits = allSplits.Where(split => split.Amount != 0).ToList();
         if (nonZeroSplits.Count > 0)
             return nonZeroSplits;
 
         if (allSplits.Count > 0)
             return allSplits;
 
-        if (receipt.Amount != 0)
+        // Legacy fallback: when no split rows are provided, treat receipt amount as one split.
+        if (allSplits.Count == 0 && receipt.Amount != 0)
         {
-            var configuredChartOfAccountId = allSplits
-                .Select(split => split.ChartOfAccountId)
-                .FirstOrDefault(id => id is > 0);
-
             return
             [
                 new ReceiptSplit
                 {
                     Amount = receipt.Amount,
                     Description = receipt.Description,
-                    ChartOfAccountId = configuredChartOfAccountId
+                    ChartOfAccountId = null
                 }
             ];
         }
 
         return allSplits;
     }
+
+    private static bool IsJournalEligibleReceiptSplit(ReceiptSplit split)
+        => split.Amount != 0 && split.ReceiptType != ReceiptType.NonExpense;
     #endregion
 
     #region Bank Card Helpers

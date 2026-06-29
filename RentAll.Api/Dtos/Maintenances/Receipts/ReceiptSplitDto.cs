@@ -47,6 +47,7 @@ public class ReceiptSplitDto
 
     public ReceiptSplit ToModel()
     {
+        var isNonExpense = ReceiptTypeId == (int)ReceiptType.NonExpense;
         return new ReceiptSplit
         {
             ReceiptSplitId = ReceiptSplitId ?? 0,
@@ -57,7 +58,7 @@ public class ReceiptSplitDto
             WorkOrderId = WorkOrderId,
             WorkOrderCode = WorkOrderCode,
             ReceiptType = (ReceiptType)ReceiptTypeId,
-            ChartOfAccountId = ChartOfAccountId is > 0 ? ChartOfAccountId : null
+            ChartOfAccountId = !isNonExpense && ChartOfAccountId is > 0 ? ChartOfAccountId : null
         };
     }
 }

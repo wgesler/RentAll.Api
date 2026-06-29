@@ -130,6 +130,7 @@ public partial class AccountingManager
         try
         {
             EnsureReceiptIsCardReceipt(receipt);
+            receipt = await LoadReceiptWithSplitsAsync(receipt);
 
             if (receipt.ReceiptId == Guid.Empty)
                 return;
@@ -259,6 +260,7 @@ public partial class AccountingManager
         try
         {
             EnsureReceiptIsBill(bill);
+            bill = await LoadReceiptWithSplitsAsync(bill);
 
             if (bill.ReceiptId == Guid.Empty)
                 return;

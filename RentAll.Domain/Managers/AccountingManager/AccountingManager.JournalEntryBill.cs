@@ -17,6 +17,7 @@ public partial class AccountingManager
         try
         {
             EnsureReceiptIsBill(bill);
+            bill = await LoadReceiptWithSplitsAsync(bill);
 
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
             var journalEntry = await BuildJournalEntryFromBillAsync(bill, chartOfAccounts, accountingOffice, currentUser);
@@ -114,8 +115,12 @@ public partial class AccountingManager
         var memo = string.IsNullOrWhiteSpace(bill.Description) ? $"Bill {billLabel}" : bill.Description.Trim();
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
 
-        var positiveSplits = splitLines.Where(s => s.Amount > 0).ToList();
-        var negativeSplits = splitLines.Where(s => s.Amount < 0).ToList();
+        var eligibleSplits = splitLines
+            .Where(split => split.ReceiptType != ReceiptType.NonExpense)
+            .Where(split => split.Amount != 0)
+            .ToList();
+        var positiveSplits = eligibleSplits.Where(s => s.Amount > 0).ToList();
+        var negativeSplits = eligibleSplits.Where(s => s.Amount < 0).ToList();
         var journalEntryLines = new List<JournalEntryLine>();
 
         var positiveTotal = positiveSplits.Sum(s => s.Amount);
