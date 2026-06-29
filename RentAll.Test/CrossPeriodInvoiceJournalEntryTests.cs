@@ -277,6 +277,76 @@ public class CrossPeriodInvoiceJournalEntryTests
     }
 
     [Fact]
+    public async Task AdHocLine_WithMatchingRentalPeriod_IsApportionedWithRent()
+    {
+        var reservation = CreateFebReservationWithFees();
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = invoice.LedgerLines.Max(l => l.LineNumber) + 1,
+            ReservationId = invoice.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId,
+            Description = "Manual Utility (02/04-03/05)",
+            Amount = 300m,
+            LedgerLineDate = new DateOnly(2026, 2, 10)
+        });
+        invoice.TotalAmount = invoice.LedgerLines.Sum(l => l.Amount);
+        context.TrackInvoice(invoice);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.PostingDate)
+            .ToList();
+
+        Assert.Equal(2, chargeEntries.Count);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Manual Utility (02/04-03/05)" && line.Credit == 250m);
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo == "Manual Utility (02/04-03/05)" && line.Credit == 50m);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
+    }
+
+    [Fact]
+    public async Task AdHocLine_WithoutMatchingRentalPeriod_PostsAsOneTimeByLedgerLineDate()
+    {
+        var reservation = CreateFebReservationWithFees();
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = invoice.LedgerLines.Max(l => l.LineNumber) + 1,
+            ReservationId = invoice.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId,
+            Description = "Manual Utility One Time",
+            Amount = 120m,
+            LedgerLineDate = new DateOnly(2026, 3, 3)
+        });
+        invoice.TotalAmount = invoice.LedgerLines.Sum(l => l.Amount);
+        context.TrackInvoice(invoice);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.PostingDate)
+            .ToList();
+
+        Assert.Equal(2, chargeEntries.Count);
+        Assert.DoesNotContain(chargeEntries[0].JournalEntryLines, line => line.Memo == "Manual Utility One Time");
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo == "Manual Utility One Time" && line.Credit == 120m);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
+    }
+
+    [Fact]
     public async Task ApportionmentRounding_NightlyCrossMonthSplit_RentCreditsSumExactlyToOriginal()
     {
         var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
