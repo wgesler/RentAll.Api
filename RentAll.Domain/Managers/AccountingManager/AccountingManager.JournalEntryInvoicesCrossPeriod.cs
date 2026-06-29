@@ -651,8 +651,9 @@ public partial class AccountingManager
         firstSlice.LedgerLines.Clear();
         secondSlice.LedgerLines.Clear();
 
-        // Day-ratio pool (splits with the tenant's days, like rent): the crossing rental, every non-extra
-        // charge on chart accounts that roll up to parent 4000, and Daily/Monthly extra fees.
+        // Day-ratio pool (splits with the tenant's days, like rent): the crossing rental, eligible
+        // ad-hoc/income lines whose description date range matches the rental range, and Daily/Monthly
+        // extra fees.
         var rentalPeriodMatchedAdHocLines = GetRentalPeriodMatchedAdHocLines(
             originalInvoice,
             reservation,
@@ -661,12 +662,21 @@ public partial class AccountingManager
             rentalStart,
             rentalEnd,
             primaryRental).ToList();
+        var rentalRangeMatchedIncomeLines = apportionableIncomeLines
+            .Where(line => TryParseDescriptionDateRange(line.Description, referenceYear, out var lineStart, out var lineEnd)
+                && lineStart == rentalStart
+                && lineEnd == rentalEnd)
+            .ToList();
+        var rentalPeriodMatchedLineKeys = rentalPeriodMatchedAdHocLines
+            .Concat(rentalRangeMatchedIncomeLines)
+            .Select(GetInvoiceLineKey)
+            .ToHashSet(StringComparer.Ordinal);
         var pooledLines = crossingRentals
             .Cast<LedgerLine>()
-            .Concat(apportionableIncomeLines)
+            .Concat(rentalRangeMatchedIncomeLines)
             .Concat(GetSplitPoolExtraFeeLines(originalInvoice, reservation))
             .Concat(rentalPeriodMatchedAdHocLines)
-            .GroupBy(l => (l.CostCodeId, l.Description))
+            .GroupBy(GetInvoiceLineKey)
             .Select(g => g.First())
             .ToList();
 
@@ -689,12 +699,16 @@ public partial class AccountingManager
 
         // One-time / up-front charges (deposits, departure, pet, and OneTime extra fees) stay entirely on
         // the first accounting period.
-        var oneTimeLines = GetOneTimeFeeLines(originalInvoice, reservation).ToList();
+        var oneTimeLines = GetOneTimeFeeLines(originalInvoice, reservation)
+            .Where(line => !rentalPeriodMatchedLineKeys.Contains(GetInvoiceLineKey(line)))
+            .ToList();
         foreach (var oneTimeLine in oneTimeLines)
             firstSlice.LedgerLines.Add(CreateApportionedFeeLine(oneTimeLine, oneTimeLine.Amount));
 
         // Occurrence-based extra fees (weekly, EOW, quarterly, ...) bill in the month each occurrence falls.
-        var occurrenceExtraFeeLines = GetOccurrenceExtraFeeLines(originalInvoice, reservation).ToList();
+        var occurrenceExtraFeeLines = GetOccurrenceExtraFeeLines(originalInvoice, reservation)
+            .Where(line => !rentalPeriodMatchedLineKeys.Contains(GetInvoiceLineKey(line)))
+            .ToList();
         if (!TryApplyOccurrenceExtraFeesToCrossPeriodSlices(firstSlice, secondSlice, reservation, occurrenceExtraFeeLines))
             return false;
 

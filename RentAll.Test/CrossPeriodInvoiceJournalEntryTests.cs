@@ -347,6 +347,92 @@ public class CrossPeriodInvoiceJournalEntryTests
     }
 
     [Fact]
+    public async Task TaxLikeLine_WithMatchingRentalPeriod_IsSplitAcrossBothPeriods()
+    {
+        var reservation = CreateFebReservationWithFees();
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+
+        var nextLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(l => l.LineNumber) + 1 : 1;
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = nextLineNumber,
+            ReservationId = invoice.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+            Description = "Taxes - 16.75% (02/04-03/05)",
+            Amount = 408.70m,
+            LedgerLineDate = new DateOnly(2026, 2, 4)
+        });
+        invoice.TotalAmount = invoice.LedgerLines.Sum(l => l.Amount);
+        context.TrackInvoice(invoice);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.PostingDate)
+            .ToList();
+
+        Assert.Equal(2, chargeEntries.Count);
+        var taxCreditsByPeriod = chargeEntries
+            .Select(entry => entry.JournalEntryLines
+                .Where(line => line.Memo == "Taxes - 16.75% (02/04-03/05)")
+                .Sum(line => line.Credit))
+            .ToList();
+
+        Assert.True(taxCreditsByPeriod[0] > 0m);
+        Assert.True(taxCreditsByPeriod[1] > 0m);
+        Assert.Equal(408.70m, taxCreditsByPeriod.Sum());
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
+    }
+
+    [Fact]
+    public async Task AdHocRentCodeLine_WithoutDateRange_PostsToSingleSliceByLedgerDate()
+    {
+        var reservation = CreateFebReservationWithFees();
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation, FebSliceStart, FebSliceEnd);
+
+        var nextLineNumber = invoice.LedgerLines.Any() ? invoice.LedgerLines.Max(l => l.LineNumber) + 1 : 1;
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = nextLineNumber,
+            ReservationId = invoice.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+            Description = "Airport Pick UP",
+            Amount = 100m,
+            LedgerLineDate = new DateOnly(2026, 2, 20)
+        });
+        invoice.TotalAmount = invoice.LedgerLines.Sum(l => l.Amount);
+        context.TrackInvoice(invoice);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(
+            invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.PostingDate)
+            .ToList();
+
+        Assert.Equal(2, chargeEntries.Count);
+        var firstSliceAirport = chargeEntries[0].JournalEntryLines
+            .Where(line => line.Memo == "Airport Pick UP")
+            .Sum(line => line.Credit);
+        var secondSliceAirport = chargeEntries[1].JournalEntryLines
+            .Where(line => line.Memo == "Airport Pick UP")
+            .Sum(line => line.Credit);
+
+        Assert.Equal(100m, firstSliceAirport);
+        Assert.Equal(0m, secondSliceAirport);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
+    }
+
+    [Fact]
     public async Task ApportionmentRounding_NightlyCrossMonthSplit_RentCreditsSumExactlyToOriginal()
     {
         var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
