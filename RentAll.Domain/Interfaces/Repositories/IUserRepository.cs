@@ -13,6 +13,7 @@ namespace RentAll.Domain.Interfaces.Repositories
 
         Task<User> CreateAsync(User user);
         Task<User> UpdateByIdAsync(User user);
+        Task UpdateAuthActivityByIdAsync(Guid userId, DateTimeOffset? lastLoginOn = null, DateTimeOffset? lastSeenOn = null, DateTimeOffset? lastLogoutOn = null);
         Task DeleteUserByIdAsync(Guid userId);
         #endregion
 

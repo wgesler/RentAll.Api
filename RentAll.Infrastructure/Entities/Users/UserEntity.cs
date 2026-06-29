@@ -20,6 +20,10 @@ public class UserEntity
     public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
     public Guid? ContactId { get; set; }
+    public DateTimeOffset? LastLoginOn { get; set; }
+    public DateTimeOffset? LastSeenOn { get; set; }
+    public DateTimeOffset? LastLogoutOn { get; set; }
+    public bool IsLoggedIn { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

@@ -41,6 +41,8 @@ public class AuthManager
         var enabledFeatures = await GetEnabledFeaturesClaimAsync(user.OrganizationId);
         var accessToken = _tokenService.GenerateToken(user, enabledFeatures);
         var refreshToken = await CreateRefreshTokenAsync(user.UserId);
+        var now = DateTimeOffset.UtcNow;
+        await _userRepository.UpdateAuthActivityByIdAsync(user.UserId, lastLoginOn: now, lastSeenOn: now);
 
         return (true, user, accessToken, refreshToken);
     }
@@ -120,6 +122,7 @@ public class AuthManager
         };
 
         await _userRepository.CreateRefreshTokenAsync(newStoredToken);
+        await _userRepository.UpdateAuthActivityByIdAsync(user.UserId, lastSeenOn: DateTimeOffset.UtcNow);
 
         // Delete the old refresh token
         await _userRepository.DeleteRefreshTokenByIdAsync(storedToken.RefreshTokenId);
@@ -150,6 +153,7 @@ public class AuthManager
 
         // Delete the refresh token
         await _userRepository.DeleteRefreshTokenByIdAsync(storedToken.RefreshTokenId);
+        await _userRepository.UpdateAuthActivityByIdAsync(storedToken.UserId, lastLogoutOn: DateTimeOffset.UtcNow);
         return true;
     }
 

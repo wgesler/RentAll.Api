@@ -21,6 +21,28 @@ public partial class AuthController
         }
     }
 
+    [HttpGet("user/activity")]
+    public async Task<IActionResult> GetUserActivityByOrganizationAsync()
+    {
+        if (!IsAdmin() && !IsSuperAdmin())
+            return Unauthorized("Only Admin or SuperAdmin can view user activity.");
+
+        try
+        {
+            var users = await _userRepository.GetUsersByOrganizationIdAsync(CurrentOrganizationId);
+            var response = users
+                .Select(user => new UserActivityResponseDto(user))
+                .OrderBy(user => user.FullName)
+                .ToList();
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user activity");
+            return ServerError("An error occurred while retrieving user activity");
+        }
+    }
+
     [HttpGet("user/role/{roletype}")]
     public async Task<IActionResult> GetUsersByRoleAsync(string roletype)
     {

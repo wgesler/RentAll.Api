@@ -10,6 +10,10 @@ public class UserResponseDto
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
+    public DateTimeOffset? LastLoginOn { get; set; }
+    public DateTimeOffset? LastSeenOn { get; set; }
+    public DateTimeOffset? LastLogoutOn { get; set; }
+    public bool IsLoggedIn { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
@@ -37,6 +41,10 @@ public class UserResponseDto
         AgentId = user.AgentId;
         ContactId = user.ContactId;
         CommissionRate = user.CommissionRate;
+        LastLoginOn = user.LastLoginOn;
+        LastSeenOn = user.LastSeenOn;
+        LastLogoutOn = user.LastLogoutOn;
+        IsLoggedIn = user.IsLoggedIn;
         FirstName = user.FirstName;
         LastName = user.LastName;
         Email = user.Email;

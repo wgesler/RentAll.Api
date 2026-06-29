@@ -16,6 +16,10 @@ public class User
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
+    public DateTimeOffset? LastLoginOn { get; set; }
+    public DateTimeOffset? LastSeenOn { get; set; }
+    public DateTimeOffset? LastLogoutOn { get; set; }
+    public bool IsLoggedIn { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public List<string> UserGroups { get; set; } = new List<string>();
     public List<int> OfficeAccess { get; set; } = new List<int>();
