@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
@@ -32,7 +33,10 @@ public class CreateReceiptDto
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
-        if (PropertyIds == null || PropertyIds.Count == 0)
+        var requiresPropertyIds = (Splits ?? new List<ReceiptSplitDto>())
+            .Any(split => split.ReceiptTypeId != (int)ReceiptType.Company);
+
+        if (requiresPropertyIds && (PropertyIds == null || PropertyIds.Count == 0))
             return (false, "At least one PropertyId is required");
 
         if (PropertyIds.Any(id => id == Guid.Empty))
