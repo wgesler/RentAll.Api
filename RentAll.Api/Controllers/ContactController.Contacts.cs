@@ -221,6 +221,30 @@ namespace RentAll.Api.Controllers
 
         #endregion
 
+        #region Owner Login
+        [HttpPost("{contactId}/retrigger-owner-login")]
+        public async Task<IActionResult> RetriggerOwnerLoginAsync(Guid contactId)
+        {
+            if (contactId == Guid.Empty)
+                return BadRequest("Contact ID is required");
+
+            try
+            {
+                var contact = await _contactRepository.GetContactByIdAsync(contactId, CurrentOrganizationId);
+                if (contact == null)
+                    return NotFound("Contact not found");
+
+                var updatedContact = await _contactManager.RetriggerLoginForOwnerContact(contact, CurrentUser);
+                return Ok(new ContactResponseDto(updatedContact));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retriggering owner login for contact: {ContactId}", contactId);
+                return ServerError("An error occurred while retriggering owner login");
+            }
+        }
+        #endregion
+
         #region Delete
         [HttpDelete("{contactId}")]
         public async Task<IActionResult> DeleteContactByIdAsync(Guid contactId)

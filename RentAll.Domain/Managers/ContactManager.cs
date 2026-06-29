@@ -92,5 +92,69 @@ public class ContactManager : IContactManager
 
         return contact;
     }
+
+    public async Task<Contact> RetriggerLoginForOwnerContact(Contact contact, Guid currentUser)
+    {
+        if (contact.EntityType != EntityType.Owner)
+            throw new Exception("Only owner contacts can be retriggered for login creation");
+
+        var ownerEmail = (contact.Email ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(ownerEmail))
+            throw new Exception("Owner email is required to retrigger login creation");
+
+        var contactCode = (contact.ContactCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(contactCode))
+            throw new Exception("ContactCode is required to reset or create owner login");
+
+        var passwordHash = _passwordHasher.HashPassword(contactCode);
+        var existingUser = await _userRepository.GetUserByEmailAsync(ownerEmail);
+        if (existingUser != null)
+        {
+            existingUser.PasswordHash = passwordHash;
+
+            if (existingUser.ContactId == null || existingUser.ContactId == Guid.Empty)
+                existingUser.ContactId = contact.ContactId;
+
+            existingUser.ModifiedBy = currentUser;
+            await _userRepository.UpdateByIdAsync(existingUser);
+
+            if (contact.UserId != existingUser.UserId)
+            {
+                contact.UserId = existingUser.UserId;
+                contact.ModifiedBy = currentUser;
+                return await _contactRepository.UpdateByIdAsync(contact);
+            }
+
+            return contact;
+        }
+
+        var newUser = new User
+        {
+            OrganizationId = contact.OrganizationId,
+            ContactId = contact.ContactId,
+            FirstName = contact.FirstName ?? string.Empty,
+            LastName = contact.LastName ?? string.Empty,
+            Email = ownerEmail,
+            Phone = contact.Phone ?? string.Empty,
+            PasswordHash = passwordHash,
+            UserGroups = new List<string>() { "Owner" },
+            OfficeAccess = contact.OfficeAccess != null && contact.OfficeAccess.Count > 0
+                ? new List<int>(contact.OfficeAccess)
+                : new List<int> { contact.OfficeId },
+            ProfilePath = null,
+            StartupPage = StartupPage.Dashboard,
+            AgentId = null,
+            CommissionRate = 0,
+            CreatedBy = currentUser
+        };
+
+        var createdUser = await _userRepository.CreateAsync(newUser);
+        if (createdUser.UserId == Guid.Empty)
+            throw new Exception("Unable to create owner user account");
+
+        contact.UserId = createdUser.UserId;
+        contact.ModifiedBy = currentUser;
+        return await _contactRepository.UpdateByIdAsync(contact);
+    }
 }
 

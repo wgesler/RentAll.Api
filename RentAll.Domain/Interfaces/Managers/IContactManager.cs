@@ -7,5 +7,6 @@ namespace RentAll.Domain.Interfaces.Managers
         Task<string> GenerateContactCodeAsync(Guid organizationId, int contactTypeId);
 
         Task<Contact> GenerateLoginForOwnerContact(Contact contact, Guid createdBy);
+        Task<Contact> RetriggerLoginForOwnerContact(Contact contact, Guid currentUser);
     }
 }
