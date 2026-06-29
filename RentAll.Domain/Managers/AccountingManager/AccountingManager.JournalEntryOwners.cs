@@ -345,7 +345,7 @@ public partial class AccountingManager
         // AGENT-NOTE: DO NOT TOUCH.
         // WORK-ORDER-JE-ACCOUNTS
         // Base lines (all work orders):
-        //   Line 1 — Debit: Tenant Expense (Default Reg Unit Maintenance path via GetDefaultTenantExpense).
+        //   Line 1 — Debit: Expense by work order type (Tenant => GetDefaultTenantExpense, Owner => GetDefaultOwnerExpense, Company => GetDefaultCompanyExpense).
         //   Line 2 — Credit: Accounts Payable (GetDefaultAccountsPayable).
         // Owner lines (only when at least one linked receipt split is Owner type):
         //   Line 3 — Debit: Owner Accounts Payable (GetDefaultOwnerAccountsPayable).
@@ -362,7 +362,12 @@ public partial class AccountingManager
         if (workOrderAmount == 0)
             throw new Exception("WorkOrder amount cannot be zero when creating a journal entry");
 
-        var tenantExpenseAccountId = GetDefaultTenantExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice);
+        var workOrderExpenseAccountId = workOrder.WorkOrderType switch
+        {
+            WorkOrderType.Owner => GetDefaultOwnerExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice),
+            WorkOrderType.Company => GetDefaultCompanyExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice),
+            _ => GetDefaultTenantExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice)
+        };
         var accountsPayableAccountId = GetDefaultAccountsPayable(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, workOrder.OfficeId, accountingOffice);
@@ -375,7 +380,7 @@ public partial class AccountingManager
 
         journalEntryLines.Add(new JournalEntryLine
         {
-            ChartOfAccountId = tenantExpenseAccountId,
+            ChartOfAccountId = workOrderExpenseAccountId,
             PropertyId = propertyId,
             ReservationId = workOrder.ReservationId,
             ContactId = ownerContactId,
