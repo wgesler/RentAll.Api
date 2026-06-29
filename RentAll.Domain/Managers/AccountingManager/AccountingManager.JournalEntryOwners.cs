@@ -266,12 +266,15 @@ public partial class AccountingManager
         if (!bill.IsUtility)
             return false;
 
-        var splitLines = ResolveReceiptSplitLines(bill);
-        if (splitLines.Count == 0)
+        var eligibleSplits = ResolveReceiptSplitLines(bill)
+            .Where(IsJournalEligibleReceiptSplit)
+            .ToList();
+        if (eligibleSplits.Count == 0)
             return false;
 
-        return splitLines.Any(split => split.ReceiptType == ReceiptType.Owner)
-            && splitLines.All(split => split.ReceiptType == ReceiptType.Owner);
+        // Owner utility JE should be created per eligible split. NonExpense splits are ignored, so a
+        // mixed Owner + NonExpense bill still generates owner utility entries for the owner portion.
+        return eligibleSplits.All(split => split.ReceiptType == ReceiptType.Owner);
     }
 
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
