@@ -38,6 +38,7 @@ public class CreateAccountingOfficeDto
     public int? DefaultCompanyExpAccountId { get; set; }
     public int? DefaultPmUtilityIncAccountId { get; set; }
     public int? DefaultLaborIncAccountId { get; set; }
+    public int? DefaultLinenTowelIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
@@ -131,6 +132,7 @@ public class CreateAccountingOfficeDto
             DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
             DefaultPmUtilityIncAccountId = DefaultPmUtilityIncAccountId,
             DefaultLaborIncAccountId = DefaultLaborIncAccountId,
+            DefaultLinenTowelIncAccountId = DefaultLinenTowelIncAccountId,
             DefaultDepartureIncAccountId = DefaultDepartureIncAccountId,
             DefaultDepartureExpAccountId = DefaultDepartureExpAccountId,
             LogoPath = null, // Will be set by controller after file save

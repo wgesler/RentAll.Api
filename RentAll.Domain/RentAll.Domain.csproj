@@ -82,6 +82,12 @@
 
     </Compile>
 
+    <Compile Update="Managers\AccountingManager\AccountingManager.PeriodicTasks.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
   </ItemGroup>
 
 

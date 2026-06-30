@@ -1,8 +1,7 @@
-using RentAll.Domain.Interfaces.Managers;
-using RentAll.Domain.Interfaces.Repositories;
 using Microsoft.Extensions.Options;
 using RentAll.Api.Logging;
-using RentAll.Domain.Enums;
+using RentAll.Domain.Interfaces.Managers;
+using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models.Common;
 using RentAll.Domain.Scheduling;
 
@@ -64,11 +63,14 @@ public class SchedulingHostedService : BackgroundService
         var emailRepository = scope.ServiceProvider.GetRequiredService<IEmailRepository>();
         var reservationRepository = scope.ServiceProvider.GetRequiredService<IReservationRepository>();
         var emailManager = scope.ServiceProvider.GetRequiredService<IEmailManager>();
+        var accountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
         var loggingRepository = scope.ServiceProvider.GetRequiredService<ILoggingRepository>();
 
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
+        await ProcessDeparturesAsync(organizationRepository, reservationRepository, accountingManager, cancellationToken);
+        await ProcessLinensAndTowelsAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
         await ProcessLogRetentionAsync(loggingRepository, cancellationToken);
     }
 
@@ -270,6 +272,77 @@ public class SchedulingHostedService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Logging retention job failed");
+        }
+    }
+    #endregion
+
+    #region Departures
+    private async Task ProcessDeparturesAsync(IOrganizationRepository organizationRepository, IReservationRepository reservationRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var monthlyDepartedReservations = new List<ReservationList>();
+            var organizations = await organizationRepository.GetOrganizationsAsync();
+            foreach (var organization in organizations.Where(o => o.IsActive))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var offices = (await organizationRepository.GetOfficesByOrganizationIdAsync(organization.OrganizationId)).ToList();
+                if (offices.Count == 0)
+                    continue;
+                var officeCsv = string.Join(",", offices.Select(o => o.OfficeId));
+                var departures = await reservationRepository.GetMonthlyDepartedReservationsAsync(organization.OrganizationId, officeCsv);
+                var departedReservations = departures.ToList();
+                monthlyDepartedReservations.AddRange(departedReservations);
+                await accountingManager.CreateJournalEntiesForDepartedReservationAsync(organization.OrganizationId, departedReservations, cancellationToken);
+            }
+
+            _logger.LogInformation("Loaded {DepartureCount} monthly departed reservations.", monthlyDepartedReservations.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Departures periodic job failed");
+        }
+    }
+    #endregion
+
+    #region LinensAndTowels
+    private async Task ProcessLinensAndTowelsAsync(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (DateTime.UtcNow.Day != 1)
+            return;
+
+        try
+        {
+            var organizations = await organizationRepository.GetOrganizationsAsync();
+            foreach (var organization in organizations.Where(o => o.IsActive))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var offices = (await organizationRepository.GetOfficesByOrganizationIdAsync(organization.OrganizationId)).ToList();
+                if (offices.Count == 0)
+                    continue;
+
+                var officeCsv = string.Join(",", offices.Select(o => o.OfficeId));
+                var monthlyBatch = (await propertyRepository.GetMonthlyLinensAndTowelsAsync(organization.OrganizationId, officeCsv)).ToList();
+                var annualBatch = (await propertyRepository.GetAnnualLinensAndTowelsAsync(organization.OrganizationId, officeCsv)).ToList();
+
+                await accountingManager.CreateJournalEntriesForLinensAndTowelsAsync(
+                    organization.OrganizationId,
+                    monthlyBatch,
+                    annualBatch,
+                    cancellationToken);
+
+                _logger.LogInformation(
+                    "Loaded linens/towels agreements for organization {OrganizationId}. Monthly={MonthlyCount}, Annual={AnnualCount}",
+                    organization.OrganizationId,
+                    monthlyBatch.Count,
+                    annualBatch.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "LinensAndTowels periodic job failed");
         }
     }
     #endregion

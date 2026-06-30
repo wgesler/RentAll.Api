@@ -36,6 +36,7 @@ public class AccountingOffice
     public int? DefaultCompanyExpAccountId { get; set; }
     public int? DefaultPmUtilityIncAccountId { get; set; }
     public int? DefaultLaborIncAccountId { get; set; }
+    public int? DefaultLinenTowelIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }

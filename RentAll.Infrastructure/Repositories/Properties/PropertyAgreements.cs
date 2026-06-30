@@ -23,6 +23,36 @@ public partial class PropertyRepository
         return model;
     }
 
+    public async Task<IEnumerable<PropertyAgreement>> GetMonthlyLinensAndTowelsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<PropertyAgreementEntity>("Property.PropertyAgreement_GetMonthlyLinensAndTowels", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (result == null || !result.Any())
+            return Enumerable.Empty<PropertyAgreement>();
+
+        return result.Select(ConvertEntityToModel);
+    }
+
+    public async Task<IEnumerable<PropertyAgreement>> GetAnnualLinensAndTowelsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<PropertyAgreementEntity>("Property.PropertyAgreement_GetAnnualLinensAndTowels", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (result == null || !result.Any())
+            return Enumerable.Empty<PropertyAgreement>();
+
+        return result.Select(ConvertEntityToModel);
+    }
+
     public async Task<IEnumerable<PropertyAgreementRentRoll>> GetPropertyAgreementRentRollByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);

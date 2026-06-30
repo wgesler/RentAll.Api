@@ -39,6 +39,7 @@ public class AccountingOfficeResponseDto
     public int? DefaultCompanyExpAccountId { get; set; }
     public int? DefaultPmUtilityIncAccountId { get; set; }
     public int? DefaultLaborIncAccountId { get; set; }
+    public int? DefaultLinenTowelIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }
@@ -86,6 +87,7 @@ public class AccountingOfficeResponseDto
         DefaultCompanyExpAccountId = accountingOffice.DefaultCompanyExpAccountId;
         DefaultPmUtilityIncAccountId = accountingOffice.DefaultPmUtilityIncAccountId;
         DefaultLaborIncAccountId = accountingOffice.DefaultLaborIncAccountId;
+        DefaultLinenTowelIncAccountId = accountingOffice.DefaultLinenTowelIncAccountId;
         DefaultDepartureIncAccountId = accountingOffice.DefaultDepartureIncAccountId;
         DefaultDepartureExpAccountId = accountingOffice.DefaultDepartureExpAccountId;
         LogoPath = accountingOffice.LogoPath;

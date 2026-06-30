@@ -410,7 +410,7 @@ public partial class AccountingManager
         // Line 2 — Credit: Pre-Payment liability (GetDefaultPrePayment).
         // END PRE-PAYMENT-RECEIVED-JE-ACCOUNTS
 
-        await ValidatePrePaymentLedgerLineForJournalEntry(invoice, paymentLedgerLine);
+        await ValidatePrePaymentLedgerLineForJournalEntryAsync(invoice, paymentLedgerLine);
 
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
@@ -469,7 +469,7 @@ public partial class AccountingManager
         // Line 2 — Credit: Accounts Receivable (GetDefaultAccountsReceivable).
         // END PRE-PAYMENT-APPLY-JE-ACCOUNTS (on date of accounting period)
 
-        await ValidatePrePaymentLedgerLineForJournalEntry(invoice, paymentLedgerLine);
+        await ValidatePrePaymentLedgerLineForJournalEntryAsync(invoice, paymentLedgerLine);
 
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
@@ -518,7 +518,7 @@ public partial class AccountingManager
         };
     }
 
-    private async Task ValidatePrePaymentLedgerLineForJournalEntry(Invoice invoice, LedgerLine paymentLedgerLine)
+    private async Task ValidatePrePaymentLedgerLineForJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine)
     {
         if (paymentLedgerLine.Amount == 0)
             throw new Exception("Payment amount cannot be zero");

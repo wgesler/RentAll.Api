@@ -38,6 +38,7 @@ public class UpdateAccountingOfficeDto
     public int? DefaultCompanyExpAccountId { get; set; }
     public int? DefaultPmUtilityIncAccountId { get; set; }
     public int? DefaultLaborIncAccountId { get; set; }
+    public int? DefaultLinenTowelIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
     public string? LogoPath { get; set; }
@@ -132,6 +133,7 @@ public class UpdateAccountingOfficeDto
             DefaultCompanyExpAccountId = DefaultCompanyExpAccountId,
             DefaultPmUtilityIncAccountId = DefaultPmUtilityIncAccountId,
             DefaultLaborIncAccountId = DefaultLaborIncAccountId,
+            DefaultLinenTowelIncAccountId = DefaultLinenTowelIncAccountId,
             DefaultDepartureIncAccountId = DefaultDepartureIncAccountId,
             DefaultDepartureExpAccountId = DefaultDepartureExpAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided

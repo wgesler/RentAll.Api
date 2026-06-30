@@ -175,6 +175,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             DefaultCompanyExpAccountId = e.DefaultCompanyExpAccountId,
             DefaultPmUtilityIncAccountId = e.DefaultPmUtilityIncAccountId,
             DefaultLaborIncAccountId = e.DefaultLaborIncAccountId,
+            DefaultLinenTowelIncAccountId = e.DefaultLinenTowelIncAccountId,
             DefaultDepartureIncAccountId = e.DefaultDepartureIncAccountId,
             DefaultDepartureExpAccountId = e.DefaultDepartureExpAccountId,
             LogoPath = e.LogoPath,

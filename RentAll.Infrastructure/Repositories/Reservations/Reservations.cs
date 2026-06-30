@@ -22,6 +22,17 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetMonthlyDepartedReservations", new { OrganizationId = organizationId, Offices = officeAccess });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<ReservationList>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<IEnumerable<ReservationList>> GetReservationListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -96,6 +107,30 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 return Enumerable.Empty<Reservation>();
 
             return res.Select(ConvertEntityToModel);
+        }
+
+        public async Task<bool> WasRentedThisMonthAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var result = await db.DapperProcQueryAsync<WasRentedThisMonthEntity>("Property.Reservation_WasRentedThisMonth", new
+            {
+                OrganizationId = organizationId,
+                PropertyId = propertyId
+            });
+
+            return result?.FirstOrDefault()?.WasRentedThisMonth ?? false;
+        }
+
+        public async Task<bool> WasRentedPreviousMonthAsync(Guid propertyId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var result = await db.DapperProcQueryAsync<WasRentedPreviousMonthEntity>("Property.Reservation_WasRentedPreviousMonth", new
+            {
+                OrganizationId = organizationId,
+                PropertyId = propertyId
+            });
+
+            return result?.FirstOrDefault()?.WasRentedPreviousMonth ?? false;
         }
 
         public async Task<Reservation?> GetReservationByIdAsync(Guid reservationId, Guid organizationId)
