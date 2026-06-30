@@ -291,6 +291,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             ColorId = e.ColorId,
             OrganizationId = e.OrganizationId,
             ReservationStatusId = e.ReservationStatusId,
+            NoticeDays = e.NoticeDays,
             Color = e.Color
         };
     }

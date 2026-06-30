@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Dapper;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 
@@ -41,11 +42,46 @@ public partial class OrganizationRepository
     public async Task UpdateColorByIdAsync(Colour color)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcQueryAsync<ColorEntity>("Organization.Color_UpdateById", new
+        const string sql = @"
+IF EXISTS (SELECT 1 FROM Organization.Color WHERE ColorId = @ColorId AND OrganizationId = @OrganizationId)
+BEGIN
+    UPDATE Organization.Color
+    SET
+        ReservationStatusId = @ReservationStatusId,
+        NoticeDays = @NoticeDays,
+        Color = @Color
+    WHERE
+        ColorId = @ColorId
+        AND OrganizationId = @OrganizationId;
+END
+ELSE IF EXISTS (
+    SELECT 1
+    FROM Organization.Color
+    WHERE
+        OrganizationId = @OrganizationId
+        AND ReservationStatusId = @ReservationStatusId
+        AND ISNULL(NoticeDays, -1) = ISNULL(@NoticeDays, -1)
+)
+BEGIN
+    UPDATE Organization.Color
+    SET Color = @Color
+    WHERE
+        OrganizationId = @OrganizationId
+        AND ReservationStatusId = @ReservationStatusId
+        AND ISNULL(NoticeDays, -1) = ISNULL(@NoticeDays, -1);
+END
+ELSE
+BEGIN
+    INSERT INTO Organization.Color (OrganizationId, ReservationStatusId, NoticeDays, Color)
+    VALUES (@OrganizationId, @ReservationStatusId, @NoticeDays, @Color);
+END";
+
+        await db.ExecuteAsync(sql, new
         {
             ColorId = color.ColorId,
             OrganizationId = color.OrganizationId,
             ReservationStatusId = color.ReservationStatusId,
+            NoticeDays = color.NoticeDays,
             Color = color.Color
         });
     }

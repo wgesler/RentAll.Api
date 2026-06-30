@@ -5,6 +5,7 @@ public class UpdateColorDto
     public int ColorId { get; set; }
     public Guid OrganizationId { get; set; }
     public int ReservationStatusId { get; set; }
+    public int? NoticeDays { get; set; }
     public string Color { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -20,6 +21,9 @@ public class UpdateColorDto
 
         if (!Enum.IsDefined(typeof(ReservationStatus), ReservationStatusId))
             return (false, $"Invalid ReservationStatusId value: {ReservationStatusId}");
+
+        if (NoticeDays.HasValue && NoticeDays.Value <= 0)
+            return (false, "NoticeDays must be greater than zero when provided");
 
         if (string.IsNullOrWhiteSpace(Color))
             return (false, "Color value is required");
@@ -41,6 +45,7 @@ public class UpdateColorDto
             ColorId = ColorId,
             OrganizationId = OrganizationId,
             ReservationStatusId = ReservationStatusId,
+            NoticeDays = NoticeDays,
             Color = Color
         };
     }
