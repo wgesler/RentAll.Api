@@ -43,7 +43,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyType = (PropertyType)e.PropertyTypeId,
                 PropertyStatus = (PropertyStatus)e.PropertyStatusId,
                 NoticeToVacate = (ReservationNotice)e.NoticeToVacateId,
-                NoticeStatus = e.NoticeStatusId.HasValue ? (NoticeStatusType?)e.NoticeStatusId.Value : null,
+                NoticeStatus = (NoticeStatusType)e.NoticeStatusId,
                 OfficeId = e.OfficeId,
                 OfficeName = e.OfficeName,
                 BuildingId = e.BuildingId,

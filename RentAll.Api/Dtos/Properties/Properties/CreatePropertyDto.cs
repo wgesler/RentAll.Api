@@ -24,7 +24,7 @@ public class CreatePropertyDto
     public int PropertyTypeId { get; set; }
     public int PropertyStatusId { get; set; }
     public int NoticeToVacateId { get; set; }
-    public int? NoticeStatusId { get; set; }
+    public int NoticeStatusId { get; set; }
     public int OfficeId { get; set; }
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
@@ -186,7 +186,7 @@ public class CreatePropertyDto
         if (!Enum.IsDefined(typeof(ReservationNotice), NoticeToVacateId))
             return (false, $"Invalid NoticeToVacateId value: {NoticeToVacateId}");
 
-        if (NoticeStatusId.HasValue && !Enum.IsDefined(typeof(NoticeStatusType), NoticeStatusId.Value))
+        if (!Enum.IsDefined(typeof(NoticeStatusType), NoticeStatusId))
             return (false, $"Invalid NoticeStatusId value: {NoticeStatusId}");
 
         if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId))
@@ -217,7 +217,7 @@ public class CreatePropertyDto
             PropertyType = (PropertyType)PropertyTypeId,
             PropertyStatus = (PropertyStatus)PropertyStatusId,
             NoticeToVacate = (ReservationNotice)NoticeToVacateId,
-            NoticeStatus = NoticeStatusId.HasValue ? (NoticeStatusType?)NoticeStatusId.Value : null,
+            NoticeStatus = (NoticeStatusType)NoticeStatusId,
             OfficeId = OfficeId,
             BuildingId = BuildingId,
             RegionId = RegionId,

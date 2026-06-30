@@ -25,7 +25,7 @@ public class UpsertPublicOwnerPropertyDto
     public int? PropertyTypeId { get; set; }
     public int? PropertyStatusId { get; set; }
     public int? NoticeToVacateId { get; set; }
-    public int? NoticeStatusId { get; set; }
+    public int NoticeStatusId { get; set; }
     public int? OfficeId { get; set; }
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
@@ -157,7 +157,7 @@ public class UpsertPublicOwnerPropertyDto
             PropertyTypeId = PropertyTypeId ?? (int)PropertyType.Unspecified,
             PropertyStatusId = PropertyStatusId ?? (int)PropertyStatus.Vacant,
             NoticeToVacateId = NoticeToVacateId ?? (int)ReservationNotice.ThirtyDays,
-            NoticeStatusId = NoticeStatusId,
+            NoticeStatusId = NoticeStatusId <= 0 ? (int)NoticeStatusType.None : NoticeStatusId,
             OfficeId = officeId,
             BuildingId = BuildingId,
             RegionId = RegionId,
