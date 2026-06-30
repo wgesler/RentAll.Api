@@ -222,6 +222,9 @@ public partial class AccountingManager
 
         var property = await _propertyRepository.GetPropertyByIdAsync(agreement.PropertyId, organizationId)
             ?? throw new Exception($"Property {agreement.PropertyId} was not found");
+        if (property.PropertyLeaseType != PropertyLeaseType.PropertyManagement)
+            return;
+
         var availableFrom = property.AvailableFrom;
         var availableUntil = property.AvailableUntil;
 
