@@ -22,6 +22,7 @@ public class ReservationListResponseDto
     public DateOnly DepartureDate { get; set; }
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
+    public int ReservationNoticeId { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }
     public DateOnly? MaidStartDate { get; set; }
@@ -67,6 +68,7 @@ public class ReservationListResponseDto
         DepartureDate = reservationList.DepartureDate;
         ReservationTypeId = (int)reservationList.ReservationType;
         ReservationStatusId = (int)reservationList.ReservationStatus;
+        ReservationNoticeId = (int)reservationList.ReservationNotice;
         CurrentInvoiceNo = reservationList.CurrentInvoiceNo;
         HasPets = reservationList.HasPets;
         MaidUserId = reservationList.MaidUserId;

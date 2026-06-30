@@ -24,6 +24,7 @@ public class ReservationListEntity
     public DateOnly DepartureDate { get; set; }
     public int ReservationTypeId { get; set; }
     public int ReservationStatusId { get; set; }
+    public int ReservationNoticeId { get; set; }
     public bool HasPets { get; set; }
     public Guid? MaidUserId { get; set; }
     public DateOnly? MaidStartDate { get; set; }

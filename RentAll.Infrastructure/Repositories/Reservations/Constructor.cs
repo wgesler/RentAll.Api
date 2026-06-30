@@ -161,6 +161,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 DepartureDate = e.DepartureDate,
                 ReservationType = (ReservationType)e.ReservationTypeId,
                 ReservationStatus = (ReservationStatus)e.ReservationStatusId,
+                ReservationNotice = (ReservationNotice)e.ReservationNoticeId,
                 CurrentInvoiceNo = e.CurrentInvoiceNo,
                 HasPets = e.HasPets,
                 MaidUserId = e.MaidUserId,
