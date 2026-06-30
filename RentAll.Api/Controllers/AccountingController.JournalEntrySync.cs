@@ -324,6 +324,7 @@ public partial class AccountingController
             await _accountingManager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await _accountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await _accountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await _accountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, progress);
 
             lock (job.SyncRoot)
             {
@@ -377,7 +378,9 @@ public partial class AccountingController
             ("invoice", "Invoices"),
             ("bill", "Bills"),
             ("receipt", "Receipts"),
-            ("workOrder", "Work Orders")
+            ("workOrder", "Work Orders"),
+            ("departureFee", "Departure Fees"),
+            ("linenAndTowelFee", "Linen & Towel Fees")
         ];
     }
 
@@ -396,6 +399,8 @@ public partial class AccountingController
             "bill" => 2,
             "receipt" => 3,
             "workOrder" => 4,
+            "departureFee" => 5,
+            "linenAndTowelFee" => 6,
             _ => int.MaxValue
         };
     }

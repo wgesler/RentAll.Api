@@ -69,8 +69,8 @@ public class SchedulingHostedService : BackgroundService
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
-        await ProcessDeparturesAsync(organizationRepository, reservationRepository, accountingManager, cancellationToken);
-        await ProcessLinensAndTowelsAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
+        await ProcessDepartureFeesAsync(organizationRepository, reservationRepository, accountingManager, cancellationToken);
+        await ProcessLinenAndTowelFeesAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
         await ProcessLogRetentionAsync(loggingRepository, cancellationToken);
     }
 
@@ -277,7 +277,7 @@ public class SchedulingHostedService : BackgroundService
     #endregion
 
     #region Departures
-    private async Task ProcessDeparturesAsync(IOrganizationRepository organizationRepository, IReservationRepository reservationRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
+    private async Task ProcessDepartureFeesAsync(IOrganizationRepository organizationRepository, IReservationRepository reservationRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         try
@@ -307,7 +307,7 @@ public class SchedulingHostedService : BackgroundService
     #endregion
 
     #region LinensAndTowels
-    private async Task ProcessLinensAndTowelsAsync(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
+    private async Task ProcessLinenAndTowelFeesAsync(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (DateTime.UtcNow.Day != 1)

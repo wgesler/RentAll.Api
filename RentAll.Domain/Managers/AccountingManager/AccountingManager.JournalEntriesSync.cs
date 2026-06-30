@@ -351,6 +351,17 @@ public partial class AccountingManager
         return result;
     }
 
+    public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var result = new JournalEntrySyncResult();
+        var runDates = GetMonthlyRunDatesForCurrentYear(DateOnly.FromDateTime(DateTime.UtcNow));
+
+        await ProcessDepartureFeesAsync(organizationId, officeIds, runDates, result, progress);
+        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, runDates, result, progress);
+
+        return result;
+    }
+
     public async Task<JournalEntrySyncResult> ClearAllJournalEntriesAsync(Guid organizationId, string officeIds)
     {
         var result = new JournalEntrySyncResult();
@@ -384,6 +395,67 @@ public partial class AccountingManager
         }
 
         return result;
+    }
+
+    private async Task ProcessDepartureFeesAsync(Guid organizationId, string officeIds, IReadOnlyCollection<DateOnly> runDates, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var total = runDates.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "departureFee", total, processed, result, "Running");
+
+        foreach (var runDate in runDates)
+        {
+            try
+            {
+                var departures = (await _reservationRepository.GetMonthlyDepartedReservationsAsync(organizationId, officeIds, runDate)).ToList();
+                result.DocumentsProcessed += departures.Count;
+                await CreateJournalEntiesForDepartedReservationAsync(organizationId, departures, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"Departure fees {runDate:yyyy-MM-dd}: {ex.Message}");
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "departureFee", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        if (total == 0)
+            ReportSyncProgress(progress, "departureFee", total, processed, result, "Completed");
+    }
+
+    private async Task ProcessLinenAndTowelFeesAsync(Guid organizationId, string officeIds, IReadOnlyCollection<DateOnly> runDates, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var total = runDates.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, "Running");
+
+        foreach (var runDate in runDates)
+        {
+            try
+            {
+                var monthlyBatch = (await _propertyRepository.GetMonthlyLinensAndTowelsAsync(organizationId, officeIds)).ToList();
+                var annualBatch = (await _propertyRepository.GetAnnualLinensAndTowelsAsync(organizationId, officeIds)).ToList();
+                result.DocumentsProcessed += monthlyBatch.Count + annualBatch.Count;
+
+                await CreateJournalEntriesForLinensAndTowelsAsync(
+                    organizationId,
+                    monthlyBatch,
+                    annualBatch,
+                    CancellationToken.None,
+                    runDate);
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"Linen and towel fees {runDate:yyyy-MM-dd}: {ex.Message}");
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        if (total == 0)
+            ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, "Completed");
     }
 
     private async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
@@ -497,5 +569,14 @@ public partial class AccountingManager
             Errors = result.Errors.Count,
             Status = status
         });
+    }
+
+    private static List<DateOnly> GetMonthlyRunDatesForCurrentYear(DateOnly asOfDate)
+    {
+        var dates = new List<DateOnly>();
+        for (var month = 1; month <= asOfDate.Month; month++)
+            dates.Add(new DateOnly(asOfDate.Year, month, 1));
+
+        return dates;
     }
 }

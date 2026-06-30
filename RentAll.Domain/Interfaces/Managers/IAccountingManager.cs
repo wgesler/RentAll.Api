@@ -55,11 +55,12 @@ public interface IAccountingManager
     Task<JournalEntrySyncResult> SyncReceiptJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> ClearReceiptJournalEntriesAsync(Guid organizationId, string officeIds);
     Task<JournalEntrySyncResult> SyncWorkOrderJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
+    Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> ClearAllJournalEntriesAsync(Guid organizationId, string officeIds);
     #endregion
 
     #region Periodic Tasks
     Task CreateJournalEntiesForDepartedReservationAsync(Guid organizationId, IReadOnlyCollection<ReservationList> reservations, CancellationToken cancellationToken);
-    Task CreateJournalEntriesForLinensAndTowelsAsync(Guid organizationId, IReadOnlyCollection<PropertyAgreement> monthlyAgreements, IReadOnlyCollection<PropertyAgreement> annualAgreements, CancellationToken cancellationToken);
+    Task CreateJournalEntriesForLinensAndTowelsAsync(Guid organizationId, IReadOnlyCollection<PropertyAgreement> monthlyAgreements, IReadOnlyCollection<PropertyAgreement> annualAgreements, CancellationToken cancellationToken, DateOnly? processingDate = null);
     #endregion
 }

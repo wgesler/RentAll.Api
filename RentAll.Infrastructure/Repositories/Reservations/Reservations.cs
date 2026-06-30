@@ -22,10 +22,15 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess)
+        public async Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? asOfDate = null)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetMonthlyDepartedReservations", new { OrganizationId = organizationId, Offices = officeAccess });
+            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetMonthlyDepartedReservations", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess,
+                AsOfDate = asOfDate
+            });
 
             if (res == null || !res.Any())
                 return Enumerable.Empty<ReservationList>();
@@ -121,13 +126,14 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return result?.FirstOrDefault()?.WasRentedThisMonth ?? false;
         }
 
-        public async Task<bool> WasRentedPreviousMonthAsync(Guid propertyId, Guid organizationId)
+        public async Task<bool> WasRentedPreviousMonthAsync(Guid propertyId, Guid organizationId, DateOnly? asOfDate = null)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var result = await db.DapperProcQueryAsync<WasRentedPreviousMonthEntity>("Property.Reservation_WasRentedPreviousMonth", new
             {
                 OrganizationId = organizationId,
-                PropertyId = propertyId
+                PropertyId = propertyId,
+                AsOfDate = asOfDate
             });
 
             return result?.FirstOrDefault()?.WasRentedPreviousMonth ?? false;
