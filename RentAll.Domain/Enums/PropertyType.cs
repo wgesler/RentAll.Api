@@ -18,6 +18,7 @@ public enum PropertyType
     RV = 13,
     Studio = 14,
     Townhouse = 15,
-    Villa = 16
+    Villa = 16,
+    Hotel = 17
 }
 

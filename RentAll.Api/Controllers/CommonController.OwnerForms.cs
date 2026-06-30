@@ -656,6 +656,8 @@ namespace RentAll.Api.Controllers
                 var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(createDto.PropertyCode, owner.OrganizationId);
                 if (existingProperty != null && existingProperty.OfficeId != createDto.OfficeId)
                     existingProperty = null;
+                if (existingProperty != null && !request.NoticeStatusId.HasValue && existingProperty.NoticeStatus.HasValue)
+                    createDto.NoticeStatusId = (int)existingProperty.NoticeStatus.Value;
                 if (existingProperty == null)
                 {
                     var created = await _propertyRepository.CreateAsync(createDto.ToModel(Guid.Empty));

@@ -19,6 +19,7 @@ public class PropertyResponseDto
     // Availability Section 
     public DateOnly? AvailableFrom { get; set; }
     public DateOnly? AvailableUntil { get; set; }
+    public string? ConfirmationNo { get; set; }
     public int MinStay { get; set; }
     public int MaxStay { get; set; }
     public int CheckInTimeId { get; set; }
@@ -29,6 +30,7 @@ public class PropertyResponseDto
     public int PropertyTypeId { get; set; }
     public int PropertyStatusId { get; set; }
     public int NoticeToVacateId { get; set; }
+    public int? NoticeStatusId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public int? BuildingId { get; set; }
@@ -169,6 +171,7 @@ public class PropertyResponseDto
         VendorId = property.VendorId;
         AvailableFrom = property.AvailableFrom;
         AvailableUntil = property.AvailableUntil;
+        ConfirmationNo = property.ConfirmationNo;
         MinStay = property.MinStay;
         MaxStay = property.MaxStay;
         CheckInTimeId = NormalizeEnumId(property.CheckInTime, 0);
@@ -177,6 +180,9 @@ public class PropertyResponseDto
         PropertyTypeId = NormalizeEnumId(property.PropertyType, 0);
         PropertyStatusId = NormalizeEnumId(property.PropertyStatus, 0);
         NoticeToVacateId = NormalizeEnumId(property.NoticeToVacate, 0);
+        NoticeStatusId = property.NoticeStatus.HasValue && Enum.IsDefined(typeof(NoticeStatusType), property.NoticeStatus.Value)
+            ? Convert.ToInt32(property.NoticeStatus.Value)
+            : null;
         OfficeId = property.OfficeId;
         OfficeName = property.OfficeName;
         BuildingId = property.BuildingId;

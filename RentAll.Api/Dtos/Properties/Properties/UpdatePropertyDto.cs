@@ -14,6 +14,7 @@ public class UpdatePropertyDto
     // Availability Section 
     public DateOnly? AvailableFrom { get; set; }
     public DateOnly? AvailableUntil { get; set; }
+    public string? ConfirmationNo { get; set; }
     public int MinStay { get; set; }
     public int MaxStay { get; set; }
     public int CheckInTimeId { get; set; }
@@ -25,6 +26,7 @@ public class UpdatePropertyDto
     public int PropertyTypeId { get; set; }
     public int PropertyStatusId { get; set; }
     public int NoticeToVacateId { get; set; }
+    public int? NoticeStatusId { get; set; }
     public int OfficeId { get; set; }
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
@@ -189,6 +191,9 @@ public class UpdatePropertyDto
         if (!Enum.IsDefined(typeof(ReservationNotice), NoticeToVacateId))
             return (false, $"Invalid NoticeToVacateId value: {NoticeToVacateId}");
 
+        if (NoticeStatusId.HasValue && !Enum.IsDefined(typeof(NoticeStatusType), NoticeStatusId.Value))
+            return (false, $"Invalid NoticeStatusId value: {NoticeStatusId}");
+
         if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId))
             return (false, $"Invalid PropertyLeaseType value: {PropertyLeaseTypeId}");
 
@@ -209,6 +214,7 @@ public class UpdatePropertyDto
             VendorId = VendorId,
             AvailableFrom = AvailableFrom,
             AvailableUntil = AvailableUntil,
+            ConfirmationNo = ConfirmationNo,
             MinStay = MinStay,
             MaxStay = MaxStay,
             CheckInTime = (CheckInTime)CheckInTimeId,
@@ -217,6 +223,7 @@ public class UpdatePropertyDto
             PropertyType = (PropertyType)PropertyTypeId,
             PropertyStatus = (PropertyStatus)PropertyStatusId,
             NoticeToVacate = (ReservationNotice)NoticeToVacateId,
+            NoticeStatus = NoticeStatusId.HasValue ? (NoticeStatusType?)NoticeStatusId.Value : null,
             OfficeId = OfficeId,
             BuildingId = BuildingId,
             RegionId = RegionId,

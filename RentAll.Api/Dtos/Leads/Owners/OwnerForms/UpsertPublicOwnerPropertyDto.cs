@@ -16,6 +16,7 @@ public class UpsertPublicOwnerPropertyDto
 
     public string? AvailableFrom { get; set; }
     public string? AvailableUntil { get; set; }
+    public string? ConfirmationNo { get; set; }
     public int? MinStay { get; set; }
     public int? MaxStay { get; set; }
     public int? CheckInTimeId { get; set; }
@@ -24,6 +25,7 @@ public class UpsertPublicOwnerPropertyDto
     public int? PropertyTypeId { get; set; }
     public int? PropertyStatusId { get; set; }
     public int? NoticeToVacateId { get; set; }
+    public int? NoticeStatusId { get; set; }
     public int? OfficeId { get; set; }
     public int? BuildingId { get; set; }
     public int? RegionId { get; set; }
@@ -146,6 +148,7 @@ public class UpsertPublicOwnerPropertyDto
             IsActive = IsActive ?? true,
             AvailableFrom = ParseDateOnly(AvailableFrom),
             AvailableUntil = ParseDateOnly(AvailableUntil),
+            ConfirmationNo = TrimOrNull(ConfirmationNo),
             MinStay = MinStay ?? 0,
             MaxStay = MaxStay ?? 0,
             CheckInTimeId = CheckInTimeId ?? (int)CheckInTime.FourPM,
@@ -154,6 +157,7 @@ public class UpsertPublicOwnerPropertyDto
             PropertyTypeId = PropertyTypeId ?? (int)PropertyType.Unspecified,
             PropertyStatusId = PropertyStatusId ?? (int)PropertyStatus.Vacant,
             NoticeToVacateId = NoticeToVacateId ?? (int)ReservationNotice.ThirtyDays,
+            NoticeStatusId = NoticeStatusId,
             OfficeId = officeId,
             BuildingId = BuildingId,
             RegionId = RegionId,

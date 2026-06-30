@@ -16,6 +16,7 @@ public class Property
     // Availability Section 
     public DateOnly? AvailableFrom { get; set; }
     public DateOnly? AvailableUntil { get; set; }
+    public string? ConfirmationNo { get; set; }
     public int MinStay { get; set; }
     public int MaxStay { get; set; }
     public CheckInTime CheckInTime { get; set; }
@@ -26,6 +27,7 @@ public class Property
     public PropertyType PropertyType { get; set; }
     public PropertyStatus PropertyStatus { get; set; }
     public ReservationNotice NoticeToVacate { get; set; }
+    public NoticeStatusType? NoticeStatus { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public int? BuildingId { get; set; }
