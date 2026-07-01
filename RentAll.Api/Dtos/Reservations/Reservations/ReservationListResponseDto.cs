@@ -6,6 +6,7 @@ public class ReservationListResponseDto
     public string ReservationCode { get; set; } = string.Empty;
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
+    public int NoticeStatusId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public Guid ContactId { get; set; }
@@ -52,6 +53,7 @@ public class ReservationListResponseDto
         ReservationCode = reservationList.ReservationCode;
         PropertyId = reservationList.PropertyId;
         PropertyCode = reservationList.PropertyCode;
+        NoticeStatusId = reservationList.NoticeStatusId;
         OfficeId = reservationList.OfficeId;
         OfficeName = reservationList.OfficeName;
         ContactId = reservationList.ContactId;
