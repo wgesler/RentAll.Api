@@ -78,6 +78,8 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ReferenceNo = e.ReferenceNo,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
+                BillingStartDate = e.BillingStartDate,
+                BillingEndDate = e.BillingEndDate,
                 CheckInTime = (CheckInTime)e.CheckInTimeId,
                 CheckOutTime = (CheckOutTime)e.CheckOutTimeId,
                 LockBoxCode = e.LockBoxCode,

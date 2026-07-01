@@ -20,6 +20,8 @@ public class UpdateReservationDto
     public string? ReferenceNo { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
+    public DateOnly? BillingStartDate { get; set; }
+    public DateOnly? BillingEndDate { get; set; }
     public int CheckInTimeId { get; set; }
     public int CheckOutTimeId { get; set; }
     public string? LockBoxCode { get; set; }
@@ -160,6 +162,8 @@ public class UpdateReservationDto
             ReferenceNo = ReferenceNo,
             ArrivalDate = ArrivalDate,
             DepartureDate = DepartureDate,
+            BillingStartDate = BillingStartDate,
+            BillingEndDate = BillingEndDate,
             CheckInTime = (CheckInTime)CheckInTimeId,
             CheckOutTime = (CheckOutTime)CheckOutTimeId,
             LockBoxCode = LockBoxCode,

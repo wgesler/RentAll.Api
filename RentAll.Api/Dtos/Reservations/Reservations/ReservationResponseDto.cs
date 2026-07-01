@@ -24,6 +24,8 @@ public class ReservationResponseDto
     public string? ReferenceNo { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
+    public DateOnly? BillingStartDate { get; set; }
+    public DateOnly? BillingEndDate { get; set; }
     public int CheckInTimeId { get; set; }
     public int CheckOutTimeId { get; set; }
     public string? LockBoxCode { get; set; }
@@ -95,6 +97,8 @@ public class ReservationResponseDto
         ReferenceNo = reservation.ReferenceNo;
         ArrivalDate = reservation.ArrivalDate;
         DepartureDate = reservation.DepartureDate;
+        BillingStartDate = reservation.BillingStartDate;
+        BillingEndDate = reservation.BillingEndDate;
         CheckInTimeId = (int)reservation.CheckInTime;
         CheckOutTimeId = (int)reservation.CheckOutTime;
         LockBoxCode = reservation.LockBoxCode;

@@ -24,6 +24,8 @@ public class Reservation
     public string? ReferenceNo { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
+    public DateOnly? BillingStartDate { get; set; }
+    public DateOnly? BillingEndDate { get; set; }
     public CheckInTime CheckInTime { get; set; }
     public CheckOutTime CheckOutTime { get; set; }
     public string? LockBoxCode { get; set; }
