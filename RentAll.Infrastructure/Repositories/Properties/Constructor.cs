@@ -392,7 +392,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 MaxRent = e.MaxRent,
                 PropertyCode = e.PropertyCode,
                 PropertyLeaseTypeId = e.PropertyLeaseTypeId,
-                PropertyStyleId = e.PropertyStyleId,
+                PropertyTypeId = e.PropertyTypeId,
                 City = e.City,
                 State = e.State,
                 Cable = e.Cable,

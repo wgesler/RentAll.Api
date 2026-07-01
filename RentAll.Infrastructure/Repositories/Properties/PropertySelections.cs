@@ -48,7 +48,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 MaxRent = selection.MaxRent,
                 PropertyCode = selection.PropertyCode,
                 PropertyLeaseTypeId = selection.PropertyLeaseTypeId,
-                PropertyStyleId = selection.PropertyStyleId,
+                PropertyTypeId = selection.PropertyTypeId,
                 City = selection.City,
                 State = selection.State,
                 Cable = selection.Cable,
