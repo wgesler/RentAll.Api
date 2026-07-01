@@ -29,11 +29,55 @@ public partial class AccountingRepository
         return new OwnerStatementSummary
         {
             PropertyId = e.PropertyId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            OwnerId = e.OwnerId,
             PropertyCode = e.PropertyCode,
             OwnerName = e.OwnerName,
             Income = e.Income,
             Expenses = e.Expenses,
-            Balance = e.Balance
+            Balance = e.Balance,
+            WorkingCapital = e.WorkingCapital
+        };
+    }
+
+    public async Task<IEnumerable<OwnerStatementJournalEntryLine>> GetOwnerStatementJournalEntryLinesAsync(OwnerStatementJournalEntryLineGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OwnerStatementJournalEntryLineEntity>("Accounting.OwnerStatement_JournalEntryLine_GetByCriteria", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            OwnerId = criteria.OwnerId,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<OwnerStatementJournalEntryLine>();
+
+        return res.Select(ConvertOwnerStatementJournalEntryLineEntityToModel);
+    }
+
+    private OwnerStatementJournalEntryLine ConvertOwnerStatementJournalEntryLineEntityToModel(OwnerStatementJournalEntryLineEntity e)
+    {
+        return new OwnerStatementJournalEntryLine
+        {
+            JournalEntryLineId = e.JournalEntryLineId,
+            JournalEntryId = e.JournalEntryId,
+            JournalEntryCode = e.JournalEntryCode,
+            TransactionDate = e.TransactionDate,
+            OfficeId = e.OfficeId,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            ChartOfAccountId = e.ChartOfAccountId,
+            AccountNo = e.AccountNo,
+            ChartOfAccountName = e.ChartOfAccountName,
+            Description = e.Description,
+            Debit = e.Debit,
+            Credit = e.Credit,
+            Category = e.Category,
+            Amount = e.Amount
         };
     }
 }
