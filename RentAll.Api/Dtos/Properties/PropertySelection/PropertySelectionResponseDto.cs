@@ -11,6 +11,7 @@ public class PropertySelectionResponseDto
     public decimal MaxRent { get; set; }
     public string? PropertyCode { get; set; }
     public int PropertyLeaseTypeId { get; set; }
+    public int PropertyStyleId { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public bool Cable { get; set; }
@@ -41,6 +42,7 @@ public class PropertySelectionResponseDto
         MaxRent = s.MaxRent;
         PropertyCode = s.PropertyCode;
         PropertyLeaseTypeId = s.PropertyLeaseTypeId;
+        PropertyStyleId = s.PropertyStyleId;
         City = s.City;
         State = s.State;
         Cable = s.Cable;

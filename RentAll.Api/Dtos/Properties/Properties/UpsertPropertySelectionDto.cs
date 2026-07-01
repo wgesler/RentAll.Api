@@ -11,6 +11,7 @@ public class UpsertPropertySelectionDto
     public decimal MaxRent { get; set; }
     public string? PropertyCode { get; set; }
     public int PropertyLeaseTypeId { get; set; }
+    public int PropertyStyleId { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public bool Cable { get; set; }
@@ -76,6 +77,7 @@ public class UpsertPropertySelectionDto
             MaxRent = MaxRent,
             PropertyCode = PropertyCode,
             PropertyLeaseTypeId = PropertyLeaseTypeId,
+            PropertyStyleId = PropertyStyleId,
             City = City,
             State = State,
             Cable = Cable,
