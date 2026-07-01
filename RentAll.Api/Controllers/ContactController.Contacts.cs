@@ -157,6 +157,54 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPost("append-property-code")]
+        public async Task<IActionResult> AppendPropertyCodeToContacts([FromBody] AppendPropertyCodeToContactsDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Append property code data is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var normalizedPropertyCode = dto.PropertyCode.Trim();
+                var requestedContactIds = dto.ContactIds.Where(contactId => contactId != Guid.Empty).Distinct().ToHashSet();
+                if (requestedContactIds.Count == 0)
+                    return Ok(new AppendPropertyCodeToContactsResponseDto { RequestedCount = 0, UpdatedCount = 0, SkippedCount = 0 });
+
+                var accessibleContacts = (await _contactRepository.GetContactsByOfficeIdAsync(CurrentOrganizationId, CurrentOfficeAccess)).Where(contact => requestedContactIds.Contains(contact.ContactId)).ToList();
+                var updatedCount = 0;
+
+                foreach (var contact in accessibleContacts)
+                {
+                    var existingCodes = (contact.Properties ?? []).Select(code => (code ?? string.Empty).Trim()).Where(code => code.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    if (existingCodes.Any(code => code.Equals(normalizedPropertyCode, StringComparison.OrdinalIgnoreCase)))
+                        continue;
+
+                    existingCodes.Add(normalizedPropertyCode);
+                    contact.Properties = existingCodes;
+                    contact.ModifiedBy = CurrentUser;
+
+                    await _contactRepository.UpdateByIdAsync(contact);
+                    updatedCount++;
+                }
+
+                return Ok(new AppendPropertyCodeToContactsResponseDto
+                {
+                    RequestedCount = requestedContactIds.Count,
+                    UpdatedCount = updatedCount,
+                    SkippedCount = requestedContactIds.Count - updatedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error appending property code to contacts");
+                return ServerError("An error occurred while updating contact property links");
+            }
+        }
+
         [HttpPut("by-lead")]
         public async Task<IActionResult> GetContactByLeadAsync([FromBody] UpdateLeadOwnerDto dto)
         {
