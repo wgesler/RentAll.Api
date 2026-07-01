@@ -247,8 +247,10 @@ public partial class AccountingController
 
         try
         {
-            var officeIds = ResolveRequestedOfficeIds(dto);
-            if (string.IsNullOrWhiteSpace(officeIds))
+            var officeIds = (dto.OfficeIds == null || dto.OfficeIds.Length == 0)
+                ? string.Empty
+                : ResolveRequestedOfficeIds(dto);
+            if (dto.OfficeIds != null && dto.OfficeIds.Length > 0 && string.IsNullOrWhiteSpace(officeIds))
                 return Forbid();
 
             var result = await _accountingManager.ClearAllJournalEntriesAsync(CurrentOrganizationId, officeIds);

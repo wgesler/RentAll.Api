@@ -13,5 +13,6 @@ public interface IJournalEntryRepository
     Task<JournalEntry> UpdateJournalEntryByIdAsync(JournalEntry journalEntry);
     Task DeleteJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, Guid sourceId);
+    Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<int> DeleteAllJournalEntriesByOrganizationIdAsync(Guid organizationId);
 }

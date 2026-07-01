@@ -368,26 +368,7 @@ public partial class AccountingManager
 
         try
         {
-            var entries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-            {
-                OrganizationId = organizationId,
-                OfficeIds = officeIds,
-                IncludeVoided = true,
-                IncludeUnposted = true
-            })).ToList();
-
-            foreach (var entry in entries)
-            {
-                try
-                {
-                    await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
-                    result.JournalEntriesDeleted++;
-                }
-                catch (Exception ex)
-                {
-                    result.Errors.Add($"Journal entry {entry.JournalEntryCode}: {ex.Message}");
-                }
-            }
+            result.JournalEntriesDeleted = await _journalEntryRepository.DeleteJournalEntriesByOfficeIdsAsync(organizationId, officeIds);
         }
         catch (Exception ex)
         {
