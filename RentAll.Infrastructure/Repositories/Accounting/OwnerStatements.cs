@@ -57,8 +57,14 @@ public partial class AccountingRepository
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
             OwnerId = criteria.OwnerId,
+            PropertyId = criteria.PropertyId,
+            Metric = criteria.Metric,
             StartDate = criteria.StartDate,
-            EndDate = criteria.EndDate
+            EndDate = criteria.EndDate,
+            ExpectedAccountId = criteria.ExpectedAccountId,
+            ActualAccountId = criteria.ActualAccountId,
+            PrePaidAccountId = criteria.PrePaidAccountId,
+            ExpenseAccountId = criteria.ExpenseAccountId
         });
 
         if (res == null || !res.Any())

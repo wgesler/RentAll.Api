@@ -49,7 +49,36 @@ public partial class AccountingManager
 
     public async Task<IEnumerable<OwnerStatementJournalEntryLine>> GetOwnerStatementJournalEntryLinesAsync(OwnerStatementJournalEntryLineGetCriteria criteria)
     {
-        return await _accountingRepository.GetOwnerStatementJournalEntryLinesAsync(criteria);
+        var officeIds = ParseOfficeIds(criteria.OfficeIds);
+        if (officeIds.Count == 0)
+            return Enumerable.Empty<OwnerStatementJournalEntryLine>();
+
+        var lines = new List<OwnerStatementJournalEntryLine>();
+        foreach (var officeId in officeIds)
+        {
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(criteria.OrganizationId, officeId);
+            var officeCriteria = new OwnerStatementJournalEntryLineGetCriteria
+            {
+                OrganizationId = criteria.OrganizationId,
+                OfficeIds = officeId.ToString(),
+                OwnerId = criteria.OwnerId,
+                PropertyId = criteria.PropertyId,
+                Metric = criteria.Metric,
+                StartDate = criteria.StartDate,
+                EndDate = criteria.EndDate,
+                ExpectedAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice),
+                ActualAccountId = GetDefaultUndepositedFunds(chartOfAccounts, officeId, accountingOffice),
+                PrePaidAccountId = GetDefaultPrePayment(chartOfAccounts, officeId, accountingOffice),
+                ExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice)
+            };
+            lines.AddRange(await _accountingRepository.GetOwnerStatementJournalEntryLinesAsync(officeCriteria));
+        }
+
+        return lines
+            .OrderByDescending(line => line.TransactionDate)
+            .ThenByDescending(line => line.JournalEntryCode)
+            .ThenByDescending(line => line.Amount)
+            .ToList();
     }
 
     public async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementPropertyActivityLinesAsync(OwnerStatementPropertyActivityGetCriteria criteria)

@@ -6,6 +6,8 @@ public class GetOwnerStatementJournalEntryLineDto
 {
     public int[] OfficeIds { get; set; } = [];
     public Guid OwnerId { get; set; }
+    public Guid? PropertyId { get; set; }
+    public string Metric { get; set; } = string.Empty;
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 
@@ -22,6 +24,13 @@ public class GetOwnerStatementJournalEntryLineDto
         if (OwnerId == Guid.Empty)
             return (false, "OwnerId is required");
 
+        if (!string.IsNullOrWhiteSpace(Metric))
+        {
+            var metric = Metric.Trim().ToLowerInvariant();
+            if (metric != "expected" && metric != "prepaid" && metric != "outstanding" && metric != "income" && metric != "expenses" && metric != "balance")
+                return (false, "Metric must be one of: expected, prePaid, outstanding, income, expenses, balance");
+        }
+
         if (StartDate.HasValue && EndDate.HasValue && EndDate.Value < StartDate.Value)
             return (false, "EndDate must be on or after StartDate");
 
@@ -35,6 +44,8 @@ public class GetOwnerStatementJournalEntryLineDto
             OrganizationId = organizationId,
             OfficeIds = ResolvedOfficeIds,
             OwnerId = OwnerId,
+            PropertyId = PropertyId,
+            Metric = (Metric ?? string.Empty).Trim(),
             StartDate = StartDate,
             EndDate = EndDate
         };
