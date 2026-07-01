@@ -15,7 +15,11 @@ public partial class AccountingRepository
             OfficeIds = criteria.OfficeIds,
             PropertyId = criteria.PropertyId,
             StartDate = criteria.StartDate,
-            EndDate = criteria.EndDate
+            EndDate = criteria.EndDate,
+            ExpectedAccountId = criteria.ExpectedAccountId,
+            ActualAccountId = criteria.ActualAccountId,
+            PrePaidAccountId = criteria.PrePaidAccountId,
+            ExpenseAccountId = criteria.ExpenseAccountId
         });
 
         if (res == null || !res.Any())
@@ -34,10 +38,14 @@ public partial class AccountingRepository
             OwnerId = e.OwnerId,
             PropertyCode = e.PropertyCode,
             OwnerName = e.OwnerName,
+            Expected = e.Expected,
+            PrePaid = e.PrePaid,
+            Outstanding = e.Outstanding,
             Income = e.Income,
             Expenses = e.Expenses,
             Balance = e.Balance,
-            WorkingCapital = e.WorkingCapital
+            WorkingCapital = e.WorkingCapital,
+            WorkingCapitalBalanceDue = e.WorkingCapitalBalanceDue
         };
     }
 
