@@ -182,6 +182,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PetFee = e.PetFee,
                 MaidServiceFee = e.MaidServiceFee,
                 PropertyStatus = (PropertyStatus)e.PropertyStatusId,
+                NoticeStatus = (NoticeStatusType)e.NoticeStatusId,
                 BedroomId1 = e.BedroomId1,
                 BedroomId2 = e.BedroomId2,
                 BedroomId3 = e.BedroomId3,

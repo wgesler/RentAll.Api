@@ -26,6 +26,7 @@ public class PropertyListEntity
     public decimal PetFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public int PropertyStatusId { get; set; }
+    public int NoticeStatusId { get; set; }
     public int BedroomId1 { get; set; }
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }

@@ -26,6 +26,7 @@ public class PropertyListResponseDto
     public decimal PetFee { get; set; }
     public decimal MaidServiceFee { get; set; }
     public int PropertyStatusId { get; set; }
+    public int NoticeStatusId { get; set; }
     public int BedroomId1 { get; set; }
     public int BedroomId2 { get; set; }
     public int BedroomId3 { get; set; }
@@ -76,6 +77,7 @@ public class PropertyListResponseDto
         PetFee = propertyList.PetFee;
         MaidServiceFee = propertyList.MaidServiceFee;
         PropertyStatusId = (int)propertyList.PropertyStatus;
+        NoticeStatusId = (int)propertyList.NoticeStatus;
         BedroomId1 = propertyList.BedroomId1;
         BedroomId2 = propertyList.BedroomId2;
         BedroomId3 = propertyList.BedroomId3;
