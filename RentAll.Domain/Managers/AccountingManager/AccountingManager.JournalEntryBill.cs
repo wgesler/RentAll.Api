@@ -111,9 +111,10 @@ public partial class AccountingManager
         var accountsPayableAccountId = GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
         var transactionDate = bill.AccountingPeriod;
         var postingDate = bill.AccountingPeriod;
-        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
-        var memo = ResolveRequiredReceiptHeaderMemo(billLabel, splitLines);
+        var receiptCode = bill.ReceiptCode.Trim();
+        var memo = BuildRequiredReceiptSplitMemo(receiptCode, bill.Description);
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+        var fullBillAmount = bill.Amount != 0 ? Math.Abs(bill.Amount) : 0m;
 
         var eligibleSplits = splitLines
             .Where(split => split.ReceiptType != ReceiptType.NonExpense)
@@ -133,8 +134,8 @@ public partial class AccountingManager
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
                 Debit = 0,
-                Credit = positiveTotal,
-                Memo = $"Accounts Payable - {billLabel}",
+                Credit = fullBillAmount > 0 ? fullBillAmount : positiveTotal,
+                Memo = memo,
                 CreatedBy = currentUser
             });
 
@@ -149,9 +150,7 @@ public partial class AccountingManager
                         ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
                         _ => GetDefaultCompanyExpense(chartOfAccounts, bill.OfficeId, accountingOffice)
                     };
-                var splitMemo = split.ReceiptType == ReceiptType.Owner
-                    ? BuildOwnerBillSplitMemo(billLabel, split.Description)
-                    : BuildRequiredReceiptSplitMemo(billLabel, split.Description);
+                var splitMemo = BuildRequiredReceiptSplitMemo(receiptCode, split.Description);
 
                 journalEntryLines.Add(new JournalEntryLine
                 {
@@ -176,9 +175,9 @@ public partial class AccountingManager
                 ChartOfAccountId = accountsPayableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
-                Debit = Math.Abs(negativeTotal),
+                Debit = fullBillAmount > 0 ? fullBillAmount : Math.Abs(negativeTotal),
                 Credit = 0,
-                Memo = $"Accounts Payable - {billLabel}",
+                Memo = memo,
                 CreatedBy = currentUser
             });
 
@@ -193,9 +192,7 @@ public partial class AccountingManager
                         ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
                         _ => GetDefaultCompanyExpense(chartOfAccounts, bill.OfficeId, accountingOffice)
                     };
-                var splitMemo = split.ReceiptType == ReceiptType.Owner
-                    ? BuildOwnerBillSplitMemo(billLabel, split.Description)
-                    : BuildRequiredReceiptSplitMemo(billLabel, split.Description);
+                var splitMemo = BuildRequiredReceiptSplitMemo(receiptCode, split.Description);
                 journalEntryLines.Add(new JournalEntryLine
                 {
                     // Credit Expense

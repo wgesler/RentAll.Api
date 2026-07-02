@@ -291,9 +291,9 @@ public partial class AccountingManager
         if (eligibleSplits.Count == 0)
             return false;
 
-        // Owner utility JE should be created per eligible split. NonExpense splits are ignored, so a
-        // mixed Owner + NonExpense bill still generates owner utility entries for the owner portion.
-        return eligibleSplits.All(split => split.ReceiptType == ReceiptType.Owner);
+        // Owner utility JE is created when any eligible split is Owner type; mixed split sets still
+        // create owner utility entries for the owner portion only.
+        return eligibleSplits.Any(split => split.ReceiptType == ReceiptType.Owner);
     }
 
     private static string BuildOwnerUtilityReceiptMemo(string receiptCode, IEnumerable<ReceiptSplit> ownerSplitLines)
