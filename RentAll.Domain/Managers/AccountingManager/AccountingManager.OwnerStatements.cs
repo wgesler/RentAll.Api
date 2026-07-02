@@ -269,6 +269,8 @@ public partial class AccountingManager
                     return new OwnerStatementPropertyActivityLine
                     {
                         ActivityId = first.SourceId ?? first.JournalEntryId,
+                        SourceId = first.SourceId,
+                        JournalEntryLineId = null,
                         ActivityType = "Reservation",
                         ActivityDate = first.TransactionDate,
                         DocumentCode = documentCode,
@@ -327,6 +329,8 @@ public partial class AccountingManager
                     return new OwnerStatementPropertyActivityLine
                     {
                         ActivityId = first.SourceId ?? first.JournalEntryId,
+                        SourceId = first.SourceId,
+                        JournalEntryLineId = null,
                         ActivityType = "WorkOrder",
                         ActivityDate = first.TransactionDate,
                         DocumentCode = documentCode,
@@ -492,7 +496,9 @@ public partial class AccountingManager
                     : line.JournalEntryCode;
                 return new OwnerStatementPropertyActivityLine
                 {
-                    ActivityId = line.JournalEntryLineId,
+                    ActivityId = line.SourceId ?? line.JournalEntryId,
+                    SourceId = line.SourceId,
+                    JournalEntryLineId = line.JournalEntryLineId,
                     ActivityType = activityType,
                     ActivityDate = activityDate,
                     DocumentCode = line.JournalEntryCode,
@@ -543,6 +549,8 @@ public partial class AccountingManager
                 return new OwnerStatementPropertyActivityLine
                 {
                     ActivityId = first.SourceId ?? first.JournalEntryId,
+                    SourceId = first.SourceId,
+                    JournalEntryLineId = null,
                     ActivityType = "LinensAndTowels",
                     ActivityDate = first.TransactionDate,
                     DocumentCode = first.JournalEntryCode,

@@ -5,6 +5,8 @@ namespace RentAll.Api.Dtos.Accounting.OwnerStatements;
 public class OwnerStatementPropertyActivityLineResponseDto
 {
     public Guid? ActivityId { get; set; }
+    public Guid? SourceId { get; set; }
+    public Guid? JournalEntryLineId { get; set; }
     public string ActivityType { get; set; } = string.Empty;
     public DateOnly ActivityDate { get; set; }
     public string DocumentCode { get; set; } = string.Empty;
@@ -16,6 +18,8 @@ public class OwnerStatementPropertyActivityLineResponseDto
     public OwnerStatementPropertyActivityLineResponseDto(OwnerStatementPropertyActivityLine line)
     {
         ActivityId = line.ActivityId;
+        SourceId = line.SourceId;
+        JournalEntryLineId = line.JournalEntryLineId;
         ActivityType = line.ActivityType;
         ActivityDate = line.ActivityDate;
         DocumentCode = line.DocumentCode;
