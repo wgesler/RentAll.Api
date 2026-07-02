@@ -409,8 +409,8 @@ public partial class AccountingManager
         Guid? propertyId = workOrder.PropertyId == Guid.Empty ? null : workOrder.PropertyId;
         var primarySplit = receiptSplits.FirstOrDefault();
         var memoType = primarySplit != null
-            ? ResolveWorkOrderMemoType(primarySplit.ReceiptType)
-            : ResolveWorkOrderMemoType(workOrder.WorkOrderType);
+            ? ResolveMainWorkOrderMemoType(primarySplit.ReceiptType)
+            : ResolveMainWorkOrderMemoType(workOrder.WorkOrderType);
         var memo = BuildWorkOrderTypedMemo(memoType, workOrderLabel, primarySplit?.Description ?? workOrder.Description);
         var ownerMemo = BuildWorkOrderTypedMemo("Owner", workOrderLabel, primarySplit?.Description ?? workOrder.Description);
         var mainEntryAmount = receiptSplits.Count > 0 ? receiptSplits.Sum(split => split.Amount) : workOrderAmount;
@@ -429,7 +429,7 @@ public partial class AccountingManager
                         ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice),
                         _ => GetDefaultTenantExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice)
                     };
-                var splitMemo = BuildWorkOrderTypedMemo(ResolveWorkOrderMemoType(split.ReceiptType), workOrderLabel, split.Description);
+                var splitMemo = BuildWorkOrderTypedMemo(ResolveMainWorkOrderMemoType(split.ReceiptType), workOrderLabel, split.Description);
                 journalEntryLines.Add(new JournalEntryLine
                 {
                     ChartOfAccountId = expenseAccountId,
@@ -453,7 +453,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount > 0 ? workOrderAmount : 0,
                 Credit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
-                Memo = ownerMemo,
+                Memo = memo,
                 CreatedBy = currentUser
             });
         }
@@ -480,7 +480,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount > 0 ? workOrderAmount : 0,
                 Credit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
-                Memo = memo,
+                Memo = ownerMemo,
                 CreatedBy = currentUser
             });
 
@@ -492,7 +492,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
                 Credit = workOrderAmount > 0 ? workOrderAmount : 0,
-                Memo = ownerMemo,
+                Memo = memo,
                 CreatedBy = currentUser
             });
         }
@@ -572,6 +572,26 @@ public partial class AccountingManager
         return receiptType switch
         {
             ReceiptType.Owner => "Owner",
+            ReceiptType.Company => "Company",
+            _ => "Tenant"
+        };
+    }
+
+    private static string ResolveMainWorkOrderMemoType(WorkOrderType workOrderType)
+    {
+        return workOrderType switch
+        {
+            WorkOrderType.Owner => "Company",
+            WorkOrderType.Company => "Company",
+            _ => "Tenant"
+        };
+    }
+
+    private static string ResolveMainWorkOrderMemoType(ReceiptType receiptType)
+    {
+        return receiptType switch
+        {
+            ReceiptType.Owner => "Company",
             ReceiptType.Company => "Company",
             _ => "Tenant"
         };
