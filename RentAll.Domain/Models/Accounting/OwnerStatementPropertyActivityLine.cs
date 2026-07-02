@@ -8,5 +8,6 @@ public class OwnerStatementPropertyActivityLine
     public string DocumentCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal ExpectedIncome { get; set; }
+    public decimal ReceivedIncome { get; set; }
     public decimal Expenses { get; set; }
 }

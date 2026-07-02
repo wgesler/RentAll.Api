@@ -132,6 +132,26 @@ public partial class AccountingManager
                 StartDate = criteria.StartDate,
                 EndDate = criteria.EndDate
             });
+            var ownerPaymentLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+            {
+                OrganizationId = criteria.OrganizationId,
+                OfficeIds = officeId.ToString(),
+                ChartOfAccountId = ownerAccountsPayableAccountId,
+                SourceTypeId = (int)SourceType.InvoicePayment,
+                PropertyId = criteria.PropertyId,
+                IncludeVoided = false,
+                IncludeUnposted = true,
+                StartDate = criteria.StartDate,
+                EndDate = criteria.EndDate
+            });
+            var receivedIncomeByInvoiceCode = ownerPaymentLines
+                .Select(line => new { Line = line, InvoiceCode = TryExtractInvoiceCode(line.JournalEntryMemo, line.Memo) })
+                .Where(item => !string.IsNullOrWhiteSpace(item.InvoiceCode))
+                .GroupBy(item => item.InvoiceCode!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Sum(item => item.Line.Credit - item.Line.Debit),
+                    StringComparer.OrdinalIgnoreCase);
 
             var groupedInvoiceLines = ownerShareLines
                 .GroupBy(line => line.SourceId ?? line.JournalEntryId)
@@ -143,6 +163,10 @@ public partial class AccountingManager
                     var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
                         ? first.JournalEntryMemo!.Trim()
                         : documentCode;
+                    var invoiceCode = TryExtractInvoiceCode(first.JournalEntryMemo, first.Memo, description);
+                    var receivedIncome = !string.IsNullOrWhiteSpace(invoiceCode) && receivedIncomeByInvoiceCode.TryGetValue(invoiceCode, out var value)
+                        ? value
+                        : 0m;
                     return new OwnerStatementPropertyActivityLine
                     {
                         ActivityId = first.SourceId ?? first.JournalEntryId,
@@ -151,6 +175,7 @@ public partial class AccountingManager
                         DocumentCode = documentCode,
                         Description = description,
                         ExpectedIncome = expectedIncome,
+                        ReceivedIncome = receivedIncome,
                         Expenses = 0m
                     };
                 })
@@ -208,6 +233,7 @@ public partial class AccountingManager
                         DocumentCode = documentCode,
                         Description = description,
                         ExpectedIncome = income,
+                        ReceivedIncome = income,
                         Expenses = expenses
                     };
                 })
@@ -226,6 +252,24 @@ public partial class AccountingManager
             .Where(officeId => officeId > 0)
             .Distinct()
             .ToList();
+    }
+
+    private static string? TryExtractInvoiceCode(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            var token = value
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(part => part.Trim(',', '.', ';', ':', '(', ')'))
+                .FirstOrDefault(part => part.StartsWith("R-", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(token))
+                return token;
+        }
+
+        return null;
     }
 
     private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementBillReceiptActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
@@ -292,6 +336,7 @@ public partial class AccountingManager
                     DocumentCode = first.JournalEntryCode,
                     Description = description,
                     ExpectedIncome = 0m,
+                    ReceivedIncome = 0m,
                     Expenses = expenseAmount
                 };
             })

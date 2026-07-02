@@ -10,6 +10,7 @@ public class OwnerStatementPropertyActivityLineResponseDto
     public string DocumentCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal ExpectedIncome { get; set; }
+    public decimal ReceivedIncome { get; set; }
     public decimal Expenses { get; set; }
 
     public OwnerStatementPropertyActivityLineResponseDto(OwnerStatementPropertyActivityLine line)
@@ -20,6 +21,7 @@ public class OwnerStatementPropertyActivityLineResponseDto
         DocumentCode = line.DocumentCode;
         Description = line.Description;
         ExpectedIncome = line.ExpectedIncome;
+        ReceivedIncome = line.ReceivedIncome;
         Expenses = line.Expenses;
     }
 }
