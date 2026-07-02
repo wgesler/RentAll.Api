@@ -303,8 +303,8 @@ public partial class AccountingManager
             .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
         var description = (ownerSplitDescription ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(description)
-            ? $"Owner: Utiltiy: {receiptCode}"
-            : $"Owner: Utiltiy: {receiptCode}: {description}";
+            ? $"Owner: {receiptCode}"
+            : $"Owner: {receiptCode}: {description}";
     }
 
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
