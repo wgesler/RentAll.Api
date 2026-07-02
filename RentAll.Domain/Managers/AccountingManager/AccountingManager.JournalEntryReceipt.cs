@@ -108,9 +108,7 @@ public partial class AccountingManager
         var transactionDate = receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
         var receiptLabel = receipt.ReceiptCode.Trim();
-        var memo = string.IsNullOrWhiteSpace(receipt.Description)
-            ? $"Receipt {receiptLabel}"
-            : receipt.Description.Trim();
+        var memo = ResolveRequiredReceiptHeaderMemo(receiptLabel, splitLines);
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
 
         var totalAmount = splitLines
@@ -150,9 +148,7 @@ public partial class AccountingManager
                 ContactId = receipt.VendorId,
                 Debit = split.Amount > 0 ? split.Amount : 0,
                 Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
-                Memo = split.Amount < 0 && string.IsNullOrWhiteSpace(split.Description)
-                    ? $"Receipt Credit - {receiptLabel}"
-                    : split.Description,
+                Memo = BuildRequiredReceiptSplitMemo(receiptLabel, split.Description),
                 CreatedBy = currentUser
             });
         }
@@ -185,9 +181,7 @@ public partial class AccountingManager
         var transactionDate = receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
         var receiptLabel = receipt.ReceiptCode.Trim();
-        var memo = string.IsNullOrWhiteSpace(receipt.Description)
-            ? $"Receipt {receiptLabel}"
-            : receipt.Description.Trim();
+        var memo = ResolveRequiredReceiptHeaderMemo(receiptLabel, splitLines);
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
         var totalAmount = splitLines
             .Where(IsJournalEligibleReceiptSplit)
@@ -215,9 +209,7 @@ public partial class AccountingManager
                 ContactId = receipt.VendorId,
                 Debit = split.Amount > 0 ? split.Amount : 0,
                 Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
-                Memo = split.Amount < 0 && string.IsNullOrWhiteSpace(split.Description)
-                    ? $"Receipt Credit - {receiptLabel}"
-                    : split.Description,
+                Memo = BuildRequiredReceiptSplitMemo(receiptLabel, split.Description),
                 CreatedBy = currentUser
             });
         }
@@ -261,9 +253,7 @@ public partial class AccountingManager
         var transactionDate = receipt.AccountingPeriod;
         var postingDate = receipt.AccountingPeriod;
         var receiptLabel = receipt.ReceiptCode.Trim();
-        var memo = string.IsNullOrWhiteSpace(receipt.Description)
-            ? $"Receipt {receiptLabel}"
-            : receipt.Description.Trim();
+        var memo = ResolveRequiredReceiptHeaderMemo(receiptLabel, splitLines);
         var propertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
         var totalAmount = splitLines
             .Where(IsJournalEligibleReceiptSplit)
@@ -349,6 +339,23 @@ public partial class AccountingManager
 
     private static bool IsJournalEligibleReceiptSplit(ReceiptSplit split)
         => split.Amount != 0 && split.ReceiptType != ReceiptType.NonExpense;
+
+    private static string ResolveRequiredReceiptHeaderMemo(string receiptCode, IEnumerable<ReceiptSplit> splitLines)
+    {
+        var firstEligibleDescription = splitLines
+            .Where(IsJournalEligibleReceiptSplit)
+            .Select(split => split.Description)
+            .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
+        return BuildRequiredReceiptSplitMemo(receiptCode, firstEligibleDescription);
+    }
+
+    private static string BuildRequiredReceiptSplitMemo(string receiptCode, string? splitDescription)
+    {
+        var description = (splitDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? receiptCode
+            : $"{receiptCode}: {description}";
+    }
     #endregion
 
     #region Bank Card Helpers

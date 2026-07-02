@@ -112,7 +112,7 @@ public partial class AccountingManager
         var transactionDate = bill.AccountingPeriod;
         var postingDate = bill.AccountingPeriod;
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
-        var memo = string.IsNullOrWhiteSpace(bill.Description) ? $"Bill {billLabel}" : bill.Description.Trim();
+        var memo = ResolveRequiredReceiptHeaderMemo(billLabel, splitLines);
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
 
         var eligibleSplits = splitLines
@@ -149,6 +149,9 @@ public partial class AccountingManager
                         ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
                         _ => GetDefaultCompanyExpense(chartOfAccounts, bill.OfficeId, accountingOffice)
                     };
+                var splitMemo = split.ReceiptType == ReceiptType.Owner
+                    ? BuildOwnerBillSplitMemo(billLabel, split.Description)
+                    : BuildRequiredReceiptSplitMemo(billLabel, split.Description);
 
                 journalEntryLines.Add(new JournalEntryLine
                 {
@@ -158,7 +161,7 @@ public partial class AccountingManager
                     ContactId = bill.VendorId,
                     Debit = split.Amount,
                     Credit = 0,
-                    Memo = split.Description,
+                    Memo = splitMemo,
                     CreatedBy = currentUser
                 });
             }
@@ -190,10 +193,9 @@ public partial class AccountingManager
                         ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, bill.OfficeId, accountingOffice),
                         _ => GetDefaultCompanyExpense(chartOfAccounts, bill.OfficeId, accountingOffice)
                     };
-                var splitMemo = string.IsNullOrWhiteSpace(split.Description)
-                    ? $"Bill Credit - {billLabel}"
-                    : split.Description.Trim();
-
+                var splitMemo = split.ReceiptType == ReceiptType.Owner
+                    ? BuildOwnerBillSplitMemo(billLabel, split.Description)
+                    : BuildRequiredReceiptSplitMemo(billLabel, split.Description);
                 journalEntryLines.Add(new JournalEntryLine
                 {
                     // Credit Expense
@@ -294,9 +296,8 @@ public partial class AccountingManager
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
             ? bill.BillNumber.Trim()
             : bill.ReceiptCode.Trim();
-        var memo = string.IsNullOrWhiteSpace(paymentApplication.Description)
-            ? $"Bill Payment - {billLabel}"
-            : paymentApplication.Description.Trim();
+        var receiptCode = bill.ReceiptCode.Trim();
+        var memo = BuildBillPaymentMemo(receiptCode, ResolveReceiptSplitLines(bill));
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
         var liabilityMemo = bill.BankCardId is > 0
             ? $"Credit Card - {bill.BankCardDisplayName}".Trim()
@@ -358,6 +359,26 @@ public partial class AccountingManager
     {
         if (bill.BankCardId != null)
             throw new Exception("Receipt is not a bill");
+    }
+
+    private static string BuildOwnerBillSplitMemo(string receiptCode, string? splitDescription)
+    {
+        var description = (splitDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"Owner Bill: {receiptCode}"
+            : $"Owner Bill: {receiptCode}: {description}";
+    }
+
+    private static string BuildBillPaymentMemo(string receiptCode, IEnumerable<ReceiptSplit> splitLines)
+    {
+        var firstEligibleDescription = splitLines
+            .Where(IsJournalEligibleReceiptSplit)
+            .Select(split => split.Description)
+            .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
+        var description = (firstEligibleDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"Payament: {receiptCode}"
+            : $"Payament: {receiptCode}: {description}";
     }
     #endregion
 }

@@ -283,9 +283,10 @@ public partial class AccountingManager
 
         var transactionDate = invoice.AccountingPeriod;
         var postingDate = invoice.AccountingPeriod;
-        var memo = string.IsNullOrWhiteSpace(invoice.Notes)
-            ? $"Invoice {invoice.InvoiceCode}"
-            : invoice.Notes.Trim();
+        var invoiceDescription = (invoice.Notes ?? string.Empty).Trim();
+        var memo = string.IsNullOrWhiteSpace(invoiceDescription)
+            ? invoice.InvoiceCode
+            : $"{invoice.InvoiceCode}: {invoiceDescription}";
         if (!string.IsNullOrWhiteSpace(memoSuffix))
             memo = $"{memo} ({memoSuffix.Trim()})";
 
@@ -360,9 +361,7 @@ public partial class AccountingManager
         var amount = paymentLedgerLine.Amount;
         var transactionDate = paymentLedgerLine.LedgerLineDate;
         var postingDate = paymentLedgerLine.LedgerLineDate;
-        var memo = string.IsNullOrWhiteSpace(paymentLedgerLine.Description)
-            ? $"Invoice Payment - {invoice.InvoiceCode}"
-            : paymentLedgerLine.Description.Trim();
+        var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
 
         var undepositedFundsLine = new JournalEntryLine
         {
@@ -418,9 +417,7 @@ public partial class AccountingManager
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
         var amount = paymentLedgerLine.Amount;
         var transactionDate = paymentLedgerLine.LedgerLineDate;
-        var memo = string.IsNullOrWhiteSpace(paymentLedgerLine.Description)
-            ? $"Invoice Pre-Payment - {invoice.InvoiceCode}"
-            : paymentLedgerLine.Description.Trim();
+        var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
 
         return new JournalEntry
         {
@@ -477,7 +474,7 @@ public partial class AccountingManager
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
         var amount = paymentLedgerLine.Amount;
         var postingDate = invoice.AccountingPeriod;
-        var memo = $"Invoice Pre-Payment Apply - {invoice.InvoiceCode}";
+        var memo = BuildInvoicePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
 
         return new JournalEntry
         {
@@ -572,6 +569,22 @@ public partial class AccountingManager
     private static bool IsPaymentLedgerLine(CostCode? costCode)
     {
         return costCode?.TransactionType == TransactionType.Payment;
+    }
+
+    private static string BuildInvoicePaymentMemo(string invoiceCode, string? ledgerLineDescription)
+    {
+        var description = (ledgerLineDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"Payment: {invoiceCode}"
+            : $"Payment: {invoiceCode}: {description}";
+    }
+
+    private static string BuildInvoicePrePaymentMemo(string invoiceCode, string? ledgerLineDescription)
+    {
+        var description = (ledgerLineDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"Prepayment: {invoiceCode}"
+            : $"Prepayment: {invoiceCode}: {description}";
     }
     #endregion
 }

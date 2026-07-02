@@ -120,7 +120,7 @@ public partial class AccountingManager
             PostingDate = invoice.AccountingPeriod,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
-            Memo = $"Owner Share - {invoice.InvoiceCode}",
+            Memo = BuildOwnerShareInvoiceMemo(invoice),
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
@@ -144,7 +144,7 @@ public partial class AccountingManager
             return journalEntryLines;
 
         var isFurnished = !property.Unfurnished;
-        var memo = $"Owner Share - {invoice.InvoiceCode}";
+        var memo = BuildOwnerShareInvoiceMemo(invoice);
         var ownerContactId = property.Owner1Id;
         costCodeById.TryGetValue(rentalLine.CostCodeId, out var rentalCostCode);
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
@@ -212,6 +212,7 @@ public partial class AccountingManager
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
         var pmUtilityIncomeAccountId = GetDefaultPmUtilityIncome(chartOfAccounts, bill.OfficeId, accountingOffice);
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
+        var receiptCode = bill.ReceiptCode.Trim();
         var propertyId = ownerSplitLines
             .Select(split => split.PropertyId)
             .FirstOrDefault(splitPropertyId => splitPropertyId is { } id && id != Guid.Empty)
@@ -223,7 +224,7 @@ public partial class AccountingManager
             if (property?.Owner1Id is { } resolvedOwnerId && resolvedOwnerId != Guid.Empty)
                 ownerContactId = resolvedOwnerId;
         }
-        var memo = $"Owner Utility - {billLabel}";
+        var memo = BuildOwnerUtilityReceiptMemo(receiptCode, ownerSplitLines);
 
         var ownerAccountsPayableLine = new JournalEntryLine
         {
@@ -232,7 +233,7 @@ public partial class AccountingManager
             ContactId = ownerContactId,
             Debit = ownerUtilityAmount > 0 ? ownerUtilityAmount : 0,
             Credit = ownerUtilityAmount < 0 ? Math.Abs(ownerUtilityAmount) : 0,
-            Memo = $"Owner Accounts Payable - {billLabel}",
+            Memo = memo,
             CreatedBy = currentUser
         };
 
@@ -243,7 +244,7 @@ public partial class AccountingManager
             ContactId = ownerContactId,
             Debit = ownerUtilityAmount < 0 ? Math.Abs(ownerUtilityAmount) : 0,
             Credit = ownerUtilityAmount > 0 ? ownerUtilityAmount : 0,
-            Memo = $"Owner Income - Utility Income - {billLabel}",
+            Memo = memo,
             CreatedBy = currentUser
         };
 
@@ -261,6 +262,14 @@ public partial class AccountingManager
         };
     }
 
+    private static string BuildOwnerShareInvoiceMemo(Invoice invoice)
+    {
+        var invoiceDescription = (invoice.Notes ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(invoiceDescription)
+            ? $"Owner Rent: {invoice.InvoiceCode}"
+            : $"Owner Rent: {invoice.InvoiceCode}: {invoiceDescription}";
+    }
+
     private static bool ShouldCreateOwnerUtilityJournalEntryForBill(Receipt bill)
     {
         if (!bill.IsUtility)
@@ -275,6 +284,17 @@ public partial class AccountingManager
         // Owner utility JE should be created per eligible split. NonExpense splits are ignored, so a
         // mixed Owner + NonExpense bill still generates owner utility entries for the owner portion.
         return eligibleSplits.All(split => split.ReceiptType == ReceiptType.Owner);
+    }
+
+    private static string BuildOwnerUtilityReceiptMemo(string receiptCode, IEnumerable<ReceiptSplit> ownerSplitLines)
+    {
+        var ownerSplitDescription = ownerSplitLines
+            .Select(split => split.Description)
+            .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
+        var description = (ownerSplitDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"Owner Utiltiy: {receiptCode}"
+            : $"Owner Utiltiy: {receiptCode}: {description}";
     }
 
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
@@ -364,6 +384,7 @@ public partial class AccountingManager
             : (workOrder.WorkOrderItems ?? new List<WorkOrderItem>()).Sum(item => item.ItemAmount);
         if (workOrderAmount == 0)
             throw new Exception("WorkOrder amount cannot be zero when creating a journal entry");
+        var receiptSplits = await GetEligibleWorkOrderReceiptSplitsAsync(workOrder);
 
         var workOrderExpenseAccountId = workOrder.WorkOrderType switch
         {
@@ -375,23 +396,58 @@ public partial class AccountingManager
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerContactId = await ResolveWorkOrderOwnerContactIdAsync(workOrder);
-        var hasOwnerSplit = await HasOwnerReceiptSplitOnWorkOrderAsync(workOrder);
+        var hasOwnerSplit = receiptSplits.Any(split => split.ReceiptType == ReceiptType.Owner);
         var workOrderLabel = string.IsNullOrWhiteSpace(workOrder.WorkOrderCode) ? workOrder.WorkOrderId.ToString() : workOrder.WorkOrderCode.Trim();
         Guid? propertyId = workOrder.PropertyId == Guid.Empty ? null : workOrder.PropertyId;
-        var memo = string.IsNullOrWhiteSpace(workOrder.Description) ? $"Work Order {workOrderLabel}" : workOrder.Description.Trim();
+        var primarySplit = receiptSplits.FirstOrDefault();
+        var memoType = primarySplit != null
+            ? ResolveWorkOrderMemoType(primarySplit.ReceiptType)
+            : ResolveWorkOrderMemoType(workOrder.WorkOrderType);
+        var memo = BuildWorkOrderTypedMemo(memoType, workOrderLabel, primarySplit?.Description ?? workOrder.Description);
+        var mainEntryAmount = receiptSplits.Count > 0 ? receiptSplits.Sum(split => split.Amount) : workOrderAmount;
         var journalEntryLines = new List<JournalEntryLine>();
 
-        journalEntryLines.Add(new JournalEntryLine
+        if (receiptSplits.Count > 0)
         {
-            ChartOfAccountId = workOrderExpenseAccountId,
-            PropertyId = propertyId,
-            ReservationId = workOrder.ReservationId,
-            ContactId = ownerContactId,
-            Debit = workOrderAmount > 0 ? workOrderAmount : 0,
-            Credit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
-            Memo = $"Reg Unit Maint - {workOrderLabel}",
-            CreatedBy = currentUser
-        });
+            foreach (var split in receiptSplits)
+            {
+                var expenseAccountId = split.ChartOfAccountId > 0
+                    ? split.ChartOfAccountId.Value
+                    : split.ReceiptType switch
+                    {
+                        ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice),
+                        ReceiptType.Company => GetDefaultCompanyExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice),
+                        ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice),
+                        _ => GetDefaultTenantExpense(chartOfAccounts, workOrder.OfficeId, accountingOffice)
+                    };
+                var splitMemo = BuildWorkOrderTypedMemo(ResolveWorkOrderMemoType(split.ReceiptType), workOrderLabel, split.Description);
+                journalEntryLines.Add(new JournalEntryLine
+                {
+                    ChartOfAccountId = expenseAccountId,
+                    PropertyId = propertyId,
+                    ReservationId = workOrder.ReservationId,
+                    ContactId = ownerContactId,
+                    Debit = split.Amount > 0 ? split.Amount : 0,
+                    Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
+                    Memo = splitMemo,
+                    CreatedBy = currentUser
+                });
+            }
+        }
+        else
+        {
+            journalEntryLines.Add(new JournalEntryLine
+            {
+                ChartOfAccountId = workOrderExpenseAccountId,
+                PropertyId = propertyId,
+                ReservationId = workOrder.ReservationId,
+                ContactId = ownerContactId,
+                Debit = workOrderAmount > 0 ? workOrderAmount : 0,
+                Credit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
+                Memo = memo,
+                CreatedBy = currentUser
+            });
+        }
 
         journalEntryLines.Add(new JournalEntryLine
         {
@@ -399,9 +455,9 @@ public partial class AccountingManager
             PropertyId = propertyId,
             ReservationId = workOrder.ReservationId,
             ContactId = ownerContactId,
-            Debit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
-            Credit = workOrderAmount > 0 ? workOrderAmount : 0,
-            Memo = $"Accounts Payable - {workOrderLabel}",
+            Debit = mainEntryAmount < 0 ? Math.Abs(mainEntryAmount) : 0,
+            Credit = mainEntryAmount > 0 ? mainEntryAmount : 0,
+            Memo = memo,
             CreatedBy = currentUser
         });
 
@@ -415,7 +471,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount > 0 ? workOrderAmount : 0,
                 Credit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
-                Memo = $"Owner Accounts Payable - {workOrderLabel}",
+                Memo = memo,
                 CreatedBy = currentUser
             });
 
@@ -427,7 +483,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
                 Credit = workOrderAmount > 0 ? workOrderAmount : 0,
-                Memo = $"Owner Income - {workOrderLabel}",
+                Memo = memo,
                 CreatedBy = currentUser
             });
         }
@@ -458,7 +514,7 @@ public partial class AccountingManager
         return null;
     }
 
-    private async Task<bool> HasOwnerReceiptSplitOnWorkOrderAsync(WorkOrder workOrder)
+    private async Task<List<ReceiptSplit>> GetEligibleWorkOrderReceiptSplitsAsync(WorkOrder workOrder)
     {
         var linkedReceiptIds = (workOrder.WorkOrderItems ?? new List<WorkOrderItem>())
             .Select(item => item.ReceiptId)
@@ -467,13 +523,42 @@ public partial class AccountingManager
             .Distinct()
             .ToList();
         if (linkedReceiptIds.Count == 0)
-            return false;
+            return new List<ReceiptSplit>();
 
         var linkedReceipts = await Task.WhenAll(linkedReceiptIds.Select(receiptId => _maintenanceRepository.GetReceiptByIdAsync(receiptId, workOrder.OrganizationId)));
         return linkedReceipts
             .Where(receipt => receipt != null)
             .SelectMany(receipt => ResolveReceiptSplitLines(receipt!))
-            .Any(split => split.ReceiptType == ReceiptType.Owner);
+            .Where(IsJournalEligibleReceiptSplit)
+            .ToList();
+    }
+
+    private static string BuildWorkOrderTypedMemo(string typeLabel, string workOrderCode, string? splitDescription)
+    {
+        var description = (splitDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"{typeLabel} WorkOrder: {workOrderCode}"
+            : $"{typeLabel} WorkOrder: {workOrderCode}: {description}";
+    }
+
+    private static string ResolveWorkOrderMemoType(WorkOrderType workOrderType)
+    {
+        return workOrderType switch
+        {
+            WorkOrderType.Owner => "Owner",
+            WorkOrderType.Company => "Company",
+            _ => "Tenant"
+        };
+    }
+
+    private static string ResolveWorkOrderMemoType(ReceiptType receiptType)
+    {
+        return receiptType switch
+        {
+            ReceiptType.Owner => "Owner",
+            ReceiptType.Company => "Company",
+            _ => "Tenant"
+        };
     }
     #endregion
 }
