@@ -44,6 +44,7 @@ public partial class AccountingRepository
             Income = e.Income,
             Expenses = e.Expenses,
             Balance = e.Balance,
+            StartingBalance = e.StartingBalance,
             WorkingCapital = e.WorkingCapital,
             WorkingCapitalBalanceDue = e.WorkingCapitalBalanceDue,
             OwnerPayment = e.OwnerPayment,

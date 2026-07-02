@@ -16,6 +16,7 @@ public class OwnerStatementResponseDto
     public decimal Income { get; set; }
     public decimal Expenses { get; set; }
     public decimal Balance { get; set; }
+    public decimal StartingBalance { get; set; }
     public decimal WorkingCapital { get; set; }
     public decimal WorkingCapitalBalanceDue { get; set; }
     public decimal OwnerPayment { get; set; }
@@ -35,6 +36,7 @@ public class OwnerStatementResponseDto
         Income = statement.Income;
         Expenses = statement.Expenses;
         Balance = statement.Balance;
+        StartingBalance = statement.StartingBalance;
         WorkingCapital = statement.WorkingCapital;
         WorkingCapitalBalanceDue = statement.WorkingCapitalBalanceDue;
         OwnerPayment = statement.OwnerPayment;

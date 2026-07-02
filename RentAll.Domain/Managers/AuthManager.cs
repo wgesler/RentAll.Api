@@ -180,6 +180,18 @@ public class AuthManager
         return (true, null);
     }
 
+    public async Task<bool> VerifyPasswordAsync(Guid userId, string password)
+    {
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(password))
+            return false;
+
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null || string.IsNullOrWhiteSpace(user.PasswordHash))
+            return false;
+
+        return _passwordHasher.VerifyPassword(password, user.PasswordHash);
+    }
+
     private static string HashRefreshToken(string token)
     {
         using var sha256 = SHA256.Create();

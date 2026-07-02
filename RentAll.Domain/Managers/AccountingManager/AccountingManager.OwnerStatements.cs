@@ -5,6 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    private const string OwnerStartingBalanceMemoPrefix = "Owner: Starting Balance:";
+
     public async Task<IEnumerable<OwnerStatementSummary>> GetOwnerStatementsAsync(OwnerStatementGetCriteria criteria)
     {
         var officeIds = ParseOfficeIds(criteria.OfficeIds);
@@ -15,6 +17,7 @@ public partial class AccountingManager
         foreach (var officeId in officeIds)
         {
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(criteria.OrganizationId, officeId);
+            var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
             var officeCriteria = new OwnerStatementGetCriteria
             {
                 OrganizationId = criteria.OrganizationId,
@@ -22,27 +25,27 @@ public partial class AccountingManager
                 PropertyId = criteria.PropertyId,
                 StartDate = criteria.StartDate,
                 EndDate = criteria.EndDate,
-                ExpectedAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice),
+                ExpectedAccountId = ownerAccountsPayableAccountId,
                 ActualAccountId = GetDefaultUndepositedFunds(chartOfAccounts, officeId, accountingOffice),
                 PrePaidAccountId = GetDefaultPrePayment(chartOfAccounts, officeId, accountingOffice),
                 ExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice)
             };
-            summaries.AddRange(await _accountingRepository.GetOwnerStatementsAsync(officeCriteria));
+            var currentOfficeSummaries = (await _accountingRepository.GetOwnerStatementsAsync(officeCriteria)).ToList();
+            var previousMonthOwnerApBalanceByKey = await GetPreviousMonthOwnerApBalanceByKeyAsync(officeCriteria, ownerAccountsPayableAccountId);
+
+            foreach (var summary in currentOfficeSummaries)
+            {
+                ApplyOwnerStatementSummaryCalculations(summary);
+                summary.StartingBalance = previousMonthOwnerApBalanceByKey.TryGetValue(BuildOwnerStatementSummaryKey(summary), out var ownerApBalance)
+                    ? ownerApBalance
+                    : 0m;
+            }
+
+            summaries.AddRange(currentOfficeSummaries);
         }
 
         if (summaries.Count == 0)
             return summaries;
-
-        foreach (var summary in summaries)
-        {
-            summary.Outstanding = summary.Expected - summary.Income;
-            summary.Balance = summary.Income - summary.Expenses;
-            summary.WorkingCapitalBalanceDue = summary.Balance - summary.WorkingCapital;
-            summary.OwnerPayment = summary.Income <= 0m
-                ? 0m
-                : Math.Max(0m, summary.Balance - summary.WorkingCapital);
-            summary.EndingBalance = summary.Balance - summary.OwnerPayment;
-        }
 
         return summaries
             .OrderBy(summary => summary.OfficeName)
@@ -107,6 +110,100 @@ public partial class AccountingManager
             .ThenBy(line => line.ActivityType)
             .ThenBy(line => line.DocumentCode)
             .ToList();
+    }
+
+    public async Task<JournalEntry?> CreateOwnerStatementStartingBalanceJournalEntryAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId, DateOnly transactionDate, decimal amount, Guid currentUser)
+    {
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return null;
+        if (officeId <= 0 || ownerId == Guid.Empty || propertyId == Guid.Empty || transactionDate == default || amount == 0)
+            throw new Exception("Office, owner, property, transaction date, and non-zero amount are required to create owner starting balance.");
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
+        var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
+        var ownerExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice);
+        var memo = $"{OwnerStartingBalanceMemoPrefix} {transactionDate:MM/yyyy}";
+        var startingBalance = Math.Abs(amount);
+        var isPositive = amount > 0;
+        var journalEntry = new JournalEntry
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            TransactionDate = transactionDate,
+            PostingDate = transactionDate,
+            SourceTypeId = (int)SourceType.Adjustment,
+            Memo = memo,
+            JournalEntryLines = new List<JournalEntryLine>
+            {
+                new JournalEntryLine
+                {
+                    ChartOfAccountId = ownerExpenseAccountId,
+                    PropertyId = propertyId,
+                    ContactId = ownerId,
+                    Debit = isPositive ? startingBalance : 0,
+                    Credit = isPositive ? 0 : startingBalance,
+                    Memo = memo,
+                    CreatedBy = currentUser
+                },
+                new JournalEntryLine
+                {
+                    ChartOfAccountId = ownerAccountsPayableAccountId,
+                    PropertyId = propertyId,
+                    ContactId = ownerId,
+                    Debit = isPositive ? 0 : startingBalance,
+                    Credit = isPositive ? startingBalance : 0,
+                    Memo = memo,
+                    CreatedBy = currentUser
+                }
+            },
+            CreatedBy = currentUser
+        };
+        var createdJournalEntry = await CreateJournalEntryAsync(journalEntry);
+        if (createdJournalEntry == null)
+            return null;
+
+        return await PostJournalEntryAsync(createdJournalEntry.JournalEntryId, organizationId, currentUser);
+    }
+
+    public async Task<OwnerStatementStartingBalanceEntry?> GetOwnerStatementStartingBalanceAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId)
+    {
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return null;
+        if (officeId <= 0 || ownerId == Guid.Empty || propertyId == Guid.Empty)
+            return null;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
+        var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
+        var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            SourceTypeId = (int)SourceType.Adjustment,
+            ChartOfAccountId = ownerAccountsPayableAccountId,
+            PropertyId = propertyId,
+            ContactId = ownerId,
+            IncludeVoided = false,
+            IncludeUnposted = true
+        });
+        var current = lines
+            .Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo))
+            .OrderByDescending(line => line.TransactionDate)
+            .ThenByDescending(line => line.JournalEntryCode)
+            .FirstOrDefault();
+        if (current == null)
+            return null;
+
+        return new OwnerStatementStartingBalanceEntry
+        {
+            JournalEntryId = current.JournalEntryId,
+            OfficeId = current.OfficeId,
+            OwnerId = current.ContactId ?? Guid.Empty,
+            PropertyId = current.PropertyId ?? Guid.Empty,
+            TransactionDate = current.TransactionDate,
+            Amount = current.Credit - current.Debit,
+            Memo = (current.JournalEntryMemo ?? current.Memo ?? string.Empty).Trim(),
+            IsPosted = current.IsPosted
+        };
     }
 
     private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementInvoiceActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
@@ -254,6 +351,62 @@ public partial class AccountingManager
             .ToList();
     }
 
+    private async Task<Dictionary<string, decimal>> GetPreviousMonthOwnerApBalanceByKeyAsync(OwnerStatementGetCriteria officeCriteria, int ownerAccountsPayableAccountId)
+    {
+        var priorMonthClose = ResolvePriorMonthCloseDate(officeCriteria.StartDate, officeCriteria.EndDate);
+        if (!priorMonthClose.HasValue)
+            return new Dictionary<string, decimal>();
+
+        var priorMonthOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+        {
+            OrganizationId = officeCriteria.OrganizationId,
+            OfficeIds = officeCriteria.OfficeIds,
+            ChartOfAccountId = ownerAccountsPayableAccountId,
+            PropertyId = officeCriteria.PropertyId,
+            StartDate = null,
+            EndDate = priorMonthClose,
+            IncludeVoided = false,
+            IncludeUnposted = true
+        });
+
+        return priorMonthOwnerApLines
+            .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
+            .GroupBy(line => BuildOwnerStatementSummaryKey(line.OfficeId, line.PropertyId!.Value, line.ContactId))
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(line => line.Credit - line.Debit));
+    }
+
+    private static string BuildOwnerStatementSummaryKey(OwnerStatementSummary summary)
+        => BuildOwnerStatementSummaryKey(summary.OfficeId, summary.PropertyId, summary.OwnerId);
+
+    private static string BuildOwnerStatementSummaryKey(int officeId, Guid propertyId, Guid? ownerId)
+        => $"{officeId}:{propertyId:D}:{ownerId?.ToString("D") ?? "none"}";
+
+    private static DateOnly? ResolvePriorMonthCloseDate(DateOnly? startDate, DateOnly? endDate)
+    {
+        if (startDate.HasValue)
+            return startDate.Value.AddDays(-1);
+        if (endDate.HasValue)
+        {
+            var firstDayOfMonth = new DateOnly(endDate.Value.Year, endDate.Value.Month, 1);
+            return firstDayOfMonth.AddDays(-1);
+        }
+
+        return null;
+    }
+
+    private static void ApplyOwnerStatementSummaryCalculations(OwnerStatementSummary summary)
+    {
+        summary.Outstanding = summary.Expected - summary.Income;
+        summary.Balance = summary.Income - summary.Expenses;
+        summary.WorkingCapitalBalanceDue = summary.Balance - summary.WorkingCapital;
+        summary.OwnerPayment = summary.Income <= 0m
+            ? 0m
+            : Math.Max(0m, summary.Balance - summary.WorkingCapital);
+        summary.EndingBalance = summary.Balance - summary.OwnerPayment;
+    }
+
     private static string? TryExtractInvoiceCode(params string?[] values)
     {
         foreach (var value in values)
@@ -354,6 +507,14 @@ public partial class AccountingManager
         var lineMemo = (line.Memo ?? string.Empty).Trim();
         return journalMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase)
             || lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)
+    {
+        var summaryMemo = (journalMemo ?? string.Empty).Trim();
+        var detailMemo = (lineMemo ?? string.Empty).Trim();
+        return summaryMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase)
+            || detailMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsWithinOwnerStatementDateRange(DateOnly activityDate, DateOnly? startDate, DateOnly? endDate)

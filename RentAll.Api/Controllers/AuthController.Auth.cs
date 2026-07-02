@@ -75,6 +75,35 @@ public partial class AuthController
         return Ok(new { message = "Logged out successfully" });
     }
 
+    [HttpPost("confirm-password")]
+    public async Task<IActionResult> ConfirmPassword([FromBody] ConfirmPasswordDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Password data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var currentUserId = CurrentUser;
+            if (currentUserId == Guid.Empty)
+                return Unauthorized("User not authenticated");
+
+            var isValidPassword = await _authManager.VerifyPasswordAsync(currentUserId, dto.Password);
+            if (!isValidPassword)
+                return Unauthorized("Password confirmation failed");
+
+            return Ok(new { isConfirmed = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error confirming password");
+            return StatusCode(500, new { message = "An error occurred while confirming the password" });
+        }
+    }
+
     #endregion
 
     #region Put
