@@ -104,6 +104,8 @@ public partial class AccountingManager
         lines.AddRange(billReceiptLines);
         var workOrderLines = await GetOwnerStatementWorkOrderActivityLinesFromJournalEntriesAsync(criteria);
         lines.AddRange(workOrderLines);
+        var linensAndTowelsLines = await GetOwnerStatementLinensAndTowelsActivityLinesFromJournalEntriesAsync(criteria);
+        lines.AddRange(linensAndTowelsLines);
 
         return lines
             .OrderBy(line => line.ActivityDate)
@@ -510,6 +512,55 @@ public partial class AccountingManager
             })
             .Where(line => line.Expenses != 0m)
             .Where(line => IsWithinOwnerStatementDateRange(line.ActivityDate, criteria.StartDate, criteria.EndDate))
+            .OrderBy(line => line.ActivityDate)
+            .ThenBy(line => line.ActivityType)
+            .ThenBy(line => line.DocumentCode)
+            .ToList();
+    }
+
+    private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementLinensAndTowelsActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
+    {
+        var sourceLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            SourceTypeId = (int)SourceType.LinensAndTowels,
+            PropertyId = criteria.PropertyId,
+            IncludeVoided = false,
+            IncludeUnposted = true,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
+        });
+        var ownerLines = sourceLines.Where(HasOwnerMemo).ToList();
+        if (ownerLines.Count == 0)
+            return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
+
+        return ownerLines
+            .GroupBy(line => line.JournalEntryId)
+            .Select(group =>
+            {
+                var first = group.First();
+                var expenses = group.Sum(line => line.Debit - line.Credit);
+                var description = group
+                    .Select(line => line.JournalEntryMemo)
+                    .Concat(group.Select(line => line.Memo))
+                    .Where(memo => !string.IsNullOrWhiteSpace(memo))
+                    .Select(memo => memo!.Trim())
+                    .FirstOrDefault(memo => memo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase))
+                    ?? first.JournalEntryCode;
+                return new OwnerStatementPropertyActivityLine
+                {
+                    ActivityId = first.SourceId ?? first.JournalEntryId,
+                    ActivityType = "LinensAndTowels",
+                    ActivityDate = first.TransactionDate,
+                    DocumentCode = first.JournalEntryCode,
+                    Description = description,
+                    ExpectedIncome = 0m,
+                    ReceivedIncome = 0m,
+                    Expenses = expenses
+                };
+            })
+            .Where(line => line.Expenses != 0m)
             .OrderBy(line => line.ActivityDate)
             .ThenBy(line => line.ActivityType)
             .ThenBy(line => line.DocumentCode)

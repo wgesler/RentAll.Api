@@ -276,15 +276,12 @@ public partial class AccountingManager
     {
         var invoiceDescription = (invoice.Notes ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(invoiceDescription)
-            ? $"Owner: Rent: {invoice.InvoiceCode}"
-            : $"Owner: Rent: {invoice.InvoiceCode}: {invoiceDescription}";
+            ? $"Owner: {invoice.InvoiceCode}: Rent"
+            : $"Owner: {invoice.InvoiceCode}: Rent: {invoiceDescription}";
     }
 
     private static bool ShouldCreateOwnerUtilityJournalEntryForBill(Receipt bill)
     {
-        if (!bill.IsUtility)
-            return false;
-
         var eligibleSplits = ResolveReceiptSplitLines(bill)
             .Where(IsJournalEligibleReceiptSplit)
             .ToList();
