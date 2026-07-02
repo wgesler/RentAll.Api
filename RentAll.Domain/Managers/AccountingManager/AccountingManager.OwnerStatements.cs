@@ -458,7 +458,7 @@ public partial class AccountingManager
                 StartDate = null,
                 EndDate = null
             });
-            billReceiptLineResults.AddRange(sourceLines.Where(HasOwnerMemo));
+            billReceiptLineResults.AddRange(sourceLines.Where(HasOwnerLineMemo));
         }
 
         if (billReceiptLineResults.Count == 0)
@@ -479,31 +479,23 @@ public partial class AccountingManager
         }
 
         return billReceiptLineResults
-            .GroupBy(line => line.JournalEntryId)
-            .Select(group =>
+            .Select(line =>
             {
-                var first = group.First();
-                var sourceId = first.SourceId;
+                var sourceId = line.SourceId;
                 var activityDate = sourceId.HasValue && receiptDateByReceiptId.TryGetValue(sourceId.Value, out var receiptDate)
                     ? receiptDate
-                    : first.TransactionDate;
-                var debitTotal = group.Sum(line => line.Debit);
-                var creditTotal = group.Sum(line => line.Credit);
-                var expenseAmount = Math.Max(debitTotal, creditTotal);
-                var activityType = first.SourceTypeId == (int)SourceType.Bill ? "Bill" : "Receipt";
-                var description = group
-                    .Select(line => line.JournalEntryMemo)
-                    .Concat(group.Select(line => line.Memo))
-                    .Where(memo => !string.IsNullOrWhiteSpace(memo))
-                    .Select(memo => memo!.Trim())
-                    .FirstOrDefault(memo => memo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase))
-                    ?? first.JournalEntryCode;
+                    : line.TransactionDate;
+                var expenseAmount = Math.Max(Math.Abs(line.Debit), Math.Abs(line.Credit));
+                var activityType = line.SourceTypeId == (int)SourceType.Bill ? "Bill" : "Receipt";
+                var description = !string.IsNullOrWhiteSpace(line.Memo)
+                    ? line.Memo.Trim()
+                    : line.JournalEntryCode;
                 return new OwnerStatementPropertyActivityLine
                 {
-                    ActivityId = first.SourceId ?? first.JournalEntryId,
+                    ActivityId = line.JournalEntryLineId,
                     ActivityType = activityType,
                     ActivityDate = activityDate,
-                    DocumentCode = first.JournalEntryCode,
+                    DocumentCode = line.JournalEntryCode,
                     Description = description,
                     ExpectedIncome = 0m,
                     ReceivedIncome = 0m,
@@ -573,6 +565,12 @@ public partial class AccountingManager
         var lineMemo = (line.Memo ?? string.Empty).Trim();
         return journalMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase)
             || lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool HasOwnerLineMemo(JournalEntryLineSearchResult line)
+    {
+        var lineMemo = (line.Memo ?? string.Empty).Trim();
+        return lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)

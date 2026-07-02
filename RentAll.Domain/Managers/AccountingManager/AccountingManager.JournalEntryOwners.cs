@@ -236,6 +236,7 @@ public partial class AccountingManager
                 ? candidatePropertyId
                 : propertyId;
             var splitMemo = BuildOwnerUtilityReceiptMemo(receiptCode, new[] { split });
+            var splitIncomeMemo = BuildRequiredReceiptSplitMemo(receiptCode, split.Description);
             journalEntryLines.Add(new JournalEntryLine
             {
                 ChartOfAccountId = ownerAccountsPayableAccountId,
@@ -253,7 +254,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = splitAmount < 0 ? Math.Abs(splitAmount) : 0,
                 Credit = splitAmount > 0 ? splitAmount : 0,
-                Memo = splitMemo,
+                Memo = splitIncomeMemo,
                 CreatedBy = currentUser
             });
         }
