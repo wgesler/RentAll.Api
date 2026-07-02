@@ -35,10 +35,10 @@ public partial class AccountingManager
 
             foreach (var summary in currentOfficeSummaries)
             {
-                ApplyOwnerStatementSummaryCalculations(summary);
                 summary.StartingBalance = previousMonthOwnerApBalanceByKey.TryGetValue(BuildOwnerStatementSummaryKey(summary), out var ownerApBalance)
                     ? ownerApBalance
                     : 0m;
+                ApplyOwnerStatementSummaryCalculations(summary);
             }
 
             summaries.AddRange(currentOfficeSummaries);
@@ -374,7 +374,22 @@ public partial class AccountingManager
             .GroupBy(line => BuildOwnerStatementSummaryKey(line.OfficeId, line.PropertyId!.Value, line.ContactId))
             .ToDictionary(
                 group => group.Key,
-                group => group.Sum(line => line.Credit - line.Debit));
+                CalculateOwnerApBalanceFromInitialStartingBalanceWindow);
+    }
+
+    private static decimal CalculateOwnerApBalanceFromInitialStartingBalanceWindow(IGrouping<string, JournalEntryLineSearchResult> group)
+    {
+        var orderedLines = group
+            .OrderBy(line => line.TransactionDate)
+            .ThenBy(line => line.JournalEntryCode)
+            .ToList();
+        var initialStartingBalanceLine = orderedLines.FirstOrDefault(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo));
+        if (initialStartingBalanceLine == null)
+            return orderedLines.Sum(line => line.Credit - line.Debit);
+
+        return orderedLines
+            .Where(line => line.TransactionDate >= initialStartingBalanceLine.TransactionDate)
+            .Sum(line => line.Credit - line.Debit);
     }
 
     private static string BuildOwnerStatementSummaryKey(OwnerStatementSummary summary)
@@ -404,7 +419,7 @@ public partial class AccountingManager
         summary.OwnerPayment = summary.Income <= 0m
             ? 0m
             : Math.Max(0m, summary.Balance - summary.WorkingCapital);
-        summary.EndingBalance = summary.Balance - summary.OwnerPayment;
+        summary.EndingBalance = summary.StartingBalance + summary.Income - summary.Expenses - summary.OwnerPayment;
     }
 
     private static string? TryExtractInvoiceCode(params string?[] values)
