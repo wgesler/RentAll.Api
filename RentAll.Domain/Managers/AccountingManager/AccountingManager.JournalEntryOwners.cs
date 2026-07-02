@@ -266,8 +266,8 @@ public partial class AccountingManager
     {
         var invoiceDescription = (invoice.Notes ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(invoiceDescription)
-            ? $"Owner Rent: {invoice.InvoiceCode}"
-            : $"Owner Rent: {invoice.InvoiceCode}: {invoiceDescription}";
+            ? $"Owner: Rent: {invoice.InvoiceCode}"
+            : $"Owner: Rent: {invoice.InvoiceCode}: {invoiceDescription}";
     }
 
     private static bool ShouldCreateOwnerUtilityJournalEntryForBill(Receipt bill)
@@ -293,8 +293,8 @@ public partial class AccountingManager
             .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
         var description = (ownerSplitDescription ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(description)
-            ? $"Owner Utiltiy: {receiptCode}"
-            : $"Owner Utiltiy: {receiptCode}: {description}";
+            ? $"Owner: Utiltiy: {receiptCode}"
+            : $"Owner: Utiltiy: {receiptCode}: {description}";
     }
 
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
@@ -404,6 +404,7 @@ public partial class AccountingManager
             ? ResolveWorkOrderMemoType(primarySplit.ReceiptType)
             : ResolveWorkOrderMemoType(workOrder.WorkOrderType);
         var memo = BuildWorkOrderTypedMemo(memoType, workOrderLabel, primarySplit?.Description ?? workOrder.Description);
+        var ownerMemo = BuildWorkOrderTypedMemo("Owner", workOrderLabel, primarySplit?.Description ?? workOrder.Description);
         var mainEntryAmount = receiptSplits.Count > 0 ? receiptSplits.Sum(split => split.Amount) : workOrderAmount;
         var journalEntryLines = new List<JournalEntryLine>();
 
@@ -444,7 +445,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount > 0 ? workOrderAmount : 0,
                 Credit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
-                Memo = memo,
+                Memo = ownerMemo,
                 CreatedBy = currentUser
             });
         }
@@ -483,7 +484,7 @@ public partial class AccountingManager
                 ContactId = ownerContactId,
                 Debit = workOrderAmount < 0 ? Math.Abs(workOrderAmount) : 0,
                 Credit = workOrderAmount > 0 ? workOrderAmount : 0,
-                Memo = memo,
+                Memo = ownerMemo,
                 CreatedBy = currentUser
             });
         }
@@ -536,9 +537,16 @@ public partial class AccountingManager
     private static string BuildWorkOrderTypedMemo(string typeLabel, string workOrderCode, string? splitDescription)
     {
         var description = (splitDescription ?? string.Empty).Trim();
+        if (string.Equals(typeLabel, "Owner", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(description)
+                ? $"Owner: {workOrderCode}"
+                : $"Owner: {workOrderCode}: {description}";
+        }
+
         return string.IsNullOrWhiteSpace(description)
-            ? $"{typeLabel} WorkOrder: {workOrderCode}"
-            : $"{typeLabel} WorkOrder: {workOrderCode}: {description}";
+            ? $"{typeLabel}: WorkOrder: {workOrderCode}"
+            : $"{typeLabel}: WorkOrder: {workOrderCode}: {description}";
     }
 
     private static string ResolveWorkOrderMemoType(WorkOrderType workOrderType)

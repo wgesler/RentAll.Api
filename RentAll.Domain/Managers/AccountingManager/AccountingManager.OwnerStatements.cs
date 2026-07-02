@@ -1,6 +1,5 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
-using System.Text.RegularExpressions;
 
 namespace RentAll.Domain.Managers;
 
@@ -136,7 +135,7 @@ public partial class AccountingManager
                 {
                     var first = group.First();
                     var expectedIncome = group.Sum(line => line.Credit - line.Debit);
-                    var documentCode = ExtractInvoiceCodeFromJournalEntryMemo(first.JournalEntryMemo, first.JournalEntryCode);
+                    var documentCode = first.JournalEntryCode;
                     var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
                         ? first.JournalEntryMemo!.Trim()
                         : documentCode;
@@ -193,7 +192,7 @@ public partial class AccountingManager
                     var expenses = group
                         .Where(line => line.ChartOfAccountId == ownerExpenseAccountId)
                         .Sum(line => line.Debit - line.Credit);
-                    var documentCode = ExtractWorkOrderCodeFromJournalEntry(group.Select(line => line.Memo), first.JournalEntryMemo, first.JournalEntryCode);
+                    var documentCode = first.JournalEntryCode;
                     var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
                         ? first.JournalEntryMemo!.Trim()
                         : documentCode;
@@ -213,38 +212,6 @@ public partial class AccountingManager
         }
 
         return workOrderLines;
-    }
-
-    private static string ExtractInvoiceCodeFromJournalEntryMemo(string? journalEntryMemo, string journalEntryCode)
-    {
-        var memo = (journalEntryMemo ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(memo))
-            return journalEntryCode;
-
-        if (memo.StartsWith("Owner Share - ", StringComparison.OrdinalIgnoreCase))
-            return memo["Owner Share - ".Length..].Trim();
-
-        if (memo.StartsWith("Invoice ", StringComparison.OrdinalIgnoreCase))
-            return memo["Invoice ".Length..].Trim();
-
-        return memo;
-    }
-
-    private static string ExtractWorkOrderCodeFromJournalEntry(IEnumerable<string?> lineMemos, string? journalEntryMemo, string journalEntryCode)
-    {
-        const string workOrderPattern = @"WO-\d+";
-        var memoCandidates = new List<string>();
-        if (!string.IsNullOrWhiteSpace(journalEntryMemo))
-            memoCandidates.Add(journalEntryMemo!.Trim());
-        memoCandidates.AddRange(lineMemos.Where(memo => !string.IsNullOrWhiteSpace(memo)).Select(memo => memo!.Trim()));
-        foreach (var candidate in memoCandidates)
-        {
-            var match = Regex.Match(candidate, workOrderPattern, RegexOptions.IgnoreCase);
-            if (match.Success)
-                return match.Value.ToUpperInvariant();
-        }
-
-        return $"WO-{journalEntryCode}";
     }
 
     private static List<int> ParseOfficeIds(string officeIdsCsv)
@@ -273,7 +240,7 @@ public partial class AccountingManager
                 StartDate = criteria.StartDate,
                 EndDate = criteria.EndDate
             });
-            billReceiptLineResults.AddRange(sourceLines);
+            billReceiptLineResults.AddRange(sourceLines.Where(HasOwnerMemo));
         }
 
         if (billReceiptLineResults.Count == 0)
@@ -288,9 +255,13 @@ public partial class AccountingManager
                 var creditTotal = group.Sum(line => line.Credit);
                 var expenseAmount = Math.Max(debitTotal, creditTotal);
                 var activityType = first.SourceTypeId == (int)SourceType.Bill ? "Bill" : "Receipt";
-                var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
-                    ? first.JournalEntryMemo!.Trim()
-                    : (!string.IsNullOrWhiteSpace(first.Memo) ? first.Memo!.Trim() : first.JournalEntryCode);
+                var description = group
+                    .Select(line => line.JournalEntryMemo)
+                    .Concat(group.Select(line => line.Memo))
+                    .Where(memo => !string.IsNullOrWhiteSpace(memo))
+                    .Select(memo => memo!.Trim())
+                    .FirstOrDefault(memo => memo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase))
+                    ?? first.JournalEntryCode;
                 return new OwnerStatementPropertyActivityLine
                 {
                     ActivityId = first.SourceId ?? first.JournalEntryId,
@@ -307,6 +278,14 @@ public partial class AccountingManager
             .ThenBy(line => line.ActivityType)
             .ThenBy(line => line.DocumentCode)
             .ToList();
+    }
+
+    private static bool HasOwnerMemo(JournalEntryLineSearchResult line)
+    {
+        var journalMemo = (line.JournalEntryMemo ?? string.Empty).Trim();
+        var lineMemo = (line.Memo ?? string.Empty).Trim();
+        return journalMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase)
+            || lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
     }
 
 }

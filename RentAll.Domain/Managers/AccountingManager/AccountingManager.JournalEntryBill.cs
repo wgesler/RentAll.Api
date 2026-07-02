@@ -365,8 +365,8 @@ public partial class AccountingManager
     {
         var description = (splitDescription ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(description)
-            ? $"Owner Bill: {receiptCode}"
-            : $"Owner Bill: {receiptCode}: {description}";
+            ? $"Owner: Bill: {receiptCode}"
+            : $"Owner: Bill: {receiptCode}: {description}";
     }
 
     private static string BuildBillPaymentMemo(string receiptCode, IEnumerable<ReceiptSplit> splitLines)
