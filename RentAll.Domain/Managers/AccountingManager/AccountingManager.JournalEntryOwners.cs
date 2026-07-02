@@ -206,10 +206,10 @@ public partial class AccountingManager
 
         var ownerSplitLines = ResolveReceiptSplitLines(bill)
             .Where(split => split.ReceiptType == ReceiptType.Owner)
+            .Where(split => split.Amount != 0)
             .ToList();
-        var ownerUtilityAmount = ownerSplitLines.Sum(split => split.Amount);
 
-        if (ownerUtilityAmount == 0)
+        if (ownerSplitLines.Count == 0)
             return null;
 
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
@@ -228,28 +228,35 @@ public partial class AccountingManager
                 ownerContactId = resolvedOwnerId;
         }
         var memo = BuildOwnerUtilityReceiptMemo(receiptCode, ownerSplitLines);
-
-        var ownerAccountsPayableLine = new JournalEntryLine
+        var journalEntryLines = new List<JournalEntryLine>();
+        foreach (var split in ownerSplitLines)
         {
-            ChartOfAccountId = ownerAccountsPayableAccountId,
-            PropertyId = propertyId == Guid.Empty ? null : propertyId,
-            ContactId = ownerContactId,
-            Debit = ownerUtilityAmount > 0 ? ownerUtilityAmount : 0,
-            Credit = ownerUtilityAmount < 0 ? Math.Abs(ownerUtilityAmount) : 0,
-            Memo = memo,
-            CreatedBy = currentUser
-        };
-
-        var pmUtilityIncomeLine = new JournalEntryLine
-        {
-            ChartOfAccountId = pmUtilityIncomeAccountId,
-            PropertyId = propertyId == Guid.Empty ? null : propertyId,
-            ContactId = ownerContactId,
-            Debit = ownerUtilityAmount < 0 ? Math.Abs(ownerUtilityAmount) : 0,
-            Credit = ownerUtilityAmount > 0 ? ownerUtilityAmount : 0,
-            Memo = memo,
-            CreatedBy = currentUser
-        };
+            var splitAmount = split.Amount;
+            var splitPropertyId = split.PropertyId is { } candidatePropertyId && candidatePropertyId != Guid.Empty
+                ? candidatePropertyId
+                : propertyId;
+            var splitMemo = BuildOwnerUtilityReceiptMemo(receiptCode, new[] { split });
+            journalEntryLines.Add(new JournalEntryLine
+            {
+                ChartOfAccountId = ownerAccountsPayableAccountId,
+                PropertyId = splitPropertyId == Guid.Empty ? null : splitPropertyId,
+                ContactId = ownerContactId,
+                Debit = splitAmount > 0 ? splitAmount : 0,
+                Credit = splitAmount < 0 ? Math.Abs(splitAmount) : 0,
+                Memo = splitMemo,
+                CreatedBy = currentUser
+            });
+            journalEntryLines.Add(new JournalEntryLine
+            {
+                ChartOfAccountId = pmUtilityIncomeAccountId,
+                PropertyId = splitPropertyId == Guid.Empty ? null : splitPropertyId,
+                ContactId = ownerContactId,
+                Debit = splitAmount < 0 ? Math.Abs(splitAmount) : 0,
+                Credit = splitAmount > 0 ? splitAmount : 0,
+                Memo = splitMemo,
+                CreatedBy = currentUser
+            });
+        }
 
         return new JournalEntry
         {
@@ -260,7 +267,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Bill,
             SourceId = bill.ReceiptId,
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine> { ownerAccountsPayableLine, pmUtilityIncomeLine },
+            JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
     }

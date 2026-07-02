@@ -349,8 +349,8 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.LinensAndTowels,
             SourceId = agreement.PropertyId,
             Memo = reverseEntryDirection
-                ? $"{cadenceLabel} Linen & Towel Unused Portion - Property-{agreement.PropertyId}"
-                : $"{cadenceLabel} Linen & Towel - Property-{agreement.PropertyId}",
+                ? $"{cadenceLabel} Linen & Towel Unused Portion"
+                : $"{cadenceLabel} Linen & Towel",
             JournalEntryLines =
             [
                 new JournalEntryLine
@@ -360,8 +360,8 @@ public partial class AccountingManager
                     Debit = ownerApDebit,
                     Credit = ownerApCredit,
                     Memo = reverseEntryDirection
-                        ? $"{cadenceLabel} Linen & Towel Unused Portion - Owner A/P"
-                        : $"{cadenceLabel} Linen & Towel - Owner A/P",
+                        ? $"Owner: {cadenceLabel} Linen & Towel Unused Portion"
+                        : $"Owner: {cadenceLabel} Linen & Towel",
                     CreatedBy = SystemOrganization
                 },
                 new JournalEntryLine
