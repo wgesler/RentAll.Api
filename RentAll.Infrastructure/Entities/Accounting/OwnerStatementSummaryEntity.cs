@@ -16,4 +16,6 @@ public class OwnerStatementSummaryEntity
     public decimal Balance { get; set; }
     public decimal WorkingCapital { get; set; }
     public decimal WorkingCapitalBalanceDue { get; set; }
+    public decimal OwnerPayment { get; set; }
+    public decimal EndingBalance { get; set; }
 }

@@ -38,6 +38,10 @@ public partial class AccountingManager
             summary.Outstanding = summary.Expected - summary.Income;
             summary.Balance = summary.Income - summary.Expenses;
             summary.WorkingCapitalBalanceDue = summary.Balance - summary.WorkingCapital;
+            summary.OwnerPayment = summary.Income <= 0m
+                ? 0m
+                : Math.Max(0m, summary.Balance - summary.WorkingCapital);
+            summary.EndingBalance = summary.Balance - summary.OwnerPayment;
         }
 
         return summaries

@@ -18,6 +18,8 @@ public class OwnerStatementResponseDto
     public decimal Balance { get; set; }
     public decimal WorkingCapital { get; set; }
     public decimal WorkingCapitalBalanceDue { get; set; }
+    public decimal OwnerPayment { get; set; }
+    public decimal EndingBalance { get; set; }
 
     public OwnerStatementResponseDto(OwnerStatementSummary statement)
     {
@@ -35,5 +37,7 @@ public class OwnerStatementResponseDto
         Balance = statement.Balance;
         WorkingCapital = statement.WorkingCapital;
         WorkingCapitalBalanceDue = statement.WorkingCapitalBalanceDue;
+        OwnerPayment = statement.OwnerPayment;
+        EndingBalance = statement.EndingBalance;
     }
 }

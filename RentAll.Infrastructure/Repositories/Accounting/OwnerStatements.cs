@@ -45,7 +45,9 @@ public partial class AccountingRepository
             Expenses = e.Expenses,
             Balance = e.Balance,
             WorkingCapital = e.WorkingCapital,
-            WorkingCapitalBalanceDue = e.WorkingCapitalBalanceDue
+            WorkingCapitalBalanceDue = e.WorkingCapitalBalanceDue,
+            OwnerPayment = e.OwnerPayment,
+            EndingBalance = e.EndingBalance
         };
     }
 
