@@ -237,8 +237,8 @@ public partial class AccountingManager
                 PropertyId = criteria.PropertyId,
                 IncludeVoided = false,
                 IncludeUnposted = true,
-                StartDate = criteria.StartDate,
-                EndDate = criteria.EndDate
+                StartDate = null,
+                EndDate = null
             });
             billReceiptLineResults.AddRange(sourceLines.Where(HasOwnerMemo));
         }
@@ -246,11 +246,29 @@ public partial class AccountingManager
         if (billReceiptLineResults.Count == 0)
             return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
 
+        var receiptDateByReceiptId = new Dictionary<Guid, DateOnly>();
+        var receiptIds = billReceiptLineResults
+            .Select(line => line.SourceId)
+            .Where(sourceId => sourceId.HasValue)
+            .Select(sourceId => sourceId!.Value)
+            .Distinct()
+            .ToList();
+        foreach (var receiptId in receiptIds)
+        {
+            var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, criteria.OrganizationId);
+            if (receipt != null)
+                receiptDateByReceiptId[receiptId] = receipt.ReceiptDate;
+        }
+
         return billReceiptLineResults
             .GroupBy(line => line.JournalEntryId)
             .Select(group =>
             {
                 var first = group.First();
+                var sourceId = first.SourceId;
+                var activityDate = sourceId.HasValue && receiptDateByReceiptId.TryGetValue(sourceId.Value, out var receiptDate)
+                    ? receiptDate
+                    : first.TransactionDate;
                 var debitTotal = group.Sum(line => line.Debit);
                 var creditTotal = group.Sum(line => line.Credit);
                 var expenseAmount = Math.Max(debitTotal, creditTotal);
@@ -266,7 +284,7 @@ public partial class AccountingManager
                 {
                     ActivityId = first.SourceId ?? first.JournalEntryId,
                     ActivityType = activityType,
-                    ActivityDate = first.TransactionDate,
+                    ActivityDate = activityDate,
                     DocumentCode = first.JournalEntryCode,
                     Description = description,
                     ExpectedIncome = 0m,
@@ -274,6 +292,7 @@ public partial class AccountingManager
                 };
             })
             .Where(line => line.Expenses != 0m)
+            .Where(line => IsWithinOwnerStatementDateRange(line.ActivityDate, criteria.StartDate, criteria.EndDate))
             .OrderBy(line => line.ActivityDate)
             .ThenBy(line => line.ActivityType)
             .ThenBy(line => line.DocumentCode)
@@ -286,6 +305,15 @@ public partial class AccountingManager
         var lineMemo = (line.Memo ?? string.Empty).Trim();
         return journalMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase)
             || lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsWithinOwnerStatementDateRange(DateOnly activityDate, DateOnly? startDate, DateOnly? endDate)
+    {
+        if (startDate.HasValue && activityDate < startDate.Value)
+            return false;
+        if (endDate.HasValue && activityDate > endDate.Value)
+            return false;
+        return true;
     }
 
 }
