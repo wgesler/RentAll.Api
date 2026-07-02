@@ -360,8 +360,8 @@ public partial class AccountingManager
                     Debit = ownerApDebit,
                     Credit = ownerApCredit,
                     Memo = reverseEntryDirection
-                        ? $"Owner: {cadenceLabel} Linen & Towel Unused Portion"
-                        : $"Owner: {cadenceLabel} Linen & Towel",
+                        ? $"Owner: {cadenceLabel}: Linen & Towel Unused Portion"
+                        : $"Owner: {cadenceLabel}: Linen & Towel",
                     CreatedBy = SystemOrganization
                 },
                 new JournalEntryLine
