@@ -214,8 +214,7 @@ public partial class AccountingManager
             if (invoice.InvoiceId == Guid.Empty)
                 return;
 
-            var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-            var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+            var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
 
             var paymentLedgerLineIds = priorPaymentLedgerLineIds
                 .Concat(invoice.LedgerLines

@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.JournalEntries;
+using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
@@ -322,11 +323,13 @@ public partial class AccountingController
 
         try
         {
-            await _accountingManager.SyncInvoiceJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await _accountingManager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await _accountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await _accountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await _accountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, progress);
+            using var scope = _serviceScopeFactory.CreateScope();
+            var scopedAccountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
+            await scopedAccountingManager.SyncInvoiceJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await scopedAccountingManager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await scopedAccountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await scopedAccountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await scopedAccountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, progress);
 
             lock (job.SyncRoot)
             {

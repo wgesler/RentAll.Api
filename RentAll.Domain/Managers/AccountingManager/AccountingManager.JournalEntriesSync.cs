@@ -46,8 +46,7 @@ public partial class AccountingManager
 
                 if (!costCodesByOffice.TryGetValue(invoice.OfficeId, out var costCodeById))
                 {
-                    var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, invoice.OfficeId);
-                    costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+                    costCodeById = (await LoadCostCodeByOfficeIdAsync(organizationId, invoice.OfficeId)).ToDictionary(entry => entry.Key, entry => entry.Value);
                     costCodesByOffice[invoice.OfficeId] = costCodeById;
                 }
 

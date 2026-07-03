@@ -102,11 +102,11 @@ public partial class AccountingManager
     private async Task<CrossPeriodInvoiceAccountingContext> LoadCrossPeriodInvoiceAccountingContextAsync(Invoice invoice)
     {
         var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodesTask = _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var costCodesTask = LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         await Task.WhenAll(accountContextTask, costCodesTask);
 
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
-        var costCodeById = (await costCodesTask).ToDictionary(c => c.CostCodeId);
+        var costCodeById = await costCodesTask;
 
         return new CrossPeriodInvoiceAccountingContext
         {
@@ -282,8 +282,7 @@ public partial class AccountingManager
 
     private async Task<decimal> SumInvoiceChargeLinesAsync(Invoice invoice)
     {
-        var costCodeById = (await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId))
-            .ToDictionary(c => c.CostCodeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         return SumInvoiceChargeLines(invoice, costCodeById);
     }
 
@@ -304,8 +303,7 @@ public partial class AccountingManager
         // Diagnostic detail for split mismatches: dump every non-payment charge line (description, amount,
         // cost code) for the original invoice and both regenerated period slices so the offending line is
         // obvious. The Message column is VARCHAR(2500), so each section is capped to stay within bounds.
-        var costCodeById = (await _accountingRepository.GetCostCodesByOfficeIdAsync(original.OrganizationId, original.OfficeId))
-            .ToDictionary(c => c.CostCodeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(original.OrganizationId, original.OfficeId);
         return BuildCrossPeriodChargeBreakdown(original, firstSlice, secondSlice, costCodeById);
     }
 

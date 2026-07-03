@@ -67,7 +67,7 @@ public partial class AccountingManager
 
     public async Task ApplyBillingCostCodesAsync(Guid organizationId, List<LedgerLine> ledgerLines)
     {
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, 1);
+        var costCodes = (await LoadCostCodeByOfficeIdAsync(organizationId, 1)).Values.ToList();
         foreach (var line in ledgerLines)
         {
             var costCode = null as CostCode;

@@ -4,11 +4,16 @@ using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager : IAccountingManager
 {
+    private readonly record struct OfficeContextCacheKey(Guid OrganizationId, int OfficeId);
+    private readonly record struct AccountResolverCacheKey(int ChartContextId, int OfficeId, string ResolverKey, string CostCodeKey);
+
     private readonly Guid SystemOrganization = Guid.Parse("99999999-9999-9999-9999-999999999999");
 
     private readonly IOrganizationRepository _organizationRepository;
@@ -20,6 +25,9 @@ public partial class AccountingManager : IAccountingManager
     private readonly IOrganizationManager _organizationManager;
     private readonly IContactRepository _contactRepository;
     private readonly IFeatureFlagService _featureFlagService;
+    private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)>> _accountContextCache = new();
+    private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<IReadOnlyDictionary<int, CostCode>>> _costCodeByOfficeCache = new();
+    private readonly ConcurrentDictionary<AccountResolverCacheKey, int> _defaultAccountIdCache = new();
 
     public AccountingManager(
         IOrganizationRepository organizationRepository,
@@ -49,6 +57,21 @@ public partial class AccountingManager : IAccountingManager
     #region Load Context
     private async Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)> LoadAccountContextAsync(Guid organizationId, int officeId)
     {
+        var key = new OfficeContextCacheKey(organizationId, officeId);
+        var accountContextTask = _accountContextCache.GetOrAdd(key, _ => FetchAccountContextAsync(organizationId, officeId));
+        try
+        {
+            return await accountContextTask;
+        }
+        catch
+        {
+            _accountContextCache.TryRemove(key, out _);
+            throw;
+        }
+    }
+
+    private async Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)> FetchAccountContextAsync(Guid organizationId, int officeId)
+    {
         var chartOfAccountsTask = _accountingRepository.GetChartOfAccountsByOfficeIdAsync(organizationId, officeId);
         var accountingOfficeTask = _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
         var bankCardsTask = _accountingRepository.GetBankCardsByOfficeIdAsync(organizationId, officeId);
@@ -65,17 +88,38 @@ public partial class AccountingManager : IAccountingManager
     private async Task<(Office? Office, IReadOnlyDictionary<int, CostCode> CostCodeById)> LoadOfficeCostCodeContextAsync(Guid organizationId, int officeId)
     {
         var officeTask = _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
-        var costCodesTask = _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, officeId);
+        var costCodesTask = LoadCostCodeByOfficeIdAsync(organizationId, officeId);
 
         await Task.WhenAll(officeTask, costCodesTask);
 
-        return (await officeTask, (await costCodesTask).ToDictionary(c => c.CostCodeId));
+        return (await officeTask, await costCodesTask);
+    }
+
+    private async Task<IReadOnlyDictionary<int, CostCode>> LoadCostCodeByOfficeIdAsync(Guid organizationId, int officeId)
+    {
+        var key = new OfficeContextCacheKey(organizationId, officeId);
+        var costCodeTask = _costCodeByOfficeCache.GetOrAdd(key, _ => FetchCostCodeByOfficeIdAsync(organizationId, officeId));
+        try
+        {
+            return await costCodeTask;
+        }
+        catch
+        {
+            _costCodeByOfficeCache.TryRemove(key, out _);
+            throw;
+        }
+    }
+
+    private async Task<IReadOnlyDictionary<int, CostCode>> FetchCostCodeByOfficeIdAsync(Guid organizationId, int officeId)
+    {
+        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(organizationId, officeId);
+        return costCodes.ToDictionary(c => c.CostCodeId);
     }
     #endregion
 
     #region Default Chart Of Accounts
     // Office Cost Codes
-    private static int GetDefaultOfficeExpenseAccount(List<ChartOfAccount> chartOfAccounts, int officeId, int? officeExpenseCostCodeId, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultOfficeExpenseAccount(List<ChartOfAccount> chartOfAccounts, int officeId, int? officeExpenseCostCodeId, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         CostCode? costCode = null;
         if (officeExpenseCostCodeId is > 0)
@@ -84,198 +128,216 @@ public partial class AccountingManager : IAccountingManager
         return GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice, costCode);
     }
 
-    private static int GetDefaultFurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultFurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.FurnishedRentExpenseCcId, costCodeById, accountingOffice);
     }
 
-    private static int GetDefaultUnfurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultUnfurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.UnfurnishedRentExpenseCcId, costCodeById, accountingOffice);
     }
 
-    private static int GetDefaultMaidServiceExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultMaidServiceExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.MaidServiceExpenseCcId, costCodeById, accountingOffice);
     }
 
-    private static int GetDefaultParkingExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultParkingExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.ParkingExpenseCcId, costCodeById, accountingOffice);
     }
 
-    private static int GetDefaultDepartureAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultDepartureAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.DepartureFeeCcId, costCodeById, accountingOffice);
     }
 
-    private static int GetDefaultPetAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    private int GetDefaultPetAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.PetFeeCcId, costCodeById, accountingOffice);
     }
 
     // Tenant/Owner/Company Accounts
-    private static int GetDefaultTenantIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultTenantIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
-        int defaultAccountId;
-        if (accountingOffice?.DefaultTenantIncAccountId is > 0)
-            defaultAccountId = accountingOffice.DefaultTenantIncAccountId.Value;
-        else
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultTenantIncome), chartOfAccounts, officeId, costCode, () =>
         {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-                .Where(a => a.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
+            int defaultAccountId;
+            if (accountingOffice?.DefaultTenantIncAccountId is > 0)
+                defaultAccountId = accountingOffice.DefaultTenantIncAccountId.Value;
+            else
+            {
+                var account = chartOfAccounts
                     .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                    .Where(a => a.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? chartOfAccounts
+                        .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                        .OrderBy(a => a.AccountId)
+                        .FirstOrDefault();
 
-            if (account == null)
-                throw new Exception($"No Tenant Income chart of account is configured for office {officeId}");
+                if (account == null)
+                    throw new Exception($"No Tenant Income chart of account is configured for office {officeId}");
 
-            defaultAccountId = account.AccountId;
-        }
+                defaultAccountId = account.AccountId;
+            }
 
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+            return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        });
     }
 
-    private static int GetDefaultTenantExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultTenantExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
-        int defaultAccountId;
-        if (accountingOffice?.DefaultTenantExpAccountId is > 0)
-            defaultAccountId = accountingOffice.DefaultTenantExpAccountId.Value;
-        else
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultTenantExpense), chartOfAccounts, officeId, costCode, () =>
         {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
-                .Where(a => a.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
+            int defaultAccountId;
+            if (accountingOffice?.DefaultTenantExpAccountId is > 0)
+                defaultAccountId = accountingOffice.DefaultTenantExpAccountId.Value;
+            else
+            {
+                var account = chartOfAccounts
                     .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                    .Where(a => a.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? chartOfAccounts
+                        .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                        .OrderBy(a => a.AccountId)
+                        .FirstOrDefault();
 
-            if (account == null)
-                throw new Exception($"No Tenant Expense chart of account is configured for office {officeId}");
+                if (account == null)
+                    throw new Exception($"No Tenant Expense chart of account is configured for office {officeId}");
 
-            defaultAccountId = account.AccountId;
-        }
+                defaultAccountId = account.AccountId;
+            }
 
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+            return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        });
     }
 
-    private static int GetDefaultOwnerIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultOwnerIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
-        int defaultAccountId;
-        if (accountingOffice?.DefaultOwnerIncAccountId is > 0)
-            defaultAccountId = accountingOffice.DefaultOwnerIncAccountId.Value;
-        else
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultOwnerIncome), chartOfAccounts, officeId, costCode, () =>
         {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-                .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
+            int defaultAccountId;
+            if (accountingOffice?.DefaultOwnerIncAccountId is > 0)
+                defaultAccountId = accountingOffice.DefaultOwnerIncAccountId.Value;
+            else
+            {
+                var account = chartOfAccounts
                     .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                    .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? chartOfAccounts
+                        .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                        .OrderBy(a => a.AccountId)
+                        .FirstOrDefault();
 
-            if (account == null)
-                throw new Exception($"No Owner Income chart of account is configured for office {officeId}");
+                if (account == null)
+                    throw new Exception($"No Owner Income chart of account is configured for office {officeId}");
 
-            defaultAccountId = account.AccountId;
-        }
+                defaultAccountId = account.AccountId;
+            }
 
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+            return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        });
     }
 
-    private static int GetDefaultOwnerExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultOwnerExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
-        int defaultAccountId;
-        if (accountingOffice?.DefaultOwnerExpAccountId is > 0)
-            defaultAccountId = accountingOffice.DefaultOwnerExpAccountId.Value;
-        else
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultOwnerExpense), chartOfAccounts, officeId, costCode, () =>
         {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
-                .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
+            int defaultAccountId;
+            if (accountingOffice?.DefaultOwnerExpAccountId is > 0)
+                defaultAccountId = accountingOffice.DefaultOwnerExpAccountId.Value;
+            else
+            {
+                var account = chartOfAccounts
                     .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                    .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? chartOfAccounts
+                        .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                        .OrderBy(a => a.AccountId)
+                        .FirstOrDefault();
 
-            if (account == null)
-                throw new Exception($"No Owner Expense chart of account is configured for office {officeId}");
+                if (account == null)
+                    throw new Exception($"No Owner Expense chart of account is configured for office {officeId}");
 
-            defaultAccountId = account.AccountId;
-        }
+                defaultAccountId = account.AccountId;
+            }
 
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+            return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        });
     }
 
-    private static int GetDefaultCompanyExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultCompanyExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
-        int defaultAccountId;
-        if (accountingOffice?.DefaultCompanyExpAccountId is > 0)
-            defaultAccountId = accountingOffice.DefaultCompanyExpAccountId.Value;
-        else
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultCompanyExpense), chartOfAccounts, officeId, costCode, () =>
         {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
-                .Where(a =>
-                    a.Name.Contains("Company", StringComparison.OrdinalIgnoreCase) ||
-                    a.Name.Contains("Inventory", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
+            int defaultAccountId;
+            if (accountingOffice?.DefaultCompanyExpAccountId is > 0)
+                defaultAccountId = accountingOffice.DefaultCompanyExpAccountId.Value;
+            else
+            {
+                var account = chartOfAccounts
                     .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                    .Where(a =>
+                        a.Name.Contains("Company", StringComparison.OrdinalIgnoreCase) ||
+                        a.Name.Contains("Inventory", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? chartOfAccounts
+                        .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Expense)
+                        .OrderBy(a => a.AccountId)
+                        .FirstOrDefault();
 
-            if (account == null)
-                throw new Exception($"No Company Expense chart of account is configured for office {officeId}");
+                if (account == null)
+                    throw new Exception($"No Company Expense chart of account is configured for office {officeId}");
 
-            defaultAccountId = account.AccountId;
-        }
+                defaultAccountId = account.AccountId;
+            }
 
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+            return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        });
     }
 
-    private static int GetDefaultPmUtilityIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultPmUtilityIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
-        int defaultAccountId;
-        if (accountingOffice?.DefaultPmUtilityIncAccountId is > 0)
-            defaultAccountId = accountingOffice.DefaultPmUtilityIncAccountId.Value;
-        else
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultPmUtilityIncome), chartOfAccounts, officeId, costCode, () =>
         {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-                .Where(a =>
-                    a.Name.Contains("PM Utility", StringComparison.OrdinalIgnoreCase) ||
-                    a.Name.Contains("Utility", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
+            int defaultAccountId;
+            if (accountingOffice?.DefaultPmUtilityIncAccountId is > 0)
+                defaultAccountId = accountingOffice.DefaultPmUtilityIncAccountId.Value;
+            else
+            {
+                var account = chartOfAccounts
                     .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                    .Where(a =>
+                        a.Name.Contains("PM Utility", StringComparison.OrdinalIgnoreCase) ||
+                        a.Name.Contains("Utility", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? chartOfAccounts
+                        .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
+                        .OrderBy(a => a.AccountId)
+                        .FirstOrDefault();
 
-            if (account == null)
-                throw new Exception($"No PM Utility Income chart of account is configured for office {officeId}");
+                if (account == null)
+                    throw new Exception($"No PM Utility Income chart of account is configured for office {officeId}");
 
-            defaultAccountId = account.AccountId;
-        }
+                defaultAccountId = account.AccountId;
+            }
 
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+            return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
+        });
     }
 
-    private static int GetDefaultLaborIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultLaborIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
         int defaultAccountId;
         if (accountingOffice?.@DefaultLaborIncAccountId is > 0)
@@ -301,7 +363,7 @@ public partial class AccountingManager : IAccountingManager
         return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
-    private static int GetDefaultLinenAndTowelIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultLinenAndTowelIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
         int defaultAccountId;
         if (accountingOffice?.@DefaultLinenTowelIncAccountId is > 0)
@@ -329,7 +391,7 @@ public partial class AccountingManager : IAccountingManager
         return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
-    private static int GetDefaultDepartureIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultDepartureIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
         int defaultAccountId;
         if (accountingOffice?.DefaultDepartureIncAccountId is > 0)
@@ -355,7 +417,7 @@ public partial class AccountingManager : IAccountingManager
         return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
-    private static int GetDefaultDepartureExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
+    private int GetDefaultDepartureExpense(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
         int defaultAccountId;
         if (accountingOffice?.DefaultDepartureExpAccountId is > 0)
@@ -382,160 +444,196 @@ public partial class AccountingManager : IAccountingManager
     }
 
     // Bank & Balance Sheet Accounts
-    private static int GetDefaultBankAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultBankAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultBankAccountId is > 0)
-            return accountingOffice.DefaultBankAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultBankAccount), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultBankAccountId is > 0)
+                return accountingOffice.DefaultBankAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Bank)
-            .Where(a => a.Name.Contains("Bank", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Bank)
+                .Where(a => a.Name.Contains("Bank", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Bank)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Bank chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Bank chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
 
-    private static int GetDefaultAccountsReceivable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultAccountsReceivable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultActRecvAccountId is > 0)
-            return accountingOffice.DefaultActRecvAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultAccountsReceivable), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultActRecvAccountId is > 0)
+                return accountingOffice.DefaultActRecvAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsReceivable)
-            .Where(a => a.Name.Contains("Receivable", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsReceivable)
+                .Where(a => a.Name.Contains("Receivable", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsReceivable)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Accounts Receivable chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Accounts Receivable chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
 
-    private static int GetDefaultDepositAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultDepositAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultEscrowAccountId is > 0)
-            return accountingOffice.DefaultEscrowAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultDepositAccount), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultEscrowAccountId is > 0)
+                return accountingOffice.DefaultEscrowAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
-            .Where(a =>
-                a.Name.Contains("Escrow", StringComparison.OrdinalIgnoreCase) ||
-                a.Name.Contains("Deposit", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
+                .Where(a =>
+                    a.Name.Contains("Escrow", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.Contains("Deposit", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Escrow chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Escrow chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
 
-    private static int GetDefaultUndepositedFunds(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultUndepositedFunds(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultUndepFundsAccountId is > 0)
-            return accountingOffice.DefaultUndepFundsAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultUndepositedFunds), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultUndepFundsAccountId is > 0)
+                return accountingOffice.DefaultUndepFundsAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
-            .Where(a => a.Name.Contains("Undeposited", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
+                .Where(a => a.Name.Contains("Undeposited", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentAsset)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Undeposited Funds chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Undeposited Funds chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
 
-    private static int GetDefaultAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultActPayableAccountId is > 0)
-            return accountingOffice.DefaultActPayableAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultAccountsPayable), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultActPayableAccountId is > 0)
+                return accountingOffice.DefaultActPayableAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
-            .Where(a => a.Name.Contains("Payable", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
+                .Where(a => a.Name.Contains("Payable", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Accounts Payable chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Accounts Payable chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
 
-    private static int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultOwnActPayableAccountId is > 0)
-            return accountingOffice.DefaultOwnActPayableAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultOwnerAccountsPayable), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultOwnActPayableAccountId is > 0)
+                return accountingOffice.DefaultOwnActPayableAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
-            .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
+                .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Owner Accounts Payable chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Owner Accounts Payable chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
 
-    private static int GetDefaultPrePayment(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    private int GetDefaultPrePayment(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
-        if (accountingOffice?.DefaultPrePayAccountId is > 0)
-            return accountingOffice.DefaultPrePayAccountId.Value;
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultPrePayment), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultPrePayAccountId is > 0)
+                return accountingOffice.DefaultPrePayAccountId.Value;
 
-        var account = chartOfAccounts
-            .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
-            .Where(a =>
-                a.Name.Contains("Pre-Payment", StringComparison.OrdinalIgnoreCase) ||
-                a.Name.Contains("Prepayment", StringComparison.OrdinalIgnoreCase) ||
-                a.Name.Contains("Pre Payment", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(a => a.AccountId)
-            .FirstOrDefault()
-            ?? chartOfAccounts
+            var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
+                .Where(a =>
+                    a.Name.Contains("Pre-Payment", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.Contains("Prepayment", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.Contains("Pre Payment", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
 
-        if (account == null)
-            throw new Exception($"No Pre-Payment chart of account is configured for office {officeId}");
+            if (account == null)
+                throw new Exception($"No Pre-Payment chart of account is configured for office {officeId}");
 
-        return account.AccountId;
+            return account.AccountId;
+        });
     }
     #endregion
 
     #region Journal Entry Account Resolution
+    private int ResolveDefaultAccountIdCached(
+        string resolverKey,
+        List<ChartOfAccount> chartOfAccounts,
+        int officeId,
+        CostCode? costCode,
+        Func<int> resolver)
+    {
+        var key = new AccountResolverCacheKey(
+            ChartContextId: RuntimeHelpers.GetHashCode(chartOfAccounts),
+            OfficeId: officeId,
+            ResolverKey: resolverKey,
+            CostCodeKey: NormalizeAccountCode(costCode?.Code ?? string.Empty));
+        return _defaultAccountIdCache.GetOrAdd(key, _ => resolver());
+    }
+
     private static int GetChartOfAccountIdByCostCode(List<ChartOfAccount> chartOfAccounts, int officeId, CostCode? costCode, int defaultAccountId)
     {
         if (costCode == null || string.IsNullOrWhiteSpace(costCode.Code))
@@ -566,7 +664,7 @@ public partial class AccountingManager : IAccountingManager
         return bankCard.ChartOfAccountId.Value;
     }
 
-    private static int GetBillReceiptExpenseAccountId(ReceiptSplit split, int officeId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
+    private int GetBillReceiptExpenseAccountId(ReceiptSplit split, int officeId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
         // If the split has a chart of account, use it
         if (split.ChartOfAccountId > 0)

@@ -21,6 +21,7 @@ namespace RentAll.Api.Controllers
         private readonly IAccountingManager _accountingManager;
         private readonly AuthManager _authManager;
         private readonly ILogger<AccountingController> _logger;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         public AccountingController(
             IAccountingRepository accountingRepository,
@@ -29,7 +30,8 @@ namespace RentAll.Api.Controllers
             IOrganizationRepository organizationRepository,
             IAccountingManager accountingManager,
             AuthManager authManager,
-            ILogger<AccountingController> logger)
+            ILogger<AccountingController> logger,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _accountingRepository = accountingRepository;
             _journalEntryRepository = journalEntryRepository;
@@ -38,6 +40,7 @@ namespace RentAll.Api.Controllers
             _accountingManager = accountingManager;
             _authManager = authManager;
             _logger = logger;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         private sealed class JournalEntrySyncJobState

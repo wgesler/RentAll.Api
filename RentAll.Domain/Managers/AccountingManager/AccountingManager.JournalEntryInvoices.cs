@@ -284,8 +284,7 @@ public partial class AccountingManager
         // Lines 2+ — Credit: Tenant Income (GetDefaultTenantIncome) for each non-payment charge line.
         // END INVOICE-JE-ACCOUNTS
 
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
 
@@ -371,8 +370,7 @@ public partial class AccountingManager
         if (paymentLedgerLine.LedgerLineDate == default)
             throw new Exception("Payment date is required to create a payment journal entry");
 
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         if (!costCodeById.TryGetValue(paymentLedgerLine.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
             throw new Exception("Payment ledger line must use a payment cost code");
 
@@ -627,8 +625,7 @@ public partial class AccountingManager
         if (invoice.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create pre-payment journal entries");
 
-        var costCodes = await _accountingRepository.GetCostCodesByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var costCodeById = costCodes.ToDictionary(c => c.CostCodeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         if (!costCodeById.TryGetValue(paymentLedgerLine.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
             throw new Exception("Payment ledger line must use a payment cost code");
     }
