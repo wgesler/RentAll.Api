@@ -420,7 +420,7 @@ public partial class AccountingManager
             foreach (var ownerLine in ownerWorkOrderLines)
             {
                 var lineAmount = ownerLine.ItemAmount;
-                var lineMemo = BuildWorkOrderTypedMemo("Owner", workOrderLabel, ownerLine.Description ?? workOrder.Description);
+                var lineMemo = BuildWorkOrderCreditMemo(workOrderLabel, ownerLine.Description ?? workOrder.Description);
                 journalEntryLines.Add(new JournalEntryLine
                 {
                     ChartOfAccountId = ownerIncomeAccountId,
@@ -496,6 +496,14 @@ public partial class AccountingManager
         return string.IsNullOrWhiteSpace(description)
             ? $"{typeLabel}: WorkOrder: {workOrderCode}"
             : $"{typeLabel}: WorkOrder: {workOrderCode}: {description}";
+    }
+
+    private static string BuildWorkOrderCreditMemo(string workOrderCode, string? splitDescription)
+    {
+        var description = (splitDescription ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? $"WorkOrder: {workOrderCode}"
+            : $"WorkOrder: {workOrderCode}: {description}";
     }
 
     private static string ResolveWorkOrderMemoType(WorkOrderType workOrderType)
