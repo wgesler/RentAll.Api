@@ -197,7 +197,7 @@ public partial class AccountingManager
         // Negative owner utility totals (bill credits) reverse debit/credit direction.
         // END BILL-OWNER-UTILITY-JE-ACCOUNTS
 
-        EnsureReceiptIsBill(bill);
+        EnsureBillIsUtility(bill);
         bill = await LoadReceiptWithSplitsAsync(bill);
 
         if (!ShouldCreateOwnerUtilityJournalEntryForBill(bill))

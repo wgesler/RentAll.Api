@@ -94,8 +94,8 @@ public partial class AccountingManager
         // BILL-JE-ACCOUNTS
         // Positive splits:
         //   Credit - Accounts Payable (GetDefaultAccountsPayable) for the split total.
-        //   Debit  - Expense account per split (GetDefaultTenantExpense, GetDefaultDepartureExpense,
-        //           GetDefaultOwnerExpense, or GetDefaultCompanyExpense based on split receipt type).
+        //   Debit  - Expense account per split as defined by the user they default to the following
+        //   (GetDefaultTenantExpense, GetDefaultDepartureExpense, GetDefaultOwnerExpense, or GetDefaultCompanyExpense).
         // Negative splits (bill credits):
         //   Exact opposite
         // END BILL-JE-ACCOUNTS
@@ -356,12 +356,10 @@ public partial class AccountingManager
             throw new Exception("Receipt is not a bill");
     }
 
-    private static string BuildOwnerBillSplitMemo(string receiptCode, string? splitDescription)
+    private static void EnsureBillIsUtility(Receipt bill)
     {
-        var description = (splitDescription ?? string.Empty).Trim();
-        return string.IsNullOrWhiteSpace(description)
-            ? $"Owner: {receiptCode}"
-            : $"Owner: {receiptCode}: {description}";
+        if (bill.BankCardId != null || !bill.IsUtility)
+            throw new Exception("Receipt is not a utility");
     }
 
     private static string BuildBillPaymentMemo(string receiptCode, IEnumerable<ReceiptSplit> splitLines)
