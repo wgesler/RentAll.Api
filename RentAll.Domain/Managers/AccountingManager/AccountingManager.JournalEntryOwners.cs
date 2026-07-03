@@ -390,11 +390,8 @@ public partial class AccountingManager
         if (workOrder.WorkOrderDate == default)
             throw new Exception("WorkOrderDate is required to create a journal entry for a work order");
 
-        var workOrderAmount = workOrder.Amount != 0
-            ? workOrder.Amount
+        var workOrderAmount = workOrder.Amount != 0? workOrder.Amount
             : (workOrder.WorkOrderItems ?? new List<WorkOrderItem>()).Sum(item => item.ItemAmount);
-        if (workOrderAmount == 0)
-            throw new Exception("WorkOrder amount cannot be zero when creating a journal entry");
         var ownerWorkOrderLines = GetEligibleWorkOrderOwnerLines(workOrder);
         var ownerWorkOrderTotal = ownerWorkOrderLines.Sum(line => line.ItemAmount);
 

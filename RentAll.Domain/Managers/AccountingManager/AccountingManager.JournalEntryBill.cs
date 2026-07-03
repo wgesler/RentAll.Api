@@ -114,8 +114,6 @@ public partial class AccountingManager
         var receiptCode = bill.ReceiptCode.Trim();
         var memo = BuildRequiredReceiptSplitMemo(receiptCode, bill.Description);
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
-        var fullBillAmount = bill.Amount != 0 ? Math.Abs(bill.Amount) : 0m;
-
         var eligibleSplits = splitLines
             .Where(split => split.ReceiptType != ReceiptType.NonExpense)
             .Where(split => split.Amount != 0)
@@ -134,7 +132,7 @@ public partial class AccountingManager
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
                 Debit = 0,
-                Credit = fullBillAmount > 0 ? fullBillAmount : positiveTotal,
+                Credit = positiveTotal,
                 Memo = memo,
                 CreatedBy = currentUser
             });
@@ -175,7 +173,7 @@ public partial class AccountingManager
                 ChartOfAccountId = accountsPayableAccountId,
                 PropertyId = propertyId == Guid.Empty ? null : propertyId,
                 ContactId = bill.VendorId,
-                Debit = fullBillAmount > 0 ? fullBillAmount : Math.Abs(negativeTotal),
+                Debit = Math.Abs(negativeTotal),
                 Credit = 0,
                 Memo = memo,
                 CreatedBy = currentUser
