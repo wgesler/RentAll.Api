@@ -317,10 +317,10 @@ public partial class AccountingManager
                 {
                     var first = group.First();
                     var income = group
-                        .Where(line => line.ChartOfAccountId == ownerIncomeAccountId)
+                        .Where(line => line.ChartOfAccountId == ownerExpenseAccountId)
                         .Sum(line => line.Credit - line.Debit);
                     var expenses = group
-                        .Where(line => line.ChartOfAccountId == ownerExpenseAccountId)
+                        .Where(line => line.ChartOfAccountId == ownerIncomeAccountId)
                         .Sum(line => line.Debit - line.Credit);
                     var documentCode = first.JournalEntryCode;
                     var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
