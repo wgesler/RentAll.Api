@@ -420,16 +420,10 @@ public partial class AccountingManager
     private async Task<bool> TryUseCrossPeriodInvoiceJournalEntryPathAsync(Invoice invoice)
     {
         if (!InvoiceCrossesAccountingPeriodBoundary(invoice))
-        {
-            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Invoice does not cross an accounting period boundary.");
             return false;
-        }
 
         if (!invoice.ReservationId.HasValue || invoice.ReservationId == Guid.Empty)
-        {
-            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Invoice has no reservation; cross-period split requires a reservation.");
             return false;
-        }
 
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out _))
         {

@@ -282,7 +282,6 @@ public class SchedulingHostedService : BackgroundService
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var monthlyDepartedReservations = new List<ReservationList>();
             var organizations = await organizationRepository.GetOrganizationsAsync();
             foreach (var organization in organizations.Where(o => o.IsActive))
             {
@@ -293,11 +292,8 @@ public class SchedulingHostedService : BackgroundService
                 var officeCsv = string.Join(",", offices.Select(o => o.OfficeId));
                 var departures = await reservationRepository.GetMonthlyDepartedReservationsAsync(organization.OrganizationId, officeCsv);
                 var departedReservations = departures.ToList();
-                monthlyDepartedReservations.AddRange(departedReservations);
                 await accountingManager.CreateJournalEntiesForDepartedReservationAsync(organization.OrganizationId, departedReservations, cancellationToken);
             }
-
-            _logger.LogInformation("Loaded {DepartureCount} monthly departed reservations.", monthlyDepartedReservations.Count);
         }
         catch (Exception ex)
         {
