@@ -1,6 +1,6 @@
-namespace RentAll.Domain.Models;
+namespace RentAll.Infrastructure.Entities.Logging;
 
-public class AccountingLog
+public class AccountingLogEntity
 {
     public int Id { get; set; }
     public Guid OrganizationId { get; set; }
