@@ -194,19 +194,22 @@ public partial class AccountingManager
         if (paymentLedgerLine.Amount == 0)
             return null;
 
-        if (!TryGetInvoiceRentalLineAmount(invoice, out _))
+        var invoiceAmount = await GetOwnerPercentageBaseAsync(invoice);
+        if (invoiceAmount == 0)
             return null;
 
-        if (invoice.TotalAmount == 0)
+        var paymentAmount = paymentLedgerLine.Amount;
+        var paidIncomeMagnitude = Math.Min(Math.Abs(paymentAmount), Math.Abs(invoiceAmount));
+        if (paidIncomeMagnitude == 0)
             return null;
 
-        var ownerBase = await GetOwnerPercentageBaseAsync(invoice);
-        var ownerShareAmount = await CalculateOwnerShareAmountForInvoiceAsync(invoice, ownerBase);
-        if (!ownerShareAmount.HasValue || ownerShareAmount.Value == 0)
+        var paidIncome = paymentAmount < 0 ? -paidIncomeMagnitude : paidIncomeMagnitude;
+        var ownerPaymentAmount = await CalculateOwnerShareAmountForInvoiceAsync(invoice, paidIncome);
+        if (!ownerPaymentAmount.HasValue || ownerPaymentAmount.Value == 0)
             return null;
 
-        var ownerPaymentAmount = Math.Round(ownerShareAmount.Value * (paymentLedgerLine.Amount / invoice.TotalAmount), 2, MidpointRounding.AwayFromZero);
-        if (ownerPaymentAmount == 0)
+        var ownerPaymentAmountValue = Math.Round(ownerPaymentAmount.Value, 2, MidpointRounding.AwayFromZero);
+        if (ownerPaymentAmountValue == 0)
             return null;
 
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
@@ -242,8 +245,8 @@ public partial class AccountingManager
                     ReservationId = reservationId,
                     PropertyId = propertyId,
                     ContactId = ownerContactId,
-                    Debit = ownerPaymentAmount > 0 ? ownerPaymentAmount : 0,
-                    Credit = ownerPaymentAmount < 0 ? Math.Abs(ownerPaymentAmount) : 0,
+                    Debit = ownerPaymentAmountValue > 0 ? ownerPaymentAmountValue : 0,
+                    Credit = ownerPaymentAmountValue < 0 ? Math.Abs(ownerPaymentAmountValue) : 0,
                     Memo = BuildOwnerPaymentMemo(invoice),
                     CreatedBy = currentUser
                 },
@@ -253,8 +256,8 @@ public partial class AccountingManager
                     ReservationId = reservationId,
                     PropertyId = propertyId,
                     ContactId = ownerContactId,
-                    Debit = ownerPaymentAmount < 0 ? Math.Abs(ownerPaymentAmount) : 0,
-                    Credit = ownerPaymentAmount > 0 ? ownerPaymentAmount : 0,
+                    Debit = ownerPaymentAmountValue < 0 ? Math.Abs(ownerPaymentAmountValue) : 0,
+                    Credit = ownerPaymentAmountValue > 0 ? ownerPaymentAmountValue : 0,
                     Memo = BuildOwnerPaymentMemo(invoice),
                     CreatedBy = currentUser
                 }
@@ -457,7 +460,7 @@ public partial class AccountingManager
         var (chartOfAccounts, _) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
 
-        var ownerBaseTotal = invoice.LedgerLines
+        var invoiceAmount = invoice.LedgerLines
             .Where(line => line.Amount != 0)
             .Where(line =>
             {
@@ -468,7 +471,7 @@ public partial class AccountingManager
             })
             .Sum(l => l.Amount);
 
-        return ownerBaseTotal;
+        return invoiceAmount;
     }
 
     private async Task<decimal> GetProratedOwnerFlatAmountAsync(Invoice invoice, decimal flatAmount)

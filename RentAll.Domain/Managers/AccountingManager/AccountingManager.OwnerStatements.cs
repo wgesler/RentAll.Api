@@ -326,34 +326,33 @@ public partial class AccountingManager
                 EndDate = criteria.EndDate
             });
 
-            var groupedWorkOrderLines = journalEntryLines
-                .GroupBy(line => line.SourceId ?? line.JournalEntryId)
-                .Select(group =>
+            var workOrderActivityLines = journalEntryLines
+                .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
+                .Select(line =>
                 {
-                    var first = group.First();
-                    var expenses = group
-                        .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
-                        .Sum(line => line.Debit - line.Credit);
-                    var documentCode = first.JournalEntryCode;
-                    var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
-                        ? first.JournalEntryMemo!.Trim()
-                        : documentCode;
+                    var documentCode = line.JournalEntryCode;
+                    var description = !string.IsNullOrWhiteSpace(line.Memo)
+                        ? line.Memo.Trim()
+                        : !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
+                            ? line.JournalEntryMemo!.Trim()
+                            : documentCode;
                     return new OwnerStatementPropertyActivityLine
                     {
-                        ActivityId = first.SourceId ?? first.JournalEntryId,
-                        SourceId = first.SourceId,
-                        JournalEntryLineId = null,
+                        ActivityId = line.SourceId ?? line.JournalEntryId,
+                        SourceId = line.SourceId,
+                        JournalEntryLineId = line.JournalEntryLineId,
                         ActivityType = "WorkOrder",
-                        ActivityDate = first.TransactionDate,
+                        ActivityDate = line.TransactionDate,
                         DocumentCode = documentCode,
                         Description = description,
                         ExpectedIncome = 0m,
                         ReceivedIncome = 0m,
-                        Expenses = expenses
+                        Expenses = line.Debit - line.Credit
                     };
                 })
-                .Where(line => line.Expenses != 0m);
-            workOrderLines.AddRange(groupedWorkOrderLines);
+                .Where(line => line.Expenses != 0m)
+                .ToList();
+            workOrderLines.AddRange(workOrderActivityLines);
         }
 
         return workOrderLines;
@@ -499,7 +498,6 @@ public partial class AccountingManager
                 var activityDate = sourceId.HasValue && receiptDateByReceiptId.TryGetValue(sourceId.Value, out var receiptDate)
                     ? receiptDate
                     : line.TransactionDate;
-                var expenseAmount = Math.Max(Math.Abs(line.Debit), Math.Abs(line.Credit));
                 var activityType = line.SourceTypeId == (int)SourceType.Bill ? "Bill" : "Receipt";
                 var description = !string.IsNullOrWhiteSpace(line.Memo)
                     ? line.Memo.Trim()
@@ -515,7 +513,7 @@ public partial class AccountingManager
                     Description = description,
                     ExpectedIncome = 0m,
                     ReceivedIncome = 0m,
-                    Expenses = expenseAmount
+                    Expenses = line.Debit - line.Credit
                 };
             })
             .Where(line => line.Expenses != 0m)
@@ -544,30 +542,25 @@ public partial class AccountingManager
             return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
 
         return ownerLines
-            .GroupBy(line => line.JournalEntryId)
-            .Select(group =>
+            .Select(line =>
             {
-                var first = group.First();
-                var expenses = group.Sum(line => line.Debit - line.Credit);
-                var description = group
-                    .Select(line => line.JournalEntryMemo)
-                    .Concat(group.Select(line => line.Memo))
-                    .Where(memo => !string.IsNullOrWhiteSpace(memo))
-                    .Select(memo => memo!.Trim())
-                    .FirstOrDefault(memo => memo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase))
-                    ?? first.JournalEntryCode;
+                var description = !string.IsNullOrWhiteSpace(line.Memo)
+                    ? line.Memo.Trim()
+                    : !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
+                        ? line.JournalEntryMemo!.Trim()
+                        : line.JournalEntryCode;
                 return new OwnerStatementPropertyActivityLine
                 {
-                    ActivityId = first.SourceId ?? first.JournalEntryId,
-                    SourceId = first.SourceId,
-                    JournalEntryLineId = null,
+                    ActivityId = line.SourceId ?? line.JournalEntryId,
+                    SourceId = line.SourceId,
+                    JournalEntryLineId = line.JournalEntryLineId,
                     ActivityType = "LinensAndTowels",
-                    ActivityDate = first.TransactionDate,
-                    DocumentCode = first.JournalEntryCode,
+                    ActivityDate = line.TransactionDate,
+                    DocumentCode = line.JournalEntryCode,
                     Description = description,
                     ExpectedIncome = 0m,
                     ReceivedIncome = 0m,
-                    Expenses = expenses
+                    Expenses = line.Debit - line.Credit
                 };
             })
             .Where(line => line.Expenses != 0m)
