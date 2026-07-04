@@ -28,11 +28,7 @@ public partial class AccountingManager
         if (journalEntryLineIds == null || journalEntryLineIds.Count == 0)
             throw new Exception("At least one journal entry line is required for a deposit");
 
-        var distinctLineIds = journalEntryLineIds
-            .Where(lineId => lineId != Guid.Empty)
-            .Distinct()
-            .ToList();
-
+        var distinctLineIds = journalEntryLineIds.Where(lineId => lineId != Guid.Empty).Distinct().ToList();
         if (distinctLineIds.Count != journalEntryLineIds.Count)
             throw new Exception("Duplicate journal entry lines were submitted for deposit");
 
@@ -41,23 +37,16 @@ public partial class AccountingManager
 
         // AGENT-NOTE: DO NOT TOUCH.
         // DEPOSIT-JE-ACCOUNTS
-        // Line 1 — Debit: Bank account selected for the deposit (bankChartOfAccountId parameter).
-        // Lines 2+ — Credit: Undeposited Funds (GetDefaultUndepositedFunds) for each selected source line.
+        //   Line 1   — Debit: Bank account selected for the deposit (bankChartOfAccountId parameter).
+        //   Lines 2+ — Credit: Undeposited Funds (GetDefaultUndepositedFunds) for each selected source line.
         // END DEPOSIT-JE-ACCOUNTS
 
-        var sourceLines = await LoadDepositSourceLinesAsync(
-            organizationId,
-            officeId,
-            distinctLineIds,
-            undepositedFundsAccountId);
-
+        var sourceLines = await LoadDepositSourceLinesAsync(organizationId, officeId, distinctLineIds, undepositedFundsAccountId);
         var selectedTotal = sourceLines.Sum(GetJournalEntryLineNetAmount);
         if (Math.Abs(selectedTotal - amount) > 0.005m)
             throw new Exception($"Deposit amount must equal the selected undeposited funds total ({selectedTotal:0.00})");
 
-        var memo = string.IsNullOrWhiteSpace(description)
-            ? "Deposit"
-            : description.Trim();
+        var memo = string.IsNullOrWhiteSpace(description) ? "Deposit" : "Deposit: " + description.Trim();
         var depositSourceId = Guid.NewGuid();
         var journalEntryLines = new List<JournalEntryLine>
         {

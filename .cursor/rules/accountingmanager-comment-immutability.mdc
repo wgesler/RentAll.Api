@@ -1,0 +1,15 @@
+---
+description: Preserve all existing comments in AccountingManager partial classes
+globs: RentAll.Domain/Managers/AccountingManager/AccountingManager*.cs
+alwaysApply: false
+---
+
+# AccountingManager Comment Immutability
+
+- All existing comments in `AccountingManager` partial classes are immutable.
+- Do not remove, rewrite, reflow, relocate, or "clean up" any existing comment text.
+- Do not change punctuation, casing, whitespace formatting, or wording of existing comments.
+- Do not convert comment style (single-line to block, block to single-line, etc.).
+- Code changes must be made around comments while preserving comment blocks exactly as authored.
+- If a requested code change cannot be completed without modifying an existing comment, stop and ask the user for explicit approval first.
+

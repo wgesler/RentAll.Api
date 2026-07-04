@@ -18,6 +18,9 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(journalEntry.OrganizationId))
             return null;
 
+        if (HasInvalidActiveJournalEntryAccountIds(journalEntry))
+            return null;
+
         return await CreateJournalEntryAsync(journalEntry, requireActiveLines: HasActiveJournalEntryLines(journalEntry));
     }
 
@@ -135,6 +138,9 @@ public partial class AccountingManager
 
     private static bool HasActiveJournalEntryLines(JournalEntry journalEntry)
         => journalEntry.JournalEntryLines.Any(l => l.Debit != 0 || l.Credit != 0);
+
+    private static bool HasInvalidActiveJournalEntryAccountIds(JournalEntry journalEntry)
+        => journalEntry.JournalEntryLines.Any(l => (l.Debit != 0 || l.Credit != 0) && l.ChartOfAccountId <= 0);
 
     private static void ValidateJournalEntryForSave(JournalEntry journalEntry, bool requireActiveLines)
     {

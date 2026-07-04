@@ -29,16 +29,7 @@ public partial class AccountingManager : IAccountingManager
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<IReadOnlyDictionary<int, CostCode>>> _costCodeByOfficeCache = new();
     private readonly ConcurrentDictionary<AccountResolverCacheKey, int> _defaultAccountIdCache = new();
 
-    public AccountingManager(
-        IOrganizationRepository organizationRepository,
-        IPropertyRepository propertyRepository,
-        IAccountingRepository accountingRepository,
-        IMaintenanceRepository maintenanceRepository,
-        IReservationRepository reservationRepository,
-        IJournalEntryRepository journalEntryRepository,
-        IOrganizationManager organizationManager,
-        IContactRepository contactRepository,
-        IFeatureFlagService featureFlagService)
+    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService)
     {
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
@@ -619,12 +610,7 @@ public partial class AccountingManager : IAccountingManager
     #endregion
 
     #region Journal Entry Account Resolution
-    private int ResolveDefaultAccountIdCached(
-        string resolverKey,
-        List<ChartOfAccount> chartOfAccounts,
-        int officeId,
-        CostCode? costCode,
-        Func<int> resolver)
+    private int ResolveDefaultAccountIdCached(string resolverKey, List<ChartOfAccount> chartOfAccounts, int officeId, CostCode? costCode, Func<int> resolver)
     {
         var key = new AccountResolverCacheKey(
             ChartContextId: RuntimeHelpers.GetHashCode(chartOfAccounts),
@@ -676,7 +662,8 @@ public partial class AccountingManager : IAccountingManager
             ReceiptType.Tenant => GetDefaultTenantExpense(chartOfAccounts, officeId, accountingOffice),
             ReceiptType.Departure => GetDefaultDepartureExpense(chartOfAccounts, officeId, accountingOffice),
             ReceiptType.Owner => GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice),
-            _ => GetDefaultCompanyExpense(chartOfAccounts, officeId, accountingOffice)
+            ReceiptType.Company => GetDefaultCompanyExpense(chartOfAccounts, officeId, accountingOffice),
+            _ => 0 // NonExpense
         };
     }
 
@@ -697,17 +684,7 @@ public partial class AccountingManager : IAccountingManager
     #endregion
 
     #region Accounting Error Logging
-    private async Task LogAccountingErrorAsync(
-        string trigger,
-        Guid organizationId,
-        int? officeId,
-        int? sourceTypeId,
-        Guid? sourceId,
-        string? documentCode,
-        DateOnly? accountingPeriod,
-        decimal? amount,
-        string message,
-        Guid currentUser)
+    private async Task LogAccountingErrorAsync(string trigger, Guid organizationId, int? officeId, int? sourceTypeId, Guid? sourceId, string? documentCode, DateOnly? accountingPeriod, decimal? amount, string message, Guid currentUser)
     {
         await _accountingRepository.LogAccountingErrorAsync(new AccountingError
         {
