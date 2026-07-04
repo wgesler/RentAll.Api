@@ -243,45 +243,61 @@ public partial class AccountingManager
                 StartDate = criteria.StartDate,
                 EndDate = criteria.EndDate
             });
-            var receivedIncomeByInvoiceCode = ownerPaymentLines
-                .Select(line => new { Line = line, InvoiceCode = TryExtractInvoiceCode(line.JournalEntryMemo, line.Memo) })
-                .Where(item => !string.IsNullOrWhiteSpace(item.InvoiceCode))
-                .GroupBy(item => item.InvoiceCode!, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(
-                    group => group.Key,
-                    group => group.Sum(item => item.Line.Credit - item.Line.Debit),
-                    StringComparer.OrdinalIgnoreCase);
-
-            var groupedInvoiceLines = ownerShareLines
-                .GroupBy(line => line.SourceId ?? line.JournalEntryId)
-                .Select(group =>
+            var ownerShareActivityLines = ownerShareLines
+                .Select(line =>
                 {
-                    var first = group.First();
-                    var expectedIncome = group.Sum(line => line.Credit - line.Debit);
-                    var documentCode = first.JournalEntryCode;
-                    var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
-                        ? first.JournalEntryMemo!.Trim()
-                        : documentCode;
-                    var invoiceCode = TryExtractInvoiceCode(first.JournalEntryMemo, first.Memo, description);
-                    var receivedIncome = !string.IsNullOrWhiteSpace(invoiceCode) && receivedIncomeByInvoiceCode.TryGetValue(invoiceCode, out var value)
-                        ? value
-                        : 0m;
+                    var expectedIncome = line.Credit - line.Debit;
+                    var documentCode = line.JournalEntryCode;
+                    var description = !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
+                        ? line.JournalEntryMemo!.Trim()
+                        : !string.IsNullOrWhiteSpace(line.Memo)
+                            ? line.Memo!.Trim()
+                            : documentCode;
                     return new OwnerStatementPropertyActivityLine
                     {
-                        ActivityId = first.SourceId ?? first.JournalEntryId,
-                        SourceId = first.SourceId,
-                        JournalEntryLineId = null,
+                        ActivityId = line.SourceId ?? line.JournalEntryId,
+                        SourceId = line.SourceId,
+                        JournalEntryLineId = line.JournalEntryLineId,
                         ActivityType = "Reservation",
-                        ActivityDate = first.TransactionDate,
+                        ActivityDate = line.TransactionDate,
                         DocumentCode = documentCode,
                         Description = description,
                         ExpectedIncome = expectedIncome,
+                        ReceivedIncome = 0m,
+                        Expenses = 0m
+                    };
+                })
+                .Where(line => line.ExpectedIncome != 0m)
+                .ToList();
+            invoiceLines.AddRange(ownerShareActivityLines);
+
+            var ownerPaymentActivityLines = ownerPaymentLines
+                .Select(line =>
+                {
+                    var receivedIncome = line.Credit - line.Debit;
+                    var documentCode = line.JournalEntryCode;
+                    var description = !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
+                        ? line.JournalEntryMemo!.Trim()
+                        : !string.IsNullOrWhiteSpace(line.Memo)
+                            ? line.Memo!.Trim()
+                            : documentCode;
+                    return new OwnerStatementPropertyActivityLine
+                    {
+                        ActivityId = line.SourceId ?? line.JournalEntryId,
+                        SourceId = line.SourceId,
+                        JournalEntryLineId = line.JournalEntryLineId,
+                        ActivityType = "Reservation",
+                        ActivityDate = line.TransactionDate,
+                        DocumentCode = documentCode,
+                        Description = description,
+                        ExpectedIncome = 0m,
                         ReceivedIncome = receivedIncome,
                         Expenses = 0m
                     };
                 })
-                .Where(line => line.ExpectedIncome != 0m);
-            invoiceLines.AddRange(groupedInvoiceLines);
+                .Where(line => line.ReceivedIncome != 0m)
+                .ToList();
+            invoiceLines.AddRange(ownerPaymentActivityLines);
         }
 
         return invoiceLines;
