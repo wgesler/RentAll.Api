@@ -64,19 +64,17 @@ public partial class AccountingManager
         if (property == null || propertyAgreement == null)
             return null;
 
-        if (property.PropertyLeaseType == PropertyLeaseType.Direct || property.PropertyLeaseType == PropertyLeaseType.ThirdParty)
-            return null;
         if (property.PropertyLeaseType != PropertyLeaseType.PropertyManagement)
             return null;
 
-        if (!TryGetInvoiceRentalLedgerLine(invoice, out _))
+        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
             return null;
 
         decimal ownerAmount = 0m;
         switch (propertyAgreement.ManagementFeeType)
         {
             case ManagementFeeType.FlatRate:
-                ownerAmount = await GetProratedOwnerFlatAmountAsync(invoice, propertyAgreement.FlatRateAmount);
+                ownerAmount = await GetProratedOwnerFlatAmountAsync(invoice, propertyAgreement.FlatRateAmount, rentalLine);
                 break;
 
             case ManagementFeeType.Percentage:
@@ -86,7 +84,7 @@ public partial class AccountingManager
             case ManagementFeeType.Minimum:
                 {
                     ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
-                    var proratedMinimum = await GetProratedOwnerFlatAmountAsync(invoice, propertyAgreement.FlatRateAmount);
+                    var proratedMinimum = await GetProratedOwnerFlatAmountAsync(invoice, propertyAgreement.FlatRateAmount, rentalLine);
                     if (ownerAmount < proratedMinimum)
                         ownerAmount = proratedMinimum;
                     break;
@@ -478,23 +476,35 @@ public partial class AccountingManager
         return invoiceAmount;
     }
 
-    private async Task<decimal> GetProratedOwnerFlatAmountAsync(Invoice invoice, decimal flatAmount)
+    private async Task<decimal> GetProratedOwnerFlatAmountAsync(Invoice invoice, decimal flatAmount, LedgerLine rentalLine)
     {
         // The owner's flat (and minimum) amount is a full-month figure. When the tenant only stays
         // part of the month, the owner is paid pro rata on the same 30-day basis used for rent — e.g.
-        // a 3000 flat for a 5-day stay pays the owner 500. A full month pays the entire flat amount.
+        // a 3000 flat for a 5-day stay pays the owner 500.
         if (flatAmount == 0)
             return 0m;
 
-        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
-            return flatAmount;
+        var days = await GetRentalLedgerLineDaysAsync(invoice, rentalLine);
+        if (days <= 0)
+            return 0m;
 
+        return Math.Round(flatAmount / PRORATE_DAYS * days, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task<int> GetRentalLedgerLineDaysAsync(Invoice invoice, LedgerLine rentalLine)
+    {
         var referenceYear = invoice.AccountingPeriod != default
             ? invoice.AccountingPeriod.Year
             : invoice.InvoiceDate.Year;
 
         if (!TryParseRentalFeeDateRange(rentalLine.Description, referenceYear, out var rentalStart, out var rentalEnd))
-            return flatAmount;
+            return 0;
+
+        if (invoice.AccountingPeriod != default
+            && !TryClipRentalRangeToAccountingPeriod(rentalStart, rentalEnd, invoice.AccountingPeriod, out rentalStart, out rentalEnd))
+        {
+            return 0;
+        }
 
         var reservation = invoice.ReservationId.HasValue
             ? await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId)
@@ -502,19 +512,44 @@ public partial class AccountingManager
         var billingType = reservation?.BillingType ?? BillingType.Monthly;
         var departureDate = reservation?.DepartureDate ?? rentalEnd;
 
-        var days = CalculateNumberOfDays(
+        return CalculateNumberOfDays(
             rentalStart,
             rentalEnd,
             billingType,
             IsDepartureMonthYear(rentalEnd, departureDate),
             IsLastDayOfMonth(rentalEnd));
+    }
 
-        var daysInMonth = DateTime.DaysInMonth(rentalStart.Year, rentalStart.Month);
+    private static bool TryClipRentalRangeToAccountingPeriod(
+        DateOnly rentalStart,
+        DateOnly rentalEnd,
+        DateOnly accountingPeriod,
+        out DateOnly clippedStart,
+        out DateOnly clippedEnd)
+    {
+        clippedStart = rentalStart;
+        clippedEnd = rentalEnd;
 
-        if (days > 0 && days < daysInMonth && days < PRORATE_DAYS)
-            return Math.Round(flatAmount / PRORATE_DAYS * days, 2, MidpointRounding.AwayFromZero);
+        if (accountingPeriod == default)
+            return clippedEnd >= clippedStart;
 
-        return flatAmount;
+        var periodMonthStart = FirstDayOfMonth(accountingPeriod);
+        var periodMonthEnd = LastDayOfMonth(accountingPeriod);
+
+        if (rentalEnd < periodMonthStart || rentalStart > periodMonthEnd)
+        {
+            clippedStart = default;
+            clippedEnd = default;
+            return false;
+        }
+
+        if (clippedStart < periodMonthStart)
+            clippedStart = periodMonthStart;
+
+        if (clippedEnd > periodMonthEnd)
+            clippedEnd = periodMonthEnd;
+
+        return clippedEnd >= clippedStart;
     }
 
     private async Task<Guid?> ResolveWorkOrderOwnerContactIdAsync(WorkOrder workOrder)
