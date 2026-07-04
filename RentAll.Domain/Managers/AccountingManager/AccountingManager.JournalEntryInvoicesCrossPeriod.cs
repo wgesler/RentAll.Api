@@ -510,10 +510,18 @@ public partial class AccountingManager
     private static bool TryGetInvoiceRentalLineAmount(Invoice invoice, out decimal rentalAmount)
     {
         rentalAmount = 0m;
-        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
+        var rentalLines = invoice.LedgerLines
+            .Where(l => l.Amount != 0)
+            .Where(l => TryParseRentalFeeDateRange(l.Description, referenceYear, out _, out _))
+            .ToList();
+        if (rentalLines.Count == 0)
             return false;
 
-        rentalAmount = rentalLine.Amount;
+        rentalAmount = rentalLines.Sum(l => l.Amount);
         return true;
     }
 
