@@ -429,7 +429,10 @@ public partial class AccountingManager
 
         var startOfCurrentMonth = new DateOnly(processingDate.Year, processingDate.Month, 1);
         var startOfPreviousMonth = startOfCurrentMonth.AddMonths(-1);
-        return reservations.Any(r => r.ArrivalDate < startOfCurrentMonth && r.DepartureDate >= startOfPreviousMonth);
+        return reservations.Any(r =>
+            r.ReservationType != ReservationType.Owner &&
+            r.ArrivalDate < startOfCurrentMonth &&
+            r.DepartureDate >= startOfPreviousMonth);
     }
 
     private async Task LogPeriodicAccountingDecisionAsync(Guid organizationId, int officeId, Guid propertyId, decimal? amount, string message)

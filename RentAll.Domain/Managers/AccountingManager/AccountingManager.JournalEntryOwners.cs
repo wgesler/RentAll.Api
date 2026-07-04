@@ -451,24 +451,24 @@ public partial class AccountingManager
 
     private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
     {
-        // The owner's percentage is taken on rent PLUS the recurring monthly charges that follow rent
-        // across accounting periods (e.g. Security Deposit Waiver and monthly fees posted to the rent
-        // account). One-time fees (security deposit, departure fee, maid service) are excluded. For a
-        // cross-period slice these lines already hold the slice's apportioned amount, so the two
-        // slices sum back to the full invoice base.
-        var total = TryGetInvoiceRentalLineAmount(invoice, out var rentalAmount) ? rentalAmount : 0m;
+        // The owner's percentage base is all invoice lines whose cost code maps to account 4000 or any
+        // of its subaccounts (including rent lines). For a cross-period slice these lines already hold
+        // the slice's apportioned amount, so the two slices sum back to the full invoice base.
+        var (chartOfAccounts, _) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
 
-        var reservation = invoice.ReservationId.HasValue
-            ? await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId)
-            : null;
-        if (reservation == null)
-            return total;
-
-        var recurringTotal = (await GetApportionableIncomeChargeLinesAsync(invoice, reservation))
-            .Concat(GetSplitPoolExtraFeeLines(invoice, reservation))
+        var ownerBaseTotal = invoice.LedgerLines
+            .Where(line => line.Amount != 0)
+            .Where(line =>
+            {
+                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+                return costCode != null
+                    && !IsPaymentLedgerLine(costCode)
+                    && IsRentalIncomeCostCode(costCode, chartOfAccounts, invoice.OfficeId);
+            })
             .Sum(l => l.Amount);
 
-        return total + recurringTotal;
+        return ownerBaseTotal;
     }
 
     private async Task<decimal> GetProratedOwnerFlatAmountAsync(Invoice invoice, decimal flatAmount)
