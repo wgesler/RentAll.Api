@@ -297,8 +297,7 @@ public partial class AccountingManager
         foreach (var officeId in officeIds)
         {
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(criteria.OrganizationId, officeId);
-            var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, officeId, accountingOffice);
-            var ownerExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice);
+            var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
             var journalEntryLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
             {
                 OrganizationId = criteria.OrganizationId,
@@ -316,11 +315,8 @@ public partial class AccountingManager
                 .Select(group =>
                 {
                     var first = group.First();
-                    var income = group
-                        .Where(line => line.ChartOfAccountId == ownerIncomeAccountId)
-                        .Sum(line => line.Credit - line.Debit);
                     var expenses = group
-                        .Where(line => line.ChartOfAccountId == ownerExpenseAccountId)
+                        .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
                         .Sum(line => line.Debit - line.Credit);
                     var documentCode = first.JournalEntryCode;
                     var description = !string.IsNullOrWhiteSpace(first.JournalEntryMemo)
@@ -335,12 +331,12 @@ public partial class AccountingManager
                         ActivityDate = first.TransactionDate,
                         DocumentCode = documentCode,
                         Description = description,
-                        ExpectedIncome = income,
-                        ReceivedIncome = income,
+                        ExpectedIncome = 0m,
+                        ReceivedIncome = 0m,
                         Expenses = expenses
                     };
                 })
-                .Where(line => line.ExpectedIncome != 0m || line.Expenses != 0m);
+                .Where(line => line.Expenses != 0m);
             workOrderLines.AddRange(groupedWorkOrderLines);
         }
 
