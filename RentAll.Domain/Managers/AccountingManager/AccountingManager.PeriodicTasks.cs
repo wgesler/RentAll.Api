@@ -261,8 +261,6 @@ public partial class AccountingManager
     {
         cancellationToken.ThrowIfCancellationRequested();
         var wasRentedPreviousMonth = await _reservationRepository.WasRentedPreviousMonthAsync(agreement.PropertyId, organizationId, processingDate);
-        if (!wasRentedPreviousMonth)
-            wasRentedPreviousMonth = await WasRentedPreviousMonthFallbackAsync(agreement.PropertyId, organizationId, processingDate, cancellationToken);
 
         if (!wasRentedPreviousMonth)
             return;
@@ -418,21 +416,6 @@ public partial class AccountingManager
             return 0m;
 
         return Math.Round(annualFeeAmount / 365m * offlineDays, 2, MidpointRounding.AwayFromZero);
-    }
-
-    private async Task<bool> WasRentedPreviousMonthFallbackAsync(Guid propertyId, Guid organizationId, DateOnly processingDate, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var reservations = await _reservationRepository.GetReservationListByPropertyIdAsync(propertyId, organizationId);
-        if (!reservations.Any())
-            return false;
-
-        var startOfCurrentMonth = new DateOnly(processingDate.Year, processingDate.Month, 1);
-        var startOfPreviousMonth = startOfCurrentMonth.AddMonths(-1);
-        return reservations.Any(r =>
-            r.ReservationType != ReservationType.Owner &&
-            r.ArrivalDate < startOfCurrentMonth &&
-            r.DepartureDate >= startOfPreviousMonth);
     }
 
     private async Task LogPeriodicAccountingDecisionAsync(Guid organizationId, int officeId, Guid propertyId, decimal? amount, string message)
