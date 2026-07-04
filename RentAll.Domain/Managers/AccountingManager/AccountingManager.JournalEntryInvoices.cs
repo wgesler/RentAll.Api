@@ -77,7 +77,7 @@ public partial class AccountingManager
         {
             try
             {
-                var ownerBase = await GetOwnerPercentageBaseAsync(invoice);
+                var ownerBase = await GeRentalLedgerLineBaseAsync(invoice);
                 await CreateJournalEntryFromInvoiceForOwnerShareAsync(invoice, ownerBase, currentUser);
             }
             catch (Exception ex)

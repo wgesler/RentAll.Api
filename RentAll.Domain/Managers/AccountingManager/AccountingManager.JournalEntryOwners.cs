@@ -194,20 +194,24 @@ public partial class AccountingManager
         if (paymentLedgerLine.Amount == 0)
             return null;
 
-        var invoiceAmount = await GetOwnerPercentageBaseAsync(invoice);
-        if (invoiceAmount == 0)
+        // Get the total ledger lines that apply to rent
+        var invoicedAmount = await GeRentalLedgerLineBaseAsync(invoice);
+        if (invoicedAmount == 0)
             return null;
 
+        // If they paid more than the invoiced amount, just take the invoiced amount
         var paymentAmount = paymentLedgerLine.Amount;
-        var paidIncomeMagnitude = Math.Min(Math.Abs(paymentAmount), Math.Abs(invoiceAmount));
+        var paidIncomeMagnitude = Math.Min(Math.Abs(paymentAmount), Math.Abs(invoicedAmount));
         if (paidIncomeMagnitude == 0)
             return null;
 
+        // Make sure we allow credits on invoices
         var paidIncome = paymentAmount < 0 ? -paidIncomeMagnitude : paidIncomeMagnitude;
         var ownerPaymentAmount = await CalculateOwnerShareAmountForInvoiceAsync(invoice, paidIncome);
         if (!ownerPaymentAmount.HasValue || ownerPaymentAmount.Value == 0)
             return null;
 
+        // This gives us the rental income that is applicable to the owner
         var ownerPaymentAmountValue = Math.Round(ownerPaymentAmount.Value, 2, MidpointRounding.AwayFromZero);
         if (ownerPaymentAmountValue == 0)
             return null;
@@ -452,7 +456,7 @@ public partial class AccountingManager
         return eligibleSplits.Any(split => split.ReceiptType == ReceiptType.Owner);
     }
 
-    private async Task<decimal> GetOwnerPercentageBaseAsync(Invoice invoice)
+    private async Task<decimal> GeRentalLedgerLineBaseAsync(Invoice invoice)
     {
         // The owner's percentage base is all invoice lines whose cost code maps to account 4000 or any
         // of its subaccounts (including rent lines). For a cross-period slice these lines already hold

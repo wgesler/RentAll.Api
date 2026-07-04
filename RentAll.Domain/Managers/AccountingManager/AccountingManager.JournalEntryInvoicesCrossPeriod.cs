@@ -83,13 +83,13 @@ public partial class AccountingManager
         {
             if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out _))
             {
-                var firstOwnerBase = await GetOwnerPercentageBaseAsync(firstPeriodInvoice);
+                var firstOwnerBase = await GeRentalLedgerLineBaseAsync(firstPeriodInvoice);
                 await CreateJournalEntryFromInvoiceForOwnerShareAsync(firstPeriodInvoice, firstOwnerBase, currentUser);
             }
 
             if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out _))
             {
-                var secondOwnerBase = await GetOwnerPercentageBaseAsync(secondPeriodInvoice);
+                var secondOwnerBase = await GeRentalLedgerLineBaseAsync(secondPeriodInvoice);
                 await CreateJournalEntryFromInvoiceForOwnerShareAsync(secondPeriodInvoice, secondOwnerBase, currentUser);
             }
         }
