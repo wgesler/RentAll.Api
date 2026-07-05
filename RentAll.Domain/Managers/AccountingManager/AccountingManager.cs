@@ -702,6 +702,22 @@ public partial class AccountingManager : IAccountingManager
     }
     #endregion
 
+    #region Journal Entry Date Helpers
+    private static DateOnly ResolveBillOrReceiptJournalEntryDate(Receipt billOrReceipt)
+    {
+        if (billOrReceipt.ReceiptDate == default)
+            throw new Exception("ReceiptDate is required to create a journal entry for a bill or receipt");
+        return billOrReceipt.ReceiptDate;
+    }
+
+    private static DateOnly ResolveInvoicePaymentJournalEntryDate(LedgerLine paymentLedgerLine)
+    {
+        if (paymentLedgerLine.LedgerLineDate == default)
+            throw new Exception("Payment date is required to create an invoice payment journal entry");
+        return paymentLedgerLine.LedgerLineDate;
+    }
+    #endregion
+
     #region Account Helpers
     private static string NormalizeAccountCode(string value)
     {

@@ -82,7 +82,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = officeId,
             TransactionDate = depositDate,
-            PostingDate = depositDate,
             SourceTypeId = (int)SourceType.Deposit,
             SourceId = depositSourceId,
             Memo = memo,

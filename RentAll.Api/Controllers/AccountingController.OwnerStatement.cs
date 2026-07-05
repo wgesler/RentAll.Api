@@ -18,9 +18,8 @@ namespace RentAll.Api.Controllers
             try
             {
                 var criteria = dto.ToCriteria(CurrentOrganizationId);
-                var statements = await _accountingManager.GetOwnerStatementsAsync(criteria);
-                var response = statements.Select(statement => new OwnerStatementResponseDto(statement)).ToList();
-                return Ok(response);
+                var searchResult = await _accountingManager.GetOwnerStatementSearchResultAsync(criteria);
+                return Ok(new OwnerStatementSearchResponseDto(searchResult));
             }
             catch (Exception ex)
             {

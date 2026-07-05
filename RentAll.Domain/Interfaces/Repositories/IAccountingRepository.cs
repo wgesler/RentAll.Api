@@ -73,5 +73,6 @@ public interface IAccountingRepository
     #region Owner Statements
     Task<IEnumerable<OwnerStatementSummary>> GetOwnerStatementsAsync(OwnerStatementGetCriteria criteria);
     Task<IEnumerable<OwnerStatementJournalEntryLine>> GetOwnerStatementJournalEntryLinesAsync(OwnerStatementJournalEntryLineGetCriteria criteria);
+    Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementPropertyActivityLinesByCriteriaAsync(OwnerStatementGetCriteria criteria);
     #endregion
 }

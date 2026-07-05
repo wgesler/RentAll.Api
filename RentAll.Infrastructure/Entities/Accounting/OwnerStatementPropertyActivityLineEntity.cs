@@ -1,6 +1,6 @@
-namespace RentAll.Domain.Models;
+namespace RentAll.Infrastructure.Entities.Accounting;
 
-public class OwnerStatementPropertyActivityLine
+public class OwnerStatementPropertyActivityLineEntity
 {
     public Guid PropertyId { get; set; }
     public int OfficeId { get; set; }

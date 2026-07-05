@@ -31,8 +31,8 @@ public class UpdateJournalEntryDto
         if (TransactionDate == default)
             return (false, "TransactionDate is required");
 
-        if (PostingDate == default)
-            return (false, "PostingDate is required");
+        if (IsPosted && PostingDate == default)
+            return (false, "PostingDate is required when posting a journal entry");
 
         if (JournalEntryLines != null)
         {

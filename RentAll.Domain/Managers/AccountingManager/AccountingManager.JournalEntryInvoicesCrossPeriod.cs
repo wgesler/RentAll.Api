@@ -358,12 +358,12 @@ public partial class AccountingManager
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out _, out var secondPeriodInvoice))
             return;
 
-        var legacySecondSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
+        var secondPeriodSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
         await DeleteJournalEntriesForSourceAsync(
             invoice.OrganizationId,
             invoice.OfficeId,
             (int)SourceType.Invoice,
-            legacySecondSourceId);
+            secondPeriodSourceId);
     }
 
     private async Task LogInvoiceSplitDecisionAsync(Invoice invoice, bool split, Invoice? firstPeriodInvoice = null, Invoice? secondPeriodInvoice = null, string? message = null)

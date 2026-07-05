@@ -42,7 +42,6 @@ public partial class AccountingManager
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
             TransactionDate = invoice.AccountingPeriod,
-            PostingDate = invoice.AccountingPeriod,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
             Memo = BuildOwnerShareInvoiceMemo(invoice),
@@ -222,8 +221,8 @@ public partial class AccountingManager
         if (property?.Owner1Id is not { } ownerContactId || ownerContactId == Guid.Empty)
             return null;
 
-        if (invoice.AccountingPeriod == default)
-            throw new Exception("AccountingPeriod is required to create an owner payment journal entry");
+        if (paymentLedgerLine.LedgerLineDate == default)
+            throw new Exception("Payment date is required to create an owner payment journal entry");
 
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
@@ -233,8 +232,7 @@ public partial class AccountingManager
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
-            TransactionDate = invoice.AccountingPeriod,
-            PostingDate = invoice.AccountingPeriod,
+            TransactionDate = ResolveInvoicePaymentJournalEntryDate(paymentLedgerLine),
             SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
             Memo = BuildOwnerPaymentMemo(invoice),
@@ -286,6 +284,9 @@ public partial class AccountingManager
 
         if (bill.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create an owner utility journal entry for a bill");
+
+        if (bill.ReceiptDate == default)
+            throw new Exception("ReceiptDate is required to create an owner utility journal entry for a bill");
 
         var ownerSplitLines = ResolveReceiptSplitLines(bill)
             .Where(split => split.ReceiptType == ReceiptType.Owner)
@@ -353,8 +354,7 @@ public partial class AccountingManager
         {
             OrganizationId = bill.OrganizationId,
             OfficeId = bill.OfficeId,
-            TransactionDate = bill.AccountingPeriod,
-            PostingDate = bill.AccountingPeriod,
+            TransactionDate = ResolveBillOrReceiptJournalEntryDate(bill),
             SourceTypeId = (int)SourceType.Bill,
             SourceId = bill.ReceiptId,
             Memo = memo,
@@ -429,7 +429,6 @@ public partial class AccountingManager
             OrganizationId = workOrder.OrganizationId,
             OfficeId = workOrder.OfficeId,
             TransactionDate = workOrder.WorkOrderDate,
-            PostingDate = workOrder.WorkOrderDate,
             SourceTypeId = (int)SourceType.WorkOrder,
             SourceId = workOrder.WorkOrderId,
             Memo = memo,

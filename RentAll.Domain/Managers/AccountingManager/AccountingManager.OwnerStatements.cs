@@ -53,6 +53,18 @@ public partial class AccountingManager
             .ToList();
     }
 
+    public async Task<OwnerStatementSearchResult> GetOwnerStatementSearchResultAsync(OwnerStatementGetCriteria criteria)
+    {
+        var summaries = (await GetOwnerStatementsAsync(criteria)).ToList();
+        var propertyActivityLines = await GetOwnerStatementPropertyActivityLinesByCriteriaAsync(criteria);
+
+        return new OwnerStatementSearchResult
+        {
+            Summaries = summaries,
+            PropertyActivityLines = propertyActivityLines
+        };
+    }
+
     public async Task<IEnumerable<OwnerStatementJournalEntryLine>> GetOwnerStatementJournalEntryLinesAsync(OwnerStatementJournalEntryLineGetCriteria criteria)
     {
         var officeIds = ParseOfficeIds(criteria.OfficeIds);
@@ -92,23 +104,45 @@ public partial class AccountingManager
         if (criteria.PropertyId == Guid.Empty)
             return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
 
-        var property = await _propertyRepository.GetPropertyByIdAsync(criteria.PropertyId, criteria.OrganizationId);
-        if (property == null)
-            return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
+        return await GetOwnerStatementPropertyActivityLinesByCriteriaAsync(new OwnerStatementGetCriteria
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate
+        });
+    }
 
-        var lines = new List<OwnerStatementPropertyActivityLine>();
-        var invoiceLines = await GetOwnerStatementInvoiceActivityLinesFromJournalEntriesAsync(criteria);
-        lines.AddRange(invoiceLines);
+    private async Task<List<OwnerStatementPropertyActivityLine>> GetOwnerStatementPropertyActivityLinesByCriteriaAsync(OwnerStatementGetCriteria criteria)
+    {
+        var propertyActivityLines = new List<OwnerStatementPropertyActivityLine>();
+        var officeIds = ParseOfficeIds(criteria.OfficeIds);
+        if (officeIds.Count == 0)
+            return propertyActivityLines;
 
-        var billReceiptLines = await GetOwnerStatementBillReceiptActivityLinesFromJournalEntriesAsync(criteria);
-        lines.AddRange(billReceiptLines);
-        var workOrderLines = await GetOwnerStatementWorkOrderActivityLinesFromJournalEntriesAsync(criteria);
-        lines.AddRange(workOrderLines);
-        var linensAndTowelsLines = await GetOwnerStatementLinensAndTowelsActivityLinesFromJournalEntriesAsync(criteria);
-        lines.AddRange(linensAndTowelsLines);
+        foreach (var officeId in officeIds)
+        {
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(criteria.OrganizationId, officeId);
+            var officeCriteria = new OwnerStatementGetCriteria
+            {
+                OrganizationId = criteria.OrganizationId,
+                OfficeIds = officeId.ToString(),
+                PropertyId = criteria.PropertyId,
+                StartDate = criteria.StartDate,
+                EndDate = criteria.EndDate,
+                ExpectedAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice),
+                ActualAccountId = GetDefaultUndepositedFunds(chartOfAccounts, officeId, accountingOffice),
+                PrePaidAccountId = GetDefaultPrePayment(chartOfAccounts, officeId, accountingOffice),
+                ExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice)
+            };
+            propertyActivityLines.AddRange(await _accountingRepository.GetOwnerStatementPropertyActivityLinesByCriteriaAsync(officeCriteria));
+        }
 
-        return lines
-            .OrderBy(line => line.ActivityDate)
+        return propertyActivityLines
+            .OrderBy(line => line.OfficeId)
+            .ThenBy(line => line.PropertyId)
+            .ThenBy(line => line.ActivityDate)
             .ThenBy(line => line.ActivityType)
             .ThenBy(line => line.DocumentCode)
             .ToList();
@@ -132,7 +166,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = officeId,
             TransactionDate = transactionDate,
-            PostingDate = transactionDate,
             SourceTypeId = (int)SourceType.Adjustment,
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine>
@@ -206,156 +239,6 @@ public partial class AccountingManager
             Memo = (current.JournalEntryMemo ?? current.Memo ?? string.Empty).Trim(),
             IsPosted = current.IsPosted
         };
-    }
-
-    private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementInvoiceActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
-    {
-        var invoiceLines = new List<OwnerStatementPropertyActivityLine>();
-        var officeIds = ParseOfficeIds(criteria.OfficeIds);
-        if (officeIds.Count == 0)
-            return invoiceLines;
-
-        foreach (var officeId in officeIds)
-        {
-            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(criteria.OrganizationId, officeId);
-            var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
-            var ownerShareLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-            {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = officeId.ToString(),
-                ChartOfAccountId = ownerAccountsPayableAccountId,
-                SourceTypeId = (int)SourceType.Invoice,
-                PropertyId = criteria.PropertyId,
-                IncludeVoided = false,
-                IncludeUnposted = true,
-                StartDate = criteria.StartDate,
-                EndDate = criteria.EndDate
-            });
-            var ownerPaymentLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-            {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = officeId.ToString(),
-                ChartOfAccountId = ownerAccountsPayableAccountId,
-                SourceTypeId = (int)SourceType.InvoicePayment,
-                PropertyId = criteria.PropertyId,
-                IncludeVoided = false,
-                IncludeUnposted = true,
-                StartDate = criteria.StartDate,
-                EndDate = criteria.EndDate
-            });
-            var ownerShareActivityLines = ownerShareLines
-                .Select(line =>
-                {
-                    var expectedIncome = line.Credit - line.Debit;
-                    var documentCode = line.JournalEntryCode;
-                    var description = !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
-                        ? line.JournalEntryMemo!.Trim()
-                        : !string.IsNullOrWhiteSpace(line.Memo)
-                            ? line.Memo!.Trim()
-                            : documentCode;
-                    return new OwnerStatementPropertyActivityLine
-                    {
-                        ActivityId = line.SourceId ?? line.JournalEntryId,
-                        SourceId = line.SourceId,
-                        JournalEntryLineId = line.JournalEntryLineId,
-                        ActivityType = "Reservation",
-                        ActivityDate = line.TransactionDate,
-                        DocumentCode = documentCode,
-                        Description = description,
-                        ExpectedIncome = expectedIncome,
-                        ReceivedIncome = 0m,
-                        Expenses = 0m
-                    };
-                })
-                .Where(line => line.ExpectedIncome != 0m)
-                .ToList();
-            invoiceLines.AddRange(ownerShareActivityLines);
-
-            var ownerPaymentActivityLines = ownerPaymentLines
-                .Select(line =>
-                {
-                    var receivedIncome = line.Credit - line.Debit;
-                    var documentCode = line.JournalEntryCode;
-                    var description = !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
-                        ? line.JournalEntryMemo!.Trim()
-                        : !string.IsNullOrWhiteSpace(line.Memo)
-                            ? line.Memo!.Trim()
-                            : documentCode;
-                    return new OwnerStatementPropertyActivityLine
-                    {
-                        ActivityId = line.SourceId ?? line.JournalEntryId,
-                        SourceId = line.SourceId,
-                        JournalEntryLineId = line.JournalEntryLineId,
-                        ActivityType = "Reservation",
-                        ActivityDate = line.TransactionDate,
-                        DocumentCode = documentCode,
-                        Description = description,
-                        ExpectedIncome = 0m,
-                        ReceivedIncome = receivedIncome,
-                        Expenses = 0m
-                    };
-                })
-                .Where(line => line.ReceivedIncome != 0m)
-                .ToList();
-            invoiceLines.AddRange(ownerPaymentActivityLines);
-        }
-
-        return invoiceLines;
-    }
-
-    private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementWorkOrderActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
-    {
-        var workOrderLines = new List<OwnerStatementPropertyActivityLine>();
-        var officeIds = ParseOfficeIds(criteria.OfficeIds);
-        if (officeIds.Count == 0)
-            return workOrderLines;
-
-        foreach (var officeId in officeIds)
-        {
-            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(criteria.OrganizationId, officeId);
-            var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
-            var journalEntryLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-            {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = officeId.ToString(),
-                SourceTypeId = (int)SourceType.WorkOrder,
-                PropertyId = criteria.PropertyId,
-                IncludeVoided = false,
-                IncludeUnposted = true,
-                StartDate = criteria.StartDate,
-                EndDate = criteria.EndDate
-            });
-
-            var workOrderActivityLines = journalEntryLines
-                .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
-                .Select(line =>
-                {
-                    var documentCode = line.JournalEntryCode;
-                    var description = !string.IsNullOrWhiteSpace(line.Memo)
-                        ? line.Memo.Trim()
-                        : !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
-                            ? line.JournalEntryMemo!.Trim()
-                            : documentCode;
-                    return new OwnerStatementPropertyActivityLine
-                    {
-                        ActivityId = line.SourceId ?? line.JournalEntryId,
-                        SourceId = line.SourceId,
-                        JournalEntryLineId = line.JournalEntryLineId,
-                        ActivityType = "WorkOrder",
-                        ActivityDate = line.TransactionDate,
-                        DocumentCode = documentCode,
-                        Description = description,
-                        ExpectedIncome = 0m,
-                        ReceivedIncome = 0m,
-                        Expenses = line.Debit - line.Credit
-                    };
-                })
-                .Where(line => line.Expenses != 0m)
-                .ToList();
-            workOrderLines.AddRange(workOrderActivityLines);
-        }
-
-        return workOrderLines;
     }
 
     private static List<int> ParseOfficeIds(string officeIdsCsv)
@@ -437,168 +320,12 @@ public partial class AccountingManager
         summary.EndingBalance = summary.StartingBalance + summary.Income - summary.Expenses - summary.OwnerPayment;
     }
 
-    private static string? TryExtractInvoiceCode(params string?[] values)
-    {
-        foreach (var value in values)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                continue;
-
-            var token = value
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(part => part.Trim(',', '.', ';', ':', '(', ')'))
-                .FirstOrDefault(part => part.StartsWith("R-", StringComparison.OrdinalIgnoreCase));
-            if (!string.IsNullOrWhiteSpace(token))
-                return token;
-        }
-
-        return null;
-    }
-
-    private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementBillReceiptActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
-    {
-        var billReceiptLineResults = new List<JournalEntryLineSearchResult>();
-        foreach (var sourceType in new[] { (int)SourceType.Bill, (int)SourceType.Receipt })
-        {
-            var sourceLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-            {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = criteria.OfficeIds,
-                SourceTypeId = sourceType,
-                PropertyId = criteria.PropertyId,
-                IncludeVoided = false,
-                IncludeUnposted = true,
-                StartDate = null,
-                EndDate = null
-            });
-            billReceiptLineResults.AddRange(sourceLines.Where(HasOwnerLineMemo));
-        }
-
-        if (billReceiptLineResults.Count == 0)
-            return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
-
-        var receiptDateByReceiptId = new Dictionary<Guid, DateOnly>();
-        var receiptIds = billReceiptLineResults
-            .Select(line => line.SourceId)
-            .Where(sourceId => sourceId.HasValue)
-            .Select(sourceId => sourceId!.Value)
-            .Distinct()
-            .ToList();
-        foreach (var receiptId in receiptIds)
-        {
-            var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, criteria.OrganizationId);
-            if (receipt != null)
-                receiptDateByReceiptId[receiptId] = receipt.ReceiptDate;
-        }
-
-        return billReceiptLineResults
-            .Select(line =>
-            {
-                var sourceId = line.SourceId;
-                var activityDate = sourceId.HasValue && receiptDateByReceiptId.TryGetValue(sourceId.Value, out var receiptDate)
-                    ? receiptDate
-                    : line.TransactionDate;
-                var activityType = line.SourceTypeId == (int)SourceType.Bill ? "Bill" : "Receipt";
-                var description = !string.IsNullOrWhiteSpace(line.Memo)
-                    ? line.Memo.Trim()
-                    : line.JournalEntryCode;
-                return new OwnerStatementPropertyActivityLine
-                {
-                    ActivityId = line.SourceId ?? line.JournalEntryId,
-                    SourceId = line.SourceId,
-                    JournalEntryLineId = line.JournalEntryLineId,
-                    ActivityType = activityType,
-                    ActivityDate = activityDate,
-                    DocumentCode = line.JournalEntryCode,
-                    Description = description,
-                    ExpectedIncome = 0m,
-                    ReceivedIncome = 0m,
-                    Expenses = line.Debit - line.Credit
-                };
-            })
-            .Where(line => line.Expenses != 0m)
-            .Where(line => IsWithinOwnerStatementDateRange(line.ActivityDate, criteria.StartDate, criteria.EndDate))
-            .OrderBy(line => line.ActivityDate)
-            .ThenBy(line => line.ActivityType)
-            .ThenBy(line => line.DocumentCode)
-            .ToList();
-    }
-
-    private async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementLinensAndTowelsActivityLinesFromJournalEntriesAsync(OwnerStatementPropertyActivityGetCriteria criteria)
-    {
-        var sourceLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-        {
-            OrganizationId = criteria.OrganizationId,
-            OfficeIds = criteria.OfficeIds,
-            SourceTypeId = (int)SourceType.LinensAndTowels,
-            PropertyId = criteria.PropertyId,
-            IncludeVoided = false,
-            IncludeUnposted = true,
-            StartDate = criteria.StartDate,
-            EndDate = criteria.EndDate
-        });
-        var ownerLines = sourceLines.Where(HasOwnerMemo).ToList();
-        if (ownerLines.Count == 0)
-            return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
-
-        return ownerLines
-            .Select(line =>
-            {
-                var description = !string.IsNullOrWhiteSpace(line.Memo)
-                    ? line.Memo.Trim()
-                    : !string.IsNullOrWhiteSpace(line.JournalEntryMemo)
-                        ? line.JournalEntryMemo!.Trim()
-                        : line.JournalEntryCode;
-                return new OwnerStatementPropertyActivityLine
-                {
-                    ActivityId = line.SourceId ?? line.JournalEntryId,
-                    SourceId = line.SourceId,
-                    JournalEntryLineId = line.JournalEntryLineId,
-                    ActivityType = "LinensAndTowels",
-                    ActivityDate = line.TransactionDate,
-                    DocumentCode = line.JournalEntryCode,
-                    Description = description,
-                    ExpectedIncome = 0m,
-                    ReceivedIncome = 0m,
-                    Expenses = line.Debit - line.Credit
-                };
-            })
-            .Where(line => line.Expenses != 0m)
-            .OrderBy(line => line.ActivityDate)
-            .ThenBy(line => line.ActivityType)
-            .ThenBy(line => line.DocumentCode)
-            .ToList();
-    }
-
-    private static bool HasOwnerMemo(JournalEntryLineSearchResult line)
-    {
-        var journalMemo = (line.JournalEntryMemo ?? string.Empty).Trim();
-        var lineMemo = (line.Memo ?? string.Empty).Trim();
-        return journalMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase)
-            || lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool HasOwnerLineMemo(JournalEntryLineSearchResult line)
-    {
-        var lineMemo = (line.Memo ?? string.Empty).Trim();
-        return lineMemo.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase);
-    }
-
     private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)
     {
         var summaryMemo = (journalMemo ?? string.Empty).Trim();
         var detailMemo = (lineMemo ?? string.Empty).Trim();
         return summaryMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase)
             || detailMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsWithinOwnerStatementDateRange(DateOnly activityDate, DateOnly? startDate, DateOnly? endDate)
-    {
-        if (startDate.HasValue && activityDate < startDate.Value)
-            return false;
-        if (endDate.HasValue && activityDate > endDate.Value)
-            return false;
-        return true;
     }
 
 }

@@ -97,4 +97,45 @@ public partial class AccountingRepository
             Amount = e.Amount
         };
     }
+
+    public async Task<IEnumerable<OwnerStatementPropertyActivityLine>> GetOwnerStatementPropertyActivityLinesByCriteriaAsync(OwnerStatementGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<OwnerStatementPropertyActivityLineEntity>("Accounting.OwnerStatement_PropertyActivity_GetByCriteria", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate,
+            ExpectedAccountId = criteria.ExpectedAccountId,
+            ActualAccountId = criteria.ActualAccountId,
+            PrePaidAccountId = criteria.PrePaidAccountId,
+            ExpenseAccountId = criteria.ExpenseAccountId
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<OwnerStatementPropertyActivityLine>();
+
+        return res.Select(ConvertOwnerStatementPropertyActivityLineEntityToModel);
+    }
+
+    private OwnerStatementPropertyActivityLine ConvertOwnerStatementPropertyActivityLineEntityToModel(OwnerStatementPropertyActivityLineEntity e)
+    {
+        return new OwnerStatementPropertyActivityLine
+        {
+            PropertyId = e.PropertyId,
+            OfficeId = e.OfficeId,
+            ActivityId = e.ActivityId,
+            SourceId = e.SourceId,
+            JournalEntryLineId = e.JournalEntryLineId,
+            ActivityType = e.ActivityType,
+            ActivityDate = e.ActivityDate,
+            DocumentCode = e.DocumentCode,
+            Description = e.Description,
+            ExpectedIncome = e.ExpectedIncome,
+            ReceivedIncome = e.ReceivedIncome,
+            Expenses = e.Expenses
+        };
+    }
 }

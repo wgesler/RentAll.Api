@@ -194,7 +194,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = reservation.OfficeId,
             TransactionDate = reservation.DepartureDate,
-            PostingDate = reservation.DepartureDate,
             SourceTypeId = (int)SourceType.Reservation,
             SourceId = reservation.ReservationId,
             Memo = $"Departures - {reservation.ReservationCode}",
@@ -331,7 +330,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = agreement.OfficeId,
             TransactionDate = processingDate,
-            PostingDate = processingDate,
             SourceTypeId = (int)SourceType.LinensAndTowels,
             SourceId = agreement.PropertyId,
             Memo = reverseEntryDirection

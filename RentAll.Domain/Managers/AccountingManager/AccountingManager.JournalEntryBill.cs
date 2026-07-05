@@ -171,9 +171,11 @@ public partial class AccountingManager
         if (bill.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a bill");
 
+        if (bill.ReceiptDate == default)
+            throw new Exception("ReceiptDate is required to create a journal entry for a bill");
+
         var accountsPayableAccountId = GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
-        var transactionDate = bill.AccountingPeriod;
-        var postingDate = bill.AccountingPeriod;
+        var transactionDate = ResolveBillOrReceiptJournalEntryDate(bill);
         var receiptCode = bill.ReceiptCode.Trim();
         var billDescriptionSuffix = string.IsNullOrWhiteSpace((bill.Description ?? string.Empty).Trim()) ? string.Empty : $": {(bill.Description ?? string.Empty).Trim()}";
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
@@ -257,7 +259,6 @@ public partial class AccountingManager
             OrganizationId = bill.OrganizationId,
             OfficeId = bill.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Bill,
             SourceId = bill.ReceiptId,
             Memo = receiptCode + billDescriptionSuffix,
@@ -291,7 +292,6 @@ public partial class AccountingManager
 
         var amount = paymentApplication.AmountApplied;
         var transactionDate = paymentApplication.PaymentDate;
-        var postingDate = paymentApplication.PaymentDate;
         var receiptCode = bill.ReceiptCode.Trim();
         var billDescription = string.IsNullOrWhiteSpace((bill.Description ?? string.Empty).Trim()) ? string.Empty : $": {(bill.Description ?? string.Empty).Trim()}";
         var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
@@ -326,7 +326,6 @@ public partial class AccountingManager
             OrganizationId = bill.OrganizationId,
             OfficeId = bill.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = bill.ReceiptId,
             Memo = receiptCode + billDescription,

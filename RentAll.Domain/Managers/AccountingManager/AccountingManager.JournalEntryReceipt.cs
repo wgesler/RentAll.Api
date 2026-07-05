@@ -70,6 +70,9 @@ public partial class AccountingManager
         if (receipt.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a receipt");
 
+        if (receipt.ReceiptDate == default)
+            throw new Exception("ReceiptDate is required to create a journal entry for a receipt");
+
         var bankCard = await ResolveReceiptBankCardAsync(receipt, accountingOffice);
         if (IsCrossOfficeBankCardReceipt(receipt, bankCard))
         {
@@ -92,8 +95,7 @@ public partial class AccountingManager
 
         var splitLines = ResolveReceiptSplitLines(receipt);
         var creditCardAccountId = GetCreditCardAccountId(bankCard);
-        var transactionDate = receipt.AccountingPeriod;
-        var postingDate = receipt.AccountingPeriod;
+        var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
         var receiptCode = receipt.ReceiptCode.Trim();
         var bankCardDisplayName = receipt.BankCardDisplayName.Trim();
         var firstEligibleDescription = splitLines
@@ -142,7 +144,6 @@ public partial class AccountingManager
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Receipt,
             SourceId = receipt.ReceiptId,
             Memo = receiptCode + headerDescription,
@@ -162,8 +163,7 @@ public partial class AccountingManager
 
         var splitLines = ResolveReceiptSplitLines(receipt);
         var accountsPayableAccountId = GetDefaultAccountsPayable(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice);
-        var transactionDate = receipt.AccountingPeriod;
-        var postingDate = receipt.AccountingPeriod;
+        var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
         var receiptCode = receipt.ReceiptCode.Trim();
         var firstEligibleDescription = splitLines
             .Where(IsJournalEligibleReceiptSplit)
@@ -209,7 +209,6 @@ public partial class AccountingManager
             OrganizationId = receipt.OrganizationId,
             OfficeId = receipt.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Receipt,
             SourceId = receipt.ReceiptId,
             Memo = receiptCode + headerDescription,
@@ -229,8 +228,7 @@ public partial class AccountingManager
         var splitLines = ResolveReceiptSplitLines(receipt);
         var accountsPayableAccountId = GetDefaultAccountsPayable(bankCardOfficeChartOfAccounts, bankCardOfficeId, bankCardAccountingOffice);
         var creditCardAccountId = GetCreditCardAccountId(bankCard);
-        var transactionDate = receipt.AccountingPeriod;
-        var postingDate = receipt.AccountingPeriod;
+        var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
         var receiptCode = receipt.ReceiptCode.Trim();
         var bankCardDisplayName = receipt.BankCardDisplayName.Trim();
         var firstEligibleDescription = splitLines
@@ -269,7 +267,6 @@ public partial class AccountingManager
             OrganizationId = receipt.OrganizationId,
             OfficeId = bankCardOfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.CreditCard,
             SourceId = receipt.ReceiptId,
             Memo = receiptCode + headerDescription,
@@ -312,7 +309,7 @@ public partial class AccountingManager
         if (allSplits.Count > 0)
             return allSplits;
 
-        // Legacy fallback: when no split rows are provided, treat receipt amount as one split.
+        // When no split rows exist, treat receipt amount as one split.
         if (allSplits.Count == 0 && receipt.Amount != 0)
         {
             return

@@ -150,8 +150,8 @@ public partial class AccountingManager
         if (journalEntry.TransactionDate == default)
             throw new Exception("TransactionDate is required");
 
-        if (journalEntry.PostingDate == default)
-            throw new Exception("PostingDate is required");
+        if (journalEntry.IsPosted && journalEntry.PostingDate == default)
+            throw new Exception("PostingDate is required when posting a journal entry");
 
         var activeLines = journalEntry.JournalEntryLines
             .Where(l => l.Debit != 0 || l.Credit != 0)

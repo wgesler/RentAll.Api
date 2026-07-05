@@ -327,7 +327,6 @@ public partial class AccountingManager
             throw new Exception("AccountingPeriod is required to create a journal entry for an invoice");
 
         var transactionDate = invoice.AccountingPeriod;
-        var postingDate = invoice.AccountingPeriod;
         var memoSuffixText = string.IsNullOrWhiteSpace(memoSuffix) ? string.Empty : $" ({memoSuffix.Trim()})";
         var invoiceMemo = $"{invoice.InvoiceCode}{memoSuffixText}";
         var journalEntryLines = new List<JournalEntryLine> {
@@ -368,7 +367,6 @@ public partial class AccountingManager
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = sourceIdOverride ?? invoice.InvoiceId,
             Memo = invoiceMemo,
@@ -400,12 +398,8 @@ public partial class AccountingManager
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
 
-        if (invoice.AccountingPeriod == default)
-            throw new Exception("AccountingPeriod is required to create a payment journal entry");
-
         var amount = paymentLedgerLine.Amount;
-        var transactionDate = invoice.AccountingPeriod;
-        var postingDate = invoice.AccountingPeriod;
+        var transactionDate = ResolveInvoicePaymentJournalEntryDate(paymentLedgerLine);
         var memo = BuildInvoicePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
 
         var undepositedFundsLine = new JournalEntryLine
@@ -437,7 +431,6 @@ public partial class AccountingManager
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = postingDate,
             SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
             Memo = memo,
@@ -469,7 +462,6 @@ public partial class AccountingManager
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
             TransactionDate = transactionDate,
-            PostingDate = transactionDate,
             SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
             Memo = memo,
@@ -520,15 +512,14 @@ public partial class AccountingManager
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
         var amount = paymentLedgerLine.Amount;
-        var postingDate = invoice.AccountingPeriod;
+        var transactionDate = invoice.AccountingPeriod;
         var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
 
         return new JournalEntry
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
-            TransactionDate = postingDate,
-            PostingDate = postingDate,
+            TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = paymentLedgerLine.LedgerLineId,
             Memo = memo,

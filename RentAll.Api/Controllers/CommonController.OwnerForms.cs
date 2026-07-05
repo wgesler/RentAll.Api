@@ -209,7 +209,7 @@ namespace RentAll.Api.Controllers
                         accountingOffice.LogoPath,
                         ImageType.Logos);
 
-                    // Fallback for legacy/variant storage scopes where logos may not resolve by office name.
+                    // Fallback when logos may not resolve by office name.
                     if (response.FileDetails == null)
                     {
                         response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(

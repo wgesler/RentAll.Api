@@ -192,7 +192,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         }
         catch
         {
-            // Fallback to legacy guid-array shape below.
+            // Fallback to guid-array shape below.
         }
 
         try
