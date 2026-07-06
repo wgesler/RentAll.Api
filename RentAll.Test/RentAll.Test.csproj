@@ -20,7 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RentAll.Api\RentAll.Api.csproj" />
+    <ProjectReference Include="..\RentAll.Domain\RentAll.Domain.csproj" />
+    <ProjectReference Include="..\RentAll.Infrastructure\RentAll.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

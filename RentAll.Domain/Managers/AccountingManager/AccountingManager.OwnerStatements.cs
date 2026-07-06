@@ -314,7 +314,8 @@ public partial class AccountingManager
     private static void ApplyOwnerStatementSummaryCalculations(OwnerStatementSummary summary)
     {
         // Outstanding is Unpaid Income on the accrual owner report (Invoiced Income minus Paid Income).
-        summary.Outstanding = summary.Expected - summary.Income;
+        // Negative means prepaid/overpaid; unpaid display is zero and prepayment belongs in PrePaid.
+        summary.Outstanding = Math.Max(0m, summary.Expected - summary.Income);
         summary.Balance = summary.Income - summary.Expenses;
         summary.WorkingCapitalBalanceDue = summary.Balance;
         summary.OwnerPayment = summary.StartingBalance + summary.Income - summary.Expenses - summary.WorkingCapital;

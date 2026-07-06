@@ -323,6 +323,67 @@ public class InvoiceJournalEntryGapCoverageTests
         Assert.NotEqual(paymentDate, ownerPaymentEntry.TransactionDate);
     }
 
+    [Fact]
+    public async Task CrossMonthPayment_OnlyFutureAccountingPeriodSliceUsesPrePaymentPath()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2026, 6, 21),
+            new DateOnly(2026, 12, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.SDW,
+            deposit: 60m,
+            hasPets: false,
+            departureFee: 500m,
+            billingRate: 9000m);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            new DateOnly(2026, 6, 1),
+            new DateOnly(2026, 6, 30));
+        invoice.AccountingPeriod = new DateOnly(2026, 7, 1);
+
+        var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee"));
+        Assert.Equal("Rental Fee (06/21-07/20)", rentalLine.Description);
+
+        var manager = context.CreateManager();
+        var paymentDate = new DateOnly(2026, 6, 23);
+        var paymentAmount = 2640m;
+        rentalLine.Amount = paymentAmount;
+        invoice.LedgerLines = [rentalLine];
+        invoice.TotalAmount = paymentAmount;
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: paymentAmount,
+            paymentDate: paymentDate,
+            description: "ACH - 06/21-07/20, Dept");
+        invoice.LedgerLines.Add(payment);
+
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var juneChargeCap = Math.Round(paymentAmount * (10m / 30m), 2, MidpointRounding.AwayFromZero);
+        var julyChargeCap = paymentAmount - juneChargeCap;
+        var expectedFutureSlicePrePayment = Math.Min(paymentAmount - juneChargeCap, julyChargeCap);
+        var prepaymentCredits = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.LedgerLineId
+                && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId))
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
+            .Sum(line => line.Credit);
+
+        Assert.Equal(expectedFutureSlicePrePayment, prepaymentCredits);
+        Assert.NotEqual(paymentAmount, prepaymentCredits);
+
+        var paymentEntry = Assert.Single(context.ActiveJournalEntries,
+            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.LedgerLineId
+                && entry.TransactionDate == paymentDate
+                && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId
+                    && line.Debit == paymentAmount));
+        AssertBalancedJournalEntry(paymentEntry);
+    }
+
     private static void AssertBalancedJournalEntry(JournalEntry journalEntry)
     {
         var totalDebit = journalEntry.JournalEntryLines.Sum(line => line.Debit);
