@@ -92,6 +92,7 @@ public partial class AccountingManager
 
         return ownerAmount;
     }
+    private async Task<AccountingJournalEntryResult> CreateOwnerSharePaymentJournalEntryWithResultAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser, JournalEntry? fallbackJournalEntry = null)
     #endregion
 
     #region Triggers Work Orders
