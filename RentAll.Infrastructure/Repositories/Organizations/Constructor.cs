@@ -175,7 +175,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             DefaultActRcvableAccountId = e.DefaultActRcvableAccountId,
             DefaultActPayableAccountId = e.DefaultActPayableAccountId,
             DefaultUndepFundsAccountId = e.DefaultUndepFundsAccountId,
-            DefaultEscrowAccountId = e.DefaultEscrowAccountId,
+            DefaultEscrowOwnersAccountId = e.DefaultEscrowOwnersAccountId,
             DefaultEscrowSecDepAccountId = e.DefaultEscrowSecDepAccountId,
             DefaultEscrowSdwAccountId = e.DefaultEscrowSdwAccountId,
             DefaultBusinessAccountId = e.DefaultBusinessAccountId,

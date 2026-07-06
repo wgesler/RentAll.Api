@@ -39,7 +39,7 @@ public class AccountingOfficeResponseDto
     public int? DefaultActRcvableAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultUndepFundsAccountId { get; set; }
-    public int? DefaultEscrowAccountId { get; set; }
+    public int? DefaultEscrowOwnersAccountId { get; set; }
     public int? DefaultEscrowSecDepAccountId { get; set; }
     public int? DefaultEscrowSdwAccountId { get; set; }
     public int? DefaultBusinessAccountId { get; set; }
@@ -90,7 +90,7 @@ public class AccountingOfficeResponseDto
         DefaultActRcvableAccountId = accountingOffice.DefaultActRcvableAccountId;
         DefaultActPayableAccountId = accountingOffice.DefaultActPayableAccountId;
         DefaultUndepFundsAccountId = accountingOffice.DefaultUndepFundsAccountId;
-        DefaultEscrowAccountId = accountingOffice.DefaultEscrowAccountId;
+        DefaultEscrowOwnersAccountId = accountingOffice.DefaultEscrowOwnersAccountId;
         DefaultEscrowSecDepAccountId = accountingOffice.DefaultEscrowSecDepAccountId;
         DefaultEscrowSdwAccountId = accountingOffice.DefaultEscrowSdwAccountId;
         DefaultBusinessAccountId = accountingOffice.DefaultBusinessAccountId;

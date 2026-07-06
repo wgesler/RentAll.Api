@@ -36,7 +36,7 @@ public class AccountingOffice
     public int? DefaultActRcvableAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultUndepFundsAccountId { get; set; }
-    public int? DefaultEscrowAccountId { get; set; }
+    public int? DefaultEscrowOwnersAccountId { get; set; }
     public int? DefaultEscrowSecDepAccountId { get; set; }
     public int? DefaultEscrowSdwAccountId { get; set; }
     public int? DefaultBusinessAccountId { get; set; }
