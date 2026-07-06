@@ -213,10 +213,7 @@ public partial class AccountingManager
         return await GetApportionableIncomeChargeLinesAsync(invoice, reservation, accountingContext);
     }
 
-    private Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(
-        Invoice invoice,
-        Reservation reservation,
-        CrossPeriodInvoiceAccountingContext accountingContext)
+    private Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(Invoice invoice, Reservation reservation, CrossPeriodInvoiceAccountingContext accountingContext)
     {
         // Charges that are NOT extra-fee lines are still classified by COST CODE: anything on a rental-income
         // code mapped under the 4000 parent account splits across both accounting periods like rent, everything else is a one-time
@@ -307,11 +304,7 @@ public partial class AccountingManager
         return BuildCrossPeriodChargeBreakdown(original, firstSlice, secondSlice, costCodeById);
     }
 
-    private static string BuildCrossPeriodChargeBreakdown(
-        Invoice original,
-        Invoice firstSlice,
-        Invoice secondSlice,
-        IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static string BuildCrossPeriodChargeBreakdown(Invoice original, Invoice firstSlice, Invoice secondSlice, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
 
         string FormatSection(string label, Invoice invoice)
@@ -410,12 +403,8 @@ public partial class AccountingManager
     #endregion
 
     #region Cross-Period Invoice Journal Entry Static Helpers
-    private static readonly Regex RentalFeePeriodRegex = new(
-        @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$",
-        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex DescriptionPeriodRegex = new(
-        @"\((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)",
-        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex RentalFeePeriodRegex = new(@"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex DescriptionPeriodRegex = new(@"\((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private async Task<bool> TryUseCrossPeriodInvoiceJournalEntryPathAsync(Invoice invoice)
     {
@@ -612,13 +601,7 @@ public partial class AccountingManager
         }
     }
 
-    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(
-        Invoice originalInvoice,
-        Invoice firstSlice,
-        Invoice secondSlice,
-        Reservation reservation,
-        IReadOnlyList<LedgerLine> apportionableIncomeLines,
-        IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, IReadOnlyList<LedgerLine> apportionableIncomeLines, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         var referenceYear = originalInvoice.AccountingPeriod != default
             ? originalInvoice.AccountingPeriod.Year
@@ -745,14 +728,7 @@ public partial class AccountingManager
         return true;
     }
 
-    private static IEnumerable<LedgerLine> GetRentalPeriodMatchedAdHocLines(
-        Invoice invoice,
-        Reservation reservation,
-        IReadOnlyDictionary<int, CostCode> costCodeById,
-        int referenceYear,
-        DateOnly rentalStart,
-        DateOnly rentalEnd,
-        LedgerLine primaryRentalLine)
+    private static IEnumerable<LedgerLine> GetRentalPeriodMatchedAdHocLines(Invoice invoice, Reservation reservation, IReadOnlyDictionary<int, CostCode> costCodeById, int referenceYear, DateOnly rentalStart, DateOnly rentalEnd, LedgerLine primaryRentalLine)
     {
         var extraFeeDescriptions = reservation.ExtraFeeLines
             .Select(f => f.FeeDescription)
@@ -914,20 +890,7 @@ public partial class AccountingManager
         return true;
     }
 
-    private static bool TryApplyDatedOneTimeInvoiceChargeLinesToCrossPeriodSlices(
-        Invoice originalInvoice,
-        Invoice firstSlice,
-        Invoice secondSlice,
-        IReadOnlyList<LedgerLine> pooledLines,
-        IReadOnlyList<LedgerLine> oneTimeLines,
-        IReadOnlyList<LedgerLine> occurrenceLines,
-        LedgerLine? maidTemplate,
-        IReadOnlyDictionary<int, CostCode> costCodeById,
-        int referenceYear,
-        DateOnly rentalStart,
-        DateOnly rentalEnd,
-        int firstDays,
-        int totalDays)
+    private static bool TryApplyDatedOneTimeInvoiceChargeLinesToCrossPeriodSlices(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, IReadOnlyList<LedgerLine> pooledLines, IReadOnlyList<LedgerLine> oneTimeLines, IReadOnlyList<LedgerLine> occurrenceLines, LedgerLine? maidTemplate, IReadOnlyDictionary<int, CostCode> costCodeById, int referenceYear, DateOnly rentalStart, DateOnly rentalEnd, int firstDays, int totalDays)
     {
         if (!TryGetSliceDateRange(firstSlice, out var slice1Start, out var slice1End))
             return false;

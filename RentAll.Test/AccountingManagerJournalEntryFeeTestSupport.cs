@@ -18,6 +18,10 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     internal const int ExtraFeeCostCodeId = 84;
     internal const int UndepositedFundsAccountId = 300;
     internal const int PrePaymentAccountId = 400;
+    internal const int OwnerAccountsPayableAccountId = 501;
+    internal const int OwnerRentExpenseAccountId = 502;
+    internal const int FurnishedRentExpenseCostCodeId = 90;
+    internal static readonly Guid OwnerContactId = Guid.Parse("55555555-5555-5555-5555-555555555555");
     internal const int DepartureIncomeAccountId = 410;
     internal const int PetFeeIncomeAccountId = 420;
     internal const int SecurityDepositLiabilityAccountId = 220;
@@ -85,16 +89,17 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         };
     }
 
-    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080")
-        => new(reservation, petFeeAccountCode);
+    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080", bool enableOwnerShare = false)
+        => new(reservation, petFeeAccountCode, enableOwnerShare);
 
     internal static async Task<(Invoice Invoice, FeeJournalEntryTestContext Context)> BuildTrackedFeeInvoiceAsync(
         Reservation reservation,
         DateOnly periodStart,
         DateOnly periodEnd,
-        string petFeeAccountCode = "2080")
+        string petFeeAccountCode = "2080",
+        bool enableOwnerShare = false)
     {
-        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode);
+        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode, enableOwnerShare);
         var manager = context.CreateManager();
         var ledgerLines = await GetInvoiceLedgerLinesAsync(manager, reservation, periodStart, periodEnd);
         var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(reservation, periodStart, periodEnd, ledgerLines);
@@ -106,14 +111,16 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     {
         private readonly Reservation _reservation;
         private readonly string _petFeeAccountCode;
+        private readonly bool _enableOwnerShare;
         private readonly List<JournalEntry> _journalEntries = [];
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private int _journalEntryCodeSequence;
 
-        internal FeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080")
+        internal FeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080", bool enableOwnerShare = false)
         {
             _reservation = reservation;
             _petFeeAccountCode = petFeeAccountCode;
+            _enableOwnerShare = enableOwnerShare;
         }
 
         internal IReadOnlyList<JournalEntry> CreatedJournalEntries => _journalEntries;
@@ -193,6 +200,28 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 }
             };
 
+            if (_enableOwnerShare)
+            {
+                chartOfAccounts.Add(new ChartOfAccount
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = OwnerAccountsPayableAccountId,
+                    AccountType = AccountType.AccountsPayable,
+                    Name = "Owner Accounts Payable",
+                    AccountNo = "2105"
+                });
+                chartOfAccounts.Add(new ChartOfAccount
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = OwnerRentExpenseAccountId,
+                    AccountType = AccountType.Expense,
+                    Name = "Owner Rent Expense",
+                    AccountNo = "5100"
+                });
+            }
+
             // One-time fees post to their own accounts; only charges sharing the rent/tenant-income
             // account ("4000") are split across accounting periods. The pet fee account is configurable
             // so a pet fee that posts to the rent account can be exercised.
@@ -216,6 +245,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     IsActive = true
                 }
             };
+            if (_enableOwnerShare)
+                costCodes.Add(ChargeCostCode(FurnishedRentExpenseCostCodeId, "5100", "Owner Rent Expense"));
 
             var accountingRepository = new Mock<IAccountingRepository>();
             accountingRepository
@@ -249,7 +280,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     DefaultActRecvAccountId = AccountingManagerJournalEntryTestSupport.AccountsReceivableAccountId,
                     DefaultTenantIncAccountId = AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId,
                     DefaultUndepFundsAccountId = UndepositedFundsAccountId,
-                    DefaultPrePayAccountId = PrePaymentAccountId
+                    DefaultPrePayAccountId = PrePaymentAccountId,
+                    DefaultOwnActPayableAccountId = _enableOwnerShare ? OwnerAccountsPayableAccountId : null
                 });
             organizationRepository
                 .Setup(r => r.GetOfficeByIdAsync(AccountingManagerJournalEntryTestSupport.OfficeId, AccountingManagerJournalEntryTestSupport.OrganizationId))
@@ -259,6 +291,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
                     FurnishedRentChargeCcId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
                     UnfurnishedRentChargeCcId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+                    FurnishedRentExpenseCcId = _enableOwnerShare ? FurnishedRentExpenseCostCodeId : null,
                     SecurityDepositCcId = SecurityDepositCostCodeId,
                     SecurityDepositWaiverCcId = SdwCostCodeId,
                     DepartureFeeCcId = DepartureFeeCostCodeId,
@@ -273,8 +306,21 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     PropertyId = AccountingManagerJournalEntryTestSupport.PropertyId,
                     OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
-                    Unfurnished = false
+                    Unfurnished = false,
+                    PropertyLeaseType = _enableOwnerShare ? PropertyLeaseType.PropertyManagement : PropertyLeaseType.Direct,
+                    Owner1Id = _enableOwnerShare ? OwnerContactId : null
                 });
+            if (_enableOwnerShare)
+            {
+                propertyRepository
+                    .Setup(r => r.GetPropertyAgreementByPropertyIdAsync(AccountingManagerJournalEntryTestSupport.PropertyId))
+                    .ReturnsAsync(new PropertyAgreement
+                    {
+                        PropertyId = AccountingManagerJournalEntryTestSupport.PropertyId,
+                        ManagementFeeType = ManagementFeeType.Percentage,
+                        RevenueSplitOwner = 80m
+                    });
+            }
 
             var journalEntryRepository = new Mock<IJournalEntryRepository>();
             journalEntryRepository

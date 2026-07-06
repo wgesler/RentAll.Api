@@ -250,6 +250,79 @@ public class InvoiceJournalEntryGapCoverageTests
         Assert.Equal(3, chargeEntry.JournalEntryLines.Count);
     }
 
+    [Fact]
+    public async Task PrePayment_OwnerSharePayment_IsDeferredUntilAccountingPeriod()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 2, 1),
+            new DateOnly(2026, 4, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        var accountingPeriod = new DateOnly(2026, 2, 1);
+        var paymentDate = new DateOnly(2026, 1, 25);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 2, 28),
+            enableOwnerShare: true);
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(invoice, amount: 800m, paymentDate: paymentDate);
+        invoice.LedgerLines.Add(payment);
+
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var ownerPaymentEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.LedgerLineId
+                && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId))
+            .ToList();
+
+        Assert.Single(ownerPaymentEntries);
+        var ownerPaymentEntry = ownerPaymentEntries[0];
+        Assert.Equal(accountingPeriod, ownerPaymentEntry.TransactionDate);
+        Assert.NotEqual(paymentDate, ownerPaymentEntry.TransactionDate);
+        Assert.StartsWith("Owner: Payment:", ownerPaymentEntry.Memo, StringComparison.Ordinal);
+        Assert.Equal(640m, ownerPaymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId).Credit);
+    }
+
+    [Fact]
+    public async Task StandardPayment_OwnerSharePayment_UsesInvoiceAccountingPeriodDate()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 6, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        var accountingPeriod = new DateOnly(2026, 4, 1);
+        var paymentDate = new DateOnly(2026, 4, 15);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 4, 30),
+            enableOwnerShare: true);
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(invoice, amount: 1500m, paymentDate: paymentDate);
+        invoice.LedgerLines.Add(payment);
+
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var ownerPaymentEntry = Assert.Single(context.ActiveJournalEntries,
+            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+                && entry.SourceId == payment.LedgerLineId
+                && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId));
+
+        Assert.Equal(accountingPeriod, ownerPaymentEntry.TransactionDate);
+        Assert.NotEqual(paymentDate, ownerPaymentEntry.TransactionDate);
+    }
+
     private static void AssertBalancedJournalEntry(JournalEntry journalEntry)
     {
         var totalDebit = journalEntry.JournalEntryLines.Sum(line => line.Debit);

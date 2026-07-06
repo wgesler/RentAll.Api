@@ -313,6 +313,7 @@ public partial class AccountingManager
 
     private static void ApplyOwnerStatementSummaryCalculations(OwnerStatementSummary summary)
     {
+        // Outstanding is Unpaid Income on the accrual owner report (Invoiced Income minus Paid Income).
         summary.Outstanding = summary.Expected - summary.Income;
         summary.Balance = summary.Income - summary.Expenses;
         summary.WorkingCapitalBalanceDue = summary.Balance;

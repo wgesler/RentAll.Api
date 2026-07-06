@@ -532,13 +532,7 @@ public partial class AccountingManager
         return paymentCostCode.CostCodeId;
     }
 
-    private static void ReportSyncProgress(
-        IProgress<JournalEntrySyncProgress>? progress,
-        string syncType,
-        int total,
-        int processed,
-        JournalEntrySyncResult result,
-        string status)
+    private static void ReportSyncProgress(IProgress<JournalEntrySyncProgress>? progress, string syncType, int total, int processed, JournalEntrySyncResult result, string status)
     {
         progress?.Report(new JournalEntrySyncProgress
         {

@@ -70,6 +70,12 @@
 
     </Compile>
 
+    <Compile Update="Managers\AccountingManager\AccountingManager.OwnerStatements.cs">
+
+      <DependentUpon>AccountingManager.cs</DependentUpon>
+
+    </Compile>
+
     <Compile Update="Managers\AccountingManager\AccountingManager.PaymentBills.cs">
 
       <DependentUpon>AccountingManager.cs</DependentUpon>
