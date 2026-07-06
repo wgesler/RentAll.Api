@@ -12,6 +12,7 @@ public class OwnerStatementResponseDto
     public string OwnerName { get; set; } = string.Empty;
     public decimal Expected { get; set; }
     public decimal PrePaid { get; set; }
+    public decimal PaidIncome { get; set; }
     public decimal Outstanding { get; set; }
     public decimal Income { get; set; }
     public decimal Expenses { get; set; }
@@ -32,6 +33,7 @@ public class OwnerStatementResponseDto
         OwnerName = statement.OwnerName;
         Expected = statement.Expected;
         PrePaid = statement.PrePaid;
+        PaidIncome = statement.PaidIncome;
         Outstanding = statement.Outstanding;
         Income = statement.Income;
         Expenses = statement.Expenses;

@@ -10,6 +10,7 @@ public class OwnerStatementSummaryEntity
     public string OwnerName { get; set; } = string.Empty;
     public decimal Expected { get; set; }
     public decimal PrePaid { get; set; }
+    public decimal PaidIncome { get; set; }
     public decimal Outstanding { get; set; }
     public decimal Income { get; set; }
     public decimal Expenses { get; set; }

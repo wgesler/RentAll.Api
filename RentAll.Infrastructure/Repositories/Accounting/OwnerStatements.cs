@@ -40,6 +40,7 @@ public partial class AccountingRepository
             OwnerName = e.OwnerName,
             Expected = e.Expected,
             PrePaid = e.PrePaid,
+            PaidIncome = e.PaidIncome,
             Outstanding = e.Outstanding,
             Income = e.Income,
             Expenses = e.Expenses,
