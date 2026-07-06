@@ -487,8 +487,8 @@ public partial class AccountingManager : IAccountingManager
     {
         return ResolveDefaultAccountIdCached(nameof(GetDefaultDepositAccount), chartOfAccounts, officeId, null, () =>
         {
-            if (accountingOffice?.DefaultEscrowOwnersAccountId is > 0)
-                return accountingOffice.DefaultEscrowOwnersAccountId.Value;
+            if (accountingOffice?.DefaultEscrowDepositAccountId is > 0)
+                return accountingOffice.DefaultEscrowDepositAccountId.Value;
 
             var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.OtherCurrentLiability)

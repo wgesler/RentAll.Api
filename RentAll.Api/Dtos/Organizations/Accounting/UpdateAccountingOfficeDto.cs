@@ -38,10 +38,10 @@ public class UpdateAccountingOfficeDto
     public int? DefaultActRcvableAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultUndepFundsAccountId { get; set; }
+    public int? DefaultEscrowDepositAccountId { get; set; }
     public int? DefaultEscrowOwnersAccountId { get; set; }
     public int? DefaultEscrowSecDepAccountId { get; set; }
     public int? DefaultEscrowSdwAccountId { get; set; }
-    public int? DefaultBusinessAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public string? LogoPath { get; set; }
@@ -136,10 +136,10 @@ public class UpdateAccountingOfficeDto
             DefaultActRcvableAccountId = DefaultActRcvableAccountId,
             DefaultActPayableAccountId = DefaultActPayableAccountId,
             DefaultUndepFundsAccountId = DefaultUndepFundsAccountId,
+            DefaultEscrowDepositAccountId = DefaultEscrowDepositAccountId,
             DefaultEscrowOwnersAccountId = DefaultEscrowOwnersAccountId,
             DefaultEscrowSecDepAccountId = DefaultEscrowSecDepAccountId,
             DefaultEscrowSdwAccountId = DefaultEscrowSdwAccountId,
-            DefaultBusinessAccountId = DefaultBusinessAccountId,
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = DefaultPrePayAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided

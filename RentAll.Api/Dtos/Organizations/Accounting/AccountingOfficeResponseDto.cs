@@ -39,10 +39,10 @@ public class AccountingOfficeResponseDto
     public int? DefaultActRcvableAccountId { get; set; }
     public int? DefaultActPayableAccountId { get; set; }
     public int? DefaultUndepFundsAccountId { get; set; }
+    public int? DefaultEscrowDepositAccountId { get; set; }
     public int? DefaultEscrowOwnersAccountId { get; set; }
     public int? DefaultEscrowSecDepAccountId { get; set; }
     public int? DefaultEscrowSdwAccountId { get; set; }
-    public int? DefaultBusinessAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public string? LogoPath { get; set; }
@@ -90,10 +90,10 @@ public class AccountingOfficeResponseDto
         DefaultActRcvableAccountId = accountingOffice.DefaultActRcvableAccountId;
         DefaultActPayableAccountId = accountingOffice.DefaultActPayableAccountId;
         DefaultUndepFundsAccountId = accountingOffice.DefaultUndepFundsAccountId;
+        DefaultEscrowDepositAccountId = accountingOffice.DefaultEscrowDepositAccountId;
         DefaultEscrowOwnersAccountId = accountingOffice.DefaultEscrowOwnersAccountId;
         DefaultEscrowSecDepAccountId = accountingOffice.DefaultEscrowSecDepAccountId;
         DefaultEscrowSdwAccountId = accountingOffice.DefaultEscrowSdwAccountId;
-        DefaultBusinessAccountId = accountingOffice.DefaultBusinessAccountId;
         DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId;
         DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId;
         LogoPath = accountingOffice.LogoPath;
