@@ -463,8 +463,8 @@ public partial class AccountingManager : IAccountingManager
     {
         return ResolveDefaultAccountIdCached(nameof(GetDefaultAccountsReceivable), chartOfAccounts, officeId, null, () =>
         {
-            if (accountingOffice?.DefaultActRecvAccountId is > 0)
-                return accountingOffice.DefaultActRecvAccountId.Value;
+            if (accountingOffice?.DefaultActRcvableAccountId is > 0)
+                return accountingOffice.DefaultActRcvableAccountId.Value;
 
             var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsReceivable)

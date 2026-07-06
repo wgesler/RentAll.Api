@@ -275,7 +275,7 @@ internal static class AccountingManagerJournalEntryTestSupport
                 {
                     OrganizationId = OrganizationId,
                     OfficeId = OfficeId,
-                    DefaultActRecvAccountId = AccountsReceivableAccountId,
+                    DefaultActRcvableAccountId = AccountsReceivableAccountId,
                     DefaultTenantIncAccountId = TenantIncomeAccountId
                 });
             organizationRepository

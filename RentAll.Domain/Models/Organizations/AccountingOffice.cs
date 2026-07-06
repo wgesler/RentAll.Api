@@ -22,13 +22,6 @@ public class AccountingOffice
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
     public int WorkOrderNo { get; set; }
-    public int? DefaultActRecvAccountId { get; set; }
-    public int? DefaultEscrowAccountId { get; set; }
-    public int? DefaultUndepFundsAccountId { get; set; }
-    public int? DefaultBankAccountId { get; set; }
-    public int? DefaultActPayableAccountId { get; set; }
-    public int? DefaultOwnActPayableAccountId { get; set; }
-    public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
@@ -39,6 +32,16 @@ public class AccountingOffice
     public int? DefaultLinenTowelIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
+    public int? DefaultBankAccountId { get; set; }
+    public int? DefaultActRcvableAccountId { get; set; }
+    public int? DefaultActPayableAccountId { get; set; }
+    public int? DefaultUndepFundsAccountId { get; set; }
+    public int? DefaultEscrowAccountId { get; set; }
+    public int? DefaultEscrowSecDepAccountId { get; set; }
+    public int? DefaultEscrowSdwAccountId { get; set; }
+    public int? DefaultBusinessAccountId { get; set; }
+    public int? DefaultOwnActPayableAccountId { get; set; }
+    public int? DefaultPrePayAccountId { get; set; }
     public string? LogoPath { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

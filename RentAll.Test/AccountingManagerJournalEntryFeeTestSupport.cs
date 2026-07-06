@@ -277,7 +277,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
                     OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
-                    DefaultActRecvAccountId = AccountingManagerJournalEntryTestSupport.AccountsReceivableAccountId,
+                    DefaultActRcvableAccountId = AccountingManagerJournalEntryTestSupport.AccountsReceivableAccountId,
                     DefaultTenantIncAccountId = AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId,
                     DefaultUndepFundsAccountId = UndepositedFundsAccountId,
                     DefaultPrePayAccountId = PrePaymentAccountId,

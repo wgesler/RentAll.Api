@@ -24,13 +24,6 @@ public class CreateAccountingOfficeDto
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
     public int WorkOrderNo { get; set; }
-    public int? DefaultActRecvAccountId { get; set; }
-    public int? DefaultEscrowAccountId { get; set; }
-    public int? DefaultUndepFundsAccountId { get; set; }
-    public int? DefaultBankAccountId { get; set; }
-    public int? DefaultActPayableAccountId { get; set; }
-    public int? DefaultOwnActPayableAccountId { get; set; }
-    public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
@@ -41,6 +34,16 @@ public class CreateAccountingOfficeDto
     public int? DefaultLinenTowelIncAccountId { get; set; }
     public int? DefaultDepartureIncAccountId { get; set; }
     public int? DefaultDepartureExpAccountId { get; set; }
+    public int? DefaultBankAccountId { get; set; }
+    public int? DefaultActRcvableAccountId { get; set; }
+    public int? DefaultActPayableAccountId { get; set; }
+    public int? DefaultUndepFundsAccountId { get; set; }
+    public int? DefaultEscrowAccountId { get; set; }
+    public int? DefaultEscrowSecDepAccountId { get; set; }
+    public int? DefaultEscrowSdwAccountId { get; set; }
+    public int? DefaultBusinessAccountId { get; set; }
+    public int? DefaultOwnActPayableAccountId { get; set; }
+    public int? DefaultPrePayAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -118,13 +121,6 @@ public class CreateAccountingOfficeDto
             BankAddress = BankAddress,
             BankPhone = BankPhone,
             WorkOrderNo = WorkOrderNo,
-            DefaultActRecvAccountId = DefaultActRecvAccountId,
-            DefaultEscrowAccountId = DefaultEscrowAccountId,
-            DefaultUndepFundsAccountId = DefaultUndepFundsAccountId,
-            DefaultBankAccountId = DefaultBankAccountId,
-            DefaultActPayableAccountId = DefaultActPayableAccountId,
-            DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
-            DefaultPrePayAccountId = DefaultPrePayAccountId,
             DefaultTenantIncAccountId = DefaultTenantIncAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,
             DefaultOwnerIncAccountId = DefaultOwnerIncAccountId,
@@ -135,6 +131,16 @@ public class CreateAccountingOfficeDto
             DefaultLinenTowelIncAccountId = DefaultLinenTowelIncAccountId,
             DefaultDepartureIncAccountId = DefaultDepartureIncAccountId,
             DefaultDepartureExpAccountId = DefaultDepartureExpAccountId,
+            DefaultBankAccountId = DefaultBankAccountId,
+            DefaultActRcvableAccountId = DefaultActRcvableAccountId,
+            DefaultActPayableAccountId = DefaultActPayableAccountId,
+            DefaultUndepFundsAccountId = DefaultUndepFundsAccountId,
+            DefaultEscrowAccountId = DefaultEscrowAccountId,
+            DefaultEscrowSecDepAccountId = DefaultEscrowSecDepAccountId,
+            DefaultEscrowSdwAccountId = DefaultEscrowSdwAccountId,
+            DefaultBusinessAccountId = DefaultBusinessAccountId,
+            DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
+            DefaultPrePayAccountId = DefaultPrePayAccountId,
             LogoPath = null, // Will be set by controller after file save
             IsActive = IsActive,
             CreatedBy = currentUser
