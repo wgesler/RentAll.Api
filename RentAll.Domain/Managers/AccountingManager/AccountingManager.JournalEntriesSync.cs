@@ -356,7 +356,7 @@ public partial class AccountingManager
         var runDates = GetMonthlyRunDatesForCurrentYear(DateOnly.FromDateTime(DateTime.UtcNow));
 
         await ProcessDepartureFeesAsync(organizationId, officeIds, runDates, result, progress);
-        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, runDates, result, progress);
+        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, result, progress);
 
         return result;
     }
@@ -404,38 +404,30 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "departureFee", total, processed, result, "Completed");
     }
 
-    private async Task ProcessLinenAndTowelFeesAsync(Guid organizationId, string officeIds, IReadOnlyCollection<DateOnly> runDates, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
+    private async Task ProcessLinenAndTowelFeesAsync(Guid organizationId, string officeIds, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
     {
-        var total = runDates.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, "Running");
+        ReportSyncProgress(progress, "linenAndTowelFee", 1, 0, result, "Running");
 
-        foreach (var runDate in runDates)
+        try
         {
-            try
-            {
-                var monthlyBatch = (await _propertyRepository.GetMonthlyLinensAndTowelsAsync(organizationId, officeIds)).ToList();
-                var annualBatch = (await _propertyRepository.GetAnnualLinensAndTowelsAsync(organizationId, officeIds)).ToList();
-                result.DocumentsProcessed += monthlyBatch.Count + annualBatch.Count;
+            var runDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            var monthlyBatch = (await _propertyRepository.GetMonthlyLinensAndTowelsAsync(organizationId, officeIds)).ToList();
+            var annualBatch = (await _propertyRepository.GetAnnualLinensAndTowelsAsync(organizationId, officeIds)).ToList();
+            result.DocumentsProcessed += monthlyBatch.Count + annualBatch.Count;
 
-                await CreateJournalEntriesForLinensAndTowelsAsync(
-                    organizationId,
-                    monthlyBatch,
-                    annualBatch,
-                    CancellationToken.None,
-                    runDate);
-            }
-            catch (Exception ex)
-            {
-                result.Errors.Add($"Linen and towel fees {runDate:yyyy-MM-dd}: {ex.Message}");
-            }
-
-            processed++;
-            ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, processed >= total ? "Completed" : "Running");
+            await CreateJournalEntriesForLinensAndTowelsAsync(
+                organizationId,
+                monthlyBatch,
+                annualBatch,
+                CancellationToken.None,
+                runDate);
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add($"Linen and towel fees {DateOnly.FromDateTime(DateTime.UtcNow):yyyy-MM-dd}: {ex.Message}");
         }
 
-        if (total == 0)
-            ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, "Completed");
+        ReportSyncProgress(progress, "linenAndTowelFee", 1, 1, result, "Completed");
     }
 
     private async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)

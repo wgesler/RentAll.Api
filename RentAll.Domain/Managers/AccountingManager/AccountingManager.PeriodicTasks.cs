@@ -42,6 +42,7 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return;
         var runDate = processingDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var processAnnualAgreements = runDate.Month == 1 && runDate.Day == 1;
 
         foreach (var monthlyAgreement in monthlyAgreements)
         {
@@ -66,26 +67,29 @@ public partial class AccountingManager
             }
         }
 
-        foreach (var annualAgreement in annualAgreements)
+        if (processAnnualAgreements)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
+            foreach (var annualAgreement in annualAgreements)
             {
-                await BuildJournalEntriesForLinensAndTowelsAsync(organizationId, annualAgreement, isMonthly: false, runDate, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                await LogAccountingErrorAsync(
-                    trigger: "LinensAndTowels",
-                    organizationId: organizationId,
-                    officeId: annualAgreement.OfficeId,
-                    sourceTypeId: (int)SourceType.LinensAndTowels,
-                    sourceId: annualAgreement.PropertyId,
-                    documentCode: $"Property-{annualAgreement.PropertyId}",
-                    accountingPeriod: null,
-                    amount: annualAgreement.LinenAndTowelFee,
-                    message: ex.Message,
-                    currentUser: SystemOrganization);
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    await BuildJournalEntriesForLinensAndTowelsAsync(organizationId, annualAgreement, isMonthly: false, runDate, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    await LogAccountingErrorAsync(
+                        trigger: "LinensAndTowels",
+                        organizationId: organizationId,
+                        officeId: annualAgreement.OfficeId,
+                        sourceTypeId: (int)SourceType.LinensAndTowels,
+                        sourceId: annualAgreement.PropertyId,
+                        documentCode: $"Property-{annualAgreement.PropertyId}",
+                        accountingPeriod: null,
+                        amount: annualAgreement.LinenAndTowelFee,
+                        message: ex.Message,
+                        currentUser: SystemOrganization);
+                }
             }
         }
     }
@@ -225,20 +229,6 @@ public partial class AccountingManager
     private async Task BuildJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, bool isMonthly, DateOnly processingDate, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = agreement.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.LinensAndTowels,
-            SourceId = agreement.PropertyId,
-            IncludeVoided = true,
-            IncludeUnposted = true,
-            StartDate = processingDate,
-            EndDate = processingDate
-        });
-
-        if (existingEntries.Any())
-            return;
 
         var property = await _propertyRepository.GetPropertyByIdAsync(agreement.PropertyId, organizationId)
             ?? throw new Exception($"Property {agreement.PropertyId} was not found");
@@ -256,12 +246,40 @@ public partial class AccountingManager
             await BuildAnnualJournalEntriesForLinensAndTowelsAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, processingDate, cancellationToken);
     }
 
+    private static DateOnly ResolveMonthStart(DateOnly processingDate)
+        => new(processingDate.Year, processingDate.Month, 1);
+
+    private static DateOnly ResolveMonthEnd(DateOnly processingDate)
+        => ResolveMonthStart(processingDate).AddMonths(1).AddDays(-1);
+
+    private async Task<bool> HasLinensAndTowelsJournalEntryAsync(Guid organizationId, PropertyAgreement agreement, DateOnly startDate, DateOnly endDate)
+    {
+        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = agreement.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.LinensAndTowels,
+            SourceId = agreement.PropertyId,
+            IncludeVoided = true,
+            IncludeUnposted = true,
+            StartDate = startDate,
+            EndDate = endDate
+        });
+
+        return existingEntries.Any();
+    }
+
     private async Task BuildMonthlyJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var wasRentedPreviousMonth = await _reservationRepository.WasRentedPreviousMonthAsync(agreement.PropertyId, organizationId, processingDate);
+        var monthStart = ResolveMonthStart(processingDate);
+        var monthEnd = ResolveMonthEnd(processingDate);
+        if (await HasLinensAndTowelsJournalEntryAsync(organizationId, agreement, monthStart, monthEnd))
+            return;
 
-        if (!wasRentedPreviousMonth)
+        var wasRentedThisMonth = await _reservationRepository.WasRentedThisMonthAsync(agreement.PropertyId, organizationId, processingDate);
+
+        if (!wasRentedThisMonth)
             return;
 
         await BuildLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: true, processingDate, cancellationToken);
@@ -270,14 +288,10 @@ public partial class AccountingManager
     private async Task BuildAnnualJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var isAvailableFromCurrentMonthAndYear = availableFrom.HasValue &&
-            availableFrom.Value.Month == processingDate.Month &&
-            availableFrom.Value.Year == processingDate.Year;
-        var isAvailableUntilCurrentMonthAndYear = availableUntil.HasValue &&
-            availableUntil.Value.Month == processingDate.Month &&
-            availableUntil.Value.Year == processingDate.Year;
+        if (processingDate.Month != 1 || processingDate.Day != 1)
+            return;
 
-        if (!isAvailableFromCurrentMonthAndYear && !isAvailableUntilCurrentMonthAndYear && processingDate.Month != 1)
+        if (await HasLinensAndTowelsJournalEntryAsync(organizationId, agreement, processingDate, processingDate))
             return;
 
         await BuildLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: false, processingDate, cancellationToken);

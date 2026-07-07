@@ -306,11 +306,10 @@ public class SchedulingHostedService : BackgroundService
     private async Task ProcessLinenAndTowelFeesAsync(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (DateTime.UtcNow.Day != 1)
-            return;
 
         try
         {
+            var processingDate = DateOnly.FromDateTime(DateTime.UtcNow);
             var organizations = await organizationRepository.GetOrganizationsAsync();
             foreach (var organization in organizations.Where(o => o.IsActive))
             {
@@ -327,7 +326,8 @@ public class SchedulingHostedService : BackgroundService
                     organization.OrganizationId,
                     monthlyBatch,
                     annualBatch,
-                    cancellationToken);
+                    cancellationToken,
+                    processingDate);
 
                 _logger.LogInformation(
                     "Loaded linens/towels agreements for organization {OrganizationId}. Monthly={MonthlyCount}, Annual={AnnualCount}",

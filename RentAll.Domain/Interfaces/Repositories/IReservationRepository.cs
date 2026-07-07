@@ -12,7 +12,7 @@ public interface IReservationRepository
     Task<IEnumerable<ReservationCodes>> GetReservationActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Reservation>> GetReservationListByPropertyIdAsync(Guid propertyId, Guid organizationId);
     Task<IEnumerable<Reservation>> GetReservationActiveListByPropertyIdAsync(Guid propertyId, Guid organizationId);
-    Task<bool> WasRentedThisMonthAsync(Guid propertyId, Guid organizationId);
+    Task<bool> WasRentedThisMonthAsync(Guid propertyId, Guid organizationId, DateOnly? asOfDate = null);
     Task<bool> WasRentedPreviousMonthAsync(Guid propertyId, Guid organizationId, DateOnly? asOfDate = null);
     Task<Reservation?> GetReservationByIdAsync(Guid reservationId, Guid organizationId);
 

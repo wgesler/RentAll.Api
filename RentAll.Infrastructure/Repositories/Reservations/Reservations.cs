@@ -114,13 +114,14 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<bool> WasRentedThisMonthAsync(Guid propertyId, Guid organizationId)
+        public async Task<bool> WasRentedThisMonthAsync(Guid propertyId, Guid organizationId, DateOnly? asOfDate = null)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var result = await db.DapperProcQueryAsync<WasRentedThisMonthEntity>("Property.Reservation_WasRentedThisMonth", new
             {
                 OrganizationId = organizationId,
-                PropertyId = propertyId
+                PropertyId = propertyId,
+                AsOfDate = asOfDate
             });
 
             return result?.FirstOrDefault()?.WasRentedThisMonth ?? false;
