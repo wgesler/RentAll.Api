@@ -6,111 +6,126 @@ public partial class ReportManager
 {
     public async Task<TransferReport> GetTransferReportAsync(JournalEntryRecapGetCriteria criteria)
     {
-        var historyCriteria = new JournalEntryRecapGetCriteria
+        var recapCriteria = new JournalEntryRecapGetCriteria
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
             PropertyId = criteria.PropertyId,
             ReservationId = criteria.ReservationId,
-            StartDate = null,
-            EndDate = null,
+            StartDate = criteria.StartDate,
+            EndDate = criteria.EndDate,
             IncludeVoided = false,
             IncludeUnposted = true,
             RecapCategory = criteria.RecapCategory
         };
 
-        var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(historyCriteria)).ToList();
+        var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(recapCriteria)).ToList();
         var recapRows = BuildRecapReportRows(lines)
             .Where(row => !row.IsPosted)
-            .OrderBy(row => row.SortDateValue)
-            .ThenBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.ReservationCode, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.AccountingPeriod, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.JournalEntryCode, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var runningTotalByRowKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        var runningTotal = 0m;
-        foreach (var row in recapRows)
-        {
-            var businessValue = row.RentPlus4000Value - row.OwnerRentValue;
-            runningTotal += businessValue;
-            runningTotalByRowKey[BuildTransferReportRowKey(row)] = runningTotal;
-        }
-
-        var filteredRows = recapRows
-            .Where(row => IsTransferReportRowInDateRange(row, criteria.StartDate, criteria.EndDate))
-            .Select(row => MapTransferReportRow(row, runningTotalByRowKey))
-            .ToList();
+        var rows = ConsolidateTransferReportRowsBySource(recapRows);
 
         return new TransferReport
         {
-            Rows = filteredRows
+            Rows = rows
         };
     }
 
-    private static string BuildTransferReportRowKey(RecapReportRow row) =>
-        $"{row.JournalEntryId}:{row.JournalEntryLineId}:{row.SortDateValue}";
-
-    private static bool IsTransferReportRowInDateRange(RecapReportRow row, DateOnly? startDate, DateOnly? endDate)
+    private static List<TransferReportRow> ConsolidateTransferReportRowsBySource(IEnumerable<RecapReportRow> recapRows)
     {
-        if (!startDate.HasValue && !endDate.HasValue)
-            return true;
+        var groups = new Dictionary<string, List<RecapReportRow>>(StringComparer.OrdinalIgnoreCase);
 
-        if (row.SortDateValue <= 0)
-            return !startDate.HasValue && !endDate.HasValue;
+        foreach (var row in recapRows)
+        {
+            var key = BuildTransferReportSourceKey(row);
+            if (!groups.TryGetValue(key, out var groupRows))
+            {
+                groupRows = [];
+                groups[key] = groupRows;
+            }
 
-        var transactionDate = new DateTime(row.SortDateValue).Date;
-        if (startDate.HasValue && transactionDate < startDate.Value.ToDateTime(TimeOnly.MinValue).Date)
-            return false;
+            groupRows.Add(row);
+        }
 
-        if (endDate.HasValue && transactionDate > endDate.Value.ToDateTime(TimeOnly.MinValue).Date)
-            return false;
-
-        return true;
+        return groups.Values
+            .Select(MapConsolidatedTransferReportRow)
+            .Where(HasTransferReportMeaningfulAmount)
+            .OrderBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.ReservationCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.SortDateValue)
+            .ThenBy(row => row.Source, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
-    private static TransferReportRow MapTransferReportRow(
-        RecapReportRow row,
-        IReadOnlyDictionary<string, decimal> runningTotalByRowKey)
+    private static string BuildTransferReportSourceKey(RecapReportRow row)
     {
-        var businessValue = row.RentPlus4000Value - row.OwnerRentValue;
-        runningTotalByRowKey.TryGetValue(BuildTransferReportRowKey(row), out var runningTotalUnpostedValue);
+        var source = (row.Source ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(source))
+            return source.ToUpperInvariant();
+
+        var sourceId = row.SourceId?.ToString() ?? string.Empty;
+        return $"{row.OfficeId}|{row.SourceTypeId}|{sourceId}".ToUpperInvariant();
+    }
+
+    private static TransferReportRow MapConsolidatedTransferReportRow(IReadOnlyList<RecapReportRow> rows)
+    {
+        var orderedRows = rows
+            .OrderBy(row => row.SortDateValue)
+            .ThenBy(row => row.AccountingPeriod, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.JournalEntryCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var primaryRow = orderedRows[0];
+
+        var expectedIncomeValue = orderedRows.Sum(row => row.ExpectedIncomeValue);
+        var rentPlus4000Value = orderedRows.Sum(row => row.RentPlus4000Value);
+        var ownerRentValue = orderedRows.Sum(row => row.OwnerRentValue);
+        var securityDepositValue = orderedRows.Sum(row => row.SecurityDepositValue);
+        var sdwValue = orderedRows.Sum(row => row.SdwValue);
+        var feeValue = orderedRows.Sum(row => row.FeeValue);
+        var businessValue = rentPlus4000Value - ownerRentValue;
 
         return new TransferReportRow
         {
-            PropertyCode = row.PropertyCode,
-            ReservationCode = row.ReservationCode,
-            AccountingPeriod = row.AccountingPeriod,
-            Source = row.Source,
-            JournalEntryCode = row.JournalEntryCode,
-            SourceTypeId = row.SourceTypeId,
-            SourceId = row.SourceId,
-            SourceLinkable = row.SourceLinkable,
-            ActivityType = row.ActivityType,
-            OfficeId = row.OfficeId,
-            PropertyId = row.PropertyId,
-            ReservationId = row.ReservationId,
-            TransactionDate = row.TransactionDate,
-            ExpectedIncome = row.ExpectedIncome,
-            RentPlus4000 = row.RentPlus4000,
-            OwnerRent = row.OwnerRent,
+            PropertyCode = primaryRow.PropertyCode,
+            ReservationCode = primaryRow.ReservationCode,
+            AccountingPeriod = primaryRow.AccountingPeriod,
+            Source = primaryRow.Source,
+            JournalEntryCode = primaryRow.JournalEntryCode,
+            SourceTypeId = primaryRow.SourceTypeId,
+            SourceId = primaryRow.SourceId,
+            SourceLinkable = primaryRow.SourceLinkable,
+            ActivityType = primaryRow.ActivityType,
+            OfficeId = primaryRow.OfficeId,
+            PropertyId = primaryRow.PropertyId,
+            ReservationId = primaryRow.ReservationId,
+            TransactionDate = primaryRow.TransactionDate,
+            ExpectedIncome = FormatCurrencyUsd(expectedIncomeValue),
+            RentPlus4000 = FormatCurrencyUsd(rentPlus4000Value),
+            OwnerRent = FormatCurrencyUsd(ownerRentValue),
             Business = FormatCurrencyUsd(businessValue),
-            SecurityDeposit = row.SecurityDeposit,
-            Sdw = row.Sdw,
-            Fee = row.Fee,
-            RunningTotalUnposted = FormatCurrencyUsd(runningTotalUnpostedValue),
-            ExpectedIncomeValue = row.ExpectedIncomeValue,
-            RentPlus4000Value = row.RentPlus4000Value,
-            OwnerRentValue = row.OwnerRentValue,
+            SecurityDeposit = FormatCurrencyUsd(securityDepositValue),
+            Sdw = FormatCurrencyUsd(sdwValue),
+            Fee = FormatCurrencyUsd(feeValue),
+            ExpectedIncomeValue = expectedIncomeValue,
+            RentPlus4000Value = rentPlus4000Value,
+            OwnerRentValue = ownerRentValue,
             BusinessValue = businessValue,
-            SecurityDepositValue = row.SecurityDepositValue,
-            SdwValue = row.SdwValue,
-            FeeValue = row.FeeValue,
-            RunningTotalUnpostedValue = runningTotalUnpostedValue,
-            SortDateValue = row.SortDateValue,
-            JournalEntryId = row.JournalEntryId,
-            JournalEntryLineId = row.JournalEntryLineId
+            SecurityDepositValue = securityDepositValue,
+            SdwValue = sdwValue,
+            FeeValue = feeValue,
+            SortDateValue = primaryRow.SortDateValue,
+            JournalEntryId = primaryRow.JournalEntryId,
+            JournalEntryLineId = primaryRow.JournalEntryLineId
         };
     }
+
+    private static bool HasTransferReportMeaningfulAmount(TransferReportRow row) =>
+        row.ExpectedIncomeValue != 0
+        || row.RentPlus4000Value != 0
+        || row.OwnerRentValue != 0
+        || row.BusinessValue != 0
+        || row.SecurityDepositValue != 0
+        || row.SdwValue != 0
+        || row.FeeValue != 0;
 }

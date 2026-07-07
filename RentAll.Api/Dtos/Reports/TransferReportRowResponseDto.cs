@@ -24,7 +24,6 @@ public class TransferReportRowResponseDto
     public string SecurityDeposit { get; set; } = string.Empty;
     public string Sdw { get; set; } = string.Empty;
     public string Fee { get; set; } = string.Empty;
-    public string RunningTotalUnposted { get; set; } = string.Empty;
     public decimal ExpectedIncomeValue { get; set; }
     public decimal RentPlus4000Value { get; set; }
     public decimal OwnerRentValue { get; set; }
@@ -32,7 +31,6 @@ public class TransferReportRowResponseDto
     public decimal SecurityDepositValue { get; set; }
     public decimal SdwValue { get; set; }
     public decimal FeeValue { get; set; }
-    public decimal RunningTotalUnpostedValue { get; set; }
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
@@ -59,7 +57,6 @@ public class TransferReportRowResponseDto
         SecurityDeposit = row.SecurityDeposit;
         Sdw = row.Sdw;
         Fee = row.Fee;
-        RunningTotalUnposted = row.RunningTotalUnposted;
         ExpectedIncomeValue = row.ExpectedIncomeValue;
         RentPlus4000Value = row.RentPlus4000Value;
         OwnerRentValue = row.OwnerRentValue;
@@ -67,7 +64,6 @@ public class TransferReportRowResponseDto
         SecurityDepositValue = row.SecurityDepositValue;
         SdwValue = row.SdwValue;
         FeeValue = row.FeeValue;
-        RunningTotalUnpostedValue = row.RunningTotalUnpostedValue;
         SortDateValue = row.SortDateValue;
         JournalEntryId = row.JournalEntryId;
         JournalEntryLineId = row.JournalEntryLineId;

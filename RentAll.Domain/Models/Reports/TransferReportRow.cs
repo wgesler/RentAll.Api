@@ -22,7 +22,6 @@ public class TransferReportRow
     public string SecurityDeposit { get; set; } = string.Empty;
     public string Sdw { get; set; } = string.Empty;
     public string Fee { get; set; } = string.Empty;
-    public string RunningTotalUnposted { get; set; } = string.Empty;
     public decimal ExpectedIncomeValue { get; set; }
     public decimal RentPlus4000Value { get; set; }
     public decimal OwnerRentValue { get; set; }
@@ -30,7 +29,6 @@ public class TransferReportRow
     public decimal SecurityDepositValue { get; set; }
     public decimal SdwValue { get; set; }
     public decimal FeeValue { get; set; }
-    public decimal RunningTotalUnpostedValue { get; set; }
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
