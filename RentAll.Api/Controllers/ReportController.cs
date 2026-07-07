@@ -63,4 +63,51 @@ public class ReportController : BaseController
             return ServerError("An error occurred while retrieving the owner cash report");
         }
     }
+
+    [HttpPost("owner-accrual/search")]
+    public async Task<IActionResult> SearchOwnerAccrualReport([FromBody] GetOwnerAccrualReportDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Owner accrual report search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var report = await _reportManager.GetOwnerAccrualReportAsync(criteria);
+            return Ok(new OwnerAccrualReportResponseDto(report));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching owner accrual report");
+            return ServerError("An error occurred while retrieving the owner accrual report");
+        }
+    }
+
+    [HttpPost("owner-report/journal-entry-line/search")]
+    public async Task<IActionResult> SearchOwnerReportJournalEntryLines([FromBody] GetOwnerReportJournalEntryLineDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Owner report journal entry line search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var lines = await _reportManager.GetOwnerReportJournalEntryLinesAsync(criteria);
+            var response = lines.Select(line => new OwnerReportJournalEntryLineResponseDto(line)).ToList();
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching owner report journal entry lines");
+            return ServerError("An error occurred while retrieving owner report journal entry lines");
+        }
+    }
 }

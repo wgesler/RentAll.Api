@@ -6,4 +6,6 @@ public interface IReportManager
 {
     Task<RecapReport> GetJournalEntryRecapReportAsync(JournalEntryRecapGetCriteria criteria);
     Task<OwnerCashReport> GetOwnerCashReportAsync(JournalEntryRecapGetCriteria criteria);
+    Task<OwnerAccrualReport> GetOwnerAccrualReportAsync(JournalEntryRecapGetCriteria criteria);
+    Task<IEnumerable<OwnerStatementJournalEntryLine>> GetOwnerReportJournalEntryLinesAsync(OwnerStatementJournalEntryLineGetCriteria criteria);
 }

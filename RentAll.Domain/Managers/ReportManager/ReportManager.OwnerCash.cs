@@ -8,12 +8,6 @@ public partial class ReportManager
 {
     private const string OwnerStartingBalanceMemoPrefix = "Owner: Starting Balance:";
 
-    private sealed class OwnerCashRecapPropertyTotals
-    {
-        public decimal ReceivedIncome { get; set; }
-        public decimal OwnerExpenses { get; set; }
-    }
-
     public async Task<OwnerCashReport> GetOwnerCashReportAsync(JournalEntryRecapGetCriteria criteria)
     {
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
@@ -24,17 +18,8 @@ public partial class ReportManager
 
         var properties = await LoadOwnerCashPropertyReportDataAsync(criteria);
         var startingBalanceByKey = await GetOwnerCashStartingBalanceByKeyAsync(criteria, officeIds);
-        var recapTotalsByProperty = recapRows
-            .Where(row => row.PropertyId.HasValue && row.PropertyId.Value != Guid.Empty)
-            .GroupBy(row => BuildOwnerCashPropertyKey(row.OfficeId, row.PropertyId!.Value))
-            .ToDictionary(
-                group => group.Key,
-                group => new OwnerCashRecapPropertyTotals
-                {
-                    ReceivedIncome = group.Sum(row => row.OwnerRentValue),
-                    OwnerExpenses = group.Sum(row => row.OwnerExpenseValue)
-                },
-                StringComparer.OrdinalIgnoreCase);
+        var propertyActivityLines = BuildOwnerCashPropertyActivityLines(recapRows);
+        var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
 
         var rows = properties
             .Select(property =>
@@ -45,10 +30,11 @@ public partial class ReportManager
                     property.OfficeId,
                     property.PropertyId,
                     property.PrimaryOwnerId);
-                recapTotalsByProperty.TryGetValue(propertyKey, out var totals);
+                activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
+                activityLines ??= [];
 
-                var receivedIncome = totals?.ReceivedIncome ?? 0m;
-                var ownerExpenses = totals?.OwnerExpenses ?? 0m;
+                var receivedIncome = activityLines.Sum(line => line.ReceivedIncome);
+                var ownerExpenses = activityLines.Sum(line => line.Expenses);
                 var ownerPayment = CalculateOwnerCashOwnerPayment(
                     startingBalance,
                     receivedIncome,
@@ -83,9 +69,29 @@ public partial class ReportManager
         return new OwnerCashReport
         {
             Rows = rows,
-            PropertyActivityLines = BuildOwnerCashPropertyActivityLines(recapRows)
+            PropertyActivityLines = propertyActivityLines
         };
     }
+
+    private static Dictionary<string, List<OwnerStatementPropertyActivityLine>> BuildOwnerReportPropertyActivityLinesByKey(
+        IEnumerable<OwnerStatementPropertyActivityLine> lines)
+    {
+        return lines
+            .GroupBy(line => BuildOwnerCashPropertyKey(line.OfficeId, line.PropertyId))
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToList(),
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool HasOwnerCashReportRecapActivity(RecapReportRow row) =>
+        row.OwnerRentValue != 0
+        || row.OwnerExpenseValue != 0
+        || row.OwnerPaymentValue != 0;
+
+    private static bool HasOwnerAccrualReportRecapActivity(RecapReportRow row) =>
+        row.ExpectedIncomeValue != 0
+        || HasOwnerCashReportRecapActivity(row);
 
     private async Task<List<PropertyReportData>> LoadOwnerCashPropertyReportDataAsync(JournalEntryRecapGetCriteria criteria)
     {
@@ -188,7 +194,7 @@ public partial class ReportManager
     {
         return recapRows
             .Where(row => row.PropertyId.HasValue && row.PropertyId.Value != Guid.Empty)
-            .Where(row => row.OwnerRentValue != 0 || row.OwnerExpenseValue != 0 || row.OwnerPaymentValue != 0)
+            .Where(row => HasOwnerCashReportRecapActivity(row))
             .Select(row => new OwnerStatementPropertyActivityLine
             {
                 PropertyId = row.PropertyId!.Value,

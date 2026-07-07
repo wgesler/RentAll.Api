@@ -1,8 +1,8 @@
 using RentAll.Domain.Models;
 
-namespace RentAll.Api.Dtos.Accounting.OwnerStatements;
+namespace RentAll.Api.Dtos.Reports;
 
-public class OwnerStatementJournalEntryLineResponseDto
+public class OwnerReportJournalEntryLineResponseDto
 {
     public Guid JournalEntryLineId { get; set; }
     public Guid JournalEntryId { get; set; }
@@ -20,7 +20,7 @@ public class OwnerStatementJournalEntryLineResponseDto
     public string Category { get; set; } = string.Empty;
     public decimal Amount { get; set; }
 
-    public OwnerStatementJournalEntryLineResponseDto(OwnerStatementJournalEntryLine line)
+    public OwnerReportJournalEntryLineResponseDto(OwnerStatementJournalEntryLine line)
     {
         JournalEntryLineId = line.JournalEntryLineId;
         JournalEntryId = line.JournalEntryId;

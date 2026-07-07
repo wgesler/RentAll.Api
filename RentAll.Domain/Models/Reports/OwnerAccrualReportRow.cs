@@ -1,0 +1,17 @@
+namespace RentAll.Domain.Models;
+
+public class OwnerAccrualReportRow
+{
+    public Guid PropertyId { get; set; }
+    public int OfficeId { get; set; }
+    public string OfficeName { get; set; } = string.Empty;
+    public Guid? OwnerId { get; set; }
+    public string PropertyCode { get; set; } = string.Empty;
+    public string OwnerName { get; set; } = string.Empty;
+    public decimal InvoicedIncome { get; set; }
+    public decimal PrepaidIncome { get; set; }
+    public decimal PaidIncome { get; set; }
+    public decimal UnpaidIncome { get; set; }
+    public decimal OwnerExpenses { get; set; }
+    public decimal OwnerProfit { get; set; }
+}

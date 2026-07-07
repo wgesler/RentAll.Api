@@ -1,0 +1,35 @@
+using RentAll.Domain.Models;
+
+namespace RentAll.Api.Dtos.Reports;
+
+public class OwnerAccrualReportRowResponseDto
+{
+    public Guid PropertyId { get; set; }
+    public int OfficeId { get; set; }
+    public string OfficeName { get; set; } = string.Empty;
+    public Guid? OwnerId { get; set; }
+    public string PropertyCode { get; set; } = string.Empty;
+    public string OwnerName { get; set; } = string.Empty;
+    public decimal InvoicedIncome { get; set; }
+    public decimal PrepaidIncome { get; set; }
+    public decimal PaidIncome { get; set; }
+    public decimal UnpaidIncome { get; set; }
+    public decimal OwnerExpenses { get; set; }
+    public decimal OwnerProfit { get; set; }
+
+    public OwnerAccrualReportRowResponseDto(OwnerAccrualReportRow row)
+    {
+        PropertyId = row.PropertyId;
+        OfficeId = row.OfficeId;
+        OfficeName = row.OfficeName;
+        OwnerId = row.OwnerId;
+        PropertyCode = row.PropertyCode;
+        OwnerName = row.OwnerName;
+        InvoicedIncome = row.InvoicedIncome;
+        PrepaidIncome = row.PrepaidIncome;
+        PaidIncome = row.PaidIncome;
+        UnpaidIncome = row.UnpaidIncome;
+        OwnerExpenses = row.OwnerExpenses;
+        OwnerProfit = row.OwnerProfit;
+    }
+}
