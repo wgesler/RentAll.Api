@@ -8,11 +8,12 @@ public class WorkOrder
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
-    public Guid PropertyId { get; set; }
+    public Guid? PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
     public string WorkOrderCode { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public WorkOrderType WorkOrderType { get; set; }

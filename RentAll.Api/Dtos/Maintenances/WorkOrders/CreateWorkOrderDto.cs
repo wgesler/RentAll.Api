@@ -1,13 +1,17 @@
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
+
 namespace RentAll.Api.Dtos.Maintenances.WorkOrders;
 
 public class CreateWorkOrderDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public Guid PropertyId { get; set; }
+    public Guid? PropertyId { get; set; }
     public Guid? ReservationId { get; set; }
     public string? ReservationCode { get; set; }
     public string WorkOrderCode { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int WorkOrderTypeId { get; set; }
     public bool ApplyMarkup { get; set; }
@@ -27,10 +31,17 @@ public class CreateWorkOrderDto
             return (false, "OfficeId is required");
 
         if (PropertyId == Guid.Empty)
+            PropertyId = null;
+
+        var requiresPropertyId = WorkOrderTypeId != (int)WorkOrderType.Company;
+        if (requiresPropertyId && !PropertyId.HasValue)
             return (false, "PropertyId is required");
 
         if (string.IsNullOrWhiteSpace(WorkOrderCode))
             return (false, "WorkOrderCode is required");
+
+        if (string.IsNullOrWhiteSpace(Title))
+            return (false, "Title is required");
 
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
@@ -57,10 +68,11 @@ public class CreateWorkOrderDto
         {
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
-            PropertyId = PropertyId,
+            PropertyId = PropertyId is { } id && id != Guid.Empty ? id : null,
             ReservationId = ReservationId,
             ReservationCode = ReservationCode,
             WorkOrderCode = WorkOrderCode,
+            Title = Title,
             Description = Description,
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
             ApplyMarkup = ApplyMarkup,

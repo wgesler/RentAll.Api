@@ -268,7 +268,7 @@ public partial class AccountingManager
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerContactId = await ResolveWorkOrderOwnerContactIdAsync(workOrder);
-        Guid? propertyId = workOrder.PropertyId == Guid.Empty ? null : workOrder.PropertyId;
+        Guid? propertyId = workOrder.PropertyId;
         var memo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, workOrder.Description);
         var journalEntryLines = new List<JournalEntryLine>();
 
@@ -428,10 +428,10 @@ public partial class AccountingManager
 
     private async Task<Guid?> ResolveWorkOrderOwnerContactIdAsync(WorkOrder workOrder)
     {
-        if (workOrder.PropertyId == Guid.Empty)
+        if (!workOrder.PropertyId.HasValue || workOrder.PropertyId.Value == Guid.Empty)
             return null;
 
-        var property = await _propertyRepository.GetPropertyByIdAsync(workOrder.PropertyId, workOrder.OrganizationId);
+        var property = await _propertyRepository.GetPropertyByIdAsync(workOrder.PropertyId.Value, workOrder.OrganizationId);
         if (property?.Owner1Id is { } ownerId && ownerId != Guid.Empty)
             return ownerId;
 

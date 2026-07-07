@@ -326,6 +326,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             ReservationId = e.ReservationId,
             ReservationCode = e.ReservationCode,
             WorkOrderCode = e.WorkOrderCode,
+            Title = e.Title,
             Description = e.Description,
             Amount = e.Amount,
             WorkOrderType = (WorkOrderType)e.WorkOrderTypeId,
