@@ -251,7 +251,7 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
-    public async Task PrePayment_OwnerSharePayment_IsDeferredUntilAccountingPeriod()
+    public async Task PrePayment_DoesNotCreateOwnerSharePaymentJournalEntry()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
             new DateOnly(2026, 2, 1),
@@ -281,16 +281,11 @@ public class InvoiceJournalEntryGapCoverageTests
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId))
             .ToList();
 
-        Assert.Single(ownerPaymentEntries);
-        var ownerPaymentEntry = ownerPaymentEntries[0];
-        Assert.Equal(accountingPeriod, ownerPaymentEntry.TransactionDate);
-        Assert.NotEqual(paymentDate, ownerPaymentEntry.TransactionDate);
-        Assert.StartsWith("Owner: Payment:", ownerPaymentEntry.Memo, StringComparison.Ordinal);
-        Assert.Equal(640m, ownerPaymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId).Credit);
+        Assert.Empty(ownerPaymentEntries);
     }
 
     [Fact]
-    public async Task StandardPayment_OwnerSharePayment_UsesInvoiceAccountingPeriodDate()
+    public async Task StandardPayment_DoesNotCreateOwnerSharePaymentJournalEntry()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
             new DateOnly(2026, 4, 1),
@@ -314,13 +309,12 @@ public class InvoiceJournalEntryGapCoverageTests
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        var ownerPaymentEntry = Assert.Single(context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
+        var ownerPaymentEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
                 && entry.SourceId == payment.LedgerLineId
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId));
 
-        Assert.Equal(accountingPeriod, ownerPaymentEntry.TransactionDate);
-        Assert.NotEqual(paymentDate, ownerPaymentEntry.TransactionDate);
+        Assert.Empty(ownerPaymentEntries);
     }
 
     [Fact]

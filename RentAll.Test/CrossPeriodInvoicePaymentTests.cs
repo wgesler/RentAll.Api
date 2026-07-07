@@ -149,7 +149,7 @@ public class CrossPeriodInvoicePaymentTests
 
         const decimal juneCharge = 500m;
         const decimal julyCharge = 1500m;
-        Assert.Equal(invoice.TotalAmount, juneCharge + julyCharge);
+        Assert.Equal(juneCharge + julyCharge, invoice.TotalAmount);
 
         return new CrossPeriodPaymentScenario(invoice, context, juneCharge, julyCharge, invoice.TotalAmount);
     }

@@ -194,6 +194,7 @@ builder.Services.AddScoped<IPropertyManager, PropertyManager>();
 builder.Services.AddScoped<IEmailManager, EmailManager>();
 builder.Services.AddScoped<IOrganizationManager, OrganizationManager>();
 builder.Services.AddScoped<IAccountingManager, AccountingManager>();
+builder.Services.AddScoped<IReportManager, ReportManager>();
 builder.Services.AddScoped<IMaintenanceManager, MaintenanceManager>();
 builder.Services.AddScoped<ICalendarManager, CalendarManager>();
 

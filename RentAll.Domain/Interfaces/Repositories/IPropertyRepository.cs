@@ -12,6 +12,7 @@ public interface IPropertyRepository
     Task<IEnumerable<PropertyList>> GetPropertyListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyList>> GetActivePropertyListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyList>> GetPropertyListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess);
+    Task<IEnumerable<PropertyReportData>> GetPropertyReportDataAsync(Guid organizationId, string officeIds, Guid? propertyId = null);
     Task<Property?> GetPropertyByIdAsync(Guid propertyId, Guid organizationId);
     Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId);
     Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId);

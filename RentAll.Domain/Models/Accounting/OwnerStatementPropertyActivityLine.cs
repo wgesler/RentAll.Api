@@ -14,4 +14,5 @@ public class OwnerStatementPropertyActivityLine
     public decimal ExpectedIncome { get; set; }
     public decimal ReceivedIncome { get; set; }
     public decimal Expenses { get; set; }
+    public decimal OwnerPayment { get; set; }
 }
