@@ -269,7 +269,7 @@ public partial class AccountingManager
         var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerContactId = await ResolveWorkOrderOwnerContactIdAsync(workOrder);
         Guid? propertyId = workOrder.PropertyId;
-        var memo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, workOrder.Description);
+        var memo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, workOrder.Title);
         var journalEntryLines = new List<JournalEntryLine>();
 
         if (workOrder.WorkOrderType == WorkOrderType.Owner && ownerWorkOrderTotal != 0)

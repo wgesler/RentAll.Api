@@ -90,8 +90,7 @@ public partial class ReportManager
         || row.OwnerPaymentValue != 0;
 
     private static bool HasOwnerAccrualReportRecapActivity(RecapReportRow row) =>
-        row.ExpectedIncomeValue != 0
-        || HasOwnerCashReportRecapActivity(row);
+        HasOwnerCashReportRecapActivity(row);
 
     private async Task<List<PropertyReportData>> LoadOwnerCashPropertyReportDataAsync(JournalEntryRecapGetCriteria criteria)
     {
@@ -114,7 +113,8 @@ public partial class ReportManager
     {
         var startingBalanceByKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         var priorMonthClose = ResolveOwnerCashPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
-        if (!priorMonthClose.HasValue)
+        var periodStart = ResolveOwnerReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        if (!priorMonthClose.HasValue && !periodStart.HasValue)
             return startingBalanceByKey;
 
         foreach (var officeId in officeIds)
@@ -123,30 +123,103 @@ public partial class ReportManager
             var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(criteria.OrganizationId, officeId);
             var ownerAccountsPayableAccountId = ResolveOwnerAccountsPayableAccountId(chartOfAccounts, officeId, accountingOffice);
 
-            var priorMonthOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+            if (priorMonthClose.HasValue)
             {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = officeId.ToString(),
-                ChartOfAccountId = ownerAccountsPayableAccountId,
-                PropertyId = criteria.PropertyId,
-                StartDate = null,
-                EndDate = priorMonthClose,
-                IncludeVoided = false,
-                IncludeUnposted = true
-            });
+                var priorMonthOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+                {
+                    OrganizationId = criteria.OrganizationId,
+                    OfficeIds = officeId.ToString(),
+                    ChartOfAccountId = ownerAccountsPayableAccountId,
+                    PropertyId = criteria.PropertyId,
+                    StartDate = null,
+                    EndDate = priorMonthClose,
+                    IncludeVoided = false,
+                    IncludeUnposted = true
+                });
 
-            foreach (var group in priorMonthOwnerApLines
-                         .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
-                         .GroupBy(line => BuildOwnerCashStartingBalanceKey(
-                             line.OfficeId,
-                             line.PropertyId!.Value,
-                             line.ContactId)))
+                foreach (var group in priorMonthOwnerApLines
+                             .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
+                             .GroupBy(line => BuildOwnerCashStartingBalanceKey(
+                                 line.OfficeId,
+                                 line.PropertyId!.Value,
+                                 line.ContactId)))
+                {
+                    startingBalanceByKey[group.Key] = CalculateOwnerApBalanceFromInitialStartingBalanceWindow(group);
+                }
+            }
+
+            if (periodStart.HasValue)
             {
-                startingBalanceByKey[group.Key] = CalculateOwnerApBalanceFromInitialStartingBalanceWindow(group);
+                var reportEnd = ResolveOwnerReportPeriodEndDate(criteria.StartDate, criteria.EndDate);
+                if (reportEnd.HasValue)
+                {
+                    await ApplyInReportRangeStartingBalanceSupplementAsync(
+                        criteria,
+                        officeId,
+                        ownerAccountsPayableAccountId,
+                        periodStart.Value,
+                        reportEnd.Value,
+                        startingBalanceByKey);
+                }
             }
         }
 
         return startingBalanceByKey;
+    }
+
+    private async Task ApplyInReportRangeStartingBalanceSupplementAsync(
+        JournalEntryRecapGetCriteria criteria,
+        int officeId,
+        int ownerAccountsPayableAccountId,
+        DateOnly periodStart,
+        DateOnly reportEnd,
+        Dictionary<string, decimal> startingBalanceByKey)
+    {
+        var inRangeOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = officeId.ToString(),
+            ChartOfAccountId = ownerAccountsPayableAccountId,
+            PropertyId = criteria.PropertyId,
+            StartDate = periodStart,
+            EndDate = reportEnd,
+            IncludeVoided = false,
+            IncludeUnposted = true
+        });
+
+        foreach (var propertyGroup in inRangeOwnerApLines
+                     .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
+                     .Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo))
+                     .GroupBy(line => BuildOwnerCashStartingBalanceKey(
+                         line.OfficeId,
+                         line.PropertyId!.Value,
+                         line.ContactId)))
+        {
+            if (startingBalanceByKey.TryGetValue(propertyGroup.Key, out var existingBalance) && existingBalance != 0)
+                continue;
+
+            var earliestStartingBalanceEntry = propertyGroup
+                .GroupBy(line => line.JournalEntryId)
+                .Select(journalEntryGroup =>
+                {
+                    var firstLine = journalEntryGroup.First();
+                    return new
+                    {
+                        firstLine.TransactionDate,
+                        firstLine.JournalEntryCode,
+                        NetBalance = journalEntryGroup.Sum(line => line.Credit - line.Debit)
+                    };
+                })
+                .Where(entry => entry.NetBalance != 0)
+                .OrderBy(entry => entry.TransactionDate)
+                .ThenBy(entry => entry.JournalEntryCode)
+                .FirstOrDefault();
+
+            if (earliestStartingBalanceEntry == null)
+                continue;
+
+            startingBalanceByKey[propertyGroup.Key] = earliestStartingBalanceEntry.NetBalance;
+        }
     }
 
     private static decimal ResolveOwnerCashStartingBalance(
@@ -377,6 +450,28 @@ public partial class ReportManager
             var firstDayOfMonth = new DateOnly(endDate.Value.Year, endDate.Value.Month, 1);
             return firstDayOfMonth.AddDays(-1);
         }
+
+        return null;
+    }
+
+    private static DateOnly? ResolveOwnerReportPeriodStartDate(DateOnly? startDate, DateOnly? endDate)
+    {
+        if (startDate.HasValue)
+            return startDate.Value;
+
+        if (endDate.HasValue)
+            return new DateOnly(endDate.Value.Year, endDate.Value.Month, 1);
+
+        return null;
+    }
+
+    private static DateOnly? ResolveOwnerReportPeriodEndDate(DateOnly? startDate, DateOnly? endDate)
+    {
+        if (endDate.HasValue)
+            return endDate.Value;
+
+        if (startDate.HasValue)
+            return startDate.Value;
 
         return null;
     }

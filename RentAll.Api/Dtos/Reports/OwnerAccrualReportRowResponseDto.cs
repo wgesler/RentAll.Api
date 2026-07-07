@@ -10,6 +10,7 @@ public class OwnerAccrualReportRowResponseDto
     public Guid? OwnerId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string OwnerName { get; set; } = string.Empty;
+    public decimal StartingBalance { get; set; }
     public decimal InvoicedIncome { get; set; }
     public decimal PrepaidIncome { get; set; }
     public decimal PaidIncome { get; set; }
@@ -25,6 +26,7 @@ public class OwnerAccrualReportRowResponseDto
         OwnerId = row.OwnerId;
         PropertyCode = row.PropertyCode;
         OwnerName = row.OwnerName;
+        StartingBalance = row.StartingBalance;
         InvoicedIncome = row.InvoicedIncome;
         PrepaidIncome = row.PrepaidIncome;
         PaidIncome = row.PaidIncome;

@@ -8,6 +8,7 @@ public class OwnerAccrualReportRow
     public Guid? OwnerId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string OwnerName { get; set; } = string.Empty;
+    public decimal StartingBalance { get; set; }
     public decimal InvoicedIncome { get; set; }
     public decimal PrepaidIncome { get; set; }
     public decimal PaidIncome { get; set; }

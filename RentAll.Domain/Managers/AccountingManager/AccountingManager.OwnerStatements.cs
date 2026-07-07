@@ -14,6 +14,12 @@ public partial class AccountingManager
         if (officeId <= 0 || ownerId == Guid.Empty || propertyId == Guid.Empty || transactionDate == default || amount == 0)
             throw new Exception("Office, owner, property, transaction date, and non-zero amount are required to create owner starting balance.");
 
+        await _journalEntryRepository.DeleteOwnerStatementStartingBalancesByCriteriaAsync(
+            organizationId,
+            officeId,
+            ownerId,
+            propertyId);
+
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
         var ownerExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice);

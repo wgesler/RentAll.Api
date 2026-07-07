@@ -15,6 +15,14 @@ public partial class ReportManager
             return new OwnerAccrualReport();
 
         var properties = await LoadOwnerCashPropertyReportDataAsync(criteria);
+        var startingBalanceByKey = await GetOwnerCashStartingBalanceByKeyAsync(criteria, officeIds);
+        var recapRowsByProperty = recapRows
+            .Where(row => row.PropertyId.HasValue && row.PropertyId.Value != Guid.Empty)
+            .GroupBy(row => BuildOwnerCashPropertyKey(row.OfficeId, row.PropertyId!.Value))
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToList(),
+                StringComparer.OrdinalIgnoreCase);
         var propertyActivityLines = BuildOwnerAccrualPropertyActivityLines(recapRows);
         var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
 
@@ -22,14 +30,21 @@ public partial class ReportManager
             .Select(property =>
             {
                 var propertyKey = BuildOwnerCashPropertyKey(property.OfficeId, property.PropertyId);
+                var startingBalance = ResolveOwnerCashStartingBalance(
+                    startingBalanceByKey,
+                    property.OfficeId,
+                    property.PropertyId,
+                    property.PrimaryOwnerId);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
+                recapRowsByProperty.TryGetValue(propertyKey, out var propertyRecapRows);
+                propertyRecapRows ??= [];
 
                 var invoicedIncome = activityLines.Sum(line => line.ExpectedIncome);
                 var paidIncome = activityLines.Sum(line => line.ReceivedIncome);
-                var prepaidIncome = activityLines.Sum(line => line.OwnerPayment);
+                var prepaidIncome = ResolvePropertyPrepaidIncome(propertyRecapRows);
                 var ownerExpenses = activityLines.Sum(line => line.Expenses);
-                var unpaidIncome = activityLines.Sum(line => line.ExpectedIncome - line.ReceivedIncome);
+                var unpaidIncome = startingBalance + invoicedIncome - paidIncome;
                 var ownerProfit = activityLines.Sum(line => line.ReceivedIncome - line.Expenses);
 
                 return new OwnerAccrualReportRow
@@ -40,6 +55,7 @@ public partial class ReportManager
                     OwnerId = property.PrimaryOwnerId,
                     PropertyCode = property.PropertyCode,
                     OwnerName = (property.OwnerNames ?? string.Empty).Trim(),
+                    StartingBalance = startingBalance,
                     InvoicedIncome = invoicedIncome,
                     PrepaidIncome = prepaidIncome,
                     PaidIncome = paidIncome,
@@ -76,16 +92,30 @@ public partial class ReportManager
                 AccountingPeriod = (row.AccountingPeriod ?? string.Empty).Trim(),
                 DocumentCode = ResolveOwnerCashActivityDocumentCode(row),
                 Description = ResolveOwnerCashActivityDescription(row),
-                ExpectedIncome = row.ExpectedIncomeValue,
-                ReceivedIncome = row.PaymentValue,
+                ExpectedIncome = row.OwnerRentValue,
+                ReceivedIncome = row.OwnerPaymentValue,
                 Expenses = row.OwnerExpenseValue,
                 OwnerPayment = row.PrePaymentValue
             })
             .OrderBy(line => line.OfficeId)
             .ThenBy(line => line.PropertyId)
             .ThenBy(line => line.ActivityDate)
+            .ThenBy(line => line.AccountingPeriod, StringComparer.Ordinal)
             .ThenBy(line => line.DocumentCode)
             .ToList();
+    }
+
+    private static decimal ResolvePropertyPrepaidIncome(IReadOnlyList<RecapReportRow> propertyRecapRows)
+    {
+        return propertyRecapRows
+            .Where(row => HasOwnerAccrualReportRecapActivity(row))
+            .GroupBy(row => row.ReservationCode ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderBy(row => row.AccountingPeriod, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.SortDateValue)
+                .Last()
+                .PrePaymentValue)
+            .Sum();
     }
 
     private static DateOnly ParseOwnerAccrualActivityDate(string transactionDate)

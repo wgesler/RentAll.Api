@@ -51,28 +51,17 @@ public partial class ReportManager
 
         return metric switch
         {
-            "expected" => string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase),
+            "expected" => string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase),
             "prepaid" => string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase),
-            "paidincome" => string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
-                || IsOwnerRentPaymentRecapLine(line),
-            "outstanding" => string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
-                || IsOwnerRentPaymentRecapLine(line),
+            "paidincome" => string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase),
+            "outstanding" => string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase),
             "income" => string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase),
             "expenses" => string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase),
             "balance" => string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase),
             _ => false
         };
-    }
-
-    private static bool IsOwnerRentPaymentRecapLine(JournalEntryRecapLine line)
-    {
-        if (!string.Equals(line.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        var memo = (line.Description ?? string.Empty).Trim();
-        return memo.Contains("PAYMENT:", StringComparison.OrdinalIgnoreCase);
     }
 
     private static OwnerStatementJournalEntryLine MapRecapLineToOwnerReportJournalEntryLine(
@@ -108,6 +97,7 @@ public partial class ReportManager
             "PrePayment" => "PrePaid",
             "Payment" => "PaidIncome",
             "OwnerRent" => "Actual",
+            "OwnerPayment" => "OwnerPayment",
             "Expense" => "Expense",
             _ => (recapCategory ?? string.Empty).Trim()
         };
@@ -119,7 +109,7 @@ public partial class ReportManager
         string category)
     {
         var amount = line.Amount;
-        if (metric == "outstanding" && string.Equals(category, "Actual", StringComparison.OrdinalIgnoreCase))
+        if (metric == "outstanding" && string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase))
             return -amount;
 
         if (metric == "balance" && string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase))

@@ -27,8 +27,6 @@ namespace RentAll.Api.Controllers
 
                     if (!await _authManager.VerifyPasswordAsync(CurrentUser, dto.CurrentPassword))
                         return Unauthorized("Password confirmation failed.");
-
-                    await _accountingManager.DeleteJournalEntryAsync(existingStartingBalance!.JournalEntryId, CurrentOrganizationId);
                 }
                 else if (hasExistingStartingBalance)
                 {
