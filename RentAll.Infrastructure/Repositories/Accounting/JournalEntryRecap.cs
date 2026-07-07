@@ -45,6 +45,7 @@ public partial class JournalEntryRepository
             ReservationCode = e.ReservationCode,
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
+            IsPosted = e.IsPosted,
             SourceTypeCode = e.SourceTypeCode,
             SourceDocumentCode = e.SourceDocumentCode,
             ChartOfAccountId = e.ChartOfAccountId,

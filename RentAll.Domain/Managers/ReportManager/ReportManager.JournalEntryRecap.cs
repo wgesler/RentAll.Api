@@ -38,8 +38,10 @@ public partial class ReportManager
         public long SortDateValue { get; set; }
         public Guid? JournalEntryId { get; set; }
         public Guid? JournalEntryLineId { get; set; }
+        public bool IsPosted { get; set; }
         public decimal ExpectedIncomeValue { get; set; }
         public decimal RentPlus4000Value { get; set; }
+        public decimal SecurityDepositValue { get; set; }
         public decimal SdwValue { get; set; }
         public decimal FeeValue { get; set; }
         public decimal PaymentValue { get; set; }
@@ -164,6 +166,8 @@ public partial class ReportManager
                 {
                     group.PaymentValue = appliedAmount;
                     runningPrePayBalance -= appliedAmount;
+                    if (runningPrePayBalance < 0)
+                        runningPrePayBalance = 0;
                     group.PrePaymentValue = runningPrePayBalance;
                 }
                 else if (receivedAmount > 0)
@@ -197,8 +201,12 @@ public partial class ReportManager
             .ToList();
     }
 
-    private static decimal CalculateRecapOwnerPaymentValue(GroupAccumulator group) =>
-        group.OwnerRentValue - group.OwnerExpenseValue;
+    private static decimal CalculateRecapOwnerPaymentValue(GroupAccumulator group)
+    {
+        // OwnPay = Owner Rent - Owner Expenses; never display or return a negative value.
+        var ownerPayment = group.OwnerRentValue - group.OwnerExpenseValue;
+        return ownerPayment < 0 ? 0 : ownerPayment;
+    }
 
     private static RecapReportRow MapRecapReportRow(GroupAccumulator group)
     {
@@ -232,6 +240,7 @@ public partial class ReportManager
             TransactionDate = FormatDateString(group.TransactionDate),
             ExpectedIncome = FormatCurrencyUsd(group.ExpectedIncomeValue),
             RentPlus4000 = FormatCurrencyUsd(group.RentPlus4000Value),
+            SecurityDeposit = FormatCurrencyUsd(group.SecurityDepositValue),
             Sdw = FormatCurrencyUsd(group.SdwValue),
             Fee = FormatCurrencyUsd(group.FeeValue),
             Payment = FormatCurrencyUsd(group.PaymentValue),
@@ -241,6 +250,7 @@ public partial class ReportManager
             OwnerPayment = FormatCurrencyUsd(ownerPaymentValue),
             ExpectedIncomeValue = group.ExpectedIncomeValue,
             RentPlus4000Value = group.RentPlus4000Value,
+            SecurityDepositValue = group.SecurityDepositValue,
             SdwValue = group.SdwValue,
             FeeValue = group.FeeValue,
             PaymentValue = group.PaymentValue,
@@ -250,7 +260,8 @@ public partial class ReportManager
             OwnerPaymentValue = ownerPaymentValue,
             SortDateValue = group.SortDateValue,
             JournalEntryId = group.JournalEntryId,
-            JournalEntryLineId = group.JournalEntryLineId
+            JournalEntryLineId = group.JournalEntryLineId,
+            IsPosted = group.IsPosted
         };
     }
 
@@ -290,6 +301,9 @@ public partial class ReportManager
             case "RentPlus4000":
                 group.RentPlus4000Value += amount;
                 break;
+            case "SecurityDeposit":
+                group.SecurityDepositValue += amount;
+                break;
             case "SDW":
                 group.SdwValue += amount;
                 break;
@@ -320,6 +334,7 @@ public partial class ReportManager
         group.Memo = (line.Description ?? string.Empty).Trim();
         group.JournalEntryId = line.JournalEntryId;
         group.JournalEntryLineId = line.JournalEntryLineId;
+        group.IsPosted = line.IsPosted;
         group.OfficeId = line.OfficeId;
         if (line.PropertyId.HasValue)
             group.PropertyId = line.PropertyId.Value.ToString();
@@ -401,6 +416,7 @@ public partial class ReportManager
     private static bool HasMeaningfulAmount(GroupAccumulator group) =>
         group.ExpectedIncomeValue != 0
         || group.RentPlus4000Value != 0
+        || group.SecurityDepositValue != 0
         || group.SdwValue != 0
         || group.FeeValue != 0
         || group.PaymentValue != 0

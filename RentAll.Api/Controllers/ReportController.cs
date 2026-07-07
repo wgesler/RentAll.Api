@@ -41,6 +41,29 @@ public class ReportController : BaseController
         }
     }
 
+    [HttpPost("transfer/search")]
+    public async Task<IActionResult> SearchTransferReport([FromBody] GetTransferReportDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Transfer report search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var report = await _reportManager.GetTransferReportAsync(criteria);
+            return Ok(new TransferReportResponseDto(report));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching transfer report");
+            return ServerError("An error occurred while retrieving the transfer report");
+        }
+    }
+
     [HttpPost("owner-cash/search")]
     public async Task<IActionResult> SearchOwnerCashReport([FromBody] GetOwnerCashReportDto dto)
     {

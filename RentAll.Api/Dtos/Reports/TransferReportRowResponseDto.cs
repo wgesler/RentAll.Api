@@ -2,7 +2,7 @@ using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Reports;
 
-public class RecapReportRowResponseDto
+public class TransferReportRowResponseDto
 {
     public string PropertyCode { get; set; } = string.Empty;
     public string ReservationCode { get; set; } = string.Empty;
@@ -19,29 +19,25 @@ public class RecapReportRowResponseDto
     public string TransactionDate { get; set; } = string.Empty;
     public string ExpectedIncome { get; set; } = string.Empty;
     public string RentPlus4000 { get; set; } = string.Empty;
+    public string OwnerRent { get; set; } = string.Empty;
+    public string Business { get; set; } = string.Empty;
     public string SecurityDeposit { get; set; } = string.Empty;
     public string Sdw { get; set; } = string.Empty;
     public string Fee { get; set; } = string.Empty;
-    public string Payment { get; set; } = string.Empty;
-    public string PrePayment { get; set; } = string.Empty;
-    public string OwnerRent { get; set; } = string.Empty;
-    public string OwnerExpense { get; set; } = string.Empty;
-    public string OwnerPayment { get; set; } = string.Empty;
+    public string RunningTotalUnposted { get; set; } = string.Empty;
     public decimal ExpectedIncomeValue { get; set; }
     public decimal RentPlus4000Value { get; set; }
+    public decimal OwnerRentValue { get; set; }
+    public decimal BusinessValue { get; set; }
     public decimal SecurityDepositValue { get; set; }
     public decimal SdwValue { get; set; }
     public decimal FeeValue { get; set; }
-    public decimal PaymentValue { get; set; }
-    public decimal PrePaymentValue { get; set; }
-    public decimal OwnerRentValue { get; set; }
-    public decimal OwnerExpenseValue { get; set; }
-    public decimal OwnerPaymentValue { get; set; }
+    public decimal RunningTotalUnpostedValue { get; set; }
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
 
-    public RecapReportRowResponseDto(RecapReportRow row)
+    public TransferReportRowResponseDto(TransferReportRow row)
     {
         PropertyCode = row.PropertyCode;
         ReservationCode = row.ReservationCode;
@@ -58,24 +54,20 @@ public class RecapReportRowResponseDto
         TransactionDate = row.TransactionDate;
         ExpectedIncome = row.ExpectedIncome;
         RentPlus4000 = row.RentPlus4000;
+        OwnerRent = row.OwnerRent;
+        Business = row.Business;
         SecurityDeposit = row.SecurityDeposit;
         Sdw = row.Sdw;
         Fee = row.Fee;
-        Payment = row.Payment;
-        PrePayment = row.PrePayment;
-        OwnerRent = row.OwnerRent;
-        OwnerExpense = row.OwnerExpense;
-        OwnerPayment = row.OwnerPayment;
+        RunningTotalUnposted = row.RunningTotalUnposted;
         ExpectedIncomeValue = row.ExpectedIncomeValue;
         RentPlus4000Value = row.RentPlus4000Value;
+        OwnerRentValue = row.OwnerRentValue;
+        BusinessValue = row.BusinessValue;
         SecurityDepositValue = row.SecurityDepositValue;
         SdwValue = row.SdwValue;
         FeeValue = row.FeeValue;
-        PaymentValue = row.PaymentValue;
-        PrePaymentValue = row.PrePaymentValue;
-        OwnerRentValue = row.OwnerRentValue;
-        OwnerExpenseValue = row.OwnerExpenseValue;
-        OwnerPaymentValue = row.OwnerPaymentValue;
+        RunningTotalUnpostedValue = row.RunningTotalUnpostedValue;
         SortDateValue = row.SortDateValue;
         JournalEntryId = row.JournalEntryId;
         JournalEntryLineId = row.JournalEntryLineId;

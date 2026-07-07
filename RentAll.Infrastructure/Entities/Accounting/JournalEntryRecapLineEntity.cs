@@ -14,6 +14,7 @@ public class JournalEntryRecapLineEntity
     public string? ReservationCode { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
+    public bool IsPosted { get; set; }
     public string SourceTypeCode { get; set; } = string.Empty;
     public string SourceDocumentCode { get; set; } = string.Empty;
     public int ChartOfAccountId { get; set; }
