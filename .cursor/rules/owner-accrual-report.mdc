@@ -53,7 +53,8 @@ Income activity lines group by **`propertyId + invoiceSourceCode`** (invoice cod
 |--------|----------------|
 | `OwnerPayment` recap category (`OWNER:%` + `PAYMENT:%` on owner AP, SourceType 3) | Yes **if** AccountingManager creates these JEs (often **not** today) |
 | `Payment` recap category (tenant payment, undep funds) | Yes — primary source today |
-| `PrePayment` apply (negative amount) | Yes — counts as payment applied to invoice |
+| `PrePayment` apply (negative amount) | Yes — counts as payment applied to invoice (at apply/accounting period) |
+| `Payment` on prepayment receipt (paired positive `PrePayment` or payment date before invoice period) | **No** — undep receipt is bookkeeping, not owner received income |
 | Full tenant `PaymentValue` | **No** — not owner portion |
 | `OwnerPaymentValue` = `OwnerRent − OwnerExpense` in recap | **No** — wrong timing; was the original accrual bug |
 | `OwnerRent` alone | **No** — that is invoiced, not paid |
@@ -69,6 +70,14 @@ paid = min(ownerRent, payment × ownerRent / expectedIncome)
 - Build invoice context keyed by `propertyId|sourceDocumentCode` from the **dated** recap call used for activity lines.
 
 **Cross-period payments:** Owner accrual passes `@IncludePaymentInvoiceContext = 1` on the **single** dated recap call. The proc finds invoice codes referenced by in-range payments, then appends only the missing invoice JEs (`OwnerRent` + `ExpectedIncome`) in the same result set (`IsInDateRange = 0`). C# builds activity from `IsInDateRange = 1` lines only; invoice context uses the full response.
+
+## Prepayments (critical)
+
+- **Prepayment** = tenant pays before invoice `AccountingPeriod` (`payment date < invoice period`), or paired positive `PrePayment` receive on same ledger `SourceId`.
+- **Cash + accrual activity:** exclude raw undep `Payment` lines that are prepayment receipts. Do **not** show received income in the month money is received.
+- **Paid income for prepayment** comes from negative `PrePayment` apply JEs at invoice **accounting period** (same timing as recap `BuildRecapReportRows` apply split).
+- **Late payments** unchanged — undep `Payment` still drives received income on payment date.
+- **Prepaid Income** property total stays on recap `PrePaymentValue` (`BuildRecapReportRows`), not activity `ReceivedIncome`.
 
 ## Sort order (activity lines)
 

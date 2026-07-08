@@ -16,7 +16,10 @@ public partial class ReportManager
         IEnumerable<JournalEntryRecapLine> invoiceContextLines,
         OwnerReportActivityMode mode)
     {
+        var allLines = (activityLines ?? []).Concat(invoiceContextLines ?? []).ToList();
         var invoiceContextByKey = BuildOwnerAccrualInvoiceContextByKey(invoiceContextLines);
+        var prepaymentPaymentSourceIds = BuildOwnerReportPrepaymentPaymentSourceIds(allLines);
+        var invoiceAccountingPeriodByKey = BuildOwnerReportInvoiceAccountingPeriodByKey(allLines);
         var groups = new Dictionary<string, OwnerAccrualSourceGroup>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var line in activityLines ?? [])
@@ -29,6 +32,12 @@ public partial class ReportManager
                 continue;
 
             if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && line.Amount > 0)
+                continue;
+
+            if (IsOwnerReportPrepaymentPaymentLine(
+                line,
+                prepaymentPaymentSourceIds,
+                invoiceAccountingPeriodByKey))
                 continue;
 
             var groupKey = BuildOwnerAccrualSourceGroupKey(line, category);
@@ -88,5 +97,80 @@ public partial class ReportManager
             return line.SourceId.Value.ToString("D");
 
         return line.JournalEntryLineId.ToString("D");
+    }
+
+    private static HashSet<Guid> BuildOwnerReportPrepaymentPaymentSourceIds(IEnumerable<JournalEntryRecapLine> lines)
+    {
+        var sourceIds = new HashSet<Guid>();
+        foreach (var line in lines ?? [])
+        {
+            if (!string.Equals(line.RecapCategory, "PrePayment", StringComparison.OrdinalIgnoreCase)
+                || line.Amount <= 0
+                || !line.SourceId.HasValue
+                || line.SourceId.Value == Guid.Empty)
+            {
+                continue;
+            }
+
+            sourceIds.Add(line.SourceId.Value);
+        }
+
+        return sourceIds;
+    }
+
+    private static Dictionary<string, DateOnly> BuildOwnerReportInvoiceAccountingPeriodByKey(IEnumerable<JournalEntryRecapLine> lines)
+    {
+        var periodByKey = new Dictionary<string, DateOnly>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var line in lines ?? [])
+        {
+            if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
+                continue;
+
+            if (!string.Equals(line.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var contextKey = BuildOwnerAccrualInvoiceContextKey(
+                propertyId,
+                ResolveRecapSourceDocumentCode(line),
+                string.Empty);
+
+            if (!periodByKey.TryGetValue(contextKey, out var existingPeriod)
+                || line.AccountingPeriod < existingPeriod)
+            {
+                periodByKey[contextKey] = line.AccountingPeriod;
+            }
+        }
+
+        return periodByKey;
+    }
+
+    private static bool IsOwnerReportPrepaymentPaymentLine(
+        JournalEntryRecapLine line,
+        IReadOnlySet<Guid> prepaymentPaymentSourceIds,
+        IReadOnlyDictionary<string, DateOnly> invoiceAccountingPeriodByKey)
+    {
+        if (!string.Equals(line.RecapCategory, "Payment", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (line.SourceId.HasValue
+            && line.SourceId.Value != Guid.Empty
+            && prepaymentPaymentSourceIds.Contains(line.SourceId.Value))
+        {
+            return true;
+        }
+
+        if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
+            return false;
+
+        var invoiceSourceCode = ResolveOwnerReportIncomeInvoiceSourceKey(line, "Payment");
+        if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+            return false;
+
+        var contextKey = BuildOwnerAccrualInvoiceContextKey(propertyId, invoiceSourceCode, string.Empty);
+        if (!invoiceAccountingPeriodByKey.TryGetValue(contextKey, out var invoiceAccountingPeriod))
+            return false;
+
+        return line.TransactionDate < invoiceAccountingPeriod;
     }
 }
