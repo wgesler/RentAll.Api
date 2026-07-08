@@ -20,7 +20,8 @@ public partial class JournalEntryRepository
             EndDate = criteria.EndDate,
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
-            RecapCategory = string.IsNullOrWhiteSpace(criteria.RecapCategory) ? null : criteria.RecapCategory.Trim()
+            RecapCategory = string.IsNullOrWhiteSpace(criteria.RecapCategory) ? null : criteria.RecapCategory.Trim(),
+            IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext
         });
 
         if (res == null || !res.Any())
@@ -56,7 +57,8 @@ public partial class JournalEntryRepository
             Credit = e.Credit,
             Activity = e.Activity,
             RecapCategory = e.RecapCategory,
-            Amount = e.Amount
+            Amount = e.Amount,
+            IsInDateRange = e.IsInDateRange
         };
     }
 }

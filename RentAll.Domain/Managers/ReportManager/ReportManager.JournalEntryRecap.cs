@@ -79,6 +79,10 @@ public partial class ReportManager
         @"^R-\d+",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex InvoiceSourceDocumentCodePattern = new(
+        @"^R-\d+-\d+",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public async Task<RecapReport> GetJournalEntryRecapReportAsync(JournalEntryRecapGetCriteria criteria)
     {
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
@@ -575,6 +579,42 @@ public partial class ReportManager
             return true;
 
         return IsJournalEntrySourceNavigable(sourceTypeId) && sourceId.HasValue && sourceId.Value != Guid.Empty;
+    }
+
+    private static IEnumerable<string> ResolveRecapPaymentInvoiceSourceCodes(JournalEntryRecapLine line)
+    {
+        var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var description = (line.Description ?? string.Empty).Trim();
+
+        var memoMatch = RecapMemoSourceCodePattern.Match(description);
+        if (memoMatch.Success && memoMatch.Groups.Count > 1)
+        {
+            var memoCode = memoMatch.Groups[1].Value.Trim();
+            if (IsRecapInvoiceSourceDocumentCode(memoCode))
+                codes.Add(memoCode);
+        }
+
+        foreach (Match match in RecapSourceCodePattern.Matches(description))
+        {
+            var code = match.Value.Trim();
+            if (IsRecapInvoiceSourceDocumentCode(code))
+                codes.Add(code);
+        }
+
+        var sourceDocumentCode = ResolveRecapSourceDocumentCode(line);
+        if (IsRecapInvoiceSourceDocumentCode(sourceDocumentCode))
+            codes.Add(sourceDocumentCode);
+
+        return codes;
+    }
+
+    private static bool IsRecapInvoiceSourceDocumentCode(string code)
+    {
+        var trimmed = (code ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return false;
+
+        return InvoiceSourceDocumentCodePattern.IsMatch(trimmed);
     }
 
     private static bool IsJournalEntrySourceNavigable(int? sourceTypeId)

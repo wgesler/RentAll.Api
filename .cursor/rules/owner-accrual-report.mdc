@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Owner Accrual Report — Rules
 
-Read this file before changing owner accrual logic. Owner **cash** is a separate report — do not change `ReportManager.OwnerCash.cs` unless explicitly asked.
+Read this file before changing owner accrual logic. Owner **cash** uses the same income bucket logic via `ReportManager.OwnerReportIncome.cs` — payment-date received income, same rollup rules.
 
 ## What the report means (human terms)
 
@@ -26,10 +26,13 @@ Late payment example: May invoice can stay **unpaid** in May; the **owner paid l
 
 ## Grouping key (critical)
 
-Activity lines group by **`propertyId + accountingPeriod + sourceDocumentCode`** (invoice code, e.g. `R-000177-001`).
+Income activity lines group by **`propertyId + invoiceSourceCode`** (invoice code, e.g. `R-000177-001`) — **not** accounting period. This enables cross-period rollup when both invoice and payment fall in the report range.
 
-- Same invoice source in the same period → may roll up (see below).
-- Different invoice sources in the same calendar month → **never** roll up (e.g. June invoice `R-000177-002` vs payment for `R-000177-001`).
+- Same invoice source with both owner rent and payment in range → **one rolled-up line** (even if invoice and payment are in different months).
+- Invoice in range, payment out of range → invoice-only unpaid line.
+- Payment in range, invoice out of range → payment-only line (owner portion from invoice context).
+- Different invoice sources → **never** roll up (e.g. June invoice `R-000177-002` vs payment for `R-000177-001`).
+- Expense recap lines → **one activity line per `JournalEntryLineId`** (match owner cash). Do not group utilities or other expenses by period or source.
 
 `SourceDocumentCode` comes from the recap proc (invoice code via `SourceId` / ledger), not raw `SourceId` GUIDs.
 
@@ -37,10 +40,10 @@ Activity lines group by **`propertyId + accountingPeriod + sourceDocumentCode`**
 
 | Situation | Lines shown |
 |-----------|-------------|
-| Invoice only (no payment for this source/period) | One line: invoiced > 0, paid = 0, unpaid > 0 |
+| Invoice only (no payment in range for this source) | One line: invoiced > 0, paid = 0, unpaid > 0 |
 | Payment only (cross-period pay of prior invoice) | One line: invoiced = 0, paid > 0 |
-| Invoice + payment, **same source + same period** | **One rolled-up line**: invoiced and paid on same row, unpaid = 0 if paid ≥ invoiced |
-| Expense | Separate line; sort after income lines |
+| Expense (utility, bill, WO, etc.) | **One line per expense JE** — never roll up multiple receipts into one row |
+| Invoice + payment, **same invoice source, both in report range** | **One rolled-up line**: invoiced and paid on same row, unpaid = 0 if paid ≥ invoiced |
 
 ## Paid income — how to compute (verify JEs first)
 
@@ -63,9 +66,9 @@ paid = min(ownerRent, payment × ownerRent / expectedIncome)
 
 - `ownerRent` = `OwnerRent` recap amount for that invoice source in the report lines.
 - `expectedIncome` = `ExpectedIncome` recap amount for that tenant invoice source in the report lines.
-- Build invoice context keyed by `propertyId|sourceDocumentCode` from the **same dated** recap call used for activity lines.
+- Build invoice context keyed by `propertyId|sourceDocumentCode` from the **dated** recap call used for activity lines.
 
-**Do not** add a second all-history `GetJournalEntryRecapLinesAsync` call for invoice context — it was removed for performance. Cross-period payment lines require invoice context from a targeted lookup if needed later.
+**Cross-period payments:** Owner accrual passes `@IncludePaymentInvoiceContext = 1` on the **single** dated recap call. The proc finds invoice codes referenced by in-range payments, then appends only the missing invoice JEs (`OwnerRent` + `ExpectedIncome`) in the same result set (`IsInDateRange = 0`). C# builds activity from `IsInDateRange = 1` lines only; invoice context uses the full response.
 
 ## Sort order (activity lines)
 
@@ -91,9 +94,10 @@ When report includes these periods, expect:
 
 | Date | Source | Invoiced | Paid | Unpaid |
 |------|--------|----------|------|--------|
-| May | `R-000177-001` invoice | $49.70 | $0 | $49.70 |
-| Jun | `R-000177-002` invoice | $1,491 | $0 | $1,491 |
-| Jun | `R-000177-001` payment (owner portion) | $0 | ~$49.70 | $0 |
+| May only | `R-000177-001` invoice | $49.70 | $0 | $49.70 |
+| Jun only | `R-000177-002` invoice | $1,491 | $0 | $1,491 |
+| Jun only | `R-000177-001` payment (owner portion) | $0 | ~$49.70 | $0 |
+| May + Jun | `R-000177-001` invoice + payment | $49.70 | ~$49.70 | $0 |
 
 **June-only report** must still show the payment line (yellow); **May-only** must show only the May invoice (blue), not the June payment.
 
@@ -111,6 +115,8 @@ Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invo
 
 | Touch for accrual fixes | Do not touch unless asked |
 |-------------------------|---------------------------|
-| `ReportManager.OwnerAccrual.cs` | `ReportManager.OwnerCash.cs` |
+| `ReportManager.OwnerAccrual.cs` | |
+| `ReportManager.OwnerReportIncome.cs` | |
+| `ReportManager.OwnerCash.cs` (calls shared income builder) | |
 | `JournalEntryRecap_GetByCriteria.sql` | Owner cash UI columns |
 | `mapping.service.ts` (`unpaidValue`, accrual mapping) | Global recap grouping in `JournalEntryRecap.cs` unless recap report itself needs it |

@@ -10,15 +10,19 @@ public partial class ReportManager
 
     public async Task<OwnerCashReport> GetOwnerCashReportAsync(JournalEntryRecapGetCriteria criteria)
     {
+        criteria.IncludePaymentInvoiceContext = true;
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
-        var recapRows = BuildRecapReportRows(lines);
+        var activitySourceLines = lines.Where(line => line.IsInDateRange).ToList();
         var officeIds = ParseReportOfficeIds(criteria.OfficeIds);
         if (officeIds.Count == 0)
             return new OwnerCashReport();
 
         var properties = await LoadOwnerCashPropertyReportDataAsync(criteria);
         var startingBalanceByKey = await GetOwnerCashStartingBalanceByKeyAsync(criteria, officeIds);
-        var propertyActivityLines = BuildOwnerCashPropertyActivityLines(recapRows);
+        var propertyActivityLines = BuildOwnerReportPropertyActivityLines(
+            activitySourceLines,
+            lines,
+            OwnerReportActivityMode.Cash);
         var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
 
         var rows = properties
@@ -85,11 +89,6 @@ public partial class ReportManager
                 group => group.ToList(),
                 StringComparer.OrdinalIgnoreCase);
     }
-
-    private static bool HasOwnerCashReportRecapActivity(RecapReportRow row) =>
-        row.OwnerRentValue != 0
-        || row.OwnerExpenseValue != 0
-        || row.OwnerPaymentValue != 0;
 
     private async Task<List<PropertyReportData>> LoadOwnerCashPropertyReportDataAsync(JournalEntryRecapGetCriteria criteria)
     {
@@ -262,109 +261,6 @@ public partial class ReportManager
         return endingBalance < 0 ? 0 : endingBalance;
     }
 
-    private static List<OwnerStatementPropertyActivityLine> BuildOwnerCashPropertyActivityLines(IEnumerable<RecapReportRow> recapRows)
-    {
-        return recapRows
-            .Where(row => row.PropertyId.HasValue && row.PropertyId.Value != Guid.Empty)
-            .Where(row => HasOwnerCashReportRecapActivity(row))
-            .Select(row => new OwnerStatementPropertyActivityLine
-            {
-                PropertyId = row.PropertyId!.Value,
-                OfficeId = row.OfficeId,
-                ActivityId = ResolveOwnerCashActivityJournalEntryLineId(row),
-                SourceId = row.SourceId,
-                JournalEntryLineId = ResolveOwnerCashActivityJournalEntryLineId(row),
-                ActivityType = row.ActivityType,
-                ActivityDate = ParseOwnerCashActivityDate(row.TransactionDate),
-                DocumentCode = ResolveOwnerCashActivityDocumentCode(row),
-                Description = ResolveOwnerCashActivityDescription(row),
-                ExpectedIncome = 0,
-                ReceivedIncome = row.OwnerRentValue,
-                Expenses = row.OwnerExpenseValue,
-                OwnerPayment = row.OwnerPaymentValue
-            })
-            .OrderBy(line => line.OfficeId)
-            .ThenBy(line => line.PropertyId)
-            .ThenBy(line => line.ActivityDate)
-            .ThenBy(line => line.DocumentCode)
-            .ToList();
-    }
-
-    private static Guid? ResolveOwnerCashActivityJournalEntryLineId(RecapReportRow row)
-    {
-        if (row.OwnerRentValue != 0 && row.OwnerRentJournalEntryLineId.HasValue)
-            return row.OwnerRentJournalEntryLineId;
-
-        if (row.OwnerExpenseValue != 0 && row.OwnerExpenseJournalEntryLineId.HasValue)
-            return row.OwnerExpenseJournalEntryLineId;
-
-        if (row.OwnerPaymentValue != 0 && row.OwnerPaymentJournalEntryLineId.HasValue)
-            return row.OwnerPaymentJournalEntryLineId;
-
-        return row.JournalEntryLineId;
-    }
-
-    private static string ResolveOwnerCashActivityDocumentCode(RecapReportRow row)
-    {
-        if (row.OwnerRentValue != 0)
-        {
-            var ownerRentJournalEntryCode = (row.OwnerRentJournalEntryCode ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(ownerRentJournalEntryCode))
-                return ownerRentJournalEntryCode;
-        }
-
-        if (row.OwnerExpenseValue != 0)
-        {
-            var ownerExpenseJournalEntryCode = (row.OwnerExpenseJournalEntryCode ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(ownerExpenseJournalEntryCode))
-                return ownerExpenseJournalEntryCode;
-        }
-
-        if (row.OwnerPaymentValue != 0)
-        {
-            var ownerPaymentJournalEntryCode = (row.OwnerPaymentJournalEntryCode ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(ownerPaymentJournalEntryCode))
-                return ownerPaymentJournalEntryCode;
-        }
-
-        return (row.JournalEntryCode ?? string.Empty).Trim();
-    }
-
-    private static string ResolveOwnerCashActivityDescription(RecapReportRow row)
-    {
-        var memo = SelectOwnerCashActivityMemo(row);
-        if (!string.IsNullOrWhiteSpace(memo))
-            return StripOwnerMemoPrefixForCashDisplay(memo);
-
-        return ResolveOwnerCashActivityDocumentCode(row);
-    }
-
-    private static string SelectOwnerCashActivityMemo(RecapReportRow row)
-    {
-        if (row.OwnerRentValue != 0)
-        {
-            var ownerRentMemo = (row.OwnerRentMemo ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(ownerRentMemo))
-                return ownerRentMemo;
-        }
-
-        if (row.OwnerExpenseValue != 0)
-        {
-            var ownerExpenseMemo = (row.OwnerExpenseMemo ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(ownerExpenseMemo))
-                return ownerExpenseMemo;
-        }
-
-        if (row.OwnerPaymentValue != 0)
-        {
-            var ownerPaymentMemo = (row.OwnerPaymentMemo ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(ownerPaymentMemo))
-                return ownerPaymentMemo;
-        }
-
-        return string.Empty;
-    }
-
     private static string StripOwnerMemoPrefixForCashDisplay(string memo)
     {
         var trimmed = (memo ?? string.Empty).Trim();
@@ -372,14 +268,6 @@ public partial class ReportManager
             return trimmed["Owner:".Length..].TrimStart();
 
         return trimmed;
-    }
-
-    private static DateOnly ParseOwnerCashActivityDate(string transactionDate)
-    {
-        if (DateOnly.TryParse(transactionDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
-            return parsed;
-
-        return default;
     }
 
     private static int ResolveOwnerAccountsPayableAccountId(

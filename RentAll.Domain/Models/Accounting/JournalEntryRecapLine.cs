@@ -26,4 +26,5 @@ public class JournalEntryRecapLine
     public string Activity { get; set; } = string.Empty;
     public string RecapCategory { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+    public bool IsInDateRange { get; set; } = true;
 }

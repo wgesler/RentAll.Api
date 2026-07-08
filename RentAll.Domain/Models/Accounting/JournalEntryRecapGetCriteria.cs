@@ -11,4 +11,5 @@ public class JournalEntryRecapGetCriteria
     public bool IncludeVoided { get; set; }
     public bool IncludeUnposted { get; set; } = true;
     public string RecapCategory { get; set; } = string.Empty;
+    public bool IncludePaymentInvoiceContext { get; set; }
 }

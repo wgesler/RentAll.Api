@@ -17,6 +17,8 @@ public partial class ReportManager
         public Guid PropertyId { get; set; }
         public int OfficeId { get; set; }
         public string AccountingPeriod { get; set; } = string.Empty;
+        public string OwnerRentAccountingPeriod { get; set; } = string.Empty;
+        public string InvoiceSourceCode { get; set; } = string.Empty;
         public string SourceDocumentCode { get; set; } = string.Empty;
         public Guid? SourceId { get; set; }
         public int? SourceTypeId { get; set; }
@@ -51,8 +53,10 @@ public partial class ReportManager
 
     public async Task<OwnerAccrualReport> GetOwnerAccrualReportAsync(JournalEntryRecapGetCriteria criteria)
     {
+        criteria.IncludePaymentInvoiceContext = true;
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
-        var recapRows = BuildRecapReportRows(lines);
+        var activitySourceLines = lines.Where(line => line.IsInDateRange).ToList();
+        var recapRows = BuildRecapReportRows(activitySourceLines);
         var officeIds = ParseReportOfficeIds(criteria.OfficeIds);
         if (officeIds.Count == 0)
             return new OwnerAccrualReport();
@@ -66,7 +70,10 @@ public partial class ReportManager
                 group => group.Key,
                 group => group.ToList(),
                 StringComparer.OrdinalIgnoreCase);
-        var propertyActivityLines = BuildOwnerAccrualPropertyActivityLines(lines);
+        var propertyActivityLines = BuildOwnerReportPropertyActivityLines(
+            activitySourceLines,
+            lines,
+            OwnerReportActivityMode.Accrual);
         var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
 
         var rows = properties
@@ -118,58 +125,6 @@ public partial class ReportManager
             Rows = rows,
             PropertyActivityLines = propertyActivityLines
         };
-    }
-
-    private static List<OwnerStatementPropertyActivityLine> BuildOwnerAccrualPropertyActivityLines(
-        IEnumerable<JournalEntryRecapLine> lines)
-    {
-        var invoiceContextByKey = BuildOwnerAccrualInvoiceContextByKey(lines);
-        var groups = new Dictionary<string, OwnerAccrualSourceGroup>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var line in lines ?? [])
-        {
-            if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
-                continue;
-
-            var category = (line.RecapCategory ?? string.Empty).Trim();
-            if (!IsOwnerAccrualRecapCategory(category))
-                continue;
-
-            if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && line.Amount > 0)
-                continue;
-
-            var groupKey = BuildOwnerAccrualSourceGroupKey(line, category);
-            if (!groups.TryGetValue(groupKey, out var group))
-            {
-                group = new OwnerAccrualSourceGroup
-                {
-                    PropertyId = propertyId,
-                    OfficeId = line.OfficeId,
-                    AccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd"),
-                    SourceDocumentCode = ResolveRecapSourceDocumentCode(line),
-                    TransactionDate = line.TransactionDate.ToString("yyyy-MM-dd"),
-                    SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks
-                };
-                groups[groupKey] = group;
-            }
-
-            ApplyOwnerAccrualRecapLine(group, line, category);
-            TouchOwnerAccrualSourceGroupMetadata(group, line);
-        }
-
-        return groups.Values
-            .Where(HasOwnerAccrualSourceGroupActivity)
-            .SelectMany(group => ExpandOwnerAccrualSourceGroupActivityLines(
-                group,
-                BuildOwnerAccrualInvoiceContextKey(group.PropertyId, group.SourceDocumentCode, group.AccountingPeriod),
-                invoiceContextByKey))
-            .OrderBy(line => line.OfficeId)
-            .ThenBy(line => line.PropertyId)
-            .ThenBy(line => line.ActivityDate)
-            .ThenBy(line => ResolveOwnerAccrualActivitySortOrder(line))
-            .ThenBy(line => line.AccountingPeriod, StringComparer.Ordinal)
-            .ThenBy(line => line.DocumentCode, StringComparer.Ordinal)
-            .ToList();
     }
 
     private static Dictionary<string, OwnerAccrualInvoiceContext> BuildOwnerAccrualInvoiceContextByKey(IEnumerable<JournalEntryRecapLine> lines)
@@ -261,24 +216,12 @@ public partial class ReportManager
             propertyId = Guid.Empty;
 
         var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
-        var sourceKey = ResolveOwnerAccrualSourceGroupKey(line);
-        var categorySuffix = string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
-            ? "|expense"
-            : string.Empty;
 
-        return $"{propertyId:D}|{periodKey}|{sourceKey}{categorySuffix}";
-    }
+        if (string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase))
+            return $"{propertyId:D}|{periodKey}|expense|{line.JournalEntryLineId:D}";
 
-    private static string ResolveOwnerAccrualSourceGroupKey(JournalEntryRecapLine line)
-    {
-        var sourceDocumentCode = ResolveRecapSourceDocumentCode(line);
-        if (!string.IsNullOrWhiteSpace(sourceDocumentCode))
-            return sourceDocumentCode;
-
-        if (line.SourceId.HasValue && line.SourceId.Value != Guid.Empty)
-            return line.SourceId.Value.ToString("D");
-
-        return line.JournalEntryLineId.ToString("D");
+        var invoiceSourceKey = ResolveOwnerReportIncomeInvoiceSourceKey(line, category);
+        return $"{propertyId:D}|income|{invoiceSourceKey}";
     }
 
     private static void ApplyOwnerAccrualRecapLine(OwnerAccrualSourceGroup group, JournalEntryRecapLine line, string category)
@@ -290,6 +233,7 @@ public partial class ReportManager
         if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
         {
             group.OwnerRentValue += amount;
+            group.OwnerRentAccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd");
             if (!string.IsNullOrWhiteSpace(memo))
                 group.OwnerRentMemo = memo;
             if (!string.IsNullOrWhiteSpace(journalEntryCode))
@@ -410,12 +354,16 @@ public partial class ReportManager
     private static IEnumerable<OwnerStatementPropertyActivityLine> ExpandOwnerAccrualSourceGroupActivityLines(
         OwnerAccrualSourceGroup group,
         string invoiceContextKey,
-        IReadOnlyDictionary<string, OwnerAccrualInvoiceContext> invoiceContextByKey)
+        IReadOnlyDictionary<string, OwnerAccrualInvoiceContext> invoiceContextByKey,
+        OwnerReportActivityMode mode)
     {
         var paidIncome = ResolveOwnerAccrualPaidIncomeForGroup(group, invoiceContextKey, invoiceContextByKey);
         var hasOwnerRent = group.OwnerRentValue != 0;
         var hasPaidIncome = paidIncome != 0;
-        var accountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod);
+        var isAccrual = mode == OwnerReportActivityMode.Accrual;
+        var ownerRentAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(
+            group.OwnerRentAccountingPeriod ?? group.AccountingPeriod);
+        var paymentAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod);
 
         if (hasOwnerRent && hasPaidIncome)
         {
@@ -428,10 +376,10 @@ public partial class ReportManager
                 JournalEntryLineId = group.OwnerRentJournalEntryLineId,
                 ActivityType = GetRecapActivityType(group.OwnerRentSourceTypeId, group.SourceDocumentCode),
                 ActivityDate = ParseOwnerAccrualActivityDate(group.TransactionDate),
-                AccountingPeriod = accountingPeriod,
+                AccountingPeriod = ownerRentAccountingPeriod,
                 DocumentCode = ResolveOwnerAccrualOwnerRentDocumentCode(group),
                 Description = ResolveOwnerAccrualOwnerRentDescription(group),
-                ExpectedIncome = group.OwnerRentValue,
+                ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
                 ReceivedIncome = paidIncome,
                 Expenses = 0,
                 OwnerPayment = 0
@@ -448,10 +396,10 @@ public partial class ReportManager
                 JournalEntryLineId = group.OwnerRentJournalEntryLineId,
                 ActivityType = GetRecapActivityType(group.OwnerRentSourceTypeId, group.SourceDocumentCode),
                 ActivityDate = ParseOwnerAccrualActivityDate(group.TransactionDate),
-                AccountingPeriod = accountingPeriod,
+                AccountingPeriod = ownerRentAccountingPeriod,
                 DocumentCode = ResolveOwnerAccrualOwnerRentDocumentCode(group),
                 Description = ResolveOwnerAccrualOwnerRentDescription(group),
-                ExpectedIncome = group.OwnerRentValue,
+                ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
                 ReceivedIncome = 0,
                 Expenses = 0,
                 OwnerPayment = 0
@@ -470,7 +418,7 @@ public partial class ReportManager
                     group.PaymentSourceTypeId ?? group.OwnerPaymentSourceTypeId,
                     group.SourceDocumentCode),
                 ActivityDate = ParseOwnerAccrualActivityDate(group.TransactionDate),
-                AccountingPeriod = accountingPeriod,
+                AccountingPeriod = paymentAccountingPeriod,
                 DocumentCode = ResolveOwnerAccrualTenantPaymentDocumentCode(group),
                 Description = ResolveOwnerAccrualTenantPaymentDescription(group),
                 ExpectedIncome = 0,
@@ -491,7 +439,7 @@ public partial class ReportManager
                 JournalEntryLineId = group.OwnerExpenseJournalEntryLineId,
                 ActivityType = GetRecapActivityType(group.OwnerExpenseSourceTypeId, group.SourceDocumentCode),
                 ActivityDate = ParseOwnerAccrualActivityDate(group.TransactionDate),
-                AccountingPeriod = accountingPeriod,
+                AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod),
                 DocumentCode = ResolveOwnerAccrualOwnerExpenseDocumentCode(group),
                 Description = ResolveOwnerAccrualOwnerExpenseDescription(group),
                 ExpectedIncome = 0,
