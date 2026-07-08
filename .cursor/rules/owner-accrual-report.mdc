@@ -61,11 +61,11 @@ Activity lines group by **`propertyId + accountingPeriod + sourceDocumentCode`**
 paid = min(ownerRent, payment × ownerRent / expectedIncome)
 ```
 
-- `ownerRent` = `OwnerRent` recap amount for that invoice source (any period).
-- `expectedIncome` = `ExpectedIncome` recap amount for that tenant invoice source.
-- Build invoice context keyed by `propertyId|sourceDocumentCode` across **all** recap lines so cross-period payments can resolve ratios.
+- `ownerRent` = `OwnerRent` recap amount for that invoice source in the report lines.
+- `expectedIncome` = `ExpectedIncome` recap amount for that tenant invoice source in the report lines.
+- Build invoice context keyed by `propertyId|sourceDocumentCode` from the **same dated** recap call used for activity lines.
 
-**Date range split:** Activity lines respect report `StartDate`/`EndDate`. Invoice context (`OwnerRent` + `ExpectedIncome`) loads **without** date filters (`BuildOwnerAccrualInvoiceContextCriteria`) so June-only reports still show payments for prior-month invoices (BWA24 yellow line).
+**Do not** add a second all-history `GetJournalEntryRecapLinesAsync` call for invoice context — it was removed for performance. Cross-period payment lines require invoice context from a targeted lookup if needed later.
 
 ## Sort order (activity lines)
 
