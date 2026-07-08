@@ -1,0 +1,116 @@
+---
+description: Owner accrual report business rules, data sources, and regression guardrails
+globs: RentAll.Api/**/ReportManager.OwnerAccrual.cs,RentAll.Api/**/ReportManager.JournalEntryRecap.cs,RentAll.Db/**/JournalEntryRecap_GetByCriteria.sql,RentAll.Ui/**/owner-report/**,RentAll.Ui/**/mapping.service.ts
+alwaysApply: false
+---
+
+# Owner Accrual Report — Rules
+
+Read this file before changing owner accrual logic. Owner **cash** is a separate report — do not change `ReportManager.OwnerCash.cs` unless explicitly asked.
+
+## What the report means (human terms)
+
+- **Invoiced Income** = owner rent invoiced for that invoice/period (owner share posted on owner AP when the owner invoice JE runs).
+- **Paid Income** = owner’s portion of money actually received from the tenant, by **payment date** — not when the invoice was posted.
+- **Unpaid Income** = `max(0, invoiced − paid)` at property level; per line `max(0, expected − paid)`.
+- **Prepaid Income** = tenant prepayment balance (from recap `PrePaymentValue` per reservation) — not the same as Paid Income.
+- **Owner Expenses** = bills / receipts / work orders on owner AP.
+
+Late payment example: May invoice can stay **unpaid** in May; the **owner paid line** appears in June when the tenant pays — on the **same invoice source**, not merged into June’s different invoice.
+
+## Data pipeline (do not shortcut)
+
+1. `JournalEntryRecap_GetByCriteria` → flat classified JE lines (`RecapCategory`, `Amount`, `SourceDocumentCode`, `PropertyId`).
+2. `ReportManager.OwnerAccrual.cs` → `BuildOwnerAccrualPropertyActivityLines(lines)` — **not** period-only `BuildRecapReportRows` grouping.
+3. UI: `mapping.service.ts` → `mapOwnerAccrualReportToOwnerReportSearchResponse` / `mapOwnerReportPropertyActivityDisplays`.
+
+## Grouping key (critical)
+
+Activity lines group by **`propertyId + accountingPeriod + sourceDocumentCode`** (invoice code, e.g. `R-000177-001`).
+
+- Same invoice source in the same period → may roll up (see below).
+- Different invoice sources in the same calendar month → **never** roll up (e.g. June invoice `R-000177-002` vs payment for `R-000177-001`).
+
+`SourceDocumentCode` comes from the recap proc (invoice code via `SourceId` / ledger), not raw `SourceId` GUIDs.
+
+## Line display rules
+
+| Situation | Lines shown |
+|-----------|-------------|
+| Invoice only (no payment for this source/period) | One line: invoiced > 0, paid = 0, unpaid > 0 |
+| Payment only (cross-period pay of prior invoice) | One line: invoiced = 0, paid > 0 |
+| Invoice + payment, **same source + same period** | **One rolled-up line**: invoiced and paid on same row, unpaid = 0 if paid ≥ invoiced |
+| Expense | Separate line; sort after income lines |
+
+## Paid income — how to compute (verify JEs first)
+
+**Before coding:** grep `AccountingManager` to confirm which JE types exist in production.
+
+| Source | Use for Paid? |
+|--------|----------------|
+| `OwnerPayment` recap category (`OWNER:%` + `PAYMENT:%` on owner AP, SourceType 3) | Yes **if** AccountingManager creates these JEs (often **not** today) |
+| `Payment` recap category (tenant payment, undep funds) | Yes — primary source today |
+| `PrePayment` apply (negative amount) | Yes — counts as payment applied to invoice |
+| Full tenant `PaymentValue` | **No** — not owner portion |
+| `OwnerPaymentValue` = `OwnerRent − OwnerExpense` in recap | **No** — wrong timing; was the original accrual bug |
+| `OwnerRent` alone | **No** — that is invoiced, not paid |
+
+**Owner portion formula** (when `OwnerPayment` JE lines are absent):
+
+```
+paid = min(ownerRent, payment × ownerRent / expectedIncome)
+```
+
+- `ownerRent` = `OwnerRent` recap amount for that invoice source (any period).
+- `expectedIncome` = `ExpectedIncome` recap amount for that tenant invoice source.
+- Build invoice context keyed by `propertyId|sourceDocumentCode` across **all** recap lines so cross-period payments can resolve ratios.
+
+**Date range split:** Activity lines respect report `StartDate`/`EndDate`. Invoice context (`OwnerRent` + `ExpectedIncome`) loads **without** date filters (`BuildOwnerAccrualInvoiceContextCriteria`) so June-only reports still show payments for prior-month invoices (BWA24 yellow line).
+
+## Sort order (activity lines)
+
+1. `ActivityDate` ascending  
+2. Unpaid invoice lines before paid-only lines on the **same date**  
+3. Accounting period  
+4. Document / JE code  
+5. Expenses last  
+
+## Property totals
+
+```
+invoiced = sum(activity.ExpectedIncome)
+paid     = sum(activity.ReceivedIncome)
+unpaid   = max(0, invoiced - paid)
+profit   = sum(paid - expenses)
+prepaid  = recap PrePaymentValue (reservation-level, from BuildRecapReportRows — unchanged)
+```
+
+## Regression fixture — BWA24 / R-000177
+
+When report includes these periods, expect:
+
+| Date | Source | Invoiced | Paid | Unpaid |
+|------|--------|----------|------|--------|
+| May | `R-000177-001` invoice | $49.70 | $0 | $49.70 |
+| Jun | `R-000177-002` invoice | $1,491 | $0 | $1,491 |
+| Jun | `R-000177-001` payment (owner portion) | $0 | ~$49.70 | $0 |
+
+**June-only report** must still show the payment line (yellow); **May-only** must show only the May invoice (blue), not the June payment.
+
+Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invoice and May payment into one line.
+
+## Pre-flight checklist (required before any accrual tweak)
+
+1. Grep `AccountingManager` — which payment/owner JEs are actually created?
+2. Re-read `ReportManager.OwnerAccrual.cs` end-to-end.
+3. Write the acceptance table (use BWA24 + one same-period rollup case).
+4. Change **one behavior** per deploy when possible.
+5. After change: property totals must still satisfy `unpaid = max(0, invoiced − paid)`.
+
+## Files — touch / do not touch
+
+| Touch for accrual fixes | Do not touch unless asked |
+|-------------------------|---------------------------|
+| `ReportManager.OwnerAccrual.cs` | `ReportManager.OwnerCash.cs` |
+| `JournalEntryRecap_GetByCriteria.sql` | Owner cash UI columns |
+| `mapping.service.ts` (`unpaidValue`, accrual mapping) | Global recap grouping in `JournalEntryRecap.cs` unless recap report itself needs it |

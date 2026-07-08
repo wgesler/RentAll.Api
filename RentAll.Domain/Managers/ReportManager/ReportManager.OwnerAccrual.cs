@@ -52,6 +52,8 @@ public partial class ReportManager
     public async Task<OwnerAccrualReport> GetOwnerAccrualReportAsync(JournalEntryRecapGetCriteria criteria)
     {
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
+        var invoiceContextLines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(
+            BuildOwnerAccrualInvoiceContextCriteria(criteria))).ToList();
         var recapRows = BuildRecapReportRows(lines);
         var officeIds = ParseReportOfficeIds(criteria.OfficeIds);
         if (officeIds.Count == 0)
@@ -66,7 +68,7 @@ public partial class ReportManager
                 group => group.Key,
                 group => group.ToList(),
                 StringComparer.OrdinalIgnoreCase);
-        var propertyActivityLines = BuildOwnerAccrualPropertyActivityLines(lines);
+        var propertyActivityLines = BuildOwnerAccrualPropertyActivityLines(lines, invoiceContextLines);
         var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
 
         var rows = properties
@@ -120,9 +122,25 @@ public partial class ReportManager
         };
     }
 
-    private static List<OwnerStatementPropertyActivityLine> BuildOwnerAccrualPropertyActivityLines(IEnumerable<JournalEntryRecapLine> lines)
+    private static JournalEntryRecapGetCriteria BuildOwnerAccrualInvoiceContextCriteria(JournalEntryRecapGetCriteria criteria) =>
+        new()
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            ReservationId = criteria.ReservationId,
+            StartDate = null,
+            EndDate = null,
+            IncludeVoided = criteria.IncludeVoided,
+            IncludeUnposted = criteria.IncludeUnposted,
+            RecapCategory = criteria.RecapCategory
+        };
+
+    private static List<OwnerStatementPropertyActivityLine> BuildOwnerAccrualPropertyActivityLines(
+        IEnumerable<JournalEntryRecapLine> lines,
+        IEnumerable<JournalEntryRecapLine> invoiceContextLines)
     {
-        var invoiceContextByKey = BuildOwnerAccrualInvoiceContextByKey(lines);
+        var invoiceContextByKey = BuildOwnerAccrualInvoiceContextByKey(invoiceContextLines);
         var groups = new Dictionary<string, OwnerAccrualSourceGroup>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var line in lines ?? [])
