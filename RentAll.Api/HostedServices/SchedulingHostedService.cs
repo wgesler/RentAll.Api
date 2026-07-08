@@ -290,7 +290,13 @@ public class SchedulingHostedService : BackgroundService
                 if (offices.Count == 0)
                     continue;
                 var officeCsv = string.Join(",", offices.Select(o => o.OfficeId));
-                var departures = await reservationRepository.GetMonthlyDepartedReservationsAsync(organization.OrganizationId, officeCsv);
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var monthStart = new DateOnly(today.Year, today.Month, 1);
+                var departures = await reservationRepository.GetMonthlyDepartedReservationsAsync(
+                    organization.OrganizationId,
+                    officeCsv,
+                    monthStart,
+                    today);
                 var departedReservations = departures.ToList();
                 await accountingManager.CreateJournalEntiesForDepartedReservationAsync(organization.OrganizationId, departedReservations, cancellationToken);
             }

@@ -22,14 +22,15 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? asOfDate = null)
+        public async Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? startDate = null, DateOnly? endDate = null)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetMonthlyDepartedReservations", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess,
-                AsOfDate = asOfDate
+                StartDate = startDate,
+                EndDate = endDate
             });
 
             if (res == null || !res.Any())
