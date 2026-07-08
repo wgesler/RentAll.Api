@@ -44,7 +44,7 @@ public partial class ReportManager
                 var paidIncome = activityLines.Sum(line => line.ReceivedIncome);
                 var prepaidIncome = ResolvePropertyPrepaidIncome(propertyRecapRows);
                 var ownerExpenses = activityLines.Sum(line => line.Expenses);
-                var unpaidIncome = startingBalance + invoicedIncome - paidIncome;
+                var unpaidIncome = invoicedIncome - paidIncome;
                 var ownerProfit = activityLines.Sum(line => line.ReceivedIncome - line.Expenses);
 
                 return new OwnerAccrualReportRow
