@@ -309,6 +309,7 @@ public class SchedulingHostedService : BackgroundService
 
         try
         {
+            // Periodic path: run once for today; occupancy is checked from the 1st of the month through today.
             var processingDate = DateOnly.FromDateTime(DateTime.UtcNow);
             var organizations = await organizationRepository.GetOrganizationsAsync();
             foreach (var organization in organizations.Where(o => o.IsActive))
@@ -329,11 +330,8 @@ public class SchedulingHostedService : BackgroundService
                     cancellationToken,
                     processingDate);
 
-                _logger.LogInformation(
-                    "Loaded linens/towels agreements for organization {OrganizationId}. Monthly={MonthlyCount}, Annual={AnnualCount}",
-                    organization.OrganizationId,
-                    monthlyBatch.Count,
-                    annualBatch.Count);
+                _logger.LogInformation("Loaded linens/towels agreements for organization {OrganizationId}. Monthly={MonthlyCount}, Annual={AnnualCount}",
+                    organization.OrganizationId,monthlyBatch.Count,annualBatch.Count);
             }
         }
         catch (Exception ex)

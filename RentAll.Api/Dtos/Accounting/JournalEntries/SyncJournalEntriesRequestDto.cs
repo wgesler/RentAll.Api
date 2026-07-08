@@ -3,6 +3,8 @@ namespace RentAll.Api.Dtos.Accounting.JournalEntries;
 public class SyncJournalEntriesRequestDto
 {
     public int[] OfficeIds { get; set; } = [];
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {

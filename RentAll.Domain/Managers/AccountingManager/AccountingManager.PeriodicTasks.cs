@@ -38,6 +38,8 @@ public partial class AccountingManager
 
     public async Task CreateJournalEntriesForLinensAndTowelsAsync(Guid organizationId, IReadOnlyCollection<PropertyAgreement> monthlyAgreements, IReadOnlyCollection<PropertyAgreement> annualAgreements, CancellationToken cancellationToken, DateOnly? processingDate = null)
     {
+        // Periodic scheduler passes today's date (occupancy checked from the 1st through that date).
+        // Sync passes the last day of each month in the selected criteria range.
         cancellationToken.ThrowIfCancellationRequested();
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return;
@@ -232,13 +234,23 @@ public partial class AccountingManager
 
         var property = await _propertyRepository.GetPropertyByIdAsync(agreement.PropertyId, organizationId)
             ?? throw new Exception($"Property {agreement.PropertyId} was not found");
+        var propertyCode = property.PropertyCode;
         if (property.PropertyLeaseType != PropertyLeaseType.PropertyManagement)
+        {
+            await LogLinenAndTowelDecisionAsync(
+                organizationId,
+                agreement.OfficeId,
+                agreement.PropertyId,
+                propertyCode,
+                isMonthly,
+                processingDate,
+                amount: null,
+                "Skipped — property is not Property Management lease type.");
             return;
+        }
 
         var availableFrom = property.AvailableFrom;
         var availableUntil = property.AvailableUntil;
-        var propertyCode = property.PropertyCode;
-
 
         if (isMonthly)
             await BuildMonthlyJournalEntriesForLinensAndTowelsAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, processingDate, cancellationToken);
@@ -275,12 +287,37 @@ public partial class AccountingManager
         var monthStart = ResolveMonthStart(processingDate);
         var monthEnd = ResolveMonthEnd(processingDate);
         if (await HasLinensAndTowelsJournalEntryAsync(organizationId, agreement, monthStart, monthEnd))
+        {
+            await LogLinenAndTowelDecisionAsync(
+                organizationId,
+                agreement.OfficeId,
+                agreement.PropertyId,
+                propertyCode,
+                isMonthly: true,
+                processingDate,
+                amount: null,
+                "Skipped — journal entry already exists for this month.");
             return;
+        }
 
-        var wasRentedThisMonth = await _reservationRepository.WasRentedThisMonthAsync(agreement.PropertyId, organizationId, processingDate);
+        var wasRentedThisMonth = await _reservationRepository.WasRentedThisMonthAsync(
+            agreement.PropertyId,
+            organizationId,
+            processingDate);
 
         if (!wasRentedThisMonth)
+        {
+            await LogLinenAndTowelDecisionAsync(
+                organizationId,
+                agreement.OfficeId,
+                agreement.PropertyId,
+                propertyCode,
+                isMonthly: true,
+                processingDate,
+                amount: null,
+                $"Skipped — no non-owner rental from {monthStart:MM/dd/yyyy} through {processingDate:MM/dd/yyyy}.");
             return;
+        }
 
         await BuildLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: true, processingDate, cancellationToken);
     }
@@ -289,10 +326,32 @@ public partial class AccountingManager
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (processingDate.Month != 1 || processingDate.Day != 1)
+        {
+            await LogLinenAndTowelDecisionAsync(
+                organizationId,
+                agreement.OfficeId,
+                agreement.PropertyId,
+                propertyCode,
+                isMonthly: false,
+                processingDate,
+                amount: null,
+                "Skipped — annual linen and towel only runs on January 1.");
             return;
+        }
 
         if (await HasLinensAndTowelsJournalEntryAsync(organizationId, agreement, processingDate, processingDate))
+        {
+            await LogLinenAndTowelDecisionAsync(
+                organizationId,
+                agreement.OfficeId,
+                agreement.PropertyId,
+                propertyCode,
+                isMonthly: false,
+                processingDate,
+                amount: null,
+                "Skipped — journal entry already exists for this date.");
             return;
+        }
 
         await BuildLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: false, processingDate, cancellationToken);
     }
@@ -329,7 +388,23 @@ public partial class AccountingManager
                 : ResolveOnboardProrationAmount(agreement.LinenAndTowelFee, availableFrom, availableUntil, processingDate);
         var reverseEntryDirection = isOffboardProrationMonth && feeAmount > 0m;
         if (feeAmount <= 0m)
+        {
+            var skipReason = isMonthly
+                ? agreement.LinenAndTowelFee <= 0m
+                    ? "Skipped — linen and towel fee is zero or negative."
+                    : "Skipped — calculated fee amount is zero or negative."
+                : ResolveAnnualLinenSkipReason(agreement.LinenAndTowelFee, availableFrom, availableUntil, processingDate, isOffboardProrationMonth);
+            await LogLinenAndTowelDecisionAsync(
+                organizationId,
+                agreement.OfficeId,
+                agreement.PropertyId,
+                propertyCode,
+                isMonthly,
+                processingDate,
+                amount: null,
+                skipReason);
             return;
+        }
         var cadenceLabel = isMonthly ? "Monthly" : "Annual";
 
         _ = availableFrom;
@@ -378,6 +453,35 @@ public partial class AccountingManager
         };
 
         await CreateAutoGeneratedJournalEntryAsync(journalEntry);
+        await LogLinenAndTowelDecisionAsync(
+            organizationId,
+            agreement.OfficeId,
+            agreement.PropertyId,
+            propertyCode,
+            isMonthly,
+            processingDate,
+            amount: feeAmount,
+            reverseEntryDirection
+                ? "Created unused-portion journal entry."
+                : "Created journal entry.");
+    }
+
+    private static string ResolveAnnualLinenSkipReason(decimal annualFeeAmount, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, bool isOffboardProrationMonth)
+    {
+        if (annualFeeAmount <= 0m)
+            return "Skipped — linen and towel fee is zero or negative.";
+
+        if (isOffboardProrationMonth)
+            return "Skipped — no unused annual portion to bill at offboarding.";
+
+        if (availableFrom == null)
+            return "Skipped — calculated fee amount is zero or negative.";
+
+        if (processingDate < availableFrom.Value &&
+            !(availableFrom.Value.Month == processingDate.Month && availableFrom.Value.Year == processingDate.Year))
+            return $"Skipped — property is not online until {availableFrom.Value:MM/dd/yyyy}.";
+
+        return "Skipped — calculated fee amount is zero after annual proration.";
     }
 
     private static decimal ResolveOnboardProrationAmount(decimal annualFeeAmount, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate)
@@ -428,6 +532,21 @@ public partial class AccountingManager
             return 0m;
 
         return Math.Round(annualFeeAmount / 365m * offlineDays, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task LogLinenAndTowelDecisionAsync(
+        Guid organizationId,
+        int officeId,
+        Guid propertyId,
+        string propertyCode,
+        bool isMonthly,
+        DateOnly processingDate,
+        decimal? amount,
+        string message)
+    {
+        var cadence = isMonthly ? "Monthly" : "Annual";
+        var fullMessage = $"{cadence} linen & towel [{propertyCode}] (as of {processingDate:MM/dd/yyyy}): {message}";
+        await LogPeriodicAccountingDecisionAsync(organizationId, officeId, propertyId, amount, fullMessage);
     }
 
     private async Task LogPeriodicAccountingDecisionAsync(Guid organizationId, int officeId, Guid propertyId, decimal? amount, string message)

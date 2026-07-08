@@ -60,7 +60,12 @@ public interface IAccountingManager
     Task<JournalEntrySyncResult> SyncReceiptJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> ClearReceiptJournalEntriesAsync(Guid organizationId, string officeIds);
     Task<JournalEntrySyncResult> SyncWorkOrderJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
-    Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, IProgress<JournalEntrySyncProgress>? progress = null);
+    Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly? startDate = null,
+        DateOnly? endDate = null,
+        IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> ClearAllJournalEntriesAsync(Guid organizationId, string officeIds);
     #endregion
 

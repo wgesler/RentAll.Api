@@ -350,13 +350,18 @@ public partial class AccountingManager
         return result;
     }
 
-    public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly? startDate = null,
+        DateOnly? endDate = null,
+        IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();
-        var runDates = GetMonthlyRunDatesForCurrentYear(DateOnly.FromDateTime(DateTime.UtcNow));
+        var runDates = ResolveDepartureFeeRunDates(startDate, endDate, DateOnly.FromDateTime(DateTime.UtcNow));
 
         await ProcessDepartureFeesAsync(organizationId, officeIds, runDates, result, progress);
-        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, result, progress);
+        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
 
         return result;
     }
@@ -404,30 +409,47 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "departureFee", total, processed, result, "Completed");
     }
 
-    private async Task ProcessLinenAndTowelFeesAsync(Guid organizationId, string officeIds, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
+    private async Task ProcessLinenAndTowelFeesAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly? startDate,
+        DateOnly? endDate,
+        JournalEntrySyncResult result,
+        IProgress<JournalEntrySyncProgress>? progress = null)
     {
-        ReportSyncProgress(progress, "linenAndTowelFee", 1, 0, result, "Running");
+        // Sync replays linen/towel once per month in the criteria range, using the last day of each month
+        // (e.g. 5/28-7/31 => 5/31, 6/30, 7/31) as the processing date for that month's occupancy check.
+        var processingDates = ResolveLinenSyncProcessingDatesInRange(startDate, endDate);
+        var total = processingDates.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, total == 0 ? "Completed" : "Running");
 
-        try
+        if (total == 0)
+            return;
+
+        var monthlyBatch = (await _propertyRepository.GetMonthlyLinensAndTowelsAsync(organizationId, officeIds)).ToList();
+        var annualBatch = (await _propertyRepository.GetAnnualLinensAndTowelsAsync(organizationId, officeIds)).ToList();
+
+        foreach (var runDate in processingDates)
         {
-            var runDate = DateOnly.FromDateTime(DateTime.UtcNow);
-            var monthlyBatch = (await _propertyRepository.GetMonthlyLinensAndTowelsAsync(organizationId, officeIds)).ToList();
-            var annualBatch = (await _propertyRepository.GetAnnualLinensAndTowelsAsync(organizationId, officeIds)).ToList();
-            result.DocumentsProcessed += monthlyBatch.Count + annualBatch.Count;
+            try
+            {
+                result.DocumentsProcessed += monthlyBatch.Count + annualBatch.Count;
+                await CreateJournalEntriesForLinensAndTowelsAsync(
+                    organizationId,
+                    monthlyBatch,
+                    annualBatch,
+                    CancellationToken.None,
+                    runDate);
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"Linen and towel fees {runDate:yyyy-MM-dd}: {ex.Message}");
+            }
 
-            await CreateJournalEntriesForLinensAndTowelsAsync(
-                organizationId,
-                monthlyBatch,
-                annualBatch,
-                CancellationToken.None,
-                runDate);
+            processed++;
+            ReportSyncProgress(progress, "linenAndTowelFee", total, processed, result, processed >= total ? "Completed" : "Running");
         }
-        catch (Exception ex)
-        {
-            result.Errors.Add($"Linen and towel fees {DateOnly.FromDateTime(DateTime.UtcNow):yyyy-MM-dd}: {ex.Message}");
-        }
-
-        ReportSyncProgress(progress, "linenAndTowelFee", 1, 1, result, "Completed");
     }
 
     private async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
@@ -542,6 +564,50 @@ public partial class AccountingManager
         var dates = new List<DateOnly>();
         for (var month = 1; month <= asOfDate.Month; month++)
             dates.Add(new DateOnly(asOfDate.Year, month, 1));
+
+        return dates;
+    }
+
+    private static List<DateOnly> ResolveDepartureFeeRunDates(DateOnly? startDate, DateOnly? endDate, DateOnly fallbackAsOfDate)
+    {
+        if (!startDate.HasValue && !endDate.HasValue)
+            return GetMonthlyRunDatesForCurrentYear(fallbackAsOfDate);
+
+        var rangeStart = startDate ?? endDate!.Value;
+        var rangeEnd = endDate ?? startDate!.Value;
+        if (rangeStart > rangeEnd)
+            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+
+        var dates = new List<DateOnly>();
+        var monthCursor = new DateOnly(rangeStart.Year, rangeStart.Month, 1);
+        var lastMonthStart = new DateOnly(rangeEnd.Year, rangeEnd.Month, 1);
+        while (monthCursor <= lastMonthStart)
+        {
+            dates.Add(monthCursor);
+            monthCursor = monthCursor.AddMonths(1);
+        }
+
+        return dates;
+    }
+
+    private static List<DateOnly> ResolveLinenSyncProcessingDatesInRange(DateOnly? startDate, DateOnly? endDate)
+    {
+        if (!startDate.HasValue && !endDate.HasValue)
+            return [];
+
+        var rangeStart = startDate ?? endDate!.Value;
+        var rangeEnd = endDate ?? startDate!.Value;
+        if (rangeStart > rangeEnd)
+            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+
+        var dates = new List<DateOnly>();
+        var monthCursor = new DateOnly(rangeStart.Year, rangeStart.Month, 1);
+        var lastMonthStart = new DateOnly(rangeEnd.Year, rangeEnd.Month, 1);
+        while (monthCursor <= lastMonthStart)
+        {
+            dates.Add(monthCursor.AddMonths(1).AddDays(-1));
+            monthCursor = monthCursor.AddMonths(1);
+        }
 
         return dates;
     }

@@ -180,7 +180,7 @@ public partial class AccountingController
         var job = CreateSyncJob(jobId);
         SyncJobs[jobId] = job;
 
-        _ = Task.Run(() => RunAllJournalEntriesSyncJobAsync(job, CurrentOrganizationId, officeIds, CurrentUser));
+        _ = Task.Run(() => RunAllJournalEntriesSyncJobAsync(job, CurrentOrganizationId, officeIds, dto.StartDate, dto.EndDate, CurrentUser));
 
         return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
     }
@@ -317,6 +317,8 @@ public partial class AccountingController
         JournalEntrySyncJobState job,
         Guid organizationId,
         string officeIds,
+        DateOnly? startDate,
+        DateOnly? endDate,
         Guid currentUser)
     {
         var progress = new Progress<JournalEntrySyncProgress>(update => ApplySyncProgress(job, update));
@@ -329,7 +331,7 @@ public partial class AccountingController
             await scopedAccountingManager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, progress);
+            await scopedAccountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, startDate, endDate, progress);
 
             lock (job.SyncRoot)
             {
