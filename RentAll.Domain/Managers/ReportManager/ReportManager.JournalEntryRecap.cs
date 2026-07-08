@@ -101,7 +101,7 @@ public partial class ReportManager
                 {
                     var applyKey = $"{reservationKey}|{periodKey}";
                     prePayReceivedByPeriod[applyKey] = prePayReceivedByPeriod.GetValueOrDefault(applyKey) + amount;
-                    var group = GetOrCreateGroup(groups, line);
+                    var group = GetOrCreateGroup(groups, line, category);
                     SetPrimaryJournalEntry(group, line, category);
                     CaptureCategoryActivityContext(group, line, category);
                     EnrichGroupSource(group, line, category);
@@ -116,7 +116,7 @@ public partial class ReportManager
                 continue;
             }
 
-            var recapGroup = GetOrCreateGroup(groups, line);
+            var recapGroup = GetOrCreateGroup(groups, line, category);
             ApplyCategoryAmount(recapGroup, category, amount);
             SetPrimaryJournalEntry(recapGroup, line, category);
             CaptureCategoryActivityContext(recapGroup, line, category);
@@ -265,12 +265,15 @@ public partial class ReportManager
         };
     }
 
-    private static GroupAccumulator GetOrCreateGroup(Dictionary<string, GroupAccumulator> groups, JournalEntryRecapLine line)
+    private static GroupAccumulator GetOrCreateGroup(
+        Dictionary<string, GroupAccumulator> groups,
+        JournalEntryRecapLine line,
+        string? category = null)
     {
         var propertyKey = BuildPropertyKey(line);
         var reservationKey = BuildReservationKey(line);
         var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
-        var groupKey = BuildGroupKey(propertyKey, reservationKey, periodKey);
+        var groupKey = BuildGroupKey(propertyKey, reservationKey, periodKey, line, category);
         if (groups.TryGetValue(groupKey, out var group))
             return group;
 
@@ -431,8 +434,40 @@ public partial class ReportManager
     private static string BuildReservationKey(JournalEntryRecapLine line) =>
         (line.ReservationCode ?? line.ReservationId?.ToString() ?? string.Empty).Trim();
 
-    private static string BuildGroupKey(string propertyKey, string reservationKey, string periodKey) =>
-        $"{propertyKey}|{reservationKey}|{periodKey}";
+    private static string BuildGroupKey(
+        string propertyKey,
+        string reservationKey,
+        string periodKey,
+        JournalEntryRecapLine? line = null,
+        string? category = null)
+    {
+        var groupKey = $"{propertyKey}|{reservationKey}|{periodKey}";
+        if (line == null
+            || !string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
+            || !string.IsNullOrWhiteSpace(reservationKey))
+        {
+            return groupKey;
+        }
+
+        var expenseDocumentKey = BuildExpenseGroupDocumentKey(line);
+        return string.IsNullOrWhiteSpace(expenseDocumentKey)
+            ? groupKey
+            : $"{groupKey}|expense:{expenseDocumentKey}";
+    }
+
+    private static string BuildExpenseGroupDocumentKey(JournalEntryRecapLine line)
+    {
+        if (line.JournalEntryId != Guid.Empty)
+            return line.JournalEntryId.ToString("D");
+
+        if (line.JournalEntryLineId != Guid.Empty)
+            return line.JournalEntryLineId.ToString("D");
+
+        if (line.SourceId.HasValue && line.SourceId.Value != Guid.Empty)
+            return $"{line.SourceTypeId ?? 0}:{line.SourceId.Value:D}";
+
+        return string.Empty;
+    }
 
     private static string ResolveRecapSourceDocumentCode(JournalEntryRecapLine line)
     {
@@ -473,6 +508,8 @@ public partial class ReportManager
                 return "bill";
             case (int)SourceType.Receipt:
                 return "receipt";
+            case (int)SourceType.LinensAndTowels:
+                return "linensandtowels";
             case (int)SourceType.Invoice:
             case (int)SourceType.InvoicePayment:
                 return "invoice";
