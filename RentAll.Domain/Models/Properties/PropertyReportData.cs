@@ -13,7 +13,9 @@ public class PropertyReportData
     public PropertyLeaseType PropertyLeaseType { get; set; }
     public Guid? PrimaryOwnerId { get; set; }
     public OwnerType? OwnerType { get; set; }
+    public string? CompanyName { get; set; }
     public string OwnerNames { get; set; } = string.Empty;
+    public string OwnerNameLine { get; set; } = string.Empty;
     public decimal WorkingCapitalBalance { get; set; }
     public ManagementFeeType ManagementFeeType { get; set; }
     public decimal RevenueSplitOwner { get; set; }

@@ -7,7 +7,9 @@ public class OwnerAccrualReportRow
     public string OfficeName { get; set; } = string.Empty;
     public Guid? OwnerId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
-    public string OwnerName { get; set; } = string.Empty;
+    public string? CompanyName { get; set; }
+    public string OwnerNames { get; set; } = string.Empty;
+    public string OwnerNameLine { get; set; } = string.Empty;
     public decimal StartingBalance { get; set; }
     public decimal InvoicedIncome { get; set; }
     public decimal PrepaidIncome { get; set; }

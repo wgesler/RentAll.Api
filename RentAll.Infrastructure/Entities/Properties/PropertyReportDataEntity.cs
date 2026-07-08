@@ -11,7 +11,9 @@ public class PropertyReportDataEntity
     public int PropertyLeaseTypeId { get; set; }
     public Guid? PrimaryOwnerId { get; set; }
     public int? OwnerTypeId { get; set; }
+    public string? CompanyName { get; set; }
     public string OwnerNames { get; set; } = string.Empty;
+    public string OwnerNameLine { get; set; } = string.Empty;
     public decimal WorkingCapitalBalance { get; set; }
     public int ManagementFeeTypeId { get; set; }
     public decimal RevenueSplitOwner { get; set; }
