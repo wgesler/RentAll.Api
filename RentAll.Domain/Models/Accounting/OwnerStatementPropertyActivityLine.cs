@@ -14,6 +14,7 @@ public class OwnerStatementPropertyActivityLine
     public string Description { get; set; } = string.Empty;
     public decimal ExpectedIncome { get; set; }
     public decimal ReceivedIncome { get; set; }
+    public decimal PrepaidIncome { get; set; }
     public decimal Expenses { get; set; }
     public decimal OwnerPayment { get; set; }
 }

@@ -61,7 +61,7 @@ public partial class ReportManager
             TouchOwnerAccrualSourceGroupMetadata(group, line);
         }
 
-        return groups.Values
+        var activityRows = groups.Values
             .Where(HasOwnerAccrualSourceGroupActivity)
             .SelectMany(group => ExpandOwnerAccrualSourceGroupActivityLines(
                 group,
@@ -71,6 +71,12 @@ public partial class ReportManager
                     string.Empty),
                 invoiceContextByKey,
                 mode))
+            .ToList();
+
+        if (mode == OwnerReportActivityMode.Accrual)
+            activityRows.AddRange(BuildOwnerReportPrepaidReceiveActivityLines(activityLines));
+
+        return activityRows
             .OrderBy(line => line.OfficeId)
             .ThenBy(line => line.PropertyId)
             .ThenBy(line => line.ActivityDate)
@@ -172,5 +178,35 @@ public partial class ReportManager
             return false;
 
         return line.TransactionDate < invoiceAccountingPeriod;
+    }
+
+    private static IEnumerable<OwnerStatementPropertyActivityLine> BuildOwnerReportPrepaidReceiveActivityLines(
+        IEnumerable<JournalEntryRecapLine> activityLines)
+    {
+        foreach (var line in activityLines ?? [])
+        {
+            if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
+                continue;
+
+            var category = (line.RecapCategory ?? string.Empty).Trim();
+            if (!string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) || line.Amount <= 0)
+                continue;
+
+            var sourceDocumentCode = ResolveRecapSourceDocumentCode(line);
+            yield return new OwnerStatementPropertyActivityLine
+            {
+                PropertyId = propertyId,
+                OfficeId = line.OfficeId,
+                ActivityId = line.JournalEntryLineId,
+                SourceId = line.SourceId,
+                JournalEntryLineId = line.JournalEntryLineId,
+                ActivityType = GetRecapActivityType(line.SourceTypeId, sourceDocumentCode),
+                ActivityDate = line.TransactionDate,
+                AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(line.AccountingPeriod.ToString("yyyy-MM-dd")),
+                DocumentCode = (line.JournalEntryCode ?? string.Empty).Trim(),
+                Description = StripTenantPaymentMemoForDisplay(line.Description ?? string.Empty),
+                PrepaidIncome = line.Amount
+            };
+        }
     }
 }

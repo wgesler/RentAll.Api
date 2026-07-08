@@ -18,6 +18,7 @@ public class OwnerCashReportPropertyActivityLineResponseDto
     public decimal ReceivedIncome { get; set; }
     public decimal Expenses { get; set; }
     public decimal OwnerPayment { get; set; }
+    public decimal PrepaidIncome { get; set; }
 
     public OwnerCashReportPropertyActivityLineResponseDto(OwnerStatementPropertyActivityLine line)
     {
@@ -33,6 +34,7 @@ public class OwnerCashReportPropertyActivityLineResponseDto
         Description = line.Description;
         ExpectedIncome = line.ExpectedIncome;
         ReceivedIncome = line.ReceivedIncome;
+        PrepaidIncome = line.PrepaidIncome;
         Expenses = line.Expenses;
         OwnerPayment = line.OwnerPayment;
     }

@@ -161,11 +161,14 @@ public partial class ReportManager
 
     private static int ResolveOwnerAccrualActivitySortOrder(OwnerStatementPropertyActivityLine line)
     {
-        if (line.Expenses != 0 && line.ExpectedIncome == 0 && line.ReceivedIncome == 0)
+        if (line.Expenses != 0 && line.ExpectedIncome == 0 && line.ReceivedIncome == 0 && line.PrepaidIncome == 0)
             return 3;
 
         if (line.ExpectedIncome > line.ReceivedIncome)
             return 0;
+
+        if (line.PrepaidIncome != 0 && line.ExpectedIncome == 0 && line.ReceivedIncome == 0)
+            return 2;
 
         if (line.ExpectedIncome == 0 && line.ReceivedIncome != 0)
             return 2;

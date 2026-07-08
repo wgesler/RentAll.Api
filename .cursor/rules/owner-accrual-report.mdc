@@ -75,7 +75,8 @@ paid = min(ownerRent, payment × ownerRent / expectedIncome)
 
 - **Prepayment** = tenant pays before invoice `AccountingPeriod` (`payment date < invoice period`), or paired positive `PrePayment` receive on same ledger `SourceId`.
 - **Cash + accrual activity:** exclude raw undep `Payment` lines that are prepayment receipts. Do **not** show received income in the month money is received.
-- **Paid income for prepayment** comes from negative `PrePayment` apply JEs at invoice **accounting period** (same timing as recap `BuildRecapReportRows` apply split).
+- **Prepayment received (positive `PrePayment`):** show one accrual activity line per receive JE with `PrepaidIncome` = receive amount. Do **not** show on cash report activity.
+- **Prepayment applied (negative `PrePayment`):** do **not** show a negative prepaid line; applied amount flows to `ReceivedIncome` on the invoice/payment activity line at apply period.
 - **Late payments** unchanged — undep `Payment` still drives received income on payment date.
 - **Prepaid Income** property total stays on recap `PrePaymentValue` (`BuildRecapReportRows`), not activity `ReceivedIncome`.
 
