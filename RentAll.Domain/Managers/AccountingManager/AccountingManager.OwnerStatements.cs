@@ -16,8 +16,6 @@ public partial class AccountingManager
 
         await _journalEntryRepository.DeleteOwnerStatementStartingBalancesByCriteriaAsync(
             organizationId,
-            officeId,
-            ownerId,
             propertyId);
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
@@ -31,6 +29,7 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = officeId,
             TransactionDate = transactionDate,
+            PostingDate = transactionDate,
             SourceTypeId = (int)SourceType.Adjustment,
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine>
@@ -81,7 +80,6 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Adjustment,
             ChartOfAccountId = ownerAccountsPayableAccountId,
             PropertyId = propertyId,
-            ContactId = ownerId,
             IncludeVoided = false,
             IncludeUnposted = true
         });

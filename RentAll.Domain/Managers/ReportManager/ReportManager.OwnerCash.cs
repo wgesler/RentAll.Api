@@ -8,6 +8,13 @@ public partial class ReportManager
 {
     private const string OwnerStartingBalanceMemoPrefix = "Owner: Starting Balance:";
 
+    private sealed class OwnerCashStartingBalanceSnapshot
+    {
+        public decimal LedgerBalance { get; set; }
+        public decimal OpeningBalanceJeAmount { get; set; }
+        public DateOnly? OpeningBalanceTransactionDate { get; set; }
+    }
+
     public async Task<OwnerCashReport> GetOwnerCashReportAsync(JournalEntryRecapGetCriteria criteria)
     {
         criteria.IncludePaymentInvoiceContext = true;
@@ -24,19 +31,25 @@ public partial class ReportManager
             lines,
             OwnerReportActivityMode.Cash);
         var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
-        var priorPeriodUnpaidByPropertyKey = BuildOwnerCashPriorPeriodUnpaidByPropertyKey(lines, criteria);
+        var priorPeriodUnpaidByPropertyKey = BuildOwnerCashPriorPeriodUnpaidByPropertyKey(
+            lines,
+            criteria,
+            startingBalanceByKey);
 
         var rows = properties
             .Select(property =>
             {
                 var propertyKey = BuildOwnerCashPropertyKey(property.OfficeId, property.PropertyId);
-                var ledgerStartingBalance = ResolveOwnerCashStartingBalance(
+                var startingBalanceSnapshot = ResolveOwnerCashStartingBalanceSnapshot(
                     startingBalanceByKey,
                     property.OfficeId,
                     property.PropertyId,
                     property.PrimaryOwnerId);
                 priorPeriodUnpaidByPropertyKey.TryGetValue(propertyKey, out var priorPeriodUnpaidIncome);
-                var startingBalance = ledgerStartingBalance - priorPeriodUnpaidIncome;
+                var cancellableUnpaidIncome = Math.Min(
+                    priorPeriodUnpaidIncome,
+                    Math.Max(0m, startingBalanceSnapshot.LedgerBalance - startingBalanceSnapshot.OpeningBalanceJeAmount));
+                var startingBalance = startingBalanceSnapshot.LedgerBalance - cancellableUnpaidIncome;
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 
@@ -84,34 +97,55 @@ public partial class ReportManager
 
     private static Dictionary<string, decimal> BuildOwnerCashPriorPeriodUnpaidByPropertyKey(
         IReadOnlyList<JournalEntryRecapLine> lines,
-        JournalEntryRecapGetCriteria criteria)
+        JournalEntryRecapGetCriteria criteria,
+        IReadOnlyDictionary<string, OwnerCashStartingBalanceSnapshot> startingBalanceByKey)
     {
         var periodStart = ResolveOwnerReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
         if (!periodStart.HasValue)
             return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
-        var priorPeriodSourceLines = lines
-            .Where(line => line.TransactionDate < periodStart.Value)
-            .ToList();
-        if (priorPeriodSourceLines.Count == 0)
-            return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var priorPeriodUnpaidByPropertyKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        foreach (var propertyGroup in (lines ?? [])
+                     .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
+                     .Where(line => line.TransactionDate < periodStart.Value)
+                     .GroupBy(line => BuildOwnerCashPropertyKey(line.OfficeId, line.PropertyId!.Value)))
+        {
+            var propertyKey = propertyGroup.Key;
+            var openingBalanceTransactionDate = ResolveOwnerCashOpeningBalanceTransactionDate(
+                startingBalanceByKey,
+                propertyKey);
 
-        var priorPeriodActivityLines = BuildOwnerReportPropertyActivityLines(
-            priorPeriodSourceLines,
-            lines,
-            OwnerReportActivityMode.Accrual);
+            var priorPeriodSourceLines = propertyGroup.AsEnumerable();
+            if (openingBalanceTransactionDate.HasValue)
+            {
+                priorPeriodSourceLines = priorPeriodSourceLines
+                    .Where(line => line.TransactionDate >= openingBalanceTransactionDate.Value);
+            }
 
-        return priorPeriodActivityLines
-            .GroupBy(line => BuildOwnerCashPropertyKey(line.OfficeId, line.PropertyId))
-            .ToDictionary(
-                group => group.Key,
-                group =>
-                {
-                    var invoicedIncome = group.Sum(line => line.ExpectedIncome);
-                    var paidIncome = group.Sum(line => line.ReceivedIncome);
-                    return Math.Max(0m, invoicedIncome - paidIncome);
-                },
-                StringComparer.OrdinalIgnoreCase);
+            var priorPeriodLines = priorPeriodSourceLines.ToList();
+            if (priorPeriodLines.Count == 0)
+                continue;
+
+            var priorPeriodActivityLines = BuildOwnerReportPropertyActivityLines(
+                priorPeriodLines,
+                lines,
+                OwnerReportActivityMode.Accrual);
+            var invoicedIncome = priorPeriodActivityLines.Sum(line => line.ExpectedIncome);
+            var paidIncome = priorPeriodActivityLines.Sum(line => line.ReceivedIncome);
+            priorPeriodUnpaidByPropertyKey[propertyKey] = Math.Max(0m, invoicedIncome - paidIncome);
+        }
+
+        return priorPeriodUnpaidByPropertyKey;
+    }
+
+    private static DateOnly? ResolveOwnerCashOpeningBalanceTransactionDate(
+        IReadOnlyDictionary<string, OwnerCashStartingBalanceSnapshot> startingBalanceByKey,
+        string propertyKey)
+    {
+        if (startingBalanceByKey.TryGetValue(propertyKey, out var snapshot))
+            return snapshot.OpeningBalanceTransactionDate;
+
+        return null;
     }
 
     private static Dictionary<string, List<OwnerStatementPropertyActivityLine>> BuildOwnerReportPropertyActivityLinesByKey(
@@ -140,11 +174,11 @@ public partial class ReportManager
             .ToList();
     }
 
-    private async Task<Dictionary<string, decimal>> GetOwnerCashStartingBalanceByKeyAsync(
+    private async Task<Dictionary<string, OwnerCashStartingBalanceSnapshot>> GetOwnerCashStartingBalanceByKeyAsync(
         JournalEntryRecapGetCriteria criteria,
         IReadOnlyList<int> officeIds)
     {
-        var startingBalanceByKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var startingBalanceByKey = new Dictionary<string, OwnerCashStartingBalanceSnapshot>(StringComparer.OrdinalIgnoreCase);
         var priorMonthClose = ResolveOwnerCashPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
         var periodStart = ResolveOwnerReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
         if (!priorMonthClose.HasValue && !periodStart.HasValue)
@@ -172,12 +206,11 @@ public partial class ReportManager
 
                 foreach (var group in priorMonthOwnerApLines
                              .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
-                             .GroupBy(line => BuildOwnerCashStartingBalanceKey(
+                             .GroupBy(line => BuildOwnerCashPropertyKey(
                                  line.OfficeId,
-                                 line.PropertyId!.Value,
-                                 line.ContactId)))
+                                 line.PropertyId!.Value)))
                 {
-                    startingBalanceByKey[group.Key] = CalculateOwnerApBalanceFromInitialStartingBalanceWindow(group);
+                    startingBalanceByKey[group.Key] = CalculateOwnerApStartingBalanceSnapshot(group);
                 }
             }
 
@@ -206,7 +239,7 @@ public partial class ReportManager
         int ownerAccountsPayableAccountId,
         DateOnly periodStart,
         DateOnly reportEnd,
-        Dictionary<string, decimal> startingBalanceByKey)
+        Dictionary<string, OwnerCashStartingBalanceSnapshot> startingBalanceByKey)
     {
         var inRangeOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
         {
@@ -223,13 +256,15 @@ public partial class ReportManager
         foreach (var propertyGroup in inRangeOwnerApLines
                      .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
                      .Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo))
-                     .GroupBy(line => BuildOwnerCashStartingBalanceKey(
+                     .GroupBy(line => BuildOwnerCashPropertyKey(
                          line.OfficeId,
-                         line.PropertyId!.Value,
-                         line.ContactId)))
+                         line.PropertyId!.Value)))
         {
-            if (startingBalanceByKey.TryGetValue(propertyGroup.Key, out var existingBalance) && existingBalance != 0)
+            if (startingBalanceByKey.TryGetValue(propertyGroup.Key, out var existingSnapshot)
+                && existingSnapshot.LedgerBalance != 0)
+            {
                 continue;
+            }
 
             var earliestStartingBalanceEntry = propertyGroup
                 .GroupBy(line => line.JournalEntryId)
@@ -251,30 +286,34 @@ public partial class ReportManager
             if (earliestStartingBalanceEntry == null)
                 continue;
 
-            startingBalanceByKey[propertyGroup.Key] = earliestStartingBalanceEntry.NetBalance;
+            startingBalanceByKey[propertyGroup.Key] = new OwnerCashStartingBalanceSnapshot
+            {
+                LedgerBalance = earliestStartingBalanceEntry.NetBalance,
+                OpeningBalanceJeAmount = earliestStartingBalanceEntry.NetBalance,
+                OpeningBalanceTransactionDate = earliestStartingBalanceEntry.TransactionDate
+            };
         }
     }
 
-    private static decimal ResolveOwnerCashStartingBalance(
-        IReadOnlyDictionary<string, decimal> startingBalanceByKey,
+    private static OwnerCashStartingBalanceSnapshot ResolveOwnerCashStartingBalanceSnapshot(
+        IReadOnlyDictionary<string, OwnerCashStartingBalanceSnapshot> startingBalanceByKey,
         int officeId,
         Guid propertyId,
         Guid? ownerId)
     {
-        var ownerKey = BuildOwnerCashStartingBalanceKey(officeId, propertyId, ownerId);
-        if (startingBalanceByKey.TryGetValue(ownerKey, out var balance))
-            return balance;
+        var propertyKey = BuildOwnerCashPropertyKey(officeId, propertyId);
+        if (startingBalanceByKey.TryGetValue(propertyKey, out var snapshot))
+            return snapshot;
 
-        var noneKey = BuildOwnerCashStartingBalanceKey(officeId, propertyId, null);
-        if (startingBalanceByKey.TryGetValue(noneKey, out balance))
-            return balance;
-
-        var propertyPrefix = $"{officeId}:{propertyId:D}:";
-        return startingBalanceByKey
-            .Where(entry => entry.Key.StartsWith(propertyPrefix, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => entry.Value)
-            .FirstOrDefault();
+        return new OwnerCashStartingBalanceSnapshot();
     }
+
+    private static decimal ResolveOwnerCashStartingBalance(
+        IReadOnlyDictionary<string, OwnerCashStartingBalanceSnapshot> startingBalanceByKey,
+        int officeId,
+        Guid propertyId,
+        Guid? ownerId) =>
+        ResolveOwnerCashStartingBalanceSnapshot(startingBalanceByKey, officeId, propertyId, ownerId).LedgerBalance;
 
     private static decimal CalculateOwnerCashOwnerPayment(
         decimal startingBalance,
@@ -329,21 +368,38 @@ public partial class ReportManager
         return account.AccountId;
     }
 
-    private static decimal CalculateOwnerApBalanceFromInitialStartingBalanceWindow(
+    private static OwnerCashStartingBalanceSnapshot CalculateOwnerApStartingBalanceSnapshot(
         IGrouping<string, JournalEntryLineSearchResult> group)
     {
         var orderedLines = group
             .OrderBy(line => line.TransactionDate)
             .ThenBy(line => line.JournalEntryCode)
             .ToList();
-        var initialStartingBalanceLine = orderedLines.FirstOrDefault(line =>
-            IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo));
+        var initialStartingBalanceLine = orderedLines
+            .Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo))
+            .OrderByDescending(line => line.TransactionDate)
+            .ThenByDescending(line => line.JournalEntryCode)
+            .FirstOrDefault();
         if (initialStartingBalanceLine == null)
-            return orderedLines.Sum(line => line.Credit - line.Debit);
+        {
+            return new OwnerCashStartingBalanceSnapshot
+            {
+                LedgerBalance = orderedLines.Sum(line => line.Credit - line.Debit)
+            };
+        }
 
-        return orderedLines
-            .Where(line => line.TransactionDate >= initialStartingBalanceLine.TransactionDate)
+        var openingBalanceJeAmount = orderedLines
+            .Where(line => line.JournalEntryId == initialStartingBalanceLine.JournalEntryId)
             .Sum(line => line.Credit - line.Debit);
+
+        return new OwnerCashStartingBalanceSnapshot
+        {
+            LedgerBalance = orderedLines
+                .Where(line => line.TransactionDate >= initialStartingBalanceLine.TransactionDate)
+                .Sum(line => line.Credit - line.Debit),
+            OpeningBalanceJeAmount = openingBalanceJeAmount,
+            OpeningBalanceTransactionDate = initialStartingBalanceLine.TransactionDate
+        };
     }
 
     private static List<int> ParseReportOfficeIds(string officeIdsCsv)
@@ -358,9 +414,6 @@ public partial class ReportManager
 
     private static string BuildOwnerCashPropertyKey(int officeId, Guid propertyId)
         => $"{officeId}:{propertyId:D}";
-
-    private static string BuildOwnerCashStartingBalanceKey(int officeId, Guid propertyId, Guid? ownerId)
-        => $"{officeId}:{propertyId:D}:{ownerId?.ToString("D") ?? "none"}";
 
     private static DateOnly? ResolveOwnerCashPriorMonthCloseDate(DateOnly? startDate, DateOnly? endDate)
     {

@@ -28,14 +28,6 @@ namespace RentAll.Api.Controllers
                     if (!await _authManager.VerifyPasswordAsync(CurrentUser, dto.CurrentPassword))
                         return Unauthorized("Password confirmation failed.");
                 }
-                else if (hasExistingStartingBalance)
-                {
-                    var existingJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(existingStartingBalance!.JournalEntryId, CurrentOrganizationId);
-                    if (existingJournalEntry == null)
-                        return NotFound(new { message = "Existing owner starting balance journal entry was not found." });
-
-                    return Ok(new JournalEntryResponseDto(existingJournalEntry));
-                }
 
                 var journalEntry = await _accountingManager.CreateOwnerStatementStartingBalanceJournalEntryAsync(CurrentOrganizationId, dto.OfficeId, dto.OwnerId, dto.PropertyId, dto.TransactionDate, dto.Amount, CurrentUser);
                 if (journalEntry == null)
