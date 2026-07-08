@@ -25,13 +25,18 @@ public partial class ReportManager
         public string OwnerRentMemo { get; set; } = string.Empty;
         public string OwnerExpenseMemo { get; set; } = string.Empty;
         public string OwnerPaymentMemo { get; set; } = string.Empty;
+        public string PaymentMemo { get; set; } = string.Empty;
         public string OwnerRentJournalEntryCode { get; set; } = string.Empty;
         public string OwnerExpenseJournalEntryCode { get; set; } = string.Empty;
         public string OwnerPaymentJournalEntryCode { get; set; } = string.Empty;
+        public string PaymentJournalEntryCode { get; set; } = string.Empty;
         public Guid? OwnerRentJournalEntryId { get; set; }
         public Guid? OwnerRentJournalEntryLineId { get; set; }
         public Guid? OwnerExpenseJournalEntryLineId { get; set; }
         public Guid? OwnerPaymentJournalEntryLineId { get; set; }
+        public Guid? PaymentJournalEntryLineId { get; set; }
+        public string PaymentTransactionDate { get; set; } = string.Empty;
+        public long PaymentSortDateValue { get; set; }
         public int SourcePriority { get; set; } = -1;
         public int JournalEntryPriority { get; set; } = -1;
         public string TransactionDate { get; set; } = string.Empty;
@@ -48,6 +53,7 @@ public partial class ReportManager
         public decimal PrePaymentValue { get; set; }
         public decimal OwnerRentValue { get; set; }
         public decimal OwnerExpenseValue { get; set; }
+        public decimal OwnerPaymentReceivedValue { get; set; }
         public decimal OwnerPaymentValue { get; set; }
     }
 
@@ -267,7 +273,13 @@ public partial class ReportManager
             PrePaymentValue = group.PrePaymentValue,
             OwnerRentValue = group.OwnerRentValue,
             OwnerExpenseValue = group.OwnerExpenseValue,
+            OwnerPaymentReceivedValue = group.OwnerPaymentReceivedValue,
             OwnerPaymentValue = ownerPaymentValue,
+            PaymentMemo = group.PaymentMemo,
+            PaymentJournalEntryCode = group.PaymentJournalEntryCode,
+            PaymentJournalEntryLineId = group.PaymentJournalEntryLineId,
+            PaymentTransactionDate = FormatDateString(group.PaymentTransactionDate),
+            PaymentSortDateValue = group.PaymentSortDateValue,
             SortDateValue = group.SortDateValue,
             JournalEntryId = group.JournalEntryId,
             JournalEntryLineId = group.JournalEntryLineId,
@@ -328,6 +340,9 @@ public partial class ReportManager
             case "OwnerRent":
                 group.OwnerRentValue += amount;
                 break;
+            case "OwnerPayment":
+                group.OwnerPaymentReceivedValue += amount;
+                break;
             case "Expense":
                 group.OwnerExpenseValue += amount;
                 break;
@@ -387,6 +402,21 @@ public partial class ReportManager
             if (!string.IsNullOrWhiteSpace(journalEntryCode))
                 group.OwnerPaymentJournalEntryCode = journalEntryCode;
             group.OwnerPaymentJournalEntryLineId = line.JournalEntryLineId;
+            return;
+        }
+
+        if (string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase))
+        {
+            group.PaymentMemo = memo;
+            if (!string.IsNullOrWhiteSpace(journalEntryCode))
+                group.PaymentJournalEntryCode = journalEntryCode;
+            group.PaymentJournalEntryLineId = line.JournalEntryLineId;
+            var paymentTransactionDate = line.TransactionDate.ToString("yyyy-MM-dd");
+            if (!string.IsNullOrWhiteSpace(paymentTransactionDate))
+            {
+                group.PaymentTransactionDate = paymentTransactionDate;
+                group.PaymentSortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks;
+            }
         }
     }
 

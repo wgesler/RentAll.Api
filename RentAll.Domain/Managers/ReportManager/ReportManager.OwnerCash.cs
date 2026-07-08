@@ -91,9 +91,6 @@ public partial class ReportManager
         || row.OwnerExpenseValue != 0
         || row.OwnerPaymentValue != 0;
 
-    private static bool HasOwnerAccrualReportRecapActivity(RecapReportRow row) =>
-        HasOwnerCashReportRecapActivity(row);
-
     private async Task<List<PropertyReportData>> LoadOwnerCashPropertyReportDataAsync(JournalEntryRecapGetCriteria criteria)
     {
         var properties = (await _propertyRepository.GetPropertyReportDataAsync(

@@ -45,7 +45,13 @@ public class RecapReportRow
     public decimal PrePaymentValue { get; set; }
     public decimal OwnerRentValue { get; set; }
     public decimal OwnerExpenseValue { get; set; }
+    public decimal OwnerPaymentReceivedValue { get; set; }
     public decimal OwnerPaymentValue { get; set; }
+    public string PaymentMemo { get; set; } = string.Empty;
+    public string PaymentJournalEntryCode { get; set; } = string.Empty;
+    public Guid? PaymentJournalEntryLineId { get; set; }
+    public string PaymentTransactionDate { get; set; } = string.Empty;
+    public long PaymentSortDateValue { get; set; }
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
