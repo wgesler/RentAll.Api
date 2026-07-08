@@ -6,6 +6,12 @@ namespace RentAll.Domain.Managers;
 
 public partial class ReportManager
 {
+    private sealed class OwnerAccrualInvoiceContext
+    {
+        public decimal OwnerRentValue { get; set; }
+        public decimal ExpectedIncomeValue { get; set; }
+    }
+
     private sealed class OwnerAccrualSourceGroup
     {
         public Guid PropertyId { get; set; }
@@ -17,21 +23,28 @@ public partial class ReportManager
         public string TransactionDate { get; set; } = string.Empty;
         public long SortDateValue { get; set; }
         public decimal OwnerRentValue { get; set; }
+        public decimal ExpectedIncomeValue { get; set; }
+        public decimal PaymentValue { get; set; }
         public decimal OwnerPaymentReceivedValue { get; set; }
         public decimal OwnerExpenseValue { get; set; }
         public string OwnerRentMemo { get; set; } = string.Empty;
         public string OwnerExpenseMemo { get; set; } = string.Empty;
         public string OwnerPaymentMemo { get; set; } = string.Empty;
+        public string PaymentMemo { get; set; } = string.Empty;
         public string OwnerRentJournalEntryCode { get; set; } = string.Empty;
         public string OwnerExpenseJournalEntryCode { get; set; } = string.Empty;
         public string OwnerPaymentJournalEntryCode { get; set; } = string.Empty;
+        public string PaymentJournalEntryCode { get; set; } = string.Empty;
         public Guid? OwnerRentJournalEntryLineId { get; set; }
         public Guid? OwnerExpenseJournalEntryLineId { get; set; }
         public Guid? OwnerPaymentJournalEntryLineId { get; set; }
+        public Guid? PaymentJournalEntryLineId { get; set; }
         public Guid? OwnerRentSourceId { get; set; }
         public int? OwnerRentSourceTypeId { get; set; }
         public Guid? OwnerPaymentSourceId { get; set; }
         public int? OwnerPaymentSourceTypeId { get; set; }
+        public Guid? PaymentSourceId { get; set; }
+        public int? PaymentSourceTypeId { get; set; }
         public Guid? OwnerExpenseSourceId { get; set; }
         public int? OwnerExpenseSourceTypeId { get; set; }
     }
@@ -109,15 +122,19 @@ public partial class ReportManager
 
     private static List<OwnerStatementPropertyActivityLine> BuildOwnerAccrualPropertyActivityLines(IEnumerable<JournalEntryRecapLine> lines)
     {
+        var invoiceContextByKey = BuildOwnerAccrualInvoiceContextByKey(lines);
         var groups = new Dictionary<string, OwnerAccrualSourceGroup>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var line in lines ?? [])
         {
-            if (!line.PropertyId.HasValue || line.PropertyId.Value == Guid.Empty)
+            if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
                 continue;
 
             var category = (line.RecapCategory ?? string.Empty).Trim();
             if (!IsOwnerAccrualRecapCategory(category))
+                continue;
+
+            if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && line.Amount > 0)
                 continue;
 
             var groupKey = BuildOwnerAccrualSourceGroupKey(line, category);
@@ -125,7 +142,7 @@ public partial class ReportManager
             {
                 group = new OwnerAccrualSourceGroup
                 {
-                    PropertyId = line.PropertyId.Value,
+                    PropertyId = propertyId,
                     OfficeId = line.OfficeId,
                     AccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd"),
                     SourceDocumentCode = ResolveRecapSourceDocumentCode(line),
@@ -141,7 +158,10 @@ public partial class ReportManager
 
         return groups.Values
             .Where(HasOwnerAccrualSourceGroupActivity)
-            .SelectMany(ExpandOwnerAccrualSourceGroupActivityLines)
+            .SelectMany(group => ExpandOwnerAccrualSourceGroupActivityLines(
+                group,
+                BuildOwnerAccrualInvoiceContextKey(group.PropertyId, group.SourceDocumentCode, group.AccountingPeriod),
+                invoiceContextByKey))
             .OrderBy(line => line.OfficeId)
             .ThenBy(line => line.PropertyId)
             .ThenBy(line => line.ActivityDate)
@@ -149,6 +169,38 @@ public partial class ReportManager
             .ThenBy(line => line.AccountingPeriod, StringComparer.Ordinal)
             .ThenBy(line => line.DocumentCode, StringComparer.Ordinal)
             .ToList();
+    }
+
+    private static Dictionary<string, OwnerAccrualInvoiceContext> BuildOwnerAccrualInvoiceContextByKey(IEnumerable<JournalEntryRecapLine> lines)
+    {
+        var contextByKey = new Dictionary<string, OwnerAccrualInvoiceContext>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var line in lines ?? [])
+        {
+            if (!TryResolveOwnerAccrualPropertyId(line, out _))
+                continue;
+
+            var category = (line.RecapCategory ?? string.Empty).Trim();
+            if (!string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var contextKey = BuildOwnerAccrualInvoiceContextKey(line);
+            if (!contextByKey.TryGetValue(contextKey, out var context))
+            {
+                context = new OwnerAccrualInvoiceContext();
+                contextByKey[contextKey] = context;
+            }
+
+            if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+                context.OwnerRentValue += line.Amount;
+            else
+                context.ExpectedIncomeValue += line.Amount;
+        }
+
+        return contextByKey;
     }
 
     private static int ResolveOwnerAccrualActivitySortOrder(OwnerStatementPropertyActivityLine line)
@@ -168,19 +220,52 @@ public partial class ReportManager
     private static bool IsOwnerAccrualRecapCategory(string category) =>
         string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryResolveOwnerAccrualPropertyId(JournalEntryRecapLine line, out Guid propertyId)
+    {
+        if (line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
+        {
+            propertyId = line.PropertyId.Value;
+            return true;
+        }
+
+        propertyId = Guid.Empty;
+        return false;
+    }
+
+    private static string BuildOwnerAccrualInvoiceContextKey(JournalEntryRecapLine line)
+    {
+        if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
+            propertyId = Guid.Empty;
+
+        return BuildOwnerAccrualInvoiceContextKey(propertyId, ResolveRecapSourceDocumentCode(line), string.Empty);
+    }
+
+    private static string BuildOwnerAccrualInvoiceContextKey(Guid propertyId, string sourceDocumentCode, string accountingPeriod)
+    {
+        var sourceKey = (sourceDocumentCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(sourceKey))
+            sourceKey = "none";
+
+        return $"{propertyId:D}|{sourceKey}";
+    }
 
     private static string BuildOwnerAccrualSourceGroupKey(JournalEntryRecapLine line, string category)
     {
-        var propertyKey = BuildPropertyKey(line);
-        var reservationKey = BuildReservationKey(line);
+        if (!TryResolveOwnerAccrualPropertyId(line, out var propertyId))
+            propertyId = Guid.Empty;
+
         var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
         var sourceKey = ResolveOwnerAccrualSourceGroupKey(line);
         var categorySuffix = string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
             ? "|expense"
             : string.Empty;
 
-        return $"{propertyKey}|{reservationKey}|{periodKey}|{sourceKey}{categorySuffix}";
+        return $"{propertyId:D}|{periodKey}|{sourceKey}{categorySuffix}";
     }
 
     private static string ResolveOwnerAccrualSourceGroupKey(JournalEntryRecapLine line)
@@ -211,6 +296,26 @@ public partial class ReportManager
             group.OwnerRentJournalEntryLineId = line.JournalEntryLineId;
             group.OwnerRentSourceId = line.SourceId;
             group.OwnerRentSourceTypeId = line.SourceTypeId;
+            return;
+        }
+
+        if (string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
+        {
+            group.ExpectedIncomeValue += amount;
+            return;
+        }
+
+        if (string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
+            || (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && amount < 0))
+        {
+            group.PaymentValue += Math.Abs(amount);
+            if (!string.IsNullOrWhiteSpace(memo))
+                group.PaymentMemo = memo;
+            if (!string.IsNullOrWhiteSpace(journalEntryCode))
+                group.PaymentJournalEntryCode = journalEntryCode;
+            group.PaymentJournalEntryLineId = line.JournalEntryLineId;
+            group.PaymentSourceId = line.SourceId;
+            group.PaymentSourceTypeId = line.SourceTypeId;
             return;
         }
 
@@ -263,20 +368,55 @@ public partial class ReportManager
     private static bool HasOwnerAccrualSourceGroupActivity(OwnerAccrualSourceGroup group) =>
         group.OwnerRentValue != 0
         || group.OwnerExpenseValue != 0
-        || group.OwnerPaymentReceivedValue != 0;
+        || group.OwnerPaymentReceivedValue != 0
+        || group.PaymentValue != 0;
 
     private static bool HasOwnerAccrualReportRecapActivity(RecapReportRow row) =>
         row.OwnerRentValue != 0
         || row.OwnerExpenseValue != 0
-        || row.OwnerPaymentReceivedValue != 0;
+        || row.OwnerPaymentReceivedValue != 0
+        || row.PaymentValue != 0;
 
-    private static IEnumerable<OwnerStatementPropertyActivityLine> ExpandOwnerAccrualSourceGroupActivityLines(OwnerAccrualSourceGroup group)
+    private static decimal ResolveOwnerAccrualPaidIncomeForGroup(
+        OwnerAccrualSourceGroup group,
+        string invoiceContextKey,
+        IReadOnlyDictionary<string, OwnerAccrualInvoiceContext> invoiceContextByKey)
     {
+        if (group.OwnerPaymentReceivedValue != 0)
+            return group.OwnerPaymentReceivedValue;
+
+        if (group.PaymentValue == 0)
+            return 0;
+
+        invoiceContextByKey.TryGetValue(invoiceContextKey, out var invoiceContext);
+        var ownerRent = group.OwnerRentValue != 0
+            ? group.OwnerRentValue
+            : invoiceContext?.OwnerRentValue ?? 0;
+        var expectedIncome = group.ExpectedIncomeValue != 0
+            ? group.ExpectedIncomeValue
+            : invoiceContext?.ExpectedIncomeValue ?? 0;
+
+        if (ownerRent == 0 || expectedIncome == 0)
+            return 0;
+
+        var ownerPaid = group.PaymentValue * ownerRent / expectedIncome;
+        if (ownerPaid < 0)
+            return 0;
+
+        return ownerPaid > ownerRent ? ownerRent : ownerPaid;
+    }
+
+    private static IEnumerable<OwnerStatementPropertyActivityLine> ExpandOwnerAccrualSourceGroupActivityLines(
+        OwnerAccrualSourceGroup group,
+        string invoiceContextKey,
+        IReadOnlyDictionary<string, OwnerAccrualInvoiceContext> invoiceContextByKey)
+    {
+        var paidIncome = ResolveOwnerAccrualPaidIncomeForGroup(group, invoiceContextKey, invoiceContextByKey);
         var hasOwnerRent = group.OwnerRentValue != 0;
-        var hasOwnerPaymentReceived = group.OwnerPaymentReceivedValue != 0;
+        var hasPaidIncome = paidIncome != 0;
         var accountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod);
 
-        if (hasOwnerRent && hasOwnerPaymentReceived)
+        if (hasOwnerRent && hasPaidIncome)
         {
             yield return new OwnerStatementPropertyActivityLine
             {
@@ -291,7 +431,7 @@ public partial class ReportManager
                 DocumentCode = ResolveOwnerAccrualOwnerRentDocumentCode(group),
                 Description = ResolveOwnerAccrualOwnerRentDescription(group),
                 ExpectedIncome = group.OwnerRentValue,
-                ReceivedIncome = group.OwnerPaymentReceivedValue,
+                ReceivedIncome = paidIncome,
                 Expenses = 0,
                 OwnerPayment = 0
             };
@@ -316,22 +456,24 @@ public partial class ReportManager
                 OwnerPayment = 0
             };
         }
-        else if (hasOwnerPaymentReceived)
+        else if (hasPaidIncome)
         {
             yield return new OwnerStatementPropertyActivityLine
             {
                 PropertyId = group.PropertyId,
                 OfficeId = group.OfficeId,
-                ActivityId = group.OwnerPaymentJournalEntryLineId,
-                SourceId = group.OwnerPaymentSourceId,
-                JournalEntryLineId = group.OwnerPaymentJournalEntryLineId,
-                ActivityType = GetRecapActivityType(group.OwnerPaymentSourceTypeId, group.SourceDocumentCode),
+                ActivityId = group.PaymentJournalEntryLineId ?? group.OwnerPaymentJournalEntryLineId,
+                SourceId = group.PaymentSourceId ?? group.OwnerPaymentSourceId,
+                JournalEntryLineId = group.PaymentJournalEntryLineId ?? group.OwnerPaymentJournalEntryLineId,
+                ActivityType = GetRecapActivityType(
+                    group.PaymentSourceTypeId ?? group.OwnerPaymentSourceTypeId,
+                    group.SourceDocumentCode),
                 ActivityDate = ParseOwnerAccrualActivityDate(group.TransactionDate),
                 AccountingPeriod = accountingPeriod,
-                DocumentCode = ResolveOwnerAccrualOwnerPaymentDocumentCode(group),
-                Description = ResolveOwnerAccrualOwnerPaymentDescription(group),
+                DocumentCode = ResolveOwnerAccrualTenantPaymentDocumentCode(group),
+                Description = ResolveOwnerAccrualTenantPaymentDescription(group),
                 ExpectedIncome = 0,
-                ReceivedIncome = group.OwnerPaymentReceivedValue,
+                ReceivedIncome = paidIncome,
                 Expenses = 0,
                 OwnerPayment = 0
             };
@@ -395,8 +537,12 @@ public partial class ReportManager
         return ResolveOwnerAccrualOwnerExpenseDocumentCode(group);
     }
 
-    private static string ResolveOwnerAccrualOwnerPaymentDocumentCode(OwnerAccrualSourceGroup group)
+    private static string ResolveOwnerAccrualTenantPaymentDocumentCode(OwnerAccrualSourceGroup group)
     {
+        var paymentJournalEntryCode = (group.PaymentJournalEntryCode ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(paymentJournalEntryCode))
+            return paymentJournalEntryCode;
+
         var ownerPaymentJournalEntryCode = (group.OwnerPaymentJournalEntryCode ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(ownerPaymentJournalEntryCode))
             return ownerPaymentJournalEntryCode;
@@ -404,13 +550,29 @@ public partial class ReportManager
         return (group.SourceDocumentCode ?? string.Empty).Trim();
     }
 
-    private static string ResolveOwnerAccrualOwnerPaymentDescription(OwnerAccrualSourceGroup group)
+    private static string ResolveOwnerAccrualTenantPaymentDescription(OwnerAccrualSourceGroup group)
     {
-        var memo = (group.OwnerPaymentMemo ?? string.Empty).Trim();
+        var memo = (group.PaymentMemo ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(memo))
+            return StripTenantPaymentMemoForDisplay(memo);
+
+        memo = (group.OwnerPaymentMemo ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(memo))
             return StripOwnerMemoPrefixForCashDisplay(memo);
 
-        return ResolveOwnerAccrualOwnerPaymentDocumentCode(group);
+        return ResolveOwnerAccrualTenantPaymentDocumentCode(group);
+    }
+
+    private static string StripTenantPaymentMemoForDisplay(string memo)
+    {
+        var trimmed = (memo ?? string.Empty).Trim();
+        if (trimmed.StartsWith("Payment:", StringComparison.OrdinalIgnoreCase))
+            return trimmed["Payment:".Length..].TrimStart();
+
+        if (trimmed.StartsWith("Prepayment:", StringComparison.OrdinalIgnoreCase))
+            return trimmed["Prepayment:".Length..].TrimStart();
+
+        return trimmed;
     }
 
     private static decimal ResolvePropertyPrepaidIncome(IReadOnlyList<RecapReportRow> propertyRecapRows)
