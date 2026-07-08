@@ -24,16 +24,19 @@ public partial class ReportManager
             lines,
             OwnerReportActivityMode.Cash);
         var activityLinesByProperty = BuildOwnerReportPropertyActivityLinesByKey(propertyActivityLines);
+        var priorPeriodUnpaidByPropertyKey = BuildOwnerCashPriorPeriodUnpaidByPropertyKey(lines, criteria);
 
         var rows = properties
             .Select(property =>
             {
                 var propertyKey = BuildOwnerCashPropertyKey(property.OfficeId, property.PropertyId);
-                var startingBalance = ResolveOwnerCashStartingBalance(
+                var ledgerStartingBalance = ResolveOwnerCashStartingBalance(
                     startingBalanceByKey,
                     property.OfficeId,
                     property.PropertyId,
                     property.PrimaryOwnerId);
+                priorPeriodUnpaidByPropertyKey.TryGetValue(propertyKey, out var priorPeriodUnpaidIncome);
+                var startingBalance = ledgerStartingBalance - priorPeriodUnpaidIncome;
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 
@@ -77,6 +80,38 @@ public partial class ReportManager
             Rows = rows,
             PropertyActivityLines = propertyActivityLines
         };
+    }
+
+    private static Dictionary<string, decimal> BuildOwnerCashPriorPeriodUnpaidByPropertyKey(
+        IReadOnlyList<JournalEntryRecapLine> lines,
+        JournalEntryRecapGetCriteria criteria)
+    {
+        var periodStart = ResolveOwnerReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        if (!periodStart.HasValue)
+            return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+        var priorPeriodSourceLines = lines
+            .Where(line => line.TransactionDate < periodStart.Value)
+            .ToList();
+        if (priorPeriodSourceLines.Count == 0)
+            return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+        var priorPeriodActivityLines = BuildOwnerReportPropertyActivityLines(
+            priorPeriodSourceLines,
+            lines,
+            OwnerReportActivityMode.Accrual);
+
+        return priorPeriodActivityLines
+            .GroupBy(line => BuildOwnerCashPropertyKey(line.OfficeId, line.PropertyId))
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var invoicedIncome = group.Sum(line => line.ExpectedIncome);
+                    var paidIncome = group.Sum(line => line.ReceivedIncome);
+                    return Math.Max(0m, invoicedIncome - paidIncome);
+                },
+                StringComparer.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, List<OwnerStatementPropertyActivityLine>> BuildOwnerReportPropertyActivityLinesByKey(
