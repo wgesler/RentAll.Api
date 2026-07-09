@@ -70,6 +70,8 @@ public class OwnerReportScenarioTests
             $"JE-{OwnerReportScenarioFixtures.Invoice001}",
             0m,
             OwnerReportScenarioFixtures.OwnerRent001);
+        Assert.Equal(OwnerReportScenarioFixtures.JunePaymentDate, mayPaymentLine!.ActivityDate);
+        Assert.Equal("06.26", mayPaymentLine.AccountingPeriod);
     }
 
     [Fact]

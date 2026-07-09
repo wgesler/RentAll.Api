@@ -252,14 +252,16 @@ public partial class ReportManager : IReportManager
 
     private static IEnumerable<OwnerStatementPropertyActivityLine> BuildOwnerActivityLinesFromInvoiceGroup(OwnerInvoiceActivityGroup group, string invoiceOwnerIncomeKey, IReadOnlyDictionary<string, InvoiceOwnerIncomeTotals> invoiceOwnerIncomeByKey, OwnerReportActivityMode mode)
     {
+        invoiceOwnerIncomeByKey.TryGetValue(invoiceOwnerIncomeKey, out var invoiceContext);
         var paidIncome = GetOwnerPaidIncomeForInvoiceGroup(group, invoiceOwnerIncomeKey, invoiceOwnerIncomeByKey);
-        var hasOwnerRent = group.OwnerRentValue != 0;
+        var hasOwnerRentInGroup = group.OwnerRentValue != 0;
         var hasPaidIncome = paidIncome != 0;
+        var isCrossPeriodPayment = !hasOwnerRentInGroup && hasPaidIncome && invoiceContext?.OwnerRentValue > 0;
         var isAccrual = mode == OwnerReportActivityMode.Accrual;
         var ownerRentAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.OwnerRentAccountingPeriod ?? group.AccountingPeriod);
         var paymentAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod);
 
-        if (hasOwnerRent && hasPaidIncome)
+        if (hasOwnerRentInGroup && hasPaidIncome)
         {
             yield return new OwnerStatementPropertyActivityLine
             {
@@ -279,7 +281,7 @@ public partial class ReportManager : IReportManager
                 OwnerPayment = 0
             };
         }
-        else if (hasOwnerRent)
+        else if (hasOwnerRentInGroup)
         {
             yield return new OwnerStatementPropertyActivityLine
             {
@@ -305,14 +307,14 @@ public partial class ReportManager : IReportManager
             {
                 PropertyId = group.PropertyId,
                 OfficeId = group.OfficeId,
-                ActivityId = group.PaymentJournalEntryLineId ?? group.OwnerPaymentJournalEntryLineId,
-                SourceId = group.PaymentSourceId ?? group.OwnerPaymentSourceId,
-                JournalEntryLineId = group.PaymentJournalEntryLineId ?? group.OwnerPaymentJournalEntryLineId,
-                ActivityType = GetRecapActivityType(group.PaymentSourceTypeId ?? group.OwnerPaymentSourceTypeId, group.SourceDocumentCode),
+                ActivityId = isCrossPeriodPayment ? invoiceContext?.OwnerRentJournalEntryLineId ?? group.PaymentJournalEntryLineId : group.PaymentJournalEntryLineId ?? group.OwnerPaymentJournalEntryLineId,
+                SourceId = isCrossPeriodPayment ? invoiceContext?.OwnerRentSourceId ?? group.PaymentSourceId : group.PaymentSourceId ?? group.OwnerPaymentSourceId,
+                JournalEntryLineId = isCrossPeriodPayment ? invoiceContext?.OwnerRentJournalEntryLineId ?? group.PaymentJournalEntryLineId : group.PaymentJournalEntryLineId ?? group.OwnerPaymentJournalEntryLineId,
+                ActivityType = GetRecapActivityType(isCrossPeriodPayment ? invoiceContext?.OwnerRentSourceTypeId ?? group.PaymentSourceTypeId : group.PaymentSourceTypeId ?? group.OwnerPaymentSourceTypeId, group.SourceDocumentCode),
                 ActivityDate = ParseActivityDate(group.TransactionDate),
                 AccountingPeriod = paymentAccountingPeriod,
-                DocumentCode = GetTenantPaymentDocumentCode(group),
-                Description = GetTenantPaymentActivityDescription(group),
+                DocumentCode = isCrossPeriodPayment ? GetOwnerRentDocumentCode(group, invoiceContext) : GetTenantPaymentDocumentCode(group),
+                Description = isCrossPeriodPayment ? GetOwnerRentActivityDescription(group, invoiceContext) : GetTenantPaymentActivityDescription(group),
                 ExpectedIncome = 0,
                 ReceivedIncome = paidIncome,
                 Expenses = 0,
@@ -582,7 +584,19 @@ public partial class ReportManager : IReportManager
             }
 
             if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+            {
                 totals.OwnerRentValue += line.Amount;
+                var memo = (line.Description ?? string.Empty).Trim();
+                var journalEntryCode = (line.JournalEntryCode ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(memo))
+                    totals.OwnerRentMemo = memo;
+                if (!string.IsNullOrWhiteSpace(journalEntryCode))
+                    totals.OwnerRentJournalEntryCode = journalEntryCode;
+                totals.OwnerRentAccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd");
+                totals.OwnerRentJournalEntryLineId = line.JournalEntryLineId;
+                totals.OwnerRentSourceId = line.SourceId;
+                totals.OwnerRentSourceTypeId = line.SourceTypeId;
+            }
             else
                 totals.ExpectedIncomeValue += line.Amount;
         }
@@ -693,22 +707,26 @@ public partial class ReportManager : IReportManager
         return 1;
     }
 
-    private static string GetOwnerRentDocumentCode(OwnerInvoiceActivityGroup group)
+    private static string GetOwnerRentDocumentCode(OwnerInvoiceActivityGroup group, InvoiceOwnerIncomeTotals? invoiceContext = null)
     {
         var ownerRentJournalEntryCode = (group.OwnerRentJournalEntryCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(ownerRentJournalEntryCode))
+            ownerRentJournalEntryCode = (invoiceContext?.OwnerRentJournalEntryCode ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(ownerRentJournalEntryCode))
             return ownerRentJournalEntryCode;
 
         return (group.SourceDocumentCode ?? string.Empty).Trim();
     }
 
-    private static string GetOwnerRentActivityDescription(OwnerInvoiceActivityGroup group)
+    private static string GetOwnerRentActivityDescription(OwnerInvoiceActivityGroup group, InvoiceOwnerIncomeTotals? invoiceContext = null)
     {
         var memo = (group.OwnerRentMemo ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(memo))
+            memo = (invoiceContext?.OwnerRentMemo ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(memo))
             return StripOwnerMemoPrefixForDisplay(memo);
 
-        return GetOwnerRentDocumentCode(group);
+        return GetOwnerRentDocumentCode(group, invoiceContext);
     }
 
     private static string GetOwnerExpenseDocumentCode(OwnerInvoiceActivityGroup group)
