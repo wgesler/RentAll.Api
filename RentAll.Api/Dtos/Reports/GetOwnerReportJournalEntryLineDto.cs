@@ -45,9 +45,9 @@ public class GetOwnerReportJournalEntryLineDto
         return (true, null);
     }
 
-    public OwnerStatementJournalEntryLineGetCriteria ToCriteria(Guid organizationId)
+    public OwnerReportJournalEntryDrillDownCriteria ToCriteria(Guid organizationId)
     {
-        return new OwnerStatementJournalEntryLineGetCriteria
+        return new OwnerReportJournalEntryDrillDownCriteria
         {
             OrganizationId = organizationId,
             OfficeIds = ResolvedOfficeIds,

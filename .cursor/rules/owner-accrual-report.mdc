@@ -1,12 +1,12 @@
 ---
 description: Owner accrual report business rules, data sources, and regression guardrails
-globs: RentAll.Api/**/ReportManager.OwnerAccrual.cs,RentAll.Api/**/ReportManager.JournalEntryRecap.cs,RentAll.Db/**/JournalEntryRecap_GetByCriteria.sql,RentAll.Ui/**/owner-report/**,RentAll.Ui/**/mapping.service.ts
+globs: RentAll.Api/**/ReportManager.ReportOwnerAccrual.cs,RentAll.Api/**/ReportManager.ReportRecap.cs,RentAll.Db/**/JournalEntryRecap_GetByCriteria.sql,RentAll.Ui/**/owner-report/**,RentAll.Ui/**/mapping.service.ts
 alwaysApply: false
 ---
 
 # Owner Accrual Report — Rules
 
-Read this file before changing owner accrual logic. Owner **cash** uses the same income bucket logic via `ReportManager.OwnerReportIncome.cs` — payment-date received income, same rollup rules.
+Read this file before changing owner accrual logic. Owner **cash** uses the same income bucket logic via `ReportManager.cs` — payment-date received income, same rollup rules.
 
 ## What the report means (human terms)
 
@@ -21,7 +21,7 @@ Late payment example: May invoice can stay **unpaid** in May; the **owner paid l
 ## Data pipeline (do not shortcut)
 
 1. `JournalEntryRecap_GetByCriteria` → flat classified JE lines (`RecapCategory`, `Amount`, `SourceDocumentCode`, `PropertyId`).
-2. `ReportManager.OwnerAccrual.cs` → `BuildOwnerAccrualPropertyActivityLines(lines)` — **not** period-only `BuildRecapReportRows` grouping.
+2. `ReportManager.ReportOwnerAccrual.cs` → `BuildOwnerActivityLines(lines)` — **not** period-only `BuildRecapReportRows` grouping.
 3. UI: `mapping.service.ts` → `mapOwnerAccrualReportToOwnerReportSearchResponse` / `mapOwnerReportPropertyActivityDisplays`.
 
 ## Grouping key (critical)
@@ -116,7 +116,7 @@ Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invo
 ## Pre-flight checklist (required before any accrual tweak)
 
 1. Grep `AccountingManager` — which payment/owner JEs are actually created?
-2. Re-read `ReportManager.OwnerAccrual.cs` end-to-end.
+2. Re-read `ReportManager.ReportOwnerAccrual.cs` end-to-end.
 3. Write the acceptance table (use BWA24 + one same-period rollup case).
 4. Change **one behavior** per deploy when possible.
 5. After change: property totals must still satisfy `unpaid = max(0, invoiced − paid)`.
@@ -125,8 +125,8 @@ Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invo
 
 | Touch for accrual fixes | Do not touch unless asked |
 |-------------------------|---------------------------|
-| `ReportManager.OwnerAccrual.cs` | |
-| `ReportManager.OwnerReportIncome.cs` | |
-| `ReportManager.OwnerCash.cs` (calls shared income builder) | |
+| `ReportManager.ReportOwnerAccrual.cs` | |
+| `ReportManager.cs` | |
+| `ReportManager.ReportOwnerCash.cs` (calls shared income builder) | |
 | `JournalEntryRecap_GetByCriteria.sql` | Owner cash UI columns |
-| `mapping.service.ts` (`unpaidValue`, accrual mapping) | Global recap grouping in `JournalEntryRecap.cs` unless recap report itself needs it |
+| `mapping.service.ts` (`unpaidValue`, accrual mapping) | Global recap grouping in `ReportRecap.cs` unless recap report itself needs it |

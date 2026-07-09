@@ -1,5 +1,6 @@
 using Moq;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
@@ -73,6 +74,11 @@ internal static class ReportManagerTestSupport
         Assert.Equal(expectedExpenses, line.Expenses);
     }
 
+    internal static void AssertNoNegativePrepaidActivityLines(IEnumerable<OwnerStatementPropertyActivityLine> lines)
+    {
+        Assert.All(lines, line => Assert.True(line.PrepaidIncome >= 0));
+    }
+
     internal static OwnerStatementPropertyActivityLine? FindActivityLine(
         IEnumerable<OwnerStatementPropertyActivityLine> lines,
         string documentCode)
@@ -123,11 +129,17 @@ internal static class ReportManagerTestSupport
                     DefaultOwnActPayableAccountId = OwnerAccountsPayableAccountId
                 });
 
+            var accountingManager = new Mock<IAccountingManager>();
+            accountingManager
+                .Setup(manager => manager.GetDefaultOwnerAccountsPayable(It.IsAny<List<ChartOfAccount>>(), OfficeId, It.IsAny<AccountingOffice?>()))
+                .Returns(OwnerAccountsPayableAccountId);
+
             _manager = new ReportManager(
                 journalEntryRepository.Object,
                 accountingRepository.Object,
                 organizationRepository.Object,
-                propertyRepository.Object);
+                propertyRepository.Object,
+                accountingManager.Object);
         }
 
         internal Task<OwnerAccrualReport> GetAccrualReportAsync(DateOnly startDate, DateOnly endDate)

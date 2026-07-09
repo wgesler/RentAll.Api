@@ -1,6 +1,6 @@
 namespace RentAll.Domain.Models;
 
-public class OwnerStatementJournalEntryLineGetCriteria
+public class OwnerReportJournalEntryDrillDownCriteria
 {
     public Guid OrganizationId { get; set; }
     public string OfficeIds { get; set; } = string.Empty;

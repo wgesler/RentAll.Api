@@ -636,7 +636,7 @@ public partial class AccountingManager : IAccountingManager
         });
     }
 
-    private int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    public int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
         return ResolveDefaultAccountIdCached(nameof(GetDefaultOwnerAccountsPayable), chartOfAccounts, officeId, null, () =>
         {

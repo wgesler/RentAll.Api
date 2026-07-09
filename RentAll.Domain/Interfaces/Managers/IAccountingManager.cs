@@ -47,6 +47,10 @@ public interface IAccountingManager
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     #endregion
 
+    #region Default Chart Of Accounts
+    int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
+    #endregion
+
     #region Owner Starting Balance
     Task<OwnerStatementStartingBalanceEntry?> GetOwnerStatementStartingBalanceAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId);
     Task<JournalEntry?> CreateOwnerStatementStartingBalanceJournalEntryAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId, DateOnly transactionDate, decimal amount, Guid currentUser);

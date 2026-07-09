@@ -24,7 +24,7 @@ public partial class ReportManager
             .Where(row => !row.IsPosted)
             .ToList();
 
-        var rows = ConsolidateTransferReportRowsBySource(recapRows);
+        var rows = BuildTransferReportRows(recapRows);
 
         return new TransferReport
         {
@@ -32,13 +32,13 @@ public partial class ReportManager
         };
     }
 
-    private static List<TransferReportRow> ConsolidateTransferReportRowsBySource(IEnumerable<RecapReportRow> recapRows)
+    private static List<TransferReportRow> BuildTransferReportRows(IEnumerable<RecapReportRow> recapRows)
     {
         var groups = new Dictionary<string, List<RecapReportRow>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var row in recapRows)
         {
-            var key = BuildTransferReportSourceKey(row);
+            var key = GetTransferReportSourceKey(row);
             if (!groups.TryGetValue(key, out var groupRows))
             {
                 groupRows = [];
@@ -49,7 +49,7 @@ public partial class ReportManager
         }
 
         return groups.Values
-            .Select(MapConsolidatedTransferReportRow)
+            .Select(BuildTransferReportRow)
             .Where(HasTransferReportMeaningfulAmount)
             .OrderBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(row => row.ReservationCode, StringComparer.OrdinalIgnoreCase)
@@ -58,7 +58,7 @@ public partial class ReportManager
             .ToList();
     }
 
-    private static string BuildTransferReportSourceKey(RecapReportRow row)
+    private static string GetTransferReportSourceKey(RecapReportRow row)
     {
         var source = (row.Source ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(source))
@@ -68,7 +68,7 @@ public partial class ReportManager
         return $"{row.OfficeId}|{row.SourceTypeId}|{sourceId}".ToUpperInvariant();
     }
 
-    private static TransferReportRow MapConsolidatedTransferReportRow(IReadOnlyList<RecapReportRow> rows)
+    private static TransferReportRow BuildTransferReportRow(IReadOnlyList<RecapReportRow> rows)
     {
         var orderedRows = rows
             .OrderBy(row => row.SortDateValue)
@@ -79,7 +79,7 @@ public partial class ReportManager
 
         var expectedIncomeValue = orderedRows.Sum(row => row.ExpectedIncomeValue);
         var rentPlus4000Value = orderedRows.Sum(row => row.RentPlus4000Value);
-        var ownerRentValue = orderedRows.Sum(row => row.OwnerRentValue);
+        var ownerRentValue = orderedRows.Sum(row => row.OwnerRentValue + row.UnPaidValue);
         var securityDepositValue = orderedRows.Sum(row => row.SecurityDepositValue);
         var sdwValue = orderedRows.Sum(row => row.SdwValue);
         var feeValue = orderedRows.Sum(row => row.FeeValue);

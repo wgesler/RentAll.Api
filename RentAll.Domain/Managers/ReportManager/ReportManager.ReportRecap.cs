@@ -7,81 +7,6 @@ namespace RentAll.Domain.Managers;
 
 public partial class ReportManager
 {
-    private sealed class GroupAccumulator
-    {
-        public string PropertyCode { get; set; } = string.Empty;
-        public string ReservationCode { get; set; } = string.Empty;
-        public string ReservationKey { get; set; } = string.Empty;
-        public string PropertyKey { get; set; } = string.Empty;
-        public string PropertyId { get; set; } = string.Empty;
-        public string ReservationId { get; set; } = string.Empty;
-        public int OfficeId { get; set; }
-        public string AccountingPeriod { get; set; } = string.Empty;
-        public int? SourceTypeId { get; set; }
-        public Guid? SourceId { get; set; }
-        public string SourceDocumentCode { get; set; } = string.Empty;
-        public string JournalEntryCode { get; set; } = string.Empty;
-        public string Memo { get; set; } = string.Empty;
-        public string OwnerRentMemo { get; set; } = string.Empty;
-        public string OwnerExpenseMemo { get; set; } = string.Empty;
-        public string OwnerPaymentMemo { get; set; } = string.Empty;
-        public string PaymentMemo { get; set; } = string.Empty;
-        public string OwnerRentJournalEntryCode { get; set; } = string.Empty;
-        public string OwnerExpenseJournalEntryCode { get; set; } = string.Empty;
-        public string OwnerPaymentJournalEntryCode { get; set; } = string.Empty;
-        public string PaymentJournalEntryCode { get; set; } = string.Empty;
-        public Guid? OwnerRentJournalEntryId { get; set; }
-        public Guid? OwnerRentJournalEntryLineId { get; set; }
-        public Guid? OwnerExpenseJournalEntryLineId { get; set; }
-        public Guid? OwnerPaymentJournalEntryLineId { get; set; }
-        public Guid? PaymentJournalEntryLineId { get; set; }
-        public string PaymentTransactionDate { get; set; } = string.Empty;
-        public long PaymentSortDateValue { get; set; }
-        public int SourcePriority { get; set; } = -1;
-        public int JournalEntryPriority { get; set; } = -1;
-        public string TransactionDate { get; set; } = string.Empty;
-        public long SortDateValue { get; set; }
-        public Guid? JournalEntryId { get; set; }
-        public Guid? JournalEntryLineId { get; set; }
-        public bool IsPosted { get; set; }
-        public decimal ExpectedIncomeValue { get; set; }
-        public decimal RentPlus4000Value { get; set; }
-        public decimal SecurityDepositValue { get; set; }
-        public decimal SdwValue { get; set; }
-        public decimal FeeValue { get; set; }
-        public decimal PaymentValue { get; set; }
-        public decimal PrePaymentValue { get; set; }
-        public decimal OwnerRentValue { get; set; }
-        public decimal OwnerExpenseValue { get; set; }
-        public decimal OwnerPaymentReceivedValue { get; set; }
-        public decimal OwnerPaymentValue { get; set; }
-    }
-
-    private static readonly Dictionary<string, int> SourcePriorityByCategory = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["ExpectedIncome"] = 100,
-        ["PrePayment"] = 90,
-        ["OwnerRent"] = 80,
-        ["Payment"] = 60,
-        ["RentPlus4000"] = 55,
-        ["Expense"] = 50
-    };
-
-    private static readonly Regex RecapSourceCodePattern = new(
-        @"\b(?:WO-[A-Za-z0-9-]+|R-\d+(?:-\d+)*|RC[A-Za-z0-9-]*)\b",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly Regex RecapMemoSourceCodePattern = new(
-        @"(?:Payment|Prepayment|Invoice)\s*:\s*([A-Za-z0-9-]+)",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly Regex ReservationCodePattern = new(
-        @"^R-\d+",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly Regex InvoiceSourceDocumentCodePattern = new(
-        @"^R-\d+-\d+",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public async Task<RecapReport> GetJournalEntryRecapReportAsync(JournalEntryRecapGetCriteria criteria)
     {
@@ -91,6 +16,8 @@ public partial class ReportManager
             Rows = BuildRecapReportRows(lines)
         };
     }
+
+    #region Build
 
     private static List<RecapReportRow> BuildRecapReportRows(IEnumerable<JournalEntryRecapLine> lines)
     {
@@ -103,7 +30,7 @@ public partial class ReportManager
         {
             var category = (line.RecapCategory ?? string.Empty).Trim();
             var amount = line.Amount;
-            var reservationKey = BuildReservationKey(line);
+            var reservationKey = GetReservationKey(line);
             var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
 
             if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase))
@@ -113,10 +40,10 @@ public partial class ReportManager
                     var applyKey = $"{reservationKey}|{periodKey}";
                     prePayReceivedByPeriod[applyKey] = prePayReceivedByPeriod.GetValueOrDefault(applyKey) + amount;
                     var group = GetOrCreateGroup(groups, line);
-                    SetPrimaryJournalEntry(group, line, category);
-                    CaptureCategoryActivityContext(group, line, category);
-                    EnrichGroupSource(group, line, category);
-                    TouchGroupMetadata(group, line);
+                    RollupRecapPrimaryJournalEntry(group, line, category);
+                    RollupRecapCategoryJournalEntryDetails(group, line, category);
+                    RollupRecapSourceDocument(group, line, category);
+                    RollupRecapEarliestTransactionDate(group, line);
                 }
                 else if (amount < 0 && !string.IsNullOrWhiteSpace(reservationKey) && !string.IsNullOrWhiteSpace(periodKey))
                 {
@@ -130,16 +57,16 @@ public partial class ReportManager
             if (string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
                 && string.IsNullOrWhiteSpace(reservationKey))
             {
-                propertyLevelExpenseGroups.Add(CreatePropertyLevelExpenseGroup(line, amount));
+                propertyLevelExpenseGroups.Add(BuildRecapPropertyLevelExpenseGroup(line, amount));
                 continue;
             }
 
             var recapGroup = GetOrCreateGroup(groups, line);
-            ApplyCategoryAmount(recapGroup, category, amount);
-            SetPrimaryJournalEntry(recapGroup, line, category);
-            CaptureCategoryActivityContext(recapGroup, line, category);
-            EnrichGroupSource(recapGroup, line, category);
-            TouchGroupMetadata(recapGroup, line);
+            RollupRecapCategoryAmount(recapGroup, category, amount);
+            RollupRecapPrimaryJournalEntry(recapGroup, line, category);
+            RollupRecapCategoryJournalEntryDetails(recapGroup, line, category);
+            RollupRecapSourceDocument(recapGroup, line, category);
+            RollupRecapEarliestTransactionDate(recapGroup, line);
         }
 
         var reservationPeriodKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -217,20 +144,15 @@ public partial class ReportManager
             .ThenBy(group => group.AccountingPeriod, StringComparer.OrdinalIgnoreCase)
             .ThenBy(group => group.SortDateValue)
             .ThenBy(group => group.JournalEntryLineId)
-            .Select(MapRecapReportRow)
+            .Select(BuildRecapReportRow)
             .ToList();
     }
 
-    private static decimal CalculateRecapOwnerPaymentValue(GroupAccumulator group)
+    private static RecapReportRow BuildRecapReportRow(GroupAccumulator group)
     {
-        // OwnPay = Owner Rent - Owner Expenses; never display or return a negative value.
-        var ownerPayment = group.OwnerRentValue - group.OwnerExpenseValue;
-        return ownerPayment < 0 ? 0 : ownerPayment;
-    }
-
-    private static RecapReportRow MapRecapReportRow(GroupAccumulator group)
-    {
-        var ownerPaymentValue = CalculateRecapOwnerPaymentValue(group);
+        var ownerPaidRentValue = CalculateRecapPaidOwnerRent(group);
+        var ownerPaymentValue = CalculateRecapOwnerPayment(group);
+        var unPaidValue = CalculateRecapUnPaidIncome(group);
         var sourceDocumentCode = (group.SourceDocumentCode ?? string.Empty).Trim();
         return new RecapReportRow
         {
@@ -265,7 +187,8 @@ public partial class ReportManager
             Fee = FormatCurrencyUsd(group.FeeValue),
             Payment = FormatCurrencyUsd(group.PaymentValue),
             PrePayment = FormatCurrencyUsd(group.PrePaymentValue),
-            OwnerRent = FormatCurrencyUsd(group.OwnerRentValue),
+            UnPaid = FormatCurrencyUsd(unPaidValue),
+            OwnerRent = FormatCurrencyUsd(ownerPaidRentValue),
             OwnerExpense = FormatCurrencyUsd(group.OwnerExpenseValue),
             OwnerPayment = FormatCurrencyUsd(ownerPaymentValue),
             ExpectedIncomeValue = group.ExpectedIncomeValue,
@@ -275,7 +198,8 @@ public partial class ReportManager
             FeeValue = group.FeeValue,
             PaymentValue = group.PaymentValue,
             PrePaymentValue = group.PrePaymentValue,
-            OwnerRentValue = group.OwnerRentValue,
+            UnPaidValue = unPaidValue,
+            OwnerRentValue = ownerPaidRentValue,
             OwnerExpenseValue = group.OwnerExpenseValue,
             OwnerPaymentReceivedValue = group.OwnerPaymentReceivedValue,
             OwnerPaymentValue = ownerPaymentValue,
@@ -291,35 +215,40 @@ public partial class ReportManager
         };
     }
 
-    private static GroupAccumulator GetOrCreateGroup(
-        Dictionary<string, GroupAccumulator> groups,
-        JournalEntryRecapLine line)
+    private static GroupAccumulator BuildRecapPropertyLevelExpenseGroup(JournalEntryRecapLine line, decimal amount)
     {
-        var propertyKey = BuildPropertyKey(line);
-        var reservationKey = BuildReservationKey(line);
+        var reservationKey = GetReservationKey(line);
         var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
-        var groupKey = BuildGroupKey(propertyKey, reservationKey, periodKey);
-        if (groups.TryGetValue(groupKey, out var group))
-            return group;
-
-        group = new GroupAccumulator
+        var group = new GroupAccumulator
         {
             PropertyCode = (line.PropertyCode ?? string.Empty).Trim(),
             ReservationCode = (line.ReservationCode ?? string.Empty).Trim(),
             ReservationKey = reservationKey,
-            PropertyKey = propertyKey,
+            PropertyKey = GetPropertyKey(line),
             PropertyId = (line.PropertyId?.ToString() ?? string.Empty).Trim(),
             ReservationId = (line.ReservationId?.ToString() ?? string.Empty).Trim(),
             OfficeId = line.OfficeId,
             AccountingPeriod = periodKey,
             TransactionDate = line.TransactionDate.ToString("yyyy-MM-dd"),
-            SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks
+            SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks,
+            JournalEntryId = line.JournalEntryId,
+            JournalEntryLineId = line.JournalEntryLineId
         };
-        groups[groupKey] = group;
+
+        const string category = "Expense";
+        RollupRecapCategoryAmount(group, category, amount);
+        RollupRecapPrimaryJournalEntry(group, line, category);
+        RollupRecapCategoryJournalEntryDetails(group, line, category);
+        RollupRecapSourceDocument(group, line, category);
+        RollupRecapEarliestTransactionDate(group, line);
         return group;
     }
 
-    private static void ApplyCategoryAmount(GroupAccumulator group, string category, decimal amount)
+    #endregion
+
+    #region Rollup
+
+    private static void RollupRecapCategoryAmount(GroupAccumulator group, string category, decimal amount)
     {
         switch (category)
         {
@@ -353,7 +282,7 @@ public partial class ReportManager
         }
     }
 
-    private static void SetPrimaryJournalEntry(GroupAccumulator group, JournalEntryRecapLine line, string category)
+    private static void RollupRecapPrimaryJournalEntry(GroupAccumulator group, JournalEntryRecapLine line, string category)
     {
         var priority = SourcePriorityByCategory.GetValueOrDefault(category);
         var journalEntryCode = (line.JournalEntryCode ?? string.Empty).Trim();
@@ -373,7 +302,7 @@ public partial class ReportManager
             group.ReservationId = line.ReservationId.Value.ToString();
     }
 
-    private static void CaptureCategoryActivityContext(GroupAccumulator group, JournalEntryRecapLine line, string category)
+    private static void RollupRecapCategoryJournalEntryDetails(GroupAccumulator group, JournalEntryRecapLine line, string category)
     {
         var memo = (line.Description ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(memo))
@@ -424,9 +353,9 @@ public partial class ReportManager
         }
     }
 
-    private static void EnrichGroupSource(GroupAccumulator group, JournalEntryRecapLine line, string category)
+    private static void RollupRecapSourceDocument(GroupAccumulator group, JournalEntryRecapLine line, string category)
     {
-        var sourceDocumentCode = ResolveRecapSourceDocumentCode(line);
+        var sourceDocumentCode = GetRecapSourceDocumentCode(line);
         if (string.IsNullOrWhiteSpace(sourceDocumentCode))
             return;
 
@@ -445,7 +374,7 @@ public partial class ReportManager
             group.ReservationId = line.ReservationId.Value.ToString();
     }
 
-    private static void TouchGroupMetadata(GroupAccumulator group, JournalEntryRecapLine line)
+    private static void RollupRecapEarliestTransactionDate(GroupAccumulator group, JournalEntryRecapLine line)
     {
         var transactionDate = line.TransactionDate.ToString("yyyy-MM-dd");
         if (string.IsNullOrWhiteSpace(transactionDate))
@@ -459,57 +388,61 @@ public partial class ReportManager
         }
     }
 
-    private static bool HasMeaningfulAmount(GroupAccumulator group) =>
-        group.ExpectedIncomeValue != 0
-        || group.RentPlus4000Value != 0
-        || group.SecurityDepositValue != 0
-        || group.SdwValue != 0
-        || group.FeeValue != 0
-        || group.PaymentValue != 0
-        || group.PrePaymentValue != 0
-        || group.OwnerRentValue != 0
-        || group.OwnerExpenseValue != 0
-        || CalculateRecapOwnerPaymentValue(group) != 0;
+    #endregion
 
-    private static string BuildPropertyKey(JournalEntryRecapLine line) =>
-        (line.PropertyCode ?? line.PropertyId?.ToString() ?? string.Empty).Trim();
+    #region Calculate
 
-    private static string BuildReservationKey(JournalEntryRecapLine line) =>
-        (line.ReservationCode ?? line.ReservationId?.ToString() ?? string.Empty).Trim();
+    private static decimal CalculateRecapPaidOwnerRent(GroupAccumulator group) => CalculateOwnerPaidIncome(group.OwnerRentValue, group.ExpectedIncomeValue, group.PaymentValue, group.OwnerPaymentReceivedValue);
 
-    private static GroupAccumulator CreatePropertyLevelExpenseGroup(JournalEntryRecapLine line, decimal amount)
+    private static decimal CalculateRecapOwnerPayment(GroupAccumulator group)
     {
-        var reservationKey = BuildReservationKey(line);
+        // OwnPay = collected owner rent - owner expenses; never display or return a negative value.
+        var ownerPayment = CalculateRecapPaidOwnerRent(group) - group.OwnerExpenseValue;
+        return ownerPayment < 0 ? 0 : ownerPayment;
+    }
+
+    private static decimal CalculateRecapUnPaidIncome(GroupAccumulator group) => CalculateUnpaidIncome(group.OwnerRentValue, CalculateRecapPaidOwnerRent(group));
+
+    #endregion
+
+    #region Get
+
+    private static GroupAccumulator GetOrCreateGroup(Dictionary<string, GroupAccumulator> groups, JournalEntryRecapLine line)
+    {
+        var propertyKey = GetPropertyKey(line);
+        var reservationKey = GetReservationKey(line);
         var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
-        var group = new GroupAccumulator
+        var groupKey = GetGroupKey(propertyKey, reservationKey, periodKey);
+        if (groups.TryGetValue(groupKey, out var group))
+            return group;
+
+        group = new GroupAccumulator
         {
             PropertyCode = (line.PropertyCode ?? string.Empty).Trim(),
             ReservationCode = (line.ReservationCode ?? string.Empty).Trim(),
             ReservationKey = reservationKey,
-            PropertyKey = BuildPropertyKey(line),
+            PropertyKey = propertyKey,
             PropertyId = (line.PropertyId?.ToString() ?? string.Empty).Trim(),
             ReservationId = (line.ReservationId?.ToString() ?? string.Empty).Trim(),
             OfficeId = line.OfficeId,
             AccountingPeriod = periodKey,
             TransactionDate = line.TransactionDate.ToString("yyyy-MM-dd"),
-            SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks,
-            JournalEntryId = line.JournalEntryId,
-            JournalEntryLineId = line.JournalEntryLineId
+            SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks
         };
-
-        const string category = "Expense";
-        ApplyCategoryAmount(group, category, amount);
-        SetPrimaryJournalEntry(group, line, category);
-        CaptureCategoryActivityContext(group, line, category);
-        EnrichGroupSource(group, line, category);
-        TouchGroupMetadata(group, line);
+        groups[groupKey] = group;
         return group;
     }
 
-    private static string BuildGroupKey(string propertyKey, string reservationKey, string periodKey) =>
+    private static string GetPropertyKey(JournalEntryRecapLine line) =>
+        (line.PropertyCode ?? line.PropertyId?.ToString() ?? string.Empty).Trim();
+
+    private static string GetReservationKey(JournalEntryRecapLine line) =>
+        (line.ReservationCode ?? line.ReservationId?.ToString() ?? string.Empty).Trim();
+
+    private static string GetGroupKey(string propertyKey, string reservationKey, string periodKey) =>
         $"{propertyKey}|{reservationKey}|{periodKey}";
 
-    private static string ResolveRecapSourceDocumentCode(JournalEntryRecapLine line)
+    private static string GetRecapSourceDocumentCode(JournalEntryRecapLine line)
     {
         var fromProc = (line.SourceDocumentCode ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(fromProc))
@@ -566,22 +499,7 @@ public partial class ReportManager
         return string.Empty;
     }
 
-    private static bool IsRecapSourceLinkable(int? sourceTypeId, Guid? sourceId, string documentCode)
-    {
-        var normalizedCode = (documentCode ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(normalizedCode))
-            return false;
-
-        if (RecapSourceCodePattern.IsMatch(normalizedCode))
-            return true;
-
-        if (sourceTypeId == (int)SourceType.WorkOrder)
-            return true;
-
-        return IsJournalEntrySourceNavigable(sourceTypeId) && sourceId.HasValue && sourceId.Value != Guid.Empty;
-    }
-
-    private static IEnumerable<string> ResolveRecapPaymentInvoiceSourceCodes(JournalEntryRecapLine line)
+    private static IEnumerable<string> GetRecapPaymentInvoiceSourceCodes(JournalEntryRecapLine line)
     {
         var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var description = (line.Description ?? string.Empty).Trim();
@@ -601,11 +519,44 @@ public partial class ReportManager
                 codes.Add(code);
         }
 
-        var sourceDocumentCode = ResolveRecapSourceDocumentCode(line);
+        var sourceDocumentCode = GetRecapSourceDocumentCode(line);
         if (IsRecapInvoiceSourceDocumentCode(sourceDocumentCode))
             codes.Add(sourceDocumentCode);
 
         return codes;
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private static bool HasMeaningfulAmount(GroupAccumulator group) =>
+        group.ExpectedIncomeValue != 0
+        || group.RentPlus4000Value != 0
+        || group.SecurityDepositValue != 0
+        || group.SdwValue != 0
+        || group.FeeValue != 0
+        || group.PaymentValue != 0
+        || group.PrePaymentValue != 0
+        || CalculateRecapUnPaidIncome(group) != 0
+        || CalculateRecapPaidOwnerRent(group) != 0
+        || group.OwnerRentValue != 0
+        || group.OwnerExpenseValue != 0
+        || CalculateRecapOwnerPayment(group) != 0;
+
+    private static bool IsRecapSourceLinkable(int? sourceTypeId, Guid? sourceId, string documentCode)
+    {
+        var normalizedCode = (documentCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+            return false;
+
+        if (RecapSourceCodePattern.IsMatch(normalizedCode))
+            return true;
+
+        if (sourceTypeId == (int)SourceType.WorkOrder)
+            return true;
+
+        return IsJournalEntrySourceNavigable(sourceTypeId) && sourceId.HasValue && sourceId.Value != Guid.Empty;
     }
 
     private static bool IsRecapInvoiceSourceDocumentCode(string code)
@@ -662,4 +613,24 @@ public partial class ReportManager
     {
         return Guid.TryParse(value, out var parsed) && parsed != Guid.Empty ? parsed : null;
     }
+
+    private static readonly Regex RecapSourceCodePattern = new(@"\b(?:WO-[A-Za-z0-9-]+|R-\d+(?:-\d+)*|RC[A-Za-z0-9-]*)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex RecapMemoSourceCodePattern = new(@"(?:Payment|Prepayment|Invoice)\s*:\s*([A-Za-z0-9-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex ReservationCodePattern = new(@"^R-\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex InvoiceSourceDocumentCodePattern = new(@"^R-\d+-\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Dictionary<string, int> SourcePriorityByCategory = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ExpectedIncome"] = 100,
+        ["PrePayment"] = 90,
+        ["OwnerRent"] = 80,
+        ["Payment"] = 60,
+        ["RentPlus4000"] = 55,
+        ["Expense"] = 50
+    };
+
+    #endregion
 }

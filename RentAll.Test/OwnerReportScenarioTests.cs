@@ -160,6 +160,7 @@ public class OwnerReportScenarioTests
         var prepaidLine = Assert.Single(report.PropertyActivityLines);
         Assert.Equal(2632m, prepaidLine.PrepaidIncome);
         Assert.Contains("R-00087-001", prepaidLine.Description, StringComparison.OrdinalIgnoreCase);
+        ReportManagerTestSupport.AssertNoNegativePrepaidActivityLines(report.PropertyActivityLines);
     }
 
     [Fact]
@@ -180,6 +181,8 @@ public class OwnerReportScenarioTests
             $"JE-{OwnerReportScenarioFixtures.CrossPeriodInvoice}",
             49.70m,
             49.70m);
+        Assert.Equal(0m, rolledUpLine.PrepaidIncome);
+        ReportManagerTestSupport.AssertNoNegativePrepaidActivityLines(accrualReport.PropertyActivityLines);
 
         var cashReport = await context.GetCashReportAsync(JuneStart, JuneEnd);
         var cashRow = Assert.Single(cashReport.Rows);
