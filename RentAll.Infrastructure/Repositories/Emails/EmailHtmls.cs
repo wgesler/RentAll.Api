@@ -35,9 +35,11 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 CorporateLease = emailHtml.CorporateLease,
                 Invoice = emailHtml.Invoice,
                 CorporateInvoice = emailHtml.CorporateInvoice,
+                OwnerStatement = emailHtml.OwnerStatement,
                 LetterSubject = emailHtml.LetterSubject,
                 LeaseSubject = emailHtml.LeaseSubject,
                 InvoiceSubject = emailHtml.InvoiceSubject,
+                OwnerStatementSubject = emailHtml.OwnerStatementSubject,
                 CreatedBy = emailHtml.CreatedBy
             });
 
@@ -61,9 +63,11 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 CorporateLease = emailHtml.CorporateLease,
                 Invoice = emailHtml.Invoice,
                 CorporateInvoice = emailHtml.CorporateInvoice,
+                OwnerStatement = emailHtml.OwnerStatement,
                 LetterSubject = emailHtml.LetterSubject,
                 LeaseSubject = emailHtml.LeaseSubject,
                 InvoiceSubject = emailHtml.InvoiceSubject,
+                OwnerStatementSubject = emailHtml.OwnerStatementSubject,
                 ModifiedBy = emailHtml.ModifiedBy
             });
 

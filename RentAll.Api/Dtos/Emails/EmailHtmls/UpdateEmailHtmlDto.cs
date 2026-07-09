@@ -9,9 +9,11 @@ public class UpdateEmailHtmlDto
     public string CorporateLease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
     public string CorporateInvoice { get; set; } = string.Empty;
+    public string OwnerStatement { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
+    public string OwnerStatementSubject { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId)
     {
@@ -36,6 +38,9 @@ public class UpdateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(CorporateInvoice))
             return (false, "CorporateInvoice is required");
 
+        if (string.IsNullOrWhiteSpace(OwnerStatement))
+            return (false, "OwnerStatement is required");
+
         if (string.IsNullOrWhiteSpace(LetterSubject))
             return (false, "LetterSubject is required");
 
@@ -44,6 +49,9 @@ public class UpdateEmailHtmlDto
 
         if (string.IsNullOrWhiteSpace(InvoiceSubject))
             return (false, "InvoiceSubject is required");
+
+        if (string.IsNullOrWhiteSpace(OwnerStatementSubject))
+            return (false, "OwnerStatementSubject is required");
 
         return (true, null);
     }
@@ -59,9 +67,11 @@ public class UpdateEmailHtmlDto
             CorporateLease = CorporateLease,
             Invoice = Invoice,
             CorporateInvoice = CorporateInvoice,
+            OwnerStatement = OwnerStatement,
             LetterSubject = LetterSubject,
             LeaseSubject = LeaseSubject,
             InvoiceSubject = InvoiceSubject,
+            OwnerStatementSubject = OwnerStatementSubject,
             ModifiedBy = currentUser
         };
     }

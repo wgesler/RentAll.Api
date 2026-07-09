@@ -9,9 +9,11 @@ public class EmailHtmlResponseDto
     public string CorporateLease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
     public string CorporateInvoice { get; set; } = string.Empty;
+    public string OwnerStatement { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
+    public string OwnerStatementSubject { get; set; } = string.Empty;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -26,9 +28,11 @@ public class EmailHtmlResponseDto
         CorporateLease = emailHtml.CorporateLease;
         Invoice = emailHtml.Invoice;
         CorporateInvoice = emailHtml.CorporateInvoice;
+        OwnerStatement = emailHtml.OwnerStatement;
         LetterSubject = emailHtml.LetterSubject;
         LeaseSubject = emailHtml.LeaseSubject;
         InvoiceSubject = emailHtml.InvoiceSubject;
+        OwnerStatementSubject = emailHtml.OwnerStatementSubject;
         CreatedOn = emailHtml.CreatedOn;
         CreatedBy = emailHtml.CreatedBy;
         ModifiedOn = emailHtml.ModifiedOn;

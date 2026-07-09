@@ -7,6 +7,8 @@ public class CreatePropertyHtmlDto
     public string WelcomeLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
+    public string WorkOrder { get; set; } = string.Empty;
+    public string OwnerStatement { get; set; } = string.Empty;
     public string LetterOfResponsibility { get; set; } = string.Empty;
     public string NoticeToVacate { get; set; } = string.Empty;
     public string CreditAuthorization { get; set; } = string.Empty;
@@ -39,6 +41,8 @@ public class CreatePropertyHtmlDto
             WelcomeLetter = WelcomeLetter,
             Lease = Lease,
             Invoice = Invoice,
+            WorkOrder = WorkOrder,
+            OwnerStatement = OwnerStatement,
             LetterOfResponsibility = LetterOfResponsibility,
             NoticeToVacate = NoticeToVacate,
             CreditAuthorization = CreditAuthorization,

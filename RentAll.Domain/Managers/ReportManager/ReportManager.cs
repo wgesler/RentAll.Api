@@ -244,6 +244,7 @@ public partial class ReportManager : IReportManager
                 ActivityDate = line.TransactionDate,
                 AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(line.AccountingPeriod.ToString("yyyy-MM-dd")),
                 DocumentCode = (line.JournalEntryCode ?? string.Empty).Trim(),
+                SourceDocumentCode = sourceDocumentCode,
                 Description = StripTenantPaymentMemoForDisplay(line.Description ?? string.Empty),
                 PrepaidIncome = line.Amount
             };
@@ -274,6 +275,7 @@ public partial class ReportManager : IReportManager
                 ActivityDate = ParseActivityDate(group.TransactionDate),
                 AccountingPeriod = ownerRentAccountingPeriod,
                 DocumentCode = GetOwnerRentDocumentCode(group),
+                SourceDocumentCode = GetOwnerActivityRefNo(group),
                 Description = GetOwnerRentActivityDescription(group),
                 ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
                 ReceivedIncome = paidIncome,
@@ -294,6 +296,7 @@ public partial class ReportManager : IReportManager
                 ActivityDate = ParseActivityDate(group.TransactionDate),
                 AccountingPeriod = ownerRentAccountingPeriod,
                 DocumentCode = GetOwnerRentDocumentCode(group),
+                SourceDocumentCode = GetOwnerActivityRefNo(group),
                 Description = GetOwnerRentActivityDescription(group),
                 ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
                 ReceivedIncome = 0,
@@ -314,6 +317,7 @@ public partial class ReportManager : IReportManager
                 ActivityDate = ParseActivityDate(group.TransactionDate),
                 AccountingPeriod = paymentAccountingPeriod,
                 DocumentCode = isCrossPeriodPayment ? GetOwnerRentDocumentCode(group, invoiceContext) : GetTenantPaymentDocumentCode(group),
+                SourceDocumentCode = GetOwnerActivityRefNo(group, invoiceContext),
                 Description = isCrossPeriodPayment ? GetOwnerRentActivityDescription(group, invoiceContext) : GetTenantPaymentActivityDescription(group),
                 ExpectedIncome = 0,
                 ReceivedIncome = paidIncome,
@@ -335,6 +339,7 @@ public partial class ReportManager : IReportManager
                 ActivityDate = ParseActivityDate(group.TransactionDate),
                 AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod),
                 DocumentCode = GetOwnerExpenseDocumentCode(group),
+                SourceDocumentCode = GetOwnerActivityRefNo(group),
                 Description = GetOwnerExpenseActivityDescription(group),
                 ExpectedIncome = 0,
                 ReceivedIncome = 0,
@@ -705,6 +710,15 @@ public partial class ReportManager : IReportManager
         if (line.ExpectedIncome == 0 && line.ReceivedIncome != 0)
             return 2;
         return 1;
+    }
+
+    private static string GetOwnerActivityRefNo(OwnerInvoiceActivityGroup group, InvoiceOwnerIncomeTotals? invoiceContext = null)
+    {
+        var refNo = (group.SourceDocumentCode ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(refNo))
+            return refNo;
+
+        return (group.InvoiceSourceCode ?? string.Empty).Trim();
     }
 
     private static string GetOwnerRentDocumentCode(OwnerInvoiceActivityGroup group, InvoiceOwnerIncomeTotals? invoiceContext = null)

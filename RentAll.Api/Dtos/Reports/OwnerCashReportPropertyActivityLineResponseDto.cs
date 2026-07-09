@@ -13,6 +13,7 @@ public class OwnerCashReportPropertyActivityLineResponseDto
     public DateOnly ActivityDate { get; set; }
     public string AccountingPeriod { get; set; } = string.Empty;
     public string DocumentCode { get; set; } = string.Empty;
+    public string SourceDocumentCode { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal ExpectedIncome { get; set; }
     public decimal ReceivedIncome { get; set; }
@@ -31,6 +32,7 @@ public class OwnerCashReportPropertyActivityLineResponseDto
         ActivityDate = line.ActivityDate;
         AccountingPeriod = line.AccountingPeriod;
         DocumentCode = line.DocumentCode;
+        SourceDocumentCode = line.SourceDocumentCode;
         Description = line.Description;
         ExpectedIncome = line.ExpectedIncome;
         ReceivedIncome = line.ReceivedIncome;

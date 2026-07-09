@@ -10,7 +10,8 @@ public enum DocumentType
     Inspections = 5,
     WorkOrder = 6,
     Agreements = 7,
-    Quote = 8
+    Quote = 8,
+    OwnerStatement = 9
 }
 
 
