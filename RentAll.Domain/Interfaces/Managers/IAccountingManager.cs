@@ -34,10 +34,11 @@ public interface IAccountingManager
     Task<JournalEntry?> CreatePrePaymentApplyJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);
-    Task<JournalEntry?> CreateJournalEntryFromDepositAsync(int officeId, Guid organizationId, int bankChartOfAccountId, string description, decimal amount, DateOnly depositDate, List<Guid> journalEntryLineIds, Guid currentUser);
+    Task<JournalEntry?> CreateJournalEntryFromDepositAsync(Deposit deposit, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice);
     Task DeleteJournalEntriesForReceiptAsync(Receipt receipt);
+    Task DeleteJournalEntriesForDepositAsync(Deposit deposit);
     #endregion
 
     #region Document Updates
@@ -45,6 +46,7 @@ public interface IAccountingManager
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
+    Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser);
     #endregion
 
     #region Default Chart Of Accounts

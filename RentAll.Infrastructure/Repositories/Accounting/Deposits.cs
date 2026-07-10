@@ -7,7 +7,7 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 
 public partial class AccountingRepository
 {
-    #region BankDeposits
+    #region Get
     public async Task<IEnumerable<Deposit>> GetDepositsByCriteriaAsync(DepositGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -88,6 +88,10 @@ public partial class AccountingRepository
         return deposit;
     }
 
+    #endregion
+
+    #region Post
+
     public async Task<Deposit> CreateDepositAsync(Deposit deposit)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -130,6 +134,10 @@ public partial class AccountingRepository
         }
     }
 
+    #endregion
+
+    #region Put
+
     public async Task<Deposit> UpdateDepositAsync(Deposit deposit)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -149,6 +157,10 @@ public partial class AccountingRepository
         }
     }
 
+    #endregion
+
+    #region Delete
+
     public async Task DeleteDepositByIdAsync(Guid depositId, Guid organizationId, Guid currentUser)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -159,6 +171,10 @@ public partial class AccountingRepository
             ModifiedBy = currentUser
         });
     }
+
+    #endregion
+
+    #region Helpers
 
     private static async Task<Deposit> UpdateDepositCoreAsync(SqlConnection db, IDbTransaction transaction, Deposit deposit)
     {
@@ -270,12 +286,16 @@ public partial class AccountingRepository
             Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
                 ? incomingPropertyId
                 : null;
+            Guid? journalEntryLineId = split.JournalEntryLineId is { } incomingJournalEntryLineId && incomingJournalEntryLineId != Guid.Empty
+                ? incomingJournalEntryLineId
+                : null;
             await db.DapperProcQueryAsync<DepositSplitEntity>("Accounting.DepositSplit_Add", new
             {
                 DepositId = deposit.DepositId,
                 Amount = split.Amount,
                 Description = split.Description,
                 PropertyId = propertyId,
+                JournalEntryLineId = journalEntryLineId,
                 ChartOfAccountId = chartOfAccountId,
                 CreatedBy = auditUser
             }, transaction: transaction);
@@ -314,6 +334,9 @@ public partial class AccountingRepository
             Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
                 ? incomingPropertyId
                 : null;
+            Guid? journalEntryLineId = split.JournalEntryLineId is { } incomingJournalEntryLineId && incomingJournalEntryLineId != Guid.Empty
+                ? incomingJournalEntryLineId
+                : null;
 
             if (split.DepositSplitId > 0 && currentSplitIds.Contains(split.DepositSplitId))
             {
@@ -324,6 +347,7 @@ public partial class AccountingRepository
                     Amount = split.Amount,
                     Description = split.Description,
                     PropertyId = propertyId,
+                    JournalEntryLineId = journalEntryLineId,
                     ChartOfAccountId = chartOfAccountId,
                     ModifiedBy = auditUser
                 }, transaction: transaction);
@@ -336,6 +360,7 @@ public partial class AccountingRepository
                     Amount = split.Amount,
                     Description = split.Description,
                     PropertyId = propertyId,
+                    JournalEntryLineId = journalEntryLineId,
                     ChartOfAccountId = chartOfAccountId,
                     CreatedBy = auditUser
                 }, transaction: transaction);

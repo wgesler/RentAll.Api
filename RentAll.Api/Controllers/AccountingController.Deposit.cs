@@ -1,12 +1,13 @@
-using RentAll.Api.Dtos.Accounting.BankDeposits;
+using RentAll.Api.Dtos.Accounting.Deposits;
 
 namespace RentAll.Api.Controllers;
 
 public partial class AccountingController
 {
-    #region BankDeposits
-    [HttpPost("bank-deposit/search")]
-    public async Task<IActionResult> SearchBankDeposits([FromBody] GetDepositsDto dto)
+    #region Get
+
+    [HttpPost("deposit/search")]
+    public async Task<IActionResult> SearchDeposits([FromBody] GetDepositsDto dto)
     {
         if (dto == null)
             return BadRequest("Deposit search criteria is required");
@@ -24,13 +25,13 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching bank deposits");
+            _logger.LogError(ex, "Error searching deposits");
             return ServerError("An error occurred while retrieving deposits");
         }
     }
 
-    [HttpGet("bank-deposit")]
-    public async Task<IActionResult> GetAllBankDeposits()
+    [HttpGet("deposit")]
+    public async Task<IActionResult> GetAllDeposits()
     {
         try
         {
@@ -40,13 +41,13 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting bank deposits");
+            _logger.LogError(ex, "Error getting deposits");
             return ServerError("An error occurred while retrieving deposits");
         }
     }
 
-    [HttpGet("bank-deposit/office/{officeId:int}")]
-    public async Task<IActionResult> GetBankDepositsByOfficeId(int officeId)
+    [HttpGet("deposit/office/{officeId:int}")]
+    public async Task<IActionResult> GetDepositsByOfficeId(int officeId)
     {
         if (officeId <= 0)
             return BadRequest("OfficeId is required");
@@ -60,13 +61,13 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting bank deposits");
+            _logger.LogError(ex, "Error getting deposits");
             return ServerError("An error occurred while retrieving deposits");
         }
     }
 
-    [HttpGet("bank-deposit/property/{propertyId:guid}")]
-    public async Task<IActionResult> GetBankDepositsByPropertyId(Guid propertyId)
+    [HttpGet("deposit/property/{propertyId:guid}")]
+    public async Task<IActionResult> GetDepositsByPropertyId(Guid propertyId)
     {
         if (propertyId == Guid.Empty)
             return BadRequest("PropertyId is required");
@@ -79,13 +80,13 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting bank deposits for property: {PropertyId}", propertyId);
+            _logger.LogError(ex, "Error getting deposits for property: {PropertyId}", propertyId);
             return ServerError("An error occurred while retrieving deposits");
         }
     }
 
-    [HttpGet("bank-deposit/{depositId:guid}")]
-    public async Task<IActionResult> GetBankDepositById(Guid depositId)
+    [HttpGet("deposit/{depositId:guid}")]
+    public async Task<IActionResult> GetDepositById(Guid depositId)
     {
         if (depositId == Guid.Empty)
             return BadRequest("DepositId is required");
@@ -101,13 +102,17 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting bank deposit by ID: {DepositId}", depositId);
+            _logger.LogError(ex, "Error getting deposit by ID: {DepositId}", depositId);
             return ServerError("An error occurred while retrieving the deposit");
         }
     }
 
-    [HttpPost("bank-deposit")]
-    public async Task<IActionResult> CreateBankDeposit([FromBody] CreateDepositDto dto)
+    #endregion
+
+    #region Post
+
+    [HttpPost("deposit")]
+    public async Task<IActionResult> CreateDeposit([FromBody] CreateDepositDto dto)
     {
         if (dto == null)
             return BadRequest("Deposit data is required");
@@ -127,18 +132,31 @@ public partial class AccountingController
 
             var deposit = dto.ToModel(depositCode, CurrentUser);
             var created = await _accountingRepository.CreateDepositAsync(deposit);
+
+            var journalEntry = await _accountingManager.CreateJournalEntryFromDepositAsync(created, CurrentUser);
+            if (journalEntry != null)
+            {
+                created.JournalEntryId = journalEntry.JournalEntryId;
+                created.ModifiedBy = CurrentUser;
+                created = await _accountingRepository.UpdateDepositAsync(created);
+            }
+
             var response = new DepositResponseDto(created);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating bank deposit");
+            _logger.LogError(ex, "Error creating deposit");
             return ServerError("An error occurred while creating the deposit");
         }
     }
 
-    [HttpPut("bank-deposit")]
-    public async Task<IActionResult> UpdateBankDeposit([FromBody] UpdateDepositDto dto)
+    #endregion
+
+    #region Put
+
+    [HttpPut("deposit")]
+    public async Task<IActionResult> UpdateDeposit([FromBody] UpdateDepositDto dto)
     {
         if (dto == null)
             return BadRequest("Deposit data is required");
@@ -157,20 +175,23 @@ public partial class AccountingController
                 return NotFound("Deposit record not found");
 
             var deposit = dto.ToModel(CurrentUser);
-            deposit.JournalEntryId = existing.JournalEntryId;
-            var updated = await _accountingRepository.UpdateDepositAsync(deposit);
+            var updated = await _accountingManager.UpdateDepositAsync(deposit, CurrentUser);
             var response = new DepositResponseDto(updated);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating bank deposit: {DepositId}", dto.DepositId);
+            _logger.LogError(ex, "Error updating deposit: {DepositId}", dto.DepositId);
             return ServerError("An error occurred while updating the deposit");
         }
     }
 
-    [HttpDelete("bank-deposit/{depositId:guid}")]
-    public async Task<IActionResult> DeleteBankDepositById(Guid depositId)
+    #endregion
+
+    #region Delete
+
+    [HttpDelete("deposit/{depositId:guid}")]
+    public async Task<IActionResult> DeleteDepositById(Guid depositId)
     {
         if (depositId == Guid.Empty)
             return BadRequest("DepositId is required");
@@ -181,14 +202,16 @@ public partial class AccountingController
             if (deposit == null)
                 return NotFound("Deposit record not found");
 
+            await _accountingManager.DeleteJournalEntriesForDepositAsync(deposit);
             await _accountingRepository.DeleteDepositByIdAsync(depositId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting bank deposit: {DepositId}", depositId);
+            _logger.LogError(ex, "Error deleting deposit: {DepositId}", depositId);
             return ServerError("An error occurred while deleting the deposit");
         }
     }
+
     #endregion
 }

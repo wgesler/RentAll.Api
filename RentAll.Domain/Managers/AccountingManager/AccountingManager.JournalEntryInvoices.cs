@@ -581,7 +581,7 @@ public partial class AccountingManager
     }
     #endregion
 
-    #region Invoice Journal Entry Static Helpers
+    #region Helpers
     private static bool IsInvoicePrePayment(Invoice invoice, LedgerLine paymentLedgerLine)
     {
         if (invoice.AccountingPeriod == default || paymentLedgerLine.LedgerLineDate == default)

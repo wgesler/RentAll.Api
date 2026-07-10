@@ -1,4 +1,4 @@
-namespace RentAll.Api.Dtos.Accounting.BankDeposits;
+namespace RentAll.Api.Dtos.Accounting.Deposits;
 
 public class GetDepositsDto
 {

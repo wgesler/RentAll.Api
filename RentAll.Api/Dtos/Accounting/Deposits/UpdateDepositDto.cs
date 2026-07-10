@@ -1,4 +1,4 @@
-namespace RentAll.Api.Dtos.Accounting.BankDeposits;
+namespace RentAll.Api.Dtos.Accounting.Deposits;
 
 public class UpdateDepositDto
 {
@@ -40,9 +40,6 @@ public class UpdateDepositDto
 
         if (Splits == null || Splits.Count == 0)
             return (false, "At least one split is required");
-
-        if (!Splits.Any(split => split.PropertyId.HasValue && split.PropertyId != Guid.Empty))
-            return (false, "At least one split must have a PropertyId");
 
         foreach (var split in Splits)
         {

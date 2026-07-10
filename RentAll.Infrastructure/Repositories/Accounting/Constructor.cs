@@ -185,7 +185,7 @@ public partial class AccountingRepository : IAccountingRepository
     }
     #endregion
 
-    #region BankDeposits
+    #region Deposit Helpers
     private static Deposit ConvertDepositEntityToModel(DepositEntity e)
     {
         var splits = DeserializeDepositSplits(e.Splits);
@@ -231,6 +231,7 @@ public partial class AccountingRepository : IAccountingRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+                JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
                 ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
             }).ToList();
         }
@@ -249,6 +250,7 @@ public partial class AccountingRepository : IAccountingRepository
             Description = e.Description,
             PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
             PropertyCode = e.PropertyCode,
+            JournalEntryLineId = e.JournalEntryLineId == Guid.Empty ? null : e.JournalEntryLineId,
             ChartOfAccountId = e.ChartOfAccountId,
             ChartOfAccountDisplayName = e.ChartOfAccountDisplayName
         };
@@ -262,6 +264,7 @@ public partial class AccountingRepository : IAccountingRepository
             Amount = split.Amount,
             Description = split.Description,
             PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+            JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
             ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
         }).ToList();
 
@@ -274,6 +277,7 @@ public partial class AccountingRepository : IAccountingRepository
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public Guid? PropertyId { get; set; }
+        public Guid? JournalEntryLineId { get; set; }
         public int? ChartOfAccountId { get; set; }
     }
     #endregion

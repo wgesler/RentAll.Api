@@ -61,14 +61,22 @@ public interface IAccountingRepository
     Task DeleteAllAccountingLogsByOrganizationIdAsync(Guid organizationId);
     #endregion
 
-    #region BankDeposits
+    #region Get
     Task<IEnumerable<Deposit>> GetDepositsByCriteriaAsync(DepositGetCriteria criteria);
     Task<IEnumerable<Deposit>> GetDepositsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Deposit>> GetDepositsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<Deposit?> GetDepositByIdAsync(Guid depositId, Guid organizationId);
+    #endregion
 
+    #region Post
     Task<Deposit> CreateDepositAsync(Deposit deposit);
+    #endregion
+
+    #region Put
     Task<Deposit> UpdateDepositAsync(Deposit deposit);
+    #endregion
+
+    #region Delete
     Task DeleteDepositByIdAsync(Guid depositId, Guid organizationId, Guid currentUser);
     #endregion
 

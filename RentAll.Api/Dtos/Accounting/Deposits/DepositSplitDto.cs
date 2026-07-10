@@ -1,4 +1,4 @@
-namespace RentAll.Api.Dtos.Accounting.BankDeposits;
+namespace RentAll.Api.Dtos.Accounting.Deposits;
 
 public class DepositSplitDto
 {
@@ -7,6 +7,7 @@ public class DepositSplitDto
     public string? Description { get; set; }
     public Guid? PropertyId { get; set; }
     public string? PropertyCode { get; set; }
+    public Guid? JournalEntryLineId { get; set; }
     public int? ChartOfAccountId { get; set; }
     public string? ChartOfAccountDisplayName { get; set; }
 
@@ -21,14 +22,15 @@ public class DepositSplitDto
         Description = split.Description;
         PropertyId = split.PropertyId;
         PropertyCode = split.PropertyCode;
+        JournalEntryLineId = split.JournalEntryLineId;
         ChartOfAccountId = split.ChartOfAccountId;
         ChartOfAccountDisplayName = split.ChartOfAccountDisplayName;
     }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (ChartOfAccountId.HasValue && ChartOfAccountId.Value <= 0)
-            return (false, "ChartOfAccountId must be greater than 0 when provided");
+        if (ChartOfAccountId is null or <= 0)
+            return (false, "ChartOfAccountId is required");
 
         return (true, null);
     }
@@ -41,6 +43,7 @@ public class DepositSplitDto
             Amount = Amount,
             Description = Description,
             PropertyId = PropertyId == Guid.Empty ? null : PropertyId,
+            JournalEntryLineId = JournalEntryLineId == Guid.Empty ? null : JournalEntryLineId,
             ChartOfAccountId = ChartOfAccountId is > 0 ? ChartOfAccountId : null
         };
     }
