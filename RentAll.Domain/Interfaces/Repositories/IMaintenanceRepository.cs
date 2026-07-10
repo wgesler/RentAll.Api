@@ -73,4 +73,5 @@ public interface IMaintenanceRepository
     Task<IReadOnlyList<Receipt>> UpdateReceiptsInTransactionAsync(IReadOnlyList<Receipt> receipts);
     Task DeleteReceiptByIdAsync(Guid receiptId, Guid organizationId, Guid currentUser);
     #endregion
+
 }

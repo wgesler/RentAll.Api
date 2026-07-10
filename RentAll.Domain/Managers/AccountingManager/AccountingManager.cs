@@ -337,7 +337,7 @@ public partial class AccountingManager : IAccountingManager
         {
             var account = chartOfAccounts
                 .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-                .Where(a => a.Name.Contains("PM Utility", StringComparison.OrdinalIgnoreCase) )
+                .Where(a => a.Name.Contains("PM Utility", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
                 .FirstOrDefault()
                 ?? chartOfAccounts

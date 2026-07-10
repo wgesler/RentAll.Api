@@ -1,7 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Logging;
 

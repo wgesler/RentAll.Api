@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
-using System.Collections.Concurrent;
 using RentAll.Api.Dtos.Accounting.JournalEntries;
-using RentAll.Domain.Managers;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Managers;
+using System.Collections.Concurrent;
 
 namespace RentAll.Api.Controllers
 {
@@ -18,6 +18,7 @@ namespace RentAll.Api.Controllers
         private readonly IJournalEntryRepository _journalEntryRepository;
         private readonly IReservationRepository _reservationRepository;
         private readonly IOrganizationRepository _organizationRepository;
+        private readonly IOrganizationManager _organizationManager;
         private readonly IAccountingManager _accountingManager;
         private readonly AuthManager _authManager;
         private readonly ILogger<AccountingController> _logger;
@@ -28,6 +29,7 @@ namespace RentAll.Api.Controllers
             IJournalEntryRepository journalEntryRepository,
             IReservationRepository reservationRepository,
             IOrganizationRepository organizationRepository,
+            IOrganizationManager organizationManager,
             IAccountingManager accountingManager,
             AuthManager authManager,
             ILogger<AccountingController> logger,
@@ -37,6 +39,7 @@ namespace RentAll.Api.Controllers
             _journalEntryRepository = journalEntryRepository;
             _reservationRepository = reservationRepository;
             _organizationRepository = organizationRepository;
+            _organizationManager = organizationManager;
             _accountingManager = accountingManager;
             _authManager = authManager;
             _logger = logger;

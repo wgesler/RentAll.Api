@@ -1,8 +1,8 @@
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
 

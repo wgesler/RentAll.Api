@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Test;
 
 public class OwnerReportScenarioTests

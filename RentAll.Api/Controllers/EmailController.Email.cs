@@ -1,5 +1,3 @@
-using RentAll.Api.Dtos.Emails.Emails;
-
 namespace RentAll.Api.Controllers
 {
     public partial class EmailController

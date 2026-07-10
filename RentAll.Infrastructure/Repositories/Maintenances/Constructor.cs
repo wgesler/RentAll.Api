@@ -3,7 +3,6 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
-using RentAll.Infrastructure.Entities.Maintenances;
 using RentAll.Infrastructure.Serialization;
 using System.Text.Json;
 

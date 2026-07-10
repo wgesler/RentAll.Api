@@ -1,7 +1,7 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Domain.Managers;
 

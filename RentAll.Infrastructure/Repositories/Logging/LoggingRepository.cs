@@ -3,8 +3,8 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
-using RentAll.Infrastructure.Entities.Logging;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Logging;
 
 namespace RentAll.Infrastructure.Repositories.Logging;
 

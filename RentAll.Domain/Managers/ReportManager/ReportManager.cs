@@ -1,8 +1,8 @@
-using System.Globalization;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using System.Globalization;
 
 namespace RentAll.Domain.Managers;
 

@@ -1,4 +1,5 @@
 namespace RentAll.Domain.Models;
+
 public class JournalEntryLine
 {
     public Guid JournalEntryLineId { get; set; }

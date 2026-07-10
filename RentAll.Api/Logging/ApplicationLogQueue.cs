@@ -1,6 +1,5 @@
-using System.Threading.Channels;
 using Microsoft.Extensions.Options;
-using RentAll.Domain.Models;
+using System.Threading.Channels;
 
 namespace RentAll.Api.Logging;
 

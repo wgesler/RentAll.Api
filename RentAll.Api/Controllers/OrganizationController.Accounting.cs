@@ -1,6 +1,3 @@
-
-using RentAll.Api.Dtos.Accounting.BankCards;
-
 namespace RentAll.Api.Controllers
 {
     public partial class OrganizationController

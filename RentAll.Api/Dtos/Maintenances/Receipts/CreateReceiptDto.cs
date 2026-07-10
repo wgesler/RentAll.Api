@@ -1,4 +1,3 @@
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
@@ -84,7 +83,7 @@ public class CreateReceiptDto
             VendorName = VendorName,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             AgreementLineId = AgreementLineId,
-            ReceiptPath = null, 
+            ReceiptPath = null,
             PaymentTypeId = 0,
             CheckPrinted = false,
             IsUtility = IsUtility,

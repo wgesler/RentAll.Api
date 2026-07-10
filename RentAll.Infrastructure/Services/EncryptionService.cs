@@ -1,11 +1,11 @@
-using System.Security.Cryptography;
-using System.Text;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Services;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace RentAll.Infrastructure.Services;
 

@@ -184,4 +184,97 @@ public partial class AccountingRepository : IAccountingRepository
         };
     }
     #endregion
+
+    #region BankDeposits
+    private static Deposit ConvertDepositEntityToModel(DepositEntity e)
+    {
+        var splits = DeserializeDepositSplits(e.Splits);
+
+        return new Deposit
+        {
+            DepositId = e.DepositId,
+            DepositCode = e.DepositCode,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
+            PropertyIds = new List<Guid>(),
+            DepositDate = e.DepositDate,
+            AccountingPeriod = e.AccountingPeriod,
+            Amount = e.Amount,
+            Description = e.Description,
+            BankAccountId = e.BankAccountId,
+            BankAccountDisplayName = e.BankAccountDisplayName,
+            Splits = splits,
+            JournalEntryId = e.JournalEntryId,
+            IsActive = e.IsActive,
+            CreatedBy = e.CreatedBy,
+            CreatedByName = e.CreatedByName,
+            CreatedOn = e.CreatedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static List<DepositSplit> DeserializeDepositSplits(string? splitsJson)
+    {
+        if (string.IsNullOrWhiteSpace(splitsJson))
+            return new List<DepositSplit>();
+
+        try
+        {
+            var splitRows = JsonSerializer.Deserialize<List<DepositSplitJson>>(splitsJson, JsonOptions) ?? new List<DepositSplitJson>();
+            return splitRows.Select(split => new DepositSplit
+            {
+                DepositSplitId = split.DepositSplitId ?? 0,
+                Amount = split.Amount,
+                Description = split.Description,
+                PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
+            }).ToList();
+        }
+        catch
+        {
+            return new List<DepositSplit>();
+        }
+    }
+
+    private static DepositSplit ConvertDepositSplitEntityToModel(DepositSplitEntity e)
+    {
+        return new DepositSplit
+        {
+            DepositSplitId = e.DepositSplitId,
+            Amount = e.Amount,
+            Description = e.Description,
+            PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            ChartOfAccountId = e.ChartOfAccountId,
+            ChartOfAccountDisplayName = e.ChartOfAccountDisplayName
+        };
+    }
+
+    private static string SerializeDepositSplits(List<DepositSplit>? splits)
+    {
+        var rows = (splits ?? new List<DepositSplit>()).Select(split => new DepositSplitJson
+        {
+            DepositSplitId = split.DepositSplitId > 0 ? split.DepositSplitId : null,
+            Amount = split.Amount,
+            Description = split.Description,
+            PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+            ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
+        }).ToList();
+
+        return JsonSerializer.Serialize(rows, JsonOptions);
+    }
+
+    private sealed class DepositSplitJson
+    {
+        public int? DepositSplitId { get; set; }
+        public decimal Amount { get; set; }
+        public string? Description { get; set; }
+        public Guid? PropertyId { get; set; }
+        public int? ChartOfAccountId { get; set; }
+    }
+    #endregion
 }

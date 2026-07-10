@@ -1,6 +1,5 @@
 using RentAll.Api.Dtos.Accounting.JournalEntries;
 using RentAll.Domain.Interfaces.Managers;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 

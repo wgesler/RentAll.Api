@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers
 {

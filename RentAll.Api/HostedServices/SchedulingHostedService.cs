@@ -337,7 +337,7 @@ public class SchedulingHostedService : BackgroundService
                     processingDate);
 
                 _logger.LogInformation("Loaded linens/towels agreements for organization {OrganizationId}. Monthly={MonthlyCount}, Annual={AnnualCount}",
-                    organization.OrganizationId,monthlyBatch.Count,annualBatch.Count);
+                    organization.OrganizationId, monthlyBatch.Count, annualBatch.Count);
             }
         }
         catch (Exception ex)

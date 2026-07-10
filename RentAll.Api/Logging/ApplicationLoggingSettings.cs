@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace RentAll.Api.Logging;
 
 public class ApplicationLoggingSettings

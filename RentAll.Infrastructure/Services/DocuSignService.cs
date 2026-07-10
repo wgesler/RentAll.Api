@@ -1,9 +1,3 @@
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using DocuSign.eSign.Client;
@@ -12,6 +6,12 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.ESignature;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Infrastructure.Services;
 

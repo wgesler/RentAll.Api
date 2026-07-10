@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Logging;
 
 public interface IApplicationLogQueue

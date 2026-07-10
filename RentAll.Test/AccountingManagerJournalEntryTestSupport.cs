@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Moq;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
@@ -7,6 +6,7 @@ using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Test;
 

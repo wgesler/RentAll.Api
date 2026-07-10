@@ -1,7 +1,6 @@
+using RentAll.Domain.Interfaces.Repositories;
 using System.Text;
 using System.Text.Json;
-using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Middleware;
 

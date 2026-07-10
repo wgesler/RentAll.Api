@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
 
 public static class GetReceiptsDtoExtensions

@@ -148,7 +148,7 @@ public static class SqlConnectionExtensions
         if (rawValue is string stringValue && Guid.TryParse(stringValue, out var parsedGuid))
             return parsedGuid;
 
-            return null;
+        return null;
     }
 
     private static int? ResolveOfficeId(object? parameters)

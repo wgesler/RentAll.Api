@@ -14,6 +14,7 @@ public enum EntityType
     Property = 9,
     JournalEntry = 10,
     Receipt = 11,
+    Deposit = 12,
 }
 
 public static class EntityTypeExtensions
@@ -31,6 +32,7 @@ public static class EntityTypeExtensions
         { EntityType.Property, "P" },
         { EntityType.JournalEntry, "JE" },
         { EntityType.Receipt, "RC" },
+        { EntityType.Deposit, "DP" },
     };
 
     private static readonly Dictionary<string, EntityType> CodeToEntityType = new()
@@ -46,6 +48,7 @@ public static class EntityTypeExtensions
         { "P", EntityType.Property },
         { "JE", EntityType.JournalEntry },
         { "RC", EntityType.Receipt },
+        { "DP", EntityType.Deposit },
     };
 
     public static string ToCode(this EntityType entityType)

@@ -1,5 +1,5 @@
-using RentAll.Api.Dtos.Accounting.OwnerStatements;
 using RentAll.Api.Dtos.Accounting.JournalEntries;
+using RentAll.Api.Dtos.Accounting.OwnerStatements;
 
 namespace RentAll.Api.Controllers
 {

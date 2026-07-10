@@ -2,7 +2,6 @@ using Microsoft.Data.SqlClient;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Properties;
 

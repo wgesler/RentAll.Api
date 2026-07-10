@@ -23,11 +23,11 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string Splits { get; set; } = "[]";
         public int? AgreementLineId { get; set; }
         public string? AgreementLineNotes { get; set; }
-    public string? ReceiptPath { get; set; }
-    public int PaymentTypeId { get; set; }
-    public bool CheckPrinted { get; set; }
-    public bool IsUtility { get; set; }
-    public bool IsActive { get; set; }
+        public string? ReceiptPath { get; set; }
+        public int PaymentTypeId { get; set; }
+        public bool CheckPrinted { get; set; }
+        public bool IsUtility { get; set; }
+        public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }
         public string CreatedByName { get; set; } = string.Empty;

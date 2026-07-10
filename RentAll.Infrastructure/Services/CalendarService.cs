@@ -3,7 +3,6 @@ using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 using System.Globalization;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 

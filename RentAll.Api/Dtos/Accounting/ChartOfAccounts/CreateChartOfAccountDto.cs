@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Accounting.ChartOfAccounts;
 
 public class CreateChartOfAccountDto

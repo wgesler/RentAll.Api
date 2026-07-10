@@ -1,9 +1,9 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
+using System.Collections.Concurrent;
 
 namespace RentAll.Infrastructure.Services;
 
