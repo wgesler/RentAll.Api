@@ -5,16 +5,15 @@ namespace RentAll.Domain.Managers;
 
 public partial class ReportManager
 {
-    public async Task<OwnerAccrualReport> GetOwnerAccrualReportAsync(JournalEntryRecapGetCriteria criteria)
+    private OwnerAccrualReport BuildOwnerAccrualReport(OwnerReportLoadedData loaded, JournalEntryRecapGetCriteria criteria)
     {
-        var recapLineSet = await LoadRecapLinesAsync(criteria, includePaymentInvoiceContext: true);
-        var recapRows = BuildRecapReportRows(recapLineSet.ActivityLines);
-        var officeIds = GetReportOfficeIds(criteria.OfficeIds);
-        if (officeIds.Count == 0)
+        if (loaded.OfficeIds.Count == 0)
             return new OwnerAccrualReport();
 
-        var properties = await LoadOwnerPropertyReportDataAsync(criteria);
-        var startingBalanceByKey = await LoadOwnerStartingBalanceByPropertyAsync(criteria, officeIds);
+        var recapLineSet = loaded.RecapLineSet;
+        var recapRows = BuildRecapReportRows(recapLineSet.ActivityLines);
+        var properties = loaded.Properties;
+        var startingBalanceByKey = loaded.StartingBalanceByKey;
         var recapRowsByProperty = recapRows
             .Where(row => row.PropertyId.HasValue && row.PropertyId.Value != Guid.Empty)
             .GroupBy(row => GetPropertyReportKey(row.OfficeId, row.PropertyId!.Value))

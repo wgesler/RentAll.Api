@@ -110,6 +110,29 @@ public class ReportController : BaseController
         }
     }
 
+    [HttpPost("owner-reports/search")]
+    public async Task<IActionResult> SearchOwnerReports([FromBody] GetOwnerCashReportDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Owner report search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var bundle = await _reportManager.GetOwnerReportsBundleAsync(criteria);
+            return Ok(new OwnerReportsResponseDto(bundle));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching owner reports");
+            return ServerError("An error occurred while retrieving owner reports");
+        }
+    }
+
     [HttpPost("owner-report/journal-entry-line/search")]
     public async Task<IActionResult> SearchOwnerReportJournalEntryLines([FromBody] GetOwnerReportJournalEntryLineDto dto)
     {
