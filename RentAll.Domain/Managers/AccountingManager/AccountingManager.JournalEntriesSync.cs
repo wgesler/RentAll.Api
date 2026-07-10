@@ -350,6 +350,73 @@ public partial class AccountingManager
         return result;
     }
 
+    public async Task<JournalEntrySyncResult> SyncDepositJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var result = new JournalEntrySyncResult();
+        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IncludeInactive = true
+        })).ToList();
+
+        var total = deposits.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "deposit", total, processed, result, "Running");
+
+        foreach (var depositSummary in deposits)
+        {
+            result.DocumentsProcessed++;
+
+            try
+            {
+                var deposit = await _accountingRepository.GetDepositByIdAsync(depositSummary.DepositId, organizationId);
+                if (deposit == null)
+                    continue;
+
+                await TrackJournalEntryCreateAsync(
+                    () => CreateJournalEntryFromDepositWithResultAsync(deposit, currentUser),
+                    new JournalEntryGetCriteria
+                    {
+                        OrganizationId = deposit.OrganizationId,
+                        OfficeIds = deposit.OfficeId.ToString(),
+                        SourceTypeId = (int)SourceType.Deposit,
+                        SourceId = deposit.DepositId,
+                        IncludeVoided = true,
+                        IncludeUnposted = true
+                    },
+                    result);
+            }
+            catch (Exception ex)
+            {
+                var depositLabel = string.IsNullOrWhiteSpace(depositSummary.DepositCode)
+                    ? depositSummary.DepositId.ToString()
+                    : depositSummary.DepositCode.Trim();
+                var message = $"Deposit {depositLabel}: {ex.Message}";
+                result.Errors.Add(message);
+                await LogAccountingErrorAsync(
+                    trigger: "Deposit",
+                    organizationId: organizationId,
+                    officeId: depositSummary.OfficeId,
+                    sourceTypeId: (int)SourceType.Deposit,
+                    sourceId: depositSummary.DepositId,
+                    documentCode: depositLabel,
+                    accountingPeriod: depositSummary.AccountingPeriod == default ? null : depositSummary.AccountingPeriod,
+                    amount: depositSummary.Amount,
+                    message: message,
+                    currentUser: currentUser);
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "deposit", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        if (total == 0)
+            ReportSyncProgress(progress, "deposit", total, processed, result, "Completed");
+
+        return result;
+    }
+
     public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(
         Guid organizationId,
         string officeIds,
