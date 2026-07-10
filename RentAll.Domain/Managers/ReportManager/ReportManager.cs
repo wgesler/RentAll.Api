@@ -204,12 +204,24 @@ public partial class ReportManager : IReportManager
         if (mode == OwnerReportActivityMode.Accrual)
             activityRows.AddRange(BuildOwnerActivityLinesFromPrepaidReceive(activityLines));
 
-        return activityRows
+        var ordered = activityRows
             .OrderBy(line => line.OfficeId)
-            .ThenBy(line => line.PropertyId)
+            .ThenBy(line => line.PropertyId);
+
+        if (mode == OwnerReportActivityMode.Cash)
+        {
+            return ordered
+                .ThenBy(line => line.ActivityDate)
+                .ThenBy(line => GetOwnerActivityAccountingPeriodSortKey(line.AccountingPeriod))
+                .ThenBy(line => GetOwnerActivityLineSortOrder(line))
+                .ThenBy(line => line.DocumentCode, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        return ordered
+            .ThenBy(line => GetOwnerActivityAccountingPeriodSortKey(line.AccountingPeriod))
             .ThenBy(line => line.ActivityDate)
             .ThenBy(line => GetOwnerActivityLineSortOrder(line))
-            .ThenBy(line => line.AccountingPeriod, StringComparer.Ordinal)
             .ThenBy(line => line.DocumentCode, StringComparer.Ordinal)
             .ToList();
     }
@@ -710,6 +722,21 @@ public partial class ReportManager : IReportManager
         if (line.ExpectedIncome == 0 && line.ReceivedIncome != 0)
             return 2;
         return 1;
+    }
+
+    private static string GetOwnerActivityAccountingPeriodSortKey(string? accountingPeriod)
+    {
+        if (string.IsNullOrWhiteSpace(accountingPeriod))
+            return string.Empty;
+
+        var trimmed = accountingPeriod.Trim();
+        if (DateOnly.TryParseExact(trimmed, "MM.yy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var monthYearPeriod))
+            return monthYearPeriod.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        if (DateOnly.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedPeriod))
+            return parsedPeriod.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        return trimmed;
     }
 
     private static string GetOwnerActivityRefNo(OwnerInvoiceActivityGroup group, InvoiceOwnerIncomeTotals? invoiceContext = null)

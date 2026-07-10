@@ -82,10 +82,10 @@ paid = min(ownerRent, payment × ownerRent / expectedIncome)
 
 ## Sort order (activity lines)
 
-1. `ActivityDate` ascending  
-2. Unpaid invoice lines before paid-only lines on the **same date**  
-3. Accounting period  
-4. Document / JE code  
+1. `AccountingPeriod` ascending (accrual) or `ActivityDate` ascending (cash)
+2. `ActivityDate` ascending (accrual tie-break) or `AccountingPeriod` (cash tie-break)
+3. Unpaid invoice lines before paid-only lines on the **same period/date**
+4. Document / JE code
 5. Expenses last  
 
 ## Property totals
