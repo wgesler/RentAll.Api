@@ -17,6 +17,7 @@ public class DepositEntity
     public string Splits { get; set; } = "[]";
     public Guid? JournalEntryId { get; set; }
     public bool IsActive { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public string CreatedByName { get; set; } = string.Empty;

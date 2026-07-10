@@ -29,6 +29,9 @@ public class UpdateDepositDto
         if (DepositDate == default)
             return (false, "DepositDate is required");
 
+        if (AccountingPeriod == default)
+            return (false, "AccountingPeriod is required");
+
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
 

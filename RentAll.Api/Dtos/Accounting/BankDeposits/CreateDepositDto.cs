@@ -24,6 +24,9 @@ public class CreateDepositDto
         if (DepositDate == default)
             return (false, "DepositDate is required");
 
+        if (AccountingPeriod == default)
+            return (false, "AccountingPeriod is required");
+
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
 
@@ -60,7 +63,7 @@ public class CreateDepositDto
             PropertyId = PropertyId == Guid.Empty ? null : PropertyId,
             BankAccountId = BankAccountId is > 0 ? BankAccountId : null,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
-            IsActive = true,
+            IsActive = IsActive,
             CreatedBy = currentUser
         };
     }
