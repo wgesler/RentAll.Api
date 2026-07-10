@@ -18,7 +18,11 @@ public partial class ReportManager
         return new OwnerReportsBundle
         {
             Cash = BuildOwnerCashReport(loaded, criteria),
-            Accrual = BuildOwnerAccrualReport(loaded, criteria)
+            Accrual = BuildOwnerAccrualReport(loaded, criteria),
+            Recap = new RecapReport
+            {
+                Rows = BuildRecapReportRows(loaded.RecapLineSet.ActivityLines)
+            }
         };
     }
 
