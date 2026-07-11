@@ -227,6 +227,16 @@ public partial class AccountingManager
 
     private JournalEntry BuildJournalEntryFromDepositRecord(Deposit deposit, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // DEPOSIT-JE-ACCOUNTS
+        // Line 1 — Bank account (deposit.BankAccountId):
+        //   positive deposit: Debit bank / Credit 0
+        //   negative deposit: Debit 0 / Credit bank
+        // Lines 2+ — Split chart-of-account lines:
+        //   positive split: Debit 0 / Credit split
+        //   negative split: Debit split / Credit 0
+        // END DEPOSIT-JE-ACCOUNTS
+
         var memo = string.IsNullOrWhiteSpace(deposit.Description) ? "Deposit" : "Deposit: " + deposit.Description.Trim();
         var depositPropertyId = deposit.PropertyId
             ?? deposit.Splits.FirstOrDefault(split => split.PropertyId.HasValue && split.PropertyId != Guid.Empty)?.PropertyId;

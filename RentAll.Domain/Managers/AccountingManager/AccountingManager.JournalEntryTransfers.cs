@@ -238,6 +238,16 @@ public partial class AccountingManager
 
     private JournalEntry BuildJournalEntryFromTransferRecord(Transfer transfer, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
+        // AGENT-NOTE: DO NOT TOUCH.
+        // TRANSFER-JE-ACCOUNTS
+        // Line 1 — Escrow Deposits (GetDefaultEscrowDepositAccount):
+        //   positive transfer: Credit escrow / Debit 0
+        //   negative transfer: Debit escrow / Credit 0
+        // Lines 2+ — Owner, SecDep, SDW, or Bank split accounts:
+        //   positive split: Debit split / Credit 0
+        //   negative split: Debit 0 / Credit split
+        // END TRANSFER-JE-ACCOUNTS
+
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
         var memo = string.IsNullOrWhiteSpace(transfer.Description) ? "Transfer" : "Transfer: " + transfer.Description.Trim();
         var transferPropertyId = transfer.PropertyId
