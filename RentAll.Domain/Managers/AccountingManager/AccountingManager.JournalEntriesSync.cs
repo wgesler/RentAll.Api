@@ -417,6 +417,73 @@ public partial class AccountingManager
         return result;
     }
 
+    public async Task<JournalEntrySyncResult> SyncTransferJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var result = new JournalEntrySyncResult();
+        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IncludeInactive = true
+        })).ToList();
+
+        var total = transfers.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "transfer", total, processed, result, "Running");
+
+        foreach (var transferSummary in transfers)
+        {
+            result.DocumentsProcessed++;
+
+            try
+            {
+                var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
+                if (transfer == null)
+                    continue;
+
+                await TrackJournalEntryCreateAsync(
+                    () => CreateJournalEntryFromTransferWithResultAsync(transfer, currentUser),
+                    new JournalEntryGetCriteria
+                    {
+                        OrganizationId = transfer.OrganizationId,
+                        OfficeIds = transfer.OfficeId.ToString(),
+                        SourceTypeId = (int)SourceType.Transfer,
+                        SourceId = transfer.TransferId,
+                        IncludeVoided = true,
+                        IncludeUnposted = true
+                    },
+                    result);
+            }
+            catch (Exception ex)
+            {
+                var transferLabel = string.IsNullOrWhiteSpace(transferSummary.TransferCode)
+                    ? transferSummary.TransferId.ToString()
+                    : transferSummary.TransferCode.Trim();
+                var message = $"Transfer {transferLabel}: {ex.Message}";
+                result.Errors.Add(message);
+                await LogAccountingErrorAsync(
+                    trigger: "Transfer",
+                    organizationId: organizationId,
+                    officeId: transferSummary.OfficeId,
+                    sourceTypeId: (int)SourceType.Transfer,
+                    sourceId: transferSummary.TransferId,
+                    documentCode: transferLabel,
+                    accountingPeriod: transferSummary.AccountingPeriod == default ? null : transferSummary.AccountingPeriod,
+                    amount: transferSummary.Amount,
+                    message: message,
+                    currentUser: currentUser);
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "transfer", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        if (total == 0)
+            ReportSyncProgress(progress, "transfer", total, processed, result, "Completed");
+
+        return result;
+    }
+
     public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(
         Guid organizationId,
         string officeIds,

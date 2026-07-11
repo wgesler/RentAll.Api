@@ -187,6 +187,32 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/sync/transfers")]
+    public async Task<IActionResult> SyncTransferJournalEntries([FromBody] SyncJournalEntriesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var officeIds = ResolveRequestedOfficeIds(dto);
+            if (string.IsNullOrWhiteSpace(officeIds))
+                return Forbid();
+
+            var result = await _accountingManager.SyncTransferJournalEntriesAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing transfer journal entries");
+            return ServerError("An error occurred while syncing transfer journal entries");
+        }
+    }
+
     [HttpPost("journal-entry/sync/all/start")]
     public IActionResult StartAllJournalEntriesSync([FromBody] SyncJournalEntriesRequestDto dto)
     {
@@ -357,6 +383,7 @@ public partial class AccountingController
             await scopedAccountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncDepositJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await scopedAccountingManager.SyncTransferJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, startDate, endDate, progress);
 
             lock (job.SyncRoot)
@@ -413,6 +440,7 @@ public partial class AccountingController
             ("receipt", "Receipts"),
             ("workOrder", "Work Orders"),
             ("deposit", "Deposits"),
+            ("transfer", "Transfers"),
             ("departureFee", "Departure Fees"),
             ("linenAndTowelFee", "Linen & Towel Fees")
         ];
@@ -434,8 +462,9 @@ public partial class AccountingController
             "receipt" => 3,
             "workOrder" => 4,
             "deposit" => 5,
-            "departureFee" => 6,
-            "linenAndTowelFee" => 7,
+            "transfer" => 6,
+            "departureFee" => 7,
+            "linenAndTowelFee" => 8,
             _ => int.MaxValue
         };
     }
