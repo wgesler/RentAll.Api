@@ -52,6 +52,23 @@ public partial class JournalEntryRepository
         return res.Select(ConvertLineSearchEntityToModel);
     }
 
+    public async Task<JournalEntryLine?> GetJournalEntryLineByIdAsync(Guid journalEntryLineId)
+    {
+        if (journalEntryLineId == Guid.Empty)
+            return null;
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<JournalEntryLineEntity>("Accounting.JournalEntryLine_GetById", new
+        {
+            JournalEntryLineId = journalEntryLineId
+        });
+
+        if (res == null || !res.Any())
+            return null;
+
+        return ConvertJournalEntryLineEntityToModel(res.First());
+    }
+
     public async Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

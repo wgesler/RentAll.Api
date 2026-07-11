@@ -131,6 +131,7 @@ public partial class AccountingController
                 return ServerError("Unable to generate transfer code");
 
             var transfer = dto.ToModel(transferCode, CurrentUser);
+            transfer = await _accountingManager.PrepareTransferForSaveAsync(transfer);
             var created = await _accountingRepository.CreateTransferAsync(transfer);
 
             var journalEntry = await _accountingManager.CreateJournalEntryFromTransferAsync(created, CurrentUser);

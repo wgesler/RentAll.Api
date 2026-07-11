@@ -48,6 +48,8 @@ public interface IAccountingManager
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
+    Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit);
+    Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer);
     Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser);
     Task<Transfer> UpdateTransferAsync(Transfer transfer, Guid currentUser);
     #endregion

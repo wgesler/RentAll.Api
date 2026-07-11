@@ -286,6 +286,12 @@ public partial class AccountingRepository
             Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
                 ? incomingPropertyId
                 : null;
+            Guid? reservationId = split.ReservationId is { } incomingReservationId && incomingReservationId != Guid.Empty
+                ? incomingReservationId
+                : null;
+            Guid? contactId = split.ContactId is { } incomingContactId && incomingContactId != Guid.Empty
+                ? incomingContactId
+                : null;
             Guid? journalEntryLineId = split.JournalEntryLineId is { } incomingJournalEntryLineId && incomingJournalEntryLineId != Guid.Empty
                 ? incomingJournalEntryLineId
                 : null;
@@ -295,6 +301,8 @@ public partial class AccountingRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 PropertyId = propertyId,
+                ReservationId = reservationId,
+                ContactId = contactId,
                 JournalEntryLineId = journalEntryLineId,
                 ChartOfAccountId = chartOfAccountId,
                 CreatedBy = auditUser
@@ -334,6 +342,12 @@ public partial class AccountingRepository
             Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
                 ? incomingPropertyId
                 : null;
+            Guid? reservationId = split.ReservationId is { } incomingReservationId && incomingReservationId != Guid.Empty
+                ? incomingReservationId
+                : null;
+            Guid? contactId = split.ContactId is { } incomingContactId && incomingContactId != Guid.Empty
+                ? incomingContactId
+                : null;
             Guid? journalEntryLineId = split.JournalEntryLineId is { } incomingJournalEntryLineId && incomingJournalEntryLineId != Guid.Empty
                 ? incomingJournalEntryLineId
                 : null;
@@ -347,6 +361,8 @@ public partial class AccountingRepository
                     Amount = split.Amount,
                     Description = split.Description,
                     PropertyId = propertyId,
+                    ReservationId = reservationId,
+                    ContactId = contactId,
                     JournalEntryLineId = journalEntryLineId,
                     ChartOfAccountId = chartOfAccountId,
                     ModifiedBy = auditUser
@@ -360,6 +376,8 @@ public partial class AccountingRepository
                     Amount = split.Amount,
                     Description = split.Description,
                     PropertyId = propertyId,
+                    ReservationId = reservationId,
+                    ContactId = contactId,
                     JournalEntryLineId = journalEntryLineId,
                     ChartOfAccountId = chartOfAccountId,
                     CreatedBy = auditUser

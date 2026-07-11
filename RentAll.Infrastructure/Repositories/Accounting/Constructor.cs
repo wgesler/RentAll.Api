@@ -231,6 +231,8 @@ public partial class AccountingRepository : IAccountingRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+                ReservationId = split.ReservationId == Guid.Empty ? null : split.ReservationId,
+                ContactId = split.ContactId == Guid.Empty ? null : split.ContactId,
                 JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
                 ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
             }).ToList();
@@ -250,6 +252,10 @@ public partial class AccountingRepository : IAccountingRepository
             Description = e.Description,
             PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
             PropertyCode = e.PropertyCode,
+            ReservationId = e.ReservationId == Guid.Empty ? null : e.ReservationId,
+            ReservationCode = e.ReservationCode,
+            ContactId = e.ContactId == Guid.Empty ? null : e.ContactId,
+            ContactName = e.ContactName,
             JournalEntryLineId = e.JournalEntryLineId == Guid.Empty ? null : e.JournalEntryLineId,
             ChartOfAccountId = e.ChartOfAccountId,
             ChartOfAccountDisplayName = e.ChartOfAccountDisplayName
@@ -264,6 +270,8 @@ public partial class AccountingRepository : IAccountingRepository
             Amount = split.Amount,
             Description = split.Description,
             PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+            ReservationId = split.ReservationId == Guid.Empty ? null : split.ReservationId,
+            ContactId = split.ContactId == Guid.Empty ? null : split.ContactId,
             JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
             ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
         }).ToList();
@@ -277,6 +285,8 @@ public partial class AccountingRepository : IAccountingRepository
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public Guid? PropertyId { get; set; }
+        public Guid? ReservationId { get; set; }
+        public Guid? ContactId { get; set; }
         public Guid? JournalEntryLineId { get; set; }
         public int? ChartOfAccountId { get; set; }
     }
@@ -328,6 +338,8 @@ public partial class AccountingRepository : IAccountingRepository
                 Amount = split.Amount,
                 Description = split.Description,
                 PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+                ReservationId = split.ReservationId == Guid.Empty ? null : split.ReservationId,
+                ContactId = split.ContactId == Guid.Empty ? null : split.ContactId,
                 JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
                 ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
             }).ToList();
@@ -347,6 +359,10 @@ public partial class AccountingRepository : IAccountingRepository
             Description = e.Description,
             PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
             PropertyCode = e.PropertyCode,
+            ReservationId = e.ReservationId == Guid.Empty ? null : e.ReservationId,
+            ReservationCode = e.ReservationCode,
+            ContactId = e.ContactId == Guid.Empty ? null : e.ContactId,
+            ContactName = e.ContactName,
             JournalEntryLineId = e.JournalEntryLineId == Guid.Empty ? null : e.JournalEntryLineId,
             ChartOfAccountId = e.ChartOfAccountId,
             ChartOfAccountDisplayName = e.ChartOfAccountDisplayName
@@ -361,6 +377,8 @@ public partial class AccountingRepository : IAccountingRepository
             Amount = split.Amount,
             Description = split.Description,
             PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+            ReservationId = split.ReservationId == Guid.Empty ? null : split.ReservationId,
+            ContactId = split.ContactId == Guid.Empty ? null : split.ContactId,
             JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
             ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
         }).ToList();
@@ -374,6 +392,8 @@ public partial class AccountingRepository : IAccountingRepository
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public Guid? PropertyId { get; set; }
+        public Guid? ReservationId { get; set; }
+        public Guid? ContactId { get; set; }
         public Guid? JournalEntryLineId { get; set; }
         public int? ChartOfAccountId { get; set; }
     }

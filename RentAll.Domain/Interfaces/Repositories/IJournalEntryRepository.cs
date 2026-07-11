@@ -6,6 +6,7 @@ public interface IJournalEntryRepository
 {
     Task<IEnumerable<JournalEntry>> GetJournalEntriesAsync(JournalEntryGetCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria);
+    Task<JournalEntryLine?> GetJournalEntryLineByIdAsync(Guid journalEntryLineId);
     Task<IEnumerable<JournalEntryRecapLine>> GetJournalEntryRecapLinesAsync(JournalEntryRecapGetCriteria criteria);
     Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId);
