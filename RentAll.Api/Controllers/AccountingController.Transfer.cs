@@ -1,0 +1,217 @@
+using RentAll.Api.Dtos.Accounting.Transfers;
+
+namespace RentAll.Api.Controllers;
+
+public partial class AccountingController
+{
+    #region Get
+
+    [HttpPost("transfer/search")]
+    public async Task<IActionResult> SearchTransfers([FromBody] GetTransfersDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Transfer search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var records = await _accountingRepository.GetTransfersByCriteriaAsync(criteria);
+            var response = records.Select(o => new TransferResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching transfers");
+            return ServerError("An error occurred while retrieving transfers");
+        }
+    }
+
+    [HttpGet("transfer")]
+    public async Task<IActionResult> GetAllTransfers()
+    {
+        try
+        {
+            var records = await _accountingRepository.GetTransfersByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new TransferResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting transfers");
+            return ServerError("An error occurred while retrieving transfers");
+        }
+    }
+
+    [HttpGet("transfer/office/{officeId:int}")]
+    public async Task<IActionResult> GetTransfersByOfficeId(int officeId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        try
+        {
+            var officeAccess = officeId.ToString();
+            var records = await _accountingRepository.GetTransfersByOfficeIdsAsync(CurrentOrganizationId, officeAccess);
+            var response = records.Select(o => new TransferResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting transfers");
+            return ServerError("An error occurred while retrieving transfers");
+        }
+    }
+
+    [HttpGet("transfer/property/{propertyId:guid}")]
+    public async Task<IActionResult> GetTransfersByPropertyId(Guid propertyId)
+    {
+        if (propertyId == Guid.Empty)
+            return BadRequest("PropertyId is required");
+
+        try
+        {
+            var records = await _accountingRepository.GetTransfersByPropertyIdAsync(propertyId, CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new TransferResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting transfers for property: {PropertyId}", propertyId);
+            return ServerError("An error occurred while retrieving transfers");
+        }
+    }
+
+    [HttpGet("transfer/{transferId:guid}")]
+    public async Task<IActionResult> GetTransferById(Guid transferId)
+    {
+        if (transferId == Guid.Empty)
+            return BadRequest("TransferId is required");
+
+        try
+        {
+            var record = await _accountingRepository.GetTransferByIdAsync(transferId, CurrentOrganizationId);
+            if (record == null)
+                return NotFound("Transfer record not found");
+
+            var response = new TransferResponseDto(record);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting transfer by ID: {TransferId}", transferId);
+            return ServerError("An error occurred while retrieving the transfer");
+        }
+    }
+
+    #endregion
+
+    #region Post
+
+    [HttpPost("transfer")]
+    public async Task<IActionResult> CreateTransfer([FromBody] CreateTransferDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Transfer data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var transferCode = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Transfer);
+            if (string.IsNullOrWhiteSpace(transferCode))
+                return ServerError("Unable to generate transfer code");
+
+            var transfer = dto.ToModel(transferCode, CurrentUser);
+            var created = await _accountingRepository.CreateTransferAsync(transfer);
+
+            var journalEntry = await _accountingManager.CreateJournalEntryFromTransferAsync(created, CurrentUser);
+            if (journalEntry != null)
+            {
+                created.JournalEntryId = journalEntry.JournalEntryId;
+                created.ModifiedBy = CurrentUser;
+                created = await _accountingRepository.UpdateTransferAsync(created);
+            }
+
+            var response = new TransferResponseDto(created);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating transfer");
+            return ServerError("An error occurred while creating the transfer");
+        }
+    }
+
+    #endregion
+
+    #region Put
+
+    [HttpPut("transfer")]
+    public async Task<IActionResult> UpdateTransfer([FromBody] UpdateTransferDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Transfer data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var existing = await _accountingRepository.GetTransferByIdAsync(dto.TransferId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Transfer record not found");
+
+            var transfer = dto.ToModel(CurrentUser);
+            var updated = await _accountingManager.UpdateTransferAsync(transfer, CurrentUser);
+            var response = new TransferResponseDto(updated);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating transfer: {TransferId}", dto.TransferId);
+            return ServerError("An error occurred while updating the transfer");
+        }
+    }
+
+    #endregion
+
+    #region Delete
+
+    [HttpDelete("transfer/{transferId:guid}")]
+    public async Task<IActionResult> DeleteTransferById(Guid transferId)
+    {
+        if (transferId == Guid.Empty)
+            return BadRequest("TransferId is required");
+
+        try
+        {
+            var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, CurrentOrganizationId);
+            if (transfer == null)
+                return NotFound("Transfer record not found");
+
+            await _accountingManager.DeleteJournalEntriesForTransferAsync(transfer);
+            await _accountingRepository.DeleteTransferByIdAsync(transferId, CurrentOrganizationId, CurrentUser);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting transfer: {TransferId}", transferId);
+            return ServerError("An error occurred while deleting the transfer");
+        }
+    }
+
+    #endregion
+}

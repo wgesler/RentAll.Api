@@ -124,11 +124,15 @@ public partial class AccountingManager
         if (deposit.DepositId == Guid.Empty)
             return;
 
-        await DeleteJournalEntriesForSourceAsync(
-            deposit.OrganizationId,
-            deposit.OfficeId,
-            (int)SourceType.Deposit,
-            deposit.DepositId);
+        await DeleteJournalEntriesForSourceAsync( deposit.OrganizationId, deposit.OfficeId, (int)SourceType.Deposit, deposit.DepositId);
+    }
+
+    public async Task DeleteJournalEntriesForTransferAsync(Transfer transfer)
+    {
+        if (transfer.TransferId == Guid.Empty)
+            return;
+
+        await DeleteJournalEntriesForSourceAsync(transfer.OrganizationId, transfer.OfficeId, (int)SourceType.Transfer, transfer.TransferId);
     }
 
     public async Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)

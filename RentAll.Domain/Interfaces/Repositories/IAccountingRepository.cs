@@ -80,6 +80,25 @@ public interface IAccountingRepository
     Task DeleteDepositByIdAsync(Guid depositId, Guid organizationId, Guid currentUser);
     #endregion
 
+    #region Get
+    Task<IEnumerable<Transfer>> GetTransfersByCriteriaAsync(TransferGetCriteria criteria);
+    Task<IEnumerable<Transfer>> GetTransfersByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Transfer>> GetTransfersByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
+    Task<Transfer?> GetTransferByIdAsync(Guid transferId, Guid organizationId);
+    #endregion
+
+    #region Post
+    Task<Transfer> CreateTransferAsync(Transfer transfer);
+    #endregion
+
+    #region Put
+    Task<Transfer> UpdateTransferAsync(Transfer transfer);
+    #endregion
+
+    #region Delete
+    Task DeleteTransferByIdAsync(Guid transferId, Guid organizationId, Guid currentUser);
+    #endregion
+
     #region CheckHtml
     Task<CheckHtml?> GetCheckHtmlByScopeAsync(Guid organizationId, int? officeId);
     Task<CheckHtml?> GetCheckHtmlByIdAsync(Guid checkHtmlId);

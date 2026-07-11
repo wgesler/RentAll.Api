@@ -281,4 +281,101 @@ public partial class AccountingRepository : IAccountingRepository
         public int? ChartOfAccountId { get; set; }
     }
     #endregion
+
+    #region Transfer Helpers
+    private static Transfer ConvertTransferEntityToModel(TransferEntity e)
+    {
+        var splits = DeserializeTransferSplits(e.Splits);
+
+        return new Transfer
+        {
+            TransferId = e.TransferId,
+            TransferCode = e.TransferCode,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
+            PropertyIds = new List<Guid>(),
+            TransferDate = e.TransferDate,
+            AccountingPeriod = e.AccountingPeriod,
+            Amount = e.Amount,
+            Description = e.Description,
+            BankAccountId = e.BankAccountId,
+            BankAccountDisplayName = e.BankAccountDisplayName,
+            Splits = splits,
+            JournalEntryId = e.JournalEntryId,
+            IsActive = e.IsActive,
+            CreatedBy = e.CreatedBy,
+            CreatedByName = e.CreatedByName,
+            CreatedOn = e.CreatedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static List<TransferSplit> DeserializeTransferSplits(string? splitsJson)
+    {
+        if (string.IsNullOrWhiteSpace(splitsJson))
+            return new List<TransferSplit>();
+
+        try
+        {
+            var splitRows = JsonSerializer.Deserialize<List<TransferSplitJson>>(splitsJson, JsonOptions) ?? new List<TransferSplitJson>();
+            return splitRows.Select(split => new TransferSplit
+            {
+                TransferSplitId = split.TransferSplitId ?? 0,
+                Amount = split.Amount,
+                Description = split.Description,
+                PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+                JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
+                ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null,
+            }).ToList();
+        }
+        catch
+        {
+            return new List<TransferSplit>();
+        }
+    }
+
+    private static TransferSplit ConvertTransferSplitEntityToModel(TransferSplitEntity e)
+    {
+        return new TransferSplit
+        {
+            TransferSplitId = e.TransferSplitId,
+            Amount = e.Amount,
+            Description = e.Description,
+            PropertyId = e.PropertyId == Guid.Empty ? null : e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            JournalEntryLineId = e.JournalEntryLineId == Guid.Empty ? null : e.JournalEntryLineId,
+            ChartOfAccountId = e.ChartOfAccountId,
+            ChartOfAccountDisplayName = e.ChartOfAccountDisplayName
+        };
+    }
+
+    private static string SerializeTransferSplits(List<TransferSplit>? splits)
+    {
+        var rows = (splits ?? new List<TransferSplit>()).Select(split => new TransferSplitJson
+        {
+            TransferSplitId = split.TransferSplitId > 0 ? split.TransferSplitId : null,
+            Amount = split.Amount,
+            Description = split.Description,
+            PropertyId = split.PropertyId == Guid.Empty ? null : split.PropertyId,
+            JournalEntryLineId = split.JournalEntryLineId == Guid.Empty ? null : split.JournalEntryLineId,
+            ChartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null
+        }).ToList();
+
+        return JsonSerializer.Serialize(rows, JsonOptions);
+    }
+
+    private sealed class TransferSplitJson
+    {
+        public int? TransferSplitId { get; set; }
+        public decimal Amount { get; set; }
+        public string? Description { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? JournalEntryLineId { get; set; }
+        public int? ChartOfAccountId { get; set; }
+    }
+    #endregion
 }
