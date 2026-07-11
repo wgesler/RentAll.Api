@@ -252,8 +252,8 @@ public partial class AccountingManager
                 PropertyId = transferPropertyId,
                 ReservationId = transferReservationId,
                 ContactId = transferContactId,
-                Debit = 0,
-                Credit = Math.Abs(transfer.Amount),
+                Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
+                Credit = transfer.Amount > 0 ? transfer.Amount : 0,
                 Memo = memo,
                 CreatedBy = currentUser
             }
@@ -271,8 +271,8 @@ public partial class AccountingManager
                 PropertyId = split.PropertyId,
                 ReservationId = split.ReservationId,
                 ContactId = split.ContactId,
-                Debit = Math.Abs(split.Amount),
-                Credit = 0,
+                Debit = split.Amount > 0 ? split.Amount : 0,
+                Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
                 Memo = string.IsNullOrWhiteSpace(split.Description) ? memo : split.Description.Trim(),
                 CreatedBy = currentUser
             });
