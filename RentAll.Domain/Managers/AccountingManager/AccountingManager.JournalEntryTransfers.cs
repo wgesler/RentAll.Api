@@ -250,24 +250,20 @@ public partial class AccountingManager
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
         var memo = string.IsNullOrWhiteSpace(transfer.Description) ? "Transfer" : "Transfer: " + transfer.Description.Trim();
-        var transferPropertyId = transfer.PropertyId
-            ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId);
-        var transferReservationId = FirstSplitContextId(transfer.Splits, split => split.ReservationId);
-        var transferContactId = FirstSplitContextId(transfer.Splits, split => split.ContactId);
-        var journalEntryLines = new List<JournalEntryLine>
+        var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
-            new()
-            {
-                ChartOfAccountId = accounts.EscrowDepositAccountId,
-                PropertyId = transferPropertyId,
-                ReservationId = transferReservationId,
-                ContactId = transferContactId,
-                Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
-                Credit = transfer.Amount > 0 ? transfer.Amount : 0,
-                Memo = memo,
-                CreatedBy = currentUser
-            }
+            PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)
         };
+        var escrowLine = new JournalEntryLine
+        {
+            ChartOfAccountId = accounts.EscrowDepositAccountId,
+            Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
+            Credit = transfer.Amount > 0 ? transfer.Amount : 0,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(escrowLine, headerLineContext);
+        var journalEntryLines = new List<JournalEntryLine> { escrowLine };
 
         foreach (var split in transfer.Splits)
         {
@@ -275,17 +271,16 @@ public partial class AccountingManager
             if (!IsAllowedTransferDebitAccountId(splitAccountId, accounts))
                 throw new Exception("Each split must use a configured escrow security deposit, escrow SDW, escrow owners, or bank account");
 
-            journalEntryLines.Add(new JournalEntryLine
+            var splitLine = new JournalEntryLine
             {
                 ChartOfAccountId = splitAccountId,
-                PropertyId = split.PropertyId,
-                ReservationId = split.ReservationId,
-                ContactId = split.ContactId,
                 Debit = split.Amount > 0 ? split.Amount : 0,
                 Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
                 Memo = string.IsNullOrWhiteSpace(split.Description) ? memo : split.Description.Trim(),
                 CreatedBy = currentUser
-            });
+            };
+            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromTransferSplit(split));
+            journalEntryLines.Add(splitLine);
         }
 
         return new JournalEntry
@@ -296,6 +291,7 @@ public partial class AccountingManager
             PostingDate = transfer.AccountingPeriod,
             SourceTypeId = (int)SourceType.Transfer,
             SourceId = transfer.TransferId,
+            SourceCode = ResolveJournalEntrySourceCodeFromTransfer(transfer),
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser

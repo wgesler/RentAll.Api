@@ -178,7 +178,7 @@ public partial class AccountingManager
         var transactionDate = ResolveBillOrReceiptJournalEntryDate(bill);
         var receiptCode = bill.ReceiptCode.Trim();
         var billDescriptionSuffix = string.IsNullOrWhiteSpace((bill.Description ?? string.Empty).Trim()) ? string.Empty : $": {(bill.Description ?? string.Empty).Trim()}";
-        var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+        var defaultLineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
         var eligibleSplits = splitLines
             .Where(split => split.ReceiptType != ReceiptType.NonExpense)
             .Where(split => split.Amount != 0)
@@ -190,67 +190,75 @@ public partial class AccountingManager
         var positiveTotal = positiveSplits.Sum(s => s.Amount);
         if (positiveTotal > 0)
         {
-            journalEntryLines.Add(new JournalEntryLine
+            var accountsPayableLine = new JournalEntryLine
             {
                 // Credit Accounts Payable
                 ChartOfAccountId = accountsPayableAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
                 Debit = 0,
                 Credit = positiveTotal,
                 Memo = receiptCode + billDescriptionSuffix,
                 CreatedBy = currentUser
-            });
+            };
+            ApplyJournalEntryLineContext(accountsPayableLine, defaultLineContext);
+            journalEntryLines.Add(accountsPayableLine);
 
             foreach (var split in positiveSplits)
             {
                 var expenseAccountId = GetBillReceiptExpenseAccountId(split, bill.OfficeId, chartOfAccounts, accountingOffice);
                 var splitDescriptionSuffix = string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}";
 
-                journalEntryLines.Add(new JournalEntryLine
+                var expenseLine = new JournalEntryLine
                 {
                     // Debit Expense
                     ChartOfAccountId = expenseAccountId,
-                    PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                    ContactId = bill.VendorId,
                     Debit = split.Amount,
                     Credit = 0,
                     Memo = receiptCode + splitDescriptionSuffix,
                     CreatedBy = currentUser
+                };
+                ApplyJournalEntryLineContext(expenseLine, CreateJournalEntryLineContextFromReceiptSplit(bill, split) with
+                {
+                    PropertyCode = defaultLineContext.PropertyCode,
+                    ContactName = defaultLineContext.ContactName
                 });
+                journalEntryLines.Add(expenseLine);
             }
         }
 
         var negativeTotal = negativeSplits.Sum(s => s.Amount);
         if (negativeTotal < 0)
         {
-            journalEntryLines.Add(new JournalEntryLine
+            var accountsPayableLine = new JournalEntryLine
             {
                 // Debit Accounts Payable
                 ChartOfAccountId = accountsPayableAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
                 Debit = Math.Abs(negativeTotal),
                 Credit = 0,
                 Memo = receiptCode + billDescriptionSuffix,
                 CreatedBy = currentUser
-            });
+            };
+            ApplyJournalEntryLineContext(accountsPayableLine, defaultLineContext);
+            journalEntryLines.Add(accountsPayableLine);
 
             foreach (var split in negativeSplits)
             {
                 var expenseAccountId = GetBillReceiptExpenseAccountId(split, bill.OfficeId, chartOfAccounts, accountingOffice);
                 var splitDescriptionSuffix = string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}";
-                journalEntryLines.Add(new JournalEntryLine
+                var expenseLine = new JournalEntryLine
                 {
                     // Credit ExpenseAccountId
                     ChartOfAccountId = expenseAccountId,
-                    PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                    ContactId = bill.VendorId,
                     Debit = 0,
                     Credit = Math.Abs(split.Amount),
                     Memo = receiptCode + splitDescriptionSuffix,
                     CreatedBy = currentUser
+                };
+                ApplyJournalEntryLineContext(expenseLine, CreateJournalEntryLineContextFromReceiptSplit(bill, split) with
+                {
+                    PropertyCode = defaultLineContext.PropertyCode,
+                    ContactName = defaultLineContext.ContactName
                 });
+                journalEntryLines.Add(expenseLine);
             }
         }
 
@@ -261,6 +269,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.Bill,
             SourceId = bill.ReceiptId,
+            SourceCode = ResolveJournalEntrySourceCodeFromReceipt(bill),
             Memo = receiptCode + billDescriptionSuffix,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -294,32 +303,28 @@ public partial class AccountingManager
         var transactionDate = paymentApplication.PaymentDate;
         var receiptCode = bill.ReceiptCode.Trim();
         var billDescription = string.IsNullOrWhiteSpace((bill.Description ?? string.Empty).Trim()) ? string.Empty : $": {(bill.Description ?? string.Empty).Trim()}";
-        var propertyId = bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
-        var journalEntryLines = new List<JournalEntryLine>
+        var lineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
+        var payableLine = new JournalEntryLine
         {
-            new JournalEntryLine
-            {
-                // Debit Accounts Payable or Credit Card
-                ChartOfAccountId = payableOrCardAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = amount > 0 ? amount : 0,
-                Credit = amount < 0 ? Math.Abs(amount) : 0,
-                Memo = bill.ReceiptCode.Trim() + billDescription,
-                CreatedBy = currentUser
-            },
-            new JournalEntryLine
-            {
-                // Credit Payment Bank Account
-                ChartOfAccountId = paymentBankAccountId,
-                PropertyId = propertyId == Guid.Empty ? null : propertyId,
-                ContactId = bill.VendorId,
-                Debit = amount < 0 ? Math.Abs(amount) : 0,
-                Credit = amount > 0 ? amount : 0,
-                Memo = receiptCode + billDescription,
-                CreatedBy = currentUser
-            }
+            // Debit Accounts Payable or Credit Card
+            ChartOfAccountId = payableOrCardAccountId,
+            Debit = amount > 0 ? amount : 0,
+            Credit = amount < 0 ? Math.Abs(amount) : 0,
+            Memo = bill.ReceiptCode.Trim() + billDescription,
+            CreatedBy = currentUser
         };
+        ApplyJournalEntryLineContext(payableLine, lineContext);
+        var paymentLine = new JournalEntryLine
+        {
+            // Credit Payment Bank Account
+            ChartOfAccountId = paymentBankAccountId,
+            Debit = amount < 0 ? Math.Abs(amount) : 0,
+            Credit = amount > 0 ? amount : 0,
+            Memo = receiptCode + billDescription,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(paymentLine, lineContext);
+        var journalEntryLines = new List<JournalEntryLine> { payableLine, paymentLine };
 
         return new JournalEntry
         {
@@ -328,6 +333,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = bill.ReceiptId,
+            SourceCode = ResolveJournalEntrySourceCodeFromReceipt(bill),
             Memo = receiptCode + billDescription,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser

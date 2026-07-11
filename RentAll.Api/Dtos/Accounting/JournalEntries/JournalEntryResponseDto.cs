@@ -12,6 +12,7 @@ public class JournalEntryResponseDto
     public DateOnly PostingDate { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
+    public string? SourceCode { get; set; }
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
@@ -31,6 +32,7 @@ public class JournalEntryResponseDto
         PostingDate = journalEntry.PostingDate;
         SourceTypeId = journalEntry.SourceTypeId;
         SourceId = journalEntry.SourceId;
+        SourceCode = journalEntry.SourceCode;
         Memo = journalEntry.Memo;
         IsPosted = journalEntry.IsPosted;
         IsVoided = journalEntry.IsVoided;

@@ -183,52 +183,53 @@ public partial class AccountingManager
         }
 
         var journalEntryLines = new List<JournalEntryLine>();
+        var lineContext = await ResolveReservationJournalEntryLineContextAsync(organizationId, reservation, reservationDetail);
         if (departureFeeAmount > 0m)
         {
-            journalEntryLines.Add(new JournalEntryLine
+            var departureExpenseLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureAccountId,
-                ReservationId = reservation.ReservationId,
-                PropertyId = reservation.PropertyId,
                 Debit = departureFeeAmount,
                 Credit = 0m,
                 Memo = $"Departure Fee - {reservation.ReservationCode}",
                 CreatedBy = SystemOrganization
-            });
-            journalEntryLines.Add(new JournalEntryLine
+            };
+            ApplyJournalEntryLineContext(departureExpenseLine, lineContext);
+            journalEntryLines.Add(departureExpenseLine);
+            var departureIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
-                ReservationId = reservation.ReservationId,
-                PropertyId = reservation.PropertyId,
                 Debit = 0m,
                 Credit = departureFeeAmount,
                 Memo = $"Departure Fee Income - {reservation.ReservationCode}",
                 CreatedBy = SystemOrganization
-            });
+            };
+            ApplyJournalEntryLineContext(departureIncomeLine, lineContext);
+            journalEntryLines.Add(departureIncomeLine);
         }
 
         if (petFeeAmount > 0m)
         {
-            journalEntryLines.Add(new JournalEntryLine
+            var petExpenseLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultPetAccountId,
-                ReservationId = reservation.ReservationId,
-                PropertyId = reservation.PropertyId,
                 Debit = petFeeAmount,
                 Credit = 0m,
                 Memo = $"Pet Fee - {reservation.ReservationCode}",
                 CreatedBy = SystemOrganization
-            });
-            journalEntryLines.Add(new JournalEntryLine
+            };
+            ApplyJournalEntryLineContext(petExpenseLine, lineContext);
+            journalEntryLines.Add(petExpenseLine);
+            var petIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
-                ReservationId = reservation.ReservationId,
-                PropertyId = reservation.PropertyId,
                 Debit = 0m,
                 Credit = petFeeAmount,
                 Memo = $"Departure Fee Income - {reservation.ReservationCode}",
                 CreatedBy = SystemOrganization
-            });
+            };
+            ApplyJournalEntryLineContext(petIncomeLine, lineContext);
+            journalEntryLines.Add(petIncomeLine);
         }
 
         var journalEntry = new JournalEntry
@@ -236,8 +237,10 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = reservation.OfficeId,
             TransactionDate = reservation.DepartureDate,
+            PostingDate = new DateOnly(reservation.DepartureDate.Year, reservation.DepartureDate.Month, 1),
             SourceTypeId = (int)SourceType.Reservation,
             SourceId = reservation.ReservationId,
+            SourceCode = ResolveJournalEntrySourceCodeFromReservation(reservation),
             Memo = $"Departures - {reservation.ReservationCode}",
             JournalEntryLines = journalEntryLines,
             CreatedBy = SystemOrganization

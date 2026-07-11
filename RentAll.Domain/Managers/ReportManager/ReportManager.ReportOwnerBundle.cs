@@ -21,7 +21,7 @@ public partial class ReportManager
             Accrual = BuildOwnerAccrualReport(loaded, criteria),
             Recap = new RecapReport
             {
-                Rows = BuildRecapReportRows(loaded.RecapLineSet.ActivityLines)
+                Rows = BuildRecapReportRows(loaded.RecapLineSet.AllLines)
             }
         };
     }

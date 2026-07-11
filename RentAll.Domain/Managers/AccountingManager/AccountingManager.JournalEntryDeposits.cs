@@ -238,38 +238,34 @@ public partial class AccountingManager
         // END DEPOSIT-JE-ACCOUNTS
 
         var memo = string.IsNullOrWhiteSpace(deposit.Description) ? "Deposit" : "Deposit: " + deposit.Description.Trim();
-        var depositPropertyId = deposit.PropertyId
-            ?? deposit.Splits.FirstOrDefault(split => split.PropertyId.HasValue && split.PropertyId != Guid.Empty)?.PropertyId;
-        var depositReservationId = deposit.Splits.FirstOrDefault(split => split.ReservationId.HasValue && split.ReservationId != Guid.Empty)?.ReservationId;
-        var depositContactId = deposit.Splits.FirstOrDefault(split => split.ContactId.HasValue && split.ContactId != Guid.Empty)?.ContactId;
-        var journalEntryLines = new List<JournalEntryLine>
+        var headerLineContext = FirstDepositSplitContext(deposit.Splits) with
         {
-            new()
-            {
-                ChartOfAccountId = deposit.BankAccountId!.Value,
-                PropertyId = depositPropertyId,
-                ReservationId = depositReservationId,
-                ContactId = depositContactId,
-                Debit = deposit.Amount > 0 ? deposit.Amount : 0,
-                Credit = deposit.Amount < 0 ? Math.Abs(deposit.Amount) : 0,
-                Memo = memo,
-                CreatedBy = currentUser
-            }
+            PropertyId = deposit.PropertyId
+                ?? FirstSplitContextId(deposit.Splits, split => split.PropertyId)
         };
+        var bankLine = new JournalEntryLine
+        {
+            ChartOfAccountId = deposit.BankAccountId!.Value,
+            Debit = deposit.Amount > 0 ? deposit.Amount : 0,
+            Credit = deposit.Amount < 0 ? Math.Abs(deposit.Amount) : 0,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(bankLine, headerLineContext);
+        var journalEntryLines = new List<JournalEntryLine> { bankLine };
 
         foreach (var split in deposit.Splits)
         {
-            journalEntryLines.Add(new JournalEntryLine
+            var splitLine = new JournalEntryLine
             {
                 ChartOfAccountId = split.ChartOfAccountId!.Value,
-                PropertyId = split.PropertyId,
-                ReservationId = split.ReservationId,
-                ContactId = split.ContactId,
                 Debit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
                 Credit = split.Amount > 0 ? split.Amount : 0,
                 Memo = string.IsNullOrWhiteSpace(split.Description) ? memo : split.Description.Trim(),
                 CreatedBy = currentUser
-            });
+            };
+            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromDepositSplit(split));
+            journalEntryLines.Add(splitLine);
         }
 
         return new JournalEntry
@@ -280,6 +276,7 @@ public partial class AccountingManager
             PostingDate = deposit.AccountingPeriod,
             SourceTypeId = (int)SourceType.Deposit,
             SourceId = deposit.DepositId,
+            SourceCode = ResolveJournalEntrySourceCodeFromDeposit(deposit),
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser

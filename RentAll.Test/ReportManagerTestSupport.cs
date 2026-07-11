@@ -156,6 +156,13 @@ internal static class ReportManagerTestSupport
             return _manager.GetOwnerCashReportAsync(_criteria);
         }
 
+        internal Task<RecapReport> GetRecapReportAsync(DateOnly startDate, DateOnly endDate)
+        {
+            _criteria.StartDate = startDate;
+            _criteria.EndDate = endDate;
+            return _manager.GetJournalEntryRecapReportAsync(_criteria);
+        }
+
         private IEnumerable<JournalEntryRecapLine> FilterRecapLines(JournalEntryRecapGetCriteria criteria)
         {
             return _recapLines

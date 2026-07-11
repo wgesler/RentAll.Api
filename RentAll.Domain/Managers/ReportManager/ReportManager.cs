@@ -663,6 +663,13 @@ public partial class ReportManager : IReportManager
                 return invoiceCode;
         }
 
+        if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+        {
+            var fromDescription = GetRecapInvoiceSourceFromDescription(line.Description);
+            if (!string.IsNullOrWhiteSpace(fromDescription))
+                return fromDescription;
+        }
+
         var sourceDocumentCode = GetRecapSourceDocumentCode(line);
         if (!string.IsNullOrWhiteSpace(sourceDocumentCode))
             return sourceDocumentCode;

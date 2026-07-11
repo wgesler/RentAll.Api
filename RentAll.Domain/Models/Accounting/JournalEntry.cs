@@ -10,6 +10,7 @@ public class JournalEntry
     public DateOnly PostingDate { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
+    public string? SourceCode { get; set; }
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }

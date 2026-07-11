@@ -10,10 +10,10 @@ public partial class ReportManager
 
     public async Task<RecapReport> GetJournalEntryRecapReportAsync(JournalEntryRecapGetCriteria criteria)
     {
-        var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
+        var recapLineSet = await LoadRecapLinesAsync(criteria, includePaymentInvoiceContext: true);
         return new RecapReport
         {
-            Rows = BuildRecapReportRows(lines)
+            Rows = BuildRecapReportRows(recapLineSet.AllLines)
         };
     }
 
@@ -21,12 +21,14 @@ public partial class ReportManager
 
     private static List<RecapReportRow> BuildRecapReportRows(IEnumerable<JournalEntryRecapLine> lines)
     {
+        var lineList = (lines ?? []).ToList();
         var groups = new Dictionary<string, GroupAccumulator>(StringComparer.OrdinalIgnoreCase);
         var propertyLevelExpenseGroups = new List<GroupAccumulator>();
-        var prePayAppliedByPeriod = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        var prePayReceivedByPeriod = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var prePayAppliedByKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var prePayReceivedByKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var invoicePeriodsByLookupKey = BuildRecapInvoicePeriodsByLookupKey(lineList);
 
-        foreach (var line in lines ?? [])
+        foreach (var line in lineList)
         {
             var category = (line.RecapCategory ?? string.Empty).Trim();
             var amount = line.Amount;
@@ -37,9 +39,12 @@ public partial class ReportManager
             {
                 if (amount > 0 && !string.IsNullOrWhiteSpace(reservationKey) && !string.IsNullOrWhiteSpace(periodKey))
                 {
-                    var applyKey = $"{reservationKey}|{periodKey}";
-                    prePayReceivedByPeriod[applyKey] = prePayReceivedByPeriod.GetValueOrDefault(applyKey) + amount;
-                    var group = GetOrCreateGroup(groups, line);
+                    var invoiceSource = GetOwnerIncomeInvoiceSourceKey(line, category);
+                    var receiveKey = BuildPrePayApplyKey(reservationKey, periodKey, invoiceSource);
+                    prePayReceivedByKey[receiveKey] = prePayReceivedByKey.GetValueOrDefault(receiveKey) + amount;
+                    var group = GetOrCreateGroup(groups, line, category, invoicePeriodsByLookupKey, forcePeriodGrouping: true);
+                    if (line.IsInDateRange)
+                        group.HasInDateRangeLine = true;
                     RollupRecapPrimaryJournalEntry(group, line, category);
                     RollupRecapCategoryJournalEntryDetails(group, line, category);
                     RollupRecapSourceDocument(group, line, category);
@@ -47,8 +52,9 @@ public partial class ReportManager
                 }
                 else if (amount < 0 && !string.IsNullOrWhiteSpace(reservationKey) && !string.IsNullOrWhiteSpace(periodKey))
                 {
-                    var applyKey = $"{reservationKey}|{periodKey}";
-                    prePayAppliedByPeriod[applyKey] = prePayAppliedByPeriod.GetValueOrDefault(applyKey) + Math.Abs(amount);
+                    var invoiceSource = GetOwnerIncomeInvoiceSourceKey(line, category);
+                    var applyKey = BuildPrePayApplyKey(reservationKey, periodKey, invoiceSource);
+                    prePayAppliedByKey[applyKey] = prePayAppliedByKey.GetValueOrDefault(applyKey) + Math.Abs(amount);
                 }
 
                 continue;
@@ -61,67 +67,22 @@ public partial class ReportManager
                 continue;
             }
 
-            var recapGroup = GetOrCreateGroup(groups, line);
+            var recapGroup = GetOrCreateGroup(groups, line, category, invoicePeriodsByLookupKey);
+            if (line.IsInDateRange
+                || string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
+                recapGroup.HasInDateRangeLine = true;
+
             RollupRecapCategoryAmount(recapGroup, category, amount);
             RollupRecapPrimaryJournalEntry(recapGroup, line, category);
             RollupRecapCategoryJournalEntryDetails(recapGroup, line, category);
             RollupRecapSourceDocument(recapGroup, line, category);
+            RollupRecapInvoiceAccountingPeriod(recapGroup, line, category);
             RollupRecapEarliestTransactionDate(recapGroup, line);
         }
 
-        var reservationPeriodKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var group in groups.Values)
-        {
-            if (!string.IsNullOrWhiteSpace(group.ReservationKey) && !string.IsNullOrWhiteSpace(group.AccountingPeriod))
-                reservationPeriodKeys.Add($"{group.ReservationKey}|{group.AccountingPeriod}");
-        }
-
-        foreach (var key in prePayReceivedByPeriod.Keys)
-            reservationPeriodKeys.Add(key);
-        foreach (var key in prePayAppliedByPeriod.Keys)
-            reservationPeriodKeys.Add(key);
-
-        var reservationKeys = reservationPeriodKeys
-            .Select(key => key.Split('|')[0])
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        foreach (var reservationKey in reservationKeys)
-        {
-            var sortedPeriods = reservationPeriodKeys
-                .Where(key => key.StartsWith($"{reservationKey}|", StringComparison.OrdinalIgnoreCase))
-                .Select(key => key[(reservationKey.Length + 1)..])
-                .OrderBy(period => period, StringComparer.Ordinal)
-                .ToList();
-
-            var runningPrePayBalance = 0m;
-            foreach (var period in sortedPeriods)
-            {
-                var group = groups.Values.FirstOrDefault(item =>
-                    string.Equals(item.ReservationKey, reservationKey, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(item.AccountingPeriod, period, StringComparison.OrdinalIgnoreCase));
-                if (group == null)
-                    continue;
-
-                var receivedAmount = prePayReceivedByPeriod.GetValueOrDefault($"{reservationKey}|{period}");
-                var appliedAmount = prePayAppliedByPeriod.GetValueOrDefault($"{reservationKey}|{period}");
-                runningPrePayBalance += receivedAmount;
-
-                if (appliedAmount > 0)
-                {
-                    group.PaymentValue = appliedAmount;
-                    runningPrePayBalance -= appliedAmount;
-                    if (runningPrePayBalance < 0)
-                        runningPrePayBalance = 0;
-                    group.PrePaymentValue = runningPrePayBalance;
-                }
-                else if (receivedAmount > 0)
-                {
-                    group.PaymentValue = receivedAmount;
-                    group.PrePaymentValue = runningPrePayBalance;
-                }
-            }
-        }
+        ApplyRecapPrePaymentBalances(groups, prePayReceivedByKey, prePayAppliedByKey);
+        MergeRecapOwnerRentIntoInvoiceGroups(groups);
 
         foreach (var group in groups.Values)
         {
@@ -136,11 +97,14 @@ public partial class ReportManager
             }
         }
 
-        return groups.Values
+        var filteredGroups = groups.Values
             .Concat(propertyLevelExpenseGroups)
-            .Where(HasMeaningfulAmount)
-            .OrderBy(group => group.PropertyCode, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(group => group.AccountingPeriod, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.HasInDateRangeLine && HasMeaningfulAmount(group))
+            .ToList();
+
+        return filteredGroups
+            .OrderBy(group => group.AccountingPeriod, StringComparer.Ordinal)
+            .ThenBy(group => group.PropertyCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(group => group.ReservationCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(group => group.SortDateValue)
             .ThenBy(group => group.JournalEntryLineId)
@@ -150,7 +114,7 @@ public partial class ReportManager
 
     private static RecapReportRow BuildRecapReportRow(GroupAccumulator group)
     {
-        var ownerPaidRentValue = CalculateRecapPaidOwnerRent(group);
+        var ownerPaidRentValue = group.OwnerRentValue;
         var ownerPaymentValue = CalculateRecapOwnerPayment(group);
         var unPaidValue = CalculateRecapUnPaidIncome(group);
         var sourceDocumentCode = (group.SourceDocumentCode ?? string.Empty).Trim();
@@ -232,7 +196,8 @@ public partial class ReportManager
             TransactionDate = line.TransactionDate.ToString("yyyy-MM-dd"),
             SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks,
             JournalEntryId = line.JournalEntryId,
-            JournalEntryLineId = line.JournalEntryLineId
+            JournalEntryLineId = line.JournalEntryLineId,
+            HasInDateRangeLine = line.IsInDateRange
         };
 
         const string category = "Expense";
@@ -242,6 +207,70 @@ public partial class ReportManager
         RollupRecapSourceDocument(group, line, category);
         RollupRecapEarliestTransactionDate(group, line);
         return group;
+    }
+
+    private static void MergeRecapOwnerRentIntoInvoiceGroups(Dictionary<string, GroupAccumulator> groups)
+    {
+        foreach (var entry in groups.ToList())
+        {
+            var orphanGroup = entry.Value;
+            if (orphanGroup.OwnerRentValue == 0 || orphanGroup.ExpectedIncomeValue != 0 || orphanGroup.PaymentValue != 0)
+                continue;
+
+            var invoiceSource = ResolveRecapOwnerRentInvoiceSource(orphanGroup);
+            if (string.IsNullOrWhiteSpace(invoiceSource))
+                continue;
+
+            var targetGroup = groups.Values.FirstOrDefault(group =>
+                group != orphanGroup
+                && string.Equals(group.PropertyKey, orphanGroup.PropertyKey, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(group.ReservationKey, orphanGroup.ReservationKey, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(group.AccountingPeriod, orphanGroup.AccountingPeriod, StringComparison.OrdinalIgnoreCase)
+                && string.Equals((group.SourceDocumentCode ?? string.Empty).Trim(), invoiceSource, StringComparison.OrdinalIgnoreCase)
+                && (group.ExpectedIncomeValue != 0 || group.PaymentValue != 0 || group.RentPlus4000Value != 0));
+
+            if (targetGroup == null)
+                continue;
+
+            targetGroup.OwnerRentValue += orphanGroup.OwnerRentValue;
+            if (string.IsNullOrWhiteSpace(targetGroup.OwnerRentMemo) && !string.IsNullOrWhiteSpace(orphanGroup.OwnerRentMemo))
+                targetGroup.OwnerRentMemo = orphanGroup.OwnerRentMemo;
+            if (string.IsNullOrWhiteSpace(targetGroup.OwnerRentJournalEntryCode) && !string.IsNullOrWhiteSpace(orphanGroup.OwnerRentJournalEntryCode))
+                targetGroup.OwnerRentJournalEntryCode = orphanGroup.OwnerRentJournalEntryCode;
+            if (targetGroup.OwnerRentJournalEntryId == null)
+                targetGroup.OwnerRentJournalEntryId = orphanGroup.OwnerRentJournalEntryId;
+            if (targetGroup.OwnerRentJournalEntryLineId == null)
+                targetGroup.OwnerRentJournalEntryLineId = orphanGroup.OwnerRentJournalEntryLineId;
+
+            groups.Remove(entry.Key);
+        }
+    }
+
+    private static string ResolveRecapOwnerRentInvoiceSource(GroupAccumulator group)
+    {
+        var sourceDocumentCode = (group.SourceDocumentCode ?? string.Empty).Trim();
+        if (IsRecapInvoiceSourceDocumentCode(sourceDocumentCode))
+            return sourceDocumentCode;
+
+        return GetRecapInvoiceSourceFromDescription(group.OwnerRentMemo)
+            ?? GetRecapInvoiceSourceFromDescription(group.Memo)
+            ?? string.Empty;
+    }
+
+    private static string? GetRecapInvoiceSourceFromDescription(string? description)
+    {
+        var text = (description ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        foreach (Match match in RecapSourceCodePattern.Matches(text))
+        {
+            var code = match.Value.Trim();
+            if (IsRecapInvoiceSourceDocumentCode(code))
+                return code;
+        }
+
+        return null;
     }
 
     #endregion
@@ -388,6 +417,23 @@ public partial class ReportManager
         }
     }
 
+    private static void RollupRecapInvoiceAccountingPeriod(GroupAccumulator group, JournalEntryRecapLine line, string category)
+    {
+        if (!ShouldSetRecapAccountingPeriodFromLine(category, line))
+            return;
+
+        var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
+        if (string.IsNullOrWhiteSpace(periodKey))
+            return;
+
+        var priority = SourcePriorityByCategory.GetValueOrDefault(category);
+        if (!string.IsNullOrWhiteSpace(group.AccountingPeriod) && priority < group.AccountingPeriodPriority)
+            return;
+
+        group.AccountingPeriodPriority = priority;
+        group.AccountingPeriod = periodKey;
+    }
+
     #endregion
 
     #region Calculate
@@ -405,14 +451,138 @@ public partial class ReportManager
 
     #endregion
 
+    #region PrePayment
+
+    private static void ApplyRecapPrePaymentBalances(
+        Dictionary<string, GroupAccumulator> groups,
+        IReadOnlyDictionary<string, decimal> prePayReceivedByKey,
+        IReadOnlyDictionary<string, decimal> prePayAppliedByKey)
+    {
+        var reservationInvoiceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var key in prePayReceivedByKey.Keys.Concat(prePayAppliedByKey.Keys))
+        {
+            var (reservationKey, _, invoiceSource) = ParsePrePayApplyKey(key);
+            if (string.IsNullOrWhiteSpace(reservationKey) || string.IsNullOrWhiteSpace(invoiceSource))
+                continue;
+
+            reservationInvoiceKeys.Add($"{reservationKey}|{invoiceSource}");
+        }
+
+        foreach (var reservationInvoiceKey in reservationInvoiceKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+        {
+            var separatorIndex = reservationInvoiceKey.IndexOf('|');
+            if (separatorIndex <= 0)
+                continue;
+
+            var reservationKey = reservationInvoiceKey[..separatorIndex];
+            var invoiceSource = reservationInvoiceKey[(separatorIndex + 1)..];
+            var runningBalance = 0m;
+            var sortedPeriods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in groups.Values)
+            {
+                if (!string.Equals(group.ReservationKey, reservationKey, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!RecapInvoiceSourceMatches(group, invoiceSource))
+                    continue;
+                if (!string.IsNullOrWhiteSpace(group.AccountingPeriod))
+                    sortedPeriods.Add(group.AccountingPeriod);
+            }
+
+            foreach (var key in prePayReceivedByKey.Keys.Concat(prePayAppliedByKey.Keys))
+            {
+                var (keyReservation, periodKey, keyInvoiceSource) = ParsePrePayApplyKey(key);
+                if (!string.Equals(keyReservation, reservationKey, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!string.Equals(keyInvoiceSource, invoiceSource, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                sortedPeriods.Add(periodKey);
+            }
+
+            foreach (var period in sortedPeriods.OrderBy(value => value, StringComparer.Ordinal))
+            {
+                var bucketKey = BuildPrePayApplyKey(reservationKey, period, invoiceSource);
+                var receivedAmount = prePayReceivedByKey.GetValueOrDefault(bucketKey);
+                var appliedAmount = prePayAppliedByKey.GetValueOrDefault(bucketKey);
+                runningBalance += receivedAmount;
+
+                var matchingGroups = groups.Values
+                    .Where(group =>
+                        string.Equals(group.ReservationKey, reservationKey, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(group.AccountingPeriod, period, StringComparison.OrdinalIgnoreCase)
+                        && RecapInvoiceSourceMatches(group, invoiceSource))
+                    .OrderBy(group => group.ExpectedIncomeValue == 0 && group.OwnerRentValue == 0 ? 0 : 1)
+                    .ThenBy(group => group.SortDateValue)
+                    .ToList();
+
+                if (appliedAmount > 0)
+                {
+                    var invoiceGroup = matchingGroups
+                        .FirstOrDefault(group => group.ExpectedIncomeValue != 0 || group.OwnerRentValue != 0);
+                    if (invoiceGroup != null)
+                        invoiceGroup.PaymentValue += appliedAmount;
+
+                    runningBalance -= appliedAmount;
+                    if (runningBalance < 0)
+                        runningBalance = 0;
+                }
+
+                if (receivedAmount > 0)
+                {
+                    var receiveGroup = matchingGroups
+                        .FirstOrDefault(group => group.ExpectedIncomeValue == 0 && group.OwnerRentValue == 0)
+                        ?? matchingGroups.FirstOrDefault();
+                    if (receiveGroup != null)
+                        receiveGroup.PrePaymentValue = runningBalance;
+                }
+                else if (appliedAmount > 0)
+                {
+                    foreach (var group in matchingGroups.Where(group => group.ExpectedIncomeValue != 0 || group.OwnerRentValue != 0))
+                        group.PrePaymentValue = runningBalance;
+                }
+            }
+        }
+    }
+
+    private static bool RecapInvoiceSourceMatches(GroupAccumulator group, string invoiceSource)
+    {
+        var normalizedInvoiceSource = (invoiceSource ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedInvoiceSource))
+            return true;
+
+        return string.Equals((group.SourceDocumentCode ?? string.Empty).Trim(), normalizedInvoiceSource, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static (string ReservationKey, string PeriodKey, string InvoiceSource) ParsePrePayApplyKey(string applyKey)
+    {
+        var parts = (applyKey ?? string.Empty).Split('|');
+        if (parts.Length < 3)
+            return (string.Empty, string.Empty, string.Empty);
+
+        return (parts[0], parts[1], parts[2]);
+    }
+
+    private static string BuildPrePayApplyKey(string reservationKey, string periodKey, string invoiceSourceKey)
+        => $"{reservationKey}|{periodKey}|{(invoiceSourceKey ?? string.Empty).Trim()}";
+
+    #endregion
+
     #region Get
 
-    private static GroupAccumulator GetOrCreateGroup(Dictionary<string, GroupAccumulator> groups, JournalEntryRecapLine line)
+    private static GroupAccumulator GetOrCreateGroup(
+        Dictionary<string, GroupAccumulator> groups,
+        JournalEntryRecapLine line,
+        string category,
+        IReadOnlyDictionary<string, HashSet<string>> invoicePeriodsByLookupKey,
+        bool forcePeriodGrouping = false)
     {
         var propertyKey = GetPropertyKey(line);
         var reservationKey = GetReservationKey(line);
         var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
-        var groupKey = GetGroupKey(propertyKey, reservationKey, periodKey);
+        var groupKey = forcePeriodGrouping
+            ? GetGroupKey(propertyKey, reservationKey, periodKey)
+            : GetRecapGroupKey(line, category, invoicePeriodsByLookupKey);
         if (groups.TryGetValue(groupKey, out var group))
             return group;
 
@@ -425,12 +595,122 @@ public partial class ReportManager
             PropertyId = (line.PropertyId?.ToString() ?? string.Empty).Trim(),
             ReservationId = (line.ReservationId?.ToString() ?? string.Empty).Trim(),
             OfficeId = line.OfficeId,
-            AccountingPeriod = periodKey,
+            AccountingPeriod = forcePeriodGrouping
+                ? periodKey
+                : GetRecapGroupPeriodKey(line, category, invoicePeriodsByLookupKey),
             TransactionDate = line.TransactionDate.ToString("yyyy-MM-dd"),
             SortDateValue = line.TransactionDate.ToDateTime(TimeOnly.MinValue).Ticks
         };
         groups[groupKey] = group;
         return group;
+    }
+
+    private static string GetRecapGroupKey(
+        JournalEntryRecapLine line,
+        string category,
+        IReadOnlyDictionary<string, HashSet<string>> invoicePeriodsByLookupKey)
+    {
+        var propertyKey = GetPropertyKey(line);
+        var reservationKey = GetReservationKey(line);
+        var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
+
+        if (ShouldGroupRecapByInvoiceSource(category, line))
+        {
+            var invoiceSourceKey = GetOwnerIncomeInvoiceSourceKey(line, category);
+            if (!string.IsNullOrWhiteSpace(invoiceSourceKey))
+            {
+                var groupPeriodKey = GetRecapGroupPeriodKey(line, category, invoicePeriodsByLookupKey);
+                return $"{propertyKey}|{reservationKey}|inv:{invoiceSourceKey}|{groupPeriodKey}";
+            }
+        }
+
+        return GetGroupKey(propertyKey, reservationKey, periodKey);
+    }
+
+    private static string GetRecapGroupPeriodKey(
+        JournalEntryRecapLine line,
+        string category,
+        IReadOnlyDictionary<string, HashSet<string>> invoicePeriodsByLookupKey)
+    {
+        var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
+        if (!ShouldGroupRecapByInvoiceSource(category, line))
+            return periodKey;
+
+        if (!string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
+            && !(string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && line.Amount < 0))
+        {
+            return periodKey;
+        }
+
+        var invoiceSourceKey = GetOwnerIncomeInvoiceSourceKey(line, category);
+        if (string.IsNullOrWhiteSpace(invoiceSourceKey))
+            return periodKey;
+
+        var lookupKey = GetRecapInvoicePeriodLookupKey(line, invoiceSourceKey);
+        if (invoicePeriodsByLookupKey.TryGetValue(lookupKey, out var invoicePeriods)
+            && invoicePeriods.Count == 1)
+        {
+            return invoicePeriods.First();
+        }
+
+        return periodKey;
+    }
+
+    private static Dictionary<string, HashSet<string>> BuildRecapInvoicePeriodsByLookupKey(IEnumerable<JournalEntryRecapLine> lines)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in lines)
+        {
+            var category = (line.RecapCategory ?? string.Empty).Trim();
+            if (!string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var invoiceSourceKey = GetOwnerIncomeInvoiceSourceKey(line, category);
+            if (string.IsNullOrWhiteSpace(invoiceSourceKey))
+                continue;
+
+            var lookupKey = GetRecapInvoicePeriodLookupKey(line, invoiceSourceKey);
+            var periodKey = line.AccountingPeriod.ToString("yyyy-MM-dd");
+            if (!result.TryGetValue(lookupKey, out var periods))
+            {
+                periods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                result[lookupKey] = periods;
+            }
+
+            periods.Add(periodKey);
+        }
+
+        return result;
+    }
+
+    private static string GetRecapInvoicePeriodLookupKey(JournalEntryRecapLine line, string invoiceSourceKey)
+    {
+        var propertyKey = GetPropertyKey(line);
+        var reservationKey = GetReservationKey(line);
+        return $"{propertyKey}|{reservationKey}|inv:{invoiceSourceKey}";
+    }
+
+    private static bool ShouldGroupRecapByInvoiceSource(string category, JournalEntryRecapLine line)
+    {
+        if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase))
+            return line.Amount < 0;
+
+        return category is "ExpectedIncome" or "OwnerRent" or "Payment" or "OwnerPayment"
+            or "RentPlus4000" or "SecurityDeposit" or "SDW" or "Fee";
+    }
+
+    private static bool ShouldSetRecapAccountingPeriodFromLine(string category, JournalEntryRecapLine line)
+    {
+        if (string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && line.Amount > 0)
+            return false;
+
+        return ShouldGroupRecapByInvoiceSource(category, line);
     }
 
     private static string GetPropertyKey(JournalEntryRecapLine line) =>
@@ -459,6 +739,7 @@ public partial class ReportManager
 
         if (line.SourceTypeId is (int)SourceType.Invoice or (int)SourceType.InvoicePayment
             || string.Equals(line.RecapCategory, "ExpectedIncome", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(line.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase)
             || string.Equals(line.RecapCategory, "Payment", StringComparison.OrdinalIgnoreCase)
             || string.Equals(line.RecapCategory, "PrePayment", StringComparison.OrdinalIgnoreCase))
         {
@@ -616,7 +897,7 @@ public partial class ReportManager
 
     private static readonly Regex RecapSourceCodePattern = new(@"\b(?:WO-[A-Za-z0-9-]+|R-\d+(?:-\d+)*|RC[A-Za-z0-9-]*)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static readonly Regex RecapMemoSourceCodePattern = new(@"(?:Payment|Prepayment|Invoice)\s*:\s*([A-Za-z0-9-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex RecapMemoSourceCodePattern = new(@"(?:Payment|Prepayment|Invoice|Owner)\s*:\s*([A-Za-z0-9-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex ReservationCodePattern = new(@"^R-\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 

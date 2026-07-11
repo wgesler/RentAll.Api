@@ -32,6 +32,8 @@ internal sealed class GroupAccumulator
     public long PaymentSortDateValue { get; set; }
     public int SourcePriority { get; set; } = -1;
     public int JournalEntryPriority { get; set; } = -1;
+    public int AccountingPeriodPriority { get; set; } = -1;
+    public bool HasInDateRangeLine { get; set; }
     public string TransactionDate { get; set; } = string.Empty;
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }

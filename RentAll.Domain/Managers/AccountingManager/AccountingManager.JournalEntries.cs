@@ -55,6 +55,7 @@ public partial class AccountingManager
         journalEntry.JournalEntryCode = existing.JournalEntryCode;
         journalEntry.SourceTypeId = existing.SourceTypeId;
         journalEntry.SourceId = existing.SourceId;
+        journalEntry.SourceCode = existing.SourceCode;
         journalEntry.CreatedBy = existing.CreatedBy;
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);

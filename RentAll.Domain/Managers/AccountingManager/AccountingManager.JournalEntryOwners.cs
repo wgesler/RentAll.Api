@@ -44,6 +44,7 @@ public partial class AccountingManager
             TransactionDate = invoice.AccountingPeriod,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
+            SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
             Memo = BuildOwnerShareInvoiceMemo(invoice),
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -110,6 +111,10 @@ public partial class AccountingManager
         var isFurnished = !property.Unfurnished;
         var memo = BuildOwnerShareInvoiceMemo(invoice);
         var ownerContactId = property.Owner1Id;
+        var lineContext = CreateJournalEntryLineContextFromInvoice(invoice, propertyId) with
+        {
+            ContactId = NormalizeOptionalGuid(ownerContactId)
+        };
         costCodeById.TryGetValue(rentalLine.CostCodeId, out var rentalCostCode);
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var ownerRentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
@@ -117,31 +122,29 @@ public partial class AccountingManager
             ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
             : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
 
-        journalEntryLines.Add(new JournalEntryLine
+        var ownerExpenseLine = new JournalEntryLine
         {
             ChartOfAccountId = ownerRentExpenseAccountId,
             CostCodeId = rentalLine.CostCodeId,
-            PropertyId = propertyId,
-            ReservationId = invoice.ReservationId,
-            ContactId = ownerContactId,
             Debit = ownerAmount > 0 ? ownerAmount : 0,
             Credit = ownerAmount < 0 ? Math.Abs(ownerAmount) : 0,
             Memo = memo,
             CreatedBy = currentUser
-        });
+        };
+        ApplyJournalEntryLineContext(ownerExpenseLine, lineContext);
+        journalEntryLines.Add(ownerExpenseLine);
 
-        journalEntryLines.Add(new JournalEntryLine
+        var ownerPayableLine = new JournalEntryLine
         {
             ChartOfAccountId = ownerAccountsPayableId,
             CostCodeId = ownerRentExpenseCostCodeId is > 0 ? ownerRentExpenseCostCodeId : null,
-            PropertyId = propertyId,
-            ReservationId = invoice.ReservationId,
-            ContactId = ownerContactId,
             Debit = ownerAmount < 0 ? Math.Abs(ownerAmount) : 0,
             Credit = ownerAmount > 0 ? ownerAmount : 0,
             Memo = memo,
             CreatedBy = currentUser
-        });
+        };
+        ApplyJournalEntryLineContext(ownerPayableLine, lineContext);
+        journalEntryLines.Add(ownerPayableLine);
 
         return journalEntryLines;
     }
@@ -185,11 +188,18 @@ public partial class AccountingManager
             .FirstOrDefault(splitPropertyId => splitPropertyId is { } id && id != Guid.Empty)
             ?? bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
         Guid? ownerContactId = null;
+        string? propertyCode = null;
+        string? ownerContactName = null;
         if (propertyId != Guid.Empty)
         {
             var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, bill.OrganizationId);
+            propertyCode = NormalizeOptionalString(property?.PropertyCode);
             if (property?.Owner1Id is { } resolvedOwnerId && resolvedOwnerId != Guid.Empty)
+            {
                 ownerContactId = resolvedOwnerId;
+                var contact = await _contactRepository.GetContactByIdAsync(resolvedOwnerId, bill.OrganizationId);
+                ownerContactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
+            }
         }
         var ownerSplitDescription = ownerSplitLines
             .Select(split => split.Description)
@@ -208,26 +218,33 @@ public partial class AccountingManager
                 ? $"Owner: {receiptCode}"
                 : $"Owner: {receiptCode}: {(split.Description ?? string.Empty).Trim()}";
             var splitIncomeMemo = receiptCode + (string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}");
-            journalEntryLines.Add(new JournalEntryLine
+            var splitContext = new JournalEntryLineContext(
+                NormalizeOptionalGuid(splitPropertyId == Guid.Empty ? null : splitPropertyId),
+                propertyCode,
+                null,
+                null,
+                ownerContactId,
+                ownerContactName);
+            var ownerPayableLine = new JournalEntryLine
             {
                 ChartOfAccountId = ownerAccountsPayableAccountId,
-                PropertyId = splitPropertyId == Guid.Empty ? null : splitPropertyId,
-                ContactId = ownerContactId,
                 Debit = splitAmount > 0 ? splitAmount : 0,
                 Credit = splitAmount < 0 ? Math.Abs(splitAmount) : 0,
                 Memo = splitMemo,
                 CreatedBy = currentUser
-            });
-            journalEntryLines.Add(new JournalEntryLine
+            };
+            ApplyJournalEntryLineContext(ownerPayableLine, splitContext);
+            journalEntryLines.Add(ownerPayableLine);
+            var utilityIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = pmUtilityIncomeAccountId,
-                PropertyId = splitPropertyId == Guid.Empty ? null : splitPropertyId,
-                ContactId = ownerContactId,
                 Debit = splitAmount < 0 ? Math.Abs(splitAmount) : 0,
                 Credit = splitAmount > 0 ? splitAmount : 0,
                 Memo = splitIncomeMemo,
                 CreatedBy = currentUser
-            });
+            };
+            ApplyJournalEntryLineContext(utilityIncomeLine, splitContext);
+            journalEntryLines.Add(utilityIncomeLine);
         }
 
         return new JournalEntry
@@ -237,6 +254,7 @@ public partial class AccountingManager
             TransactionDate = ResolveBillOrReceiptJournalEntryDate(bill),
             SourceTypeId = (int)SourceType.Bill,
             SourceId = bill.ReceiptId,
+            SourceCode = ResolveJournalEntrySourceCodeFromReceipt(bill),
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -268,39 +286,44 @@ public partial class AccountingManager
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, workOrder.OfficeId, accountingOffice);
         var ownerContactId = await ResolveWorkOrderOwnerContactIdAsync(workOrder);
-        Guid? propertyId = workOrder.PropertyId;
+        string? ownerContactName = null;
+        if (ownerContactId is { } resolvedOwnerContactId && resolvedOwnerContactId != Guid.Empty)
+        {
+            var contact = await _contactRepository.GetContactByIdAsync(resolvedOwnerContactId, workOrder.OrganizationId);
+            ownerContactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
+        }
+
+        var lineContext = CreateJournalEntryLineContextFromWorkOrder(workOrder, ownerContactId, ownerContactName);
         var memo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, workOrder.Title);
         var journalEntryLines = new List<JournalEntryLine>();
 
         if (workOrder.WorkOrderType == WorkOrderType.Owner && ownerWorkOrderTotal != 0)
         {
-            journalEntryLines.Add(new JournalEntryLine
+            var ownerPayableLine = new JournalEntryLine
             {
                 ChartOfAccountId = ownerAccountsPayableAccountId,
-                PropertyId = propertyId,
-                ReservationId = workOrder.ReservationId,
-                ContactId = ownerContactId,
                 Debit = ownerWorkOrderTotal > 0 ? ownerWorkOrderTotal : 0,
                 Credit = ownerWorkOrderTotal < 0 ? Math.Abs(ownerWorkOrderTotal) : 0,
                 Memo = memo,
                 CreatedBy = currentUser
-            });
+            };
+            ApplyJournalEntryLineContext(ownerPayableLine, lineContext);
+            journalEntryLines.Add(ownerPayableLine);
 
             foreach (var ownerLine in ownerWorkOrderLines)
             {
                 var lineAmount = ownerLine.ItemAmount;
                 var lineMemo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, ownerLine.Description);
-                journalEntryLines.Add(new JournalEntryLine
+                var ownerIncomeLine = new JournalEntryLine
                 {
                     ChartOfAccountId = ownerIncomeAccountId,
-                    PropertyId = propertyId,
-                    ReservationId = workOrder.ReservationId,
-                    ContactId = ownerContactId,
                     Debit = lineAmount < 0 ? Math.Abs(lineAmount) : 0,
                     Credit = lineAmount > 0 ? lineAmount : 0,
                     Memo = lineMemo,
                     CreatedBy = currentUser
-                });
+                };
+                ApplyJournalEntryLineContext(ownerIncomeLine, lineContext);
+                journalEntryLines.Add(ownerIncomeLine);
             }
         }
 
@@ -311,6 +334,7 @@ public partial class AccountingManager
             TransactionDate = workOrder.WorkOrderDate,
             SourceTypeId = (int)SourceType.WorkOrder,
             SourceId = workOrder.WorkOrderId,
+            SourceCode = ResolveJournalEntrySourceCodeFromWorkOrder(workOrder),
             Memo = memo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser

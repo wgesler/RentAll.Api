@@ -300,7 +300,7 @@ public partial class AccountingManager
 
         var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
+        var lineContext = await ResolveInvoiceJournalEntryLineContextAsync(invoice);
 
         var chargeLines = invoice.LedgerLines.Where(l => l.Amount != 0).Where(l =>
         {
@@ -314,37 +314,37 @@ public partial class AccountingManager
 
         var transactionDate = invoice.AccountingPeriod;
         var invoiceMemo = (invoice.InvoiceCode ?? string.Empty).Trim();
-        var journalEntryLines = new List<JournalEntryLine> {
-            new JournalEntryLine
-            {
-                // Debit Accounts Recievable
-                ChartOfAccountId = accountsReceivableAccountId,
-                ReservationId = invoice.ReservationId,
-                PropertyId = propertyId,
-                ContactId = invoice.ContactId,
-                Debit = totalAmount > 0 ? totalAmount : 0,
-                Credit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
-                Memo = invoiceMemo,
-                CreatedBy = currentUser
-            }
+        var accountsReceivableLine = new JournalEntryLine
+        {
+            // Debit Accounts Recievable
+            ChartOfAccountId = accountsReceivableAccountId,
+            Debit = totalAmount > 0 ? totalAmount : 0,
+            Credit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
+            Memo = invoiceMemo,
+            CreatedBy = currentUser
         };
+        ApplyJournalEntryLineContext(accountsReceivableLine, lineContext);
+        var journalEntryLines = new List<JournalEntryLine> { accountsReceivableLine };
 
         foreach (var line in chargeLines)
         {
             costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-            journalEntryLines.Add(new JournalEntryLine
+            var chargeLine = new JournalEntryLine
             {
                 // Debit Tenant Income
                 ChartOfAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, costCode),
                 CostCodeId = line.CostCodeId,
-                ReservationId = line.ReservationId ?? invoice.ReservationId,
-                PropertyId = propertyId,
-                ContactId = invoice.ContactId,
                 Debit = line.Amount < 0 ? Math.Abs(line.Amount) : 0,
                 Credit = line.Amount > 0 ? line.Amount : 0,
                 Memo = BuildInvoiceChargeLineMemo(invoice, line),
                 CreatedBy = currentUser
-            });
+            };
+            var chargeLineContext = lineContext with
+            {
+                ReservationId = NormalizeOptionalGuid(line.ReservationId) ?? lineContext.ReservationId
+            };
+            ApplyJournalEntryLineContext(chargeLine, chargeLineContext);
+            journalEntryLines.Add(chargeLine);
         }
 
         return new JournalEntry
@@ -354,6 +354,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = sourceIdOverride ?? invoice.InvoiceId,
+            SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
             Memo = invoiceMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -381,7 +382,7 @@ public partial class AccountingManager
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
+        var lineContext = CreateJournalEntryLineContextFromInvoicePayment(invoice, paymentLedgerLine, propertyId);
 
         var amount = paymentLedgerLine.Amount;
         var transactionDate = ResolveInvoicePaymentJournalEntryDate(paymentLedgerLine);
@@ -391,25 +392,21 @@ public partial class AccountingManager
         {
             ChartOfAccountId = undepositedFundsAccountId,
             CostCodeId = paymentLedgerLine.CostCodeId,
-            ReservationId = reservationId,
-            PropertyId = propertyId,
-            ContactId = invoice.ContactId,
             Debit = amount > 0 ? amount : 0,
             Credit = amount < 0 ? Math.Abs(amount) : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
+        ApplyJournalEntryLineContext(undepositedFundsLine, lineContext);
         var accountsReceivableLine = new JournalEntryLine
         {
             ChartOfAccountId = accountsReceivableAccountId,
-            ReservationId = reservationId,
-            PropertyId = propertyId,
-            ContactId = invoice.ContactId,
             Debit = amount < 0 ? Math.Abs(amount) : 0,
             Credit = amount > 0 ? amount : 0,
             Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
             CreatedBy = currentUser
         };
+        ApplyJournalEntryLineContext(accountsReceivableLine, lineContext);
 
         return new JournalEntry
         {
@@ -418,6 +415,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
+            SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine> { undepositedFundsLine, accountsReceivableLine },
             CreatedBy = currentUser
@@ -437,10 +435,32 @@ public partial class AccountingManager
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
+        var lineContext = CreateJournalEntryLineContextFromInvoicePayment(invoice, paymentLedgerLine, propertyId);
         var amount = paymentLedgerLine.Amount;
         var transactionDate = paymentLedgerLine.LedgerLineDate;
         var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
+
+        var accountsReceivableLine = new JournalEntryLine
+        {
+            // Debit Accounts Recievable
+            ChartOfAccountId = accountsReceivableAccountId,
+            Debit = amount > 0 ? amount : 0,
+            Credit = amount < 0 ? Math.Abs(amount) : 0,
+            Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(accountsReceivableLine, lineContext);
+        var prePaymentLine = new JournalEntryLine
+        {
+            // Credit Prepayment Account
+            ChartOfAccountId = prePaymentAccountId,
+            CostCodeId = paymentLedgerLine.CostCodeId,
+            Debit = amount < 0 ? Math.Abs(amount) : 0,
+            Credit = amount > 0 ? amount : 0,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(prePaymentLine, lineContext);
 
         return new JournalEntry
         {
@@ -449,35 +469,9 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.InvoicePayment,
             SourceId = paymentLedgerLine.LedgerLineId,
+            SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine>
-            {
-                new()
-                {
-                    // Debit Accounts Recievable
-                    ChartOfAccountId = accountsReceivableAccountId,
-                    ReservationId = reservationId,
-                    PropertyId = propertyId,
-                    ContactId = invoice.ContactId,
-                    Debit = amount > 0 ? amount : 0,
-                    Credit = amount < 0 ? Math.Abs(amount) : 0,
-                    Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
-                    CreatedBy = currentUser
-                },
-                new()
-                {
-                    // Credit Prepayment Account
-                    ChartOfAccountId = prePaymentAccountId,
-                    CostCodeId = paymentLedgerLine.CostCodeId,
-                    ReservationId = reservationId,
-                    PropertyId = propertyId,
-                    ContactId = invoice.ContactId,
-                    Debit = amount < 0 ? Math.Abs(amount) : 0,
-                    Credit = amount > 0 ? amount : 0,
-                    Memo = memo,
-                    CreatedBy = currentUser
-                }
-            },
+            JournalEntryLines = new List<JournalEntryLine> { accountsReceivableLine, prePaymentLine },
             CreatedBy = currentUser
         };
     }
@@ -495,10 +489,32 @@ public partial class AccountingManager
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var reservationId = paymentLedgerLine.ReservationId ?? invoice.ReservationId;
+        var lineContext = CreateJournalEntryLineContextFromInvoicePayment(invoice, paymentLedgerLine, propertyId);
         var amount = paymentLedgerLine.Amount;
         var transactionDate = invoice.AccountingPeriod;
         var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
+
+        var prePaymentLine = new JournalEntryLine
+        {
+            // Debit PrePayment Account
+            ChartOfAccountId = prePaymentAccountId,
+            CostCodeId = paymentLedgerLine.CostCodeId,
+            Debit = amount > 0 ? amount : 0,
+            Credit = amount < 0 ? Math.Abs(amount) : 0,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(prePaymentLine, lineContext);
+        var accountsReceivableLine = new JournalEntryLine
+        {
+            // Credit AccountsReceiveable
+            ChartOfAccountId = accountsReceivableAccountId,
+            Debit = amount < 0 ? Math.Abs(amount) : 0,
+            Credit = amount > 0 ? amount : 0,
+            Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(accountsReceivableLine, lineContext);
 
         return new JournalEntry
         {
@@ -507,35 +523,9 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = paymentLedgerLine.LedgerLineId,
+            SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine>
-            {
-                new()
-                {
-                    // Debit PrePayment Account
-                    ChartOfAccountId = prePaymentAccountId,
-                    CostCodeId = paymentLedgerLine.CostCodeId,
-                    ReservationId = reservationId,
-                    PropertyId = propertyId,
-                    ContactId = invoice.ContactId,
-                    Debit = amount > 0 ? amount : 0,
-                    Credit = amount < 0 ? Math.Abs(amount) : 0,
-                    Memo = memo,
-                    CreatedBy = currentUser
-                },
-                new()
-                {
-                    // Credit AccountsReceiveable
-                    ChartOfAccountId = accountsReceivableAccountId,
-                    ReservationId = reservationId,
-                    PropertyId = propertyId,
-                    ContactId = invoice.ContactId,
-                    Debit = amount < 0 ? Math.Abs(amount) : 0,
-                    Credit = amount > 0 ? amount : 0,
-                    Memo = $"Accounts Receivable - {invoice.InvoiceCode}",
-                    CreatedBy = currentUser
-                }
-            },
+            JournalEntryLines = new List<JournalEntryLine> { prePaymentLine, accountsReceivableLine },
             CreatedBy = currentUser
         };
     }

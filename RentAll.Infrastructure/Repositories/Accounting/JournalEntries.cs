@@ -131,6 +131,7 @@ public partial class JournalEntryRepository
                     TransactionTypeId = DefaultJournalEntryTransactionTypeId,
                     SourceTypeId = journalEntry.SourceTypeId,
                     SourceId = journalEntry.SourceId,
+                    SourceCode = journalEntry.SourceCode,
                     Memo = journalEntry.Memo,
                     IsPosted = journalEntry.IsPosted,
                     IsVoided = journalEntry.IsVoided,
