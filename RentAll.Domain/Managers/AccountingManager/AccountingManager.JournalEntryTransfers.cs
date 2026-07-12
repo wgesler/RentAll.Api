@@ -249,6 +249,9 @@ public partial class AccountingManager
         // END TRANSFER-JE-ACCOUNTS
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
+        var escrowDepositAccountId = transfer.BankAccountId is > 0
+            ? transfer.BankAccountId.Value
+            : accounts.EscrowDepositAccountId;
         var memo = BuildTransferMemo(transfer.TransferCode, transfer.TransferDate);
         var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
@@ -256,7 +259,7 @@ public partial class AccountingManager
         };
         var escrowLine = new JournalEntryLine
         {
-            ChartOfAccountId = accounts.EscrowDepositAccountId,
+            ChartOfAccountId = escrowDepositAccountId,
             Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
             Credit = transfer.Amount > 0 ? transfer.Amount : 0,
             Memo = memo,
