@@ -16,13 +16,12 @@ public partial class ReportManager
             EndDate = criteria.EndDate,
             IncludeVoided = false,
             IncludeUnposted = true,
+            IncludePaymentInvoiceContext = true,
             RecapCategory = criteria.RecapCategory
         };
 
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(recapCriteria)).ToList();
-        var recapRows = BuildRecapReportRows(lines)
-            .Where(row => !row.IsPosted)
-            .ToList();
+        var recapRows = BuildRecapReportRows(lines);
 
         var rows = BuildTransferReportRows(recapRows);
 
@@ -80,10 +79,11 @@ public partial class ReportManager
         var expectedIncomeValue = orderedRows.Sum(row => row.ExpectedIncomeValue);
         var rentPlus4000Value = orderedRows.Sum(row => row.RentPlus4000Value);
         var ownerRentValue = orderedRows.Sum(row => row.OwnerRentValue + row.UnPaidValue);
+        var ownerRentActualValue = orderedRows.Sum(row => row.OwnerRentActualValue);
         var securityDepositValue = orderedRows.Sum(row => row.SecurityDepositValue);
         var sdwValue = orderedRows.Sum(row => row.SdwValue);
         var feeValue = orderedRows.Sum(row => row.FeeValue);
-        var businessValue = rentPlus4000Value - ownerRentValue;
+        var businessValue = expectedIncomeValue - ownerRentActualValue - securityDepositValue - sdwValue;
 
         return new TransferReportRow
         {
@@ -103,6 +103,7 @@ public partial class ReportManager
             ExpectedIncome = FormatCurrencyUsd(expectedIncomeValue),
             RentPlus4000 = FormatCurrencyUsd(rentPlus4000Value),
             OwnerRent = FormatCurrencyUsd(ownerRentValue),
+            OwnerRentActual = FormatCurrencyUsd(ownerRentActualValue),
             Business = FormatCurrencyUsd(businessValue),
             SecurityDeposit = FormatCurrencyUsd(securityDepositValue),
             Sdw = FormatCurrencyUsd(sdwValue),
@@ -110,6 +111,7 @@ public partial class ReportManager
             ExpectedIncomeValue = expectedIncomeValue,
             RentPlus4000Value = rentPlus4000Value,
             OwnerRentValue = ownerRentValue,
+            OwnerRentActualValue = ownerRentActualValue,
             BusinessValue = businessValue,
             SecurityDepositValue = securityDepositValue,
             SdwValue = sdwValue,
@@ -124,6 +126,7 @@ public partial class ReportManager
         row.ExpectedIncomeValue != 0
         || row.RentPlus4000Value != 0
         || row.OwnerRentValue != 0
+        || row.OwnerRentActualValue != 0
         || row.BusinessValue != 0
         || row.SecurityDepositValue != 0
         || row.SdwValue != 0

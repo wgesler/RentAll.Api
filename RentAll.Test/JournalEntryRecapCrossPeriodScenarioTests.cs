@@ -29,7 +29,7 @@ public class JournalEntryRecapCrossPeriodScenarioTests
         Assert.Equal(4, rows.Count);
 
         var marchPrepayRow = Assert.Single(rows, row => row.AccountingPeriod == "03.26");
-        Assert.Equal(9100m, marchPrepayRow.PaymentValue);
+        Assert.Equal(0m, marchPrepayRow.PaymentValue);
         Assert.Equal(9100m, marchPrepayRow.PrePaymentValue);
 
         var juneInvoice001Row = Assert.Single(
@@ -88,7 +88,7 @@ public class JournalEntryRecapCrossPeriodScenarioTests
                 Invoice001,
                 JunePeriod,
                 JunePeriod,
-                "OWNER: Rent",
+                "R-001053-001: Owner: Expected: Rent",
                 reservationCode: Reservation),
             ReportManagerTestSupport.RecapLine(
                 "RentPlus4000",
@@ -131,7 +131,7 @@ public class JournalEntryRecapCrossPeriodScenarioTests
                 Invoice002,
                 JunePeriod,
                 JunePeriod,
-                "OWNER: Rent",
+                $"{Invoice002}: Owner: Expected: Rent",
                 reservationCode: Reservation),
             ReportManagerTestSupport.RecapLine(
                 "RentPlus4000",
@@ -160,7 +160,7 @@ public class JournalEntryRecapCrossPeriodScenarioTests
                 Invoice001,
                 JulyPeriod,
                 JulyPeriod,
-                "OWNER: Rent",
+                "R-001053-001: Owner: Expected: Rent",
                 reservationCode: Reservation),
             ReportManagerTestSupport.RecapLine(
                 "RentPlus4000",

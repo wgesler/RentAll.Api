@@ -14,6 +14,8 @@ internal static class OwnerReportScenarioFixtures
     internal const decimal ExpectedIncome001 = 2130m;
     internal const decimal TenantPayment001 = 2130m;
     internal const decimal OwnerRent002 = 1491m;
+    internal const string OwnerRent001ExpectedMemo = "R-000177-001: Owner: Expected: Rent";
+    internal const string OwnerRent002ExpectedMemo = "R-000177-002: Owner: Expected: Rent";
 
     internal static readonly DateOnly MayPeriod = new(2026, 5, 1);
     internal static readonly DateOnly JunePeriod = new(2026, 6, 1);
@@ -34,7 +36,7 @@ internal static class OwnerReportScenarioFixtures
                 Invoice001,
                 MayPeriod,
                 MayPeriod,
-                "OWNER: Rent"),
+                OwnerRent001ExpectedMemo),
             ReportManagerTestSupport.RecapLine(
                 "ExpectedIncome",
                 ExpectedIncome001,
@@ -47,7 +49,7 @@ internal static class OwnerReportScenarioFixtures
                 Invoice002,
                 JunePeriod,
                 JunePeriod,
-                "OWNER: Rent"),
+                OwnerRent002ExpectedMemo),
             ReportManagerTestSupport.RecapLine(
                 "ExpectedIncome",
                 44730m,
@@ -60,7 +62,16 @@ internal static class OwnerReportScenarioFixtures
                 Invoice001,
                 JunePeriod,
                 JunePaymentDate,
-                $"Payment: {Invoice001}",
+                $"R-000177-001: Payment: {Invoice001}",
+                LatePaymentLedgerLineId,
+                (int)SourceType.InvoicePayment),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                OwnerRent001,
+                Invoice001,
+                JunePeriod,
+                JunePaymentDate,
+                "R-000177-001: Owner: Actual: Rent",
                 LatePaymentLedgerLineId,
                 (int)SourceType.InvoicePayment)
         ];
@@ -99,7 +110,7 @@ internal static class OwnerReportScenarioFixtures
                 CrossPeriodInvoice,
                 JunePeriod,
                 JunePeriod,
-                "OWNER: Rent",
+                $"{CrossPeriodInvoice}: Owner: Expected: Rent",
                 reservationCode: CrossPeriodReservation),
             ReportManagerTestSupport.RecapLine(
                 "ExpectedIncome",
@@ -114,9 +125,19 @@ internal static class OwnerReportScenarioFixtures
                 CrossPeriodInvoice,
                 JunePeriod,
                 JunePeriod,
-                $"Prepayment: {CrossPeriodInvoice}",
+                $"R-00087-001: Prepayment: {CrossPeriodInvoice}",
                 PrepaymentLedgerLineId,
                 (int)SourceType.Invoice,
+                CrossPeriodReservation),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                firstSliceOwnerRent,
+                CrossPeriodInvoice,
+                JunePeriod,
+                JunePeriod,
+                $"{CrossPeriodInvoice}: Owner: Actual: Rent",
+                PrepaymentLedgerLineId,
+                (int)SourceType.InvoicePayment,
                 CrossPeriodReservation)
         ];
     }
@@ -158,7 +179,7 @@ internal static class OwnerReportScenarioFixtures
                 CrossPeriodInvoice,
                 JunePeriod,
                 JunePeriod,
-                "OWNER: Rent June slice",
+                $"{CrossPeriodInvoice}: Owner: Expected: Rent June slice",
                 reservationCode: CrossPeriodReservation),
             ReportManagerTestSupport.RecapLine(
                 "ExpectedIncome",
@@ -173,7 +194,7 @@ internal static class OwnerReportScenarioFixtures
                 CrossPeriodInvoice,
                 JulyPeriod,
                 JulyPeriod,
-                "OWNER: Rent July slice",
+                $"{CrossPeriodInvoice}: Owner: Expected: Rent July slice",
                 reservationCode: CrossPeriodReservation),
             ReportManagerTestSupport.RecapLine(
                 "ExpectedIncome",
@@ -188,9 +209,19 @@ internal static class OwnerReportScenarioFixtures
                 CrossPeriodInvoice,
                 JunePeriod,
                 JunePeriod,
-                $"Prepayment: {CrossPeriodInvoice}",
+                $"R-00087-001: Prepayment: {CrossPeriodInvoice}",
                 PrepaymentLedgerLineId,
                 (int)SourceType.Invoice,
+                CrossPeriodReservation),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                juneSliceOwnerRent,
+                CrossPeriodInvoice,
+                JunePeriod,
+                JunePeriod,
+                $"{CrossPeriodInvoice}: Owner: Actual: Rent June slice",
+                PrepaymentLedgerLineId,
+                (int)SourceType.InvoicePayment,
                 CrossPeriodReservation)
         ];
     }

@@ -224,7 +224,7 @@ public class CrossPeriodInvoicePaymentTests
         var paymentEntry = Assert.Single(GetStandardPaymentEntries(context, payment));
         Assert.Equal(paymentDate, paymentEntry.TransactionDate);
         Assert.Equal(expectedAmount, paymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId).Debit);
-        Assert.Equal(expectedAmount, paymentEntry.JournalEntryLines.Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal)).Credit);
+        Assert.Equal(expectedAmount, paymentEntry.JournalEntryLines.Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo)).Credit);
         return paymentEntry;
     }
 

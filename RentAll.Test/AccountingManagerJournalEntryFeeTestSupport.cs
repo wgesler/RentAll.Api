@@ -20,6 +20,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     internal const int PrePaymentAccountId = 400;
     internal const int OwnerAccountsPayableAccountId = 501;
     internal const int OwnerRentExpenseAccountId = 502;
+    internal const int OwnerIncomeAccountId = 503;
     internal const int FurnishedRentExpenseCostCodeId = 90;
     internal static readonly Guid OwnerContactId = Guid.Parse("55555555-5555-5555-5555-555555555555");
     internal const int DepartureIncomeAccountId = 410;
@@ -89,17 +90,22 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         };
     }
 
-    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080", bool enableOwnerShare = false)
-        => new(reservation, petFeeAccountCode, enableOwnerShare);
+    internal static FeeJournalEntryTestContext CreateFeeJournalEntryTestContext(
+        Reservation reservation,
+        string petFeeAccountCode = "2080",
+        bool enableOwnerShare = false,
+        decimal revenueSplitOwner = 80m)
+        => new(reservation, petFeeAccountCode, enableOwnerShare, revenueSplitOwner);
 
     internal static async Task<(Invoice Invoice, FeeJournalEntryTestContext Context)> BuildTrackedFeeInvoiceAsync(
         Reservation reservation,
         DateOnly periodStart,
         DateOnly periodEnd,
         string petFeeAccountCode = "2080",
-        bool enableOwnerShare = false)
+        bool enableOwnerShare = false,
+        decimal revenueSplitOwner = 80m)
     {
-        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode, enableOwnerShare);
+        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode, enableOwnerShare, revenueSplitOwner);
         var manager = context.CreateManager();
         var ledgerLines = await GetInvoiceLedgerLinesAsync(manager, reservation, periodStart, periodEnd);
         var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(reservation, periodStart, periodEnd, ledgerLines);
@@ -112,15 +118,21 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         private readonly Reservation _reservation;
         private readonly string _petFeeAccountCode;
         private readonly bool _enableOwnerShare;
+        private readonly decimal _revenueSplitOwner;
         private readonly List<JournalEntry> _journalEntries = [];
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private int _journalEntryCodeSequence;
 
-        internal FeeJournalEntryTestContext(Reservation reservation, string petFeeAccountCode = "2080", bool enableOwnerShare = false)
+        internal FeeJournalEntryTestContext(
+            Reservation reservation,
+            string petFeeAccountCode = "2080",
+            bool enableOwnerShare = false,
+            decimal revenueSplitOwner = 80m)
         {
             _reservation = reservation;
             _petFeeAccountCode = petFeeAccountCode;
             _enableOwnerShare = enableOwnerShare;
+            _revenueSplitOwner = revenueSplitOwner;
         }
 
         internal IReadOnlyList<JournalEntry> CreatedJournalEntries => _journalEntries;
@@ -220,6 +232,15 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     Name = "Owner Rent Expense",
                     AccountNo = "5100"
                 });
+                chartOfAccounts.Add(new ChartOfAccount
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = OwnerIncomeAccountId,
+                    AccountType = AccountType.Income,
+                    Name = "Owner Income",
+                    AccountNo = "4050"
+                });
             }
 
             // One-time fees post to their own accounts; only charges sharing the rent/tenant-income
@@ -281,7 +302,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     DefaultTenantIncAccountId = AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId,
                     DefaultUndepFundsAccountId = UndepositedFundsAccountId,
                     DefaultPrePayAccountId = PrePaymentAccountId,
-                    DefaultOwnActPayableAccountId = _enableOwnerShare ? OwnerAccountsPayableAccountId : null
+                    DefaultOwnActPayableAccountId = _enableOwnerShare ? OwnerAccountsPayableAccountId : null,
+                    DefaultOwnerIncAccountId = _enableOwnerShare ? OwnerIncomeAccountId : null
                 });
             organizationRepository
                 .Setup(r => r.GetOfficeByIdAsync(AccountingManagerJournalEntryTestSupport.OfficeId, AccountingManagerJournalEntryTestSupport.OrganizationId))
@@ -318,7 +340,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     {
                         PropertyId = AccountingManagerJournalEntryTestSupport.PropertyId,
                         ManagementFeeType = ManagementFeeType.Percentage,
-                        RevenueSplitOwner = 80m
+                        RevenueSplitOwner = _revenueSplitOwner
                     });
             }
 

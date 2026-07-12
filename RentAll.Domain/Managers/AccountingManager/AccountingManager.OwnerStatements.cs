@@ -5,8 +5,6 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private const string OwnerStartingBalanceMemoPrefix = "Owner: Starting Balance:";
-
     public async Task<JournalEntry?> CreateOwnerStatementStartingBalanceJournalEntryAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId, DateOnly transactionDate, decimal amount, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -18,10 +16,15 @@ public partial class AccountingManager
             organizationId,
             propertyId);
 
+        var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, organizationId)
+            ?? throw new Exception("Property is required to create owner starting balance.");
+        if (string.IsNullOrWhiteSpace(property.PropertyCode))
+            throw new Exception("Property code is required to create owner starting balance.");
+
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
         var ownerExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice);
-        var memo = $"{OwnerStartingBalanceMemoPrefix} {transactionDate:MM/yyyy}";
+        var memo = BuildOwnerStartingBalanceMemo(property.PropertyCode, transactionDate);
         var startingBalance = Math.Abs(amount);
         var isPositive = amount > 0;
         var journalEntry = new JournalEntry
@@ -84,7 +87,7 @@ public partial class AccountingManager
             IncludeUnposted = true
         });
         var current = lines
-            .Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo))
+            .Where(line => MatchOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo).IsMatch)
             .OrderByDescending(line => line.TransactionDate)
             .ThenByDescending(line => line.JournalEntryCode)
             .FirstOrDefault();
@@ -102,13 +105,5 @@ public partial class AccountingManager
             Memo = (current.JournalEntryMemo ?? current.Memo ?? string.Empty).Trim(),
             IsPosted = current.IsPosted
         };
-    }
-
-    private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)
-    {
-        var summaryMemo = (journalMemo ?? string.Empty).Trim();
-        var detailMemo = (lineMemo ?? string.Empty).Trim();
-        return summaryMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase)
-            || detailMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase);
     }
 }

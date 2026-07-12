@@ -249,7 +249,7 @@ public partial class AccountingManager
         // END TRANSFER-JE-ACCOUNTS
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
-        var memo = string.IsNullOrWhiteSpace(transfer.Description) ? "Transfer" : "Transfer: " + transfer.Description.Trim();
+        var memo = BuildTransferMemo(transfer.TransferCode, transfer.TransferDate);
         var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
             PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)

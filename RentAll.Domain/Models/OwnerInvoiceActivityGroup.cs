@@ -13,6 +13,7 @@ internal sealed class OwnerInvoiceActivityGroup
     public string TransactionDate { get; set; } = string.Empty;
     public long SortDateValue { get; set; }
     public decimal OwnerRentValue { get; set; }
+    public decimal OwnerRentActualValue { get; set; }
     public decimal ExpectedIncomeValue { get; set; }
     public decimal PaymentValue { get; set; }
     public decimal OwnerPaymentReceivedValue { get; set; }

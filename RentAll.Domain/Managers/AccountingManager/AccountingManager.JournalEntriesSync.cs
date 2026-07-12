@@ -56,6 +56,8 @@ public partial class AccountingManager
                     if (!IsPaymentLedgerLine(costCode))
                         continue;
 
+                    await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice.OrganizationId, invoice.OfficeId, line.LedgerLineId);
+
                     await TrackJournalEntryCreateAsync(
                         () => CreateJournalEntryFromPaymentWithResultAsync(invoice, line, currentUser),
                         new JournalEntryGetCriteria

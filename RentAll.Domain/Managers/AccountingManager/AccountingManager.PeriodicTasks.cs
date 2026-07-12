@@ -21,7 +21,7 @@ public partial class AccountingManager
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await BuildJournalEntiesForDepartedReservationAsync(organizationId, reservation, cancellationToken, logDecisions);
+                await CreateJournalEntiesForDepartedReservationAsync(organizationId, reservation, cancellationToken, logDecisions);
             }
             catch (Exception ex)
             {
@@ -55,7 +55,7 @@ public partial class AccountingManager
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await BuildJournalEntriesForLinensAndTowelsAsync(organizationId, monthlyAgreement, isMonthly: true, runDate, cancellationToken);
+                await CreateJournalEntriesForLinensAndTowelsAsync(organizationId, monthlyAgreement, isMonthly: true, runDate, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -80,7 +80,7 @@ public partial class AccountingManager
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    await BuildJournalEntriesForLinensAndTowelsAsync(organizationId, annualAgreement, isMonthly: false, runDate, cancellationToken);
+                    await CreateJournalEntriesForLinensAndTowelsAsync(organizationId, annualAgreement, isMonthly: false, runDate, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -102,7 +102,7 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    private async Task BuildJournalEntiesForDepartedReservationAsync(
+    private async Task CreateJournalEntiesForDepartedReservationAsync(
         Guid organizationId,
         ReservationList reservation,
         CancellationToken cancellationToken,
@@ -191,7 +191,7 @@ public partial class AccountingManager
                 ChartOfAccountId = defaultDepartureAccountId,
                 Debit = departureFeeAmount,
                 Credit = 0m,
-                Memo = $"Departure Fee - {reservation.ReservationCode}",
+                Memo = BuildDepartureFeeMemo(reservation.ReservationCode),
                 CreatedBy = SystemOrganization
             };
             ApplyJournalEntryLineContext(departureExpenseLine, lineContext);
@@ -201,7 +201,7 @@ public partial class AccountingManager
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
                 Debit = 0m,
                 Credit = departureFeeAmount,
-                Memo = $"Departure Fee Income - {reservation.ReservationCode}",
+                Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),
                 CreatedBy = SystemOrganization
             };
             ApplyJournalEntryLineContext(departureIncomeLine, lineContext);
@@ -215,7 +215,7 @@ public partial class AccountingManager
                 ChartOfAccountId = defaultPetAccountId,
                 Debit = petFeeAmount,
                 Credit = 0m,
-                Memo = $"Pet Fee - {reservation.ReservationCode}",
+                Memo = BuildPetFeeMemo(reservation.ReservationCode),
                 CreatedBy = SystemOrganization
             };
             ApplyJournalEntryLineContext(petExpenseLine, lineContext);
@@ -225,7 +225,7 @@ public partial class AccountingManager
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
                 Debit = 0m,
                 Credit = petFeeAmount,
-                Memo = $"Departure Fee Income - {reservation.ReservationCode}",
+                Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),
                 CreatedBy = SystemOrganization
             };
             ApplyJournalEntryLineContext(petIncomeLine, lineContext);
@@ -241,7 +241,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Reservation,
             SourceId = reservation.ReservationId,
             SourceCode = ResolveJournalEntrySourceCodeFromReservation(reservation),
-            Memo = $"Departures - {reservation.ReservationCode}",
+            Memo = BuildDeparturesMemo(reservation.ReservationCode),
             JournalEntryLines = journalEntryLines,
             CreatedBy = SystemOrganization
         };
@@ -287,7 +287,7 @@ public partial class AccountingManager
             .Sum(line => line.Amount);
     }
 
-    private async Task BuildJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, bool isMonthly, DateOnly processingDate, CancellationToken cancellationToken)
+    private async Task CreateJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, bool isMonthly, DateOnly processingDate, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -312,9 +312,9 @@ public partial class AccountingManager
         var availableUntil = property.AvailableUntil;
 
         if (isMonthly)
-            await BuildMonthlyJournalEntriesForLinensAndTowelsAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, processingDate, cancellationToken);
+            await CreateMonthlyJournalEntriesForLinensAndTowelsAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, processingDate, cancellationToken);
         else
-            await BuildAnnualJournalEntriesForLinensAndTowelsAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, processingDate, cancellationToken);
+            await CreateAnnualJournalEntriesForLinensAndTowelsAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, processingDate, cancellationToken);
     }
 
     private static DateOnly ResolveMonthStart(DateOnly processingDate)
@@ -340,7 +340,7 @@ public partial class AccountingManager
         return existingEntries.Any();
     }
 
-    private async Task BuildMonthlyJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, CancellationToken cancellationToken)
+    private async Task CreateMonthlyJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var monthStart = ResolveMonthStart(processingDate);
@@ -378,10 +378,10 @@ public partial class AccountingManager
             return;
         }
 
-        await BuildLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: true, processingDate, cancellationToken);
+        await CreateLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: true, processingDate, cancellationToken);
     }
 
-    private async Task BuildAnnualJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, CancellationToken cancellationToken)
+    private async Task CreateAnnualJournalEntriesForLinensAndTowelsAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (processingDate.Month != 1 || processingDate.Day != 1)
@@ -412,10 +412,10 @@ public partial class AccountingManager
             return;
         }
 
-        await BuildLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: false, processingDate, cancellationToken);
+        await CreateLinenAndTowelEntriesAsync(organizationId, agreement, propertyCode, availableFrom, availableUntil, isMonthly: false, processingDate, cancellationToken);
     }
 
-    private async Task BuildLinenAndTowelEntriesAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, bool isMonthly, DateOnly processingDate, CancellationToken cancellationToken)
+    private async Task CreateLinenAndTowelEntriesAsync(Guid organizationId, PropertyAgreement agreement, string propertyCode, DateOnly? availableFrom, DateOnly? availableUntil, bool isMonthly, DateOnly processingDate, CancellationToken cancellationToken)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // LINENS-AND-TOWELS-JE-ACCOUNTS
@@ -468,10 +468,21 @@ public partial class AccountingManager
 
         _ = availableFrom;
         _ = availableUntil;
+        _ = cadenceLabel;
         var ownerApDebit = reverseEntryDirection ? 0m : feeAmount;
         var ownerApCredit = reverseEntryDirection ? feeAmount : 0m;
         var incomeDebit = reverseEntryDirection ? feeAmount : 0m;
         var incomeCredit = reverseEntryDirection ? 0m : feeAmount;
+
+        var journalEntryMemo = reverseEntryDirection
+            ? BuildLinenAndTowelUnusedMemo(propertyCode)
+            : BuildLinenAndTowelJournalMemo(propertyCode, isMonthly);
+        var ownerLineMemo = reverseEntryDirection
+            ? BuildOwnerLinenAndTowelUnusedMemo(propertyCode)
+            : BuildOwnerLinenAndTowelMemo(propertyCode, isMonthly);
+        var incomeLineMemo = reverseEntryDirection
+            ? BuildLinenAndTowelUnusedMemo(propertyCode)
+            : BuildLinenAndTowelIncomeMemo(propertyCode, isMonthly);
 
         var journalEntry = new JournalEntry
         {
@@ -480,9 +491,7 @@ public partial class AccountingManager
             TransactionDate = processingDate,
             SourceTypeId = (int)SourceType.LinensAndTowels,
             SourceId = agreement.PropertyId,
-            Memo = reverseEntryDirection
-                ? $"{cadenceLabel} Linen & Towel Unused Portion"
-                : $"{cadenceLabel} Linen & Towel",
+            Memo = journalEntryMemo,
             JournalEntryLines =
             [
                 new JournalEntryLine
@@ -491,9 +500,7 @@ public partial class AccountingManager
                     PropertyId = agreement.PropertyId,
                     Debit = ownerApDebit,
                     Credit = ownerApCredit,
-                    Memo = reverseEntryDirection
-                        ? $"Owner: {cadenceLabel}: Linen & Towel Unused Portion"
-                        : $"Owner: {cadenceLabel}: Linen & Towel",
+                    Memo = ownerLineMemo,
                     CreatedBy = SystemOrganization
                 },
                 new JournalEntryLine
@@ -502,9 +509,7 @@ public partial class AccountingManager
                     PropertyId = agreement.PropertyId,
                     Debit = incomeDebit,
                     Credit = incomeCredit,
-                    Memo = reverseEntryDirection
-                        ? $"{cadenceLabel} Linen & Towel Unused Portion - Income"
-                        : $"{cadenceLabel} Linen & Towel Income",
+                    Memo = incomeLineMemo,
                     CreatedBy = SystemOrganization
                 }
             ],

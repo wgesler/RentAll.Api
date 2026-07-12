@@ -47,6 +47,7 @@ internal sealed class GroupAccumulator
     public decimal PaymentValue { get; set; }
     public decimal PrePaymentValue { get; set; }
     public decimal OwnerRentValue { get; set; }
+    public decimal OwnerRentActualValue { get; set; }
     public decimal OwnerExpenseValue { get; set; }
     public decimal OwnerPaymentReceivedValue { get; set; }
     public decimal OwnerPaymentValue { get; set; }

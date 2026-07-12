@@ -18,6 +18,7 @@ public class TransferReportRow
     public string ExpectedIncome { get; set; } = string.Empty;
     public string RentPlus4000 { get; set; } = string.Empty;
     public string OwnerRent { get; set; } = string.Empty;
+    public string OwnerRentActual { get; set; } = string.Empty;
     public string Business { get; set; } = string.Empty;
     public string SecurityDeposit { get; set; } = string.Empty;
     public string Sdw { get; set; } = string.Empty;
@@ -25,6 +26,7 @@ public class TransferReportRow
     public decimal ExpectedIncomeValue { get; set; }
     public decimal RentPlus4000Value { get; set; }
     public decimal OwnerRentValue { get; set; }
+    public decimal OwnerRentActualValue { get; set; }
     public decimal BusinessValue { get; set; }
     public decimal SecurityDepositValue { get; set; }
     public decimal SdwValue { get; set; }

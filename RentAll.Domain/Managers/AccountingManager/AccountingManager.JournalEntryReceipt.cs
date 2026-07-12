@@ -100,18 +100,17 @@ public partial class AccountingManager
         var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
         var receiptCode = receipt.ReceiptCode.Trim();
         var bankCardDisplayName = receipt.BankCardDisplayName.Trim();
-        var firstEligibleDescription = splitLines
+        var firstEligibleSplit = splitLines
             .Where(IsJournalEligibleReceiptSplit)
-            .Select(split => split.Description)
-            .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
-        var headerDescription = string.IsNullOrWhiteSpace((firstEligibleDescription ?? string.Empty).Trim()) ? string.Empty : $": {(firstEligibleDescription ?? string.Empty).Trim()}";
+            .FirstOrDefault(split => !string.IsNullOrWhiteSpace(split.Description));
+        var headerMemo = BuildReceiptHeaderMemo(receipt, firstEligibleSplit);
         var totalAmount = splitLines.Where(IsJournalEligibleReceiptSplit).Sum(s => s.Amount);
         var creditCardLine = new JournalEntryLine
         {
             ChartOfAccountId = creditCardAccountId,
             Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
             Credit = totalAmount > 0 ? totalAmount : 0,
-            Memo = receiptCode + bankCardDisplayName,
+            Memo = BuildReceiptBankCardMemo(receiptCode, bankCardDisplayName),
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(creditCardLine, defaultLineContext);
@@ -123,13 +122,13 @@ public partial class AccountingManager
                 continue;
 
             var expenseAccountId = GetBillReceiptExpenseAccountId(split, receipt.OfficeId, chartOfAccounts, accountingOffice);
-            var splitDescription = string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}";
+            var splitMemo = BuildReceiptSplitLineMemo(receipt, split);
             var splitLine = new JournalEntryLine
             {
                 ChartOfAccountId = expenseAccountId,
                 Debit = split.Amount > 0 ? split.Amount : 0,
                 Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
-                Memo = receiptCode + splitDescription,
+                Memo = splitMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromReceiptSplit(receipt, split) with
@@ -148,7 +147,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Receipt,
             SourceId = receipt.ReceiptId,
             SourceCode = ResolveJournalEntrySourceCodeFromReceipt(receipt),
-            Memo = receiptCode + headerDescription,
+            Memo = headerMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
@@ -167,11 +166,10 @@ public partial class AccountingManager
         var accountsPayableAccountId = GetDefaultAccountsPayable(receiptChartOfAccounts, receipt.OfficeId, receiptAccountingOffice);
         var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
         var receiptCode = receipt.ReceiptCode.Trim();
-        var firstEligibleDescription = splitLines
+        var firstEligibleSplit = splitLines
             .Where(IsJournalEligibleReceiptSplit)
-            .Select(split => split.Description)
-            .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
-        var headerDescription = string.IsNullOrWhiteSpace((firstEligibleDescription ?? string.Empty).Trim()) ? string.Empty : $": {(firstEligibleDescription ?? string.Empty).Trim()}";
+            .FirstOrDefault(split => !string.IsNullOrWhiteSpace(split.Description));
+        var headerMemo = BuildReceiptHeaderMemo(receipt, firstEligibleSplit);
         var totalAmount = splitLines.Where(IsJournalEligibleReceiptSplit).Sum(s => s.Amount);
         var journalEntryLines = new List<JournalEntryLine>();
         var payableLineContext = defaultLineContext with { ContactId = bankCardOfficeVendorId };
@@ -182,13 +180,13 @@ public partial class AccountingManager
                 continue;
 
             var expenseAccountId = GetBillReceiptExpenseAccountId(split, receipt.OfficeId, receiptChartOfAccounts, receiptAccountingOffice);
-            var splitDescription = string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}";
+            var splitMemo = BuildReceiptSplitLineMemo(receipt, split);
             var splitLine = new JournalEntryLine
             {
                 ChartOfAccountId = expenseAccountId,
                 Debit = split.Amount > 0 ? split.Amount : 0,
                 Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
-                Memo = receiptCode + splitDescription,
+                Memo = splitMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromReceiptSplit(receipt, split) with
@@ -204,7 +202,7 @@ public partial class AccountingManager
             ChartOfAccountId = accountsPayableAccountId,
             Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
             Credit = totalAmount > 0 ? totalAmount : 0,
-            Memo = receiptCode + ": " + bankCardOfficeName,
+            Memo = BuildReceiptOfficeMemo(receiptCode, bankCardOfficeName),
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(accountsPayableLine, payableLineContext);
@@ -218,7 +216,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Receipt,
             SourceId = receipt.ReceiptId,
             SourceCode = ResolveJournalEntrySourceCodeFromReceipt(receipt),
-            Memo = receiptCode + headerDescription,
+            Memo = headerMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
@@ -238,11 +236,10 @@ public partial class AccountingManager
         var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
         var receiptCode = receipt.ReceiptCode.Trim();
         var bankCardDisplayName = receipt.BankCardDisplayName.Trim();
-        var firstEligibleDescription = splitLines
+        var firstEligibleSplit = splitLines
             .Where(IsJournalEligibleReceiptSplit)
-            .Select(split => split.Description)
-            .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
-        var headerDescription = string.IsNullOrWhiteSpace((firstEligibleDescription ?? string.Empty).Trim()) ? string.Empty : $": {(firstEligibleDescription ?? string.Empty).Trim()}";
+            .FirstOrDefault(split => !string.IsNullOrWhiteSpace(split.Description));
+        var headerMemo = BuildReceiptHeaderMemo(receipt, firstEligibleSplit);
         var totalAmount = splitLines.Where(IsJournalEligibleReceiptSplit).Sum(s => s.Amount);
         var officeVendorContext = defaultLineContext with { ContactId = receiptOfficeVendorId };
         var accountsPayableLine = new JournalEntryLine
@@ -250,7 +247,7 @@ public partial class AccountingManager
             ChartOfAccountId = accountsPayableAccountId,
             Debit = totalAmount > 0 ? totalAmount : 0,
             Credit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
-            Memo = receiptCode + ": " + receiptOfficeName,
+            Memo = BuildReceiptOfficeMemo(receiptCode, receiptOfficeName),
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(accountsPayableLine, officeVendorContext);
@@ -259,7 +256,7 @@ public partial class AccountingManager
             ChartOfAccountId = creditCardAccountId,
             Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
             Credit = totalAmount > 0 ? totalAmount : 0,
-            Memo = receiptCode + ": " + bankCardDisplayName,
+            Memo = BuildReceiptOfficeMemo(receiptCode, bankCardDisplayName),
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(creditCardLine, officeVendorContext);
@@ -273,7 +270,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.CreditCard,
             SourceId = receipt.ReceiptId,
             SourceCode = ResolveJournalEntrySourceCodeFromReceipt(receipt),
-            Memo = receiptCode + headerDescription,
+            Memo = headerMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
@@ -307,32 +304,37 @@ public partial class AccountingManager
     private static List<ReceiptSplit> ResolveReceiptSplitLines(Receipt receipt)
     {
         var allSplits = (receipt.Splits ?? new List<ReceiptSplit>()).OrderBy(s => s.ReceiptSplitId).ToList();
+        if (allSplits.Count == 0)
+            throw new Exception("Splits are required to create a journal entry");
+
         var nonZeroSplits = allSplits.Where(split => split.Amount != 0).ToList();
         if (nonZeroSplits.Count > 0)
             return nonZeroSplits;
-
-        if (allSplits.Count > 0)
-            return allSplits;
-
-        // When no split rows exist, treat receipt amount as one split.
-        if (allSplits.Count == 0 && receipt.Amount != 0)
-        {
-            return
-            [
-                new ReceiptSplit
-                {
-                    Amount = receipt.Amount,
-                    Description = receipt.Description,
-                    ChartOfAccountId = null
-                }
-            ];
-        }
 
         return allSplits;
     }
 
     private static bool IsJournalEligibleReceiptSplit(ReceiptSplit split)
         => split.Amount != 0 && split.ReceiptType != ReceiptType.NonExpense;
+
+    private static string BuildReceiptSplitLineMemo(Receipt receipt, ReceiptSplit split)
+    {
+        var receiptCode = receipt.ReceiptCode.Trim();
+        if (string.IsNullOrWhiteSpace(split.Description))
+            throw new Exception("Split description is required to create a receipt journal entry memo");
+
+        return split.ReceiptType == ReceiptType.Owner
+            ? BuildOwnerReceiptMemo(receiptCode, split.Description)
+            : BuildReceiptMemo(receiptCode, split.Description);
+    }
+
+    private static string BuildReceiptHeaderMemo(Receipt receipt, ReceiptSplit? firstEligibleSplit)
+    {
+        if (firstEligibleSplit == null || string.IsNullOrWhiteSpace(firstEligibleSplit.Description))
+            throw new Exception("Receipt split description is required to create a receipt journal entry memo");
+
+        return BuildReceiptSplitLineMemo(receipt, firstEligibleSplit);
+    }
 
     #endregion
 

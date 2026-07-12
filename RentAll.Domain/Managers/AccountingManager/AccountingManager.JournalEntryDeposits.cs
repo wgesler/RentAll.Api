@@ -237,7 +237,7 @@ public partial class AccountingManager
         //   negative split: Debit split / Credit 0
         // END DEPOSIT-JE-ACCOUNTS
 
-        var memo = string.IsNullOrWhiteSpace(deposit.Description) ? "Deposit" : "Deposit: " + deposit.Description.Trim();
+        var memo = BuildDepositMemo(deposit.DepositCode, deposit.BankAccountDisplayName, deposit.DepositDate);
         var headerLineContext = FirstDepositSplitContext(deposit.Splits) with
         {
             PropertyId = deposit.PropertyId

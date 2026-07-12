@@ -114,9 +114,10 @@ public partial class ReportManager
 
     private static RecapReportRow BuildRecapReportRow(GroupAccumulator group)
     {
-        var ownerPaidRentValue = group.OwnerRentValue;
-        var ownerPaymentValue = CalculateRecapOwnerPayment(group);
-        var unPaidValue = CalculateRecapUnPaidIncome(group);
+        var ownerRentValue = group.OwnerRentValue;
+        var ownerRentActualValue = group.OwnerRentActualValue;
+        var ownerPaymentValue = group.OwnerPaymentReceivedValue;
+        var unPaidValue = CalculateUnpaidIncome(ownerRentValue, ownerRentActualValue);
         var sourceDocumentCode = (group.SourceDocumentCode ?? string.Empty).Trim();
         return new RecapReportRow
         {
@@ -152,7 +153,8 @@ public partial class ReportManager
             Payment = FormatCurrencyUsd(group.PaymentValue),
             PrePayment = FormatCurrencyUsd(group.PrePaymentValue),
             UnPaid = FormatCurrencyUsd(unPaidValue),
-            OwnerRent = FormatCurrencyUsd(ownerPaidRentValue),
+            OwnerRent = FormatCurrencyUsd(ownerRentValue),
+            OwnerRentActual = FormatCurrencyUsd(ownerRentActualValue),
             OwnerExpense = FormatCurrencyUsd(group.OwnerExpenseValue),
             OwnerPayment = FormatCurrencyUsd(ownerPaymentValue),
             ExpectedIncomeValue = group.ExpectedIncomeValue,
@@ -163,7 +165,8 @@ public partial class ReportManager
             PaymentValue = group.PaymentValue,
             PrePaymentValue = group.PrePaymentValue,
             UnPaidValue = unPaidValue,
-            OwnerRentValue = ownerPaidRentValue,
+            OwnerRentValue = ownerRentValue,
+            OwnerRentActualValue = ownerRentActualValue,
             OwnerExpenseValue = group.OwnerExpenseValue,
             OwnerPaymentReceivedValue = group.OwnerPaymentReceivedValue,
             OwnerPaymentValue = ownerPaymentValue,
@@ -252,25 +255,9 @@ public partial class ReportManager
         if (IsRecapInvoiceSourceDocumentCode(sourceDocumentCode))
             return sourceDocumentCode;
 
-        return GetRecapInvoiceSourceFromDescription(group.OwnerRentMemo)
-            ?? GetRecapInvoiceSourceFromDescription(group.Memo)
+        return AccountingManager.TryParseInvoiceSourceCodeFromMemo(group.OwnerRentMemo)
+            ?? AccountingManager.TryParseInvoiceSourceCodeFromMemo(group.Memo)
             ?? string.Empty;
-    }
-
-    private static string? GetRecapInvoiceSourceFromDescription(string? description)
-    {
-        var text = (description ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(text))
-            return null;
-
-        foreach (Match match in RecapSourceCodePattern.Matches(text))
-        {
-            var code = match.Value.Trim();
-            if (IsRecapInvoiceSourceDocumentCode(code))
-                return code;
-        }
-
-        return null;
     }
 
     #endregion
@@ -301,6 +288,9 @@ public partial class ReportManager
                 break;
             case "OwnerRent":
                 group.OwnerRentValue += amount;
+                break;
+            case "OwnerRentActual":
+                group.OwnerRentActualValue += amount;
                 break;
             case "OwnerPayment":
                 group.OwnerPaymentReceivedValue += amount;
@@ -433,21 +423,6 @@ public partial class ReportManager
         group.AccountingPeriodPriority = priority;
         group.AccountingPeriod = periodKey;
     }
-
-    #endregion
-
-    #region Calculate
-
-    private static decimal CalculateRecapPaidOwnerRent(GroupAccumulator group) => CalculateOwnerPaidIncome(group.OwnerRentValue, group.ExpectedIncomeValue, group.PaymentValue, group.OwnerPaymentReceivedValue);
-
-    private static decimal CalculateRecapOwnerPayment(GroupAccumulator group)
-    {
-        // OwnPay = collected owner rent - owner expenses; never display or return a negative value.
-        var ownerPayment = CalculateRecapPaidOwnerRent(group) - group.OwnerExpenseValue;
-        return ownerPayment < 0 ? 0 : ownerPayment;
-    }
-
-    private static decimal CalculateRecapUnPaidIncome(GroupAccumulator group) => CalculateUnpaidIncome(group.OwnerRentValue, CalculateRecapPaidOwnerRent(group));
 
     #endregion
 
@@ -637,6 +612,7 @@ public partial class ReportManager
             return periodKey;
 
         if (!string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
             && !(string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase) && line.Amount < 0))
         {
             return periodKey;
@@ -698,7 +674,7 @@ public partial class ReportManager
         if (string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase))
             return line.Amount < 0;
 
-        return category is "ExpectedIncome" or "OwnerRent" or "Payment" or "OwnerPayment"
+        return category is "ExpectedIncome" or "OwnerRent" or "OwnerRentActual" or "Payment" or "OwnerPayment"
             or "RentPlus4000" or "SecurityDeposit" or "SDW" or "Fee";
     }
 
@@ -729,13 +705,13 @@ public partial class ReportManager
             return fromProc;
 
         var description = (line.Description ?? string.Empty).Trim();
-        var memoMatch = RecapMemoSourceCodePattern.Match(description);
-        if (memoMatch.Success && memoMatch.Groups.Count > 1)
-            return memoMatch.Groups[1].Value.Trim();
+        var memoCode = AccountingManager.TryParseMemoSourceCode(description);
+        if (!string.IsNullOrWhiteSpace(memoCode))
+            return memoCode;
 
-        var codeMatch = RecapSourceCodePattern.Match(description);
-        if (codeMatch.Success)
-            return codeMatch.Value.Trim();
+        var documentCode = AccountingManager.TryParseDocumentSourceCodeFromMemo(description);
+        if (!string.IsNullOrWhiteSpace(documentCode))
+            return documentCode;
 
         if (line.SourceTypeId is (int)SourceType.Invoice or (int)SourceType.InvoicePayment
             || string.Equals(line.RecapCategory, "ExpectedIncome", StringComparison.OrdinalIgnoreCase)
@@ -785,20 +761,13 @@ public partial class ReportManager
         var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var description = (line.Description ?? string.Empty).Trim();
 
-        var memoMatch = RecapMemoSourceCodePattern.Match(description);
-        if (memoMatch.Success && memoMatch.Groups.Count > 1)
-        {
-            var memoCode = memoMatch.Groups[1].Value.Trim();
-            if (IsRecapInvoiceSourceDocumentCode(memoCode))
-                codes.Add(memoCode);
-        }
+        var memoCode = AccountingManager.TryParseMemoSourceCode(description);
+        if (!string.IsNullOrWhiteSpace(memoCode) && IsRecapInvoiceSourceDocumentCode(memoCode))
+            codes.Add(memoCode);
 
-        foreach (Match match in RecapSourceCodePattern.Matches(description))
-        {
-            var code = match.Value.Trim();
-            if (IsRecapInvoiceSourceDocumentCode(code))
-                codes.Add(code);
-        }
+        var documentCode = AccountingManager.TryParseDocumentSourceCodeFromMemo(description);
+        if (!string.IsNullOrWhiteSpace(documentCode) && IsRecapInvoiceSourceDocumentCode(documentCode))
+            codes.Add(documentCode);
 
         var sourceDocumentCode = GetRecapSourceDocumentCode(line);
         if (IsRecapInvoiceSourceDocumentCode(sourceDocumentCode))
@@ -819,11 +788,11 @@ public partial class ReportManager
         || group.FeeValue != 0
         || group.PaymentValue != 0
         || group.PrePaymentValue != 0
-        || CalculateRecapUnPaidIncome(group) != 0
-        || CalculateRecapPaidOwnerRent(group) != 0
+        || CalculateUnpaidIncome(group.OwnerRentValue, group.OwnerRentActualValue) != 0
+        || group.OwnerRentActualValue != 0
         || group.OwnerRentValue != 0
         || group.OwnerExpenseValue != 0
-        || CalculateRecapOwnerPayment(group) != 0;
+        || group.OwnerPaymentReceivedValue != 0;
 
     private static bool IsRecapSourceLinkable(int? sourceTypeId, Guid? sourceId, string documentCode)
     {
@@ -831,7 +800,7 @@ public partial class ReportManager
         if (string.IsNullOrWhiteSpace(normalizedCode))
             return false;
 
-        if (RecapSourceCodePattern.IsMatch(normalizedCode))
+        if (AccountingManager.TryParseDocumentSourceCodeFromMemo(normalizedCode) == normalizedCode)
             return true;
 
         if (sourceTypeId == (int)SourceType.WorkOrder)
@@ -894,10 +863,6 @@ public partial class ReportManager
     {
         return Guid.TryParse(value, out var parsed) && parsed != Guid.Empty ? parsed : null;
     }
-
-    private static readonly Regex RecapSourceCodePattern = new(@"\b(?:WO-[A-Za-z0-9-]+|R-\d+(?:-\d+)*|RC[A-Za-z0-9-]*)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly Regex RecapMemoSourceCodePattern = new(@"(?:Payment|Prepayment|Invoice|Owner)\s*:\s*([A-Za-z0-9-]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex ReservationCodePattern = new(@"^R-\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 

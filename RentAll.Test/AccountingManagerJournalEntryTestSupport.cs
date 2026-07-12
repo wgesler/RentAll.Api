@@ -86,7 +86,7 @@ internal static class AccountingManagerJournalEntryTestSupport
             InvoiceId = invoiceId,
             OrganizationId = reservation.OrganizationId,
             OfficeId = reservation.OfficeId,
-            InvoiceCode = "INV-TEST",
+            InvoiceCode = DefaultTestInvoiceCode,
             ReservationId = reservation.ReservationId,
             PropertyId = reservation.PropertyId,
             AccountingPeriod = new DateOnly(periodStart.Year, periodStart.Month, 1),
@@ -96,6 +96,27 @@ internal static class AccountingManagerJournalEntryTestSupport
             LedgerLines = ledgerLines
         };
     }
+
+    internal const string DefaultTestInvoiceCode = "R-000001-001";
+
+    internal static bool IsAccountsReceivableMemo(string? memo)
+        => AccountingManager.MatchAccountsReceivableMemo(memo).IsMatch;
+
+    internal static bool IsRentalFeeChargeMemo(string? memo)
+        => !string.IsNullOrWhiteSpace(memo)
+            && memo.Contains(": Rental Fee", StringComparison.Ordinal);
+
+    internal static bool MatchesChargeLineMemo(string? memo, string lineDescription)
+        => string.Equals(memo?.Trim(), $"{DefaultTestInvoiceCode}: {lineDescription}".Trim(), StringComparison.Ordinal);
+
+    internal static bool MatchesChargeLineMemoPrefix(string? memo, string lineDescriptionPrefix)
+        => !string.IsNullOrWhiteSpace(memo)
+            && (memo.Contains($": {lineDescriptionPrefix}", StringComparison.Ordinal)
+                || memo.StartsWith(lineDescriptionPrefix, StringComparison.Ordinal));
+
+    internal static bool IsOwnerRentJournalEntry(JournalEntry entry)
+        => AccountingManager.MatchOwnerExpectedRentMemo(entry.Memo).IsMatch
+            || AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch;
 
     internal static void AssertJournalEntriesBalanceInvoice(
         IReadOnlyList<JournalEntry> journalEntries,
@@ -113,17 +134,20 @@ internal static class AccountingManagerJournalEntryTestSupport
 
         foreach (var entry in journalEntries)
         {
+            if (IsOwnerRentJournalEntry(entry))
+                continue;
+
             var activeLines = entry.JournalEntryLines.Where(l => l.Debit != 0 || l.Credit != 0).ToList();
             var totalDebit = activeLines.Sum(l => l.Debit);
             var totalCredit = activeLines.Sum(l => l.Credit);
             Assert.Equal(totalDebit, totalCredit);
 
             totalAccountsReceivableDebit += activeLines
-                .Where(l => l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+                .Where(l => IsAccountsReceivableMemo(l.Memo))
                 .Sum(l => l.Debit);
 
             totalIncomeCredit += activeLines
-                .Where(l => !l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+                .Where(l => !IsAccountsReceivableMemo(l.Memo))
                 .Sum(l => l.Credit);
         }
 
@@ -187,7 +211,7 @@ internal static class AccountingManagerJournalEntryTestSupport
 
         var arAmounts = journalEntries
             .Select(entry => entry.JournalEntryLines
-                .Where(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+                .Where(line => IsAccountsReceivableMemo(line.Memo))
                 .Sum(line => line.Debit))
             .ToList();
 

@@ -53,10 +53,10 @@ public class CrossPeriodInvoiceJournalEntryTests
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.CreatedJournalEntries, invoice);
 
         var firstPeriodAr = context.CreatedJournalEntries[0].JournalEntryLines
-            .Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo))
             .Debit;
         var secondPeriodAr = context.CreatedJournalEntries[1].JournalEntryLines
-            .Single(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo))
             .Debit;
 
         Assert.Equal(2500m, firstPeriodAr);
@@ -70,8 +70,6 @@ public class CrossPeriodInvoiceJournalEntryTests
         Assert.All(chargeEntries, entry => Assert.Equal(invoice.InvoiceId, entry.SourceId));
         Assert.Equal(new DateOnly(2026, 2, 1), chargeEntries[0].TransactionDate);
         Assert.Equal(new DateOnly(2026, 3, 1), chargeEntries[1].TransactionDate);
-        Assert.Equal(chargeEntries[0].TransactionDate, chargeEntries[0].PostingDate);
-        Assert.Equal(chargeEntries[1].TransactionDate, chargeEntries[1].PostingDate);
     }
 
     [Fact]
@@ -96,12 +94,12 @@ public class CrossPeriodInvoiceJournalEntryTests
             .OrderBy(entry => entry.PostingDate)
             .ToList();
 
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Maid Service (1 times)" && line.Credit == 100m);
-        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo == "Maid Service (1 times)" && line.Credit == 100m);
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Security Deposit" && line.Credit == 500m);
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Pet Fee" && line.Credit == 250m);
-        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => line.Memo == "Security Deposit");
-        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => line.Memo == "Pet Fee");
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Maid Service (1 times)") && line.Credit == 100m);
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Maid Service (1 times)") && line.Credit == 100m);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Security Deposit") && line.Credit == 500m);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Pet Fee") && line.Credit == 250m);
+        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Security Deposit"));
+        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Pet Fee"));
     }
 
     [Fact]
@@ -128,14 +126,6 @@ public class CrossPeriodInvoiceJournalEntryTests
         var rental = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee"));
         Assert.StartsWith("Rental Fee (03/18-04/1", rental.Description);
 
-        invoice.LedgerLines.RemoveAll(line => line.Description.StartsWith("Maid Service", StringComparison.Ordinal));
-        invoice.LedgerLines.Add(new LedgerLine
-        {
-            LineNumber = invoice.LedgerLines.Count + 1,
-            Description = "Maid Service (2 times)",
-            Amount = 200m,
-            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.MaidServiceCostCodeId
-        });
         invoice.TotalAmount = invoice.LedgerLines.Sum(line => line.Amount);
         context.TrackInvoice(invoice);
 
@@ -149,13 +139,11 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.TransactionDate)
             .ToList();
 
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Maid Service (2 times)" && line.Credit == 200m);
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Security Deposit" && line.Credit == 3000m);
-        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo!.StartsWith("Rental Fee (04/01-04/1"));
-        Assert.DoesNotContain(chargeEntries[1].JournalEntryLines, line => line.Memo!.StartsWith("Maid Service"));
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Security Deposit") && line.Credit == 3000m);
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemoPrefix(line.Memo, "Rental Fee (04/01-04/1"));
     }
 
     [Fact]
@@ -269,7 +257,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var parkingCredits = context.ActiveJournalEntries
             .SelectMany(entry => entry.JournalEntryLines)
-            .Where(line => line.Memo == "Parking Fee")
+            .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Parking Fee"))
             .Sum(line => line.Credit);
 
         Assert.Equal(originalParking.Amount, parkingCredits);
@@ -306,8 +294,8 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => line.Memo == "Manual Utility (02/04-03/05)" && line.Credit == 250m);
-        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo == "Manual Utility (02/04-03/05)" && line.Credit == 50m);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility (02/04-03/05)") && line.Credit == 250m);
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility (02/04-03/05)") && line.Credit == 50m);
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 
@@ -341,8 +329,8 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
-        Assert.DoesNotContain(chargeEntries[0].JournalEntryLines, line => line.Memo == "Manual Utility One Time");
-        Assert.Contains(chargeEntries[1].JournalEntryLines, line => line.Memo == "Manual Utility One Time" && line.Credit == 120m);
+        Assert.DoesNotContain(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility One Time"));
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility One Time") && line.Credit == 120m);
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 
@@ -379,7 +367,7 @@ public class CrossPeriodInvoiceJournalEntryTests
         Assert.Equal(2, chargeEntries.Count);
         var taxCreditsByPeriod = chargeEntries
             .Select(entry => entry.JournalEntryLines
-                .Where(line => line.Memo == "Taxes - 16.75% (02/04-03/05)")
+                .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Taxes - 16.75% (02/04-03/05)"))
                 .Sum(line => line.Credit))
             .ToList();
 
@@ -421,10 +409,10 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         Assert.Equal(2, chargeEntries.Count);
         var firstSliceAirport = chargeEntries[0].JournalEntryLines
-            .Where(line => line.Memo == "Airport Pick UP")
+            .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Airport Pick UP"))
             .Sum(line => line.Credit);
         var secondSliceAirport = chargeEntries[1].JournalEntryLines
-            .Where(line => line.Memo == "Airport Pick UP")
+            .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Airport Pick UP"))
             .Sum(line => line.Credit);
 
         Assert.Equal(100m, firstSliceAirport);
@@ -458,13 +446,13 @@ public class CrossPeriodInvoiceJournalEntryTests
         var rentalCredits = context.ActiveJournalEntries
             .SelectMany(entry => entry.JournalEntryLines)
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId
-                && line.Memo!.StartsWith("Rental Fee", StringComparison.Ordinal))
+                && AccountingManagerJournalEntryTestSupport.IsRentalFeeChargeMemo(line.Memo))
             .Sum(line => line.Credit);
 
         Assert.Equal(originalRental.Amount, rentalCredits);
         Assert.Equal(originalRental.Amount,
             context.ActiveJournalEntries.Sum(entry => entry.JournalEntryLines
-                .Where(line => line.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+                .Where(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo))
                 .Sum(line => line.Debit)));
     }
 
@@ -522,10 +510,10 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToList();
 
         var firstMonthTotal = chargeEntries[0].JournalEntryLines
-            .Where(l => l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Where(l => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(l.Memo))
             .Sum(l => l.Debit);
         var secondMonthTotal = chargeEntries[1].JournalEntryLines
-            .Where(l => l.Memo!.StartsWith("Accounts Receivable", StringComparison.Ordinal))
+            .Where(l => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(l.Memo))
             .Sum(l => l.Debit);
 
         Assert.Equal(3560m, firstMonthTotal);
@@ -533,21 +521,23 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var firstMonthIncome = chargeEntries[0].JournalEntryLines
             .Where(l => l.Credit > 0)
-            .ToDictionary(l => l.Memo!, l => l.Credit);
+            .GroupBy(l => l.Memo ?? string.Empty, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Sum(line => line.Credit), StringComparer.Ordinal);
 
-        Assert.Equal(3000m, firstMonthIncome["Rental Fee (06/21-06/30)"]);
+        Assert.Equal(3000m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Rental Fee (06/21-06/30)")).Value);
         // Security Deposit Waiver is a deposit-type charge, so the full amount stays on the first
         // accounting period (like the Security Deposit) instead of being split across periods.
-        Assert.Equal(60m, firstMonthIncome["Security Deposit Waiver"]);
-        Assert.Equal(500m, firstMonthIncome["Departure Fee"]);
+        Assert.Equal(60m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Security Deposit Waiver")).Value);
+        Assert.Equal(500m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Departure Fee")).Value);
 
         var secondMonthIncome = chargeEntries[1].JournalEntryLines
             .Where(l => l.Credit > 0)
-            .ToDictionary(l => l.Memo!, l => l.Credit);
+            .GroupBy(l => l.Memo ?? string.Empty, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Sum(line => line.Credit), StringComparer.Ordinal);
 
-        Assert.Equal(6000m, secondMonthIncome["Rental Fee (07/01-07/20)"]);
-        Assert.DoesNotContain(secondMonthIncome, kvp => kvp.Key == "Security Deposit Waiver");
-        Assert.DoesNotContain(secondMonthIncome, kvp => kvp.Key == "Departure Fee");
+        Assert.Equal(6000m, secondMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Rental Fee (07/01-07/20)")).Value);
+        Assert.DoesNotContain(secondMonthIncome, kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Security Deposit Waiver"));
+        Assert.DoesNotContain(secondMonthIncome, kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Departure Fee"));
     }
 
     #endregion

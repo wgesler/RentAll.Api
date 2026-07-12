@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Domain.Accounting;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
 
@@ -8,8 +10,41 @@ public partial class JournalEntryRepository
 {
     public async Task<IEnumerable<JournalEntryRecapLine>> GetJournalEntryRecapLinesAsync(JournalEntryRecapGetCriteria criteria)
     {
+        var inRangeLines = (await QueryJournalEntryRecapRawLinesAsync(criteria, reachBackInvoiceCodes: null)).ToList();
+        if (inRangeLines.Count == 0)
+            return Enumerable.Empty<JournalEntryRecapLine>();
+
+        var allRawLines = inRangeLines;
+        if (criteria.IncludePaymentInvoiceContext)
+        {
+            var classificationInputs = inRangeLines.Select(ConvertRawEntityToClassificationLine).ToList();
+            var reachBackInvoiceCodes = JournalEntryRecapLineClassifier
+                .ExtractReachBackInvoiceCodes(classificationInputs)
+                .ToList();
+
+            if (reachBackInvoiceCodes.Count > 0)
+            {
+                var reachBackLines = (await QueryJournalEntryRecapRawLinesAsync(
+                    criteria,
+                    string.Join(',', reachBackInvoiceCodes))).ToList();
+                var existingLineIds = allRawLines
+                    .Select(line => line.JournalEntryLineId)
+                    .ToHashSet();
+                allRawLines = allRawLines
+                    .Concat(reachBackLines.Where(line => !existingLineIds.Contains(line.JournalEntryLineId)))
+                    .ToList();
+            }
+        }
+
+        return ClassifyAndFilterRecapLines(allRawLines, criteria);
+    }
+
+    private async Task<IEnumerable<JournalEntryRecapRawLineEntity>> QueryJournalEntryRecapRawLinesAsync(
+        JournalEntryRecapGetCriteria criteria,
+        string? reachBackInvoiceCodes)
+    {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<JournalEntryRecapLineEntity>("Accounting.JournalEntryRecap_GetByCriteria", new
+        var res = await db.DapperProcQueryAsync<JournalEntryRecapRawLineEntity>("Accounting.JournalEntryRecap_GetByCriteria", new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -19,45 +54,100 @@ public partial class JournalEntryRepository
             EndDate = criteria.EndDate,
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
-            RecapCategory = string.IsNullOrWhiteSpace(criteria.RecapCategory) ? null : criteria.RecapCategory.Trim(),
-            IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext
+            IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext,
+            ReachBackInvoiceCodes = reachBackInvoiceCodes
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<JournalEntryRecapLine>();
-
-        return res.Select(ConvertRecapLineEntityToModel);
+        return res ?? Enumerable.Empty<JournalEntryRecapRawLineEntity>();
     }
 
-    private static JournalEntryRecapLine ConvertRecapLineEntityToModel(JournalEntryRecapLineEntity e)
+    private static IEnumerable<JournalEntryRecapLine> ClassifyAndFilterRecapLines(
+        IEnumerable<JournalEntryRecapRawLineEntity> rawLines,
+        JournalEntryRecapGetCriteria criteria)
+    {
+        var recapCategoryFilter = (criteria.RecapCategory ?? string.Empty).Trim();
+        var hasRecapCategoryFilter = !string.IsNullOrWhiteSpace(recapCategoryFilter);
+
+        foreach (var rawLine in rawLines)
+        {
+            var classificationLine = ConvertRawEntityToClassificationLine(rawLine);
+            if (!JournalEntryRecapLineClassifier.TryClassify(classificationLine, out var classification))
+                continue;
+
+            if (classification.Amount == 0)
+                continue;
+
+            if (hasRecapCategoryFilter
+                && !string.Equals(classification.RecapCategory, recapCategoryFilter, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!rawLine.IsInDateRange)
+            {
+                if (!criteria.IncludePaymentInvoiceContext)
+                    continue;
+
+                var isReachBackCategory = string.Equals(classification.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(classification.RecapCategory, "ExpectedIncome", StringComparison.OrdinalIgnoreCase);
+                if (!isReachBackCategory)
+                    continue;
+            }
+
+            yield return ConvertClassifiedRawEntityToModel(rawLine, classification);
+        }
+    }
+
+    private static JournalEntryRecapClassificationLine ConvertRawEntityToClassificationLine(JournalEntryRecapRawLineEntity rawLine)
+    {
+        return new JournalEntryRecapClassificationLine
+        {
+            SourceTypeId = rawLine.SourceTypeId,
+            ChartOfAccountId = rawLine.ChartOfAccountId,
+            Debit = rawLine.Debit,
+            Credit = rawLine.Credit,
+            LineMemo = rawLine.LineMemo,
+            JournalEntryMemo = rawLine.JournalEntryMemo,
+            DefaultActRcvableAccountId = rawLine.DefaultActRcvableAccountId,
+            DefaultUndepFundsAccountId = rawLine.DefaultUndepFundsAccountId,
+            DefaultPrePayAccountId = rawLine.DefaultPrePayAccountId,
+            DefaultOwnActPayableAccountId = rawLine.DefaultOwnActPayableAccountId,
+            DefaultOwnerExpAccountId = rawLine.DefaultOwnerExpAccountId,
+            DefaultTenantIncAccountId = rawLine.DefaultTenantIncAccountId,
+            IsRentalIncomeAccount = rawLine.IsRentalIncomeAccount,
+            IsInDateRange = rawLine.IsInDateRange
+        };
+    }
+
+    private static JournalEntryRecapLine ConvertClassifiedRawEntityToModel(
+        JournalEntryRecapRawLineEntity rawLine,
+        JournalEntryRecapClassificationResult classification)
     {
         return new JournalEntryRecapLine
         {
-            JournalEntryLineId = e.JournalEntryLineId,
-            JournalEntryId = e.JournalEntryId,
-            JournalEntryCode = e.JournalEntryCode,
-            TransactionDate = e.TransactionDate,
-            AccountingPeriod = e.AccountingPeriod,
-            OfficeId = e.OfficeId,
-            PropertyId = e.PropertyId,
-            PropertyCode = e.PropertyCode,
-            ReservationId = e.ReservationId,
-            ReservationCode = e.ReservationCode,
-            SourceTypeId = e.SourceTypeId,
-            SourceId = e.SourceId,
-            IsPosted = e.IsPosted,
-            SourceTypeCode = e.SourceTypeCode,
-            SourceDocumentCode = e.SourceDocumentCode,
-            ChartOfAccountId = e.ChartOfAccountId,
-            AccountNo = e.AccountNo,
-            ChartOfAccountName = e.ChartOfAccountName,
-            Description = e.Description,
-            Debit = e.Debit,
-            Credit = e.Credit,
-            Activity = e.Activity,
-            RecapCategory = e.RecapCategory,
-            Amount = e.Amount,
-            IsInDateRange = e.IsInDateRange
+            JournalEntryLineId = rawLine.JournalEntryLineId,
+            JournalEntryId = rawLine.JournalEntryId,
+            JournalEntryCode = rawLine.JournalEntryCode,
+            TransactionDate = rawLine.TransactionDate,
+            AccountingPeriod = rawLine.AccountingPeriod,
+            OfficeId = rawLine.OfficeId,
+            PropertyId = rawLine.PropertyId,
+            PropertyCode = rawLine.PropertyCode,
+            ReservationId = rawLine.ReservationId,
+            ReservationCode = rawLine.ReservationCode,
+            SourceTypeId = rawLine.SourceTypeId,
+            SourceId = rawLine.SourceId,
+            IsPosted = rawLine.IsPosted,
+            SourceTypeCode = rawLine.SourceTypeCode,
+            SourceDocumentCode = rawLine.SourceDocumentCode,
+            ChartOfAccountId = rawLine.ChartOfAccountId,
+            AccountNo = rawLine.AccountNo,
+            ChartOfAccountName = rawLine.ChartOfAccountName,
+            Description = rawLine.Description,
+            Debit = rawLine.Debit,
+            Credit = rawLine.Credit,
+            Activity = classification.Activity,
+            RecapCategory = classification.RecapCategory,
+            Amount = classification.Amount,
+            IsInDateRange = rawLine.IsInDateRange
         };
     }
 }

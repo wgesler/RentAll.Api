@@ -14,8 +14,6 @@ public partial class ReportManager : IReportManager
     private readonly IPropertyRepository _propertyRepository;
     private readonly IAccountingManager _accountingManager;
 
-    private const string OwnerStartingBalanceMemoPrefix = "Owner: Starting Balance:";
-
     public ReportManager(IJournalEntryRepository journalEntryRepository, IAccountingRepository accountingRepository, IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingManager accountingManager)
     {
         _journalEntryRepository = journalEntryRepository;
@@ -385,6 +383,12 @@ public partial class ReportManager : IReportManager
             return;
         }
 
+        if (string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
+        {
+            group.OwnerRentActualValue += amount;
+            return;
+        }
+
         if (string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
         {
             group.ExpectedIncomeValue += amount;
@@ -452,18 +456,6 @@ public partial class ReportManager : IReportManager
     #endregion
 
     #region Calculate
-    private static decimal CalculateOwnerPaidIncome(decimal ownerRent, decimal expectedIncome, decimal paymentAmount, decimal ownerPaymentReceived)
-    {
-        if (ownerPaymentReceived != 0)
-            return ownerPaymentReceived;
-        if (paymentAmount == 0 || ownerRent == 0 || expectedIncome == 0)
-            return 0;
-        var ownerPaid = paymentAmount * ownerRent / expectedIncome;
-        if (ownerPaid < 0)
-            return 0;
-        return ownerPaid > ownerRent ? ownerRent : ownerPaid;
-    }
-
     private static decimal CalculateUnpaidIncome(decimal invoicedIncome, decimal paidIncome) => Math.Max(0m, invoicedIncome - paidIncome);
 
     private static OwnerStartingBalance CalculateOwnerStartingBalance(IGrouping<string, JournalEntryLineSearchResult> group)
@@ -590,7 +582,9 @@ public partial class ReportManager : IReportManager
                 continue;
 
             var category = (line.RecapCategory ?? string.Empty).Trim();
-            if (!string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase) && !string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             var invoiceKey = GetInvoiceOwnerIncomeKey(line);
@@ -614,6 +608,8 @@ public partial class ReportManager : IReportManager
                 totals.OwnerRentSourceId = line.SourceId;
                 totals.OwnerRentSourceTypeId = line.SourceTypeId;
             }
+            else if (string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
+                totals.OwnerRentActualValue += line.Amount;
             else
                 totals.ExpectedIncomeValue += line.Amount;
         }
@@ -663,9 +659,10 @@ public partial class ReportManager : IReportManager
                 return invoiceCode;
         }
 
-        if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
         {
-            var fromDescription = GetRecapInvoiceSourceFromDescription(line.Description);
+            var fromDescription = AccountingManager.TryParseInvoiceSourceCodeFromMemo(line.Description);
             if (!string.IsNullOrWhiteSpace(fromDescription))
                 return fromDescription;
         }
@@ -712,10 +709,9 @@ public partial class ReportManager : IReportManager
 
     private static decimal GetOwnerPaidIncomeForInvoiceGroup(OwnerInvoiceActivityGroup group, string invoiceOwnerIncomeKey, IReadOnlyDictionary<string, InvoiceOwnerIncomeTotals> invoiceOwnerIncomeByKey)
     {
-        invoiceOwnerIncomeByKey.TryGetValue(invoiceOwnerIncomeKey, out var invoiceOwnerIncome);
-        var ownerRent = group.OwnerRentValue != 0 ? group.OwnerRentValue : invoiceOwnerIncome?.OwnerRentValue ?? 0;
-        var expectedIncome = group.ExpectedIncomeValue != 0 ? group.ExpectedIncomeValue : invoiceOwnerIncome?.ExpectedIncomeValue ?? 0;
-        return CalculateOwnerPaidIncome(ownerRent, expectedIncome, group.PaymentValue, group.OwnerPaymentReceivedValue);
+        _ = invoiceOwnerIncomeKey;
+        _ = invoiceOwnerIncomeByKey;
+        return group.OwnerRentActualValue;
     }
 
     private static int GetOwnerActivityLineSortOrder(OwnerStatementPropertyActivityLine line)
@@ -826,18 +822,14 @@ public partial class ReportManager : IReportManager
     #region Helpers
 
     private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)
-    {
-        var summaryMemo = (journalMemo ?? string.Empty).Trim();
-        var detailMemo = (lineMemo ?? string.Empty).Trim();
-        return summaryMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase)
-            || detailMemo.StartsWith(OwnerStartingBalanceMemoPrefix, StringComparison.OrdinalIgnoreCase);
-    }
+        => AccountingManager.MatchOwnerStartingBalanceMemo(journalMemo, lineMemo).IsMatch;
 
     private static bool IsRecapRowWithOwnerActivity(RecapReportRow row) =>
         row.OwnerRentValue != 0 || row.UnPaidValue != 0 || row.OwnerExpenseValue != 0 || row.OwnerPaymentReceivedValue != 0 || row.PaymentValue != 0;
 
     private static bool IsOwnerReportRecapCategory(string category) =>
         string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
@@ -867,7 +859,7 @@ public partial class ReportManager : IReportManager
     }
 
     private static bool IsOwnerInvoiceGroupWithActivity(OwnerInvoiceActivityGroup group) =>
-        group.OwnerRentValue != 0 || group.OwnerExpenseValue != 0 || group.OwnerPaymentReceivedValue != 0 || group.PaymentValue != 0;
+        group.OwnerRentValue != 0 || group.OwnerRentActualValue != 0 || group.OwnerExpenseValue != 0 || group.OwnerPaymentReceivedValue != 0 || group.PaymentValue != 0;
 
     private static bool TryGetRecapLinePropertyId(JournalEntryRecapLine line, out Guid propertyId)
     {
@@ -881,26 +873,9 @@ public partial class ReportManager : IReportManager
         return false;
     }
 
-    private static string StripTenantPaymentMemoForDisplay(string memo)
-    {
-        var trimmed = (memo ?? string.Empty).Trim();
-        if (trimmed.StartsWith("Payment:", StringComparison.OrdinalIgnoreCase))
-            return trimmed["Payment:".Length..].TrimStart();
+    private static string StripTenantPaymentMemoForDisplay(string memo) => AccountingManager.StripTenantPaymentMemoForDisplay(memo);
 
-        if (trimmed.StartsWith("Prepayment:", StringComparison.OrdinalIgnoreCase))
-            return trimmed["Prepayment:".Length..].TrimStart();
-
-        return trimmed;
-    }
-
-    private static string StripOwnerMemoPrefixForDisplay(string memo)
-    {
-        var trimmed = (memo ?? string.Empty).Trim();
-        if (trimmed.StartsWith("Owner:", StringComparison.OrdinalIgnoreCase))
-            return trimmed["Owner:".Length..].TrimStart();
-
-        return trimmed;
-    }
+    private static string StripOwnerMemoPrefixForDisplay(string memo) => AccountingManager.StripOwnerMemoPrefixForDisplay(memo);
 
     private static DateOnly ParseActivityDate(string transactionDate)
     {

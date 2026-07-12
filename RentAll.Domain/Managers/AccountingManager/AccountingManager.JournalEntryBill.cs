@@ -152,21 +152,12 @@ public partial class AccountingManager
         var splitLines = (bill.Splits ?? new List<ReceiptSplit>())
             .OrderBy(s => s.ReceiptSplitId)
             .ToList();
+        if (splitLines.Count == 0)
+            throw new Exception("Splits are required to create a journal entry");
+
         var nonZeroSplits = splitLines.Where(split => split.Amount != 0).ToList();
         if (nonZeroSplits.Count > 0)
             splitLines = nonZeroSplits;
-        else if (splitLines.Count == 0 && bill.Amount != 0)
-        {
-            splitLines =
-            [
-                new ReceiptSplit
-                {
-                    Amount = bill.Amount,
-                    Description = bill.Description,
-                    ChartOfAccountId = null
-                }
-            ];
-        }
 
         if (bill.AccountingPeriod == default)
             throw new Exception("AccountingPeriod is required to create a journal entry for a bill");
@@ -177,12 +168,12 @@ public partial class AccountingManager
         var accountsPayableAccountId = GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
         var transactionDate = ResolveBillOrReceiptJournalEntryDate(bill);
         var receiptCode = bill.ReceiptCode.Trim();
-        var billDescriptionSuffix = string.IsNullOrWhiteSpace((bill.Description ?? string.Empty).Trim()) ? string.Empty : $": {(bill.Description ?? string.Empty).Trim()}";
         var defaultLineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
         var eligibleSplits = splitLines
             .Where(split => split.ReceiptType != ReceiptType.NonExpense)
             .Where(split => split.Amount != 0)
             .ToList();
+        var billMemo = BuildBillJournalMemo(bill, eligibleSplits);
         var positiveSplits = eligibleSplits.Where(s => s.Amount > 0).ToList();
         var negativeSplits = eligibleSplits.Where(s => s.Amount < 0).ToList();
         var journalEntryLines = new List<JournalEntryLine>();
@@ -196,7 +187,7 @@ public partial class AccountingManager
                 ChartOfAccountId = accountsPayableAccountId,
                 Debit = 0,
                 Credit = positiveTotal,
-                Memo = receiptCode + billDescriptionSuffix,
+                Memo = billMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(accountsPayableLine, defaultLineContext);
@@ -205,7 +196,7 @@ public partial class AccountingManager
             foreach (var split in positiveSplits)
             {
                 var expenseAccountId = GetBillReceiptExpenseAccountId(split, bill.OfficeId, chartOfAccounts, accountingOffice);
-                var splitDescriptionSuffix = string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}";
+                var splitMemo = BuildBillSplitLineMemo(bill, split);
 
                 var expenseLine = new JournalEntryLine
                 {
@@ -213,7 +204,7 @@ public partial class AccountingManager
                     ChartOfAccountId = expenseAccountId,
                     Debit = split.Amount,
                     Credit = 0,
-                    Memo = receiptCode + splitDescriptionSuffix,
+                    Memo = splitMemo,
                     CreatedBy = currentUser
                 };
                 ApplyJournalEntryLineContext(expenseLine, CreateJournalEntryLineContextFromReceiptSplit(bill, split) with
@@ -234,7 +225,7 @@ public partial class AccountingManager
                 ChartOfAccountId = accountsPayableAccountId,
                 Debit = Math.Abs(negativeTotal),
                 Credit = 0,
-                Memo = receiptCode + billDescriptionSuffix,
+                Memo = billMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(accountsPayableLine, defaultLineContext);
@@ -243,14 +234,14 @@ public partial class AccountingManager
             foreach (var split in negativeSplits)
             {
                 var expenseAccountId = GetBillReceiptExpenseAccountId(split, bill.OfficeId, chartOfAccounts, accountingOffice);
-                var splitDescriptionSuffix = string.IsNullOrWhiteSpace((split.Description ?? string.Empty).Trim()) ? string.Empty : $": {(split.Description ?? string.Empty).Trim()}";
+                var splitMemo = BuildBillSplitLineMemo(bill, split);
                 var expenseLine = new JournalEntryLine
                 {
                     // Credit ExpenseAccountId
                     ChartOfAccountId = expenseAccountId,
                     Debit = 0,
                     Credit = Math.Abs(split.Amount),
-                    Memo = receiptCode + splitDescriptionSuffix,
+                    Memo = splitMemo,
                     CreatedBy = currentUser
                 };
                 ApplyJournalEntryLineContext(expenseLine, CreateJournalEntryLineContextFromReceiptSplit(bill, split) with
@@ -270,7 +261,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Bill,
             SourceId = bill.ReceiptId,
             SourceCode = ResolveJournalEntrySourceCodeFromReceipt(bill),
-            Memo = receiptCode + billDescriptionSuffix,
+            Memo = billMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
@@ -301,8 +292,7 @@ public partial class AccountingManager
 
         var amount = paymentApplication.AmountApplied;
         var transactionDate = paymentApplication.PaymentDate;
-        var receiptCode = bill.ReceiptCode.Trim();
-        var billDescription = string.IsNullOrWhiteSpace((bill.Description ?? string.Empty).Trim()) ? string.Empty : $": {(bill.Description ?? string.Empty).Trim()}";
+        var billMemo = BuildBillJournalMemo(bill, bill.Splits);
         var lineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
         var payableLine = new JournalEntryLine
         {
@@ -310,7 +300,7 @@ public partial class AccountingManager
             ChartOfAccountId = payableOrCardAccountId,
             Debit = amount > 0 ? amount : 0,
             Credit = amount < 0 ? Math.Abs(amount) : 0,
-            Memo = bill.ReceiptCode.Trim() + billDescription,
+            Memo = billMemo,
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(payableLine, lineContext);
@@ -320,7 +310,7 @@ public partial class AccountingManager
             ChartOfAccountId = paymentBankAccountId,
             Debit = amount < 0 ? Math.Abs(amount) : 0,
             Credit = amount > 0 ? amount : 0,
-            Memo = receiptCode + billDescription,
+            Memo = billMemo,
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(paymentLine, lineContext);
@@ -334,7 +324,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = bill.ReceiptId,
             SourceCode = ResolveJournalEntrySourceCodeFromReceipt(bill),
-            Memo = receiptCode + billDescription,
+            Memo = billMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
@@ -367,6 +357,39 @@ public partial class AccountingManager
     {
         if (bill.BankCardId != null || !bill.IsUtility)
             throw new Exception("Receipt is not a utility");
+    }
+
+    private static string BuildBillSplitLineMemo(Receipt bill, ReceiptSplit split)
+    {
+        var receiptCode = bill.ReceiptCode.Trim();
+        if (string.IsNullOrWhiteSpace(split.Description))
+            throw new Exception("Split description is required to create a bill journal entry memo");
+
+        if (split.ReceiptType != ReceiptType.Owner)
+            return BuildBillMemo(receiptCode, split.Description);
+
+        return bill.IsUtility
+            ? BuildOwnerUtilityBillMemo(receiptCode, split.Description)
+            : BuildOwnerBillMemo(receiptCode, split.Description);
+    }
+
+    private static string BuildBillJournalMemo(Receipt bill, IEnumerable<ReceiptSplit>? eligibleSplits = null)
+    {
+        var receiptCode = bill.ReceiptCode.Trim();
+        if (string.IsNullOrWhiteSpace(bill.Description))
+            throw new Exception("Bill description is required to create a bill journal entry memo");
+
+        if (bill.IsUtility)
+            return BuildOwnerUtilityBillMemo(receiptCode, bill.Description);
+
+        var splits = eligibleSplits?
+            .Where(split => split.ReceiptType != ReceiptType.NonExpense)
+            .Where(split => split.Amount != 0)
+            .ToList();
+        if (splits is { Count: > 0 } && splits.All(split => split.ReceiptType == ReceiptType.Owner))
+            return BuildOwnerBillMemo(receiptCode, bill.Description);
+
+        return BuildBillMemo(receiptCode, bill.Description);
     }
 
     #endregion
