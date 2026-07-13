@@ -31,6 +31,33 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPost("journal-entry-line/reconcile/beginning-balance")]
+        public async Task<IActionResult> GetReconcileBeginningBalance([FromBody] GetReconcileBeginningBalanceDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Reconcile beginning balance criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var beginningBalance = await _journalEntryRepository.GetReconcileBeginningBalanceAsync(
+                    CurrentOrganizationId,
+                    dto.OfficeId,
+                    dto.ChartOfAccountId,
+                    dto.StatementDate);
+
+                return Ok(new ReconcileBeginningBalanceResponseDto(beginningBalance));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reconcile beginning balance");
+                return ServerError("An error occurred while retrieving the reconcile beginning balance");
+            }
+        }
+
         [HttpGet("journal-entry/code/{journalEntryCode}")]
         public async Task<IActionResult> GetJournalEntryByCode(string journalEntryCode)
         {

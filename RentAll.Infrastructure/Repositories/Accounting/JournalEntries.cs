@@ -52,6 +52,20 @@ public partial class JournalEntryRepository
         return res.Select(ConvertLineSearchEntityToModel);
     }
 
+    public async Task<decimal> GetReconcileBeginningBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ReconcileBeginningBalanceEntity>("Accounting.JournalEntryLine_GetReconcileBeginningBalance", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ChartOfAccountId = chartOfAccountId,
+            StatementDate = statementDate
+        });
+
+        return res?.FirstOrDefault()?.BeginningBalance ?? 0m;
+    }
+
     public async Task<JournalEntryLine?> GetJournalEntryLineByIdAsync(Guid journalEntryLineId)
     {
         if (journalEntryLineId == Guid.Empty)
