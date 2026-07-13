@@ -21,7 +21,7 @@ public interface IAccountingManager
     #region Journal Entries
     Task<JournalEntry?> CreateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> UpdateJournalEntryAsync(JournalEntry journalEntry);
-    Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
+    Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, DateOnly? postingDate = null);
     Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<JournalEntry> VoidJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task DeleteJournalEntryAsync(Guid journalEntryId, Guid organizationId);

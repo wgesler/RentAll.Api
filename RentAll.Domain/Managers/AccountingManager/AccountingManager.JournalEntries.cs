@@ -62,7 +62,7 @@ public partial class AccountingManager
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
 
-    public async Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    public async Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, DateOnly? postingDate = null)
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
         if (journalEntry == null)
@@ -77,7 +77,9 @@ public partial class AccountingManager
         ValidateJournalEntryForSave(journalEntry, requireActiveLines: true);
 
         journalEntry.IsPosted = true;
-        if (journalEntry.PostingDate == default)
+        if (postingDate.HasValue)
+            journalEntry.PostingDate = postingDate.Value;
+        else if (journalEntry.PostingDate == default)
             journalEntry.PostingDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
         journalEntry.ModifiedBy = currentUser;
