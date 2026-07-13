@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using RentAll.Infrastructure.Entities.Accounting;
 using RentAll.Infrastructure.Serialization;
 using System.Text.Json;
 
@@ -142,6 +143,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             Debit = e.Debit,
             Credit = e.Credit,
             Memo = e.Memo,
+            ClearedOn = e.ClearedOn,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
@@ -157,5 +159,34 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             IsPosted = e.IsPosted,
             IsVoided = e.IsVoided
         };
+    }
+
+    private List<JournalEntry> MapJournalEntriesWithLineEntities(
+        IEnumerable<JournalEntryEntity>? journalEntryEntities,
+        IEnumerable<JournalEntryLineEntity>? lineEntities)
+    {
+        if (journalEntryEntities == null || !journalEntryEntities.Any())
+            return new List<JournalEntry>();
+
+        var linesByJournalEntryId = (lineEntities ?? Enumerable.Empty<JournalEntryLineEntity>())
+            .GroupBy(line => line.JournalEntryId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertJournalEntryLineEntityToModel)
+                    .GroupBy(line => line.JournalEntryLineId)
+                    .Select(lineGroup => lineGroup.First())
+                    .OrderBy(line => line.CreatedOn)
+                    .ThenBy(line => line.JournalEntryLineId)
+                    .ToList());
+
+        var journalEntries = journalEntryEntities.Select(ConvertEntityToModel).ToList();
+        foreach (var journalEntry in journalEntries)
+        {
+            if (linesByJournalEntryId.TryGetValue(journalEntry.JournalEntryId, out var lines) && lines.Count > 0)
+                journalEntry.JournalEntryLines = lines;
+        }
+
+        return journalEntries;
     }
 }

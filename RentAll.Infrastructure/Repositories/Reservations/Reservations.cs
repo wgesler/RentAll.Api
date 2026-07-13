@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Reservations;
+using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Reservations
 {
@@ -144,16 +146,22 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         public async Task<Reservation?> GetReservationByIdAsync(Guid reservationId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
+            return await LoadReservationByIdAsync(db, null, reservationId, organizationId);
+        }
+
+        private async Task<Reservation?> LoadReservationByIdAsync(
+            SqlConnection db,
+            IDbTransaction? transaction,
+            Guid reservationId,
+            Guid organizationId)
+        {
+            var (headers, extraFeeLines) = await db.DapperProcQueryMultipleAsync<ReservationEntity, ExtraFeeLineEntity>("Property.Reservation_GetById", new
             {
                 ReservationId = reservationId,
                 OrganizationId = organizationId
-            });
+            }, transaction: transaction);
 
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return MapReservationsWithExtraFeeLineEntities(headers, extraFeeLines).FirstOrDefault();
         }
         #endregion
 
@@ -245,17 +253,12 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     }
                 }
 
-                var populatedRes = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
-                {
-                    ReservationId = createdReservation.ReservationId,
-                    OrganizationId = createdReservation.OrganizationId
-                }, transaction: transaction);
-
-                if (populatedRes == null || !populatedRes.Any())
+                var populatedRes = await LoadReservationByIdAsync(db, transaction, createdReservation.ReservationId, createdReservation.OrganizationId);
+                if (populatedRes == null)
                     throw new Exception("Reservation not found");
 
                 await transaction.CommitAsync();
-                return ConvertEntityToModel(populatedRes.FirstOrDefault()!);
+                return populatedRes;
             }
             catch
             {
@@ -274,16 +277,10 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
             try
             {
-                var currentReservationResult = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
-                {
-                    ReservationId = reservation.ReservationId,
-                    OrganizationId = reservation.OrganizationId
-                }, transaction: transaction);
-
-                if (currentReservationResult == null || !currentReservationResult.Any())
+                var currentReservation = await LoadReservationByIdAsync(db, transaction, reservation.ReservationId, reservation.OrganizationId);
+                if (currentReservation == null)
                     throw new Exception("Reservation not found");
 
-                var currentReservation = ConvertEntityToModel(currentReservationResult.FirstOrDefault()!);
                 var currentExtraFeeLineIds = currentReservation.ExtraFeeLines.Select(efl => efl.ExtraFeeLineId).ToHashSet();
                 var incomingExtraFeeLineIds = reservation.ExtraFeeLines.Where(efl => efl.ExtraFeeLineId != 0).Select(efl => efl.ExtraFeeLineId).ToHashSet();
 
@@ -389,17 +386,12 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     }, transaction: transaction);
                 }
 
-                var updatedReservationResult = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetById", new
-                {
-                    ReservationId = reservation.ReservationId,
-                    OrganizationId = reservation.OrganizationId
-                }, transaction: transaction);
-
-                if (updatedReservationResult == null || !updatedReservationResult.Any())
+                var updatedReservation = await LoadReservationByIdAsync(db, transaction, reservation.ReservationId, reservation.OrganizationId);
+                if (updatedReservation == null)
                     throw new Exception("Reservation not updated");
 
                 await transaction.CommitAsync();
-                return ConvertEntityToModel(updatedReservationResult.FirstOrDefault()!);
+                return updatedReservation;
             }
             catch
             {

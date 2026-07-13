@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
 using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
@@ -12,7 +13,7 @@ public partial class AccountingRepository
     public async Task<IEnumerable<Invoice>> GetInvoicesAsync(InvoiceGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetByCriteria", new
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<InvoiceEntity, LedgerLineEntity>("Accounting.Invoice_GetByCriteria", new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -26,25 +27,13 @@ public partial class AccountingRepository
             EndDate = criteria.EndDate
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Invoice>();
-
-        return res.Select(ConvertEntityToModel);
+        return MapInvoicesWithLedgerLineEntities(headers, lines);
     }
 
     public async Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-        {
-            InvoiceId = invoiceId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
+        return await LoadInvoiceByIdAsync(db, null, invoiceId, organizationId);
     }
     #endregion
 
@@ -95,18 +84,12 @@ public partial class AccountingRepository
                 }, transaction: transaction);
             }
 
-            // Get fully populated invoice
-            var res = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-            {
-                InvoiceId = i.InvoiceId,
-                OrganizationId = i.OrganizationId
-            }, transaction: transaction);
-
-            if (res == null || !res.Any())
+            var reloaded = await LoadInvoiceByIdAsync(db, transaction, i.InvoiceId, i.OrganizationId);
+            if (reloaded == null)
                 throw new Exception("Invoice not found");
 
             await transaction.CommitAsync();
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return reloaded;
         }
         catch
         {
@@ -163,17 +146,10 @@ public partial class AccountingRepository
 
     private async Task<Invoice> UpdateByIdCoreAsync(SqlConnection db, IDbTransaction transaction, Invoice invoice)
     {
-        // Get current invoice with LedgerLines
-        var currentInvoiceResult = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-        {
-            InvoiceId = invoice.InvoiceId,
-            OrganizationId = invoice.OrganizationId
-        }, transaction: transaction);
-
-        if (currentInvoiceResult == null || !currentInvoiceResult.Any())
+        var currentInvoice = await LoadInvoiceByIdAsync(db, transaction, invoice.InvoiceId, invoice.OrganizationId);
+        if (currentInvoice == null)
             throw new Exception("Invoice not found");
 
-        var currentInvoice = ConvertEntityToModel(currentInvoiceResult.FirstOrDefault()!);
         var currentLedgerLineIds = currentInvoice.LedgerLines.Select(ll => ll.LedgerLineId).ToHashSet();
         var currentLedgerLineByLineNumber = currentInvoice.LedgerLines
             .GroupBy(ll => ll.LineNumber)
@@ -294,17 +270,54 @@ public partial class AccountingRepository
             }
         }
 
-        // Get fully populated invoice
-        var updatedInvoiceResult = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetById", new
-        {
-            InvoiceId = invoice.InvoiceId,
-            OrganizationId = invoice.OrganizationId
-        }, transaction: transaction);
-
-        if (updatedInvoiceResult == null || !updatedInvoiceResult.Any())
+        var updatedInvoice = await LoadInvoiceByIdAsync(db, transaction, invoice.InvoiceId, invoice.OrganizationId);
+        if (updatedInvoice == null)
             throw new Exception("Invoice not updated");
 
-        return ConvertEntityToModel(updatedInvoiceResult.FirstOrDefault()!);
+        return updatedInvoice;
+    }
+
+    private async Task<Invoice?> LoadInvoiceByIdAsync(
+        SqlConnection db,
+        IDbTransaction? transaction,
+        Guid invoiceId,
+        Guid organizationId)
+    {
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<InvoiceEntity, LedgerLineEntity>("Accounting.Invoice_GetById", new
+        {
+            InvoiceId = invoiceId,
+            OrganizationId = organizationId
+        }, transaction: transaction);
+
+        return MapInvoicesWithLedgerLineEntities(headers, lines).FirstOrDefault();
+    }
+
+    private List<Invoice> MapInvoicesWithLedgerLineEntities(
+        IEnumerable<InvoiceEntity>? invoiceEntities,
+        IEnumerable<LedgerLineEntity>? lineEntities)
+    {
+        if (invoiceEntities == null || !invoiceEntities.Any())
+            return new List<Invoice>();
+
+        var linesByInvoiceId = (lineEntities ?? Enumerable.Empty<LedgerLineEntity>())
+            .GroupBy(line => line.InvoiceId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertLedgerLineEntityToModel)
+                    .GroupBy(line => line.LedgerLineId)
+                    .Select(lineGroup => lineGroup.First())
+                    .OrderBy(line => line.LineNumber)
+                    .ToList());
+
+        var invoices = invoiceEntities.Select(ConvertEntityToModel).ToList();
+        foreach (var invoice in invoices)
+        {
+            if (linesByInvoiceId.TryGetValue(invoice.InvoiceId, out var lines) && lines.Count > 0)
+                invoice.LedgerLines = lines;
+        }
+
+        return invoices;
     }
     public async Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
     {

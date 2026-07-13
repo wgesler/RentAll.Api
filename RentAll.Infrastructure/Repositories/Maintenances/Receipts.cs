@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Maintenances;
 using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;
@@ -11,7 +12,7 @@ public partial class MaintenanceRepository
     public async Task<IEnumerable<Receipt>> GetReceiptsByCriteriaAsync(ReceiptGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_GetByCriteria", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<ReceiptEntity, ReceiptSplitEntity>("Maintenance.Receipt_GetByCriteria", new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -23,70 +24,44 @@ public partial class MaintenanceRepository
             ReceiptKind = criteria.ReceiptKind.HasValue ? (byte?)criteria.ReceiptKind.Value : null
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Receipt>();
-
-        var receipts = res.Select(ConvertEntityToModel).ToList();
-        foreach (var receipt in receipts)
-            await ApplyReceiptSplitsAsync(receipt);
-
-        return receipts;
+        return MapReceiptsWithSplitEntities(headers, splits);
     }
 
     public async Task<IEnumerable<Receipt>> GetReceiptsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_GetListByOfficeIds", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<ReceiptEntity, ReceiptSplitEntity>("Maintenance.Receipt_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Receipt>();
-
-        var receipts = res.Select(ConvertEntityToModel).ToList();
-        foreach (var receipt in receipts)
-            await ApplyReceiptSplitsAsync(receipt);
-
-        return receipts;
+        return MapReceiptsWithSplitEntities(headers, splits);
     }
 
     public async Task<IEnumerable<Receipt>> GetReceiptsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_GetListByPropertyId", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<ReceiptEntity, ReceiptSplitEntity>("Maintenance.Receipt_GetListByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
             Offices = officeAccess
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Receipt>();
-
-        var receipts = res.Select(ConvertEntityToModel).ToList();
-        foreach (var receipt in receipts)
-            await ApplyReceiptSplitsAsync(receipt);
-
-        return receipts;
+        return MapReceiptsWithSplitEntities(headers, splits);
     }
 
     public async Task<Receipt?> GetReceiptByIdAsync(Guid receiptId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ReceiptEntity>("Maintenance.Receipt_GetById", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<ReceiptEntity, ReceiptSplitEntity>("Maintenance.Receipt_GetById", new
         {
             ReceiptId = receiptId,
             OrganizationId = organizationId
         });
 
-        if (res == null || !res.Any())
-            return null;
-
-        var receipt = ConvertEntityToModel(res.First());
-        await ApplyReceiptSplitsAsync(receipt);
-        return receipt;
+        return MapReceiptsWithSplitEntities(headers, splits).FirstOrDefault();
     }
     #endregion
 
@@ -249,17 +224,32 @@ public partial class MaintenanceRepository
     #endregion
 
     #region Private Methods
-    private async Task ApplyReceiptSplitsAsync(Receipt receipt)
+    private static List<Receipt> MapReceiptsWithSplitEntities(
+        IEnumerable<ReceiptEntity>? receiptEntities,
+        IEnumerable<ReceiptSplitEntity>? splitEntities)
     {
-        var tableSplits = await GetReceiptSplitsByReceiptIdAsync(receipt.ReceiptId);
-        if (tableSplits.Count > 0)
-            receipt.Splits = tableSplits;
-    }
+        if (receiptEntities == null || !receiptEntities.Any())
+            return new List<Receipt>();
 
-    private async Task<List<ReceiptSplit>> GetReceiptSplitsByReceiptIdAsync(Guid receiptId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        return await GetReceiptSplitsByReceiptIdAsync(db, null, receiptId);
+        var splitsByReceiptId = (splitEntities ?? Enumerable.Empty<ReceiptSplitEntity>())
+            .GroupBy(split => split.ReceiptId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertEntityToModel)
+                    .GroupBy(split => split.ReceiptSplitId)
+                    .Select(splitGroup => splitGroup.First())
+                    .OrderBy(split => split.ReceiptSplitId)
+                    .ToList());
+
+        var receipts = receiptEntities.Select(ConvertEntityToModel).ToList();
+        foreach (var receipt in receipts)
+        {
+            if (splitsByReceiptId.TryGetValue(receipt.ReceiptId, out var splits) && splits.Count > 0)
+                receipt.Splits = splits;
+        }
+
+        return receipts;
     }
 
     private static async Task<List<ReceiptSplit>> GetReceiptSplitsByReceiptIdAsync(

@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
 using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
@@ -11,7 +12,7 @@ public partial class AccountingRepository
     public async Task<IEnumerable<Transfer>> GetTransfersByCriteriaAsync(TransferGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TransferEntity>("Accounting.Transfer_GetByCriteria", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<TransferEntity, TransferSplitEntity>("Accounting.Transfer_GetByCriteria", new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -22,70 +23,45 @@ public partial class AccountingRepository
             EndDate = criteria.EndDate
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Transfer>();
-
-        var transfers = res.Select(ConvertTransferEntityToModel).ToList();
-        foreach (var transfer in transfers)
-            await ApplyTransferSplitsAsync(transfer);
-
-        return transfers;
+        return MapTransfersWithSplitEntities(headers, splits);
     }
 
     public async Task<IEnumerable<Transfer>> GetTransfersByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TransferEntity>("Accounting.Transfer_GetListByOfficeIds", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<TransferEntity, TransferSplitEntity>("Accounting.Transfer_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Transfer>();
-
-        var transfers = res.Select(ConvertTransferEntityToModel).ToList();
-        foreach (var transfer in transfers)
-            await ApplyTransferSplitsAsync(transfer);
-
-        return transfers;
+        return MapTransfersWithSplitEntities(headers, splits);
     }
 
     public async Task<IEnumerable<Transfer>> GetTransfersByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TransferEntity>("Accounting.Transfer_GetListByPropertyId", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<TransferEntity, TransferSplitEntity>("Accounting.Transfer_GetListByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
             Offices = officeAccess
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Transfer>();
-
-        var transfers = res.Select(ConvertTransferEntityToModel).ToList();
-        foreach (var transfer in transfers)
-            await ApplyTransferSplitsAsync(transfer);
-
-        return transfers;
+        return MapTransfersWithSplitEntities(headers, splits);
     }
 
     public async Task<Transfer?> GetTransferByIdAsync(Guid transferId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TransferEntity>("Accounting.Transfer_GetById", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<TransferEntity, TransferSplitEntity>("Accounting.Transfer_GetById", new
         {
             TransferId = transferId,
             OrganizationId = organizationId
         });
 
-        if (res == null || !res.Any())
-            return null;
-
-        var transfer = ConvertTransferEntityToModel(res.First());
-        await ApplyTransferSplitsAsync(transfer);
-        return transfer;
+        var transfers = MapTransfersWithSplitEntities(headers, splits);
+        return transfers.FirstOrDefault();
     }
 
     #endregion
@@ -213,12 +189,34 @@ public partial class AccountingRepository
         return updated;
     }
 
-    private async Task ApplyTransferSplitsAsync(Transfer transfer)
+    private static List<Transfer> MapTransfersWithSplitEntities(
+        IEnumerable<TransferEntity>? transferEntities,
+        IEnumerable<TransferSplitEntity>? splitEntities)
     {
-        var tableSplits = await GetTransferSplitsByTransferIdAsync(transfer.TransferId);
-        if (tableSplits.Count > 0)
-            transfer.Splits = tableSplits;
-        ApplyTransferPropertyIds(transfer);
+        if (transferEntities == null || !transferEntities.Any())
+            return new List<Transfer>();
+
+        var splitsByTransferId = (splitEntities ?? Enumerable.Empty<TransferSplitEntity>())
+            .GroupBy(split => split.TransferId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertTransferSplitEntityToModel)
+                    .GroupBy(split => split.TransferSplitId)
+                    .Select(splitGroup => splitGroup.First())
+                    .OrderBy(split => split.TransferSplitId)
+                    .ToList());
+
+        var transfers = transferEntities.Select(ConvertTransferEntityToModel).ToList();
+        foreach (var transfer in transfers)
+        {
+            if (splitsByTransferId.TryGetValue(transfer.TransferId, out var splits) && splits.Count > 0)
+                transfer.Splits = splits;
+
+            ApplyTransferPropertyIds(transfer);
+        }
+
+        return transfers;
     }
 
     private static void ApplyTransferPropertyIds(Transfer transfer)
@@ -242,12 +240,6 @@ public partial class AccountingRepository
             : (transfer.Splits ?? new List<TransferSplit>())
                 .Select(split => split.PropertyId)
                 .FirstOrDefault(propertyId => propertyId.HasValue && propertyId != Guid.Empty);
-
-    private async Task<List<TransferSplit>> GetTransferSplitsByTransferIdAsync(Guid transferId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        return await GetTransferSplitsByTransferIdAsync(db, null, transferId);
-    }
 
     private static async Task<List<TransferSplit>> GetTransferSplitsByTransferIdAsync(
         SqlConnection db,

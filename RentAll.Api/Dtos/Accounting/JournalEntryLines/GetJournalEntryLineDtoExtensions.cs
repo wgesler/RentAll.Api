@@ -16,6 +16,7 @@ public static class GetJournalEntryLineDtoExtensions
             ContactId = dto.ContactId,
             IncludeVoided = dto.IncludeVoided,
             IncludeUnposted = dto.IncludeUnposted,
+            UnclearedOnly = dto.UnclearedOnly,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate
         };

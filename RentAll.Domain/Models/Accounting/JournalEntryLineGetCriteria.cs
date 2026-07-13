@@ -12,6 +12,7 @@ public class JournalEntryLineGetCriteria
     public Guid? ContactId { get; set; }
     public bool IncludeVoided { get; set; }
     public bool IncludeUnposted { get; set; } = true;
+    public bool UnclearedOnly { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 }

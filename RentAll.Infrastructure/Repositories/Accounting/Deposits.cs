@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
 using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
@@ -11,7 +12,7 @@ public partial class AccountingRepository
     public async Task<IEnumerable<Deposit>> GetDepositsByCriteriaAsync(DepositGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DepositEntity>("Accounting.Deposit_GetByCriteria", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<DepositEntity, DepositSplitEntity>("Accounting.Deposit_GetByCriteria", new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -22,70 +23,45 @@ public partial class AccountingRepository
             EndDate = criteria.EndDate
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Deposit>();
-
-        var deposits = res.Select(ConvertDepositEntityToModel).ToList();
-        foreach (var deposit in deposits)
-            await ApplyDepositSplitsAsync(deposit);
-
-        return deposits;
+        return MapDepositsWithSplitEntities(headers, splits);
     }
 
     public async Task<IEnumerable<Deposit>> GetDepositsByOfficeIdsAsync(Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DepositEntity>("Accounting.Deposit_GetListByOfficeIds", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<DepositEntity, DepositSplitEntity>("Accounting.Deposit_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Deposit>();
-
-        var deposits = res.Select(ConvertDepositEntityToModel).ToList();
-        foreach (var deposit in deposits)
-            await ApplyDepositSplitsAsync(deposit);
-
-        return deposits;
+        return MapDepositsWithSplitEntities(headers, splits);
     }
 
     public async Task<IEnumerable<Deposit>> GetDepositsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DepositEntity>("Accounting.Deposit_GetListByPropertyId", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<DepositEntity, DepositSplitEntity>("Accounting.Deposit_GetListByPropertyId", new
         {
             PropertyId = propertyId,
             OrganizationId = organizationId,
             Offices = officeAccess
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<Deposit>();
-
-        var deposits = res.Select(ConvertDepositEntityToModel).ToList();
-        foreach (var deposit in deposits)
-            await ApplyDepositSplitsAsync(deposit);
-
-        return deposits;
+        return MapDepositsWithSplitEntities(headers, splits);
     }
 
     public async Task<Deposit?> GetDepositByIdAsync(Guid depositId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<DepositEntity>("Accounting.Deposit_GetById", new
+        var (headers, splits) = await db.DapperProcQueryMultipleAsync<DepositEntity, DepositSplitEntity>("Accounting.Deposit_GetById", new
         {
             DepositId = depositId,
             OrganizationId = organizationId
         });
 
-        if (res == null || !res.Any())
-            return null;
-
-        var deposit = ConvertDepositEntityToModel(res.First());
-        await ApplyDepositSplitsAsync(deposit);
-        return deposit;
+        var deposits = MapDepositsWithSplitEntities(headers, splits);
+        return deposits.FirstOrDefault();
     }
 
     #endregion
@@ -213,12 +189,34 @@ public partial class AccountingRepository
         return updated;
     }
 
-    private async Task ApplyDepositSplitsAsync(Deposit deposit)
+    private static List<Deposit> MapDepositsWithSplitEntities(
+        IEnumerable<DepositEntity>? depositEntities,
+        IEnumerable<DepositSplitEntity>? splitEntities)
     {
-        var tableSplits = await GetDepositSplitsByDepositIdAsync(deposit.DepositId);
-        if (tableSplits.Count > 0)
-            deposit.Splits = tableSplits;
-        ApplyDepositPropertyIds(deposit);
+        if (depositEntities == null || !depositEntities.Any())
+            return new List<Deposit>();
+
+        var splitsByDepositId = (splitEntities ?? Enumerable.Empty<DepositSplitEntity>())
+            .GroupBy(split => split.DepositId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertDepositSplitEntityToModel)
+                    .GroupBy(split => split.DepositSplitId)
+                    .Select(splitGroup => splitGroup.First())
+                    .OrderBy(split => split.DepositSplitId)
+                    .ToList());
+
+        var deposits = depositEntities.Select(ConvertDepositEntityToModel).ToList();
+        foreach (var deposit in deposits)
+        {
+            if (splitsByDepositId.TryGetValue(deposit.DepositId, out var splits) && splits.Count > 0)
+                deposit.Splits = splits;
+
+            ApplyDepositPropertyIds(deposit);
+        }
+
+        return deposits;
     }
 
     private static void ApplyDepositPropertyIds(Deposit deposit)
@@ -242,12 +240,6 @@ public partial class AccountingRepository
             : (deposit.Splits ?? new List<DepositSplit>())
                 .Select(split => split.PropertyId)
                 .FirstOrDefault(propertyId => propertyId.HasValue && propertyId != Guid.Empty);
-
-    private async Task<List<DepositSplit>> GetDepositSplitsByDepositIdAsync(Guid depositId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        return await GetDepositSplitsByDepositIdAsync(db, null, depositId);
-    }
 
     private static async Task<List<DepositSplit>> GetDepositSplitsByDepositIdAsync(
         SqlConnection db,

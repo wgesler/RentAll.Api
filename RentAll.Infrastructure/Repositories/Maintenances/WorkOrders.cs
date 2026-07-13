@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Maintenances;
+using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Maintenances;
 
@@ -60,16 +62,50 @@ public partial class MaintenanceRepository
     public async Task<WorkOrder?> GetWorkOrderByIdAsync(Guid workOrderId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetById", new
+        return await LoadWorkOrderByIdAsync(db, null, workOrderId, organizationId);
+    }
+
+    private async Task<WorkOrder?> LoadWorkOrderByIdAsync(
+        SqlConnection db,
+        IDbTransaction? transaction,
+        Guid workOrderId,
+        Guid organizationId)
+    {
+        var (headers, items) = await db.DapperProcQueryMultipleAsync<WorkOrderEntity, WorkOrderItemEntity>("Maintenance.WorkOrder_GetById", new
         {
             WorkOrderId = workOrderId,
             OrganizationId = organizationId
-        });
+        }, transaction: transaction);
 
-        if (res == null || !res.Any())
-            return null;
+        return MapWorkOrdersWithItemEntities(headers, items).FirstOrDefault();
+    }
 
-        return ConvertEntityToModel(res.First());
+    private static List<WorkOrder> MapWorkOrdersWithItemEntities(
+        IEnumerable<WorkOrderEntity>? workOrderEntities,
+        IEnumerable<WorkOrderItemEntity>? itemEntities)
+    {
+        if (workOrderEntities == null || !workOrderEntities.Any())
+            return new List<WorkOrder>();
+
+        var itemsByWorkOrderId = (itemEntities ?? Enumerable.Empty<WorkOrderItemEntity>())
+            .GroupBy(item => item.WorkOrderId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertWorkOrderItemEntityToModel)
+                    .GroupBy(item => item.WorkOrderItemId)
+                    .Select(itemGroup => itemGroup.First())
+                    .OrderBy(item => item.WorkOrderItemId)
+                    .ToList());
+
+        var workOrders = workOrderEntities.Select(ConvertEntityToModel).ToList();
+        foreach (var workOrder in workOrders)
+        {
+            if (itemsByWorkOrderId.TryGetValue(workOrder.WorkOrderId, out var items) && items.Count > 0)
+                workOrder.WorkOrderItems = items;
+        }
+
+        return workOrders;
     }
     #endregion
 
@@ -120,18 +156,12 @@ public partial class MaintenanceRepository
                 }, transaction: transaction);
             }
 
-            // Get fully populated work order
-            var res = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetById", new
-            {
-                WorkOrderId = o.WorkOrderId,
-                OrganizationId = o.OrganizationId
-            }, transaction: transaction);
-
-            if (res == null || !res.Any())
+            var reloaded = await LoadWorkOrderByIdAsync(db, transaction, o.WorkOrderId, o.OrganizationId);
+            if (reloaded == null)
                 throw new Exception("Work Order not found");
 
             await transaction.CommitAsync();
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return reloaded;
         }
         catch
         {
@@ -150,17 +180,11 @@ public partial class MaintenanceRepository
 
         try
         {
-            // Get fully populated work order
-            var existing = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetById", new
-            {
-                WorkOrderId = workOrder.WorkOrderId,
-                OrganizationId = workOrder.OrganizationId
-            }, transaction: transaction);
-
-            if (existing == null || !existing.Any())
+            var existing = await LoadWorkOrderByIdAsync(db, transaction, workOrder.WorkOrderId, workOrder.OrganizationId);
+            if (existing == null)
                 throw new Exception("Work Order not found");
 
-            var currentOrder = ConvertEntityToModel(existing.FirstOrDefault()!);
+            var currentOrder = existing;
             var currentOrderItemsIds = currentOrder.WorkOrderItems.Select(wo => wo.WorkOrderItemId).ToHashSet();
             var incomingOrderItemIds = workOrder.WorkOrderItems.Where(wo => wo.WorkOrderItemId != Guid.Empty).Select(wo => wo.WorkOrderItemId).ToHashSet();
 
@@ -231,18 +255,12 @@ public partial class MaintenanceRepository
                 }, transaction: transaction);
             }
 
-            // Get fully populated work order
-            var updated = await db.DapperProcQueryAsync<WorkOrderEntity>("Maintenance.WorkOrder_GetById", new
-            {
-                WorkOrderId = workOrder.WorkOrderId,
-                OrganizationId = workOrder.OrganizationId
-            }, transaction: transaction);
-
-            if (updated == null || !updated.Any())
+            var updated = await LoadWorkOrderByIdAsync(db, transaction, workOrder.WorkOrderId, workOrder.OrganizationId);
+            if (updated == null)
                 throw new Exception("Work Order not updated");
 
             await transaction.CommitAsync();
-            return ConvertEntityToModel(updated.FirstOrDefault()!);
+            return updated;
         }
         catch
         {

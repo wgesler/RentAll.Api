@@ -5,7 +5,9 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Tickets;
 using RentAll.Infrastructure.Serialization;
+using System.Data;
 using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Tickets;
@@ -54,16 +56,49 @@ public class TicketRepository : ITicketRepository
     public async Task<Ticket?> GetTicketByIdAsync(Guid ticketId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetById", new
+        return await LoadTicketByIdAsync(db, null, ticketId, organizationId);
+    }
+
+    private async Task<Ticket?> LoadTicketByIdAsync(
+        SqlConnection db,
+        IDbTransaction? transaction,
+        Guid ticketId,
+        Guid organizationId)
+    {
+        var (headers, notes) = await db.DapperProcQueryMultipleAsync<TicketEntity, TicketNote>("Maintenance.Ticket_GetById", new
         {
             TicketId = ticketId,
             OrganizationId = organizationId
-        });
+        }, transaction: transaction);
 
-        if (res == null || !res.Any())
-            return null;
+        return MapTicketsWithNoteEntities(headers, notes).FirstOrDefault();
+    }
 
-        return ConvertEntityToModel(res.First());
+    private static List<Ticket> MapTicketsWithNoteEntities(
+        IEnumerable<TicketEntity>? ticketEntities,
+        IEnumerable<TicketNote>? noteEntities)
+    {
+        if (ticketEntities == null || !ticketEntities.Any())
+            return new List<Ticket>();
+
+        var notesByTicketId = (noteEntities ?? Enumerable.Empty<TicketNote>())
+            .GroupBy(note => note.TicketId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .GroupBy(note => note.TicketNoteId)
+                    .Select(noteGroup => noteGroup.First())
+                    .OrderBy(note => note.CreatedOn)
+                    .ToList());
+
+        var tickets = ticketEntities.Select(ConvertEntityToModel).ToList();
+        foreach (var ticket in tickets)
+        {
+            if (notesByTicketId.TryGetValue(ticket.TicketId, out var notes) && notes.Count > 0)
+                ticket.Notes = notes;
+        }
+
+        return tickets;
     }
 
     public async Task<Ticket> CreateTicketAsync(Ticket ticket)
@@ -114,17 +149,12 @@ public class TicketRepository : ITicketRepository
                 }
             }
 
-            var populated = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetById", new
-            {
-                TicketId = createdTicket.TicketId,
-                OrganizationId = createdTicket.OrganizationId
-            }, transaction: transaction);
-
-            if (populated == null || !populated.Any())
+            var populated = await LoadTicketByIdAsync(db, transaction, createdTicket.TicketId, createdTicket.OrganizationId);
+            if (populated == null)
                 throw new Exception("Ticket not found");
 
             await transaction.CommitAsync();
-            return ConvertEntityToModel(populated.First());
+            return populated;
         }
         catch
         {
@@ -141,13 +171,8 @@ public class TicketRepository : ITicketRepository
 
         try
         {
-            var currentTicketResult = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetById", new
-            {
-                TicketId = ticket.TicketId,
-                OrganizationId = ticket.OrganizationId
-            }, transaction: transaction);
-
-            if (currentTicketResult == null || !currentTicketResult.Any())
+            var currentTicket = await LoadTicketByIdAsync(db, transaction, ticket.TicketId, ticket.OrganizationId);
+            if (currentTicket == null)
                 throw new Exception("Ticket not found");
 
             var response = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_UpdateById", new
@@ -192,17 +217,12 @@ public class TicketRepository : ITicketRepository
                 }
             }
 
-            var updatedResult = await db.DapperProcQueryAsync<TicketEntity>("Maintenance.Ticket_GetById", new
-            {
-                TicketId = ticket.TicketId,
-                OrganizationId = ticket.OrganizationId
-            }, transaction: transaction);
-
-            if (updatedResult == null || !updatedResult.Any())
+            var updatedResult = await LoadTicketByIdAsync(db, transaction, ticket.TicketId, ticket.OrganizationId);
+            if (updatedResult == null)
                 throw new Exception("Ticket not updated");
 
             await transaction.CommitAsync();
-            return ConvertEntityToModel(updatedResult.First());
+            return updatedResult;
         }
         catch
         {

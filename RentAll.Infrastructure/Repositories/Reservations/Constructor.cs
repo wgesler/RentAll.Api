@@ -140,6 +140,35 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             };
         }
 
+        private List<Reservation> MapReservationsWithExtraFeeLineEntities(
+            IEnumerable<ReservationEntity>? reservationEntities,
+            IEnumerable<ExtraFeeLineEntity>? extraFeeLineEntities)
+        {
+            if (reservationEntities == null || !reservationEntities.Any())
+                return new List<Reservation>();
+
+            var extraFeeLinesByReservationId = (extraFeeLineEntities ?? Enumerable.Empty<ExtraFeeLineEntity>())
+                .Where(line => line.ReservationId.HasValue)
+                .GroupBy(line => line.ReservationId!.Value)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .Select(ConvertExtraFeeLineEntityToModel)
+                        .GroupBy(line => line.ExtraFeeLineId)
+                        .Select(lineGroup => lineGroup.First())
+                        .OrderBy(line => line.ExtraFeeLineId)
+                        .ToList());
+
+            var reservations = reservationEntities.Select(ConvertEntityToModel).ToList();
+            foreach (var reservation in reservations)
+            {
+                if (extraFeeLinesByReservationId.TryGetValue(reservation.ReservationId, out var lines) && lines.Count > 0)
+                    reservation.ExtraFeeLines = lines;
+            }
+
+            return reservations;
+        }
+
         private ReservationList ConvertEntityToModel(ReservationListEntity e)
         {
             return new ReservationList

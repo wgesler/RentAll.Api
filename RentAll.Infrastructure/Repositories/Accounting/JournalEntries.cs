@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
+using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
 
@@ -9,7 +11,7 @@ public partial class JournalEntryRepository
     public async Task<IEnumerable<JournalEntry>> GetJournalEntriesAsync(JournalEntryGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetByCriteria", new
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetByCriteria", new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -21,10 +23,7 @@ public partial class JournalEntryRepository
             EndDate = criteria.EndDate
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<JournalEntry>();
-
-        return res.Select(ConvertEntityToModel);
+        return MapJournalEntriesWithLineEntities(headers, lines);
     }
 
     public async Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria)
@@ -42,6 +41,7 @@ public partial class JournalEntryRepository
             ContactId = criteria.ContactId,
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
+            UnclearedOnly = criteria.UnclearedOnly,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
         });
@@ -72,31 +72,34 @@ public partial class JournalEntryRepository
     public async Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetById", new
-        {
-            JournalEntryId = journalEntryId,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
+        return await LoadJournalEntryByIdAsync(db, null, journalEntryId, organizationId);
     }
 
     public async Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetByCode", new
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetByCode", new
         {
             JournalEntryCode = journalEntryCode,
             OrganizationId = organizationId
         });
 
-        if (res == null || !res.Any())
-            return null;
+        return MapJournalEntriesWithLineEntities(headers, lines).FirstOrDefault();
+    }
 
-        return ConvertEntityToModel(res.FirstOrDefault()!);
+    private async Task<JournalEntry?> LoadJournalEntryByIdAsync(
+        SqlConnection db,
+        IDbTransaction? transaction,
+        Guid journalEntryId,
+        Guid organizationId)
+    {
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetById", new
+        {
+            JournalEntryId = journalEntryId,
+            OrganizationId = organizationId
+        }, transaction: transaction);
+
+        return MapJournalEntriesWithLineEntities(headers, lines).FirstOrDefault();
     }
 
     public async Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId)
@@ -159,17 +162,12 @@ public partial class JournalEntryRepository
                     }, transaction: transaction);
                 }
 
-                var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetById", new
-                {
-                    JournalEntryId = entry.JournalEntryId,
-                    OrganizationId = entry.OrganizationId
-                }, transaction: transaction);
-
-                if (res == null || !res.Any())
+                var reloaded = await LoadJournalEntryByIdAsync(db, transaction, entry.JournalEntryId, entry.OrganizationId);
+                if (reloaded == null)
                     throw new Exception("Journal entry not found");
 
                 await transaction.CommitAsync();
-                return ConvertEntityToModel(res.FirstOrDefault()!);
+                return reloaded;
             }
             catch
             {
@@ -187,17 +185,19 @@ public partial class JournalEntryRepository
 
         try
         {
-            var currentEntryResult = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetById", new
+            var (currentHeaders, currentLines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetById", new
             {
                 JournalEntryId = journalEntry.JournalEntryId,
                 OrganizationId = journalEntry.OrganizationId
             }, transaction: transaction);
 
-            if (currentEntryResult == null || !currentEntryResult.Any())
+            var currentEntity = currentHeaders?.FirstOrDefault();
+            if (currentEntity == null)
                 throw new Exception("Journal entry not found");
 
-            var currentEntity = currentEntryResult.FirstOrDefault()!;
-            var currentEntry = ConvertEntityToModel(currentEntity);
+            var currentEntry = MapJournalEntriesWithLineEntities(currentHeaders, currentLines).FirstOrDefault()
+                ?? throw new Exception("Journal entry not found");
+
             var currentLineIds = currentEntry.JournalEntryLines.Select(l => l.JournalEntryLineId).ToHashSet();
             var incomingActiveLines = journalEntry.JournalEntryLines.Where(l => l.Debit != 0 || l.Credit != 0).ToList();
             var incomingLineIds = incomingActiveLines.Where(l => l.JournalEntryLineId != Guid.Empty).Select(l => l.JournalEntryLineId).ToHashSet();
@@ -267,17 +267,12 @@ public partial class JournalEntryRepository
                 }
             }
 
-            var updatedEntryResult = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_GetById", new
-            {
-                JournalEntryId = journalEntry.JournalEntryId,
-                OrganizationId = journalEntry.OrganizationId
-            }, transaction: transaction);
-
-            if (updatedEntryResult == null || !updatedEntryResult.Any())
+            var updatedEntry = await LoadJournalEntryByIdAsync(db, transaction, journalEntry.JournalEntryId, journalEntry.OrganizationId);
+            if (updatedEntry == null)
                 throw new Exception("Journal entry not updated");
 
             await transaction.CommitAsync();
-            return ConvertEntityToModel(updatedEntryResult.FirstOrDefault()!);
+            return updatedEntry;
         }
         catch
         {
