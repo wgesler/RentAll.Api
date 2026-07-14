@@ -53,6 +53,12 @@ public interface IAccountingRepository
     Task DeleteChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
     #endregion
 
+    #region Reconcile
+    Task<ReconcileDraft?> GetReconcileDraftByAccountIdAsync(Guid organizationId, int officeId, int accountId);
+    Task<ReconcileDraft> UpsertReconcileDraftAsync(ReconcileDraft reconcileDraft);
+    Task DeleteReconcileDraftByAccountIdAsync(Guid organizationId, int officeId, int accountId);
+    #endregion
+
     #region AccountingErrors
     Task LogAccountingErrorAsync(AccountingError error);
     #endregion

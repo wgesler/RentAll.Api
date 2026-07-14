@@ -178,6 +178,8 @@ namespace RentAll.Api.Controllers
 
                 var updatedAccount = await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.EndingBalance, request.StatementDate);
 
+                await _accountingRepository.DeleteReconcileDraftByAccountIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId);
+
                 return Ok(new ChartOfAccountResponseDto(updatedAccount));
             }
             catch (Exception ex)
