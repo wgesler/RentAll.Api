@@ -22,7 +22,7 @@ public partial class AccountingController
         {
             var reconcileDraft = await _accountingRepository.GetReconcileDraftByAccountIdAsync(CurrentOrganizationId, officeId, accountId);
             if (reconcileDraft == null)
-                return NotFound();
+                return Ok(null);
 
             return Ok(new ReconcileDraftResponseDto(reconcileDraft));
         }
