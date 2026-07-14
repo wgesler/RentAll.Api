@@ -17,6 +17,7 @@ public class JournalEntryResponseDto
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
+    public bool IsCashOnly { get; set; } = false;
     public List<JournalEntryLineResponseDto> JournalEntryLines { get; set; } = new List<JournalEntryLineResponseDto>();
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -38,6 +39,7 @@ public class JournalEntryResponseDto
         Memo = journalEntry.Memo;
         IsPosted = journalEntry.IsPosted;
         IsVoided = journalEntry.IsVoided;
+        IsCashOnly = journalEntry.IsCashOnly;
         JournalEntryLines = journalEntry.JournalEntryLines.Select(l => new JournalEntryLineResponseDto(l)).ToList();
         CreatedOn = journalEntry.CreatedOn;
         CreatedBy = journalEntry.CreatedBy;

@@ -84,7 +84,8 @@ public static class JournalEntryRecapLineClassifier
             && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId
             && AccountingManager.MatchOwnerActualRentMemo(memo).IsMatch)
         {
-            result = BuildResult("OwnerRentActual", debit - credit, line, memo, sourceTypeId);
+            // Same Owner AP credit side as Expected (OwnerRent uses credit - debit).
+            result = BuildResult("OwnerRentActual", credit - debit, line, memo, sourceTypeId);
             return true;
         }
 

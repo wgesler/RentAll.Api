@@ -14,6 +14,7 @@ public class CreateJournalEntryDto
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
+    public bool IsCashOnly { get; set; } = false;
     public List<CreateJournalEntryLineDto> JournalEntryLines { get; set; } = new List<CreateJournalEntryLineDto>();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -57,6 +58,7 @@ public class CreateJournalEntryDto
             Memo = Memo,
             IsPosted = IsPosted,
             IsVoided = IsVoided,
+            IsCashOnly = IsCashOnly,
             JournalEntryLines = JournalEntryLines?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<JournalEntryLine>(),
             CreatedBy = currentUser
         };

@@ -298,7 +298,7 @@ public class InvoiceJournalEntryGapCoverageTests
             expectedOwnerActual,
             ownerActualEntry.JournalEntryLines
                 .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-                .Sum(line => line.Debit));
+                .Sum(line => line.Credit));
     }
 
     [Fact]
@@ -339,7 +339,7 @@ public class InvoiceJournalEntryGapCoverageTests
             expectedOwnerActual,
             ownerActualEntry.JournalEntryLines
                 .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-                .Sum(line => line.Debit));
+                .Sum(line => line.Credit));
     }
 
     [Fact]
@@ -482,7 +482,7 @@ public class InvoiceJournalEntryGapCoverageTests
             expectedOwnerRent,
             ownerActualEntry.JournalEntryLines
                 .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-                .Sum(line => line.Debit));
+                .Sum(line => line.Credit));
     }
 
     [Fact]
@@ -566,7 +566,7 @@ public class InvoiceJournalEntryGapCoverageTests
             expectedOwnerActual,
             ownerActualEntry.JournalEntryLines
                 .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-                .Sum(line => line.Debit));
+                .Sum(line => line.Credit));
     }
 
     [Fact]
@@ -622,7 +622,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var actualOwnerRent = ownerActualEntry.JournalEntryLines
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-            .Sum(line => line.Debit);
+            .Sum(line => line.Credit);
 
         Assert.Equal(expectedOwnerRent, actualOwnerRent);
     }
@@ -714,7 +714,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var actualOwnerRent = ownerActualEntry.JournalEntryLines
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-            .Sum(line => line.Debit);
+            .Sum(line => line.Credit);
 
         Assert.Equal(expectedOwnerRent, actualOwnerRent);
     }

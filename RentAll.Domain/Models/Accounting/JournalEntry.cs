@@ -15,6 +15,7 @@ public class JournalEntry
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
+    public bool IsCashOnly { get; set; } = false;
     public List<JournalEntryLine> JournalEntryLines { get; set; } = new List<JournalEntryLine>();
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

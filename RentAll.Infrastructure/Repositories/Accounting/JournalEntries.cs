@@ -169,6 +169,7 @@ public partial class JournalEntryRepository
                     Memo = journalEntry.Memo,
                     IsPosted = journalEntry.IsPosted,
                     IsVoided = journalEntry.IsVoided,
+                    IsCashOnly = journalEntry.IsCashOnly,
                     CreatedBy = journalEntry.CreatedBy
                 }, transaction: transaction);
 

@@ -193,8 +193,21 @@ public partial class AccountingManager
         if (!actualAmount.HasValue || actualAmount.Value == 0)
             return null;
 
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-        var journalEntryLines = BuildJournalEntryLinesForOwnerActual(invoice, actualAmount.Value, property, chartOfAccounts, accountingOffice, propertyId.Value, currentUser);
+        var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
+        var (chartOfAccounts, accountingOffice) = await accountContextTask;
+        var (office, costCodeById) = await officeCostCodeContextTask;
+        var journalEntryLines = BuildJournalEntryLinesForOwnerActual(
+            invoice,
+            actualAmount.Value,
+            property,
+            chartOfAccounts,
+            accountingOffice,
+            office,
+            costCodeById,
+            propertyId.Value,
+            currentUser);
         if (journalEntryLines.Count == 0)
             return null;
 
@@ -207,21 +220,32 @@ public partial class AccountingManager
             SourceId = paymentLedgerLine.LedgerLineId,
             SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
             Memo = BuildOwnerActualRentMemo(invoice),
+            IsCashOnly = true,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
     }
 
-    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerActual(Invoice invoice, decimal actualAmount, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid propertyId, Guid currentUser)
+    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerActual(
+        Invoice invoice,
+        decimal actualAmount,
+        Property property,
+        List<ChartOfAccount> chartOfAccounts,
+        AccountingOffice? accountingOffice,
+        Office? office,
+        IReadOnlyDictionary<int, CostCode> costCodeById,
+        Guid propertyId,
+        Guid currentUser)
     {
         // OWNER-ACTUAL-JE-ACCOUNTS
-        // Line 1 — Debit: Owner Accounts Payable for the collected owner rent portion.
-        // Line 2 — Credit: Owner Income for the collected owner rent portion.
+        // Line 1 — Debit: Tenant rental expense for the invoice rental ledger line.
+        // Line 2 — Credit: Default Own.
         // END OWNER-ACTUAL-JE-ACCOUNTS
 
         if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
             return [];
 
+        var isFurnished = !property.Unfurnished;
         var memo = BuildOwnerActualRentMemo(invoice);
         var ownerContactId = property.Owner1Id;
         var lineContext = CreateJournalEntryLineContextFromInvoice(invoice, propertyId) with
@@ -229,29 +253,34 @@ public partial class AccountingManager
             ContactId = NormalizeOptionalGuid(ownerContactId)
         };
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var ownerPayableLine = new JournalEntryLine
+        var ownerRentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
+        var ownerRentExpenseAccountId = isFurnished
+            ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
+            : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
+
+        var ownerExpenseLine = new JournalEntryLine
         {
-            ChartOfAccountId = ownerAccountsPayableId,
+            ChartOfAccountId = ownerRentExpenseAccountId,
             CostCodeId = rentalLine.CostCodeId,
             Debit = actualAmount > 0 ? actualAmount : 0,
             Credit = actualAmount < 0 ? Math.Abs(actualAmount) : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
-        ApplyJournalEntryLineContext(ownerPayableLine, lineContext);
-        var ownerIncomeLine = new JournalEntryLine
+        ApplyJournalEntryLineContext(ownerExpenseLine, lineContext);
+
+        var ownerPayableLine = new JournalEntryLine
         {
-            ChartOfAccountId = ownerIncomeAccountId,
-            CostCodeId = rentalLine.CostCodeId,
+            ChartOfAccountId = ownerAccountsPayableId,
+            CostCodeId = ownerRentExpenseCostCodeId is > 0 ? ownerRentExpenseCostCodeId : null,
             Debit = actualAmount < 0 ? Math.Abs(actualAmount) : 0,
             Credit = actualAmount > 0 ? actualAmount : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
-        ApplyJournalEntryLineContext(ownerIncomeLine, lineContext);
+        ApplyJournalEntryLineContext(ownerPayableLine, lineContext);
 
-        return [ownerPayableLine, ownerIncomeLine];
+        return [ownerExpenseLine, ownerPayableLine];
     }
 
     private async Task<decimal?> CalculateOwnerActualAmountForInvoicePaymentAsync(Invoice invoice, decimal paymentAmount)

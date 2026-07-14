@@ -33,7 +33,7 @@ public class JournalEntryRecapLineClassifierTests
             chartOfAccountId: OwnerAp,
             ownerApAccountId: OwnerAp,
             memo: "R-000177-001: Owner: Actual: Rent",
-            debit: 49.70m);
+            credit: 49.70m);
 
         Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
         Assert.Equal("OwnerRentActual", result.RecapCategory);

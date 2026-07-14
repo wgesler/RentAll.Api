@@ -16,6 +16,7 @@ public class JournalEntryEntity
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
+    public bool IsCashOnly { get; set; } = false;
     public string? JournalEntryLines { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

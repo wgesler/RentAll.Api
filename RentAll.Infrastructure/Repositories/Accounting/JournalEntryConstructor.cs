@@ -41,6 +41,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             Memo = e.Memo,
             IsPosted = e.IsPosted,
             IsVoided = e.IsVoided,
+            IsCashOnly = e.IsCashOnly,
             JournalEntryLines = lines,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
