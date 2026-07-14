@@ -15,6 +15,7 @@ public class JournalEntryLineSearchResponseDto
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
+    public bool IsCleared { get; set; }
     public DateOnly? ClearedOn { get; set; }
     public int OfficeId { get; set; }
     public string JournalEntryCode { get; set; } = string.Empty;
@@ -46,6 +47,7 @@ public class JournalEntryLineSearchResponseDto
         Debit = result.Debit;
         Credit = result.Credit;
         Memo = result.Memo;
+        IsCleared = result.IsCleared;
         ClearedOn = result.ClearedOn;
         OfficeId = result.OfficeId;
         JournalEntryCode = result.JournalEntryCode;

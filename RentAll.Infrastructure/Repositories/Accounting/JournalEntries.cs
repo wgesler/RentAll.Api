@@ -101,11 +101,7 @@ public partial class JournalEntryRepository
         return MapJournalEntriesWithLineEntities(headers, lines).FirstOrDefault();
     }
 
-    private async Task<JournalEntry?> LoadJournalEntryByIdAsync(
-        SqlConnection db,
-        IDbTransaction? transaction,
-        Guid journalEntryId,
-        Guid organizationId)
+    private async Task<JournalEntry?> LoadJournalEntryByIdAsync(SqlConnection db, IDbTransaction? transaction, Guid journalEntryId, Guid organizationId)
     {
         var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetById", new
         {
@@ -340,9 +336,7 @@ public partial class JournalEntryRepository
         return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
     }
 
-    public async Task<int> DeleteOwnerStatementStartingBalancesByCriteriaAsync(
-        Guid organizationId,
-        Guid propertyId)
+    public async Task<int> DeleteOwnerStatementStartingBalancesByCriteriaAsync(Guid organizationId, Guid propertyId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>("Accounting.OwnerStatementStartingBalance_DeleteByCriteria", new
@@ -357,5 +351,30 @@ public partial class JournalEntryRepository
     sealed class JournalEntryDeleteAllResult
     {
         public int JournalEntriesDeleted { get; set; }
+    }
+
+    public async Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, Guid modifiedBy)
+    {
+        var lineList = lines?.ToList() ?? new List<ReconcileJournalEntryLineMark>();
+        if (lineList.Count == 0)
+            return;
+
+        var linesJson = System.Text.Json.JsonSerializer.Serialize(lineList.Select(line => new
+        {
+            journalEntryLineId = line.JournalEntryLineId,
+            isCleared = line.IsCleared
+        }));
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.JournalEntryLine_UpdateReconcileMarks", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ChartOfAccountId = chartOfAccountId,
+            LinesJson = linesJson,
+            SetClearedOn = setClearedOn,
+            ClearedOn = clearedOn,
+            ModifiedBy = modifiedBy
+        });
     }
 }

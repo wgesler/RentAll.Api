@@ -49,6 +49,7 @@ public interface IAccountingRepository
 
     Task<ChartOfAccount> CreateAsync(ChartOfAccount chartOfAccount);
     Task<ChartOfAccount> UpdateChartOfAccountByIdAsync(ChartOfAccount chartOfAccount);
+    Task<ChartOfAccount> UpdateChartOfAccountReconcileByIdAsync(Guid organizationId, int officeId, int accountId, decimal endingBalance, DateOnly statementDate);
     Task DeleteChartOfAccountByIdAsync(Guid organizationId, int officeId, int accountId);
     #endregion
 

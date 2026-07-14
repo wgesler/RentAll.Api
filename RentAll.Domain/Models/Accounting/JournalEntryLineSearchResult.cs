@@ -15,6 +15,7 @@ public class JournalEntryLineSearchResult
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
+    public bool IsCleared { get; set; }
     public DateOnly? ClearedOn { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

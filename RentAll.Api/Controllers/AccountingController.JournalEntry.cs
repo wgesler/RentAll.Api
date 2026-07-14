@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Accounting.ChartOfAccounts;
 using RentAll.Api.Dtos.Accounting.JournalEntries;
 using RentAll.Api.Dtos.Accounting.JournalEntryLines;
 
@@ -43,11 +44,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var beginningBalance = await _journalEntryRepository.GetReconcileBeginningBalanceAsync(
-                    CurrentOrganizationId,
-                    dto.OfficeId,
-                    dto.ChartOfAccountId,
-                    dto.StatementDate);
+                var beginningBalance = await _journalEntryRepository.GetReconcileBeginningBalanceAsync(CurrentOrganizationId, dto.OfficeId, dto.ChartOfAccountId, dto.StatementDate);
 
                 return Ok(new ReconcileBeginningBalanceResponseDto(beginningBalance));
             }
@@ -137,6 +134,58 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Put
+
+        [HttpPut("journal-entry-line/reconcile/marks")]
+        public async Task<IActionResult> SaveReconcileMarks([FromBody] SaveReconcileMarksDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Reconcile marks data is required");
+
+            var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid reconcile marks data");
+
+            try
+            {
+                var request = dto.ToModel();
+                await _journalEntryRepository.UpdateReconcileMarksAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.Lines, setClearedOn: false, clearedOn: null, CurrentUser);
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving reconcile marks");
+                return ServerError("An error occurred while saving reconcile marks");
+            }
+        }
+
+        [HttpPut("journal-entry-line/reconcile/complete")]
+        public async Task<IActionResult> CompleteReconcile([FromBody] CompleteReconcileDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Reconcile completion data is required");
+
+            var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid reconcile completion data");
+
+            try
+            {
+                var request = dto.ToCompleteModel();
+                var clearedOn = DateOnly.FromDateTime(DateTime.Today);
+
+                await _journalEntryRepository.UpdateReconcileMarksAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.Lines, setClearedOn: true, clearedOn: clearedOn, CurrentUser);
+
+                var updatedAccount = await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.EndingBalance, request.StatementDate);
+
+                return Ok(new ChartOfAccountResponseDto(updatedAccount));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing reconcile");
+                return ServerError("An error occurred while completing the reconciliation");
+            }
+        }
 
         [HttpPut("journal-entry")]
         public async Task<IActionResult> UpdateJournalEntry([FromBody] UpdateJournalEntryDto dto)

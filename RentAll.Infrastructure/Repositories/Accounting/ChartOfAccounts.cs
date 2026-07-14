@@ -162,6 +162,24 @@ public partial class AccountingRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+
+    public async Task<ChartOfAccount> UpdateChartOfAccountReconcileByIdAsync(Guid organizationId, int officeId, int accountId, decimal endingBalance, DateOnly statementDate)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ChartOfAccountEntity>("Accounting.ChartOfAccounts_UpdateReconcileById", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            AccountId = accountId,
+            EndingBalance = endingBalance,
+            StatementDate = statementDate
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("ChartOfAccount not found");
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
     #endregion
 
     #region Deletes

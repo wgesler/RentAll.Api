@@ -143,6 +143,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             Debit = e.Debit,
             Credit = e.Credit,
             Memo = e.Memo,
+            IsCleared = e.IsCleared,
             ClearedOn = e.ClearedOn,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
