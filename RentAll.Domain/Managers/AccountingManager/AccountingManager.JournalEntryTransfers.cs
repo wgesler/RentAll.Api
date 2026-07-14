@@ -240,17 +240,16 @@ public partial class AccountingManager
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // TRANSFER-JE-ACCOUNTS
-        // Lump-sum posting only (bank reconcile sees one bank line; split detail lives on TransferSplit):
-        // Line 1 — Escrow Deposits (GetDefaultEscrowDepositAccount):
-        //   positive transfer: Credit escrow / Debit 0
-        //   negative transfer: Debit escrow / Credit 0
-        // Line 2 — Bank account (transfer.BankAccountId or default bank):
+        // Line 1 — Bank account (transfer.BankAccountId or default bank):
         //   positive transfer: Debit bank / Credit 0
         //   negative transfer: Debit 0 / Credit bank
+        // Lines 2+ — One consolidated line per credit account (SecDep / SDW / Owners / Business):
+        //   sum TransferSplit amounts by ChartOfAccountId (not one JE line per sub-ledger split)
+        //   positive total: Debit 0 / Credit total
+        //   negative total: Debit total / Credit 0
         // END TRANSFER-JE-ACCOUNTS
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
-        var escrowDepositAccountId = accounts.EscrowDepositAccountId;
         var bankAccountId = transfer.BankAccountId is > 0
             ? transfer.BankAccountId.Value
             : accounts.BankAccountId;
@@ -259,16 +258,6 @@ public partial class AccountingManager
         {
             PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)
         };
-        var escrowLine = new JournalEntryLine
-        {
-            ChartOfAccountId = escrowDepositAccountId,
-            Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
-            Credit = transfer.Amount > 0 ? transfer.Amount : 0,
-            Memo = memo,
-            CreatedBy = currentUser
-        };
-        ApplyJournalEntryLineContext(escrowLine, headerLineContext);
-
         var bankLine = new JournalEntryLine
         {
             ChartOfAccountId = bankAccountId,
@@ -278,6 +267,29 @@ public partial class AccountingManager
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(bankLine, headerLineContext);
+        var journalEntryLines = new List<JournalEntryLine> { bankLine };
+
+        var creditTotalsByAccount = transfer.Splits
+            .GroupBy(split => split.ChartOfAccountId!.Value)
+            .Select(group => (ChartOfAccountId: group.Key, Amount: group.Sum(split => split.Amount)))
+            .Where(group => group.Amount != 0)
+            .OrderBy(group => GetTransferCreditAccountSortOrder(group.ChartOfAccountId, accounts))
+            .ThenBy(group => group.ChartOfAccountId)
+            .ToList();
+
+        foreach (var creditTotal in creditTotalsByAccount)
+        {
+            var creditLine = new JournalEntryLine
+            {
+                ChartOfAccountId = creditTotal.ChartOfAccountId,
+                Debit = creditTotal.Amount < 0 ? Math.Abs(creditTotal.Amount) : 0,
+                Credit = creditTotal.Amount > 0 ? creditTotal.Amount : 0,
+                Memo = memo,
+                CreatedBy = currentUser
+            };
+            ApplyJournalEntryLineContext(creditLine, headerLineContext);
+            journalEntryLines.Add(creditLine);
+        }
 
         return new JournalEntry
         {
@@ -289,7 +301,7 @@ public partial class AccountingManager
             SourceId = transfer.TransferId,
             SourceCode = ResolveJournalEntrySourceCodeFromTransfer(transfer),
             Memo = memo,
-            JournalEntryLines = [escrowLine, bankLine],
+            JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         };
     }
@@ -311,5 +323,18 @@ public partial class AccountingManager
             || chartOfAccountId == accounts.EscrowSdwAccountId
             || chartOfAccountId == accounts.EscrowOwnersAccountId
             || chartOfAccountId == accounts.BankAccountId;
+
+    private static int GetTransferCreditAccountSortOrder(int chartOfAccountId, TransferJournalEntryAccounts accounts)
+    {
+        if (chartOfAccountId == accounts.EscrowSecurityDepositAccountId)
+            return 0;
+        if (chartOfAccountId == accounts.EscrowSdwAccountId)
+            return 1;
+        if (chartOfAccountId == accounts.EscrowOwnersAccountId)
+            return 2;
+        if (chartOfAccountId == accounts.BankAccountId)
+            return 3;
+        return 99;
+    }
     #endregion
 }
