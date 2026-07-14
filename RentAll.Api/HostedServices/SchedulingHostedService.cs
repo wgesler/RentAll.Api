@@ -69,7 +69,7 @@ public class SchedulingHostedService : BackgroundService
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
-        await ProcessDepartureFeesAsync(organizationRepository, reservationRepository, accountingManager, cancellationToken);
+        await ProcessDepartureFeesAsync(organizationRepository, accountingManager, cancellationToken);
         await ProcessLinenAndTowelFeesAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
         await ProcessLogRetentionAsync(loggingRepository, cancellationToken);
     }
@@ -277,7 +277,7 @@ public class SchedulingHostedService : BackgroundService
     #endregion
 
     #region Departures
-    private async Task ProcessDepartureFeesAsync(IOrganizationRepository organizationRepository, IReservationRepository reservationRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
+    private async Task ProcessDepartureFeesAsync(IOrganizationRepository organizationRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         try
@@ -290,15 +290,7 @@ public class SchedulingHostedService : BackgroundService
                 if (offices.Count == 0)
                     continue;
                 var officeCsv = string.Join(",", offices.Select(o => o.OfficeId));
-                var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                var monthStart = new DateOnly(today.Year, today.Month, 1);
-                var departures = await reservationRepository.GetMonthlyDepartedReservationsAsync(
-                    organization.OrganizationId,
-                    officeCsv,
-                    monthStart,
-                    today);
-                var departedReservations = departures.ToList();
-                await accountingManager.CreateJournalEntiesForDepartedReservationAsync(organization.OrganizationId, departedReservations, cancellationToken);
+                await accountingManager.ProcessDepartureFeesAsync(organization.OrganizationId, officeCsv, cancellationToken: cancellationToken);
             }
         }
         catch (Exception ex)

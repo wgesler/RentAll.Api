@@ -495,7 +495,7 @@ public partial class AccountingManager
     {
         var result = new JournalEntrySyncResult();
 
-        await ProcessDepartureFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
+        await SyncDepartureFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
         await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
 
         return result;
@@ -517,7 +517,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task ProcessDepartureFeesAsync(
+    private async Task SyncDepartureFeesAsync(
         Guid organizationId,
         string officeIds,
         DateOnly? startDate,
@@ -525,38 +525,19 @@ public partial class AccountingManager
         JournalEntrySyncResult result,
         IProgress<JournalEntrySyncProgress>? progress = null)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var (rangeStart, rangeEnd) = ResolveDepartureFeeDateRange(startDate, endDate, today);
         ReportSyncProgress(progress, "departureFee", total: 1, processed: 0, result, "Running");
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (rangeStart, rangeEnd) = ResolveDepartureFeeDateRange(startDate, endDate, today);
         if (rangeStart > rangeEnd)
         {
             ReportSyncProgress(progress, "departureFee", total: 1, processed: 1, result, "Completed");
             return;
         }
 
-        var firstOfficeId = ResolveFirstOfficeIdFromCsv(officeIds);
-
         try
         {
-            var departures = (await _reservationRepository.GetMonthlyDepartedReservationsAsync(
-                organizationId,
-                officeIds,
-                rangeStart,
-                rangeEnd)).ToList();
-
-            await LogDepartureFeeRunAsync(
-                organizationId,
-                firstOfficeId,
-                rangeStart,
-                rangeEnd,
-                departures.Count,
-                departures.Count == 0
-                    ? "No reservations with departures in range"
-                    : "Processing reservations with departures in range");
-
-            result.DocumentsProcessed += departures.Count;
-            await CreateJournalEntiesForDepartedReservationAsync(organizationId, departures, CancellationToken.None, logDecisions: true);
+            result.DocumentsProcessed += await ProcessDepartureFeesAsync(organizationId, officeIds, startDate, endDate, CancellationToken.None, logDecisions: true);
         }
         catch (Exception ex)
         {
@@ -716,22 +697,6 @@ public partial class AccountingManager
         });
     }
 
-    private static (DateOnly RangeStart, DateOnly RangeEnd) ResolveDepartureFeeDateRange(DateOnly? startDate, DateOnly? endDate, DateOnly today)
-    {
-        if (!startDate.HasValue && !endDate.HasValue)
-            return (new DateOnly(today.Year, today.Month, 1), today);
-
-        var rangeStart = startDate ?? endDate!.Value;
-        var rangeEnd = endDate ?? startDate!.Value;
-        if (rangeStart > rangeEnd)
-            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
-
-        if (rangeEnd > today)
-            rangeEnd = today;
-
-        return (rangeStart, rangeEnd);
-    }
-
     private static List<DateOnly> ResolveLinenSyncProcessingDatesInRange(DateOnly? startDate, DateOnly? endDate)
     {
         if (!startDate.HasValue && !endDate.HasValue)
@@ -752,16 +717,5 @@ public partial class AccountingManager
         }
 
         return dates;
-    }
-
-    private static int? ResolveFirstOfficeIdFromCsv(string officeIds)
-    {
-        foreach (var segment in officeIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            if (int.TryParse(segment, out var officeId) && officeId > 0)
-                return officeId;
-        }
-
-        return null;
     }
 }

@@ -6,11 +6,29 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Triggers
-    public async Task CreateJournalEntiesForDepartedReservationAsync(
-        Guid organizationId,
-        IReadOnlyCollection<ReservationList> reservations,
-        CancellationToken cancellationToken,
-        bool logDecisions = false)
+    public async Task<int> ProcessDepartureFeesAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, CancellationToken cancellationToken = default, bool logDecisions = false)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return 0;
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (rangeStart, rangeEnd) = ResolveDepartureFeeDateRange(startDate, endDate, today);
+        if (rangeStart > rangeEnd)
+            return 0;
+
+        var departures = (await _reservationRepository.GetMonthlyDepartedReservationsAsync(organizationId, officeIds, rangeStart, rangeEnd)).ToList();
+
+        if (logDecisions)
+        {
+            await LogDepartureFeeRunAsync(organizationId, ResolveFirstOfficeIdFromCsv(officeIds), rangeStart, rangeEnd, departures.Count, departures.Count == 0 ? "No reservations with departures in range" : "Processing reservations with departures in range");
+        }
+
+        await CreateJournalEntriesForDepartedReservationAsync(organizationId, departures, cancellationToken, logDecisions);
+        return departures.Count;
+    }
+
+    public async Task CreateJournalEntriesForDepartedReservationAsync(Guid organizationId, IReadOnlyCollection<ReservationList> reservations, CancellationToken cancellationToken, bool logDecisions = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -21,21 +39,11 @@ public partial class AccountingManager
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await CreateJournalEntiesForDepartedReservationAsync(organizationId, reservation, cancellationToken, logDecisions);
+                await CreateJournalEntriesForDepartedReservationAsync(organizationId, reservation, cancellationToken, logDecisions);
             }
             catch (Exception ex)
             {
-                await LogAccountingErrorAsync(
-                    trigger: "Departures",
-                    organizationId: organizationId,
-                    officeId: reservation.OfficeId,
-                    sourceTypeId: (int)SourceType.Reservation,
-                    sourceId: reservation.ReservationId,
-                    documentCode: reservation.ReservationCode,
-                    accountingPeriod: reservation.DepartureDate,
-                    amount: null,
-                    message: ex.Message,
-                    currentUser: SystemOrganization);
+                await LogAccountingErrorAsync(trigger: "Departures", organizationId: organizationId, officeId: reservation.OfficeId, sourceTypeId: (int)SourceType.Reservation, sourceId: reservation.ReservationId, documentCode: reservation.ReservationCode, accountingPeriod: reservation.DepartureDate, amount: null, message: ex.Message, currentUser: SystemOrganization);
             }
         }
     }
@@ -59,17 +67,7 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                await LogAccountingErrorAsync(
-                    trigger: "LinensAndTowels",
-                    organizationId: organizationId,
-                    officeId: monthlyAgreement.OfficeId,
-                    sourceTypeId: (int)SourceType.LinensAndTowels,
-                    sourceId: monthlyAgreement.PropertyId,
-                    documentCode: $"Property-{monthlyAgreement.PropertyId}",
-                    accountingPeriod: null,
-                    amount: monthlyAgreement.LinenAndTowelFee,
-                    message: ex.Message,
-                    currentUser: SystemOrganization);
+                await LogAccountingErrorAsync(trigger: "LinensAndTowels", organizationId: organizationId, officeId: monthlyAgreement.OfficeId, sourceTypeId: (int)SourceType.LinensAndTowels, sourceId: monthlyAgreement.PropertyId, documentCode: $"Property-{monthlyAgreement.PropertyId}", accountingPeriod: null, amount: monthlyAgreement.LinenAndTowelFee, message: ex.Message, currentUser: SystemOrganization);
             }
         }
 
@@ -84,17 +82,7 @@ public partial class AccountingManager
                 }
                 catch (Exception ex)
                 {
-                    await LogAccountingErrorAsync(
-                        trigger: "LinensAndTowels",
-                        organizationId: organizationId,
-                        officeId: annualAgreement.OfficeId,
-                        sourceTypeId: (int)SourceType.LinensAndTowels,
-                        sourceId: annualAgreement.PropertyId,
-                        documentCode: $"Property-{annualAgreement.PropertyId}",
-                        accountingPeriod: null,
-                        amount: annualAgreement.LinenAndTowelFee,
-                        message: ex.Message,
-                        currentUser: SystemOrganization);
+                    await LogAccountingErrorAsync(trigger: "LinensAndTowels", organizationId: organizationId, officeId: annualAgreement.OfficeId, sourceTypeId: (int)SourceType.LinensAndTowels, sourceId: annualAgreement.PropertyId, documentCode: $"Property-{annualAgreement.PropertyId}", accountingPeriod: null, amount: annualAgreement.LinenAndTowelFee, message: ex.Message, currentUser: SystemOrganization);
                 }
             }
         }
@@ -102,11 +90,7 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entry
-    private async Task CreateJournalEntiesForDepartedReservationAsync(
-        Guid organizationId,
-        ReservationList reservation,
-        CancellationToken cancellationToken,
-        bool logDecisions = false)
+    private async Task CreateJournalEntriesForDepartedReservationAsync(Guid organizationId, ReservationList reservation, CancellationToken cancellationToken, bool logDecisions = false)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // DEPARTURES-JE-ACCOUNTS
@@ -120,7 +104,7 @@ public partial class AccountingManager
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // A reservation only departs once, so if JE already exist, don't reprocess
+        // A reservation only departs once, so if a JE already exists, don't reprocess
         var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
             OrganizationId = organizationId,
@@ -135,15 +119,7 @@ public partial class AccountingManager
         {
             if (logDecisions)
             {
-                await LogDepartureFeeDecisionAsync(
-                    organizationId,
-                    reservation.OfficeId,
-                    reservation.PropertyId,
-                    reservation.PropertyCode,
-                    reservation.ReservationCode,
-                    reservation.DepartureDate,
-                    amount: null,
-                    "Skipped — departure journal entry already exists.");
+                await LogDepartureFeeDecisionAsync(organizationId, reservation.OfficeId, reservation.PropertyId, reservation.PropertyCode, reservation.ReservationCode, reservation.DepartureDate, amount: null, "Skipped — departure journal entry already exists.");
             }
             return;
         }
@@ -153,31 +129,26 @@ public partial class AccountingManager
         if (office == null)
             throw new Exception($"Office {reservation.OfficeId} was not found");
 
-        var defaultDepartureAccountId = GetDefaultDepartureAccount(chartOfAccounts, reservation.OfficeId, office, costCodeById, accountingOffice);
-        var defaultPetAccountId = GetDefaultPetAccount(chartOfAccounts, reservation.OfficeId, office, costCodeById, accountingOffice);
-        var defaultDepartureIncomeAccountId = GetDefaultDepartureIncome(chartOfAccounts, reservation.OfficeId, accountingOffice);
+        costCodeById.TryGetValue(office.DepartureFeeCcId ?? 0, out var departureFeeCostCode);
+        costCodeById.TryGetValue(office.PetFeeCcId ?? 0, out var petFeeCostCode);
+        var defaultDepartureAccountId = GetDefaultTenantExpense(chartOfAccounts, reservation.OfficeId, accountingOffice, departureFeeCostCode);
+        var defaultPetAccountId = GetDefaultTenantExpense(chartOfAccounts, reservation.OfficeId, accountingOffice, petFeeCostCode);
+        var defaultDepartureIncomeAccountId = GetDefaultDepartureIncome(chartOfAccounts, reservation.OfficeId, accountingOffice, departureFeeCostCode);
         var reservationDetail = await _reservationRepository.GetReservationByIdAsync(reservation.ReservationId, organizationId);
         if (reservationDetail == null)
             throw new Exception($"Reservation {reservation.ReservationCode} was not found");
 
-        var invoicedDepartureFeeTotal = await SumDepartureFeeLinesForReservationAsync(organizationId, reservation.OfficeId, reservation.ReservationId);
+        var invoicedDepartureFeeTotal = await SumInvoicedLedgerLinesForReservationByCostCodeAsync(organizationId, reservation.OfficeId, reservation.ReservationId, office.DepartureFeeCcId ?? 0);
         var propertyDepartureFeeAmount = reservationDetail.DepartureFee > 0m ? reservationDetail.DepartureFee : 0m;
         var isDepartureFeeFromInvoice = invoicedDepartureFeeTotal > 0m;
         var departureFeeAmount = isDepartureFeeFromInvoice ? invoicedDepartureFeeTotal : propertyDepartureFeeAmount;
-        var petFeeAmount = reservationDetail.PetFee > 0 ? reservationDetail.PetFee : 0m;
+        var invoicedPetFeeTotal = await SumInvoicedLedgerLinesForReservationByCostCodeAsync(organizationId, reservation.OfficeId, reservation.ReservationId, office.PetFeeCcId ?? 0);
+        var petFeeAmount = invoicedPetFeeTotal > 0m ? invoicedPetFeeTotal : (reservationDetail.PetFee > 0 ? reservationDetail.PetFee : 0m);
         if (departureFeeAmount == 0m && petFeeAmount == 0m)
         {
             if (logDecisions)
             {
-                await LogDepartureFeeDecisionAsync(
-                    organizationId,
-                    reservation.OfficeId,
-                    reservation.PropertyId,
-                    reservation.PropertyCode,
-                    reservation.ReservationCode,
-                    reservation.DepartureDate,
-                    amount: null,
-                    $"Skipped — departure on {reservation.DepartureDate:MM/dd/yyyy} but departure fee and pet fee are zero.");
+                await LogDepartureFeeDecisionAsync(organizationId, reservation.OfficeId, reservation.PropertyId, reservation.PropertyCode, reservation.ReservationCode, reservation.DepartureDate, amount: null, $"Skipped — departure on {reservation.DepartureDate:MM/dd/yyyy} but departure fee and pet fee are zero.");
             }
             return;
         }
@@ -189,6 +160,7 @@ public partial class AccountingManager
             var departureExpenseLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureAccountId,
+                CostCodeId = departureFeeCostCode,
                 Debit = departureFeeAmount,
                 Credit = 0m,
                 Memo = BuildDepartureFeeMemo(reservation.ReservationCode),
@@ -199,6 +171,7 @@ public partial class AccountingManager
             var departureIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
+                CostCodeId = departureFeeCostCode,
                 Debit = 0m,
                 Credit = departureFeeAmount,
                 Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),
@@ -213,6 +186,7 @@ public partial class AccountingManager
             var petExpenseLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultPetAccountId,
+                CostCodeId = petFeeCostCode,
                 Debit = petFeeAmount,
                 Credit = 0m,
                 Memo = BuildPetFeeMemo(reservation.ReservationCode),
@@ -223,6 +197,7 @@ public partial class AccountingManager
             var petIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
+                CostCodeId = petFeeCostCode,
                 Debit = 0m,
                 Credit = petFeeAmount,
                 Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),
@@ -257,20 +232,15 @@ public partial class AccountingManager
             if (petFeeAmount > 0m)
                 feeParts.Add($"pet fee ${petFeeAmount:0.00}");
 
-            await LogDepartureFeeDecisionAsync(
-                organizationId,
-                reservation.OfficeId,
-                reservation.PropertyId,
-                reservation.PropertyCode,
-                reservation.ReservationCode,
-                reservation.DepartureDate,
-                amount: totalAmount,
-                $"Created journal entry — {string.Join(", ", feeParts)}.");
+            await LogDepartureFeeDecisionAsync(organizationId, reservation.OfficeId, reservation.PropertyId, reservation.PropertyCode, reservation.ReservationCode, reservation.DepartureDate, amount: totalAmount, $"Created journal entry — {string.Join(", ", feeParts)}.");
         }
     }
 
-    private async Task<decimal> SumDepartureFeeLinesForReservationAsync(Guid organizationId, int officeId, Guid reservationId)
+    private async Task<decimal> SumInvoicedLedgerLinesForReservationByCostCodeAsync(Guid organizationId, int officeId, Guid reservationId, int costCodeId)
     {
+        if (costCodeId <= 0)
+            return 0m;
+
         var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
@@ -283,7 +253,7 @@ public partial class AccountingManager
         return invoices
             .SelectMany(i => i.LedgerLines)
             .Where(line => line.Amount != 0m)
-            .Where(line => string.Equals(line.Description?.Trim(), "Departure Fee", StringComparison.OrdinalIgnoreCase))
+            .Where(line => line.CostCodeId == costCodeId)
             .Sum(line => line.Amount);
     }
 
@@ -296,15 +266,7 @@ public partial class AccountingManager
         var propertyCode = property.PropertyCode;
         if (property.PropertyLeaseType != PropertyLeaseType.PropertyManagement)
         {
-            await LogLinenAndTowelDecisionAsync(
-                organizationId,
-                agreement.OfficeId,
-                agreement.PropertyId,
-                propertyCode,
-                isMonthly,
-                processingDate,
-                amount: null,
-                "Skipped — property is not Property Management lease type.");
+            await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly, processingDate, amount: null, "Skipped — property is not Property Management lease type.");
             return;
         }
 
@@ -347,34 +309,15 @@ public partial class AccountingManager
         var monthEnd = ResolveMonthEnd(processingDate);
         if (await HasLinensAndTowelsJournalEntryAsync(organizationId, agreement, monthStart, monthEnd))
         {
-            await LogLinenAndTowelDecisionAsync(
-                organizationId,
-                agreement.OfficeId,
-                agreement.PropertyId,
-                propertyCode,
-                isMonthly: true,
-                processingDate,
-                amount: null,
-                "Skipped — journal entry already exists for this month.");
+            await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly: true, processingDate, amount: null, "Skipped — journal entry already exists for this month.");
             return;
         }
 
-        var wasRentedThisMonth = await _reservationRepository.WasRentedThisMonthAsync(
-            agreement.PropertyId,
-            organizationId,
-            processingDate);
+        var wasRentedThisMonth = await _reservationRepository.WasRentedThisMonthAsync(agreement.PropertyId, organizationId, processingDate);
 
         if (!wasRentedThisMonth)
         {
-            await LogLinenAndTowelDecisionAsync(
-                organizationId,
-                agreement.OfficeId,
-                agreement.PropertyId,
-                propertyCode,
-                isMonthly: true,
-                processingDate,
-                amount: null,
-                $"Skipped — no non-owner rental from {monthStart:MM/dd/yyyy} through {processingDate:MM/dd/yyyy}.");
+            await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly: true, processingDate, amount: null, $"Skipped — no non-owner rental from {monthStart:MM/dd/yyyy} through {processingDate:MM/dd/yyyy}.");
             return;
         }
 
@@ -386,29 +329,13 @@ public partial class AccountingManager
         cancellationToken.ThrowIfCancellationRequested();
         if (processingDate.Month != 1 || processingDate.Day != 1)
         {
-            await LogLinenAndTowelDecisionAsync(
-                organizationId,
-                agreement.OfficeId,
-                agreement.PropertyId,
-                propertyCode,
-                isMonthly: false,
-                processingDate,
-                amount: null,
-                "Skipped — annual linen and towel only runs on January 1.");
+            await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly: false, processingDate, amount: null, "Skipped — annual linen and towel only runs on January 1.");
             return;
         }
 
         if (await HasLinensAndTowelsJournalEntryAsync(organizationId, agreement, processingDate, processingDate))
         {
-            await LogLinenAndTowelDecisionAsync(
-                organizationId,
-                agreement.OfficeId,
-                agreement.PropertyId,
-                propertyCode,
-                isMonthly: false,
-                processingDate,
-                amount: null,
-                "Skipped — journal entry already exists for this date.");
+            await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly: false, processingDate, amount: null, "Skipped — journal entry already exists for this date.");
             return;
         }
 
@@ -453,15 +380,7 @@ public partial class AccountingManager
                     ? "Skipped — linen and towel fee is zero or negative."
                     : "Skipped — calculated fee amount is zero or negative."
                 : ResolveAnnualLinenSkipReason(agreement.LinenAndTowelFee, availableFrom, availableUntil, processingDate, isOffboardProrationMonth);
-            await LogLinenAndTowelDecisionAsync(
-                organizationId,
-                agreement.OfficeId,
-                agreement.PropertyId,
-                propertyCode,
-                isMonthly,
-                processingDate,
-                amount: null,
-                skipReason);
+            await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly, processingDate, amount: null, skipReason);
             return;
         }
         var cadenceLabel = isMonthly ? "Monthly" : "Annual";
@@ -517,17 +436,7 @@ public partial class AccountingManager
         };
 
         await CreateAutoGeneratedJournalEntryAsync(journalEntry);
-        await LogLinenAndTowelDecisionAsync(
-            organizationId,
-            agreement.OfficeId,
-            agreement.PropertyId,
-            propertyCode,
-            isMonthly,
-            processingDate,
-            amount: feeAmount,
-            reverseEntryDirection
-                ? "Created unused-portion journal entry."
-                : "Created journal entry.");
+        await LogLinenAndTowelDecisionAsync(organizationId, agreement.OfficeId, agreement.PropertyId, propertyCode, isMonthly, processingDate, amount: feeAmount, reverseEntryDirection ? "Created unused-portion journal entry." : "Created journal entry.");
     }
 
     private static string ResolveAnnualLinenSkipReason(decimal annualFeeAmount, DateOnly? availableFrom, DateOnly? availableUntil, DateOnly processingDate, bool isOffboardProrationMonth)
@@ -598,13 +507,7 @@ public partial class AccountingManager
         return Math.Round(annualFeeAmount / 365m * offlineDays, 2, MidpointRounding.AwayFromZero);
     }
 
-    private async Task LogDepartureFeeRunAsync(
-        Guid organizationId,
-        int? officeId,
-        DateOnly rangeStart,
-        DateOnly rangeEnd,
-        int reservationCount,
-        string message)
+    private async Task LogDepartureFeeRunAsync(Guid organizationId, int? officeId, DateOnly rangeStart, DateOnly rangeEnd, int reservationCount, string message)
     {
         var fullMessage = reservationCount > 0
             ? $"Departure fee sync ({rangeStart:MM/dd/yyyy}-{rangeEnd:MM/dd/yyyy}): {message} ({reservationCount} reservation(s) with departures in range)."
@@ -619,29 +522,13 @@ public partial class AccountingManager
         });
     }
 
-    private async Task LogDepartureFeeDecisionAsync(
-        Guid organizationId,
-        int officeId,
-        Guid propertyId,
-        string propertyCode,
-        string reservationCode,
-        DateOnly departureDate,
-        decimal? amount,
-        string message)
+    private async Task LogDepartureFeeDecisionAsync(Guid organizationId, int officeId, Guid propertyId, string propertyCode, string reservationCode, DateOnly departureDate, decimal? amount, string message)
     {
         var fullMessage = $"Departure fee [{propertyCode}] {reservationCode} (departs {departureDate:MM/dd/yyyy}): {message}";
         await LogPeriodicAccountingDecisionAsync(organizationId, officeId, propertyId, amount, fullMessage);
     }
 
-    private async Task LogLinenAndTowelDecisionAsync(
-        Guid organizationId,
-        int officeId,
-        Guid propertyId,
-        string propertyCode,
-        bool isMonthly,
-        DateOnly processingDate,
-        decimal? amount,
-        string message)
+    private async Task LogLinenAndTowelDecisionAsync(Guid organizationId, int officeId, Guid propertyId, string propertyCode, bool isMonthly, DateOnly processingDate, decimal? amount, string message)
     {
         var cadence = isMonthly ? "Monthly" : "Annual";
         var fullMessage = $"{cadence} linen & towel [{propertyCode}] (as of {processingDate:MM/dd/yyyy}): {message}";
@@ -658,6 +545,33 @@ public partial class AccountingManager
             OriginalAmount = amount,
             Message = message
         });
+    }
+
+    private static (DateOnly RangeStart, DateOnly RangeEnd) ResolveDepartureFeeDateRange(DateOnly? startDate, DateOnly? endDate, DateOnly today)
+    {
+        if (!startDate.HasValue && !endDate.HasValue)
+            return (new DateOnly(today.Year, today.Month, 1), today);
+
+        var rangeStart = startDate ?? endDate!.Value;
+        var rangeEnd = endDate ?? startDate!.Value;
+        if (rangeStart > rangeEnd)
+            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+
+        if (rangeEnd > today)
+            rangeEnd = today;
+
+        return (rangeStart, rangeEnd);
+    }
+
+    private static int? ResolveFirstOfficeIdFromCsv(string officeIds)
+    {
+        foreach (var segment in officeIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (int.TryParse(segment, out var officeId) && officeId > 0)
+                return officeId;
+        }
+
+        return null;
     }
     #endregion
 }
