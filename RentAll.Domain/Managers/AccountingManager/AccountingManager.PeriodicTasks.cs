@@ -160,7 +160,7 @@ public partial class AccountingManager
             var departureExpenseLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureAccountId,
-                CostCodeId = departureFeeCostCode,
+                CostCodeId = departureFeeCostCode?.CostCodeId,
                 Debit = departureFeeAmount,
                 Credit = 0m,
                 Memo = BuildDepartureFeeMemo(reservation.ReservationCode),
@@ -171,7 +171,7 @@ public partial class AccountingManager
             var departureIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
-                CostCodeId = departureFeeCostCode,
+                CostCodeId = departureFeeCostCode?.CostCodeId,
                 Debit = 0m,
                 Credit = departureFeeAmount,
                 Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),
@@ -186,7 +186,7 @@ public partial class AccountingManager
             var petExpenseLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultPetAccountId,
-                CostCodeId = petFeeCostCode,
+                CostCodeId = petFeeCostCode?.CostCodeId,
                 Debit = petFeeAmount,
                 Credit = 0m,
                 Memo = BuildPetFeeMemo(reservation.ReservationCode),
@@ -197,7 +197,7 @@ public partial class AccountingManager
             var petIncomeLine = new JournalEntryLine
             {
                 ChartOfAccountId = defaultDepartureIncomeAccountId,
-                CostCodeId = petFeeCostCode,
+                CostCodeId = petFeeCostCode?.CostCodeId,
                 Debit = 0m,
                 Credit = petFeeAmount,
                 Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),

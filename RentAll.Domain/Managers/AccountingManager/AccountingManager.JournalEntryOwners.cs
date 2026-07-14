@@ -343,7 +343,7 @@ public partial class AccountingManager
         var ownerSplitDescription = ownerSplitLines
             .Select(split => split.Description)
             .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
-        var memo = BuildOwnerBillMemo(receiptCode, ownerSplitDescription);
+        var memo = BuildOwnerBillMemo(receiptCode, ownerSplitDescription ?? string.Empty);
         var journalEntryLines = new List<JournalEntryLine>();
         foreach (var split in ownerSplitLines)
         {
@@ -351,8 +351,8 @@ public partial class AccountingManager
             var splitPropertyId = split.PropertyId is { } candidatePropertyId && candidatePropertyId != Guid.Empty
                 ? candidatePropertyId
                 : propertyId;
-            var splitMemo = BuildOwnerBillMemo(receiptCode, split.Description);
-            var splitIncomeMemo = BuildBillMemo(receiptCode, split.Description);
+            var splitMemo = BuildOwnerBillMemo(receiptCode, split.Description ?? string.Empty);
+            var splitIncomeMemo = BuildBillMemo(receiptCode, split.Description ?? string.Empty);
             var splitContext = new JournalEntryLineContext(
                 NormalizeOptionalGuid(splitPropertyId == Guid.Empty ? null : splitPropertyId),
                 propertyCode,
@@ -448,7 +448,7 @@ public partial class AccountingManager
             foreach (var ownerLine in ownerWorkOrderLines)
             {
                 var lineAmount = ownerLine.ItemAmount;
-                var lineMemo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, ownerLine.Description);
+                var lineMemo = BuildOwnerWorkOrderMemo(workOrder.WorkOrderCode, ownerLine.Description ?? string.Empty);
                 var ownerIncomeLine = new JournalEntryLine
                 {
                     ChartOfAccountId = ownerIncomeAccountId,
