@@ -11,7 +11,13 @@ public enum DocumentType
     WorkOrder = 6,
     Agreements = 7,
     Quote = 8,
-    OwnerStatement = 9
+    OwnerStatement = 9,
+    ProfitLoss = 10,
+    BalanceSheet = 11,
+    ArAging = 12,
+    ReconcileAccountSummary = 13,
+    ReconcileAccountDetail = 14,
+    ApAging = 15
 }
 
 

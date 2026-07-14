@@ -49,7 +49,28 @@ public partial class JournalEntryRepository
         if (res == null || !res.Any())
             return Enumerable.Empty<JournalEntryLineSearchResult>();
 
-        return res.Select(ConvertLineSearchEntityToModel);
+        var results = res.Select(ConvertLineSearchEntityToModel);
+        if (criteria.UnclearedOnly)
+            results = results.Where(line => line.ClearedOn == null);
+
+        return results;
+    }
+
+    public async Task<IEnumerable<JournalEntryLineSearchResult>> GetReconcileJournalEntryLinesAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<JournalEntryLineSearchEntity>("Accounting.JournalEntryLine_GetForReconcile", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ChartOfAccountId = chartOfAccountId,
+            StatementDate = statementDate
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<JournalEntryLineSearchResult>();
+
+        return res.Select(ConvertLineSearchEntityToModel).Where(line => line.ClearedOn == null);
     }
 
     public async Task<decimal> GetReconcileBeginningBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate)

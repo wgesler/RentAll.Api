@@ -55,6 +55,29 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPost("journal-entry-line/reconcile/lines")]
+        public async Task<IActionResult> GetReconcileJournalEntryLines([FromBody] GetReconcileJournalEntryLinesDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Reconcile line criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var journalEntryLines = await _journalEntryRepository.GetReconcileJournalEntryLinesAsync(CurrentOrganizationId, dto.OfficeId, dto.ChartOfAccountId, dto.StatementDate);
+                var response = journalEntryLines.Select(line => new JournalEntryLineSearchResponseDto(line)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting reconcile journal entry lines for account {ChartOfAccountId}", dto.ChartOfAccountId);
+                return ServerError("An error occurred while retrieving reconcile journal entry lines");
+            }
+        }
+
         [HttpGet("journal-entry/code/{journalEntryCode}")]
         public async Task<IActionResult> GetJournalEntryByCode(string journalEntryCode)
         {
