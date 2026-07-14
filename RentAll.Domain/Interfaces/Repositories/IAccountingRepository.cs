@@ -54,10 +54,17 @@ public interface IAccountingRepository
     #endregion
 
     #region Reconcile
+    Task<List<Reconcile>> GetReconcilesByAccountIdAsync(Guid organizationId, int officeId, int accountId);
+    Task<Reconcile?> GetReconcileByIdAsync(int reconcileId, Guid organizationId, int officeId);
+    Task<Reconcile> CreateReconcileAsync(Reconcile reconcile);
+    Task<Reconcile> UpdateReconcileByIdAsync(Reconcile reconcile);
+    Task DeleteReconcileByIdAsync(int reconcileId, Guid organizationId, int officeId);
+
     Task<ReconcileDraft?> GetReconcileDraftByAccountIdAsync(Guid organizationId, int officeId, int accountId);
     Task<ReconcileDraft> UpsertReconcileDraftAsync(ReconcileDraft reconcileDraft);
     Task DeleteReconcileDraftByAccountIdAsync(Guid organizationId, int officeId, int accountId);
     #endregion
+
 
     #region AccountingErrors
     Task LogAccountingErrorAsync(AccountingError error);

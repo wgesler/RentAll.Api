@@ -201,9 +201,29 @@ namespace RentAll.Api.Controllers
 
                 var updatedAccount = await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.EndingBalance, request.StatementDate);
 
+                var reconcileDraft = await _accountingRepository.GetReconcileDraftByAccountIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId);
+                if (reconcileDraft != null)
+                {
+                    await _accountingRepository.CreateReconcileAsync(new Reconcile
+                    {
+                        OrganizationId = reconcileDraft.OrganizationId,
+                        OfficeId = reconcileDraft.OfficeId,
+                        AccountId = reconcileDraft.AccountId,
+                        StatementDate = request.StatementDate,
+                        EndingBalance = request.EndingBalance,
+                        ServiceChargeAmount = reconcileDraft.ServiceChargeAmount,
+                        ServiceChargeDate = reconcileDraft.ServiceChargeDate,
+                        ServiceChargeAccountId = reconcileDraft.ServiceChargeAccountId,
+                        InterestAmount = reconcileDraft.InterestAmount,
+                        InterestDate = reconcileDraft.InterestDate,
+                        InterestAccountId = reconcileDraft.InterestAccountId
+                    });
+                }
+
                 await _accountingRepository.DeleteReconcileDraftByAccountIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId);
 
                 return Ok(new ChartOfAccountResponseDto(updatedAccount));
+
             }
             catch (Exception ex)
             {
