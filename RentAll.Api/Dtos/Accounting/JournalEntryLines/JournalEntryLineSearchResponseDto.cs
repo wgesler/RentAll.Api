@@ -24,6 +24,7 @@ public class JournalEntryLineSearchResponseDto
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
+    public string? CheckNumber { get; set; }
     public string? JournalEntryMemo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
@@ -56,6 +57,7 @@ public class JournalEntryLineSearchResponseDto
         SourceTypeId = result.SourceTypeId;
         SourceId = result.SourceId;
         SourceCode = result.SourceCode;
+        CheckNumber = result.CheckNumber;
         JournalEntryMemo = result.JournalEntryMemo;
         IsPosted = result.IsPosted;
         IsVoided = result.IsVoided;

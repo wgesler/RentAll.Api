@@ -45,7 +45,10 @@ public class UpdateAccountingOfficeDto
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public string? LogoPath { get; set; }
+    public string? CheckStockPath { get; set; }
+    public int CurrentCheckNumber { get; set; } = 1;
     public FileDetails? FileDetails { get; set; }
+    public FileDetails? CheckStockFileDetails { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -143,6 +146,8 @@ public class UpdateAccountingOfficeDto
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = DefaultPrePayAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
+            CheckStockPath = CheckStockPath, // Will be updated by controller if CheckStockFileDetails provided
+            CurrentCheckNumber = CurrentCheckNumber,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

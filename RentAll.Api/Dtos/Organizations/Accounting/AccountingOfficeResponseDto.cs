@@ -47,6 +47,9 @@ public class AccountingOfficeResponseDto
     public int? DefaultPrePayAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public string? CheckStockPath { get; set; }
+    public FileDetails? CheckStockFileDetails { get; set; }
+    public int CurrentCheckNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -97,6 +100,8 @@ public class AccountingOfficeResponseDto
         DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId;
         DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId;
         LogoPath = accountingOffice.LogoPath;
+        CheckStockPath = accountingOffice.CheckStockPath;
+        CurrentCheckNumber = accountingOffice.CurrentCheckNumber;
         IsActive = accountingOffice.IsActive;
         CreatedOn = accountingOffice.CreatedOn;
         CreatedBy = accountingOffice.CreatedBy;

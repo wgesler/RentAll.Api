@@ -398,4 +398,21 @@ public partial class JournalEntryRepository
             ModifiedBy = modifiedBy
         });
     }
+
+    public async Task<JournalEntry> UpdateJournalEntryCheckNumberByIdAsync(Guid journalEntryId, Guid organizationId, string checkNumber, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<JournalEntryEntity>("Accounting.JournalEntry_UpdateCheckNumberById", new
+        {
+            JournalEntryId = journalEntryId,
+            OrganizationId = organizationId,
+            CheckNumber = checkNumber,
+            ModifiedBy = modifiedBy
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("Journal entry not found");
+
+        return ConvertEntityToModel(res.First());
+    }
 }

@@ -13,6 +13,7 @@ public class JournalEntryResponseDto
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
+    public string? CheckNumber { get; set; }
     public string? Memo { get; set; }
     public bool IsPosted { get; set; }
     public bool IsVoided { get; set; }
@@ -33,6 +34,7 @@ public class JournalEntryResponseDto
         SourceTypeId = journalEntry.SourceTypeId;
         SourceId = journalEntry.SourceId;
         SourceCode = journalEntry.SourceCode;
+        CheckNumber = journalEntry.CheckNumber;
         Memo = journalEntry.Memo;
         IsPosted = journalEntry.IsPosted;
         IsVoided = journalEntry.IsVoided;

@@ -43,6 +43,8 @@ public class AccountingOfficeEntity
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public string? LogoPath { get; set; }
+    public string? CheckStockPath { get; set; }
+    public int CurrentCheckNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

@@ -11,5 +11,6 @@ public enum ImageType
     Insurances = 5,
     ApplianceDecal = 6,
     StateForm = 7,
+    CheckStocks = 8,
 }
 

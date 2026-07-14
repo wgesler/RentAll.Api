@@ -37,6 +37,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
             SourceCode = e.SourceCode,
+            CheckNumber = e.CheckNumber,
             Memo = e.Memo,
             IsPosted = e.IsPosted,
             IsVoided = e.IsVoided,
@@ -156,6 +157,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
             SourceCode = e.SourceCode,
+            CheckNumber = e.CheckNumber,
             JournalEntryMemo = e.JournalEntryMemo,
             IsPosted = e.IsPosted,
             IsVoided = e.IsVoided

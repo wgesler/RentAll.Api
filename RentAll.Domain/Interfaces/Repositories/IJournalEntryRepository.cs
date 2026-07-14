@@ -15,6 +15,7 @@ public interface IJournalEntryRepository
     Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId);
     Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> UpdateJournalEntryByIdAsync(JournalEntry journalEntry);
+    Task<JournalEntry> UpdateJournalEntryCheckNumberByIdAsync(Guid journalEntryId, Guid organizationId, string checkNumber, Guid modifiedBy);
     Task DeleteJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, Guid sourceId);
     Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds);
