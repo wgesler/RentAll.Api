@@ -125,6 +125,8 @@ public partial class AccountingRepository
             IsSubaccount = chartOfAccount.IsSubaccount,
             SubAccountId = chartOfAccount.SubAccountId,
             Description = chartOfAccount.Description,
+            EndingBalance = chartOfAccount.EndingBalance,
+            StatementDate = chartOfAccount.StatementDate,
             Note = chartOfAccount.Note
         });
 
@@ -150,6 +152,8 @@ public partial class AccountingRepository
             IsSubaccount = chartOfAccount.IsSubaccount,
             SubAccountId = chartOfAccount.SubAccountId,
             Description = chartOfAccount.Description,
+            EndingBalance = chartOfAccount.EndingBalance,
+            StatementDate = chartOfAccount.StatementDate,
             Note = chartOfAccount.Note
         });
 

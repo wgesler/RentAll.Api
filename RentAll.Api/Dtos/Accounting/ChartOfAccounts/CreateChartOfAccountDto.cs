@@ -10,6 +10,8 @@ public class CreateChartOfAccountDto
     public bool IsSubaccount { get; set; }
     public int? SubAccountId { get; set; }
     public string? Description { get; set; }
+    public decimal? EndingBalance { get; set; }
+    public DateOnly? StatementDate { get; set; }
     public string? Note { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(string currentOffices)
@@ -47,6 +49,8 @@ public class CreateChartOfAccountDto
             IsSubaccount = IsSubaccount,
             SubAccountId = IsSubaccount ? SubAccountId : null,
             Description = Description,
+            EndingBalance = EndingBalance,
+            StatementDate = StatementDate,
             Note = Note
         };
     }

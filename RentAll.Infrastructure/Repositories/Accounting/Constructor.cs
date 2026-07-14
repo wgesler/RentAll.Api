@@ -68,6 +68,8 @@ public partial class AccountingRepository : IAccountingRepository
             IsSubaccount = e.IsSubaccount,
             SubAccountId = e.SubAccountId,
             Description = e.Description,
+            EndingBalance = e.EndingBalance,
+            StatementDate = e.StatementDate,
             Note = e.Note
         };
     }

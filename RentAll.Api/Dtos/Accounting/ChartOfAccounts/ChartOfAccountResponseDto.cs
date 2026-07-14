@@ -11,6 +11,8 @@ public class ChartOfAccountResponseDto
     public bool IsSubaccount { get; set; }
     public int? SubAccountId { get; set; }
     public string? Description { get; set; }
+    public decimal? EndingBalance { get; set; }
+    public DateOnly? StatementDate { get; set; }
     public string? Note { get; set; }
 
     public ChartOfAccountResponseDto(ChartOfAccount chartOfAccount)
@@ -24,6 +26,8 @@ public class ChartOfAccountResponseDto
         IsSubaccount = chartOfAccount.IsSubaccount;
         SubAccountId = chartOfAccount.SubAccountId;
         Description = chartOfAccount.Description;
+        EndingBalance = chartOfAccount.EndingBalance;
+        StatementDate = chartOfAccount.StatementDate;
         Note = chartOfAccount.Note;
     }
 }

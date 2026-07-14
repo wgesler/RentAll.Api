@@ -13,5 +13,7 @@ public class ChartOfAccount
     public bool IsSubaccount { get; set; }
     public int? SubAccountId { get; set; }
     public string? Description { get; set; }
+    public decimal? EndingBalance { get; set; }
+    public DateOnly? StatementDate { get; set; }
     public string? Note { get; set; }
 }
