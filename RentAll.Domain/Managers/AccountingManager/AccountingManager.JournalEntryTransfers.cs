@@ -240,18 +240,20 @@ public partial class AccountingManager
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // TRANSFER-JE-ACCOUNTS
+        // Lump-sum posting only (bank reconcile sees one bank line; split detail lives on TransferSplit):
         // Line 1 — Escrow Deposits (GetDefaultEscrowDepositAccount):
         //   positive transfer: Credit escrow / Debit 0
         //   negative transfer: Debit escrow / Credit 0
-        // Lines 2+ — Owner, SecDep, SDW, or Bank split accounts:
-        //   positive split: Debit split / Credit 0
-        //   negative split: Debit 0 / Credit split
+        // Line 2 — Bank account (transfer.BankAccountId or default bank):
+        //   positive transfer: Debit bank / Credit 0
+        //   negative transfer: Debit 0 / Credit bank
         // END TRANSFER-JE-ACCOUNTS
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
-        var escrowDepositAccountId = transfer.BankAccountId is > 0
+        var escrowDepositAccountId = accounts.EscrowDepositAccountId;
+        var bankAccountId = transfer.BankAccountId is > 0
             ? transfer.BankAccountId.Value
-            : accounts.EscrowDepositAccountId;
+            : accounts.BankAccountId;
         var memo = BuildTransferMemo(transfer.TransferCode, transfer.TransferDate);
         var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
@@ -266,25 +268,16 @@ public partial class AccountingManager
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(escrowLine, headerLineContext);
-        var journalEntryLines = new List<JournalEntryLine> { escrowLine };
 
-        foreach (var split in transfer.Splits)
+        var bankLine = new JournalEntryLine
         {
-            var splitAccountId = split.ChartOfAccountId!.Value;
-            if (!IsAllowedTransferDebitAccountId(splitAccountId, accounts))
-                throw new Exception("Each split must use a configured escrow security deposit, escrow SDW, escrow owners, or bank account");
-
-            var splitLine = new JournalEntryLine
-            {
-                ChartOfAccountId = splitAccountId,
-                Debit = split.Amount > 0 ? split.Amount : 0,
-                Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
-                Memo = string.IsNullOrWhiteSpace(split.Description) ? memo : split.Description.Trim(),
-                CreatedBy = currentUser
-            };
-            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromTransferSplit(split));
-            journalEntryLines.Add(splitLine);
-        }
+            ChartOfAccountId = bankAccountId,
+            Debit = transfer.Amount > 0 ? transfer.Amount : 0,
+            Credit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(bankLine, headerLineContext);
 
         return new JournalEntry
         {
@@ -296,7 +289,7 @@ public partial class AccountingManager
             SourceId = transfer.TransferId,
             SourceCode = ResolveJournalEntrySourceCodeFromTransfer(transfer),
             Memo = memo,
-            JournalEntryLines = journalEntryLines,
+            JournalEntryLines = [escrowLine, bankLine],
             CreatedBy = currentUser
         };
     }

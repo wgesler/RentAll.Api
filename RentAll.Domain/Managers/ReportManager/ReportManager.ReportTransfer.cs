@@ -1,29 +1,55 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
+using System.Globalization;
 
 namespace RentAll.Domain.Managers;
 
 public partial class ReportManager
 {
+    private sealed class TransferReportAccountIds
+    {
+        public int? OwnersAccountId { get; init; }
+        public int? SecDepAccountId { get; init; }
+        public int? SdwAccountId { get; init; }
+        public int? BankAccountId { get; init; }
+    }
+
     public async Task<TransferReport> GetTransferReportAsync(JournalEntryRecapGetCriteria criteria)
     {
-        var recapCriteria = new JournalEntryRecapGetCriteria
+        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
             PropertyId = criteria.PropertyId,
-            ReservationId = criteria.ReservationId,
+            IsActive = true,
+            IncludeInactive = false,
             StartDate = criteria.StartDate,
-            EndDate = criteria.EndDate,
-            IncludeVoided = false,
-            IncludeUnposted = true,
-            IncludePaymentInvoiceContext = true,
-            RecapCategory = criteria.RecapCategory
-        };
+            EndDate = criteria.EndDate
+        }))
+            .Where(transfer => transfer.IsActive)
+            .ToList();
 
-        var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(recapCriteria)).ToList();
-        var recapRows = BuildRecapReportRows(lines);
+        var officeIds = ParseOfficeIds(criteria.OfficeIds);
+        var accountIdsByOffice = await LoadTransferReportAccountIdsByOfficeAsync(criteria.OrganizationId, officeIds);
+        var journalEntryCodesById = await LoadJournalEntryCodesByIdAsync(
+            criteria.OrganizationId,
+            transfers.Select(transfer => transfer.JournalEntryId).Where(id => id.HasValue && id.Value != Guid.Empty).Select(id => id!.Value));
 
-        var rows = BuildTransferReportRows(recapRows);
+        var rows = transfers
+            .Select(transfer =>
+            {
+                accountIdsByOffice.TryGetValue(transfer.OfficeId, out var accountIds);
+                accountIds ??= new TransferReportAccountIds();
+                journalEntryCodesById.TryGetValue(transfer.JournalEntryId ?? Guid.Empty, out var journalEntryCode);
+                return BuildTransferReportRowFromTransfer(transfer, accountIds, journalEntryCode);
+            })
+            .Where(row => row != null && HasTransferReportMeaningfulAmount(row!))
+            .Cast<TransferReportRow>()
+            .OrderBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.ReservationCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.SortDateValue)
+            .ThenBy(row => row.Source, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         return new TransferReport
         {
@@ -31,96 +57,141 @@ public partial class ReportManager
         };
     }
 
-    private static List<TransferReportRow> BuildTransferReportRows(IEnumerable<RecapReportRow> recapRows)
+    private async Task<Dictionary<int, TransferReportAccountIds>> LoadTransferReportAccountIdsByOfficeAsync(
+        Guid organizationId,
+        IReadOnlyCollection<int> officeIds)
     {
-        var groups = new Dictionary<string, List<RecapReportRow>>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var row in recapRows)
+        var accountIdsByOffice = new Dictionary<int, TransferReportAccountIds>();
+        foreach (var officeId in officeIds)
         {
-            var key = GetTransferReportSourceKey(row);
-            if (!groups.TryGetValue(key, out var groupRows))
+            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
+            accountIdsByOffice[officeId] = new TransferReportAccountIds
             {
-                groupRows = [];
-                groups[key] = groupRows;
-            }
-
-            groupRows.Add(row);
+                OwnersAccountId = accountingOffice?.DefaultEscrowOwnersAccountId,
+                SecDepAccountId = accountingOffice?.DefaultEscrowSecDepAccountId,
+                SdwAccountId = accountingOffice?.DefaultEscrowSdwAccountId,
+                BankAccountId = accountingOffice?.DefaultBankAccountId
+            };
         }
 
-        return groups.Values
-            .Select(BuildTransferReportRow)
-            .Where(HasTransferReportMeaningfulAmount)
-            .OrderBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.ReservationCode, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.SortDateValue)
-            .ThenBy(row => row.Source, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return accountIdsByOffice;
     }
 
-    private static string GetTransferReportSourceKey(RecapReportRow row)
+    private async Task<Dictionary<Guid, string>> LoadJournalEntryCodesByIdAsync(
+        Guid organizationId,
+        IEnumerable<Guid> journalEntryIds)
     {
-        var source = (row.Source ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(source))
-            return source.ToUpperInvariant();
+        var codesById = new Dictionary<Guid, string>();
+        foreach (var journalEntryId in journalEntryIds.Distinct())
+        {
+            var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+            if (journalEntry == null)
+                continue;
 
-        var sourceId = row.SourceId?.ToString() ?? string.Empty;
-        return $"{row.OfficeId}|{row.SourceTypeId}|{sourceId}".ToUpperInvariant();
+            var code = (journalEntry.JournalEntryCode ?? journalEntry.SourceCode ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(code))
+                codesById[journalEntryId] = code;
+        }
+
+        return codesById;
     }
 
-    private static TransferReportRow BuildTransferReportRow(IReadOnlyList<RecapReportRow> rows)
+    private static TransferReportRow? BuildTransferReportRowFromTransfer(
+        Transfer transfer,
+        TransferReportAccountIds accountIds,
+        string? journalEntryCode)
     {
-        var orderedRows = rows
-            .OrderBy(row => row.SortDateValue)
-            .ThenBy(row => row.AccountingPeriod, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.JournalEntryCode, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var primaryRow = orderedRows[0];
-
-        var expectedIncomeValue = orderedRows.Sum(row => row.ExpectedIncomeValue);
-        var rentPlus4000Value = orderedRows.Sum(row => row.RentPlus4000Value);
-        var ownerRentValue = orderedRows.Sum(row => row.OwnerRentValue + row.UnPaidValue);
-        var ownerRentActualValue = orderedRows.Sum(row => row.OwnerRentActualValue);
-        var securityDepositValue = orderedRows.Sum(row => row.SecurityDepositValue);
-        var sdwValue = orderedRows.Sum(row => row.SdwValue);
-        var feeValue = orderedRows.Sum(row => row.FeeValue);
-        var businessValue = expectedIncomeValue - ownerRentActualValue - securityDepositValue - sdwValue;
+        var splits = transfer.Splits ?? [];
+        var ownerRentActualValue = SumTransferSplitAmountsForAccount(splits, accountIds.OwnersAccountId);
+        var securityDepositValue = SumTransferSplitAmountsForAccount(splits, accountIds.SecDepAccountId);
+        var sdwValue = SumTransferSplitAmountsForAccount(splits, accountIds.SdwAccountId);
+        var businessValue = SumTransferSplitAmountsForAccount(splits, accountIds.BankAccountId);
+        var expectedIncomeValue = RoundCurrency(
+            ownerRentActualValue + securityDepositValue + sdwValue + businessValue);
+        var contextSplit = splits.FirstOrDefault(split => split.PropertyId.HasValue && split.PropertyId != Guid.Empty)
+            ?? splits.FirstOrDefault();
+        var source = ResolveTransferReportSource(transfer);
+        var resolvedJournalEntryCode = (journalEntryCode ?? transfer.TransferCode ?? string.Empty).Trim();
+        var transactionDate = transfer.TransferDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var sortDateValue = transfer.TransferDate.ToDateTime(TimeOnly.MinValue).Ticks;
 
         return new TransferReportRow
         {
-            PropertyCode = primaryRow.PropertyCode,
-            ReservationCode = primaryRow.ReservationCode,
-            AccountingPeriod = primaryRow.AccountingPeriod,
-            Source = primaryRow.Source,
-            JournalEntryCode = primaryRow.JournalEntryCode,
-            SourceTypeId = primaryRow.SourceTypeId,
-            SourceId = primaryRow.SourceId,
-            SourceLinkable = primaryRow.SourceLinkable,
-            ActivityType = primaryRow.ActivityType,
-            OfficeId = primaryRow.OfficeId,
-            PropertyId = primaryRow.PropertyId,
-            ReservationId = primaryRow.ReservationId,
-            TransactionDate = primaryRow.TransactionDate,
+            PropertyCode = (contextSplit?.PropertyCode ?? string.Empty).Trim(),
+            ReservationCode = (contextSplit?.ReservationCode ?? string.Empty).Trim(),
+            AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(transfer.AccountingPeriod.ToString("yyyy-MM-dd")),
+            Source = source,
+            JournalEntryCode = resolvedJournalEntryCode,
+            SourceTypeId = (int)SourceType.Transfer,
+            SourceId = transfer.TransferId,
+            SourceLinkable = true,
+            ActivityType = "Transfer",
+            OfficeId = transfer.OfficeId,
+            PropertyId = contextSplit?.PropertyId ?? transfer.PropertyId,
+            ReservationId = contextSplit?.ReservationId,
+            TransactionDate = transactionDate,
             ExpectedIncome = FormatCurrencyUsd(expectedIncomeValue),
-            RentPlus4000 = FormatCurrencyUsd(rentPlus4000Value),
-            OwnerRent = FormatCurrencyUsd(ownerRentValue),
+            RentPlus4000 = FormatCurrencyUsd(ownerRentActualValue),
+            OwnerRent = FormatCurrencyUsd(ownerRentActualValue),
             OwnerRentActual = FormatCurrencyUsd(ownerRentActualValue),
             Business = FormatCurrencyUsd(businessValue),
             SecurityDeposit = FormatCurrencyUsd(securityDepositValue),
             Sdw = FormatCurrencyUsd(sdwValue),
-            Fee = FormatCurrencyUsd(feeValue),
+            Fee = FormatCurrencyUsd(businessValue),
             ExpectedIncomeValue = expectedIncomeValue,
-            RentPlus4000Value = rentPlus4000Value,
-            OwnerRentValue = ownerRentValue,
+            RentPlus4000Value = ownerRentActualValue,
+            OwnerRentValue = ownerRentActualValue,
             OwnerRentActualValue = ownerRentActualValue,
             BusinessValue = businessValue,
             SecurityDepositValue = securityDepositValue,
             SdwValue = sdwValue,
-            FeeValue = feeValue,
-            SortDateValue = primaryRow.SortDateValue,
-            JournalEntryId = primaryRow.JournalEntryId,
-            JournalEntryLineId = primaryRow.JournalEntryLineId
+            FeeValue = businessValue,
+            SortDateValue = sortDateValue,
+            JournalEntryId = transfer.JournalEntryId,
+            JournalEntryLineId = null
         };
     }
+
+    private static decimal SumTransferSplitAmountsForAccount(IEnumerable<TransferSplit> splits, int? accountId)
+    {
+        if (accountId is null or <= 0)
+            return 0;
+
+        return RoundCurrency(splits
+            .Where(split => split.ChartOfAccountId == accountId)
+            .Sum(split => split.Amount));
+    }
+
+    private static string ResolveTransferReportSource(Transfer transfer)
+    {
+        foreach (var split in transfer.Splits ?? [])
+        {
+            var description = (split.Description ?? string.Empty).Trim();
+            var transferPrefixMatch = System.Text.RegularExpressions.Regex.Match(description, @"^Transfer\s+(.+)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (transferPrefixMatch.Success && !string.IsNullOrWhiteSpace(transferPrefixMatch.Groups[1].Value))
+                return transferPrefixMatch.Groups[1].Value.Trim();
+        }
+
+        var transferDescription = (transfer.Description ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(transferDescription)
+            && !transferDescription.Equals("transfer", StringComparison.OrdinalIgnoreCase))
+        {
+            return transferDescription;
+        }
+
+        return (transfer.TransferCode ?? string.Empty).Trim();
+    }
+
+    private static List<int> ParseOfficeIds(string officeIds)
+        => (officeIds ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => int.TryParse(value, out var officeId) ? officeId : 0)
+            .Where(officeId => officeId > 0)
+            .Distinct()
+            .ToList();
+
+    private static decimal RoundCurrency(decimal value)
+        => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
     private static bool HasTransferReportMeaningfulAmount(TransferReportRow row) =>
         row.ExpectedIncomeValue != 0
