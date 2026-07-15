@@ -42,6 +42,7 @@ public partial class JournalEntryRepository
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             UnclearedOnly = criteria.UnclearedOnly,
+            IncludeCashOnly = criteria.IncludeCashOnly,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
         });
