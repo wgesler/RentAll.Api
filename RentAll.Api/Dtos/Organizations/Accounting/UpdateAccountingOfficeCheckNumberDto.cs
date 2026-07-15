@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Api.Dtos.Organizations.Accounting;
 
 public class UpdateAccountingOfficeCheckNumberDto
@@ -22,5 +24,25 @@ public class AccountingOfficeCheckNumberResponseDto
     {
         OfficeId = officeId;
         CurrentCheckNumber = currentCheckNumber;
+    }
+}
+
+public class UpdateAccountingOfficeCheckStockDto
+{
+    public string? CheckStockPath { get; set; }
+    public FileDetails? CheckStockFileDetails { get; set; }
+}
+
+public class AccountingOfficeCheckStockResponseDto
+{
+    public int OfficeId { get; set; }
+    public string? CheckStockPath { get; set; }
+    public FileDetails? CheckStockFileDetails { get; set; }
+
+    public AccountingOfficeCheckStockResponseDto(int officeId, string? checkStockPath, FileDetails? checkStockFileDetails)
+    {
+        OfficeId = officeId;
+        CheckStockPath = checkStockPath;
+        CheckStockFileDetails = checkStockFileDetails;
     }
 }

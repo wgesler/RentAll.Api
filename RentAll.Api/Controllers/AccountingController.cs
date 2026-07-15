@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Accounting.JournalEntries;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using System.Collections.Concurrent;
 
@@ -20,6 +21,8 @@ namespace RentAll.Api.Controllers
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IOrganizationManager _organizationManager;
         private readonly IAccountingManager _accountingManager;
+        private readonly IFileService _fileService;
+        private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly AuthManager _authManager;
         private readonly ILogger<AccountingController> _logger;
         private readonly IServiceScopeFactory _serviceScopeFactory;
@@ -31,6 +34,8 @@ namespace RentAll.Api.Controllers
             IOrganizationRepository organizationRepository,
             IOrganizationManager organizationManager,
             IAccountingManager accountingManager,
+            IFileService fileService,
+            IFileAttachmentHelper fileAttachmentHelper,
             AuthManager authManager,
             ILogger<AccountingController> logger,
             IServiceScopeFactory serviceScopeFactory)
@@ -41,6 +46,8 @@ namespace RentAll.Api.Controllers
             _organizationRepository = organizationRepository;
             _organizationManager = organizationManager;
             _accountingManager = accountingManager;
+            _fileService = fileService;
+            _fileAttachmentHelper = fileAttachmentHelper;
             _authManager = authManager;
             _logger = logger;
             _serviceScopeFactory = serviceScopeFactory;

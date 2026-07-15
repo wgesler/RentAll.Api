@@ -36,6 +36,7 @@ public interface IOrganizationRepository
     Task<AccountingOffice> UpdateAccountingAsync(AccountingOffice accountingOffice);
     Task<AccountingOffice> UpdateAccountingOfficeWorkOrderNoByIdAsync(Guid organizationId, int officeId, int workOrderNo, Guid modifiedBy);
     Task<AccountingOffice> UpdateAccountingOfficeCheckNumberByIdAsync(Guid organizationId, int officeId, int currentCheckNumber, Guid modifiedBy);
+    Task<AccountingOffice> UpdateAccountingOfficeCheckStockByIdAsync(Guid organizationId, int officeId, string? checkStockPath, Guid modifiedBy);
     Task DeleteAccountingOfficeByIdAsync(Guid organizationId, int officeId);
     #endregion
 

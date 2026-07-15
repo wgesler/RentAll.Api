@@ -45,7 +45,6 @@ public class CreateAccountingOfficeDto
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
-    public FileDetails? CheckStockFileDetails { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
     public bool IsActive { get; set; }
 
@@ -144,7 +143,6 @@ public class CreateAccountingOfficeDto
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = DefaultPrePayAccountId,
             LogoPath = null, // Will be set by controller after file save
-            CheckStockPath = null, // Will be set by controller after file save
             CurrentCheckNumber = CurrentCheckNumber,
             IsActive = IsActive,
             CreatedBy = currentUser

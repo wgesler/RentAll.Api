@@ -1,3 +1,5 @@
+using RentAll.Domain.Models.Common;
+
 namespace RentAll.Api.Controllers
 {
     public partial class OrganizationController
@@ -20,8 +22,6 @@ namespace RentAll.Api.Controllers
                     var dto = new AccountingOfficeResponseDto(accountingOffice);
                     if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
                         dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(accountingOffice.OfficeId), accountingOffice.LogoPath, ImageType.Logos);
-                    if (!string.IsNullOrWhiteSpace(accountingOffice.CheckStockPath))
-                        dto.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(accountingOffice.OfficeId), accountingOffice.CheckStockPath, ImageType.CheckStocks);
                     response.Add(dto);
                 }
                 return Ok(response);
@@ -83,7 +83,6 @@ namespace RentAll.Api.Controllers
                 accountingOffice.OrganizationId = CurrentOrganizationId;
 
                 accountingOffice.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, ImageType.Logos);
-                accountingOffice.CheckStockPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.CheckStockFileDetails, ImageType.CheckStocks);
 
                 var created = await _organizationRepository.CreateAccountingAsync(accountingOffice);
 
@@ -94,8 +93,6 @@ namespace RentAll.Api.Controllers
                 var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
                 if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
-                if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.CheckStockPath))
-                    response.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.CheckStockPath, ImageType.CheckStocks);
 
                 return Ok(response);
             }
@@ -177,6 +174,55 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPut("accounting-office/{officeId}/check-stock")]
+        public async Task<IActionResult> UpdateAccountingOfficeCheckStockAsync(int officeId, [FromBody] UpdateAccountingOfficeCheckStockDto dto)
+        {
+            if (officeId <= 0)
+                return BadRequest("Office ID is required");
+
+            if (dto == null)
+                return BadRequest("Check stock data is required");
+
+            try
+            {
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+                if (existing == null)
+                    return NotFound("Accounting office not found");
+
+                var officeName = await GetOfficeNameAsync(officeId);
+                var checkStockPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                    CurrentOrganizationId,
+                    officeName,
+                    dto.CheckStockFileDetails,
+                    ImageType.CheckStocks,
+                    existing.CheckStockPath,
+                    dto.CheckStockPath);
+
+                var updated = await _organizationRepository.UpdateAccountingOfficeCheckStockByIdAsync(
+                    CurrentOrganizationId,
+                    officeId,
+                    checkStockPath,
+                    CurrentUser);
+
+                FileDetails? checkStockFileDetails = null;
+                if (!string.IsNullOrWhiteSpace(updated.CheckStockPath))
+                {
+                    checkStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                        updated.OrganizationId,
+                        officeName,
+                        updated.CheckStockPath,
+                        ImageType.CheckStocks);
+                }
+
+                return Ok(new AccountingOfficeCheckStockResponseDto(updated.OfficeId, updated.CheckStockPath, checkStockFileDetails));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating accounting office check stock: {OfficeId}", officeId);
+                return ServerError("An error occurred while updating the accounting office check stock");
+            }
+        }
+
         [HttpPut("accounting-office")]
         public async Task<IActionResult> UpdateAccountingOffice([FromBody] UpdateAccountingOfficeDto dto)
         {
@@ -198,8 +244,6 @@ namespace RentAll.Api.Controllers
                 var officeName = await GetOfficeNameAsync(dto.OfficeId);
                 accountingOffice.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.FileDetails,
                     ImageType.Logos, existing.LogoPath, dto.LogoPath);
-                accountingOffice.CheckStockPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.CheckStockFileDetails,
-                    ImageType.CheckStocks, existing.CheckStockPath, dto.CheckStockPath);
 
                 var updated = await _organizationRepository.UpdateAccountingAsync(accountingOffice);
 
@@ -210,8 +254,6 @@ namespace RentAll.Api.Controllers
                 var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
                 if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
-                if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.CheckStockPath))
-                    response.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.CheckStockPath, ImageType.CheckStocks);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -235,8 +277,6 @@ namespace RentAll.Api.Controllers
                 var office = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 if (office != null && !string.IsNullOrWhiteSpace(office.LogoPath))
                     await _fileService.DeleteImageAsync(office.OrganizationId, await GetOfficeNameAsync(officeId), office.LogoPath, ImageType.Logos);
-                if (office != null && !string.IsNullOrWhiteSpace(office.CheckStockPath))
-                    await _fileService.DeleteImageAsync(office.OrganizationId, await GetOfficeNameAsync(officeId), office.CheckStockPath, ImageType.CheckStocks);
 
                 await DeleteBankCardsForOfficeAsync(officeId);
 

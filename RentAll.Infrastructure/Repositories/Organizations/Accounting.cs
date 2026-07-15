@@ -99,7 +99,6 @@ public partial class OrganizationRepository
             DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId,
             LogoPath = accountingOffice.LogoPath,
-            CheckStockPath = accountingOffice.CheckStockPath,
             CurrentCheckNumber = accountingOffice.CurrentCheckNumber,
             IsActive = accountingOffice.IsActive,
             CreatedBy = accountingOffice.CreatedBy
@@ -159,7 +158,6 @@ public partial class OrganizationRepository
             DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId,
             LogoPath = accountingOffice.LogoPath,
-            CheckStockPath = accountingOffice.CheckStockPath,
             CurrentCheckNumber = accountingOffice.CurrentCheckNumber,
             IsActive = accountingOffice.IsActive,
             ModifiedBy = accountingOffice.ModifiedBy
@@ -196,6 +194,23 @@ public partial class OrganizationRepository
             OrganizationId = organizationId,
             OfficeId = officeId,
             CurrentCheckNumber = currentCheckNumber,
+            ModifiedBy = modifiedBy
+        });
+
+        if (res == null || !res.Any())
+            throw new Exception("AccountingOffice not found");
+
+        return ConvertEntityToModel(res.FirstOrDefault()!);
+    }
+
+    public async Task<AccountingOffice> UpdateAccountingOfficeCheckStockByIdAsync(Guid organizationId, int officeId, string? checkStockPath, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<AccountingOfficeEntity>("Organization.AccountingOffice_UpdateCheckStockById", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            CheckStockPath = checkStockPath,
             ModifiedBy = modifiedBy
         });
 

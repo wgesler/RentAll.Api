@@ -57,6 +57,7 @@ public partial class AccountingRepository
             OrganizationId = checkHtml.OrganizationId,
             OfficeId = checkHtml.OfficeId,
             Check = checkHtml.Check,
+            CheckStockPath = checkHtml.CheckStockPath,
             CreatedBy = checkHtml.CreatedBy
         });
 
@@ -75,6 +76,7 @@ public partial class AccountingRepository
             OrganizationId = checkHtml.OrganizationId,
             OfficeId = checkHtml.OfficeId,
             Check = checkHtml.Check,
+            CheckStockPath = checkHtml.CheckStockPath,
             ModifiedBy = checkHtml.ModifiedBy
         });
 
@@ -101,6 +103,7 @@ public partial class AccountingRepository
             OrganizationId = entity.OrganizationId,
             OfficeId = entity.OfficeId,
             Check = entity.Check,
+            CheckStockPath = entity.CheckStockPath,
             CreatedOn = entity.CreatedOn,
             CreatedBy = entity.CreatedBy,
             ModifiedOn = entity.ModifiedOn,

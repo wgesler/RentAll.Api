@@ -1,3 +1,8 @@
+using RentAll.Api.Dtos.Accounting.CheckHtmls;
+using RentAll.Domain.Enums;
+using RentAll.Domain.Interfaces.Services;
+using RentAll.Domain.Models;
+
 namespace RentAll.Api.Controllers;
 
 public partial class AccountingController
@@ -13,7 +18,7 @@ public partial class AccountingController
             if (checkHtml == null)
                 return NotFound("CheckHtml not found");
 
-            return Ok(new CheckHtmlResponseDto(checkHtml));
+            return Ok(await ToCheckHtmlResponseDtoAsync(checkHtml));
         }
         catch (Exception ex)
         {
@@ -31,7 +36,7 @@ public partial class AccountingController
             if (checkHtml == null || checkHtml.OrganizationId != CurrentOrganizationId)
                 return NotFound("CheckHtml not found");
 
-            return Ok(new CheckHtmlResponseDto(checkHtml));
+            return Ok(await ToCheckHtmlResponseDtoAsync(checkHtml));
         }
         catch (Exception ex)
         {
@@ -46,7 +51,10 @@ public partial class AccountingController
         try
         {
             var rows = await _accountingRepository.GetCheckHtmlAllAsync(CurrentOrganizationId);
-            return Ok(rows.Select(row => new CheckHtmlResponseDto(row)));
+            var response = new List<CheckHtmlResponseDto>();
+            foreach (var row in rows)
+                response.Add(await ToCheckHtmlResponseDtoAsync(row));
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -71,8 +79,23 @@ public partial class AccountingController
 
         try
         {
-            var created = await _accountingRepository.CreateCheckHtmlAsync(dto.ToModel(CurrentUser));
-            return Ok(new CheckHtmlResponseDto(created));
+            var checkHtml = dto.ToModel(CurrentUser);
+            var savedPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(
+                CurrentOrganizationId,
+                await GetCheckStockStorageScopeAsync(dto.OfficeId),
+                dto.CheckStockFileDetails,
+                ImageType.CheckStocks);
+            checkHtml.CheckStockPath = savedPath;
+
+            var created = await _accountingRepository.CreateCheckHtmlAsync(checkHtml);
+            if (!string.IsNullOrWhiteSpace(savedPath) && string.IsNullOrWhiteSpace(created.CheckStockPath))
+            {
+                created.CheckStockPath = savedPath;
+                created.ModifiedBy = CurrentUser;
+                created = await _accountingRepository.UpdateCheckHtmlByIdAsync(created);
+            }
+
+            return Ok(await ToCheckHtmlResponseDtoAsync(created));
         }
         catch (Exception ex)
         {
@@ -101,8 +124,17 @@ public partial class AccountingController
             if (existing == null || existing.OrganizationId != CurrentOrganizationId)
                 return NotFound("CheckHtml not found");
 
-            var updated = await _accountingRepository.UpdateCheckHtmlByIdAsync(dto.ToModel(CurrentUser));
-            return Ok(new CheckHtmlResponseDto(updated));
+            var checkHtml = dto.ToModel(CurrentUser);
+            checkHtml.CheckStockPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                CurrentOrganizationId,
+                await GetCheckStockStorageScopeAsync(dto.OfficeId),
+                dto.CheckStockFileDetails,
+                ImageType.CheckStocks,
+                existing.CheckStockPath,
+                dto.CheckStockPath);
+
+            var updated = await _accountingRepository.UpdateCheckHtmlByIdAsync(checkHtml);
+            return Ok(await ToCheckHtmlResponseDtoAsync(updated));
         }
         catch (Exception ex)
         {
@@ -124,6 +156,15 @@ public partial class AccountingController
             if (existing == null || existing.OrganizationId != CurrentOrganizationId)
                 return NotFound("CheckHtml not found");
 
+            if (!string.IsNullOrWhiteSpace(existing.CheckStockPath))
+            {
+                await _fileService.DeleteImageAsync(
+                    existing.OrganizationId,
+                    await GetCheckStockStorageScopeAsync(existing.OfficeId),
+                    existing.CheckStockPath,
+                    ImageType.CheckStocks);
+            }
+
             await _accountingRepository.DeleteCheckHtmlByIdAsync(checkHtmlId);
             return NoContent();
         }
@@ -132,6 +173,45 @@ public partial class AccountingController
             _logger.LogError(ex, "Error deleting CheckHtml: {CheckHtmlId}", checkHtmlId);
             return ServerError("An error occurred while deleting CheckHtml");
         }
+    }
+
+    #endregion
+
+    #region CheckHtml Helpers
+
+    private async Task<CheckHtmlResponseDto> ToCheckHtmlResponseDtoAsync(CheckHtml checkHtml)
+    {
+        var response = new CheckHtmlResponseDto(checkHtml);
+        if (string.IsNullOrWhiteSpace(checkHtml.CheckStockPath))
+            return response;
+
+        // Match receipt retrieve: try office scope first, then null (Azure parses path; local FileService needs matching prefix).
+        var officeScope = await GetCheckStockStorageScopeAsync(checkHtml.OfficeId);
+        response.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+            checkHtml.OrganizationId,
+            officeScope,
+            checkHtml.CheckStockPath,
+            ImageType.CheckStocks);
+
+        if (response.CheckStockFileDetails == null && !string.IsNullOrWhiteSpace(officeScope))
+        {
+            response.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                checkHtml.OrganizationId,
+                null,
+                checkHtml.CheckStockPath,
+                ImageType.CheckStocks);
+        }
+
+        return response;
+    }
+
+    private async Task<string?> GetCheckStockStorageScopeAsync(int? officeId)
+    {
+        if (!officeId.HasValue || officeId.Value <= 0)
+            return null;
+
+        var office = await _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId);
+        return office?.Name;
     }
 
     #endregion

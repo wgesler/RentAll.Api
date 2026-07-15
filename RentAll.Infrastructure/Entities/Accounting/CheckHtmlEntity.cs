@@ -6,6 +6,7 @@ public class CheckHtmlEntity
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
     public string Check { get; set; } = "[]";
+    public string? CheckStockPath { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
