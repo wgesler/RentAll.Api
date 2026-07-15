@@ -56,7 +56,8 @@ Income activity lines group by **`propertyId + invoiceSourceCode`** (invoice cod
 | `PrePayment` apply (negative amount) | Yes — counts as payment applied to invoice (at apply/accounting period) |
 | `Payment` on prepayment receipt (paired positive `PrePayment` or payment date before invoice period) | **No** — undep receipt is bookkeeping, not owner received income |
 | Full tenant `PaymentValue` | **No** — not owner portion |
-| `OwnerPaymentValue` = `OwnerRent − OwnerExpense` in recap | **No** — wrong timing; was the original accrual bug |
+| Recap UI column **OwnPay** (`OwnerPaymentValue`) | Display-only forecast: `OwnAct − OwnExp` on the recap row. **Not** accrual/cash Paid Income. |
+| `OwnerPaymentValue` used as Paid Income | **No** — wrong timing; was the original accrual bug |
 | `OwnerRent` alone | **No** — that is invoiced, not paid |
 
 **Owner portion formula** (when `OwnerPayment` JE lines are absent):

@@ -116,7 +116,8 @@ public partial class ReportManager
     {
         var ownerRentValue = group.OwnerRentValue;
         var ownerRentActualValue = group.OwnerRentActualValue;
-        var ownerPaymentValue = group.OwnerPaymentReceivedValue;
+        // OwnPay is a forecast (OwnAct − OwnExp), not actual owner payout JEs.
+        var ownerPaymentValue = ownerRentActualValue - group.OwnerExpenseValue;
         var unPaidValue = CalculateUnpaidIncome(ownerRentValue, ownerRentActualValue);
         var sourceDocumentCode = (group.SourceDocumentCode ?? string.Empty).Trim();
         return new RecapReportRow

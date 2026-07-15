@@ -84,7 +84,7 @@ public static class JournalEntryRecapLineClassifier
             && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId
             && AccountingManager.MatchOwnerActualRentMemo(memo).IsMatch)
         {
-            // Same Owner AP credit side as Expected (OwnerRent uses credit - debit).
+            // Same Owner AP credit sign as OwnRent. Actual JEs are created with IsCashOnly = true.
             result = BuildResult("OwnerRentActual", credit - debit, line, memo, sourceTypeId);
             return true;
         }
@@ -213,6 +213,7 @@ public sealed class JournalEntryRecapClassificationLine
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public bool IsRentalIncomeAccount { get; set; }
+    public bool IsCashOnly { get; set; }
     public bool IsInDateRange { get; set; } = true;
 }
 

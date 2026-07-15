@@ -26,7 +26,7 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
-    public void Classify_OwnerActual_MatchesAccountingManagerMemo()
+    public void Classify_OwnerActual_MirrorsOwnRentSign()
     {
         var line = BuildLine(
             sourceTypeId: (int)SourceType.InvoicePayment,
@@ -101,7 +101,8 @@ public class JournalEntryRecapLineClassifierTests
         decimal debit = 0m,
         decimal credit = 0m,
         bool isInDateRange = true,
-        bool isRentalIncomeAccount = false)
+        bool isRentalIncomeAccount = false,
+        bool isCashOnly = false)
     {
         return new JournalEntryRecapClassificationLine
         {
@@ -116,6 +117,7 @@ public class JournalEntryRecapLineClassifierTests
             DefaultActRcvableAccountId = accountsReceivableAccountId ?? AccountsReceivable,
             DefaultTenantIncAccountId = tenantIncomeAccountId ?? TenantIncome,
             IsRentalIncomeAccount = isRentalIncomeAccount,
+            IsCashOnly = isCashOnly,
             IsInDateRange = isInDateRange
         };
     }

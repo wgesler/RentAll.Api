@@ -113,6 +113,7 @@ public partial class JournalEntryRepository
             DefaultOwnerExpAccountId = rawLine.DefaultOwnerExpAccountId,
             DefaultTenantIncAccountId = rawLine.DefaultTenantIncAccountId,
             IsRentalIncomeAccount = rawLine.IsRentalIncomeAccount,
+            IsCashOnly = rawLine.IsCashOnly,
             IsInDateRange = rawLine.IsInDateRange
         };
     }
