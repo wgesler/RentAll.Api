@@ -12,6 +12,7 @@ public partial class MaintenanceController : BaseController
 {
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationManager _organizationManager;
+    private readonly IAccountingRepository _accountingRepository;
     private readonly IAccountingManager _accountingManager;
     private readonly IMaintenanceManager _maintenanceManager;
     private readonly IMaintenanceRepository _maintenanceRepository;
@@ -24,6 +25,7 @@ public partial class MaintenanceController : BaseController
     public MaintenanceController(
         IOrganizationRepository organizationRepository,
         IOrganizationManager organizationManager,
+        IAccountingRepository accountingRepository,
         IAccountingManager accountingManager,
         IMaintenanceManager maintenanceManager,
         IMaintenanceRepository maintenanceRepository,
@@ -35,6 +37,7 @@ public partial class MaintenanceController : BaseController
     {
         _organizationRepository = organizationRepository;
         _organizationManager = organizationManager;
+        _accountingRepository = accountingRepository;
         _accountingManager = accountingManager;
         _maintenanceManager = maintenanceManager;
         _maintenanceRepository = maintenanceRepository;

@@ -109,6 +109,81 @@ public partial class AccountingManager
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
 
+    public async Task<JournalEntry> SoftCloseJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry == null)
+            throw new Exception("Journal entry not found");
+
+        if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
+            throw new Exception("Journal entry is already closed");
+
+        journalEntry.PostingStatusId = PostingStatus.SoftClosed;
+        journalEntry.ModifiedBy = currentUser;
+        return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+    }
+
+    public async Task<JournalEntry> HardCloseJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry == null)
+            throw new Exception("Journal entry not found");
+
+        if (journalEntry.PostingStatusId == PostingStatus.HardClosed)
+            throw new Exception("Journal entry is already hard closed");
+
+        journalEntry.PostingStatusId = PostingStatus.HardClosed;
+        journalEntry.ModifiedBy = currentUser;
+        return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+    }
+
+    public async Task<CloseAccountingPeriodResult> CloseAccountingPeriodAsync(
+        Guid organizationId,
+        int officeId,
+        DateOnly startDate,
+        DateOnly endDate,
+        PostingStatus closeStatus,
+        IEnumerable<Guid> journalEntryIds,
+        Guid currentUser)
+    {
+        if (closeStatus is not (PostingStatus.SoftClosed or PostingStatus.HardClosed))
+            throw new ArgumentException("Close status must be SoftClosed or HardClosed", nameof(closeStatus));
+
+        var result = new CloseAccountingPeriodResult();
+        foreach (var journalEntryId in journalEntryIds.Where(id => id != Guid.Empty).Distinct())
+        {
+            try
+            {
+                if (closeStatus == PostingStatus.SoftClosed)
+                    await SoftCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
+                else
+                    await HardCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
+
+                result.SuccessCount++;
+            }
+            catch (Exception ex)
+            {
+                result.FailedCount++;
+                result.Errors.Add(ex.Message);
+            }
+        }
+
+        if (result.SuccessCount > 0)
+        {
+            var closedDate = await _accountingRepository.CreateClosedDateAsync(new ClosedDate
+            {
+                OrganizationId = organizationId,
+                OfficeId = officeId,
+                StartDate = startDate,
+                EndDate = endDate,
+                PostingStatusId = closeStatus
+            });
+            result.ClosedDateId = closedDate.ClosedDateId;
+        }
+
+        return result;
+    }
+
     public async Task DeleteJournalEntryAsync(Guid journalEntryId, Guid organizationId)
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);

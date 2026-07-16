@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Interfaces.Repositories;
@@ -28,6 +29,15 @@ public interface IAccountingRepository
     Task<CostCode> CreateAsync(CostCode costCode);
     Task<CostCode> UpdateByIdAsync(CostCode costCode);
     Task DeleteCostCodeByIdAsync(int costCodeId, Guid organizationId, int officeId);
+    #endregion
+
+    #region ClosedDates
+    Task<List<ClosedDate>> GetClosedDatesByCriteriaAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, int? postingStatusId);
+    Task<ClosedDate?> GetClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId);
+    Task<ClosedDate> CreateClosedDateAsync(ClosedDate closedDate);
+    Task<ClosedDate> UpdateClosedDateByIdAsync(ClosedDate closedDate);
+    Task DeleteClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId);
+    Task<PostingStatus> CheckAccountingPeriodAsync(Guid organizationId, int officeId, DateOnly accountingPeriod);
     #endregion
 
     #region BankCards

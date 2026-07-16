@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using RentAll.Api.Dtos.Accounting.ClosedDates;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers
 {
@@ -228,6 +230,41 @@ namespace RentAll.Api.Controllers
                 return false;
 
             return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("Admin", StringComparison.OrdinalIgnoreCase));
+        }
+
+        protected bool IsOfficeAdmin()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentUserGroups))
+                return false;
+
+            return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("OfficeAdmin", StringComparison.OrdinalIgnoreCase));
+        }
+
+        protected bool CanOverrideSoftClosedAccountingPeriod()
+        {
+            return IsSuperAdmin() || IsAdmin() || IsOfficeAdmin();
+        }
+
+        protected IActionResult AccountingPeriodClosedConflict(PostingStatus closedStatus, string actionLabel)
+        {
+            var statusLabel = closedStatus == PostingStatus.HardClosed ? "hard closed" : "soft closed";
+            return StatusCode(StatusCodes.Status409Conflict, new ClosedPeriodResponseDto
+            {
+                ClosedStatus = (int)closedStatus,
+                Message = $"Cannot {actionLabel} because the accounting period is {statusLabel}."
+            });
+        }
+
+        protected async Task<IActionResult?> RefuseIfAccountingPeriodClosedAsync(IAccountingRepository accountingRepository, Guid organizationId, int officeId, DateOnly accountingPeriod, string actionLabel)
+        {
+            var periodStatus = await accountingRepository.CheckAccountingPeriodAsync(organizationId, officeId, accountingPeriod);
+            if (periodStatus == PostingStatus.HardClosed)
+                return AccountingPeriodClosedConflict(periodStatus, actionLabel);
+
+            if (periodStatus == PostingStatus.SoftClosed && !CanOverrideSoftClosedAccountingPeriod())
+                return AccountingPeriodClosedConflict(periodStatus, actionLabel);
+
+            return null;
         }
 
         protected IActionResult? RefuseIfJournalEntryHardClosed(int? postingStatusId, string documentLabel)

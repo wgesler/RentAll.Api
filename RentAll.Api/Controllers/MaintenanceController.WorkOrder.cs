@@ -117,6 +117,13 @@ public partial class MaintenanceController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
+        var accountingPeriod = dto.AccountingPeriod == default
+            ? new DateOnly(dto.WorkOrderDate.Year, dto.WorkOrderDate.Month, 1)
+            : dto.AccountingPeriod;
+        var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, accountingPeriod, "create work order");
+        if (periodCheck != null)
+            return periodCheck;
+
         try
         {
             var workOrder = dto.ToModel(CurrentUser);

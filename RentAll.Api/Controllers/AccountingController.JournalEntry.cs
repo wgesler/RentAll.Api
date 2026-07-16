@@ -242,6 +242,10 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid journal entry data");
 
+            var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, dto.AccountingPeriod, "update journal entry");
+            if (periodCheck != null)
+                return periodCheck;
+
             try
             {
                 var existingJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(dto.JournalEntryId, CurrentOrganizationId);
@@ -321,6 +325,74 @@ namespace RentAll.Api.Controllers
             {
                 _logger.LogError(ex, "Error voiding journal entry: {JournalEntryId}", journalEntryId);
                 return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("journal-entry/{journalEntryId}/soft-close")]
+        public async Task<IActionResult> SoftCloseJournalEntry(Guid journalEntryId)
+        {
+            if (journalEntryId == Guid.Empty)
+                return BadRequest("Journal entry ID is required");
+
+            try
+            {
+                var journalEntry = await _accountingManager.SoftCloseJournalEntryAsync(journalEntryId, CurrentOrganizationId, CurrentUser);
+                var response = new JournalEntryResponseDto(journalEntry);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error soft closing journal entry: {JournalEntryId}", journalEntryId);
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPut("journal-entry/{journalEntryId}/hard-close")]
+        public async Task<IActionResult> HardCloseJournalEntry(Guid journalEntryId)
+        {
+            if (journalEntryId == Guid.Empty)
+                return BadRequest("Journal entry ID is required");
+
+            try
+            {
+                var journalEntry = await _accountingManager.HardCloseJournalEntryAsync(journalEntryId, CurrentOrganizationId, CurrentUser);
+                var response = new JournalEntryResponseDto(journalEntry);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error hard closing journal entry: {JournalEntryId}", journalEntryId);
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("journal-entry/close-period")]
+        public async Task<IActionResult> CloseAccountingPeriod([FromBody] CloseAccountingPeriodDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Close period data is required");
+
+            var (isValid, errorMessage) = dto.IsValid(CurrentOfficeAccess);
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid close period request");
+
+            try
+            {
+                var result = await _accountingManager.CloseAccountingPeriodAsync(
+                    CurrentOrganizationId,
+                    dto.OfficeId,
+                    dto.StartDate,
+                    dto.EndDate,
+                    dto.ToCloseStatus(),
+                    dto.JournalEntryIds,
+                    CurrentUser);
+
+                return Ok(new CloseAccountingPeriodResultDto(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error closing accounting period for office {OfficeId}", dto.OfficeId);
+                return ServerError("An error occurred while closing the accounting period");
             }
         }
 

@@ -54,6 +54,21 @@ public partial class AccountingRepository : IAccountingRepository
     }
     #endregion
 
+    #region ClosedDates
+    private ClosedDate ConvertClosedDateEntityToModel(ClosedDateEntity e)
+    {
+        return new ClosedDate
+        {
+            ClosedDateId = e.ClosedDateId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            StartDate = DateOnly.FromDateTime(e.StartDate),
+            EndDate = DateOnly.FromDateTime(e.EndDate),
+            PostingStatusId = (PostingStatus)e.PostingStatusId
+        };
+    }
+    #endregion
+
     #region ChartOfAccounts
     private ChartOfAccount ConvertEntityToModel(ChartOfAccountEntity e)
     {

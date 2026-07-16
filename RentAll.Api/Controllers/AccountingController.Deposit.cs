@@ -124,6 +124,10 @@ public partial class AccountingController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
+        var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, dto.AccountingPeriod, "create deposit");
+        if (periodCheck != null)
+            return periodCheck;
+
         try
         {
             var depositCode = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Deposit);
