@@ -23,6 +23,8 @@ public class UpdateAccountingOfficeDto
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int YearEndMonth { get; set; } = 12;
+    public int YearEndDay { get; set; } = 31;
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
@@ -44,6 +46,7 @@ public class UpdateAccountingOfficeDto
     public int? DefaultEscrowSdwAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
+    public int? DefaultRetainedEarningsAccountId { get; set; }
     public string? LogoPath { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
     public FileDetails? FileDetails { get; set; }
@@ -96,6 +99,16 @@ public class UpdateAccountingOfficeDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
+        if (YearEndMonth < 1 || YearEndMonth > 12)
+            return (false, "YearEndMonth must be between 1 and 12");
+
+        if (YearEndDay < 1 || YearEndDay > 31)
+            return (false, "YearEndDay must be between 1 and 31");
+
+        var maxDay = DateTime.DaysInMonth(2024, YearEndMonth);
+        if (YearEndDay > maxDay)
+            return (false, $"YearEndDay must be between 1 and {maxDay} for month {YearEndMonth:00}");
+
         return (true, null);
     }
 
@@ -122,6 +135,8 @@ public class UpdateAccountingOfficeDto
             BankSwiftCode = BankSwiftCode,
             BankAddress = BankAddress,
             BankPhone = BankPhone,
+            YearEndMonth = YearEndMonth,
+            YearEndDay = YearEndDay,
             WorkOrderNo = WorkOrderNo,
             DefaultTenantIncAccountId = DefaultTenantIncAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,
@@ -143,6 +158,7 @@ public class UpdateAccountingOfficeDto
             DefaultEscrowSdwAccountId = DefaultEscrowSdwAccountId,
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = DefaultPrePayAccountId,
+            DefaultRetainedEarningsAccountId = DefaultRetainedEarningsAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             CurrentCheckNumber = CurrentCheckNumber,
             IsActive = IsActive,

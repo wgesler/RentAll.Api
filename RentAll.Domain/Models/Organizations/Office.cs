@@ -18,8 +18,6 @@ public class Office
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
     public string? Website { get; set; }
-    public int YearEndMonth { get; set; } = 12;
-    public int YearEndDay { get; set; } = 31;
     public string? LogoPath { get; set; }
     public string? MaintenanceEmail { get; set; }
     public string? AfterHoursPhone { get; set; }

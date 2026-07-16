@@ -14,13 +14,15 @@ public class AccountingOffice
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
     public string Email { get; set; } = string.Empty;
-    public string Website { get; set; } = string.Empty;
+    public string? Website { get; set; }
     public string BankName { get; set; } = string.Empty;
     public string BankRouting { get; set; } = string.Empty;
     public string BankAccount { get; set; } = string.Empty;
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int YearEndMonth { get; set; } = 12;
+    public int YearEndDay { get; set; } = 31;
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
@@ -42,6 +44,7 @@ public class AccountingOffice
     public int? DefaultEscrowSdwAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
+    public int? DefaultRetainedEarningsAccountId { get; set; }
     public string? LogoPath { get; set; }
     public string? CheckStockPath { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;

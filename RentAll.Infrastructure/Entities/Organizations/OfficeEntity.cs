@@ -15,8 +15,6 @@ public class OfficeEntity
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
     public string? Website { get; set; }
-    public int YearEndMonth { get; set; }
-    public int YearEndDay { get; set; }
     public string? LogoPath { get; set; }
     public string? MaintenanceEmail { get; set; }
     public string? AfterHoursPhone { get; set; }

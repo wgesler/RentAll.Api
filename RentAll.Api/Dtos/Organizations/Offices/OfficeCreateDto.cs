@@ -16,8 +16,6 @@ public class OfficeCreateDto
     public string Phone { get; set; } = string.Empty;
     public string? Fax { get; set; }
     public string? Website { get; set; }
-    public int YearEndMonth { get; set; } = 12;
-    public int YearEndDay { get; set; } = 31;
     public string? MaintenanceEmail { get; set; }
     public string? AfterHoursPhone { get; set; }
     public string? AfterHoursInstructions { get; set; }
@@ -98,16 +96,6 @@ public class OfficeCreateDto
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
 
-        if (YearEndMonth < 1 || YearEndMonth > 12)
-            return (false, "YearEndMonth must be between 1 and 12");
-
-        if (YearEndDay < 1 || YearEndDay > 31)
-            return (false, "YearEndDay must be between 1 and 31");
-
-        var maxDay = DateTime.DaysInMonth(2024, YearEndMonth);
-        if (YearEndDay > maxDay)
-            return (false, $"YearEndDay must be between 1 and {maxDay} for month {YearEndMonth:00}");
-
         if (FurnishedRentChargeCcId.HasValue && FurnishedRentChargeCcId.Value <= 0)
             return (false, "FurnishedRentChargeCcId must be greater than 0 when provided");
 
@@ -168,8 +156,6 @@ public class OfficeCreateDto
             Phone = Phone,
             Fax = Fax,
             Website = Website,
-            YearEndMonth = YearEndMonth,
-            YearEndDay = YearEndDay,
             LogoPath = null, // Will be set by controller after file save
             MaintenanceEmail = MaintenanceEmail,
             AfterHoursPhone = AfterHoursPhone,

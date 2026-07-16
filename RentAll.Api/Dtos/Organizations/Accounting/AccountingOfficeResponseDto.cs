@@ -24,6 +24,8 @@ public class AccountingOfficeResponseDto
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int YearEndMonth { get; set; }
+    public int YearEndDay { get; set; }
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
@@ -45,6 +47,7 @@ public class AccountingOfficeResponseDto
     public int? DefaultEscrowSdwAccountId { get; set; }
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
+    public int? DefaultRetainedEarningsAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public string? CheckStockPath { get; set; }
@@ -78,6 +81,8 @@ public class AccountingOfficeResponseDto
         BankSwiftCode = accountingOffice.BankSwiftCode;
         BankAddress = accountingOffice.BankAddress;
         BankPhone = accountingOffice.BankPhone;
+        YearEndMonth = accountingOffice.YearEndMonth;
+        YearEndDay = accountingOffice.YearEndDay;
         WorkOrderNo = accountingOffice.WorkOrderNo;
         DefaultTenantIncAccountId = accountingOffice.DefaultTenantIncAccountId;
         DefaultTenantExpAccountId = accountingOffice.DefaultTenantExpAccountId;
@@ -99,6 +104,7 @@ public class AccountingOfficeResponseDto
         DefaultEscrowSdwAccountId = accountingOffice.DefaultEscrowSdwAccountId;
         DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId;
         DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId;
+        DefaultRetainedEarningsAccountId = accountingOffice.DefaultRetainedEarningsAccountId;
         LogoPath = accountingOffice.LogoPath;
         CheckStockPath = accountingOffice.CheckStockPath;
         CurrentCheckNumber = accountingOffice.CurrentCheckNumber;
