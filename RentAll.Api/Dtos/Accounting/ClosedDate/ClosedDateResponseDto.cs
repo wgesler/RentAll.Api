@@ -1,6 +1,6 @@
-using RentAll.Domain.Models;
+using ClosedDateModel = RentAll.Domain.Models.ClosedDate;
 
-namespace RentAll.Api.Dtos.Accounting.ClosedDates;
+namespace RentAll.Api.Dtos.Accounting.ClosedDate;
 
 public class ClosedDateResponseDto
 {
@@ -11,7 +11,7 @@ public class ClosedDateResponseDto
     public DateOnly EndDate { get; set; }
     public int PostingStatusId { get; set; }
 
-    public ClosedDateResponseDto(ClosedDate closedDate)
+    public ClosedDateResponseDto(ClosedDateModel closedDate)
     {
         ClosedDateId = closedDate.ClosedDateId;
         OrganizationId = closedDate.OrganizationId;

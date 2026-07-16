@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using RentAll.Api.Dtos.Accounting.ClosedDates;
+using RentAll.Api.Dtos.Accounting.ClosedDate;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 

@@ -31,10 +31,7 @@ public class CloseAccountingPeriodDto
         if (PostingStatusId != (int)PostingStatus.SoftClosed && PostingStatusId != (int)PostingStatus.HardClosed)
             return (false, "PostingStatusId must be SoftClosed or HardClosed");
 
-        if (JournalEntryIds == null || JournalEntryIds.Count == 0)
-            return (false, "At least one journal entry is required");
-
-        if (JournalEntryIds.Any(id => id == Guid.Empty))
+        if (JournalEntryIds != null && JournalEntryIds.Any(id => id == Guid.Empty))
             return (false, "Invalid journal entry ID");
 
         return (true, null);

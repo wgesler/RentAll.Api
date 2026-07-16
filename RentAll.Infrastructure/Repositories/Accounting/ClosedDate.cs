@@ -8,10 +8,10 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 public partial class AccountingRepository
 {
     #region Selects
-    public async Task<List<ClosedDate>> GetClosedDatesByCriteriaAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, int? postingStatusId)
+    public async Task<List<ClosedDate>> GetClosedDateByCriteriaAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, int? postingStatusId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDates_GetByCriteria", new
+        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDate_GetByCriteria", new
         {
             OrganizationId = organizationId,
             Offices = officeIds,
@@ -29,7 +29,7 @@ public partial class AccountingRepository
     public async Task<ClosedDate?> GetClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDates_GetById", new
+        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDate_GetById", new
         {
             ClosedDateId = closedDateId,
             OrganizationId = organizationId,
@@ -60,7 +60,7 @@ public partial class AccountingRepository
     public async Task<ClosedDate> CreateClosedDateAsync(ClosedDate closedDate)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDates_Add", new
+        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDate_Add", new
         {
             OrganizationId = closedDate.OrganizationId,
             OfficeId = closedDate.OfficeId,
@@ -80,7 +80,7 @@ public partial class AccountingRepository
     public async Task<ClosedDate> UpdateClosedDateByIdAsync(ClosedDate closedDate)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDates_UpdateById", new
+        var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDate_UpdateById", new
         {
             ClosedDateId = closedDate.ClosedDateId,
             OrganizationId = closedDate.OrganizationId,
@@ -101,7 +101,7 @@ public partial class AccountingRepository
     public async Task DeleteClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.ClosedDates_DeleteById", new
+        await db.DapperProcExecuteAsync("Accounting.ClosedDate_DeleteById", new
         {
             ClosedDateId = closedDateId,
             OrganizationId = organizationId,

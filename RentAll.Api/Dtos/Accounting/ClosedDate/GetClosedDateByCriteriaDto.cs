@@ -1,6 +1,6 @@
-namespace RentAll.Api.Dtos.Accounting.ClosedDates;
+namespace RentAll.Api.Dtos.Accounting.ClosedDate;
 
-public class GetClosedDatesByCriteriaDto
+public class GetClosedDateByCriteriaDto
 {
     public List<int> OfficeIds { get; set; } = new();
     public DateOnly? StartDate { get; set; }

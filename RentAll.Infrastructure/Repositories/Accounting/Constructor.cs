@@ -54,7 +54,7 @@ public partial class AccountingRepository : IAccountingRepository
     }
     #endregion
 
-    #region ClosedDates
+    #region ClosedDate
     private ClosedDate ConvertClosedDateEntityToModel(ClosedDateEntity e)
     {
         return new ClosedDate

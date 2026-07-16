@@ -1,4 +1,4 @@
-namespace RentAll.Api.Dtos.Accounting.ClosedDates;
+namespace RentAll.Api.Dtos.Accounting.ClosedDate;
 
 public class ClosedPeriodResponseDto
 {

@@ -1,4 +1,4 @@
-using RentAll.Api.Dtos.Accounting.ClosedDates;
+using RentAll.Api.Dtos.Accounting.ClosedDate;
 
 namespace RentAll.Api.Controllers
 {
@@ -7,7 +7,7 @@ namespace RentAll.Api.Controllers
         #region Get
 
         [HttpPost("closed-date/search")]
-        public async Task<IActionResult> SearchClosedDates([FromBody] GetClosedDatesByCriteriaDto dto)
+        public async Task<IActionResult> SearchClosedDate([FromBody] GetClosedDateByCriteriaDto dto)
         {
             if (dto == null)
                 return BadRequest("Closed date search criteria is required");
@@ -18,7 +18,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var closedDates = await _accountingRepository.GetClosedDatesByCriteriaAsync(
+                var closedDates = await _accountingRepository.GetClosedDateByCriteriaAsync(
                     CurrentOrganizationId,
                     dto.ToOfficeIdsCsv(),
                     dto.StartDate,
@@ -29,8 +29,8 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching closed dates");
-                return ServerError("An error occurred while retrieving closed dates");
+                _logger.LogError(ex, "Error searching closed date");
+                return ServerError("An error occurred while retrieving closed date");
             }
         }
 
@@ -38,7 +38,7 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> GetClosedDateById(int officeId, int closedDateId)
         {
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
-                return Unauthorized("You do not have access to this office's closed dates");
+                return Unauthorized("You do not have access to this office's closed date");
 
             if (closedDateId <= 0)
                 return BadRequest("Invalid closed date ID");
@@ -124,7 +124,7 @@ namespace RentAll.Api.Controllers
         public async Task<IActionResult> DeleteClosedDateById(int officeId, int closedDateId)
         {
             if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
-                return Unauthorized("You do not have access to this office's closed dates");
+                return Unauthorized("You do not have access to this office's closed date");
 
             if (closedDateId <= 0)
                 return BadRequest("Invalid closed date ID");

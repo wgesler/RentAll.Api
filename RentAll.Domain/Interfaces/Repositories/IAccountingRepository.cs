@@ -31,8 +31,8 @@ public interface IAccountingRepository
     Task DeleteCostCodeByIdAsync(int costCodeId, Guid organizationId, int officeId);
     #endregion
 
-    #region ClosedDates
-    Task<List<ClosedDate>> GetClosedDatesByCriteriaAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, int? postingStatusId);
+    #region ClosedDate
+    Task<List<ClosedDate>> GetClosedDateByCriteriaAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, int? postingStatusId);
     Task<ClosedDate?> GetClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId);
     Task<ClosedDate> CreateClosedDateAsync(ClosedDate closedDate);
     Task<ClosedDate> UpdateClosedDateByIdAsync(ClosedDate closedDate);

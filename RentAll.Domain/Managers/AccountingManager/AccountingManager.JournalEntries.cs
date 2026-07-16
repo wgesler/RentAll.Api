@@ -150,7 +150,7 @@ public partial class AccountingManager
             throw new ArgumentException("Close status must be SoftClosed or HardClosed", nameof(closeStatus));
 
         var result = new CloseAccountingPeriodResult();
-        foreach (var journalEntryId in journalEntryIds.Where(id => id != Guid.Empty).Distinct())
+        foreach (var journalEntryId in (journalEntryIds ?? Enumerable.Empty<Guid>()).Where(id => id != Guid.Empty).Distinct())
         {
             try
             {
@@ -168,18 +168,15 @@ public partial class AccountingManager
             }
         }
 
-        if (result.SuccessCount > 0)
+        var closedDate = await _accountingRepository.CreateClosedDateAsync(new ClosedDate
         {
-            var closedDate = await _accountingRepository.CreateClosedDateAsync(new ClosedDate
-            {
-                OrganizationId = organizationId,
-                OfficeId = officeId,
-                StartDate = startDate,
-                EndDate = endDate,
-                PostingStatusId = closeStatus
-            });
-            result.ClosedDateId = closedDate.ClosedDateId;
-        }
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            StartDate = startDate,
+            EndDate = endDate,
+            PostingStatusId = closeStatus
+        });
+        result.ClosedDateId = closedDate.ClosedDateId;
 
         return result;
     }

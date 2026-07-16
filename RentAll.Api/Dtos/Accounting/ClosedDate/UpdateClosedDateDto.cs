@@ -1,10 +1,11 @@
 using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
+using ClosedDateModel = RentAll.Domain.Models.ClosedDate;
 
-namespace RentAll.Api.Dtos.Accounting.ClosedDates;
+namespace RentAll.Api.Dtos.Accounting.ClosedDate;
 
-public class CreateClosedDateDto
+public class UpdateClosedDateDto
 {
+    public int ClosedDateId { get; set; }
     public int OfficeId { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
@@ -12,6 +13,9 @@ public class CreateClosedDateDto
 
     public (bool IsValid, string? ErrorMessage) IsValid(string currentOffices)
     {
+        if (ClosedDateId <= 0)
+            return (false, "ClosedDateId is required");
+
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
 
@@ -33,10 +37,11 @@ public class CreateClosedDateDto
         return (true, null);
     }
 
-    public ClosedDate ToModel(Guid organizationId)
+    public ClosedDateModel ToModel(Guid organizationId)
     {
-        return new ClosedDate
+        return new ClosedDateModel
         {
+            ClosedDateId = ClosedDateId,
             OrganizationId = organizationId,
             OfficeId = OfficeId,
             StartDate = StartDate,
