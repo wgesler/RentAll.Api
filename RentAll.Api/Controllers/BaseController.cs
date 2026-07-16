@@ -247,11 +247,10 @@ namespace RentAll.Api.Controllers
 
         protected IActionResult AccountingPeriodClosedConflict(PostingStatus closedStatus, string actionLabel)
         {
-            var statusLabel = closedStatus == PostingStatus.HardClosed ? "hard closed" : "soft closed";
             return StatusCode(StatusCodes.Status409Conflict, new ClosedPeriodResponseDto
             {
                 ClosedStatus = (int)closedStatus,
-                Message = $"Cannot {actionLabel} because the accounting period is {statusLabel}."
+                Message = $"Cannot {actionLabel} because the accounting period has been closed."
             });
         }
 

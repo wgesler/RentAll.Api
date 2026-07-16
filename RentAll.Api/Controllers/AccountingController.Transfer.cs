@@ -124,7 +124,7 @@ public partial class AccountingController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, dto.AccountingPeriod, "create transfer");
+        var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, dto.AccountingPeriod, "create the transfer");
         if (periodCheck != null)
             return periodCheck;
 

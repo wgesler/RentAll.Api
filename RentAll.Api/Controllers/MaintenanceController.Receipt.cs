@@ -124,7 +124,7 @@ public partial class MaintenanceController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, dto.AccountingPeriod, "create receipt");
+        var periodCheck = await RefuseIfAccountingPeriodClosedAsync(_accountingRepository, CurrentOrganizationId, dto.OfficeId, dto.AccountingPeriod, "create the receipt");
         if (periodCheck != null)
             return periodCheck;
 
