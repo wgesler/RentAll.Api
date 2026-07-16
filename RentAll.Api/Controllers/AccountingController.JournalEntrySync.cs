@@ -442,7 +442,8 @@ public partial class AccountingController
             ("deposit", "Deposits"),
             ("transfer", "Transfers"),
             ("departureFee", "Departure Fees"),
-            ("linenAndTowelFee", "Linen & Towel Fees")
+            ("linenAndTowelFee", "Linen & Towel Fees"),
+            ("retainedEarnings", "Retained Earnings")
         ];
     }
 
@@ -465,6 +466,7 @@ public partial class AccountingController
             "transfer" => 6,
             "departureFee" => 7,
             "linenAndTowelFee" => 8,
+            "retainedEarnings" => 9,
             _ => int.MaxValue
         };
     }

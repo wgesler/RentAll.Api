@@ -686,6 +686,30 @@ public partial class AccountingManager : IAccountingManager
             return account.AccountId;
         });
     }
+
+    public int GetDefaultRetainedEarningsAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    {
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultRetainedEarningsAccount), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultRetainedEarningsAccountId is > 0)
+                return accountingOffice.DefaultRetainedEarningsAccountId.Value;
+
+            var account = chartOfAccounts
+                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Equity)
+                .Where(a => a.Name.Contains("Retained Earnings", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(a => a.AccountId)
+                .FirstOrDefault()
+                ?? chartOfAccounts
+                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Equity)
+                    .OrderBy(a => a.AccountId)
+                    .FirstOrDefault();
+
+            if (account == null)
+                throw new Exception($"No Retained Earnings chart of account is configured for office {officeId}");
+
+            return account.AccountId;
+        });
+    }
     #endregion
 
     #region Journal Entry Account Resolution

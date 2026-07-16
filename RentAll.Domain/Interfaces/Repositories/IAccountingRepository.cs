@@ -37,6 +37,7 @@ public interface IAccountingRepository
     Task<ClosedDate> CreateClosedDateAsync(ClosedDate closedDate);
     Task<ClosedDate> UpdateClosedDateByIdAsync(ClosedDate closedDate);
     Task DeleteClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId);
+    Task DeleteSoftClosedDatesOverlappingRangeAsync(Guid organizationId, int officeId, DateOnly startDate, DateOnly endDate, int? excludeClosedDateId = null);
     Task<PostingStatus> CheckAccountingPeriodAsync(Guid organizationId, int officeId, DateOnly accountingPeriod);
     #endregion
 

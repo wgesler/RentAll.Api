@@ -59,6 +59,9 @@ public partial class AccountingRepository
     #region Creates
     public async Task<ClosedDate> CreateClosedDateAsync(ClosedDate closedDate)
     {
+        if (closedDate.PostingStatusId == PostingStatus.HardClosed)
+            await DeleteSoftClosedDatesOverlappingRangeAsync(closedDate.OrganizationId, closedDate.OfficeId, closedDate.StartDate, closedDate.EndDate);
+
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDate_Add", new
         {
@@ -79,6 +82,9 @@ public partial class AccountingRepository
     #region Updates
     public async Task<ClosedDate> UpdateClosedDateByIdAsync(ClosedDate closedDate)
     {
+        if (closedDate.PostingStatusId == PostingStatus.HardClosed)
+            await DeleteSoftClosedDatesOverlappingRangeAsync(closedDate.OrganizationId, closedDate.OfficeId, closedDate.StartDate, closedDate.EndDate, closedDate.ClosedDateId);
+
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<ClosedDateEntity>("Accounting.ClosedDate_UpdateById", new
         {
@@ -98,6 +104,19 @@ public partial class AccountingRepository
     #endregion
 
     #region Deletes
+    public async Task DeleteSoftClosedDatesOverlappingRangeAsync(Guid organizationId, int officeId, DateOnly startDate, DateOnly endDate, int? excludeClosedDateId = null)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.ClosedDate_DeleteSoftClosedOverlappingRange", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            StartDate = startDate,
+            EndDate = endDate,
+            ExcludeClosedDateId = excludeClosedDateId
+        });
+    }
+
     public async Task DeleteClosedDateByIdAsync(int closedDateId, Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

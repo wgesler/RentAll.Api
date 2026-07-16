@@ -497,6 +497,7 @@ public partial class AccountingManager
 
         await SyncDepartureFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
         await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
+        await SyncRetainedEarningsAsync(organizationId, officeIds, startDate, endDate, result, progress);
 
         return result;
     }
@@ -695,6 +696,39 @@ public partial class AccountingManager
             Errors = result.Errors.Count,
             Status = status
         });
+    }
+
+    private async Task SyncRetainedEarningsAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly? startDate,
+        DateOnly? endDate,
+        JournalEntrySyncResult result,
+        IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var (syncStartDate, syncEndDate) = await ResolveRetainedEarningsSyncDateRangeFromJournalEntriesAsync(organizationId, officeIds);
+        var accountingOffices = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds)).ToList();
+        var processingDates = ResolveRetainedEarningsSyncProcessingDatesInRange(accountingOffices, syncStartDate, syncEndDate);
+        ReportSyncProgress(progress, "retainedEarnings", total: 1, processed: 0, result, processingDates.Count == 0 ? "Completed" : "Running");
+
+        if (processingDates.Count == 0)
+            return;
+
+        var rangeStart = syncStartDate ?? syncEndDate!.Value;
+        var rangeEnd = syncEndDate ?? syncStartDate!.Value;
+        if (rangeStart > rangeEnd)
+            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+
+        try
+        {
+            result.DocumentsProcessed += await ProcessRetainedEarningsAsync(organizationId, officeIds, syncStartDate, syncEndDate, CancellationToken.None, logDecisions: true);
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add($"Retained earnings {rangeStart:yyyy-MM-dd}-{rangeEnd:yyyy-MM-dd}: {ex.Message}");
+        }
+
+        ReportSyncProgress(progress, "retainedEarnings", total: 1, processed: 1, result, "Completed");
     }
 
     private static List<DateOnly> ResolveLinenSyncProcessingDatesInRange(DateOnly? startDate, DateOnly? endDate)

@@ -543,6 +543,13 @@ public partial class AccountingManager
 
     #endregion
 
+    #region Retained Earnings Memo
+
+    public static string BuildRetainedEarningsMemo(DateOnly processingDate)
+        => $"Retained Earnings for {processingDate:MM/dd/yyyy}";
+
+    #endregion
+
     #region Departure And Pet Memo
 
     // Example: R-001053: Departure Fee

@@ -71,6 +71,7 @@ public class SchedulingHostedService : BackgroundService
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
         await ProcessDepartureFeesAsync(organizationRepository, accountingManager, cancellationToken);
         await ProcessLinenAndTowelFeesAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
+        await ProcessRetainedEarningsAsync(organizationRepository, accountingManager, cancellationToken);
         await ProcessLogRetentionAsync(loggingRepository, cancellationToken);
     }
 
@@ -335,6 +336,32 @@ public class SchedulingHostedService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "LinensAndTowels periodic job failed");
+        }
+    }
+    #endregion
+
+    #region RetainedEarnings
+    private async Task ProcessRetainedEarningsAsync(IOrganizationRepository organizationRepository, IAccountingManager accountingManager, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var organizations = await organizationRepository.GetOrganizationsAsync();
+            foreach (var organization in organizations.Where(o => o.IsActive))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var offices = (await organizationRepository.GetOfficesByOrganizationIdAsync(organization.OrganizationId)).ToList();
+                if (offices.Count == 0)
+                    continue;
+
+                var officeCsv = string.Join(",", offices.Select(o => o.OfficeId));
+                await accountingManager.ProcessRetainedEarningsAsync(organization.OrganizationId, officeCsv, cancellationToken: cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RetainedEarnings periodic job failed");
         }
     }
     #endregion
