@@ -175,6 +175,10 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Deposit record not found");
 
+            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "deposit");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
             var deposit = dto.ToModel(CurrentUser);
             var updated = await _accountingManager.UpdateDepositAsync(deposit, CurrentUser);
             var response = new DepositResponseDto(updated);

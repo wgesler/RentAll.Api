@@ -16,8 +16,10 @@ public class UpdateWorkOrderDto
     public int WorkOrderTypeId { get; set; }
     public bool ApplyMarkup { get; set; }
     public DateOnly WorkOrderDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
     public bool UseDepartureFee { get; set; } = true;
     public bool EnteredInQb { get; set; }
+    public Guid? JournalEntryId { get; set; }
     public List<UpdateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<UpdateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -80,8 +82,12 @@ public class UpdateWorkOrderDto
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
             ApplyMarkup = ApplyMarkup,
             WorkOrderDate = WorkOrderDate,
+            AccountingPeriod = AccountingPeriod == default
+                ? new DateOnly(WorkOrderDate.Year, WorkOrderDate.Month, 1)
+                : AccountingPeriod,
             UseDepartureFee = UseDepartureFee,
             EnteredInQb = EnteredInQb,
+            JournalEntryId = JournalEntryId,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = IsActive,
             ModifiedBy = currentUser

@@ -64,7 +64,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
         Assert.All(chargeEntries, entry => Assert.Equal(invoice.InvoiceId, entry.SourceId));
@@ -91,7 +91,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
         Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Maid Service (1 times)") && line.Credit == 100m);
@@ -290,7 +290,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
@@ -325,7 +325,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
@@ -361,7 +361,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
@@ -404,7 +404,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(entry => entry.PostingDate)
+            .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
@@ -506,7 +506,7 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries
             .Where(e => e.SourceTypeId == (int)SourceType.Invoice)
-            .OrderBy(e => e.PostingDate)
+            .OrderBy(e => e.AccountingPeriod)
             .ToList();
 
         var firstMonthTotal = chargeEntries[0].JournalEntryLines

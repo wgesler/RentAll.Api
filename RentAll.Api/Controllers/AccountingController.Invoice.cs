@@ -151,6 +151,10 @@ namespace RentAll.Api.Controllers
                 if (existingInvoice == null)
                     return NotFound("Invoice not found");
 
+                var hardClosedResult = RefuseIfJournalEntryHardClosed(existingInvoice.PostingStatusId, "invoice");
+                if (hardClosedResult != null)
+                    return hardClosedResult;
+
                 var invoice = dto.ToModel(CurrentUser);
                 var updatedInvoice = await _accountingManager.UpdateInvoiceAsync(invoice);
 

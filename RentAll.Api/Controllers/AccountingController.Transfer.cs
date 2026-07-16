@@ -175,6 +175,10 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Transfer record not found");
 
+            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "transfer");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
             var transfer = dto.ToModel(CurrentUser);
             var updated = await _accountingManager.UpdateTransferAsync(transfer, CurrentUser);
             var response = new TransferResponseDto(updated);

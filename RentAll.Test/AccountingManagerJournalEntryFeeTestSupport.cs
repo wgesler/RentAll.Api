@@ -138,7 +138,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         internal IReadOnlyList<JournalEntry> CreatedJournalEntries => _journalEntries;
 
         internal IReadOnlyList<JournalEntry> ActiveJournalEntries
-            => _journalEntries.Where(entry => !entry.IsVoided).ToList();
+            => _journalEntries.Where(entry => entry.PostingStatusId is not PostingStatus.SoftClosed and not PostingStatus.HardClosed).ToList();
 
         internal void TrackInvoice(Invoice invoice)
             => _invoices[invoice.InvoiceId] = CloneInvoice(invoice);
@@ -351,7 +351,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     return _journalEntries.Where(entry =>
                         entry.OrganizationId == criteria.OrganizationId
-                        && (criteria.IncludeVoided || !entry.IsVoided)
+                        && (criteria.IncludeVoided || entry.PostingStatusId is not PostingStatus.SoftClosed and not PostingStatus.HardClosed)
                         && (criteria.SourceTypeId == null || entry.SourceTypeId == criteria.SourceTypeId)
                         && (criteria.SourceId == null || entry.SourceId == criteria.SourceId)).ToList();
                 });
@@ -464,12 +464,11 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 OfficeId = entry.OfficeId,
                 JournalEntryCode = entry.JournalEntryCode,
                 TransactionDate = entry.TransactionDate,
-                PostingDate = entry.PostingDate,
+                AccountingPeriod = entry.AccountingPeriod,
+                PostingStatusId = entry.PostingStatusId,
                 SourceTypeId = entry.SourceTypeId,
                 SourceId = entry.SourceId,
                 Memo = entry.Memo,
-                IsPosted = entry.IsPosted,
-                IsVoided = entry.IsVoided,
                 CreatedBy = entry.CreatedBy,
                 ModifiedBy = entry.ModifiedBy,
                 JournalEntryLines = entry.JournalEntryLines.Select(line => new JournalEntryLine

@@ -32,7 +32,7 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = officeId,
             TransactionDate = transactionDate,
-            PostingDate = transactionDate,
+            AccountingPeriod = transactionDate,
             SourceTypeId = (int)SourceType.Adjustment,
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine>
@@ -103,7 +103,7 @@ public partial class AccountingManager
             TransactionDate = current.TransactionDate,
             Amount = current.Credit - current.Debit,
             Memo = (current.JournalEntryMemo ?? current.Memo ?? string.Empty).Trim(),
-            IsPosted = current.IsPosted
+            IsPosted = current.PostingStatusId == (int)PostingStatus.Posted
         };
     }
 }

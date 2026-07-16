@@ -296,7 +296,7 @@ public partial class AccountingManager
             OrganizationId = transfer.OrganizationId,
             OfficeId = transfer.OfficeId,
             TransactionDate = transfer.TransferDate,
-            PostingDate = transfer.AccountingPeriod,
+            AccountingPeriod = transfer.AccountingPeriod,
             SourceTypeId = (int)SourceType.Transfer,
             SourceId = transfer.TransferId,
             SourceCode = ResolveJournalEntrySourceCodeFromTransfer(transfer),

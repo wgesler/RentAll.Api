@@ -131,6 +131,10 @@ public partial class MaintenanceRepository
                 WorkOrderTypeId = (int)workOrder.WorkOrderType,
                 ApplyMarkup = workOrder.ApplyMarkup,
                 WorkOrderDate = workOrder.WorkOrderDate,
+                AccountingPeriod = workOrder.AccountingPeriod == default
+                    ? new DateOnly(workOrder.WorkOrderDate.Year, workOrder.WorkOrderDate.Month, 1)
+                    : workOrder.AccountingPeriod,
+                JournalEntryId = workOrder.JournalEntryId,
                 UseDepartureFee = workOrder.UseDepartureFee,
                 EnteredInQb = workOrder.EnteredInQb,
                 IsActive = workOrder.IsActive,
@@ -202,6 +206,10 @@ public partial class MaintenanceRepository
                 WorkOrderTypeId = (int)workOrder.WorkOrderType,
                 ApplyMarkup = workOrder.ApplyMarkup,
                 WorkOrderDate = workOrder.WorkOrderDate,
+                AccountingPeriod = workOrder.AccountingPeriod == default
+                    ? new DateOnly(workOrder.WorkOrderDate.Year, workOrder.WorkOrderDate.Month, 1)
+                    : workOrder.AccountingPeriod,
+                JournalEntryId = workOrder.JournalEntryId,
                 UseDepartureFee = workOrder.UseDepartureFee,
                 EnteredInQb = workOrder.EnteredInQb,
                 IsActive = workOrder.IsActive,

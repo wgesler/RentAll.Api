@@ -14,7 +14,7 @@ public class JournalEntryRecapRawLineEntity
     public string? ReservationCode { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
-    public bool IsPosted { get; set; }
+    public int PostingStatusId { get; set; }
     public bool IsCashOnly { get; set; }
     public string SourceTypeCode { get; set; } = string.Empty;
     public string SourceDocumentCode { get; set; } = string.Empty;

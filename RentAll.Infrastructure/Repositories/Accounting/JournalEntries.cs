@@ -162,14 +162,13 @@ public partial class JournalEntryRepository
                     OfficeId = journalEntry.OfficeId,
                     JournalEntryCode = journalEntry.JournalEntryCode,
                     TransactionDate = journalEntry.TransactionDate,
-                    PostingDate = journalEntry.PostingDate,
+                    AccountingPeriod = journalEntry.AccountingPeriod,
+                    PostingStatusId = (int)journalEntry.PostingStatusId,
                     TransactionTypeId = DefaultJournalEntryTransactionTypeId,
                     SourceTypeId = journalEntry.SourceTypeId,
                     SourceId = journalEntry.SourceId,
                     SourceCode = journalEntry.SourceCode,
                     Memo = journalEntry.Memo,
-                    IsPosted = journalEntry.IsPosted,
-                    IsVoided = journalEntry.IsVoided,
                     IsCashOnly = journalEntry.IsCashOnly,
                     CreatedBy = journalEntry.CreatedBy
                 }, transaction: transaction);
@@ -241,13 +240,12 @@ public partial class JournalEntryRepository
                 OrganizationId = journalEntry.OrganizationId,
                 OfficeId = journalEntry.OfficeId,
                 TransactionDate = journalEntry.TransactionDate,
-                PostingDate = journalEntry.PostingDate,
+                AccountingPeriod = journalEntry.AccountingPeriod,
+                PostingStatusId = (int)journalEntry.PostingStatusId,
                 TransactionTypeId = currentEntity.TransactionTypeId,
                 SourceTypeId = journalEntry.SourceTypeId,
                 SourceId = journalEntry.SourceId,
                 Memo = journalEntry.Memo,
-                IsPosted = journalEntry.IsPosted,
-                IsVoided = journalEntry.IsVoided,
                 ModifiedBy = journalEntry.ModifiedBy
             }, transaction: transaction);
 

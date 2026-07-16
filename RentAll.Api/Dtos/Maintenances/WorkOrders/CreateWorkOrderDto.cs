@@ -13,6 +13,7 @@ public class CreateWorkOrderDto
     public int WorkOrderTypeId { get; set; }
     public bool ApplyMarkup { get; set; }
     public DateOnly WorkOrderDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
     public bool UseDepartureFee { get; set; } = true;
     public bool EnteredInQb { get; set; }
     public List<CreateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<CreateWorkOrderItemDto>();
@@ -74,6 +75,9 @@ public class CreateWorkOrderDto
             WorkOrderType = (WorkOrderType)WorkOrderTypeId,
             ApplyMarkup = ApplyMarkup,
             WorkOrderDate = WorkOrderDate,
+            AccountingPeriod = AccountingPeriod == default
+                ? new DateOnly(WorkOrderDate.Year, WorkOrderDate.Month, 1)
+                : AccountingPeriod,
             UseDepartureFee = UseDepartureFee,
             EnteredInQb = EnteredInQb,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),

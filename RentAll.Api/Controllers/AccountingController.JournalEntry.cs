@@ -264,7 +264,7 @@ namespace RentAll.Api.Controllers
         }
 
         [HttpPut("journal-entry/{journalEntryId}/post")]
-        public async Task<IActionResult> PostJournalEntry(Guid journalEntryId, [FromBody] PostJournalEntryDto? dto = null)
+        public async Task<IActionResult> PostJournalEntry(Guid journalEntryId, [FromBody] PostJournalEntryDto? dto)
         {
             if (journalEntryId == Guid.Empty)
                 return BadRequest("Journal entry ID is required");
@@ -275,7 +275,7 @@ namespace RentAll.Api.Controllers
                     journalEntryId,
                     CurrentOrganizationId,
                     CurrentUser,
-                    dto?.PostingDate);
+                    dto?.AccountingPeriod);
                 var response = new JournalEntryResponseDto(journalEntry);
                 return Ok(response);
             }

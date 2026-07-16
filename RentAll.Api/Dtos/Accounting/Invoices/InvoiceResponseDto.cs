@@ -22,6 +22,8 @@ public class InvoiceResponseDto
     public DateOnly DueDate { get; set; }
     public DateOnly AccountingPeriod { get; set; }
     public string? InvoicePeriod { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public int? PostingStatusId { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }
@@ -52,6 +54,8 @@ public class InvoiceResponseDto
         DueDate = invoice.DueDate;
         AccountingPeriod = invoice.AccountingPeriod;
         InvoicePeriod = invoice.InvoicePeriod;
+        JournalEntryId = invoice.JournalEntryId;
+        PostingStatusId = invoice.PostingStatusId;
         TotalAmount = invoice.TotalAmount;
         PaidAmount = invoice.PaidAmount;
         Notes = invoice.Notes;

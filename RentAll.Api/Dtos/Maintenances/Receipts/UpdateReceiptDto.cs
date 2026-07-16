@@ -24,6 +24,7 @@ public class UpdateReceiptDto
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
+    public Guid? JournalEntryId { get; set; }
     public bool CheckPrinted { get; set; }
     public bool IsUtility { get; set; }
     public bool IsActive { get; set; }
@@ -90,6 +91,7 @@ public class UpdateReceiptDto
             AgreementLineId = AgreementLineId,
             ReceiptPath = ReceiptPath,
             PaymentTypeId = PaymentTypeId,
+            JournalEntryId = JournalEntryId,
             CheckPrinted = CheckPrinted,
             IsUtility = IsUtility,
             IsActive = IsActive,

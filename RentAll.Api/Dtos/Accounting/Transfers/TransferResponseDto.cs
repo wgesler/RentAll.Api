@@ -17,6 +17,7 @@ public class TransferResponseDto
     public string BankAccountDisplayName { get; set; } = string.Empty;
     public List<TransferSplitDto> Splits { get; set; } = new List<TransferSplitDto>();
     public Guid? JournalEntryId { get; set; }
+    public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
@@ -42,6 +43,7 @@ public class TransferResponseDto
         BankAccountDisplayName = transfer.BankAccountDisplayName;
         Splits = (transfer.Splits ?? new List<TransferSplit>()).Select(split => new TransferSplitDto(split)).ToList();
         JournalEntryId = transfer.JournalEntryId;
+        PostingStatusId = transfer.PostingStatusId;
         IsActive = transfer.IsActive;
         CreatedOn = transfer.CreatedOn;
         CreatedBy = transfer.CreatedByName;

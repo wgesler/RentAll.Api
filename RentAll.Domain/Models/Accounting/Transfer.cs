@@ -17,6 +17,7 @@ public class Transfer
     public string BankAccountDisplayName { get; set; } = string.Empty;
     public List<TransferSplit> Splits { get; set; } = new();
     public Guid? JournalEntryId { get; set; }
+    public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

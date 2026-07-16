@@ -147,6 +147,14 @@ public partial class MaintenanceController
 
         try
         {
+            var existing = await _maintenanceRepository.GetWorkOrderByIdAsync(dto.WorkOrderId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Work order record not found");
+
+            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "work order");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
             var workOrder = dto.ToModel(CurrentUser);
 
             var updated = await _accountingManager.UpdateWorkOrderAsync(workOrder, CurrentUser);

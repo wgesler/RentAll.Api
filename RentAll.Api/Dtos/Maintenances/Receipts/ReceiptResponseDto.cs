@@ -28,6 +28,8 @@ public class ReceiptResponseDto
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public int? PostingStatusId { get; set; }
     public bool CheckPrinted { get; set; }
     public bool IsUtility { get; set; }
     public bool IsActive { get; set; }
@@ -62,6 +64,8 @@ public class ReceiptResponseDto
         ReceiptPath = receipt.ReceiptPath;
         FileDetails = receipt.FileDetails;
         PaymentTypeId = receipt.PaymentTypeId;
+        JournalEntryId = receipt.JournalEntryId;
+        PostingStatusId = receipt.PostingStatusId;
         CheckPrinted = receipt.CheckPrinted;
         IsUtility = receipt.IsUtility;
         IsActive = receipt.IsActive;

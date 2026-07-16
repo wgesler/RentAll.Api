@@ -136,7 +136,7 @@ public partial class JournalEntryRepository
             ReservationCode = rawLine.ReservationCode,
             SourceTypeId = rawLine.SourceTypeId,
             SourceId = rawLine.SourceId,
-            IsPosted = rawLine.IsPosted,
+            PostingStatusId = rawLine.PostingStatusId,
             SourceTypeCode = rawLine.SourceTypeCode,
             SourceDocumentCode = rawLine.SourceDocumentCode,
             ChartOfAccountId = rawLine.ChartOfAccountId,

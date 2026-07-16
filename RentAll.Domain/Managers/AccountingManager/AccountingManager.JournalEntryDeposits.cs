@@ -273,7 +273,7 @@ public partial class AccountingManager
             OrganizationId = deposit.OrganizationId,
             OfficeId = deposit.OfficeId,
             TransactionDate = deposit.DepositDate,
-            PostingDate = deposit.AccountingPeriod,
+            AccountingPeriod = deposit.AccountingPeriod,
             SourceTypeId = (int)SourceType.Deposit,
             SourceId = deposit.DepositId,
             SourceCode = ResolveJournalEntrySourceCodeFromDeposit(deposit),

@@ -26,8 +26,9 @@ public partial class AccountingManager
 
     private async Task<JournalEntry> CreateJournalEntryAsync(JournalEntry journalEntry, bool requireActiveLines)
     {
-        journalEntry.IsPosted = false;
-        journalEntry.IsVoided = false;
+        journalEntry.PostingStatusId = PostingStatus.Open;
+        if (journalEntry.AccountingPeriod == default)
+            journalEntry.AccountingPeriod = FirstDayOfMonth(journalEntry.TransactionDate);
 
         if (string.IsNullOrWhiteSpace(journalEntry.JournalEntryCode))
         {
@@ -57,32 +58,36 @@ public partial class AccountingManager
         journalEntry.SourceId = existing.SourceId;
         journalEntry.SourceCode = existing.SourceCode;
         journalEntry.IsCashOnly = existing.IsCashOnly;
+        journalEntry.PostingStatusId = existing.PostingStatusId;
         journalEntry.CreatedBy = existing.CreatedBy;
+
+        if (journalEntry.AccountingPeriod == default)
+            journalEntry.AccountingPeriod = existing.AccountingPeriod;
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
 
-    public async Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, DateOnly? postingDate = null)
+    public async Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, DateOnly? accountingPeriod = null)
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
         if (journalEntry == null)
             throw new Exception("Journal entry not found");
 
-        if (journalEntry.IsVoided)
+        if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
             throw new Exception("A voided journal entry cannot be posted");
 
-        if (journalEntry.IsPosted)
+        if (journalEntry.PostingStatusId == PostingStatus.Posted)
             throw new Exception("Journal entry is already posted");
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines: true);
 
-        journalEntry.IsPosted = true;
-        if (postingDate.HasValue)
-            journalEntry.PostingDate = postingDate.Value;
-        else if (journalEntry.PostingDate == default)
-            journalEntry.PostingDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (accountingPeriod != null && accountingPeriod != default)
+            journalEntry.AccountingPeriod = accountingPeriod.Value;
+        else if (journalEntry.AccountingPeriod == default)
+            journalEntry.AccountingPeriod = FirstDayOfMonth(journalEntry.TransactionDate);
 
+        journalEntry.PostingStatusId = PostingStatus.Posted;
         journalEntry.ModifiedBy = currentUser;
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
@@ -93,13 +98,13 @@ public partial class AccountingManager
         if (journalEntry == null)
             throw new Exception("Journal entry not found");
 
-        if (journalEntry.IsVoided)
+        if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
             throw new Exception("Journal entry is already voided");
 
-        if (!journalEntry.IsPosted)
+        if (journalEntry.PostingStatusId != PostingStatus.Posted)
             throw new Exception("Only posted journal entries can be voided");
 
-        journalEntry.IsVoided = true;
+        journalEntry.PostingStatusId = PostingStatus.SoftClosed;
         journalEntry.ModifiedBy = currentUser;
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
@@ -145,13 +150,13 @@ public partial class AccountingManager
         if (journalEntry == null)
             throw new Exception("Journal entry not found");
 
-        if (journalEntry.IsVoided)
+        if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
             throw new Exception("A voided journal entry cannot be unposted");
 
-        if (!journalEntry.IsPosted)
+        if (journalEntry.PostingStatusId != PostingStatus.Posted)
             throw new Exception("Journal entry is not posted");
 
-        journalEntry.IsPosted = false;
+        journalEntry.PostingStatusId = PostingStatus.Open;
         journalEntry.ModifiedBy = currentUser;
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
@@ -170,8 +175,8 @@ public partial class AccountingManager
         if (journalEntry.TransactionDate == default)
             throw new Exception("TransactionDate is required");
 
-        if (journalEntry.IsPosted && journalEntry.PostingDate == default)
-            throw new Exception("PostingDate is required when posting a journal entry");
+        if (journalEntry.AccountingPeriod == default)
+            throw new Exception("AccountingPeriod is required");
 
         var activeLines = journalEntry.JournalEntryLines
             .Where(l => l.Debit != 0 || l.Credit != 0)

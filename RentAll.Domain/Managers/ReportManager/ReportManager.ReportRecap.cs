@@ -179,7 +179,7 @@ public partial class ReportManager
             SortDateValue = group.SortDateValue,
             JournalEntryId = group.JournalEntryId,
             JournalEntryLineId = group.JournalEntryLineId,
-            IsPosted = group.IsPosted
+            PostingStatusId = group.PostingStatusId
         };
     }
 
@@ -314,7 +314,7 @@ public partial class ReportManager
         group.Memo = (line.Description ?? string.Empty).Trim();
         group.JournalEntryId = line.JournalEntryId;
         group.JournalEntryLineId = line.JournalEntryLineId;
-        group.IsPosted = line.IsPosted;
+        group.PostingStatusId = line.PostingStatusId;
         group.OfficeId = line.OfficeId;
         if (line.PropertyId.HasValue)
             group.PropertyId = line.PropertyId.Value.ToString();

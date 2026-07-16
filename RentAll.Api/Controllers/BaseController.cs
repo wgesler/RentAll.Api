@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers
 {
@@ -227,6 +228,14 @@ namespace RentAll.Api.Controllers
                 return false;
 
             return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("Admin", StringComparison.OrdinalIgnoreCase));
+        }
+
+        protected IActionResult? RefuseIfJournalEntryHardClosed(int? postingStatusId, string documentLabel)
+        {
+            if (postingStatusId == (int)PostingStatus.HardClosed)
+                return Conflict($"Cannot update {documentLabel} because the linked journal entry is hard closed.");
+
+            return null;
         }
 
     }

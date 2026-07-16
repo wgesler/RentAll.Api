@@ -59,5 +59,5 @@ public class RecapReportRow
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
-    public bool IsPosted { get; set; }
+    public int PostingStatusId { get; set; }
 }

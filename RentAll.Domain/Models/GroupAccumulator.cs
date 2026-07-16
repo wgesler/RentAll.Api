@@ -38,7 +38,7 @@ internal sealed class GroupAccumulator
     public long SortDateValue { get; set; }
     public Guid? JournalEntryId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
-    public bool IsPosted { get; set; }
+    public int PostingStatusId { get; set; }
     public decimal ExpectedIncomeValue { get; set; }
     public decimal RentPlus4000Value { get; set; }
     public decimal SecurityDepositValue { get; set; }

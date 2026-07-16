@@ -18,8 +18,11 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public string? WorkOrderItems { get; set; }
         public bool ApplyMarkup { get; set; }
         public DateOnly WorkOrderDate { get; set; }
+        public DateOnly AccountingPeriod { get; set; }
         public bool UseDepartureFee { get; set; }
         public bool EnteredInQb { get; set; }
+        public Guid? JournalEntryId { get; set; }
+        public int? PostingStatusId { get; set; }
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }

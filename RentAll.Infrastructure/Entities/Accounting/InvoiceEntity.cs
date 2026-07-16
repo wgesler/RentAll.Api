@@ -20,6 +20,8 @@ public class InvoiceEntity
     public DateOnly DueDate { get; set; }
     public DateOnly AccountingPeriod { get; set; }
     public string? InvoicePeriod { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public int? PostingStatusId { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public string? Notes { get; set; }

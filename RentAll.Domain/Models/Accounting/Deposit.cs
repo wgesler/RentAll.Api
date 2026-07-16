@@ -17,6 +17,7 @@ public class Deposit
     public string BankAccountDisplayName { get; set; } = string.Empty;
     public List<DepositSplit> Splits { get; set; } = new();
     public Guid? JournalEntryId { get; set; }
+    public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

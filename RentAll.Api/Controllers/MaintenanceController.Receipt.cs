@@ -174,6 +174,10 @@ public partial class MaintenanceController
             if (existing == null)
                 return NotFound("Receipt record not found");
 
+            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "receipt");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
             var receipt = dto.ToModel(CurrentUser);
             receipt.PaymentTypeId = existing.PaymentTypeId;
             receipt.CheckPrinted = existing.CheckPrinted;

@@ -9,14 +9,13 @@ public class JournalEntryResponseDto
     public int OfficeId { get; set; }
     public string JournalEntryCode { get; set; } = string.Empty;
     public DateOnly TransactionDate { get; set; }
-    public DateOnly PostingDate { get; set; }
+    public DateOnly AccountingPeriod { get; set; }
+    public int PostingStatusId { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }
     public string? Memo { get; set; }
-    public bool IsPosted { get; set; }
-    public bool IsVoided { get; set; }
     public bool IsCashOnly { get; set; } = false;
     public List<JournalEntryLineResponseDto> JournalEntryLines { get; set; } = new List<JournalEntryLineResponseDto>();
     public DateTimeOffset CreatedOn { get; set; }
@@ -31,14 +30,13 @@ public class JournalEntryResponseDto
         OfficeId = journalEntry.OfficeId;
         JournalEntryCode = journalEntry.JournalEntryCode;
         TransactionDate = journalEntry.TransactionDate;
-        PostingDate = journalEntry.PostingDate;
+        AccountingPeriod = journalEntry.AccountingPeriod;
+        PostingStatusId = (int)journalEntry.PostingStatusId;
         SourceTypeId = journalEntry.SourceTypeId;
         SourceId = journalEntry.SourceId;
         SourceCode = journalEntry.SourceCode;
         CheckNumber = journalEntry.CheckNumber;
         Memo = journalEntry.Memo;
-        IsPosted = journalEntry.IsPosted;
-        IsVoided = journalEntry.IsVoided;
         IsCashOnly = journalEntry.IsCashOnly;
         JournalEntryLines = journalEntry.JournalEntryLines.Select(l => new JournalEntryLineResponseDto(l)).ToList();
         CreatedOn = journalEntry.CreatedOn;

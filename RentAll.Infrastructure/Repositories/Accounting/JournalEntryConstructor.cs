@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Entities.Accounting;
@@ -33,14 +34,13 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             OfficeId = e.OfficeId,
             JournalEntryCode = e.JournalEntryCode,
             TransactionDate = e.TransactionDate,
-            PostingDate = e.PostingDate,
+            AccountingPeriod = e.AccountingPeriod,
+            PostingStatusId = (PostingStatus)e.PostingStatusId,
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
             SourceCode = e.SourceCode,
             CheckNumber = e.CheckNumber,
             Memo = e.Memo,
-            IsPosted = e.IsPosted,
-            IsVoided = e.IsVoided,
             IsCashOnly = e.IsCashOnly,
             JournalEntryLines = lines,
             CreatedOn = e.CreatedOn,
@@ -154,14 +154,13 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             OfficeId = e.OfficeId,
             JournalEntryCode = e.JournalEntryCode,
             TransactionDate = e.TransactionDate,
-            PostingDate = e.PostingDate,
+            AccountingPeriod = e.AccountingPeriod,
+            PostingStatusId = e.PostingStatusId,
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
             SourceCode = e.SourceCode,
             CheckNumber = e.CheckNumber,
             JournalEntryMemo = e.JournalEntryMemo,
-            IsPosted = e.IsPosted,
-            IsVoided = e.IsVoided
         };
     }
 

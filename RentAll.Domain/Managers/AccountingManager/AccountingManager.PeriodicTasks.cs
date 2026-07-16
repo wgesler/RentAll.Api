@@ -212,7 +212,7 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeId = reservation.OfficeId,
             TransactionDate = reservation.DepartureDate,
-            PostingDate = new DateOnly(reservation.DepartureDate.Year, reservation.DepartureDate.Month, 1),
+            AccountingPeriod = new DateOnly(reservation.DepartureDate.Year, reservation.DepartureDate.Month, 1),
             SourceTypeId = (int)SourceType.Reservation,
             SourceId = reservation.ReservationId,
             SourceCode = ResolveJournalEntrySourceCodeFromReservation(reservation),
