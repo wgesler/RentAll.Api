@@ -41,6 +41,40 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
+    public async Task InvoiceWithoutRentalLine_StillCreatesBalancedChargeJournalEntry()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 6, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+
+        var periodStart = new DateOnly(2026, 4, 15);
+        var periodEnd = new DateOnly(2026, 4, 30);
+        var context = AccountingManagerJournalEntryFeeTestSupport.CreateFeeJournalEntryTestContext(reservation);
+        var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(
+            reservation,
+            periodStart,
+            periodEnd,
+            [
+                new LedgerLine { Description = "Departure Fee", Amount = 175m, CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId },
+                new LedgerLine { Description = "Admin Fee", Amount = 95m, CostCodeId = AccountingManagerJournalEntryFeeTestSupport.ExtraFeeCostCodeId }
+            ]);
+        context.TrackInvoice(invoice);
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntry = Assert.Single(context.ActiveJournalEntries, entry => entry.SourceTypeId == (int)SourceType.Invoice);
+        Assert.Equal(invoice.AccountingPeriod, chargeEntry.TransactionDate);
+        Assert.Equal(invoice.AccountingPeriod, chargeEntry.AccountingPeriod);
+        Assert.Equal($"{invoice.InvoiceCode}: Departure Fee", chargeEntry.Memo);
+        Assert.Equal(3, chargeEntry.JournalEntryLines.Count);
+        AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(context.ActiveJournalEntries, invoice);
+    }
+
+    [Fact]
     public async Task StandardPayment_OnInvoice_CreatesBalancedPaymentJe()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(

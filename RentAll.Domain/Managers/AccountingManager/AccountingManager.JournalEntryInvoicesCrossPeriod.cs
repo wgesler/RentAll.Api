@@ -439,6 +439,9 @@ public partial class AccountingManager
 
     private async Task<bool> TryUseCrossPeriodInvoiceJournalEntryPathAsync(Invoice invoice)
     {
+        if (!TryGetInvoiceRentalLedgerLine(invoice, out _))
+            return false;
+
         if (!InvoiceCrossesAccountingPeriodBoundary(invoice))
             return false;
 
@@ -525,6 +528,18 @@ public partial class AccountingManager
         }
 
         return false;
+    }
+
+    private static string BuildInvoiceJournalEntryMemo(Invoice invoice, IReadOnlyList<LedgerLine> chargeLines)
+    {
+        if (TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+            return BuildInvoiceMemo(invoice.InvoiceCode, rentalLine.Description);
+
+        var primaryChargeLine = chargeLines.FirstOrDefault(line => !string.IsNullOrWhiteSpace(line.Description));
+        if (primaryChargeLine != null)
+            return BuildInvoiceMemo(invoice.InvoiceCode, primaryChargeLine.Description);
+
+        return BuildInvoiceMemo(invoice.InvoiceCode, "Charges");
     }
 
     private static bool TryGetInvoiceRentalLineAmount(Invoice invoice, out decimal rentalAmount)

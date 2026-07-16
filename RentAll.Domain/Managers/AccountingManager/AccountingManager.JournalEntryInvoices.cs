@@ -569,10 +569,7 @@ public partial class AccountingManager
             throw new Exception("AccountingPeriod is required to create a journal entry for an invoice");
 
         var transactionDate = invoice.AccountingPeriod;
-        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
-            throw new InvalidOperationException("Invoice rental ledger line is required to create invoice journal entry memo.");
-
-        var invoiceMemo = BuildInvoiceMemo(invoice.InvoiceCode, rentalLine.Description);
+        var invoiceMemo = BuildInvoiceJournalEntryMemo(invoice, chargeLines);
         var accountsReceivableLine = new JournalEntryLine
         {
             // Debit Accounts Recievable
@@ -611,6 +608,7 @@ public partial class AccountingManager
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
             TransactionDate = transactionDate,
+            AccountingPeriod = invoice.AccountingPeriod,
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = sourceIdOverride ?? invoice.InvoiceId,
             SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
