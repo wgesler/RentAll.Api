@@ -92,5 +92,6 @@ public interface IAccountingManager
     Task CreateJournalEntriesForLinensAndTowelsAsync(Guid organizationId, IReadOnlyCollection<PropertyAgreement> monthlyAgreements, IReadOnlyCollection<PropertyAgreement> annualAgreements, CancellationToken cancellationToken, DateOnly? processingDate = null);
     Task<int> ProcessRetainedEarningsAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, CancellationToken cancellationToken = default, bool logDecisions = false);
     Task CreateJournalEntriesForRetainedEarningsAsync(Guid organizationId, IReadOnlyCollection<AccountingOffice> accountingOffices, DateOnly processingDate, CancellationToken cancellationToken, bool logDecisions = false);
+    Task<JournalEntry> PreviewRetainedEarningsJournalEntryForFiscalYearEndAsync(Guid organizationId, int officeId, int fiscalYearEndYear, CancellationToken cancellationToken = default);
     #endregion
 }

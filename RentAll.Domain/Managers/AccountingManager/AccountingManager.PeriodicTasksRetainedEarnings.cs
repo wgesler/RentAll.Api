@@ -132,7 +132,7 @@ public partial class AccountingManager
             })).ToList();
 
             var accountYearBalances = CalculateAccountYearBalances(journalEntries, accountTypeById, fiscalYearStart, fiscalYearEnd);
-            var netIncome = RoundRetainedEarningsAmount(accountYearBalances.Values.Sum());
+            var netIncome = CalculateProfitLossNetIncome(accountYearBalances, accountTypeById);
             var journalEntry = BuildRetainedEarningsJournalEntryForYear(organizationId, accountingOffice, chartOfAccounts, profitLossAccounts, accountYearBalances, netIncome, processingDate);
 
             if (journalEntry.JournalEntryLines.Count == 0)
@@ -162,6 +162,52 @@ public partial class AccountingManager
             }
         }
     }
+
+    public async Task<JournalEntry> PreviewRetainedEarningsJournalEntryForFiscalYearEndAsync(
+        Guid organizationId,
+        int officeId,
+        int fiscalYearEndYear,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            throw new InvalidOperationException("Accounting is not enabled in this environment.");
+
+        var accountingOffices = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeId.ToString())).ToList();
+        var accountingOffice = accountingOffices.FirstOrDefault(office => office.OfficeId == officeId)
+            ?? throw new InvalidOperationException($"Accounting office {officeId} was not found.");
+
+        var fiscalYearEnd = new DateOnly(fiscalYearEndYear, accountingOffice.YearEndMonth, accountingOffice.YearEndDay);
+        var processingDate = fiscalYearEnd.AddDays(1);
+        var (fiscalYearStart, _) = ResolveFiscalYearRangeForYearEnd(fiscalYearEnd);
+
+        var (chartOfAccounts, _) = await LoadAccountContextAsync(organizationId, accountingOffice.OfficeId);
+        var profitLossAccounts = chartOfAccounts
+            .Where(account => account.OfficeId == accountingOffice.OfficeId && IsRetainedEarningsProfitLossAccount(account))
+            .ToList();
+        var accountTypeById = profitLossAccounts.ToDictionary(account => account.AccountId, account => account.AccountType);
+
+        var journalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = accountingOffice.OfficeId.ToString(),
+            IncludeVoided = false,
+            IncludeUnposted = true,
+            StartDate = fiscalYearStart,
+            EndDate = fiscalYearEnd
+        })).ToList();
+
+        var accountYearBalances = CalculateAccountYearBalances(journalEntries, accountTypeById, fiscalYearStart, fiscalYearEnd);
+        var netIncome = CalculateProfitLossNetIncome(accountYearBalances, accountTypeById);
+        return BuildRetainedEarningsJournalEntryForYear(
+            organizationId,
+            accountingOffice,
+            chartOfAccounts,
+            profitLossAccounts,
+            accountYearBalances,
+            netIncome,
+            processingDate);
+    }
     #endregion
 
     #region Journal Entries
@@ -169,10 +215,12 @@ public partial class AccountingManager
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // RETAINED-EARNINGS-JE-ACCOUNTS
-        // Retained earnings close runs on the day after AccountingOffice year-end. It zeros P&L accounts (>= 4000)
-        // for the fiscal year that just ended and posts net income into Retained Earnings for the new year.
+        // Retained earnings close runs on the day after AccountingOffice year-end. It zeros P&L accounts (Income, OtherIncome,
+        // COGS, Expense, OtherExpense — same account types as buildProfitLossReport) for the fiscal year that just ended and posts
+        // net income into Retained Earnings for the new year. Net income uses the same formula as the P&L report:
+        // (Income + OtherIncome) - COGS - (Expense + OtherExpense).
         // Line 1 — Credit: Retained Earnings (GetDefaultRetainedEarningsAccount) for net income when net income is positive; Debit when net income is negative.
-        // Lines 2+ — One line per ChartOfAccount with AccountNo >= 4000, using that account's year balance to zero the account:
+        // Lines 2+ — One line per P&L ChartOfAccount, using that account's year balance to zero the account:
         //   Income / OtherIncome (credit-normal): Debit the account when balance > 0; Credit when balance < 0.
         //   COGS / Expense / OtherExpense (debit-normal): Credit the account when balance > 0; Debit when balance < 0.
         // END RETAINED-EARNINGS-JE-ACCOUNTS
@@ -194,7 +242,19 @@ public partial class AccountingManager
         }
 
         if (journalEntryLines.Count == 0)
-            return new JournalEntry { OrganizationId = organizationId, OfficeId = accountingOffice.OfficeId };
+        {
+            return new JournalEntry
+            {
+                OrganizationId = organizationId,
+                OfficeId = accountingOffice.OfficeId,
+                TransactionDate = processingDate,
+                AccountingPeriod = new DateOnly(processingDate.Year, processingDate.Month, 1),
+                SourceTypeId = (int)SourceType.Journal,
+                Memo = BuildRetainedEarningsMemo(processingDate),
+                JournalEntryLines = [],
+                CreatedBy = SystemOrganization
+            };
+        }
 
         if (netIncome > 0m)
         {
@@ -388,7 +448,7 @@ public partial class AccountingManager
 
         var accountTypeById = profitLossAccounts.ToDictionary(account => account.AccountId, account => account.AccountType);
         var accountYearBalances = CalculateAccountYearBalances(journalEntries, accountTypeById, fiscalYearStart, fiscalYearEnd);
-        var netIncome = RoundRetainedEarningsAmount(accountYearBalances.Values.Sum());
+        var netIncome = CalculateProfitLossNetIncome(accountYearBalances, accountTypeById);
         var rebuiltJournalEntry = BuildRetainedEarningsJournalEntryForYear(
             organizationId,
             accountingOffice,
@@ -577,16 +637,41 @@ public partial class AccountingManager
         => await GetRetainedEarningsJournalEntryAsync(organizationId, officeId, processingDate) != null;
 
     private static bool IsRetainedEarningsProfitLossAccount(ChartOfAccount account)
-        => TryParseLeadingAccountNumber(account.AccountNo, out var accountNumber) && accountNumber >= 4000;
+        => IsProfitLossAccountType(account.AccountType);
 
-    private static bool TryParseLeadingAccountNumber(string accountNo, out int accountNumber)
+    private static bool IsProfitLossAccountType(AccountType accountType)
+        => accountType is AccountType.Income
+            or AccountType.OtherIncome
+            or AccountType.CostOfGoodsSold
+            or AccountType.Expense
+            or AccountType.OtherExpense;
+
+    private static decimal CalculateProfitLossNetIncome(
+        IReadOnlyDictionary<int, decimal> accountYearBalances,
+        IReadOnlyDictionary<int, AccountType> accountTypeById)
     {
-        accountNumber = 0;
-        if (string.IsNullOrWhiteSpace(accountNo))
-            return false;
+        var totalIncome = SumProfitLossCategoryBalances(accountYearBalances, accountTypeById, AccountType.Income, AccountType.OtherIncome);
+        var totalCogs = SumProfitLossCategoryBalances(accountYearBalances, accountTypeById, AccountType.CostOfGoodsSold);
+        var totalExpense = SumProfitLossCategoryBalances(accountYearBalances, accountTypeById, AccountType.Expense, AccountType.OtherExpense);
+        var grossProfit = RoundRetainedEarningsAmount(totalIncome - totalCogs);
+        return RoundRetainedEarningsAmount(grossProfit - totalExpense);
+    }
 
-        var match = System.Text.RegularExpressions.Regex.Match(accountNo.Trim(), @"^(\d+)");
-        return match.Success && int.TryParse(match.Groups[1].Value, out accountNumber);
+    private static decimal SumProfitLossCategoryBalances(
+        IReadOnlyDictionary<int, decimal> accountYearBalances,
+        IReadOnlyDictionary<int, AccountType> accountTypeById,
+        params AccountType[] accountTypes)
+    {
+        var allowedTypes = new HashSet<AccountType>(accountTypes);
+        var total = accountYearBalances.Sum(entry =>
+        {
+            if (!accountTypeById.TryGetValue(entry.Key, out var accountType) || !allowedTypes.Contains(accountType))
+                return 0m;
+
+            return entry.Value;
+        });
+
+        return RoundRetainedEarningsAmount(total);
     }
 
     private static Dictionary<int, decimal> CalculateAccountYearBalances(IReadOnlyCollection<JournalEntry> journalEntries, IReadOnlyDictionary<int, AccountType> accountTypeById, DateOnly yearStart, DateOnly yearEnd)
