@@ -144,10 +144,10 @@ public partial class AccountingManager
     private static string? ResolveJournalEntrySourceCodeFromWorkOrder(WorkOrder workOrder)
         => NormalizeOptionalString(workOrder.WorkOrderCode);
 
-    private static string? ResolveJournalEntrySourceCodeFromReservation(ReservationList reservation)
+    private static string? ResolveJournalEntrySourceCodeFromReservation(ReservationDeparture reservation)
         => NormalizeOptionalString(reservation.ReservationCode);
 
-    private static Guid? ResolveReservationContactId(ReservationList reservation, Reservation? reservationDetail = null)
+    private static Guid? ResolveReservationContactId(ReservationDeparture reservation, Reservation? reservationDetail = null)
     {
         var detailContactId = reservationDetail?.ContactIds.FirstOrDefault(id => id != Guid.Empty);
         if (detailContactId is { } resolvedDetailContactId && resolvedDetailContactId != Guid.Empty)
@@ -163,7 +163,7 @@ public partial class AccountingManager
         return null;
     }
 
-    private static JournalEntryLineContext CreateJournalEntryLineContextFromReservation(ReservationList reservation, Reservation? reservationDetail = null)
+    private static JournalEntryLineContext CreateJournalEntryLineContextFromReservation(ReservationDeparture reservation, Reservation? reservationDetail = null)
     {
         var contactId = ResolveReservationContactId(reservation, reservationDetail);
         var contactName = NormalizeOptionalString(reservationDetail?.ContactName)
@@ -184,7 +184,7 @@ public partial class AccountingManager
 
     private async Task<JournalEntryLineContext> ResolveReservationJournalEntryLineContextAsync(
         Guid organizationId,
-        ReservationList reservation,
+        ReservationDeparture reservation,
         Reservation reservationDetail)
     {
         var context = CreateJournalEntryLineContextFromReservation(reservation, reservationDetail);

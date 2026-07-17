@@ -28,7 +28,7 @@ public partial class AccountingManager
         return departures.Count;
     }
 
-    public async Task CreateJournalEntriesForDepartedReservationsAsync(Guid organizationId, IReadOnlyCollection<ReservationList> reservations, CancellationToken cancellationToken, bool logDecisions = false)
+    public async Task CreateJournalEntriesForDepartedReservationsAsync(Guid organizationId, IReadOnlyCollection<ReservationDeparture> reservations, CancellationToken cancellationToken, bool logDecisions = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -48,7 +48,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task CreateJournalEntryForDepartedReservationAsync(Guid organizationId, ReservationList reservation, CancellationToken cancellationToken, bool logDecisions = false)
+    private async Task CreateJournalEntryForDepartedReservationAsync(Guid organizationId, ReservationDeparture reservation, CancellationToken cancellationToken, bool logDecisions = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -117,7 +117,7 @@ public partial class AccountingManager
     #endregion
 
     #region Journal Entries
-    private async Task<JournalEntry> BuildJournalEntryFromDepartedReservationAsync(Guid organizationId, ReservationList reservation, Reservation reservationDetail, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, decimal departureFeeAmount, decimal petFeeAmount, CostCode? departureFeeCostCode, CostCode? petFeeCostCode)
+    private async Task<JournalEntry> BuildJournalEntryFromDepartedReservationAsync(Guid organizationId, ReservationDeparture reservation, Reservation reservationDetail, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, decimal departureFeeAmount, decimal petFeeAmount, CostCode? departureFeeCostCode, CostCode? petFeeCostCode)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // DEPARTURES-JE-ACCOUNTS

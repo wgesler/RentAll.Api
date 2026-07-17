@@ -90,7 +90,7 @@ public interface IAccountingManager
 
     #region Periodic Tasks
     Task<int> ProcessDepartureFeesAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, CancellationToken cancellationToken = default, bool logDecisions = false);
-    Task CreateJournalEntriesForDepartedReservationsAsync(Guid organizationId, IReadOnlyCollection<ReservationList> reservations, CancellationToken cancellationToken, bool logDecisions = false);
+    Task CreateJournalEntriesForDepartedReservationsAsync(Guid organizationId, IReadOnlyCollection<ReservationDeparture> reservations, CancellationToken cancellationToken, bool logDecisions = false);
     Task CreateJournalEntriesForLinensAndTowelsAsync(Guid organizationId, IReadOnlyCollection<PropertyAgreement> monthlyAgreements, IReadOnlyCollection<PropertyAgreement> annualAgreements, CancellationToken cancellationToken, DateOnly? processingDate = null);
     Task<int> ProcessRetainedEarningsAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, CancellationToken cancellationToken = default, bool logDecisions = false);
     Task CreateJournalEntriesForRetainedEarningsAsync(Guid organizationId, IReadOnlyCollection<AccountingOffice> accountingOffices, DateOnly processingDate, CancellationToken cancellationToken, bool logDecisions = false);

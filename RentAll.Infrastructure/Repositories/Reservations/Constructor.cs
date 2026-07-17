@@ -218,6 +218,38 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             };
         }
 
+        private static ReservationDeparture ConvertDepartureEntityToModel(ReservationDepartureEntity e)
+        {
+            return new ReservationDeparture
+            {
+                ReservationId = e.ReservationId,
+                ReservationCode = e.ReservationCode,
+                PropertyId = e.PropertyId,
+                PropertyCode = e.PropertyCode,
+                OfficeId = e.OfficeId,
+                OfficeName = e.OfficeName,
+                AgentCode = e.AgentCode,
+                ContactId = e.ContactId,
+                ContactName = e.ContactName,
+                CompanyId = e.CompanyId,
+                CompanyName = e.CompanyName,
+                TenantName = e.TenantName,
+                MonthlyRate = e.MonthlyRate,
+                DailyRate = e.DailyRate,
+                BillingRate = e.BillingRate,
+                BillingTypeId = e.BillingTypeId,
+                ArrivalDate = e.ArrivalDate,
+                DepartureDate = e.DepartureDate,
+                ReservationType = (ReservationType)e.ReservationTypeId,
+                ReservationStatus = (ReservationStatus)e.ReservationStatusId,
+                HasPets = e.HasPets,
+                DepositType = (DepositType)e.DepositTypeId,
+                Deposit = e.Deposit,
+                DepositReturned = e.DepositReturned,
+                SecurityDepositReturnDate = e.SecurityDepositReturnDate
+            };
+        }
+
         private LeaseInformation ConvertEntityToModel(LeaseInformationEntity e)
         {
             var response = new LeaseInformation()

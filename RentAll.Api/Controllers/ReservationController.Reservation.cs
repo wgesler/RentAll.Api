@@ -38,6 +38,22 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("unreturned-security-deposits")]
+        public async Task<IActionResult> GetUnreturnedSecurityDepositsAsync()
+        {
+            try
+            {
+                var list = await _reservationRepository.GetUnreturnedSecurityDepositsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                var response = list.Select(r => new ReservationDepartureResponseDto(r));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting unreturned security deposits");
+                return ServerError("An error occurred while retrieving unreturned security deposits");
+            }
+        }
+
         [HttpGet("codes")]
         public async Task<IActionResult> GetReservationActiveCodesByOfficeIdsAsync()
         {

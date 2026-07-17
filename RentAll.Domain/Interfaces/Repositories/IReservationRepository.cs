@@ -6,7 +6,8 @@ public interface IReservationRepository
 {
     #region Reservation
     Task<IEnumerable<ReservationList>> GetReservationListByOfficeIdAsync(Guid organizationId, string officeAccess);
-    Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? startDate = null, DateOnly? endDate = null);
+    Task<IEnumerable<ReservationDeparture>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? startDate = null, DateOnly? endDate = null);
+    Task<IEnumerable<ReservationDeparture>> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<ReservationList>> GetReservationListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess);
     Task<IEnumerable<ReservationList>> GetReservationActiveListByOfficeIdAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<ReservationCodes>> GetReservationActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess);

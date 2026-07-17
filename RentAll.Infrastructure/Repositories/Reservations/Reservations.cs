@@ -23,10 +23,10 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<ReservationList>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? startDate = null, DateOnly? endDate = null)
+        public async Task<IEnumerable<ReservationDeparture>> GetMonthlyDepartedReservationsAsync(Guid organizationId, string officeAccess, DateOnly? startDate = null, DateOnly? endDate = null)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetMonthlyDepartedReservations", new
+            var res = await db.DapperProcQueryAsync<ReservationDepartureEntity>("Property.Reservation_GetMonthlyDepartedReservations", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess,
@@ -35,9 +35,24 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             });
 
             if (res == null || !res.Any())
-                return Enumerable.Empty<ReservationList>();
+                return Enumerable.Empty<ReservationDeparture>();
 
-            return res.Select(ConvertEntityToModel);
+            return res.Select(ConvertDepartureEntityToModel);
+        }
+
+        public async Task<IEnumerable<ReservationDeparture>> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ReservationDepartureEntity>("Property.Reservation_GetUnreturnedSecurityDeposits", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<ReservationDeparture>();
+
+            return res.Select(ConvertDepartureEntityToModel);
         }
 
         public async Task<IEnumerable<ReservationList>> GetReservationListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess)
