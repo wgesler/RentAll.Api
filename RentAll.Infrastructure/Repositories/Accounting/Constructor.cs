@@ -335,6 +335,7 @@ public partial class AccountingRepository : IAccountingRepository
             Splits = splits,
             JournalEntryId = e.JournalEntryId,
             PostingStatusId = e.PostingStatusId,
+            HasBeenTransfered = e.HasBeenTransfered,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,
             CreatedByName = e.CreatedByName,

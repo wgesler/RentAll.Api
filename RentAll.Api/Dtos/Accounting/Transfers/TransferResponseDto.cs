@@ -18,6 +18,7 @@ public class TransferResponseDto
     public List<TransferSplitDto> Splits { get; set; } = new List<TransferSplitDto>();
     public Guid? JournalEntryId { get; set; }
     public int? PostingStatusId { get; set; }
+    public bool HasBeenTransfered { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
@@ -44,6 +45,7 @@ public class TransferResponseDto
         Splits = (transfer.Splits ?? new List<TransferSplit>()).Select(split => new TransferSplitDto(split)).ToList();
         JournalEntryId = transfer.JournalEntryId;
         PostingStatusId = transfer.PostingStatusId;
+        HasBeenTransfered = transfer.HasBeenTransfered;
         IsActive = transfer.IsActive;
         CreatedOn = transfer.CreatedOn;
         CreatedBy = transfer.CreatedByName;

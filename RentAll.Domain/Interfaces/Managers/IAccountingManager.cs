@@ -55,6 +55,7 @@ public interface IAccountingManager
     Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer);
     Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser);
     Task<Transfer> UpdateTransferAsync(Transfer transfer, Guid currentUser);
+    Task<Transfer> PostTransferReportAsync(Guid transferId, Guid organizationId, Guid currentUser);
     #endregion
 
     #region Default Chart Of Accounts

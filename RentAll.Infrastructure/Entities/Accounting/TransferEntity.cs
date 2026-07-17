@@ -17,6 +17,7 @@ public class TransferEntity
     public string Splits { get; set; } = "[]";
     public Guid? JournalEntryId { get; set; }
     public int? PostingStatusId { get; set; }
+    public bool HasBeenTransfered { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

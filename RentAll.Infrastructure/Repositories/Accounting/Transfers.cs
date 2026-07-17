@@ -169,6 +169,7 @@ public partial class AccountingRepository
             BankAccountId = transfer.BankAccountId,
             Splits = SerializeTransferSplits(transfer.Splits),
             JournalEntryId = transfer.JournalEntryId,
+            HasBeenTransfered = transfer.HasBeenTransfered,
             IsActive = transfer.IsActive,
             ModifiedBy = transfer.ModifiedBy
         }, transaction: transaction);

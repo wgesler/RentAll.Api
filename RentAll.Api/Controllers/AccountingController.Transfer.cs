@@ -156,6 +156,45 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("transfer/{transferId:guid}/post-report")]
+    public async Task<IActionResult> PostTransferReport(Guid transferId)
+    {
+        if (transferId == Guid.Empty)
+            return BadRequest("TransferId is required");
+
+        try
+        {
+            var existing = await _accountingRepository.GetTransferByIdAsync(transferId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Transfer record not found");
+
+            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "transfer");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
+            var periodCheck = await RefuseIfAccountingPeriodClosedAsync(
+                _accountingRepository,
+                CurrentOrganizationId,
+                existing.OfficeId,
+                existing.AccountingPeriod,
+                "post the transfer report");
+            if (periodCheck != null)
+                return periodCheck;
+
+            var updated = await _accountingManager.PostTransferReportAsync(transferId, CurrentOrganizationId, CurrentUser);
+            return Ok(new TransferResponseDto(updated));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error posting transfer report: {TransferId}", transferId);
+            return ServerError(ex.Message);
+        }
+    }
+
     #endregion
 
     #region Put
