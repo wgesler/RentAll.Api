@@ -39,13 +39,15 @@ namespace RentAll.Api.Controllers
         }
 
         [HttpGet("unreturned-security-deposits")]
-        public async Task<IActionResult> GetUnreturnedSecurityDepositsAsync()
+        public async Task<IActionResult> GetUnreturnedSecurityDepositsAsync([FromQuery] int? officeId = null)
         {
             try
             {
-                var list = await _reservationRepository.GetUnreturnedSecurityDepositsAsync(CurrentOrganizationId, CurrentOfficeAccess);
-                var response = list.Select(r => new ReservationDepartureResponseDto(r));
-                return Ok(response);
+                var result = await _accountingManager.GetUnreturnedSecurityDepositsAsync(
+                    CurrentOrganizationId,
+                    CurrentOfficeAccess,
+                    officeId);
+                return Ok(new UnreturnedSecurityDepositsResponseDto(result));
             }
             catch (Exception ex)
             {
@@ -204,6 +206,38 @@ namespace RentAll.Api.Controllers
             {
                 _logger.LogError(ex, "Error updating reservation: {ReservationId}", dto.ReservationId);
                 return ServerError("An error occurred while updating the reservation");
+            }
+        }
+
+        [HttpPut("security-deposit/return")]
+        public async Task<IActionResult> ApplySecurityDepositReturnAsync([FromBody] SecurityDepositReturnRequestDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Security deposit return data is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var updatedReservation = await _accountingManager.ApplySecurityDepositReturnAsync(
+                    dto.ReservationId,
+                    CurrentOrganizationId,
+                    CurrentOfficeAccess,
+                    dto.ChartOfAccountId,
+                    dto.Description,
+                    dto.Amount,
+                    dto.PaymentDate,
+                    (PaymentType)dto.PaymentTypeId,
+                    CurrentUser);
+
+                return Ok(new ReservationResponseDto(updatedReservation));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error returning security deposit for reservation: {ReservationId}", dto.ReservationId);
+                return ServerError("An error occurred while returning the security deposit");
             }
         }
         #endregion
