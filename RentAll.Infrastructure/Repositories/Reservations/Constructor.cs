@@ -91,6 +91,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 BillingRate = e.BillingRate,
                 Deposit = e.Deposit,
                 DepositType = (DepositType)e.DepositTypeId,
+                DepositReturned = e.DepositReturned,
                 DepartureFee = e.DepartureFee,
                 HasPets = e.HasPets,
                 PetFee = e.PetFee,

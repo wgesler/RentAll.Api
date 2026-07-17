@@ -31,6 +31,7 @@ public class CreateReservationDto
     public decimal BillingRate { get; set; }
     public decimal Deposit { get; set; }
     public int DepositTypeId { get; set; }
+    public bool DepositReturned { get; set; }
     public decimal DepartureFee { get; set; }
     public bool HasPets { get; set; }
     public decimal PetFee { get; set; }
@@ -167,6 +168,7 @@ public class CreateReservationDto
             BillingRate = BillingRate,
             Deposit = Deposit,
             DepositType = (DepositType)DepositTypeId,
+            DepositReturned = DepositReturned,
             DepartureFee = DepartureFee,
             HasPets = HasPets,
             PetFee = PetFee,

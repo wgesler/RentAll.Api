@@ -37,6 +37,7 @@ public class ReservationEntity
     public decimal BillingRate { get; set; }
     public decimal Deposit { get; set; }
     public int DepositTypeId { get; set; }
+    public bool DepositReturned { get; set; }
     public decimal DepartureFee { get; set; }
 
     // Pets and Maids

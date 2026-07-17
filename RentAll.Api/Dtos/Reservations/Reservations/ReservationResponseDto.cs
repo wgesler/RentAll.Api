@@ -37,6 +37,7 @@ public class ReservationResponseDto
     public decimal BillingRate { get; set; }
     public decimal Deposit { get; set; }
     public int DepositTypeId { get; set; }
+    public bool DepositReturned { get; set; }
     public decimal DepartureFee { get; set; }
     public bool HasPets { get; set; }
     public decimal PetFee { get; set; }
@@ -110,6 +111,7 @@ public class ReservationResponseDto
         BillingRate = reservation.BillingRate;
         Deposit = reservation.Deposit;
         DepositTypeId = (int)reservation.DepositType;
+        DepositReturned = reservation.DepositReturned;
         DepartureFee = reservation.DepartureFee;
         HasPets = reservation.HasPets;
         PetFee = reservation.PetFee;

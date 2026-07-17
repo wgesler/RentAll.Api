@@ -37,6 +37,7 @@ public class Reservation
     public decimal BillingRate { get; set; }
     public decimal Deposit { get; set; }
     public DepositType DepositType { get; set; }
+    public bool DepositReturned { get; set; }
     public decimal DepartureFee { get; set; }
     public bool HasPets { get; set; }
     public decimal PetFee { get; set; }
