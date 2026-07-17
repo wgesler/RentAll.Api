@@ -56,7 +56,7 @@ public partial class JournalEntryRepository
             IncludeUnposted = criteria.IncludeUnposted,
             IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext,
             ReachBackInvoiceCodes = reachBackInvoiceCodes
-        });
+        }, commandTimeout: 120);
 
         return res ?? Enumerable.Empty<JournalEntryRecapRawLineEntity>();
     }
