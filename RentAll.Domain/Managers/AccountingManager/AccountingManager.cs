@@ -609,7 +609,7 @@ public partial class AccountingManager : IAccountingManager
         });
     }
 
-    private int GetDefaultEscrowOwnersAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    public int GetDefaultEscrowOwnersAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
         return ResolveDefaultAccountIdCached(nameof(GetDefaultEscrowOwnersAccount), chartOfAccounts, officeId, null, () =>
         {

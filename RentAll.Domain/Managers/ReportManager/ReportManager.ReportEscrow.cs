@@ -12,7 +12,7 @@ public partial class ReportManager
         var accrualReport = BuildOwnerAccrualReport(loaded, normalizedCriteria);
         var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
         var officeIds = GetReportOfficeIds(normalizedCriteria.OfficeIds);
-        var (escrowBankBalance, escrowBankAccountLabel) = await LoadEscrowBankBalanceAsync(
+        var (escrowOwnersBalance, escrowOwnersAccountLabel) = await LoadEscrowOwnersAccountBalanceAsync(
             normalizedCriteria.OrganizationId,
             officeIds,
             normalizedCriteria.EndDate);
@@ -24,8 +24,8 @@ public partial class ReportManager
             normalizedCriteria.EndDate,
             ResolveEscrowEntityLineLabel(accrualReport.Rows, officeIds.Count),
             cushion,
-            escrowBankBalance,
-            escrowBankAccountLabel);
+            escrowOwnersBalance,
+            escrowOwnersAccountLabel);
     }
 
     private static JournalEntryRecapGetCriteria NormalizeEscrowReportCriteria(JournalEntryRecapGetCriteria criteria)
@@ -50,7 +50,7 @@ public partial class ReportManager
         };
     }
 
-    private async Task<(decimal Balance, string AccountLabel)> LoadEscrowBankBalanceAsync(
+    private async Task<(decimal Balance, string AccountLabel)> LoadEscrowOwnersAccountBalanceAsync(
         Guid organizationId,
         IReadOnlyList<int> officeIds,
         DateOnly? asOfDate)
@@ -62,9 +62,7 @@ public partial class ReportManager
         {
             var chartOfAccounts = (await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(organizationId, officeId)).ToList();
             var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
-            var accountId = ResolveEscrowDepositAccountId(chartOfAccounts, accountingOffice);
-            if (accountId <= 0)
-                continue;
+            var accountId = _accountingManager.GetDefaultEscrowOwnersAccount(chartOfAccounts, officeId, accountingOffice);
 
             var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
             {
@@ -77,29 +75,15 @@ public partial class ReportManager
                 EndDate = asOfDate
             });
 
-            totalBalance += SumEscrowAssetAccountBalance(lines);
+            totalBalance += SumEscrowLiabilityAccountBalance(lines);
             accountLabel ??= FormatChartOfAccountLabel(chartOfAccounts.FirstOrDefault(account => account.AccountId == accountId));
         }
 
-        return (RoundFinancialReportAmount(totalBalance), accountLabel ?? "Escrow Bank Balance");
+        return (RoundFinancialReportAmount(totalBalance), accountLabel ?? "Escrow Owners");
     }
 
-    private static int ResolveEscrowDepositAccountId(IReadOnlyList<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
-    {
-        if (accountingOffice?.DefaultEscrowDepositAccountId is > 0)
-            return accountingOffice.DefaultEscrowDepositAccountId.Value;
-
-        var account1003 = chartOfAccounts.FirstOrDefault(account =>
-        {
-            var accountNo = (account.AccountNo ?? string.Empty).Trim().TrimStart('0');
-            return string.Equals(accountNo, "1003", StringComparison.OrdinalIgnoreCase);
-        });
-
-        return account1003?.AccountId ?? 0;
-    }
-
-    private static decimal SumEscrowAssetAccountBalance(IEnumerable<JournalEntryLineSearchResult> lines)
-        => RoundFinancialReportAmount((lines ?? []).Sum(line => line.Debit - line.Credit));
+    private static decimal SumEscrowLiabilityAccountBalance(IEnumerable<JournalEntryLineSearchResult> lines)
+        => RoundFinancialReportAmount((lines ?? []).Sum(line => line.Credit - line.Debit));
 
     private static string FormatChartOfAccountLabel(ChartOfAccount? account)
     {
@@ -189,7 +173,7 @@ public partial class ReportManager
             Cushion = roundedCushion,
             EscrowBankBalance = roundedBankBalance,
             EscrowBankAccountLabel = string.IsNullOrWhiteSpace(escrowBankAccountLabel)
-                ? "Escrow Bank Balance"
+                ? "Escrow Owners"
                 : escrowBankAccountLabel.Trim(),
             Transfer = RoundFinancialReportAmount(roundedBankBalance + totals.Total - roundedCushion)
         };

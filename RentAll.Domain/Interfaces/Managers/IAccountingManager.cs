@@ -59,6 +59,7 @@ public interface IAccountingManager
 
     #region Default Chart Of Accounts
     int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
+    int GetDefaultEscrowOwnersAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     int GetDefaultRetainedEarningsAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     #endregion
 

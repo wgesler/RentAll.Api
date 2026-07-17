@@ -9,6 +9,6 @@ public class EscrowReport
     public EscrowReportTotals Totals { get; set; } = new();
     public decimal Cushion { get; set; }
     public decimal EscrowBankBalance { get; set; }
-    public string EscrowBankAccountLabel { get; set; } = "Escrow Bank Balance";
+    public string EscrowBankAccountLabel { get; set; } = "Escrow Owners";
     public decimal Transfer { get; set; }
 }
