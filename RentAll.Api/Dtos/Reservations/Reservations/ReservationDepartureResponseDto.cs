@@ -29,6 +29,15 @@ public class ReservationDepartureResponseDto
     public decimal Deposit { get; set; }
     public bool DepositReturned { get; set; }
     public DateOnly SecurityDepositReturnDate { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal ReturnedAmount { get; set; }
+    public decimal OwedAmount { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public string JournalEntryCode { get; set; } = string.Empty;
+    public Guid? PaidJournalEntryId { get; set; }
+    public string PaidJournalEntryCode { get; set; } = string.Empty;
+    public Guid? InvoiceId { get; set; }
+    public string InvoiceCode { get; set; } = string.Empty;
 
     public ReservationDepartureResponseDto(ReservationDeparture departure)
     {
@@ -57,5 +66,14 @@ public class ReservationDepartureResponseDto
         Deposit = departure.Deposit;
         DepositReturned = departure.DepositReturned;
         SecurityDepositReturnDate = departure.SecurityDepositReturnDate;
+        PaidAmount = departure.PaidAmount;
+        ReturnedAmount = departure.ReturnedAmount;
+        OwedAmount = departure.OwedAmount;
+        JournalEntryId = departure.JournalEntryId;
+        JournalEntryCode = departure.JournalEntryCode;
+        PaidJournalEntryId = departure.PaidJournalEntryId;
+        PaidJournalEntryCode = departure.PaidJournalEntryCode;
+        InvoiceId = departure.InvoiceId;
+        InvoiceCode = departure.InvoiceCode;
     }
 }

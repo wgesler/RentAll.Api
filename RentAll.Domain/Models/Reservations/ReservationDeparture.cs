@@ -29,4 +29,13 @@ public class ReservationDeparture
     public decimal Deposit { get; set; }
     public bool DepositReturned { get; set; }
     public DateOnly SecurityDepositReturnDate { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal ReturnedAmount { get; set; }
+    public decimal OwedAmount { get; set; }
+    public Guid? JournalEntryId { get; set; }
+    public string JournalEntryCode { get; set; } = string.Empty;
+    public Guid? PaidJournalEntryId { get; set; }
+    public string PaidJournalEntryCode { get; set; } = string.Empty;
+    public Guid? InvoiceId { get; set; }
+    public string InvoiceCode { get; set; } = string.Empty;
 }
