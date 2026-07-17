@@ -301,6 +301,9 @@ public partial class AccountingManager
 
     private async Task LogLinenAndTowelDecisionAsync(Guid organizationId, int officeId, Guid propertyId, string propertyCode, bool isMonthly, DateOnly processingDate, decimal? amount, string message)
     {
+        if (message.StartsWith("Skipped", StringComparison.Ordinal))
+            return;
+
         var cadence = isMonthly ? "Monthly" : "Annual";
         var fullMessage = $"{cadence} linen & towel [{propertyCode}] (as of {processingDate:MM/dd/yyyy}): {message}";
         await LogPeriodicAccountingDecisionAsync(organizationId, officeId, propertyId, amount, fullMessage);
