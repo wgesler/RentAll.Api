@@ -11,8 +11,8 @@ public class ContactEntity
     public string OfficeName { get; set; } = string.Empty;
     public string OfficeAccess { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
-    public int? OwnerTypeId { get; set; }
-    public int? VendorTypeId { get; set; }
+    public int OwnerTypeId { get; set; }
+    public int VendorTypeId { get; set; }
     public string Properties { get; set; } = string.Empty;
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }

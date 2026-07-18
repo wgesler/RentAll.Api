@@ -12,8 +12,8 @@ public class UpdateContactDto
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
-    public int? OwnerTypeId { get; set; }
-    public int? VendorTypeId { get; set; }
+    public int OwnerTypeId { get; set; }
+    public int VendorTypeId { get; set; }
     public List<string> Properties { get; set; } = new List<string>();
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }
@@ -75,10 +75,10 @@ public class UpdateContactDto
         if (!Enum.IsDefined(typeof(EntityType), EntityTypeId))
             return (false, $"Invalid EntityType value: {EntityTypeId}");
 
-        if (OwnerTypeId.HasValue && !Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
+        if (!Enum.IsDefined(typeof(OwnerType), OwnerTypeId))
             return (false, $"Invalid OwnerType value: {OwnerTypeId}");
 
-        if (VendorTypeId.HasValue && !Enum.IsDefined(typeof(VendorType), VendorTypeId.Value))
+        if (!Enum.IsDefined(typeof(VendorType), VendorTypeId))
             return (false, $"Invalid VendorType value: {VendorTypeId}");
 
         if (PaymentTermsId.HasValue && !Enum.IsDefined(typeof(TermType), PaymentTermsId.Value))
@@ -98,8 +98,8 @@ public class UpdateContactDto
             OfficeId = OfficeId,
             ContactCode = ContactCode,
             EntityType = (EntityType)EntityTypeId,
-            OwnerType = (OwnerType?)OwnerTypeId,
-            VendorType = (VendorType?)VendorTypeId,
+            OwnerType = (OwnerType)OwnerTypeId,
+            VendorType = (VendorType)VendorTypeId,
             CompanyName = CompanyName,
             CompanyEmail = CompanyEmail,
             Properties = Properties ?? new List<string>(),

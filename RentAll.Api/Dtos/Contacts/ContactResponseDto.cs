@@ -13,8 +13,8 @@ public class ContactResponseDto
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
     public int EntityTypeId { get; set; }
-    public int? OwnerTypeId { get; set; }
-    public int? VendorTypeId { get; set; }
+    public int OwnerTypeId { get; set; }
+    public int VendorTypeId { get; set; }
     public List<string> Properties { get; set; } = new List<string>();
     public string? CompanyName { get; set; }
     public string? CompanyEmail { get; set; }
@@ -66,8 +66,8 @@ public class ContactResponseDto
         OfficeAccess = contact.OfficeAccess;
         ContactCode = contact.ContactCode;
         EntityTypeId = (int)contact.EntityType;
-        OwnerTypeId = (int?)contact.OwnerType;
-        VendorTypeId = (int?)contact.VendorType;
+        OwnerTypeId = (int)contact.OwnerType;
+        VendorTypeId = (int)contact.VendorType;
         CompanyName = contact.CompanyName;
         CompanyEmail = contact.CompanyEmail;
         Properties = contact.Properties;

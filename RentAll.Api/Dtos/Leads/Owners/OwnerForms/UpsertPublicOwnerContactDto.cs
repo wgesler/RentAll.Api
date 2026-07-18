@@ -26,6 +26,7 @@ public class UpsertPublicOwnerContactDto
             ContactCode = contactCode,
             EntityType = EntityType.Owner,
             OwnerType = OwnerType.Individual,
+            VendorType = VendorType.Individual,
             Properties = new List<string>(),
             FirstName = ResolvePreferredValue(FirstName, owner.FirstName),
             LastName = ResolvePreferredValue(LastName, owner.LastName),
