@@ -17,7 +17,8 @@ public enum DocumentType
     ArAging = 12,
     ReconcileAccountSummary = 13,
     ReconcileAccountDetail = 14,
-    ApAging = 15
+    ApAging = 15,
+    SecurityDepositReport = 16
 }
 
 
