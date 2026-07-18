@@ -9,6 +9,7 @@ public class PropertyHtmlResponseDto
     public string Invoice { get; set; } = string.Empty;
     public string WorkOrder { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
+    public string SecurityDepositReport { get; set; } = string.Empty;
     public string LetterOfResponsibility { get; set; } = string.Empty;
     public string NoticeToVacate { get; set; } = string.Empty;
     public string CreditAuthorization { get; set; } = string.Empty;
@@ -29,6 +30,7 @@ public class PropertyHtmlResponseDto
         Invoice = propertyHtml.Invoice;
         WorkOrder = propertyHtml.WorkOrder;
         OwnerStatement = propertyHtml.OwnerStatement;
+        SecurityDepositReport = propertyHtml.SecurityDepositReport;
         LetterOfResponsibility = propertyHtml.LetterOfResponsibility;
         NoticeToVacate = propertyHtml.NoticeToVacate;
         CreditAuthorization = propertyHtml.CreditAuthorization;

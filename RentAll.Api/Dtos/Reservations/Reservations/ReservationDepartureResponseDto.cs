@@ -31,6 +31,7 @@ public class ReservationDepartureResponseDto
     public DateOnly SecurityDepositReturnDate { get; set; }
     public decimal CollectedAmount { get; set; }
     public decimal ReturnedAmount { get; set; }
+    public decimal TransferredAmount { get; set; }
     public decimal OwedAmount { get; set; }
     public decimal BalanceAmount { get; set; }
     public Guid? JournalEntryId { get; set; }
@@ -69,6 +70,7 @@ public class ReservationDepartureResponseDto
         SecurityDepositReturnDate = departure.SecurityDepositReturnDate;
         CollectedAmount = departure.CollectedAmount;
         ReturnedAmount = departure.ReturnedAmount;
+        TransferredAmount = departure.TransferredAmount;
         OwedAmount = departure.OwedAmount;
         BalanceAmount = departure.BalanceAmount;
         JournalEntryId = departure.JournalEntryId;

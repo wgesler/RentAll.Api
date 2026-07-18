@@ -13,7 +13,6 @@ namespace RentAll.Api.Controllers
         private readonly IOrganizationManager _organizationManager;
         private readonly IReservationRepository _reservationRepository;
         private readonly IAccountingRepository _accountingRepository;
-        private readonly IAccountingManager _accountingManager;
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
         private readonly ILogger<ReservationController> _logger;
@@ -22,7 +21,6 @@ namespace RentAll.Api.Controllers
             IOrganizationManager organizationManager,
             IReservationRepository reservationRepository,
             IAccountingRepository accountingRepository,
-            IAccountingManager accountingManager,
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
             ILogger<ReservationController> logger)
@@ -30,7 +28,6 @@ namespace RentAll.Api.Controllers
             _organizationManager = organizationManager;
             _reservationRepository = reservationRepository;
             _accountingRepository = accountingRepository;
-            _accountingManager = accountingManager;
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;
             _logger = logger;

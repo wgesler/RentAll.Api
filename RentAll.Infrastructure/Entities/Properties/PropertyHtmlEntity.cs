@@ -9,6 +9,7 @@ public class PropertyHtmlEntity
     public string Invoice { get; set; } = string.Empty;
     public string WorkOrder { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
+    public string SecurityDepositReport { get; set; } = string.Empty;
     public string LetterOfResponsibility { get; set; } = string.Empty;
     public string NoticeToVacate { get; set; } = string.Empty;
     public string CreditAuthorization { get; set; } = string.Empty;

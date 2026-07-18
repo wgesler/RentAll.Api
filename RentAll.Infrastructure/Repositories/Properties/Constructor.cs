@@ -297,6 +297,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 Invoice = e.Invoice,
                 WorkOrder = e.WorkOrder,
                 OwnerStatement = e.OwnerStatement ?? string.Empty,
+                SecurityDepositReport = e.SecurityDepositReport ?? string.Empty,
                 LetterOfResponsibility = e.LetterOfResponsibility,
                 NoticeToVacate = e.NoticeToVacate,
                 CreditAuthorization = e.CreditAuthorization,
