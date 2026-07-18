@@ -430,6 +430,16 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
+        public async Task MarkDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Property.Reservation_MarkDepositReturned", new
+            {
+                ReservationId = reservationId,
+                OrganizationId = organizationId,
+                ModifiedBy = modifiedBy
+            });
+        }
         #endregion
 
         #region Deletes

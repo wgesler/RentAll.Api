@@ -29,7 +29,7 @@ public class ReservationDepartureResponseDto
     public decimal Deposit { get; set; }
     public bool DepositReturned { get; set; }
     public DateOnly SecurityDepositReturnDate { get; set; }
-    public decimal PaidAmount { get; set; }
+    public decimal CollectedAmount { get; set; }
     public decimal ReturnedAmount { get; set; }
     public decimal OwedAmount { get; set; }
     public decimal BalanceAmount { get; set; }
@@ -67,7 +67,7 @@ public class ReservationDepartureResponseDto
         Deposit = departure.Deposit;
         DepositReturned = departure.DepositReturned;
         SecurityDepositReturnDate = departure.SecurityDepositReturnDate;
-        PaidAmount = departure.PaidAmount;
+        CollectedAmount = departure.CollectedAmount;
         ReturnedAmount = departure.ReturnedAmount;
         OwedAmount = departure.OwedAmount;
         BalanceAmount = departure.BalanceAmount;

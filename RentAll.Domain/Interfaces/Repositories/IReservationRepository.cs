@@ -19,6 +19,7 @@ public interface IReservationRepository
 
     Task<Reservation> CreateAsync(Reservation reservation);
     Task<Reservation> UpdateByIdAsync(Reservation reservation);
+    Task MarkDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
     Task DeleteReservationByIdAsync(Guid reservationId, Guid organizationId);
     #endregion
 
