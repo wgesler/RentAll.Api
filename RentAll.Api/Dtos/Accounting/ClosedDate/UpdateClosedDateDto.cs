@@ -1,4 +1,3 @@
-using RentAll.Domain.Enums;
 using ClosedDateModel = RentAll.Domain.Models.ClosedDate;
 
 namespace RentAll.Api.Dtos.Accounting.ClosedDate;

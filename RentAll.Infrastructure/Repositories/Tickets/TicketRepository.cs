@@ -5,7 +5,6 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Tickets;
 using RentAll.Infrastructure.Serialization;
 using System.Data;
 using System.Text.Json;

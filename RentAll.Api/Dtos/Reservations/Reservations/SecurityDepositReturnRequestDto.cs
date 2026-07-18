@@ -1,5 +1,3 @@
-using RentAll.Domain.Enums;
-
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
 public class SecurityDepositReturnRequestDto

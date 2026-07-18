@@ -1,8 +1,3 @@
-using RentAll.Api.Dtos.Accounting.CheckHtmls;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Controllers;
 
 public partial class AccountingController

@@ -1,6 +1,4 @@
 using RentAll.Api.Dtos.Accounting.CheckPrint;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers;
 

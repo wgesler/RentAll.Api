@@ -1,6 +1,5 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Managers;
-using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Accounting;
 

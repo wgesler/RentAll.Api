@@ -1,7 +1,6 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Accounting;
 using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
