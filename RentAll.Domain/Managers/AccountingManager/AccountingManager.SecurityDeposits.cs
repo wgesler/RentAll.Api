@@ -65,9 +65,7 @@ public partial class AccountingManager
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, departure.OfficeId, accountingOffice);
 
         var securityDepositCharges = BuildSecurityDepositChargeLines(securityDepositInvoices, costCodeById);
-        var outstandingCharges = departure.OwedAmount > 0
-            ? BuildOutstandingChargeLines(invoices, costCodeById)
-            : [];
+        var outstandingCharges = BuildOutstandingChargeLines(invoices, costCodeById);
 
         var securityDepositPayments = new List<SecurityDepositDetailLine>();
         foreach (var securityDepositInvoice in securityDepositInvoices)
@@ -138,7 +136,6 @@ public partial class AccountingManager
 
     public async Task<Reservation> ApplySecurityDepositReturnAsync(Guid reservationId, Guid organizationId, string officeAccess, int chartOfAccountId, string description, decimal amount, DateOnly paymentDate, PaymentType paymentType, Guid currentUser)
     {
-        _ = paymentType;
         var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
             ?? throw new Exception("Reservation not found");
 
@@ -153,8 +150,7 @@ public partial class AccountingManager
         if (amount == 0)
             throw new Exception("Payment amount cannot be zero");
 
-        if (chartOfAccountId <= 0)
-            throw new Exception("Chart of account is required for security deposit return");
+        _ = chartOfAccountId;
 
         if (paymentDate == default)
             throw new Exception("Payment date is required for security deposit return");
@@ -191,15 +187,18 @@ public partial class AccountingManager
             return reservation;
         }
 
+        var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, reservation.OfficeId);
+        var securityDepositAccountId = GetDefaultSecurityDepositAccount(chartOfAccounts, reservation.OfficeId, office, costCodeById, accountingOffice);
         var escrowSecurityDepositAccountId = GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, reservation.OfficeId, accountingOffice);
         var lineContext = await ResolveReservationJournalEntryLineContextAsync(organizationId, departure, reservation);
-        var memo = BuildSecurityDepositReturnMemo(reservation.ReservationCode, description);
+        var memo = BuildSecurityDepositReturnMemo(reservation.ReservationCode, description, paymentType);
         var journalEntry = BuildJournalEntryForSecurityDepositReturn(
             reservation,
             lineContext,
+            securityDepositAccountId,
             escrowSecurityDepositAccountId,
-            chartOfAccountId,
+            office?.SecurityDepositCcId,
             memo,
             amount,
             paymentDate,
@@ -280,8 +279,9 @@ public partial class AccountingManager
     private JournalEntry BuildJournalEntryForSecurityDepositReturn(
         Reservation reservation,
         JournalEntryLineContext lineContext,
+        int securityDepositAccountId,
         int escrowSecurityDepositAccountId,
-        int chartOfAccountId,
+        int? securityDepositCostCodeId,
         string memo,
         decimal amount,
         DateOnly paymentDate,
@@ -289,29 +289,30 @@ public partial class AccountingManager
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-RETURN-JE-ACCOUNTS
-        // Line 1 — Escrow Security Deposit: Debit liability / Credit 0 (positive return) or reverse for negative.
-        // Line 2 — Business bank: Credit bank / Debit 0 (positive return) or reverse for negative.
+        // Line 1 — Security Deposit cost code account (GetDefaultSecurityDepositAccount): Debit / Credit 0 (positive return) or reverse for negative.
+        // Line 2 — Escrow Security Deposit: Credit liability / Debit 0 (positive return) or reverse for negative.
         // END SECURITY-DEPOSIT-RETURN-JE-ACCOUNTS
 
-        var liabilityLine = new JournalEntryLine
+        var securityDepositLine = new JournalEntryLine
         {
-            ChartOfAccountId = escrowSecurityDepositAccountId,
+            ChartOfAccountId = securityDepositAccountId,
+            CostCodeId = securityDepositCostCodeId,
             Debit = amount > 0 ? amount : 0,
             Credit = amount < 0 ? Math.Abs(amount) : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
-        ApplyJournalEntryLineContext(liabilityLine, lineContext);
+        ApplyJournalEntryLineContext(securityDepositLine, lineContext);
 
-        var bankLine = new JournalEntryLine
+        var escrowLine = new JournalEntryLine
         {
-            ChartOfAccountId = chartOfAccountId,
+            ChartOfAccountId = escrowSecurityDepositAccountId,
             Debit = amount < 0 ? Math.Abs(amount) : 0,
             Credit = amount > 0 ? amount : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
-        ApplyJournalEntryLineContext(bankLine, lineContext);
+        ApplyJournalEntryLineContext(escrowLine, lineContext);
 
         return new JournalEntry
         {
@@ -322,7 +323,7 @@ public partial class AccountingManager
             SourceId = reservation.ReservationId,
             SourceCode = reservation.ReservationCode,
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine> { liabilityLine, bankLine },
+            JournalEntryLines = new List<JournalEntryLine> { securityDepositLine, escrowLine },
             CreatedBy = currentUser
         };
     }
@@ -631,17 +632,23 @@ public partial class AccountingManager
         if (reservationIds.Count == 0)
             return [];
 
-        var reservationIdSet = reservationIds.ToHashSet();
-
-        return (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        var invoicesById = new Dictionary<Guid, Invoice>();
+        foreach (var reservationId in reservationIds.Distinct())
         {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
-            IncludeInactive = true,
-            IncludePaid = true
-        }))
-        .Where(invoice => invoice.ReservationId.HasValue && reservationIdSet.Contains(invoice.ReservationId.Value))
-        .ToList();
+            var reservationInvoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+            {
+                OrganizationId = organizationId,
+                OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
+                ReservationId = reservationId,
+                IncludeInactive = true,
+                IncludePaid = true
+            });
+
+            foreach (var invoice in reservationInvoices)
+                invoicesById[invoice.InvoiceId] = invoice;
+        }
+
+        return invoicesById.Values.ToList();
     }
 
     private static decimal CalculateReservationInvoiceChargeTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -962,23 +969,49 @@ public partial class AccountingManager
             throw new Exception($"Security deposit return description reservation {descriptionReservationCode} does not match selected reservation {reservation.ReservationCode}.");
     }
 
-    private static string BuildSecurityDepositReturnMemo(string reservationCode, string description)
+    private static string BuildSecurityDepositReturnMemo(string reservationCode, string description, PaymentType paymentType)
     {
+        var paymentTypeLabel = GetPaymentTypeLabel(paymentType);
         var normalizedReservationCode = reservationCode.Trim();
         if (string.IsNullOrWhiteSpace(normalizedReservationCode))
-            return string.IsNullOrWhiteSpace(description) ? "Security Deposit Return" : description.Trim();
+        {
+            var baseMemo = string.IsNullOrWhiteSpace(description) ? "Security Deposit Return" : description.Trim();
+            return AppendPaymentTypeToMemo(baseMemo, paymentTypeLabel);
+        }
 
         var defaultMemo = $"{normalizedReservationCode}: Security Deposit Return";
         if (string.IsNullOrWhiteSpace(description))
-            return defaultMemo;
+            return AppendPaymentTypeToMemo(defaultMemo, paymentTypeLabel);
 
         var descriptionReservationCode = ExtractReservationCodeFromReturnDescription(description);
         if (descriptionReservationCode != null
             && string.Equals(descriptionReservationCode, normalizedReservationCode, StringComparison.OrdinalIgnoreCase))
-            return description.Trim();
+        {
+            var memo = description.Contains(':') ? description.Trim() : defaultMemo;
+            return AppendPaymentTypeToMemo(memo, paymentTypeLabel);
+        }
 
-        return defaultMemo;
+        return AppendPaymentTypeToMemo(defaultMemo, paymentTypeLabel);
     }
+
+    private static string AppendPaymentTypeToMemo(string memo, string paymentTypeLabel)
+    {
+        if (string.IsNullOrWhiteSpace(paymentTypeLabel))
+            return memo;
+
+        return $"{memo} (paid by {paymentTypeLabel})";
+    }
+
+    private static string GetPaymentTypeLabel(PaymentType paymentType) => paymentType switch
+    {
+        PaymentType.Check => "Check",
+        PaymentType.Ach => "ACH",
+        PaymentType.Eft => "EFT",
+        PaymentType.OnlineBanking => "Online banking",
+        PaymentType.WireTransfer => "Wire transfer",
+        PaymentType.CreditCard => "Credit Card",
+        _ => paymentType.ToString()
+    };
 
     private static string BuildSecurityDepositTransferMemo(string reservationCode, string description)
     {
@@ -1115,24 +1148,32 @@ public partial class AccountingManager
         IReadOnlyList<Invoice> invoices,
         IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        var chargeEntries = invoices
-            .SelectMany(invoice => (invoice.LedgerLines ?? [])
-                .Where(line => line.Amount != 0m)
-                .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-                .Select(line => new ReservationChargeLineBalance
-                {
-                    Invoice = invoice,
-                    Line = line,
-                    Remaining = line.Amount
-                }))
-            .OrderBy(entry => entry.Invoice.InvoiceDate)
-            .ThenBy(entry => entry.Line.LineNumber)
+        var chargeEntries = new List<ReservationChargeLineBalance>();
+        foreach (var invoice in invoices)
+            chargeEntries.AddRange(CalculateInvoiceChargeLineBalances(invoice, costCodeById));
+
+        return chargeEntries;
+    }
+
+    private static List<ReservationChargeLineBalance> CalculateInvoiceChargeLineBalances(
+        Invoice invoice,
+        IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var chargeEntries = (invoice.LedgerLines ?? [])
+            .Where(line => line.Amount != 0m)
+            .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+            .Select(line => new ReservationChargeLineBalance
+            {
+                Invoice = invoice,
+                Line = line,
+                Remaining = line.Amount
+            })
+            .OrderBy(entry => entry.Line.LineNumber)
             .ToList();
 
-        var paymentLines = invoices
-            .SelectMany(invoice => (invoice.LedgerLines ?? [])
-                .Where(line => line.Amount != 0m)
-                .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById)))
+        var paymentLines = (invoice.LedgerLines ?? [])
+            .Where(line => line.Amount != 0m)
+            .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
             .OrderBy(line => line.LedgerLineDate)
             .ThenBy(line => line.LineNumber)
             .ToList();

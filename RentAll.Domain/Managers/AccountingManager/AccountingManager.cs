@@ -149,6 +149,18 @@ public partial class AccountingManager : IAccountingManager
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.PetFeeCcId, costCodeById, accountingOffice);
     }
 
+    private int GetDefaultSecurityDepositAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        CostCode? costCode = null;
+        if (office?.SecurityDepositCcId is > 0)
+            costCodeById.TryGetValue(office.SecurityDepositCcId.Value, out costCode);
+
+        if (costCode == null)
+            throw new Exception($"No Security Deposit cost code is configured for office {officeId}");
+
+        return GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice, costCode);
+    }
+
     // Tenant/Owner/Company Accounts
     private int GetDefaultTenantIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
     {
