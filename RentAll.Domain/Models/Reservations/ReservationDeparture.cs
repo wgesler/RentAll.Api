@@ -32,6 +32,7 @@ public class ReservationDeparture
     public decimal PaidAmount { get; set; }
     public decimal ReturnedAmount { get; set; }
     public decimal OwedAmount { get; set; }
+    public decimal BalanceAmount { get; set; }
     public Guid? JournalEntryId { get; set; }
     public string JournalEntryCode { get; set; } = string.Empty;
     public Guid? PaidJournalEntryId { get; set; }
