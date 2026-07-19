@@ -25,9 +25,12 @@ public partial class AccountingManager
     {
         EnsureReceiptIsBill(bill);
 
-        var updatedBill = await _maintenanceRepository.UpdateReceiptAsync(bill);
-        await TryReplaceJournalEntriesFromBillAsync(updatedBill, currentUser);
-        return updatedBill;
+        await _maintenanceRepository.UpdateReceiptAsync(bill);
+        var freshBill = await _maintenanceRepository.GetReceiptByIdAsync(bill.ReceiptId, bill.OrganizationId)
+            ?? throw new Exception("Bill not found after update");
+
+        await ReplaceJournalEntriesFromBillAsync(freshBill, currentUser);
+        return freshBill;
     }
 
     public async Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser)
@@ -38,7 +41,7 @@ public partial class AccountingManager
         var freshReceipt = await _maintenanceRepository.GetReceiptByIdAsync(updatedReceipt.ReceiptId, updatedReceipt.OrganizationId)
             ?? throw new Exception("Receipt not found after update");
 
-        await TryReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser);
+        await ReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser);
         return freshReceipt;
     }
 
@@ -134,7 +137,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TryReplaceJournalEntriesFromReceiptAsync(Receipt receipt, Guid currentUser)
+    private async Task ReplaceJournalEntriesFromReceiptAsync(Receipt receipt, Guid currentUser)
     {
         try
         {
@@ -222,6 +225,7 @@ public partial class AccountingManager
                 amount: receipt.Amount,
                 message: $"Receipt {receiptLabel} journal entry refresh failed: {ex.Message}",
                 currentUser: currentUser);
+            throw;
         }
     }
 
@@ -277,7 +281,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TryReplaceJournalEntriesFromBillAsync(Receipt bill, Guid currentUser)
+    private async Task ReplaceJournalEntriesFromBillAsync(Receipt bill, Guid currentUser)
     {
         try
         {
@@ -395,6 +399,7 @@ public partial class AccountingManager
                 amount: bill.Amount,
                 message: $"Bill {billLabel} journal entry refresh failed: {ex.Message}",
                 currentUser: currentUser);
+            throw;
         }
     }
 
