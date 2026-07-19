@@ -11,6 +11,11 @@ public class UpdateInvoiceDto
     public string InvoiceCode { get; set; } = string.Empty;
     public Guid ReservationId { get; set; }
     public string ReservationCode { get; set; } = string.Empty;
+    public Guid? PropertyId { get; set; }
+    public string? PropertyCode { get; set; }
+    public Guid? ContactId { get; set; }
+    public string? ContactName { get; set; }
+    public string? ResponsibleParty { get; set; }
     public DateOnly InvoiceDate { get; set; }
     public DateOnly DueDate { get; set; }
     public DateOnly AccountingPeriod { get; set; }
@@ -68,6 +73,11 @@ public class UpdateInvoiceDto
             InvoiceCode = InvoiceCode,
             ReservationId = ReservationId,
             ReservationCode = ReservationCode,
+            PropertyId = PropertyId,
+            PropertyCode = PropertyCode,
+            ContactId = ContactId,
+            ContactName = ContactName ?? ResponsibleParty,
+            ResponsibleParty = ResponsibleParty ?? ContactName,
             InvoiceDate = InvoiceDate,
             DueDate = DueDate,
             AccountingPeriod = AccountingPeriod,

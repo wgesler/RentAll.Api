@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
@@ -209,37 +210,73 @@ public partial class AccountingManager
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
     }
 
-    private async Task<JournalEntryLineContext> ResolveInvoiceJournalEntryLineContextAsync(Invoice invoice)
+    private static Guid? ResolveInvoiceResponsibleContactId(Reservation reservation)
     {
-        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var propertyCode = NormalizeOptionalString(invoice.PropertyCode);
-        var reservationCode = NormalizeOptionalString(invoice.ReservationCode);
-        var contactName = NormalizeOptionalString(invoice.ContactName);
+        if (reservation.ReservationType is ReservationType.Corporate or ReservationType.Platform)
+            return NormalizeOptionalGuid(reservation.CompanyId);
 
+        var primaryContactId = reservation.ContactIds.FirstOrDefault(id => id != Guid.Empty);
+        return primaryContactId != Guid.Empty ? primaryContactId : null;
+    }
+
+    private static string? ResolveInvoiceResponsibleContactName(Contact contact, ReservationType reservationType)
+    {
+        if (reservationType is ReservationType.Corporate or ReservationType.Platform)
+            return NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
+
+        if (contact.EntityType == EntityType.Company)
+            return NormalizeOptionalString(contact.CompanyName ?? contact.DisplayName ?? contact.FullName);
+
+        var personName = $"{contact.FirstName ?? string.Empty} {contact.LastName ?? string.Empty}".Trim();
+        return NormalizeOptionalString(personName) ?? NormalizeOptionalString(contact.FullName);
+    }
+
+    private async Task<JournalEntryLineContext> ResolveInvoiceJournalEntryLineContextAsync(Invoice invoice, LedgerLine? paymentLedgerLine = null)
+    {
+        var propertyId = NormalizeOptionalGuid(invoice.PropertyId);
+        if (!propertyId.HasValue)
+            propertyId = await ResolveInvoicePropertyIdAsync(invoice);
+
+        var propertyCode = NormalizeOptionalString(invoice.PropertyCode);
         if (propertyId.HasValue && propertyCode == null)
         {
             var property = await _propertyRepository.GetPropertyByIdAsync(propertyId.Value, invoice.OrganizationId);
             propertyCode = NormalizeOptionalString(property?.PropertyCode);
         }
 
-        if (invoice.ReservationId is { } reservationId && reservationId != Guid.Empty && reservationCode == null)
+        var contactId = NormalizeOptionalGuid(invoice.ContactId);
+        var contactName = NormalizeOptionalString(invoice.ContactName) ?? NormalizeOptionalString(invoice.ResponsibleParty);
+        Reservation? reservation = null;
+
+        if ((!contactId.HasValue || contactName == null)
+            && invoice.ReservationId is { } reservationId
+            && reservationId != Guid.Empty
+            && reservationId != SystemOrganization)
         {
-            var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+            reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+            if (reservation != null && !contactId.HasValue)
+                contactId = ResolveInvoiceResponsibleContactId(reservation);
+        }
+
+        if (contactId is { } resolvedContactIdValue && resolvedContactIdValue != Guid.Empty && contactName == null)
+        {
+            var contact = await _contactRepository.GetContactByIdAsync(resolvedContactIdValue, invoice.OrganizationId);
+            contactName = contact == null
+                ? null
+                : reservation != null
+                    ? ResolveInvoiceResponsibleContactName(contact, reservation.ReservationType)
+                    : NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
+        }
+
+        var lineReservationId = NormalizeOptionalGuid(paymentLedgerLine?.ReservationId) ?? NormalizeOptionalGuid(invoice.ReservationId);
+        var reservationCode = NormalizeOptionalString(invoice.ReservationCode);
+        if (lineReservationId.HasValue && reservationCode == null)
+        {
+            reservation ??= await _reservationRepository.GetReservationByIdAsync(lineReservationId.Value, invoice.OrganizationId);
             reservationCode = NormalizeOptionalString(reservation?.ReservationCode);
         }
 
-        if (invoice.ContactId is { } contactId && contactId != Guid.Empty && contactName == null)
-        {
-            var contact = await _contactRepository.GetContactByIdAsync(contactId, invoice.OrganizationId);
-            contactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
-        }
-
-        return CreateJournalEntryLineContextFromInvoice(invoice, propertyId) with
-        {
-            PropertyCode = propertyCode,
-            ReservationCode = reservationCode,
-            ContactName = contactName
-        };
+        return new JournalEntryLineContext(propertyId, propertyCode, lineReservationId, reservationCode, contactId, contactName);
     }
 
     private async Task<JournalEntryLineContext> ResolveReceiptJournalEntryLineContextAsync(Receipt receipt, Guid? propertyId = null, Guid? contactId = null, string? contactName = null)

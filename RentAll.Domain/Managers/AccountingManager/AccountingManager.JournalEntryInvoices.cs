@@ -638,8 +638,7 @@ public partial class AccountingManager
 
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var lineContext = CreateJournalEntryLineContextFromInvoicePayment(invoice, paymentLedgerLine, propertyId);
+        var lineContext = await ResolveInvoiceJournalEntryLineContextAsync(invoice, paymentLedgerLine);
 
         var amount = paymentLedgerLine.Amount;
         var transactionDate = ResolveInvoicePaymentJournalEntryDate(paymentLedgerLine);
@@ -691,8 +690,7 @@ public partial class AccountingManager
 
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var lineContext = CreateJournalEntryLineContextFromInvoicePayment(invoice, paymentLedgerLine, propertyId);
+        var lineContext = await ResolveInvoiceJournalEntryLineContextAsync(invoice, paymentLedgerLine);
         var amount = paymentLedgerLine.Amount;
         var transactionDate = paymentLedgerLine.LedgerLineDate;
         var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);
@@ -745,8 +743,7 @@ public partial class AccountingManager
 
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
-        var lineContext = CreateJournalEntryLineContextFromInvoicePayment(invoice, paymentLedgerLine, propertyId);
+        var lineContext = await ResolveInvoiceJournalEntryLineContextAsync(invoice, paymentLedgerLine);
         var amount = paymentLedgerLine.Amount;
         var transactionDate = invoice.AccountingPeriod;
         var memo = BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description);

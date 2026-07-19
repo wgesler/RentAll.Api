@@ -52,6 +52,7 @@ public interface IAccountingManager
 
     #region Document Updates
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
+    Task EnrichInvoiceBeforeSaveAsync(Invoice invoice);
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);

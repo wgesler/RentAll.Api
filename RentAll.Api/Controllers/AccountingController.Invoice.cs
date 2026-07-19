@@ -73,6 +73,7 @@ namespace RentAll.Api.Controllers
             {
                 var invoice = dto.ToModel(CurrentUser);
                 invoice.OrganizationId = CurrentOrganizationId;
+                await _accountingManager.EnrichInvoiceBeforeSaveAsync(invoice);
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
                 await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
