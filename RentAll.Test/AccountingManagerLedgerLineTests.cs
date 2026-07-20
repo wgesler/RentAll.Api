@@ -486,6 +486,84 @@ public class AccountingManagerLedgerLineTests
     private static decimal GetBillingRate(BillingType billingType)
         => billingType == BillingType.Monthly ? 3000m : 100m;
 
+    [Fact]
+    public void GetLedgerLines_IndividualReservation_ChargesDepartureFeeOnFirstMonthOnly()
+    {
+        var reservation = CreateReservation(
+            arrival: new DateOnly(2026, 4, 10),
+            departure: new DateOnly(2026, 7, 31),
+            prorateType: ProrateType.FirstMonth,
+            billingType: BillingType.Monthly,
+            billingRate: 3000m);
+        reservation.ReservationType = ReservationType.Individual;
+        reservation.DepartureFee = 175m;
+
+        var manager = CreateManager();
+        var firstMonthLines = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 4, 1),
+            endDate: new DateOnly(2026, 4, 30),
+            rentalCostCodeId: 77);
+        var lastMonthLines = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 7, 1),
+            endDate: new DateOnly(2026, 7, 31),
+            rentalCostCodeId: 77);
+
+        Assert.Contains(firstMonthLines, line => line.Description == "Departure Fee" && line.Amount == 175m);
+        Assert.DoesNotContain(lastMonthLines, line => line.Description == "Departure Fee");
+    }
+
+    [Fact]
+    public void GetLedgerLines_PlatformReservation_ChargesDepartureFeeOnLastMonthOnly()
+    {
+        var reservation = CreateReservation(
+            arrival: new DateOnly(2026, 4, 10),
+            departure: new DateOnly(2026, 7, 31),
+            prorateType: ProrateType.FirstMonth,
+            billingType: BillingType.Monthly,
+            billingRate: 3000m);
+        reservation.ReservationType = ReservationType.Platform;
+        reservation.DepartureFee = 175m;
+
+        var manager = CreateManager();
+        var firstMonthLines = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 4, 1),
+            endDate: new DateOnly(2026, 4, 30),
+            rentalCostCodeId: 77);
+        var lastMonthLines = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 7, 1),
+            endDate: new DateOnly(2026, 7, 31),
+            rentalCostCodeId: 77);
+
+        Assert.DoesNotContain(firstMonthLines, line => line.Description == "Departure Fee");
+        Assert.Contains(lastMonthLines, line => line.Description == "Departure Fee" && line.Amount == 175m);
+    }
+
+    [Fact]
+    public void GetLedgerLines_PlatformSameMonthStay_ChargesDepartureFeeOnOnlyInvoice()
+    {
+        var reservation = CreateReservation(
+            arrival: new DateOnly(2026, 4, 5),
+            departure: new DateOnly(2026, 4, 25),
+            prorateType: ProrateType.FirstMonth,
+            billingType: BillingType.Monthly,
+            billingRate: 3000m);
+        reservation.ReservationType = ReservationType.Platform;
+        reservation.DepartureFee = 175m;
+
+        var manager = CreateManager();
+        var lines = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 4, 1),
+            endDate: new DateOnly(2026, 4, 30),
+            rentalCostCodeId: 77);
+
+        Assert.Contains(lines, line => line.Description == "Departure Fee" && line.Amount == 175m);
+    }
+
     private static Reservation CreateReservation(DateOnly arrival, DateOnly departure, ProrateType prorateType, BillingType billingType, decimal billingRate)
     {
         return new Reservation

@@ -726,13 +726,16 @@ public partial class AccountingManager
             firstPeriodEnd,
             secondPeriodStart);
 
-        // One-time / up-front charges (deposits, departure, pet, and OneTime extra fees) stay entirely on
-        // the first accounting period.
+        // One-time / up-front charges (deposits, pet, and OneTime extra fees) stay entirely on
+        // the first accounting period. Platform departure fees bill on the last stay month instead.
         var oneTimeLines = GetOneTimeFeeLines(originalInvoice, reservation)
             .Where(line => !rentalPeriodMatchedLineKeys.Contains(GetInvoiceLineKey(line)))
             .ToList();
         foreach (var oneTimeLine in oneTimeLines)
-            firstSlice.LedgerLines.Add(CreateApportionedFeeLine(oneTimeLine, oneTimeLine.Amount));
+        {
+            var targetSlice = ShouldAssignDepartureFeeToSecondPeriod(oneTimeLine, reservation) ? secondSlice : firstSlice;
+            targetSlice.LedgerLines.Add(CreateApportionedFeeLine(oneTimeLine, oneTimeLine.Amount));
+        }
 
         // Occurrence-based extra fees (weekly, EOW, quarterly, ...) bill in the month each occurrence falls.
         var occurrenceExtraFeeLines = GetOccurrenceExtraFeeLines(originalInvoice, reservation)
@@ -1037,6 +1040,10 @@ public partial class AccountingManager
         var endDate = periodEnd > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : periodEnd;
         return (startDate, endDate);
     }
+
+    private static bool ShouldAssignDepartureFeeToSecondPeriod(LedgerLine line, Reservation reservation)
+        => reservation.ReservationType == ReservationType.Platform
+            && string.Equals(line.Description, "Departure Fee", StringComparison.Ordinal);
 
     private static IEnumerable<LedgerLine> GetOneTimeFeeLines(Invoice originalInvoice, Reservation reservation)
     {
