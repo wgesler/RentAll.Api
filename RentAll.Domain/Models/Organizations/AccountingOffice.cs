@@ -21,6 +21,8 @@ public class AccountingOffice
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int StartMonth { get; set; } = 1;
+    public int StartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;
     public int YearEndDay { get; set; } = 31;
     public int WorkOrderNo { get; set; }

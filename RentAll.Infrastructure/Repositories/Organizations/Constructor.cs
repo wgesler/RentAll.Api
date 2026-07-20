@@ -158,6 +158,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             BankSwiftCode = e.BankSwiftCode,
             BankAddress = e.BankAddress,
             BankPhone = e.BankPhone,
+            StartMonth = e.StartMonth,
+            StartYear = e.StartYear,
             YearEndMonth = e.YearEndMonth,
             YearEndDay = e.YearEndDay,
             WorkOrderNo = e.WorkOrderNo,

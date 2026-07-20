@@ -21,6 +21,8 @@ public class AccountingOfficeEntity
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int StartMonth { get; set; }
+    public int StartYear { get; set; }
     public int YearEndMonth { get; set; }
     public int YearEndDay { get; set; }
     public int WorkOrderNo { get; set; }

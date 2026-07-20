@@ -23,6 +23,8 @@ public class UpdateAccountingOfficeDto
     public string BankSwiftCode { get; set; } = string.Empty;
     public string BankAddress { get; set; } = string.Empty;
     public string BankPhone { get; set; } = string.Empty;
+    public int StartMonth { get; set; } = 1;
+    public int StartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;
     public int YearEndDay { get; set; } = 31;
     public int WorkOrderNo { get; set; }
@@ -99,6 +101,12 @@ public class UpdateAccountingOfficeDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
+        if (StartMonth < 1 || StartMonth > 12)
+            return (false, "StartMonth must be between 1 and 12");
+
+        if (StartYear < 1900 || StartYear > 2100)
+            return (false, "StartYear must be between 1900 and 2100");
+
         if (YearEndMonth < 1 || YearEndMonth > 12)
             return (false, "YearEndMonth must be between 1 and 12");
 
@@ -135,6 +143,8 @@ public class UpdateAccountingOfficeDto
             BankSwiftCode = BankSwiftCode,
             BankAddress = BankAddress,
             BankPhone = BankPhone,
+            StartMonth = StartMonth,
+            StartYear = StartYear,
             YearEndMonth = YearEndMonth,
             YearEndDay = YearEndDay,
             WorkOrderNo = WorkOrderNo,

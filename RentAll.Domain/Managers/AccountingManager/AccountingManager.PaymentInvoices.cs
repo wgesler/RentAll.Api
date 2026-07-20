@@ -566,9 +566,23 @@ public partial class AccountingManager
 
         // Build preview invoices for the remaining stays.
         var previewInvoices = new List<Invoice>();
+        var accountingStartsByOffice = new Dictionary<int, DateOnly>();
 
         foreach (var reservation in unbilledReservations)
         {
+            if (!accountingStartsByOffice.TryGetValue(reservation.OfficeId, out var accountingStart))
+            {
+                var resolvedStart = await TryGetAccountingStartDateAsync(organizationId, reservation.OfficeId);
+                if (!resolvedStart.HasValue)
+                    continue;
+
+                accountingStart = resolvedStart.Value;
+                accountingStartsByOffice[reservation.OfficeId] = accountingStart;
+            }
+
+            if (billingMonth < accountingStart)
+                continue;
+
             // Get Charges for the billing month.
             var ledgerLines = await CreateLedgerLinesForReservationIdAsync(
                 reservation,
@@ -611,13 +625,16 @@ public partial class AccountingManager
         if (activeReservations.Count == 0)
             return Array.Empty<Invoice>();
 
-        var existingInvoicePeriods = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        var existingInvoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
             OfficeIds = officeIds,
             IsActive = true
         }))
             .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
+            .ToList();
+
+        var existingInvoicePeriods = existingInvoices
             .Select(invoice => (ReservationId: invoice.ReservationId!.Value, Period: FirstDayOfMonth(invoice.AccountingPeriod)))
             .ToHashSet();
 
@@ -625,11 +642,16 @@ public partial class AccountingManager
 
         foreach (var reservation in activeReservations)
         {
+            var reservationInvoices = existingInvoices
+                .Where(invoice => invoice.ReservationId == reservation.ReservationId)
+                .ToList();
+
             await AddUnbilledPreviewsForReservationAsync(
                 organizationId,
                 reservation,
                 throughMonth,
                 existingInvoicePeriods,
+                reservationInvoices,
                 previewInvoices);
         }
 
@@ -648,7 +670,7 @@ public partial class AccountingManager
         if (reservation == null)
             return Array.Empty<Invoice>();
 
-        var existingInvoicePeriods = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        var existingInvoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
             OfficeIds = reservation.OfficeId.ToString(),
@@ -657,6 +679,9 @@ public partial class AccountingManager
             IncludePaid = true
         }))
             .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
+            .ToList();
+
+        var existingInvoicePeriods = existingInvoices
             .Select(invoice => (ReservationId: invoice.ReservationId!.Value, Period: FirstDayOfMonth(invoice.AccountingPeriod)))
             .ToHashSet();
 
@@ -665,6 +690,7 @@ public partial class AccountingManager
             organizationId,
             reservation,
             existingInvoicePeriods,
+            existingInvoices,
             previewInvoices);
 
         return previewInvoices
@@ -672,7 +698,7 @@ public partial class AccountingManager
             .ToList();
     }
 
-    private async Task AddUnbilledPreviewInvoicesThroughEndOfStayAsync(Guid organizationId, Reservation reservation, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, List<Invoice> previewInvoices)
+    private async Task AddUnbilledPreviewInvoicesThroughEndOfStayAsync(Guid organizationId, Reservation reservation, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, IReadOnlyList<Invoice> existingReservationInvoices, List<Invoice> previewInvoices)
     {
         var throughMonth = FirstDayOfMonth(ResolveBillingDepartureDate(reservation));
         await AddUnbilledPreviewsForReservationAsync(
@@ -680,12 +706,19 @@ public partial class AccountingManager
             reservation,
             throughMonth,
             existingInvoicePeriods,
+            existingReservationInvoices,
             previewInvoices);
     }
 
-    private async Task AddUnbilledPreviewsForReservationAsync(Guid organizationId, Reservation reservation, DateOnly throughMonth, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, List<Invoice> previewInvoices)
+    private async Task AddUnbilledPreviewsForReservationAsync(Guid organizationId, Reservation reservation, DateOnly throughMonth, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, IReadOnlyList<Invoice> existingReservationInvoices, List<Invoice> previewInvoices)
     {
-        foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth))
+        var accountingStart = await TryGetAccountingStartDateAsync(organizationId, reservation.OfficeId);
+        if (!accountingStart.HasValue)
+            return;
+
+        var nextSequence = ResolveNextInvoiceSequence(reservation, existingReservationInvoices);
+
+        foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth, accountingStart.Value))
         {
             if (existingInvoicePeriods.Contains((reservation.ReservationId, billingMonth)))
                 continue;
@@ -715,7 +748,8 @@ public partial class AccountingManager
                 periodEnd,
                 ledgerLines,
                 totalAmount,
-                GetBillableMonthSequence(reservation, billingMonth)));
+                nextSequence));
+            nextSequence++;
         }
     }
 
@@ -736,13 +770,19 @@ public partial class AccountingManager
         return (periodStart, periodEnd);
     }
 
-    private static IEnumerable<DateOnly> EnumerateBillableMonths(Reservation reservation, DateOnly throughMonth)
+    private static IEnumerable<DateOnly> EnumerateBillableMonths(Reservation reservation, DateOnly throughMonth, DateOnly accountingStartMonth)
     {
         var arrivalDate = ResolveBillingArrivalDate(reservation);
         var departureDate = ResolveBillingDepartureDate(reservation);
         var startMonth = FirstDayOfMonth(arrivalDate);
+        if (startMonth < accountingStartMonth)
+            startMonth = accountingStartMonth;
+
         var departureMonth = FirstDayOfMonth(departureDate);
         var scanThrough = throughMonth <= departureMonth ? throughMonth : departureMonth;
+
+        if (startMonth > scanThrough)
+            yield break;
 
         for (var month = startMonth; month <= scanThrough; month = month.AddMonths(1))
         {
@@ -751,23 +791,36 @@ public partial class AccountingManager
         }
     }
 
-    private static int GetBillableMonthSequence(Reservation reservation, DateOnly targetBillingMonth)
+    private async Task<DateOnly?> TryGetAccountingStartDateAsync(Guid organizationId, int officeId)
     {
-        var targetMonth = FirstDayOfMonth(targetBillingMonth);
-        var sequence = 0;
+        var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
+        return accountingOffice == null
+            ? null
+            : AccountingOfficePeriodBoundary.GetStartMonth(accountingOffice);
+    }
 
-        foreach (var month in EnumerateBillableMonths(reservation, FirstDayOfMonth(ResolveBillingDepartureDate(reservation))))
+    private static int ResolveNextInvoiceSequence(Reservation reservation, IReadOnlyList<Invoice> existingReservationInvoices)
+    {
+        var maxSequence = reservation.CurrentInvoiceNo;
+        var prefix = $"{reservation.ReservationCode}-";
+
+        foreach (var invoice in existingReservationInvoices)
         {
-            if (month > targetMonth)
-                break;
+            var code = invoice.InvoiceCode?.Trim();
+            if (string.IsNullOrWhiteSpace(code)
+                || !code.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                || code.Length <= prefix.Length)
+            {
+                continue;
+            }
 
-            sequence++;
-            if (month == targetMonth)
-                return sequence;
+            if (int.TryParse(code.AsSpan(prefix.Length), out var sequence))
+                maxSequence = Math.Max(maxSequence, sequence);
         }
 
-        return Math.Max(sequence, 1);
+        return maxSequence + 1;
     }
+
     #endregion
 
     #region Billing Preview Helpers
