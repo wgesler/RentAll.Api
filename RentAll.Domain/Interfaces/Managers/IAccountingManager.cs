@@ -11,6 +11,7 @@ public interface IAccountingManager
     Task CreateDefaultCostCodeAsync(Guid organizationId, int officeId);
     Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly invoiceDate, DateOnly startDate, DateOnly endDate);
     List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId);
+    Task<IReadOnlyList<Invoice>> GetPreBillingInvoicesAsync(Guid organizationId, string officeIds, DateOnly billingMonth);
     #endregion
 
     #region Payments
@@ -52,7 +53,6 @@ public interface IAccountingManager
 
     #region Document Updates
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
-    Task EnrichInvoiceBeforeSaveAsync(Invoice invoice);
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);

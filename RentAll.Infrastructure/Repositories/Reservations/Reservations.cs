@@ -86,6 +86,18 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<Reservation>> GetActiveReservationsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var (headers, extraFeeLines) = await db.DapperProcQueryMultipleAsync<ReservationEntity, ExtraFeeLineEntity>("Property.Reservation_GetActiveByOfficeIds", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess
+            });
+
+            return MapReservationsWithExtraFeeLineEntities(headers, extraFeeLines);
+        }
+
         public async Task<IEnumerable<ReservationCodes>> GetReservationActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);

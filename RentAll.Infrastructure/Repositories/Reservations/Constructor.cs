@@ -65,6 +65,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ReservationCode = e.ReservationCode,
                 AgentId = e.AgentId,
                 PropertyId = e.PropertyId,
+                PropertyCode = e.PropertyCode,
                 NoticeStatusId = e.NoticeStatusId,
                 ContactIds = DeserializeReservationContactIds(e.ContactIds),
                 ContactName = e.ContactName,

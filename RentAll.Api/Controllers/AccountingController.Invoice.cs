@@ -6,7 +6,29 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
+        [HttpPost("invoice/pre-billing/search")]
+        public async Task<IActionResult> SearchPreBillingInvoices([FromBody] GetPreBillingInvoicesDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Pre-billing search criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
             {
+                var invoices = await _accountingManager.GetPreBillingInvoicesAsync(CurrentOrganizationId, dto.ResolvedOfficeIds, dto.BillingMonth);
+                var response = invoices.Select(invoice => new InvoiceResponseDto(invoice)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching pre-billing invoices");
+                return ServerError("An error occurred while retrieving pre-billing invoices");
+            }
+        }
+
         [HttpPost("invoice/search")]
         public async Task<IActionResult> SearchInvoices([FromBody] GetInvoiceDto dto)
         {
@@ -74,7 +96,6 @@ namespace RentAll.Api.Controllers
             {
                 var invoice = dto.ToModel(CurrentUser);
                 invoice.OrganizationId = CurrentOrganizationId;
-                await _accountingManager.EnrichInvoiceBeforeSaveAsync(invoice);
                 var createdInvoice = await _accountingRepository.CreateAsync(invoice);
 
                 await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);

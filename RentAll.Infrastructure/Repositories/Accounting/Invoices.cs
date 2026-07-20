@@ -29,6 +29,22 @@ public partial class AccountingRepository
         return MapInvoicesWithLedgerLineEntities(headers, lines);
     }
 
+    public async Task<IEnumerable<Invoice>> GetActiveInvoicesByAccountingMonthAsync(ActiveInvoiceByAccountingMonthCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var headers = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_GetActiveByAccountingMonth", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            AccountingPeriod = criteria.AccountingPeriod
+        });
+
+        if (headers == null || !headers.Any())
+            return Enumerable.Empty<Invoice>();
+
+        return headers.Select(ConvertEntityToModel).ToList();
+    }
+
     public async Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

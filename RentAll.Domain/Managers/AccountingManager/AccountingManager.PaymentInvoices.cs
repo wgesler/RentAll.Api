@@ -519,4 +519,122 @@ public partial class AccountingManager
         return days;
     }
     #endregion
+
+    #region PreBilling
+    public async Task<IReadOnlyList<Invoice>> GetPreBillingInvoicesAsync(Guid organizationId, string officeIds, DateOnly billingMonth)
+    {
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Array.Empty<Invoice>();
+
+        if (billingMonth == default || billingMonth.Day != 1)
+            throw new ArgumentException("BillingMonth must be the first day of the month.", nameof(billingMonth));
+
+        var monthStart = billingMonth;
+        var monthEnd = LastDayOfMonth(billingMonth);
+
+        // Get active reservations for the selected offices that overlap the billing month.
+        var activeReservations = (await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(organizationId, officeIds))
+            .Where(reservation => ReservationOverlapsBillingMonth(reservation.ArrivalDate, reservation.DepartureDate, monthStart, monthEnd))
+            .OrderBy(reservation => reservation.OfficeName)
+            .ThenBy(reservation => reservation.ReservationCode)
+            .ToList();
+
+        if (activeReservations.Count == 0)
+            return Array.Empty<Invoice>();
+
+        // Get active invoices for the selected offices and billing month (headers only; no ledger lines).
+        var billedReservationIds = (await _accountingRepository.GetActiveInvoicesByAccountingMonthAsync(new ActiveInvoiceByAccountingMonthCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            AccountingPeriod = billingMonth
+        }))
+            .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty)
+            .Select(invoice => invoice.ReservationId!.Value)
+            .ToHashSet();
+
+        // Drop stays that already have an invoice for this accounting period.
+        var unbilledReservations = activeReservations
+            .Where(reservation => !billedReservationIds.Contains(reservation.ReservationId))
+            .ToList();
+
+        if (unbilledReservations.Count == 0)
+            return Array.Empty<Invoice>();
+
+        // Build preview invoices for the remaining stays.
+        var previewInvoices = new List<Invoice>();
+
+        foreach (var reservation in unbilledReservations)
+        {
+            // Get Charges for the billing month.
+            var ledgerLines = await CreateLedgerLinesForReservationIdAsync(
+                reservation,
+                invoiceDate: monthStart,
+                startDate: monthStart,
+                endDate: monthEnd);
+
+            if (ledgerLines.Count == 0)
+                continue;
+
+            var totalAmount = ledgerLines.Sum(line => line.Amount);
+            if (totalAmount == 0)
+                continue;
+
+            previewInvoices.Add(BuildPreBillingInvoicePreview(
+                organizationId,
+                reservation,
+                billingMonth,
+                monthStart,
+                monthEnd,
+                ledgerLines,
+                totalAmount));
+        }
+
+        return previewInvoices;
+    }
+
+    private static bool ReservationOverlapsBillingMonth(DateOnly arrivalDate, DateOnly departureDate, DateOnly monthStart, DateOnly monthEnd)
+        => arrivalDate <= monthEnd && departureDate >= monthStart;
+
+    private static Invoice BuildPreBillingInvoicePreview(Guid organizationId, Reservation reservation, DateOnly billingMonth, DateOnly monthStart, DateOnly monthEnd, List<LedgerLine> ledgerLines, decimal totalAmount)
+    {
+        var nextInvoiceNumber = reservation.CurrentInvoiceNo + 1;
+        var invoiceCode = $"{reservation.ReservationCode}-{nextInvoiceNumber:000}";
+        var responsibleParty = ResolvePreBillingResponsibleParty(reservation);
+
+        return new Invoice
+        {
+            InvoiceId = Guid.Empty,
+            OrganizationId = organizationId,
+            OfficeId = reservation.OfficeId,
+            OfficeName = reservation.OfficeName,
+            InvoiceCode = invoiceCode,
+            ReservationId = reservation.ReservationId,
+            ReservationCode = reservation.ReservationCode,
+            PropertyId = reservation.PropertyId,
+            PropertyCode = NormalizeOptionalString(reservation.PropertyCode),
+            ContactId = ResolveInvoiceResponsibleContactId(reservation),
+            ContactName = responsibleParty,
+            CompanyId = reservation.CompanyId,
+            CompanyName = reservation.CompanyName,
+            ResponsibleParty = responsibleParty,
+            InvoiceDate = monthStart,
+            DueDate = monthStart,
+            AccountingPeriod = billingMonth,
+            InvoicePeriod = FormatInvoicePeriod(monthStart, monthEnd),
+            TotalAmount = totalAmount,
+            PaidAmount = 0,
+            IsActive = true,
+            LedgerLines = ledgerLines
+        };
+    }
+
+    private static string? ResolvePreBillingResponsibleParty(Reservation reservation)
+    {
+        if (reservation.ReservationType is ReservationType.Corporate or ReservationType.Platform)
+            return NormalizeOptionalString(reservation.CompanyName) ?? NormalizeOptionalString(reservation.ContactName);
+
+        return NormalizeOptionalString(reservation.ContactName);
+    }
+    #endregion
 }

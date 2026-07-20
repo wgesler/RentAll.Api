@@ -15,7 +15,6 @@ public partial class AccountingManager
             .Where(l => l.LedgerLineId != Guid.Empty)
             .Select(l => l.LedgerLineId);
 
-        await EnrichInvoiceBeforeSaveAsync(invoice);
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
         await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, priorPaymentLedgerLineIds);
         return updatedInvoice;

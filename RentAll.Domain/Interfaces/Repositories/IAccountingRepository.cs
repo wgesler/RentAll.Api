@@ -7,6 +7,7 @@ public interface IAccountingRepository
 {
     #region Invoices
     Task<IEnumerable<Invoice>> GetInvoicesAsync(InvoiceGetCriteria criteria);
+    Task<IEnumerable<Invoice>> GetActiveInvoicesByAccountingMonthAsync(ActiveInvoiceByAccountingMonthCriteria criteria);
     Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId, Guid organizationId);
 
     Task<Invoice> CreateAsync(Invoice invoice);
