@@ -627,36 +627,12 @@ public partial class AccountingManager
 
         foreach (var reservation in activeReservations)
         {
-            foreach (var billingMonth in EnumerateBillableMonths(reservation.ArrivalDate, reservation.DepartureDate, throughMonth))
-            {
-                if (existingInvoicePeriods.Contains((reservation.ReservationId, billingMonth)))
-                    continue;
-
-                var monthStart = billingMonth;
-                var monthEnd = LastDayOfMonth(billingMonth);
-                var ledgerLines = await CreateLedgerLinesForReservationIdAsync(
-                    reservation,
-                    invoiceDate: monthStart,
-                    startDate: monthStart,
-                    endDate: monthEnd);
-
-                if (ledgerLines.Count == 0)
-                    continue;
-
-                var totalAmount = ledgerLines.Sum(line => line.Amount);
-                if (totalAmount == 0)
-                    continue;
-
-                previewInvoices.Add(BuildPreBillingInvoicePreview(
-                    organizationId,
-                    reservation,
-                    billingMonth,
-                    monthStart,
-                    monthEnd,
-                    ledgerLines,
-                    totalAmount,
-                    GetBillableMonthSequence(reservation, billingMonth)));
-            }
+            await AddUnbilledPreviewsForReservationAsync(
+                organizationId,
+                reservation,
+                throughMonth,
+                existingInvoicePeriods,
+                previewInvoices);
         }
 
         return previewInvoices
@@ -664,6 +640,73 @@ public partial class AccountingManager
             .ThenBy(invoice => invoice.ReservationCode)
             .ThenBy(invoice => invoice.AccountingPeriod)
             .ToList();
+    }
+    #endregion
+
+    #region ReservationInvoicePreview
+    public async Task<IReadOnlyList<Invoice>> GetReservationInvoicePreviewsAsync(Guid organizationId, Guid reservationId)
+    {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId);
+        if (reservation == null)
+            return Array.Empty<Invoice>();
+
+        var throughMonth = FirstDayOfMonth(reservation.DepartureDate);
+
+        var existingInvoicePeriods = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = organizationId,
+            ReservationId = reservationId,
+            IsActive = true
+        }))
+            .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
+            .Select(invoice => (ReservationId: invoice.ReservationId!.Value, Period: FirstDayOfMonth(invoice.AccountingPeriod)))
+            .ToHashSet();
+
+        var previewInvoices = new List<Invoice>();
+        await AddUnbilledPreviewsForReservationAsync(
+            organizationId,
+            reservation,
+            throughMonth,
+            existingInvoicePeriods,
+            previewInvoices);
+
+        return previewInvoices
+            .OrderBy(invoice => invoice.AccountingPeriod)
+            .ToList();
+    }
+
+    private async Task AddUnbilledPreviewsForReservationAsync(Guid organizationId, Reservation reservation, DateOnly throughMonth, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, List<Invoice> previewInvoices)
+    {
+        foreach (var billingMonth in EnumerateBillableMonths(reservation.ArrivalDate, reservation.DepartureDate, throughMonth))
+        {
+            if (existingInvoicePeriods.Contains((reservation.ReservationId, billingMonth)))
+                continue;
+
+            var monthStart = billingMonth;
+            var monthEnd = LastDayOfMonth(billingMonth);
+            var ledgerLines = await CreateLedgerLinesForReservationIdAsync(
+                reservation,
+                invoiceDate: monthStart,
+                startDate: monthStart,
+                endDate: monthEnd);
+
+            if (ledgerLines.Count == 0)
+                continue;
+
+            var totalAmount = ledgerLines.Sum(line => line.Amount);
+            if (totalAmount == 0)
+                continue;
+
+            previewInvoices.Add(BuildPreBillingInvoicePreview(
+                organizationId,
+                reservation,
+                billingMonth,
+                monthStart,
+                monthEnd,
+                ledgerLines,
+                totalAmount,
+                GetBillableMonthSequence(reservation, billingMonth)));
+        }
     }
 
     private static IEnumerable<DateOnly> EnumerateBillableMonths(DateOnly arrivalDate, DateOnly departureDate, DateOnly throughMonth)

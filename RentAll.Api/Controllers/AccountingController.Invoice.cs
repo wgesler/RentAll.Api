@@ -52,6 +52,29 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPost("invoice/reservation/preview-all/search")]
+        public async Task<IActionResult> SearchReservationInvoicePreviews([FromBody] GetReservationInvoicePreviewsDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Reservation invoice preview criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var invoices = await _accountingManager.GetReservationInvoicePreviewsAsync(CurrentOrganizationId, dto.ReservationId);
+                var response = invoices.Select(invoice => new InvoiceResponseDto(invoice)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching reservation invoice previews for reservation {ReservationId}", dto.ReservationId);
+                return ServerError("An error occurred while retrieving reservation invoice previews");
+            }
+        }
+
         [HttpPost("invoice/search")]
         public async Task<IActionResult> SearchInvoices([FromBody] GetInvoiceDto dto)
         {
