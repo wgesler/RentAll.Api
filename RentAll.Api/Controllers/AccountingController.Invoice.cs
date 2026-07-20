@@ -29,6 +29,29 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPost("invoice/missing/search")]
+        public async Task<IActionResult> SearchMissingInvoices([FromBody] GetMissingInvoicesDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Missing invoice search criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var invoices = await _accountingManager.GetMissingInvoicesAsync(CurrentOrganizationId, dto.ResolvedOfficeIds);
+                var response = invoices.Select(invoice => new InvoiceResponseDto(invoice)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching missing invoices");
+                return ServerError("An error occurred while retrieving missing invoices");
+            }
+        }
+
         [HttpPost("invoice/search")]
         public async Task<IActionResult> SearchInvoices([FromBody] GetInvoiceDto dto)
         {
