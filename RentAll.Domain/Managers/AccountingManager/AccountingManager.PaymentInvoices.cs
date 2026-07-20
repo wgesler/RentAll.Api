@@ -198,7 +198,7 @@ public partial class AccountingManager
         await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
 
         var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
-        var isFurnished = property!.Unfurnished ? false : true;
+        var isFurnished = property == null || !property.Unfurnished;
         var rentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
 
         var ledgerLines = GetLedgerLinesByReservationIdAsync(reservation, startDate, endDate, rentalCostCodeId);
@@ -580,8 +580,6 @@ public partial class AccountingManager
                 continue;
 
             var totalAmount = ledgerLines.Sum(line => line.Amount);
-            if (totalAmount == 0)
-                continue;
 
             previewInvoices.Add(BuildPreBillingInvoicePreview(
                 organizationId,
@@ -650,23 +648,22 @@ public partial class AccountingManager
         if (reservation == null)
             return Array.Empty<Invoice>();
 
-        var throughMonth = FirstDayOfMonth(reservation.DepartureDate);
-
         var existingInvoicePeriods = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
+            OfficeIds = reservation.OfficeId.ToString(),
             ReservationId = reservationId,
-            IsActive = true
+            IsActive = true,
+            IncludePaid = true
         }))
             .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
             .Select(invoice => (ReservationId: invoice.ReservationId!.Value, Period: FirstDayOfMonth(invoice.AccountingPeriod)))
             .ToHashSet();
 
         var previewInvoices = new List<Invoice>();
-        await AddUnbilledPreviewsForReservationAsync(
+        await AddUnbilledPreviewInvoicesThroughEndOfStayAsync(
             organizationId,
             reservation,
-            throughMonth,
             existingInvoicePeriods,
             previewInvoices);
 
@@ -675,11 +672,26 @@ public partial class AccountingManager
             .ToList();
     }
 
+    private async Task AddUnbilledPreviewInvoicesThroughEndOfStayAsync(Guid organizationId, Reservation reservation, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, List<Invoice> previewInvoices)
+    {
+        var throughMonth = FirstDayOfMonth(ResolveBillingDepartureDate(reservation));
+        await AddUnbilledPreviewsForReservationAsync(
+            organizationId,
+            reservation,
+            throughMonth,
+            existingInvoicePeriods,
+            previewInvoices);
+    }
+
     private async Task AddUnbilledPreviewsForReservationAsync(Guid organizationId, Reservation reservation, DateOnly throughMonth, HashSet<(Guid ReservationId, DateOnly Period)> existingInvoicePeriods, List<Invoice> previewInvoices)
     {
-        foreach (var billingMonth in EnumerateBillableMonths(reservation.ArrivalDate, reservation.DepartureDate, throughMonth))
+        foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth))
         {
             if (existingInvoicePeriods.Contains((reservation.ReservationId, billingMonth)))
+                continue;
+
+            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
+            if (periodStart > periodEnd)
                 continue;
 
             var monthStart = billingMonth;
@@ -694,23 +706,40 @@ public partial class AccountingManager
                 continue;
 
             var totalAmount = ledgerLines.Sum(line => line.Amount);
-            if (totalAmount == 0)
-                continue;
 
             previewInvoices.Add(BuildPreBillingInvoicePreview(
                 organizationId,
                 reservation,
                 billingMonth,
-                monthStart,
-                monthEnd,
+                periodStart,
+                periodEnd,
                 ledgerLines,
                 totalAmount,
                 GetBillableMonthSequence(reservation, billingMonth)));
         }
     }
 
-    private static IEnumerable<DateOnly> EnumerateBillableMonths(DateOnly arrivalDate, DateOnly departureDate, DateOnly throughMonth)
+    private static DateOnly ResolveBillingArrivalDate(Reservation reservation)
+        => reservation.BillingStartDate ?? reservation.ArrivalDate;
+
+    private static DateOnly ResolveBillingDepartureDate(Reservation reservation)
+        => reservation.BillingEndDate ?? reservation.DepartureDate;
+
+    private static (DateOnly PeriodStart, DateOnly PeriodEnd) ResolveBillingPeriodForMonth(Reservation reservation, DateOnly billingMonth)
     {
+        var monthStart = billingMonth;
+        var monthEnd = LastDayOfMonth(billingMonth);
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+        var departureDate = ResolveBillingDepartureDate(reservation);
+        var periodStart = arrivalDate > monthStart ? arrivalDate : monthStart;
+        var periodEnd = departureDate < monthEnd ? departureDate : monthEnd;
+        return (periodStart, periodEnd);
+    }
+
+    private static IEnumerable<DateOnly> EnumerateBillableMonths(Reservation reservation, DateOnly throughMonth)
+    {
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+        var departureDate = ResolveBillingDepartureDate(reservation);
         var startMonth = FirstDayOfMonth(arrivalDate);
         var departureMonth = FirstDayOfMonth(departureDate);
         var scanThrough = throughMonth <= departureMonth ? throughMonth : departureMonth;
@@ -727,10 +756,7 @@ public partial class AccountingManager
         var targetMonth = FirstDayOfMonth(targetBillingMonth);
         var sequence = 0;
 
-        foreach (var month in EnumerateBillableMonths(
-            reservation.ArrivalDate,
-            reservation.DepartureDate,
-            FirstDayOfMonth(reservation.DepartureDate)))
+        foreach (var month in EnumerateBillableMonths(reservation, FirstDayOfMonth(ResolveBillingDepartureDate(reservation))))
         {
             if (month > targetMonth)
                 break;
