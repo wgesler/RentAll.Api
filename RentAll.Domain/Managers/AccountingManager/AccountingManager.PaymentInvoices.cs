@@ -629,7 +629,8 @@ public partial class AccountingManager
         {
             OrganizationId = organizationId,
             OfficeIds = officeIds,
-            IsActive = true
+            IsActive = true,
+            IncludePaid = true
         }))
             .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
             .ToList();

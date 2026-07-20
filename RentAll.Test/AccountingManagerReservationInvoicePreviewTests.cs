@@ -121,6 +121,63 @@ public class AccountingManagerReservationInvoicePreviewTests
     }
 
     [Fact]
+    public async Task GetPreBillingInvoicesAsync_SkipsReservationsWithFullyPaidInvoiceForMonth()
+    {
+        var reservation = CreatePreviewReservation();
+        var existingAugustInvoice = CreateExistingInvoice(reservation, "R-PREVIEW-002", new DateOnly(2026, 8, 1));
+        existingAugustInvoice.TotalAmount = 3000m;
+        existingAugustInvoice.PaidAmount = 3000m;
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureReservationRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                        AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+                    .ReturnsAsync([reservation]);
+            },
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetActiveInvoicesByAccountingMonthAsync(It.IsAny<ActiveInvoiceByAccountingMonthCriteria>()))
+                    .ReturnsAsync([existingAugustInvoice]);
+            });
+
+        var augustPreviews = await manager.GetPreBillingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            new DateOnly(2026, 8, 1));
+
+        Assert.Empty(augustPreviews);
+    }
+
+    [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_LoadsExistingInvoicesWithIncludePaid()
+    {
+        var reservation = CreatePreviewReservation();
+        InvoiceGetCriteria? capturedCriteria = null;
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .Callback<InvoiceGetCriteria>(criteria => capturedCriteria = criteria)
+                    .ReturnsAsync([]);
+            });
+
+        await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.NotNull(capturedCriteria);
+        Assert.True(capturedCriteria!.IncludePaid);
+    }
+
+    [Fact]
     public async Task GetReservationInvoicePreviewsAsync_AssignsNextAvailableInvoiceCodes()
     {
         var reservation = CreatePreviewReservation();
@@ -177,6 +234,85 @@ public class AccountingManagerReservationInvoicePreviewTests
         Assert.Single(previews);
         Assert.Equal(new DateOnly(2026, 9, 1), previews[0].AccountingPeriod);
         Assert.Equal("R-PREVIEW-005", previews[0].InvoiceCode);
+    }
+
+    [Fact]
+    public async Task GetMissingInvoicesAsync_LoadsExistingInvoicesWithIncludePaid()
+    {
+        var reservation = CreatePreviewReservation();
+        InvoiceGetCriteria? capturedCriteria = null;
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureReservationRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                        AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+                    .ReturnsAsync([reservation]);
+            },
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .Callback<InvoiceGetCriteria>(criteria => capturedCriteria = criteria)
+                    .ReturnsAsync([]);
+            });
+
+        await manager.GetMissingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+
+        Assert.NotNull(capturedCriteria);
+        Assert.True(capturedCriteria!.IncludePaid);
+    }
+
+    [Fact]
+    public async Task GetMissingInvoicesAsync_SkipsMonthsWithFullyPaidExistingInvoices()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 1, 1),
+            new DateOnly(2026, 3, 31),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        reservation.ReservationCode = "R-PREVIEW-PAID";
+        reservation.CurrentInvoiceNo = 1;
+        reservation.OfficeName = "Test Office";
+        var existingInvoices = new[]
+        {
+            CreateExistingInvoice(reservation, "R-PREVIEW-PAID-001", new DateOnly(2026, 1, 1))
+        };
+        existingInvoices[0].TotalAmount = 3000m;
+        existingInvoices[0].PaidAmount = 3000m;
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureReservationRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                        AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+                    .ReturnsAsync([reservation]);
+            },
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync((InvoiceGetCriteria criteria) =>
+                        criteria.IncludePaid ? existingInvoices : []);
+            });
+
+        var previews = await manager.GetMissingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 1, 1));
+        Assert.Equal(2, previews.Count);
+        Assert.Contains(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 2, 1));
+        Assert.Contains(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 3, 1));
     }
 
     [Fact]
