@@ -28,11 +28,11 @@ public partial class AccountingManager
         ValidateTransferForJournalEntry(transfer);
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(transfer.OrganizationId, transfer.OfficeId);
-        var defaultBankAccountId = GetDefaultBankAccount(chartOfAccounts, transfer.OfficeId, accountingOffice);
-        if (defaultBankAccountId <= 0)
-            throw new Exception("Default bank account is not configured for this office");
+        var escrowDepositAccountId = GetDefaultEscrowDepositAccount(chartOfAccounts, transfer.OfficeId, accountingOffice);
+        if (escrowDepositAccountId <= 0)
+            throw new Exception("Default escrow deposit account is not configured for this office");
 
-        transfer.BankAccountId = defaultBankAccountId;
+        transfer.BankAccountId = escrowDepositAccountId;
         transfer.ModifiedBy = currentUser;
         await _accountingRepository.UpdateTransferAsync(transfer);
 

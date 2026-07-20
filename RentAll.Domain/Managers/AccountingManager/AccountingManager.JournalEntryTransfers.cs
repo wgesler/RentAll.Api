@@ -241,19 +241,19 @@ public partial class AccountingManager
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // TRANSFER-JE-ACCOUNTS
-        // Line 1 — Bank account (transfer.BankAccountId or default bank):
-        //   positive transfer: Debit bank / Credit 0
-        //   negative transfer: Debit 0 / Credit bank
-        // Lines 2+ — One consolidated line per credit account (SecDep / SDW / Owners / Business):
+        // Line 1 — Escrow deposit (transfer.BankAccountId or default escrow deposit):
+        //   positive transfer: Debit 0 / Credit escrow deposit
+        //   negative transfer: Debit escrow deposit / Credit 0
+        // Lines 2+ — One consolidated line per split account (SecDep / SDW / Owners / Business):
         //   sum TransferSplit amounts by ChartOfAccountId (not one JE line per sub-ledger split)
-        //   positive total: Debit 0 / Credit total
-        //   negative total: Debit total / Credit 0
+        //   positive total: Debit total / Credit 0
+        //   negative total: Debit 0 / Credit total
         // END TRANSFER-JE-ACCOUNTS
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
         var bankAccountId = transfer.BankAccountId is > 0
             ? transfer.BankAccountId.Value
-            : accounts.BankAccountId;
+            : accounts.EscrowDepositAccountId;
         var memo = BuildTransferMemo(transfer.TransferCode, transfer.TransferDate);
         var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
@@ -280,7 +280,7 @@ public partial class AccountingManager
 
         foreach (var creditTotal in creditTotalsByAccount)
         {
-            var creditLine = new JournalEntryLine
+            var splitLine = new JournalEntryLine
             {
                 ChartOfAccountId = creditTotal.ChartOfAccountId,
                 Debit = creditTotal.Amount > 0 ? creditTotal.Amount : 0,
@@ -288,8 +288,8 @@ public partial class AccountingManager
                 Memo = memo,
                 CreatedBy = currentUser
             };
-            ApplyJournalEntryLineContext(creditLine, headerLineContext);
-            journalEntryLines.Add(creditLine);
+            ApplyJournalEntryLineContext(splitLine, headerLineContext);
+            journalEntryLines.Add(splitLine);
         }
 
         return new JournalEntry
