@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.ExtraFeeLines;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
@@ -47,6 +48,7 @@ public class CreateReservationDto
     public List<CreateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<CreateExtraFeeLineDto>();
     public bool AllowExtensions { get; set; }
     public bool CollapseCharges { get; set; }
+    public int InvoiceMethodId { get; set; } = (int)InvoiceMethod.Create;
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -118,6 +120,9 @@ public class CreateReservationDto
         if (!Enum.IsDefined(typeof(BillingType), BillingTypeId))
             return (false, $"Invalid BillingTypeId value: {BillingTypeId}");
 
+        if (!Enum.IsDefined(typeof(InvoiceMethod), InvoiceMethodId))
+            return (false, $"Invalid InvoiceMethodId value: {InvoiceMethodId}");
+
         if (!Enum.IsDefined(typeof(DepositType), DepositTypeId))
             return (false, $"Invalid DepositTypeId value: {DepositTypeId}");
 
@@ -184,6 +189,7 @@ public class CreateReservationDto
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
             AllowExtensions = AllowExtensions,
             CollapseCharges = CollapseCharges,
+            InvoiceMethod = (InvoiceMethod)InvoiceMethodId,
             aCleanerUserId = aCleanerUserId,
             aCleaningDate = aCleaningDate,
             aCarpetUserId = aCarpetUserId,

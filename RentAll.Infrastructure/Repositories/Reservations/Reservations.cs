@@ -101,32 +101,32 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return res;
         }
 
-        public async Task<IEnumerable<Reservation>> GetReservationListByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        public async Task<IEnumerable<ReservationList>> GetReservationListByPropertyIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetListByPropertyId", new
+            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetListByPropertyId", new
             {
                 PropertyId = propertyId,
                 OrganizationId = organizationId
             });
 
             if (res == null || !res.Any())
-                return Enumerable.Empty<Reservation>();
+                return Enumerable.Empty<ReservationList>();
 
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<IEnumerable<Reservation>> GetReservationActiveListByPropertyIdAsync(Guid propertyId, Guid organizationId)
+        public async Task<IEnumerable<ReservationList>> GetReservationActiveListByPropertyIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ReservationEntity>("Property.Reservation_GetActiveListByPropertyId", new
+            var res = await db.DapperProcQueryAsync<ReservationListEntity>("Property.Reservation_GetActiveListByPropertyId", new
             {
                 PropertyId = propertyId,
                 OrganizationId = organizationId
             });
 
             if (res == null || !res.Any())
-                return Enumerable.Empty<Reservation>();
+                return Enumerable.Empty<ReservationList>();
 
             return res.Select(ConvertEntityToModel);
         }
@@ -232,6 +232,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     Notes = reservation.Notes,
                     AllowExtensions = reservation.AllowExtensions,
                     CollapseCharges = reservation.CollapseCharges,
+                    InvoiceMethodId = (int)reservation.InvoiceMethod,
                     aCleanerUserId = reservation.aCleanerUserId,
                     aCleaningDate = reservation.aCleaningDate,
                     aCarpetUserId = reservation.aCarpetUserId,
@@ -344,6 +345,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     Notes = reservation.Notes,
                     AllowExtensions = reservation.AllowExtensions,
                     CollapseCharges = reservation.CollapseCharges,
+                    InvoiceMethodId = (int)reservation.InvoiceMethod,
                     aCleanerUserId = reservation.aCleanerUserId,
                     aCleaningDate = reservation.aCleaningDate,
                     aCarpetUserId = reservation.aCarpetUserId,

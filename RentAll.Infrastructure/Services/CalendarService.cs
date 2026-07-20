@@ -44,7 +44,7 @@ public class CalendarService : ICalendarService
             CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
     }
 
-    public string BuildPropertyCalendar(Guid propertyId, IEnumerable<Reservation> reservations, DateTimeOffset generatedOnUtc)
+    public string BuildPropertyCalendar(Guid propertyId, IEnumerable<ReservationList> reservations, DateTimeOffset generatedOnUtc)
     {
         var sb = new StringBuilder();
         var newLine = "\r\n";
@@ -100,7 +100,7 @@ public class CalendarService : ICalendarService
         return $"{organizationId:N}:{propertyId:N}";
     }
 
-    private static string GetSummary(Reservation reservation)
+    private static string GetSummary(ReservationList reservation)
     {
         if (!string.IsNullOrWhiteSpace(reservation.ReservationCode))
             return $"Booked ({reservation.ReservationCode})";

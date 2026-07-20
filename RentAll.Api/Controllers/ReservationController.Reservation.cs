@@ -63,7 +63,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var reservations = await _reservationRepository.GetReservationListByPropertyIdAsync(propertyId, CurrentOrganizationId);
-                var response = reservations.Select(r => new ReservationResponseDto(r));
+                var response = reservations.Select(r => new ReservationListResponseDto(r));
                 return Ok(response);
             }
             catch (Exception ex)
@@ -82,7 +82,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var reservations = await _reservationRepository.GetReservationActiveListByPropertyIdAsync(propertyId, CurrentOrganizationId);
-                var response = reservations.Select(r => new ReservationResponseDto(r));
+                var response = reservations.Select(r => new ReservationListResponseDto(r));
                 return Ok(response);
             }
             catch (Exception ex)
@@ -179,7 +179,7 @@ namespace RentAll.Api.Controllers
                 if (existingReservation == null)
                     return NotFound("Reservation not found");
 
-                var reservation = dto.ToModel(CurrentUser);
+                var reservation = dto.ToModel(CurrentUser, existingReservation);
                 reservation.CurrentInvoiceNo = existingReservation.CurrentInvoiceNo;
                 var updatedReservation = await _reservationRepository.UpdateByIdAsync(reservation);
                 return Ok(new ReservationResponseDto(updatedReservation));

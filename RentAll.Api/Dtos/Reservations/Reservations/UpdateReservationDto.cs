@@ -1,4 +1,6 @@
 using RentAll.Api.Dtos.Accounting.ExtraFeeLines;
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
@@ -49,6 +51,7 @@ public class UpdateReservationDto
     public List<UpdateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<UpdateExtraFeeLineDto>();
     public bool AllowExtensions { get; set; }
     public bool CollapseCharges { get; set; }
+    public int? InvoiceMethodId { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -125,6 +128,9 @@ public class UpdateReservationDto
         if (!Enum.IsDefined(typeof(BillingType), BillingTypeId))
             return (false, $"Invalid BillingTypeId value: {BillingTypeId}");
 
+        if (InvoiceMethodId.HasValue && !Enum.IsDefined(typeof(InvoiceMethod), InvoiceMethodId.Value))
+            return (false, $"Invalid InvoiceMethodId value: {InvoiceMethodId}");
+
         if (!Enum.IsDefined(typeof(DepositType), DepositTypeId))
             return (false, $"Invalid DepositTypeId value: {DepositTypeId}");
 
@@ -144,7 +150,7 @@ public class UpdateReservationDto
         return (true, null);
     }
 
-    public Reservation ToModel(Guid currentUser)
+    public Reservation ToModel(Guid currentUser, Reservation? existingReservation = null)
     {
         return new Reservation
         {
@@ -192,6 +198,9 @@ public class UpdateReservationDto
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),
             AllowExtensions = AllowExtensions,
             CollapseCharges = CollapseCharges,
+            InvoiceMethod = InvoiceMethodId.HasValue
+                ? (InvoiceMethod)InvoiceMethodId.Value
+                : existingReservation?.InvoiceMethod ?? InvoiceMethod.Create,
             aCleanerUserId = aCleanerUserId,
             aCleaningDate = aCleaningDate,
             aCarpetUserId = aCarpetUserId,
