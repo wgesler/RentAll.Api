@@ -6,6 +6,7 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
+            {
         [HttpPost("invoice/search")]
         public async Task<IActionResult> SearchInvoices([FromBody] GetInvoiceDto dto)
         {
