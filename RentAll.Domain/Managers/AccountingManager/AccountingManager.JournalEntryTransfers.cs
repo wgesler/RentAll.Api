@@ -262,8 +262,8 @@ public partial class AccountingManager
         var bankLine = new JournalEntryLine
         {
             ChartOfAccountId = bankAccountId,
-            Debit = transfer.Amount > 0 ? transfer.Amount : 0,
-            Credit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
+            Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
+            Credit = transfer.Amount > 0 ? transfer.Amount : 0,
             Memo = memo,
             CreatedBy = currentUser
         };
@@ -283,8 +283,8 @@ public partial class AccountingManager
             var creditLine = new JournalEntryLine
             {
                 ChartOfAccountId = creditTotal.ChartOfAccountId,
-                Debit = creditTotal.Amount < 0 ? Math.Abs(creditTotal.Amount) : 0,
-                Credit = creditTotal.Amount > 0 ? creditTotal.Amount : 0,
+                Debit = creditTotal.Amount > 0 ? creditTotal.Amount : 0,
+                Credit = creditTotal.Amount < 0 ? Math.Abs(creditTotal.Amount) : 0,
                 Memo = memo,
                 CreatedBy = currentUser
             };
