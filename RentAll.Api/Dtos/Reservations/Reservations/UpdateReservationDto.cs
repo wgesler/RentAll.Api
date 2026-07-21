@@ -1,6 +1,4 @@
 using RentAll.Api.Dtos.Accounting.ExtraFeeLines;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 

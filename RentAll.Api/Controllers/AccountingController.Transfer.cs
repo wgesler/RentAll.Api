@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Accounting.Transfers;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 

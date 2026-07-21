@@ -1,7 +1,6 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Globalization;
-using System.Text;
 
 namespace RentAll.Domain.Managers;
 
@@ -478,22 +477,6 @@ public partial class AccountingManager
             var roundedCollectedAmount = RoundSecurityDepositAmount(collectedAmount);
             var balanceAmount = RoundSecurityDepositAmount(Math.Max(0m, roundedCollectedAmount - owedAmount));
 
-            await LogSecurityDepositEnrichmentDebugAsync(
-                organizationId,
-                row,
-                securityDepositInvoice,
-                costCodeById,
-                journalEntriesBySourceId,
-                securityDepositPaymentAllocation,
-                paidJournalEntryId,
-                paidJournalEntryCode,
-                RoundSecurityDepositAmount(depositAmount),
-                roundedCollectedAmount,
-                owedAmount,
-                balanceAmount,
-                chargeTotal,
-                paymentTotal);
-
             enrichment.OwedByReservation[reservationId] = owedAmount;
             enrichment.BalanceByReservation[reservationId] = balanceAmount;
             enrichment.SecurityDepositInfoByReservation[reservationId] = new SecurityDepositInvoiceInfo
@@ -695,100 +678,6 @@ public partial class AccountingManager
             PropertyId = securityDepositInvoices[0].PropertyId,
             Message = $"Security deposit enrichment [{reservationCode}]: found {securityDepositInvoices.Count} security-deposit invoice(s) ({invoiceCodes}); expected one. Deposit and paid amounts will be summed."
         });
-    }
-
-    private async Task LogSecurityDepositEnrichmentDebugAsync(Guid organizationId, ReservationDeparture row, Invoice securityDepositInvoice, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlyDictionary<Guid, List<JournalEntry>> journalEntriesBySourceId, SecurityDepositPaymentAllocation paymentAllocation, Guid? selectedPaidJournalEntryId, string selectedPaidJournalEntryCode, decimal depositAmount, decimal collectedAmount, decimal owedAmount, decimal balanceAmount, decimal chargeTotal, decimal paymentTotal)
-    {
-        var reservationCode = row.ReservationCode?.Trim() ?? row.ReservationId.ToString();
-        var invoiceCode = securityDepositInvoice.InvoiceCode?.Trim() ?? securityDepositInvoice.InvoiceId.ToString();
-        var sourceIds = BuildInvoiceJournalEntrySourceIds(securityDepositInvoice);
-        var headerPrefix = $"Security deposit debug [{reservationCode}] invoice {invoiceCode}";
-
-        var chargeLineDetails = (securityDepositInvoice.LedgerLines ?? [])
-            .Where(line => line.Amount != 0m)
-            .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Where(line =>
-            {
-                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                return costCode?.TransactionType == TransactionType.SecurityDeposit;
-            })
-            .Select(line => $"LedgerLineId={line.LedgerLineId} Amount={line.Amount} Date={line.LedgerLineDate:yyyy-MM-dd} Desc={line.Description}")
-            .ToList();
-
-        await LogSecurityDepositDebugMessagesAsync(
-            organizationId,
-            row.OfficeId,
-            securityDepositInvoice.PropertyId,
-            headerPrefix,
-            [
-                $"InvoiceId={securityDepositInvoice.InvoiceId}; SourceIds=[{string.Join(", ", sourceIds)}]; SecurityDepositChargeLines=[{string.Join(" | ", chargeLineDetails)}]",
-                BuildSecurityDepositJournalEntryDebugSection("Invoice-source journal entries", journalEntriesBySourceId),
-                $"PaymentAllocation PaidAmount={paymentAllocation.PaidAmount}; SecurityDepositPaymentLedgerLineIds=[{string.Join(", ", paymentAllocation.SecurityDepositPaymentLedgerLineIds)}]",
-                BuildSecurityDepositPaymentJournalEntryDebugSection(paymentAllocation, journalEntriesBySourceId),
-                $"EnrichmentResult Deposit={depositAmount}; Collected={collectedAmount}; ChargeTotal={chargeTotal}; PaymentTotal={paymentTotal}; Owed={owedAmount}; Balance={balanceAmount}; SelectedPaidJournalEntryId={selectedPaidJournalEntryId}; SelectedPaidJournalEntryCode={selectedPaidJournalEntryCode}"
-            ]);
-    }
-
-    private async Task LogSecurityDepositDebugMessagesAsync(Guid organizationId, int officeId, Guid? propertyId, string headerPrefix, IReadOnlyList<string> sections)
-    {
-        for (var index = 0; index < sections.Count; index++)
-        {
-            await LogAccountingLogAsync(new AccountingLog
-            {
-                OrganizationId = organizationId,
-                OfficeId = officeId,
-                PropertyId = propertyId,
-                Message = $"{headerPrefix} ({index + 1}/{sections.Count}): {sections[index]}"
-            });
-        }
-    }
-
-    private static string BuildSecurityDepositJournalEntryDebugSection(string title, IReadOnlyDictionary<Guid, List<JournalEntry>> journalEntriesBySourceId)
-    {
-        if (journalEntriesBySourceId.Count == 0)
-            return $"{title}: none";
-
-        var builder = new StringBuilder(title).Append(':');
-        foreach (var (sourceId, journalEntries) in journalEntriesBySourceId.OrderBy(pair => pair.Key))
-        {
-            builder.Append($" SourceId={sourceId} -> ");
-            builder.Append(string.Join(" || ", journalEntries.Select(FormatSecurityDepositJournalEntryDebug)));
-        }
-
-        return builder.ToString();
-    }
-
-    private static string BuildSecurityDepositPaymentJournalEntryDebugSection(SecurityDepositPaymentAllocation paymentAllocation, IReadOnlyDictionary<Guid, List<JournalEntry>> journalEntriesBySourceId)
-    {
-        if (paymentAllocation.SecurityDepositPaymentLedgerLineIds.Count == 0)
-            return "Payment journal entries: none (no security-deposit payment ledger lines)";
-
-        var builder = new StringBuilder("Payment journal entries:");
-        foreach (var paymentLedgerLineId in paymentAllocation.SecurityDepositPaymentLedgerLineIds)
-        {
-            builder.Append($" PaymentLedgerLineId={paymentLedgerLineId} -> ");
-            if (!journalEntriesBySourceId.TryGetValue(paymentLedgerLineId, out var journalEntries) || journalEntries.Count == 0)
-            {
-                builder.Append("none");
-                continue;
-            }
-
-            builder.Append(string.Join(" || ", journalEntries.Select(FormatSecurityDepositJournalEntryDebug)));
-        }
-
-        return builder.ToString();
-    }
-
-    private static string FormatSecurityDepositJournalEntryDebug(JournalEntry journalEntry)
-    {
-        var sourceType = journalEntry.SourceTypeId.HasValue
-            ? ((SourceType)journalEntry.SourceTypeId.Value).ToString()
-            : "null";
-        var lineDetails = (journalEntry.JournalEntryLines ?? [])
-            .Select(line => $"LineId={line.JournalEntryLineId} Acct={line.ChartOfAccountId} CostCode={line.CostCodeId} Dr={line.Debit} Cr={line.Credit} Memo={line.Memo}")
-            .ToList();
-
-        return $"JE={journalEntry.JournalEntryCode} JournalEntryId={journalEntry.JournalEntryId} SourceType={sourceType} SourceId={journalEntry.SourceId} Lines=[{string.Join("; ", lineDetails)}]";
     }
 
     private static bool InvoiceHasSecurityDepositChargeLine(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)

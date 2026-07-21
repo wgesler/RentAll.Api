@@ -10,6 +10,7 @@ namespace RentAll.Infrastructure.Repositories.Logging;
 
 public class LoggingRepository : ILoggingRepository
 {
+    private const int BulkDeleteCommandTimeoutSeconds = 120;
     private readonly string _dbConnectionString;
 
     public LoggingRepository(IOptions<AppSettings> appSettings)
@@ -34,7 +35,7 @@ public class LoggingRepository : ILoggingRepository
         await db.DapperProcExecuteAsync("Logging.AccountingErrorLog_DeleteAllByOrganizationId", new
         {
             OrganizationId = organizationId
-        });
+        }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
     public async Task<AccountingError?> GetAccountingErrorByIdAsync(Guid accountingErrorId, Guid organizationId)
@@ -86,7 +87,7 @@ public class LoggingRepository : ILoggingRepository
         await db.DapperProcExecuteAsync("Logging.AccountingLog_DeleteAllByOrganizationId", new
         {
             OrganizationId = organizationId
-        });
+        }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
     public async Task<AccountingLog?> GetAccountingLogByIdAsync(int id, Guid organizationId)
@@ -157,7 +158,7 @@ public class LoggingRepository : ILoggingRepository
         await db.DapperProcExecuteAsync("Logging.ApplicationLog_DeleteAllByOrganizationId", new
         {
             OrganizationId = organizationId
-        });
+        }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
     public async Task<ApplicationLog?> GetApplicationLogByIdAsync(int id, Guid organizationId)
@@ -221,7 +222,7 @@ public class LoggingRepository : ILoggingRepository
         await db.DapperProcExecuteAsync("Logging.DatabaseErrorLog_DeleteAllByOrganizationId", new
         {
             OrganizationId = organizationId
-        });
+        }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
     public async Task<DatabaseErrorLog?> GetDatabaseErrorLogByIdAsync(int id, Guid organizationId)
@@ -285,7 +286,7 @@ public class LoggingRepository : ILoggingRepository
         await db.DapperProcExecuteAsync("Logging.GeneralErrorLog_DeleteAllByOrganizationId", new
         {
             OrganizationId = organizationId
-        });
+        }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
     public async Task<LoggingErrorLog?> GetGeneralErrorLogByIdAsync(int id, Guid organizationId)
