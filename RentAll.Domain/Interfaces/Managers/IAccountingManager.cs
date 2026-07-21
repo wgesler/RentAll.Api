@@ -60,6 +60,7 @@ public interface IAccountingManager
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit);
     Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer);
+    Task EnrichTransferSplitsForDisplayAsync(Transfer transfer);
     Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser);
     Task<Transfer> UpdateTransferAsync(Transfer transfer, Guid currentUser);
     Task<Transfer> PostTransferReportAsync(Guid transferId, Guid organizationId, Guid currentUser);

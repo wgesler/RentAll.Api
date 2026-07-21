@@ -6,6 +6,7 @@ public partial class AccountingManager
 {
     public async Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit)
     {
+        await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
         await EnrichDepositSplitsFromJournalEntryLinesAsync(deposit);
         ApplyDepositHeaderContextFromSplits(deposit);
         return deposit;
@@ -13,6 +14,7 @@ public partial class AccountingManager
 
     public async Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer)
     {
+        await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
         await EnrichTransferSplitsFromJournalEntryLinesAsync(transfer);
         ApplyTransferHeaderContextFromSplits(transfer);
         return transfer;
@@ -103,7 +105,11 @@ public partial class AccountingManager
         split.PropertyId = NormalizeOptionalGuid(sourceLine.PropertyId);
         split.ReservationId = NormalizeOptionalGuid(sourceLine.ReservationId);
         split.ContactId = NormalizeOptionalGuid(sourceLine.ContactId);
+        split.SourceJournalEntryLineAmount = Math.Abs(sourceLine.Debit - sourceLine.Credit);
     }
+
+    public Task EnrichTransferSplitsForDisplayAsync(Transfer transfer)
+        => EnrichTransferSplitsFromJournalEntryLinesAsync(transfer);
 
     private static void ApplyDepositHeaderContextFromSplits(Deposit deposit)
     {

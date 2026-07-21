@@ -376,6 +376,16 @@ public partial class AccountingManager
                 if (deposit == null)
                     continue;
 
+                var originalSplitLineIds = (deposit.Splits ?? [])
+                    .Select(split => split.JournalEntryLineId)
+                    .ToList();
+                await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+                if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+                {
+                    deposit.ModifiedBy = currentUser;
+                    deposit = await _accountingRepository.UpdateDepositAsync(deposit);
+                }
+
                 await TrackJournalEntryCreateAsync(
                     () => CreateJournalEntryFromDepositWithResultAsync(deposit, currentUser),
                     new JournalEntryGetCriteria
@@ -442,6 +452,16 @@ public partial class AccountingManager
                 var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
                 if (transfer == null)
                     continue;
+
+                var originalSplitLineIds = (transfer.Splits ?? [])
+                    .Select(split => split.JournalEntryLineId)
+                    .ToList();
+                await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
+                if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
+                {
+                    transfer.ModifiedBy = currentUser;
+                    transfer = await _accountingRepository.UpdateTransferAsync(transfer);
+                }
 
                 await TrackJournalEntryCreateAsync(
                     () => CreateJournalEntryFromTransferWithResultAsync(transfer, currentUser),

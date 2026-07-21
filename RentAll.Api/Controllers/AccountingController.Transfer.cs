@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.Transfers;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 
@@ -97,7 +98,7 @@ public partial class AccountingController
             if (record == null)
                 return NotFound("Transfer record not found");
 
-            var response = new TransferResponseDto(record);
+            var response = await MapTransferResponseAsync(record);
             return Ok(response);
         }
         catch (Exception ex)
@@ -146,7 +147,7 @@ public partial class AccountingController
                 created = await _accountingRepository.UpdateTransferAsync(created);
             }
 
-            var response = new TransferResponseDto(created);
+            var response = await MapTransferResponseAsync(created);
             return Ok(response);
         }
         catch (Exception ex)
@@ -182,7 +183,7 @@ public partial class AccountingController
                 return periodCheck;
 
             var updated = await _accountingManager.PostTransferReportAsync(transferId, CurrentOrganizationId, CurrentUser);
-            return Ok(new TransferResponseDto(updated));
+            return Ok(await MapTransferResponseAsync(updated));
         }
         catch (ArgumentException ex)
         {
@@ -224,7 +225,7 @@ public partial class AccountingController
 
             var transfer = dto.ToModel(CurrentUser);
             var updated = await _accountingManager.UpdateTransferAsync(transfer, CurrentUser);
-            var response = new TransferResponseDto(updated);
+            var response = await MapTransferResponseAsync(updated);
             return Ok(response);
         }
         catch (Exception ex)
@@ -262,4 +263,10 @@ public partial class AccountingController
     }
 
     #endregion
+
+    private async Task<TransferResponseDto> MapTransferResponseAsync(Transfer transfer)
+    {
+        await _accountingManager.EnrichTransferSplitsForDisplayAsync(transfer);
+        return new TransferResponseDto(transfer);
+    }
 }

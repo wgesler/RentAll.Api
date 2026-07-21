@@ -14,4 +14,5 @@ public class TransferSplit
     public string? ContactName { get; set; }
     public int? ChartOfAccountId { get; set; }
     public string ChartOfAccountDisplayName { get; set; } = string.Empty;
+    public decimal? SourceJournalEntryLineAmount { get; set; }
 }

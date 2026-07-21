@@ -14,6 +14,7 @@ public class TransferSplitDto
     public Guid? JournalEntryLineId { get; set; }
     public int? ChartOfAccountId { get; set; }
     public string? ChartOfAccountDisplayName { get; set; }
+    public decimal? SourceJournalEntryLineAmount { get; set; }
 
     public TransferSplitDto()
     {
@@ -33,6 +34,7 @@ public class TransferSplitDto
         JournalEntryLineId = split.JournalEntryLineId;
         ChartOfAccountId = split.ChartOfAccountId;
         ChartOfAccountDisplayName = split.ChartOfAccountDisplayName;
+        SourceJournalEntryLineAmount = split.SourceJournalEntryLineAmount;
     }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
