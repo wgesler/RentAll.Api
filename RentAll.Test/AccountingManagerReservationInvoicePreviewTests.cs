@@ -237,6 +237,97 @@ public class AccountingManagerReservationInvoicePreviewTests
     }
 
     [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_SkipsNightlyCheckoutOnlyDepartureMonth()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 7, 1),
+            ProrateType.FirstMonth,
+            BillingType.Nightly,
+            100m);
+        reservation.ReservationCode = "R-NIGHTLY-CO";
+        reservation.CurrentInvoiceNo = 0;
+        reservation.OfficeName = "Test Office";
+
+        var manager = CreatePreviewManager(reservation);
+
+        var previews = await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.Equal(3, previews.Count);
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+        Assert.Equal(new DateOnly(2026, 4, 1), previews[0].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 5, 1), previews[1].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 6, 1), previews[2].AccountingPeriod);
+    }
+
+    [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_IncludesCheckoutDayForDailyAndMonthlyDepartureMonth()
+    {
+        var dailyReservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 7, 1),
+            ProrateType.FirstMonth,
+            BillingType.Daily,
+            100m);
+        dailyReservation.ReservationCode = "R-DAILY-CO";
+        dailyReservation.CurrentInvoiceNo = 0;
+        dailyReservation.OfficeName = "Test Office";
+
+        var monthlyReservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 7, 1),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        monthlyReservation.ReservationCode = "R-MONTHLY-CO";
+        monthlyReservation.CurrentInvoiceNo = 0;
+        monthlyReservation.OfficeName = "Test Office";
+
+        var dailyManager = CreatePreviewManager(dailyReservation);
+        var monthlyManager = CreatePreviewManager(monthlyReservation);
+
+        var dailyPreviews = await dailyManager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            dailyReservation.ReservationId);
+        var monthlyPreviews = await monthlyManager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            monthlyReservation.ReservationId);
+
+        Assert.Contains(dailyPreviews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+        Assert.Contains(monthlyPreviews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+    }
+
+    [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_PlatformNightlyCheckoutOnFirst_PutsDepartureFeeOnJuneNotJuly()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 7, 1),
+            ProrateType.FirstMonth,
+            BillingType.Nightly,
+            100m);
+        reservation.ReservationCode = "R-PLATFORM-NIGHTLY";
+        reservation.ReservationType = ReservationType.Platform;
+        reservation.DepartureFee = 175m;
+        reservation.CurrentInvoiceNo = 0;
+        reservation.OfficeName = "Test Office";
+
+        var manager = CreatePreviewManager(reservation);
+
+        var previews = await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.Equal(3, previews.Count);
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+
+        var junePreview = Assert.Single(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 6, 1));
+        Assert.Contains(junePreview.LedgerLines, line => line.Description == "Departure Fee" && line.Amount == 175m);
+    }
+
+    [Fact]
     public async Task GetMissingInvoicesAsync_LoadsExistingInvoicesWithIncludePaid()
     {
         var reservation = CreatePreviewReservation();

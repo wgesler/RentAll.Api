@@ -213,6 +213,10 @@ public partial class AccountingManager
         var lineItems = new List<LedgerLine>();
         var lineNumber = 1;
 
+        var (billablePeriodStart, billablePeriodEnd) = ResolveBillingPeriodForMonth(reservation, FirstDayOfMonth(startDate));
+        if (!HasBillablePreviewPeriod(reservation, billablePeriodStart, billablePeriodEnd))
+            return lineItems;
+
         var startDateDay = startDate.Day;
         var startDateMonth = startDate.Month;
         var startDateYear = startDate.Year;
@@ -252,7 +256,8 @@ public partial class AccountingManager
         var secondYear = secondMonthDate.Year;
 
         var isFirstMonth = startDateMonth == arrivalMonth && startDateYear == arrivalYear;
-        var isLastMonth = startDateMonth == departureMonth && startDateYear == departureYear;
+        var lastBillableMonth = ResolveLastBillableMonth(reservation);
+        var isLastMonth = startDateMonth == lastBillableMonth.Month && startDateYear == lastBillableMonth.Year;
         var isSecondMonth = startDateMonth == secondMonth;
         var isFirstMonthProrated = reservation.ProrateType == ProrateType.FirstMonth;
         var isFirstMonthLessThan30Days = daysInArrivalMonth < PRORATE_DAYS;
@@ -261,7 +266,7 @@ public partial class AccountingManager
         var isProratedMonth = isFirstMonthAndFirstMonthPartial || isSecondMonthFirstMonthPartial;
 
         // Use end date to hold payments to certain timeframe
-        var firstDayOfLastMonth = new DateOnly(departureYear, departureMonth, 1);
+        var firstDayOfLastMonth = lastBillableMonth;
         var lastDayOfLastMonth = endDate <= reservation.DepartureDate ? endDate : reservation.DepartureDate;
 
         // If you're in and out in the same month OR less than 30 days
@@ -353,8 +358,9 @@ public partial class AccountingManager
 
         var isFirstMonth = invoicePeriodStart.Month == reservation.ArrivalDate.Month
             && invoicePeriodStart.Year == reservation.ArrivalDate.Year;
-        var isLastMonth = invoicePeriodStart.Month == reservation.DepartureDate.Month
-            && invoicePeriodStart.Year == reservation.DepartureDate.Year;
+        var lastBillableMonth = ResolveLastBillableMonth(reservation);
+        var isLastMonth = invoicePeriodStart.Month == lastBillableMonth.Month
+            && invoicePeriodStart.Year == lastBillableMonth.Year;
 
         var shouldCharge = reservation.ReservationType == ReservationType.Platform ? isLastMonth : isFirstMonth;
 
@@ -367,6 +373,8 @@ public partial class AccountingManager
     private void AddRentalLine(int days, Reservation reservation, DateOnly startDate, DateOnly endDate, int daysInMonth,
         bool isDepartureMonthYear, bool isLastDayOfMonth, List<LedgerLine> lines, ref int lineNumber, int costCodeId)
     {
+        if (days <= 0)
+            return;
 
         if (days < daysInMonth && reservation.BillingType == BillingType.Nightly && isDepartureMonthYear) // && isLastDayOfMonth
             endDate = endDate.AddDays(-1);
@@ -510,7 +518,7 @@ public partial class AccountingManager
     private static int CalculateNumberOfDays(DateOnly startDate, DateOnly endDate, BillingType billingType, bool isDepartureMonthYear, bool isLastDayOfMonth)
     {
         if (endDate < startDate) return 0;
-        if (endDate == startDate) return 1;
+        if (endDate == startDate) return billingType == BillingType.Nightly && isDepartureMonthYear ? 0 : 1;
 
         var days = endDate.DayNumber - startDate.DayNumber;
         if (billingType != BillingType.Nightly ||
@@ -583,12 +591,15 @@ public partial class AccountingManager
             if (billingMonth < accountingStart)
                 continue;
 
-            // Get Charges for the billing month.
+            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
+            if (!HasBillablePreviewPeriod(reservation, periodStart, periodEnd))
+                continue;
+
             var ledgerLines = await CreateLedgerLinesForReservationIdAsync(
                 reservation,
                 invoiceDate: monthStart,
-                startDate: monthStart,
-                endDate: monthEnd);
+                startDate: periodStart,
+                endDate: periodEnd);
 
             if (ledgerLines.Count == 0)
                 continue;
@@ -599,8 +610,8 @@ public partial class AccountingManager
                 organizationId,
                 reservation,
                 billingMonth,
-                monthStart,
-                monthEnd,
+                periodStart,
+                periodEnd,
                 ledgerLines,
                 totalAmount));
         }
@@ -725,16 +736,13 @@ public partial class AccountingManager
                 continue;
 
             var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
-            if (periodStart > periodEnd)
-                continue;
 
             var monthStart = billingMonth;
-            var monthEnd = LastDayOfMonth(billingMonth);
             var ledgerLines = await CreateLedgerLinesForReservationIdAsync(
                 reservation,
                 invoiceDate: monthStart,
-                startDate: monthStart,
-                endDate: monthEnd);
+                startDate: periodStart,
+                endDate: periodEnd);
 
             if (ledgerLines.Count == 0)
                 continue;
@@ -760,6 +768,23 @@ public partial class AccountingManager
     private static DateOnly ResolveBillingDepartureDate(Reservation reservation)
         => reservation.BillingEndDate ?? reservation.DepartureDate;
 
+    private static DateOnly ResolveLastBillableMonth(Reservation reservation)
+    {
+        var departureDate = ResolveBillingDepartureDate(reservation);
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+
+        if (reservation.BillingType == BillingType.Nightly)
+        {
+            var lastNight = departureDate.AddDays(-1);
+            if (lastNight < arrivalDate)
+                return FirstDayOfMonth(departureDate);
+
+            return FirstDayOfMonth(lastNight);
+        }
+
+        return FirstDayOfMonth(departureDate);
+    }
+
     private static (DateOnly PeriodStart, DateOnly PeriodEnd) ResolveBillingPeriodForMonth(Reservation reservation, DateOnly billingMonth)
     {
         var monthStart = billingMonth;
@@ -769,6 +794,19 @@ public partial class AccountingManager
         var periodStart = arrivalDate > monthStart ? arrivalDate : monthStart;
         var periodEnd = departureDate < monthEnd ? departureDate : monthEnd;
         return (periodStart, periodEnd);
+    }
+
+    private static bool HasBillablePreviewPeriod(Reservation reservation, DateOnly periodStart, DateOnly periodEnd)
+    {
+        if (periodEnd < periodStart)
+            return false;
+
+        if (reservation.BillingType == BillingType.Nightly
+            && periodStart == periodEnd
+            && periodStart == ResolveBillingDepartureDate(reservation))
+            return false;
+
+        return true;
     }
 
     private static IEnumerable<DateOnly> EnumerateBillableMonths(Reservation reservation, DateOnly throughMonth, DateOnly accountingStartMonth)
@@ -787,8 +825,14 @@ public partial class AccountingManager
 
         for (var month = startMonth; month <= scanThrough; month = month.AddMonths(1))
         {
-            if (ReservationOverlapsBillingMonth(arrivalDate, departureDate, month, LastDayOfMonth(month)))
-                yield return month;
+            if (!ReservationOverlapsBillingMonth(arrivalDate, departureDate, month, LastDayOfMonth(month)))
+                continue;
+
+            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, month);
+            if (!HasBillablePreviewPeriod(reservation, periodStart, periodEnd))
+                continue;
+
+            yield return month;
         }
     }
 
