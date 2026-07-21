@@ -453,10 +453,7 @@ public partial class AccountingManager
             if (securityDepositInvoices.Count == 0)
                 continue;
 
-            // In practice, this should not happen
-            if (securityDepositInvoices.Count > 1)
-                await LogMultipleSecurityDepositInvoicesAsync(organizationId, officeId, reservationId, securityDepositInvoices);
-
+            // In practice, this should not happen; when it does, deposit/paid amounts are summed below.
             var securityDepositInvoice = securityDepositInvoices[0];
             var journalEntriesBySourceId = await LoadJournalEntriesForInvoiceAsync(organizationId, officeId, securityDepositInvoice);
             var securityDepositPaymentAllocation = CalculateSecurityDepositPaymentAllocation(securityDepositInvoice, costCodeById);
@@ -661,23 +658,6 @@ public partial class AccountingManager
             .OrderBy(invoice => invoice.InvoiceDate)
             .ThenBy(invoice => invoice.InvoiceCode)
             .ToList();
-    }
-
-    private async Task LogMultipleSecurityDepositInvoicesAsync(Guid organizationId, int officeId, Guid reservationId, IReadOnlyList<Invoice> securityDepositInvoices)
-    {
-        var reservationCode = securityDepositInvoices
-            .Select(invoice => invoice.ReservationCode?.Trim())
-            .FirstOrDefault(code => !string.IsNullOrWhiteSpace(code))
-            ?? reservationId.ToString();
-        var invoiceCodes = string.Join(", ", securityDepositInvoices.Select(invoice => invoice.InvoiceCode?.Trim() ?? invoice.InvoiceId.ToString()));
-
-        await LogAccountingLogAsync(new AccountingLog
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId,
-            PropertyId = securityDepositInvoices[0].PropertyId,
-            Message = $"Security deposit enrichment [{reservationCode}]: found {securityDepositInvoices.Count} security-deposit invoice(s) ({invoiceCodes}); expected one. Deposit and paid amounts will be summed."
-        });
     }
 
     private static bool InvoiceHasSecurityDepositChargeLine(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)

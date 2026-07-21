@@ -72,7 +72,7 @@ public partial class AccountingManager
             IncludeVoided = false,
             IncludeUnposted = true
         }))
-            .Where(IsStandardInvoicePaymentJournalEntry)
+            .Where(entry => IsStandardInvoicePaymentJournalEntry(entry))
             .ToList();
 
         var candidates = new List<UndepositedPaymentLineCandidate>();

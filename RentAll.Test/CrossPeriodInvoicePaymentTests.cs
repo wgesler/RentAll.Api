@@ -11,13 +11,16 @@ public class CrossPeriodInvoicePaymentTests
     private static readonly DateOnly JulyAccountingPeriod = new(2026, 7, 1);
     private static readonly DateOnly MayPaymentDate = new(2026, 5, 15);
     private static readonly DateOnly JunePaymentDate = new(2026, 6, 10);
+    private static readonly DateOnly DecemberAccountingPeriod = new(2025, 12, 1);
+    private static readonly DateOnly JanuaryAccountingPeriod = new(2026, 1, 1);
+    private static readonly DateOnly DecemberPaymentDate = new(2025, 12, 1);
 
     [Fact]
     public async Task CrossPeriodPayment_MayFullAmount_BothSlicesUsePrePaymentPath()
     {
         var scenario = await SetupCrossPeriodInvoice0626To0715Async();
         var payment = await ApplyPaymentAsync(scenario, MayPaymentDate, scenario.InvoiceTotal);
-        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(scenario.InvoiceTotal, scenario.JuneCharge, scenario.JulyCharge);
+        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(scenario.InvoiceTotal, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(0m, expectedUnapplied);
         Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, payment));
@@ -34,11 +37,11 @@ public class CrossPeriodInvoicePaymentTests
     {
         var scenario = await SetupCrossPeriodInvoice0626To0715Async();
         var payment = await ApplyPaymentAsync(scenario, JunePaymentDate, scenario.InvoiceTotal);
-        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(scenario.InvoiceTotal, scenario.JuneCharge, scenario.JulyCharge);
+        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(scenario.InvoiceTotal, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(0m, expectedUnapplied);
-        Assert.Equal(scenario.JuneCharge, expectedJunePayment);
-        Assert.Equal(scenario.JulyCharge, expectedJulyPayment);
+        Assert.Equal(scenario.FirstPeriodCharge, expectedJunePayment);
+        Assert.Equal(scenario.SecondPeriodCharge, expectedJulyPayment);
 
         Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
         Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
@@ -55,7 +58,7 @@ public class CrossPeriodInvoicePaymentTests
         var scenario = await SetupCrossPeriodInvoice0626To0715Async();
         var overPaymentAmount = scenario.InvoiceTotal + 500m;
         var payment = await ApplyPaymentAsync(scenario, MayPaymentDate, overPaymentAmount);
-        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(overPaymentAmount, scenario.JuneCharge, scenario.JulyCharge);
+        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(overPaymentAmount, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(500m, expectedUnapplied);
         Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, payment));
@@ -75,10 +78,10 @@ public class CrossPeriodInvoicePaymentTests
         var scenario = await SetupCrossPeriodInvoice0626To0715Async();
         var partialPaymentAmount = 800m;
         var payment = await ApplyPaymentAsync(scenario, JunePaymentDate, partialPaymentAmount);
-        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(partialPaymentAmount, scenario.JuneCharge, scenario.JulyCharge);
+        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(partialPaymentAmount, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(0m, expectedUnapplied);
-        Assert.Equal(scenario.JuneCharge, expectedJunePayment);
+        Assert.Equal(scenario.FirstPeriodCharge, expectedJunePayment);
         Assert.Equal(300m, expectedJulyPayment);
 
         Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
@@ -109,7 +112,7 @@ public class CrossPeriodInvoicePaymentTests
         var scenario = await SetupCrossPeriodInvoice0626To0715Async();
         var partialPaymentAmount = 400m;
         var payment = await ApplyPaymentAsync(scenario, MayPaymentDate, partialPaymentAmount);
-        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(partialPaymentAmount, scenario.JuneCharge, scenario.JulyCharge);
+        var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(partialPaymentAmount, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(partialPaymentAmount, expectedJunePayment);
         Assert.Equal(0m, expectedJulyPayment);
@@ -122,6 +125,106 @@ public class CrossPeriodInvoicePaymentTests
 
         var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, MayPaymentDate, partialPaymentAmount);
         AssertBalancedJournalEntry(paymentEntry);
+    }
+
+    /// <summary>
+    /// Mirrors BWA24 / R-000026-001: rent 12/29-01/27, invoice period Dec, payment 12/1.
+    /// Jan slice must get prepayment receive + apply (calendar-year boundary).
+    /// </summary>
+    [Fact]
+    public async Task CrossPeriodPayment_DecemberPayment_YearBoundary_JanuarySliceGetsPrePaymentApply()
+    {
+        var scenario = await SetupCrossPeriodInvoice1229To0127Async(invoiceTotal: 2650m);
+        var payment = await ApplyPaymentAsync(
+            scenario,
+            DecemberPaymentDate,
+            scenario.InvoiceTotal,
+            description: "CC (5295) 12/29-01/27");
+
+        var (expectedDecemberPayment, expectedJanuaryPayment, expectedUnapplied) = AllocatePaymentWaterfall(
+            scenario.InvoiceTotal,
+            scenario.FirstPeriodCharge,
+            scenario.SecondPeriodCharge);
+
+        Assert.Equal(0m, expectedUnapplied);
+        Assert.Equal(265m, expectedDecemberPayment);
+        Assert.Equal(2385m, expectedJanuaryPayment);
+
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
+        Assert.Equal(1, CountPrePaymentReceivedEntries(scenario.Context, payment));
+        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, payment, DecemberAccountingPeriod));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JanuaryAccountingPeriod));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentCredits(scenario.Context, payment));
+
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, DecemberPaymentDate, scenario.InvoiceTotal);
+        AssertBalancedJournalEntry(paymentEntry);
+
+        var januaryApply = Assert.Single(
+            scenario.Context.ActiveJournalEntries,
+            entry => entry.SourceTypeId == (int)SourceType.Invoice
+                && entry.SourceId == payment.LedgerLineId
+                && entry.TransactionDate == JanuaryAccountingPeriod);
+        Assert.Equal(JanuaryAccountingPeriod, januaryApply.AccountingPeriod);
+        AssertBalancedJournalEntry(januaryApply);
+    }
+
+    /// <summary>
+    /// Same year-boundary stay with full invoice total matching production log
+    /// 12/2025=595, 01/2026=5355 day-ratio of $5,950.
+    /// </summary>
+    [Fact]
+    public async Task CrossPeriodPayment_DecemberPayment_YearBoundary_FullInvoiceTotal_JanuaryApplyUsesDayRatio()
+    {
+        var scenario = await SetupCrossPeriodInvoice1229To0127Async(invoiceTotal: 5950m);
+        var payment = await ApplyPaymentAsync(
+            scenario,
+            DecemberPaymentDate,
+            scenario.InvoiceTotal,
+            description: "CC (5295) 12/29-01/27");
+
+        var (expectedDecemberPayment, expectedJanuaryPayment, expectedUnapplied) = AllocatePaymentWaterfall(
+            scenario.InvoiceTotal,
+            scenario.FirstPeriodCharge,
+            scenario.SecondPeriodCharge);
+
+        Assert.Equal(0m, expectedUnapplied);
+        Assert.Equal(595m, expectedDecemberPayment);
+        Assert.Equal(5355m, expectedJanuaryPayment);
+
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JanuaryAccountingPeriod));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentCredits(scenario.Context, payment));
+    }
+
+    /// <summary>
+    /// Charge JEs first (P1 = invoice id, P2 = hashed year-boundary source id), then payment.
+    /// </summary>
+    [Fact]
+    public async Task CrossPeriodPayment_YearBoundary_WithPostedChargeJes_CreatesJanuaryApply()
+    {
+        var scenario = await SetupCrossPeriodInvoice1229To0127Async(invoiceTotal: 2650m);
+        var manager = scenario.Context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(scenario.Invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntries = scenario.Context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice)
+            .OrderBy(entry => entry.TransactionDate)
+            .ToList();
+        Assert.Equal(2, chargeEntries.Count);
+        Assert.Equal(scenario.Invoice.InvoiceId, chargeEntries[0].SourceId);
+        Assert.NotEqual(scenario.Invoice.InvoiceId, chargeEntries[1].SourceId);
+        Assert.Equal(DecemberAccountingPeriod, chargeEntries[0].TransactionDate);
+        Assert.Equal(JanuaryAccountingPeriod, chargeEntries[1].TransactionDate);
+
+        var payment = await ApplyPaymentAsync(
+            scenario,
+            DecemberPaymentDate,
+            scenario.InvoiceTotal,
+            description: "CC (5295) 12/29-01/27");
+
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
+        Assert.True(SumPrePaymentApplyDebits(scenario.Context, payment, JanuaryAccountingPeriod) > 0m);
     }
 
     private static async Task<CrossPeriodPaymentScenario> SetupCrossPeriodInvoice0626To0715Async()
@@ -154,13 +257,53 @@ public class CrossPeriodInvoicePaymentTests
         return new CrossPeriodPaymentScenario(invoice, context, juneCharge, julyCharge, invoice.TotalAmount);
     }
 
-    private static async Task<LedgerLine> ApplyPaymentAsync(CrossPeriodPaymentScenario scenario, DateOnly paymentDate, decimal amount)
+    private static async Task<CrossPeriodPaymentScenario> SetupCrossPeriodInvoice1229To0127Async(decimal invoiceTotal)
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2025, 12, 29),
+            new DateOnly(2026, 6, 30),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.CLR,
+            hasPets: false,
+            departureFee: -1m,
+            billingRate: 3000m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            DecemberAccountingPeriod,
+            new DateOnly(2025, 12, 31));
+
+        invoice.AccountingPeriod = DecemberAccountingPeriod;
+        invoice.InvoiceDate = DecemberAccountingPeriod;
+        invoice.DueDate = DecemberAccountingPeriod;
+
+        var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee"));
+        rentalLine.Description = "Rental Fee (12/29-01/27)";
+        rentalLine.Amount = invoiceTotal;
+        rentalLine.LedgerLineDate = DecemberAccountingPeriod;
+        invoice.LedgerLines = [rentalLine];
+        invoice.TotalAmount = invoiceTotal;
+
+        // Day-ratio fallback with no posted charge JEs: 3 Dec days / 27 Jan days.
+        var firstPeriodCharge = Math.Round(invoiceTotal * (3m / 30m), 2, MidpointRounding.AwayFromZero);
+        var secondPeriodCharge = invoiceTotal - firstPeriodCharge;
+
+        return new CrossPeriodPaymentScenario(invoice, context, firstPeriodCharge, secondPeriodCharge, invoiceTotal);
+    }
+
+    private static async Task<LedgerLine> ApplyPaymentAsync(
+        CrossPeriodPaymentScenario scenario,
+        DateOnly paymentDate,
+        decimal amount,
+        string description = "ACH - 06/26-07/15")
     {
         var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
             scenario.Invoice,
             amount: amount,
             paymentDate: paymentDate,
-            description: "ACH - 06/26-07/15");
+            description: description);
         scenario.Invoice.LedgerLines.Add(payment);
 
         await scenario.Context.CreateManager().CreateJournalEntryFromPaymentAsync(
@@ -245,7 +388,7 @@ public class CrossPeriodInvoicePaymentTests
     private sealed record CrossPeriodPaymentScenario(
         Invoice Invoice,
         AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext Context,
-        decimal JuneCharge,
-        decimal JulyCharge,
+        decimal FirstPeriodCharge,
+        decimal SecondPeriodCharge,
         decimal InvoiceTotal);
 }

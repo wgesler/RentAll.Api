@@ -56,20 +56,25 @@ public partial class AccountingManager
                     if (!IsPaymentLedgerLine(costCode))
                         continue;
 
-                    await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice.OrganizationId, invoice.OfficeId, line.LedgerLineId);
+                    // Upsert (do not delete+skip): Posted/SoftClosed/HardClosed JEs cannot be deleted, so the old
+                    // delete-then-TrackJournalEntryCreate path skipped recreate and never added missing prepayment-apply JEs.
+                    var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                        invoice.OrganizationId,
+                        invoice.OfficeId,
+                        line.LedgerLineId);
+                    var beforeIds = existingPaymentEntries.Select(entry => entry.JournalEntryId).ToHashSet();
+                    var paymentResult = await UpsertJournalEntryFromPaymentAsync(invoice, line, existingPaymentEntries, currentUser);
+                    if (paymentResult.HasWarning)
+                        result.Errors.Add($"Invoice {invoice.InvoiceCode} payment: {paymentResult.Warning}");
 
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromPaymentWithResultAsync(invoice, line, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = invoice.OrganizationId,
-                            OfficeIds = invoice.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.InvoicePayment,
-                            SourceId = line.LedgerLineId,
-                            IncludeVoided = true,
-                            IncludeUnposted = true
-                        },
-                        result);
+                    var afterEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                        invoice.OrganizationId,
+                        invoice.OfficeId,
+                        line.LedgerLineId);
+                    if (afterEntries.Any(entry => !beforeIds.Contains(entry.JournalEntryId)))
+                        result.JournalEntriesCreated++;
+                    else if (afterEntries.Count > 0)
+                        result.JournalEntriesSkipped++;
                 }
             }
             catch (Exception ex)

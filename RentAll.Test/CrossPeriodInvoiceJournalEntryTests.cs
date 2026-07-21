@@ -67,7 +67,8 @@ public class CrossPeriodInvoiceJournalEntryTests
             .OrderBy(entry => entry.AccountingPeriod)
             .ToList();
 
-        Assert.All(chargeEntries, entry => Assert.Equal(invoice.InvoiceId, entry.SourceId));
+        Assert.Equal(invoice.InvoiceId, chargeEntries[0].SourceId);
+        Assert.NotEqual(invoice.InvoiceId, chargeEntries[1].SourceId);
         Assert.Equal(new DateOnly(2026, 2, 1), chargeEntries[0].TransactionDate);
         Assert.Equal(new DateOnly(2026, 3, 1), chargeEntries[1].TransactionDate);
     }
@@ -487,7 +488,8 @@ public class CrossPeriodInvoiceJournalEntryTests
 
         var chargeEntries = context.ActiveJournalEntries.Where(entry => entry.SourceTypeId == (int)SourceType.Invoice).ToList();
         Assert.Equal(2, chargeEntries.Count);
-        Assert.DoesNotContain(chargeEntries.Select(entry => entry.JournalEntryId), id => originalEntryIds.Contains(id));
+        // Refresh upserts in place (SourceId: invoice id for P1, hashed period id for P2).
+        Assert.Equal(originalEntryIds, chargeEntries.Select(entry => entry.JournalEntryId).ToHashSet());
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 

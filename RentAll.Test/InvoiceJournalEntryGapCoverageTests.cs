@@ -157,7 +157,7 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
-    public async Task UpdateInvoice_RefreshRecreatesSingleChargeJournalEntry()
+    public async Task UpdateInvoice_RefreshUpsertsSingleChargeJournalEntry()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
             new DateOnly(2026, 4, 1),
@@ -183,7 +183,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var chargeEntries = context.ActiveJournalEntries.Where(entry => entry.SourceTypeId == (int)SourceType.Invoice).ToList();
         Assert.Single(chargeEntries);
-        Assert.NotEqual(originalEntryId, chargeEntries[0].JournalEntryId);
+        Assert.Equal(originalEntryId, chargeEntries[0].JournalEntryId);
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 

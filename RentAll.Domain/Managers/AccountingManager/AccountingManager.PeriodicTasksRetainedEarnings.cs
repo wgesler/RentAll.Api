@@ -864,7 +864,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task LogRetainedEarningsJournalEntryLinesAsync(
+    private Task LogRetainedEarningsJournalEntryLinesAsync(
         Guid organizationId,
         int officeId,
         DateOnly processingDate,
@@ -876,87 +876,12 @@ public partial class AccountingManager
         decimal netIncome,
         IReadOnlyDictionary<int, decimal> accountYearBalances,
         string context)
-    {
-        var accountById = chartOfAccounts.ToDictionary(account => account.AccountId);
-        var profitLossAccountById = profitLossAccounts.ToDictionary(account => account.AccountId);
-        var activeLines = journalEntry.JournalEntryLines
-            .Where(line => line.Debit != 0 || line.Credit != 0)
-            .ToList();
-        var totalDebit = activeLines.Sum(line => line.Debit);
-        var totalCredit = activeLines.Sum(line => line.Credit);
-        var difference = RoundRetainedEarningsAmount(totalDebit - totalCredit);
+        => Task.CompletedTask;
 
-        var yearBalanceDetails = accountYearBalances
-            .Where(entry => entry.Value != 0m)
-            .OrderBy(entry => profitLossAccountById.TryGetValue(entry.Key, out var account) ? account.AccountNo : entry.Key.ToString(), StringComparer.OrdinalIgnoreCase)
-            .Select(entry =>
-            {
-                if (!profitLossAccountById.TryGetValue(entry.Key, out var account))
-                    return $"AccountId {entry.Key}: year balance {entry.Value:0.00}";
+    private Task LogRetainedEarningsRunAsync(Guid organizationId, int? officeId, DateOnly processingDate, int officeCount, string message)
+        => Task.CompletedTask;
 
-                return $"{account.AccountNo} {account.Name}: year balance {entry.Value:0.00}";
-            })
-            .ToList();
-
-        var lineDetails = activeLines
-            .Select((line, index) =>
-            {
-                accountById.TryGetValue(line.ChartOfAccountId, out var account);
-                var accountLabel = account == null
-                    ? $"AccountId {line.ChartOfAccountId}"
-                    : $"{account.AccountNo} {account.Name}";
-
-                return $"Line {index + 1}: {accountLabel} | Debit {line.Debit:0.00} | Credit {line.Credit:0.00} | Memo {line.Memo}";
-            })
-            .ToList();
-
-        var message = string.Join(
-            " ",
-            new[]
-            {
-                context + ".",
-                $"Fiscal year {fiscalYearStart:MM/dd/yyyy}-{fiscalYearEnd:MM/dd/yyyy}.",
-                $"Net income {netIncome:0.00}.",
-                $"Total debit {totalDebit:0.00}.",
-                $"Total credit {totalCredit:0.00}.",
-                $"Difference {difference:0.00}.",
-                yearBalanceDetails.Count == 0
-                    ? "Year balances: none."
-                    : "Year balances: " + string.Join("; ", yearBalanceDetails) + ".",
-                lineDetails.Count == 0
-                    ? "Journal entry lines: none."
-                    : "Journal entry lines: " + string.Join(" || ", lineDetails) + "."
-            });
-
-        await LogRetainedEarningsDecisionAsync(organizationId, officeId, processingDate, netIncome, message);
-    }
-
-    private async Task LogRetainedEarningsRunAsync(Guid organizationId, int? officeId, DateOnly processingDate, int officeCount, string message)
-    {
-        var fullMessage = officeCount > 0
-            ? $"Retained earnings sync ({processingDate:MM/dd/yyyy}): {message} ({officeCount} office(s) on day after year-end)."
-            : $"Retained earnings sync ({processingDate:MM/dd/yyyy}): {message}.";
-
-        await LogAccountingLogAsync(new AccountingLog
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId,
-            PropertyId = null,
-            Message = fullMessage
-        });
-    }
-
-    private async Task LogRetainedEarningsDecisionAsync(Guid organizationId, int officeId, DateOnly processingDate, decimal? amount, string message)
-    {
-        var fullMessage = $"Retained earnings office {officeId} (as of {processingDate:MM/dd/yyyy}): {message}";
-        await LogAccountingLogAsync(new AccountingLog
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId,
-            PropertyId = null,
-            OriginalAmount = amount,
-            Message = fullMessage
-        });
-    }
+    private Task LogRetainedEarningsDecisionAsync(Guid organizationId, int officeId, DateOnly processingDate, decimal? amount, string message)
+        => Task.CompletedTask;
     #endregion
 }

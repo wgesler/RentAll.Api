@@ -60,6 +60,8 @@ public partial class AccountingManager
             return (null, "Both period slices have zero charges on at least one side; posting as a single journal entry.", true);
         }
 
+        var secondPeriodSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
+
         var firstEntry = await CreateCrossPeriodSliceJournalEntryAsync(
             firstPeriodInvoice,
             invoice.InvoiceId,
@@ -69,7 +71,7 @@ public partial class AccountingManager
 
         await CreateCrossPeriodSliceJournalEntryAsync(
             secondPeriodInvoice,
-            invoice.InvoiceId,
+            secondPeriodSourceId,
             accountingContext.ChartOfAccounts.ToList(),
             accountingContext.AccountingOffice,
             currentUser);
