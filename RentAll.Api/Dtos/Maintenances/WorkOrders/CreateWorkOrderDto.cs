@@ -19,7 +19,6 @@ public class CreateWorkOrderDto
     public List<CreateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<CreateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
-
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (OrganizationId == Guid.Empty)

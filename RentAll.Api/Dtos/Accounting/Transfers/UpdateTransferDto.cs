@@ -12,7 +12,6 @@ public class UpdateTransferDto
     public Guid? PropertyId { get; set; }
     public int? BankAccountId { get; set; }
     public List<TransferSplitDto> Splits { get; set; } = new List<TransferSplitDto>();
-    public Guid? JournalEntryId { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -65,7 +64,6 @@ public class UpdateTransferDto
             PropertyId = PropertyId == Guid.Empty ? null : PropertyId,
             BankAccountId = BankAccountId is > 0 ? BankAccountId : null,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
-            JournalEntryId = JournalEntryId,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

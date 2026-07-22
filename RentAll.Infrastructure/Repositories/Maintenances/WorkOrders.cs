@@ -133,9 +133,9 @@ public partial class MaintenanceRepository
                 AccountingPeriod = workOrder.AccountingPeriod == default
                     ? new DateOnly(workOrder.WorkOrderDate.Year, workOrder.WorkOrderDate.Month, 1)
                     : workOrder.AccountingPeriod,
-                JournalEntryId = workOrder.JournalEntryId,
                 UseDepartureFee = workOrder.UseDepartureFee,
                 EnteredInQb = workOrder.EnteredInQb,
+                PostingStatusId = workOrder.PostingStatusId ?? 0,
                 IsActive = workOrder.IsActive,
                 CreatedBy = workOrder.CreatedBy
             }, transaction: transaction);
@@ -208,9 +208,9 @@ public partial class MaintenanceRepository
                 AccountingPeriod = workOrder.AccountingPeriod == default
                     ? new DateOnly(workOrder.WorkOrderDate.Year, workOrder.WorkOrderDate.Month, 1)
                     : workOrder.AccountingPeriod,
-                JournalEntryId = workOrder.JournalEntryId,
                 UseDepartureFee = workOrder.UseDepartureFee,
                 EnteredInQb = workOrder.EnteredInQb,
+                PostingStatusId = workOrder.PostingStatusId ?? 0,
                 IsActive = workOrder.IsActive,
                 ModifiedBy = workOrder.ModifiedBy
             }, transaction: transaction);

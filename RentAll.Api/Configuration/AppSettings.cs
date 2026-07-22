@@ -10,7 +10,6 @@ namespace RentAll.Api.Configuration
         public List<ServiceConnection> ServiceConnections { get; set; } = new List<ServiceConnection>();
     }
 
-
     public class DbConnection
     {
         public string DbName { get; set; } = string.Empty;
@@ -31,4 +30,3 @@ namespace RentAll.Api.Configuration
         public string ServiceURL { get; set; } = string.Empty;
     }
 }
-

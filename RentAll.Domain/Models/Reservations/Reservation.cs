@@ -78,5 +78,3 @@ public class Reservation
     public Guid ModifiedBy { get; set; }
 
 }
-
-

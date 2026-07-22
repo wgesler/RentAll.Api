@@ -56,7 +56,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetPropertiesByUserSelection(Guid userId)
         {

@@ -13,4 +13,3 @@ public enum ImageType
     StateForm = 7,
     CheckStocks = 8,
 }
-

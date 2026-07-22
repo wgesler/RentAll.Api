@@ -7,4 +7,3 @@ public interface IDailyQuoteService
     Task<DailyQuote> GetDailyQuote();
     Task<DailyQuote> GetDailyDadJoke();
 }
-

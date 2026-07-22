@@ -77,6 +77,7 @@ public partial class AccountingRepository
                 DueDate = invoice.DueDate,
                 AccountingPeriod = invoice.AccountingPeriod,
                 InvoicePeriod = invoice.InvoicePeriod,
+                PostingStatusId = invoice.PostingStatusId ?? 0,
                 TotalAmount = invoice.TotalAmount,
                 PaidAmount = invoice.PaidAmount,
                 Notes = invoice.Notes,
@@ -136,18 +137,6 @@ public partial class AccountingRepository
             await transaction.RollbackAsync();
             throw;
         }
-    }
-
-    public async Task UpdateInvoiceJournalEntryIdAsync(Invoice invoice)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.Invoice_UpdateJournalEntryId", new
-        {
-            InvoiceId = invoice.InvoiceId,
-            OrganizationId = invoice.OrganizationId,
-            JournalEntryId = invoice.JournalEntryId,
-            ModifiedBy = invoice.ModifiedBy
-        });
     }
 
     public async Task<IReadOnlyList<Invoice>> UpdateByIdsInTransactionAsync(IReadOnlyList<Invoice> invoices)
@@ -248,7 +237,7 @@ public partial class AccountingRepository
             DueDate = invoice.DueDate,
             AccountingPeriod = invoice.AccountingPeriod,
             InvoicePeriod = invoice.InvoicePeriod,
-            JournalEntryId = invoice.JournalEntryId,
+            PostingStatusId = invoice.PostingStatusId ?? 0,
             TotalAmount = invoice.TotalAmount,
             PaidAmount = invoice.PaidAmount,
             Notes = invoice.Notes,

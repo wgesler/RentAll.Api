@@ -26,6 +26,25 @@ Late payment example: May invoice can stay **unpaid** in May; the **owner paid l
 
 ## Grouping key (critical)
 
+### JE Recap report (`BuildRecapReportRows`) — DO NOT CHANGE
+
+Rows roll up strictly by **`SourceId + AccountingPeriod`** — for **all** recap rows, including manual JEs.
+
+- **Not** in the recap rollup key: property, reservation, invoice code, memo, or reservation code.
+- `SourceDocumentCode` is **display only** (human-readable label for the same `SourceId`, e.g. `R-001070-001`).
+- Manual JEs may use property/reservation grouping elsewhere (e.g. GL); **never** on this recap report.
+- Expense recap lines → one row per `JournalEntryLineId` (unchanged).
+
+**UnRec** (owner unrecognized on this row — calculated, not a JE rollup):
+
+```text
+UnRec = owner portion of period-2 OwnRent held in PrePay (receive period only)
+```
+
+When PrePay covers the full apply-period invoice slice, UnRec = that period’s **OwnRent**. Partial PrePay prorates OwnRent by PrePay ÷ Invoiced on the apply-period row. UnRec is **not** `OwnRent − OwnAct`.
+
+### Owner accrual activity (`BuildOwnerActivityLines`)
+
 Income activity lines group by **`propertyId + invoiceSourceCode`** (invoice code, e.g. `R-000177-001`) — **not** accounting period. This enables cross-period rollup when both invoice and payment fall in the report range.
 
 - Same invoice source with both owner rent and payment in range → **one rolled-up line** (even if invoice and payment are in different months).

@@ -12,6 +12,7 @@ public class JournalEntry
     public DateOnly AccountingPeriod { get; set; }
     public PostingStatus PostingStatusId { get; set; }
     public int? SourceTypeId { get; set; }
+    public JournalEntryKind JournalEntryKindId { get; set; } = JournalEntryKind.Manual;
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }

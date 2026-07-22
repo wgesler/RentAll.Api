@@ -45,7 +45,6 @@ public class UpdateOrganizationDto
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
 
-
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
 
@@ -86,7 +85,3 @@ public class UpdateOrganizationDto
         };
     }
 }
-
-
-
-

@@ -25,6 +25,23 @@ public partial class JournalEntryRepository
         return MapJournalEntriesWithLineEntities(headers, lines);
     }
 
+    public async Task<IEnumerable<JournalEntry>> GetJournalEntriesBySourceIdAsync(JournalEntryGetBySourceIdCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetBySourceId", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            SourceTypeId = criteria.SourceTypeId,
+            SourceId = criteria.SourceId,
+            OfficeIds = criteria.OfficeIds,
+            JournalEntryKindId = criteria.JournalEntryKindId,
+            IncludeUnposted = criteria.IncludeUnposted,
+            IncludeCashOnly = criteria.IncludeCashOnly,
+        });
+
+        return MapJournalEntriesWithLineEntities(headers, lines);
+    }
+
     public async Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -165,8 +182,10 @@ public partial class JournalEntryRepository
                     PostingStatusId = (int)journalEntry.PostingStatusId,
                     TransactionTypeId = DefaultJournalEntryTransactionTypeId,
                     SourceTypeId = journalEntry.SourceTypeId,
+                    JournalEntryKindId = (int)journalEntry.JournalEntryKindId,
                     SourceId = journalEntry.SourceId,
                     SourceCode = journalEntry.SourceCode,
+                    CheckNumber = journalEntry.CheckNumber,
                     Memo = journalEntry.Memo,
                     IsCashOnly = journalEntry.IsCashOnly,
                     CreatedBy = journalEntry.CreatedBy
@@ -189,6 +208,7 @@ public partial class JournalEntryRepository
                         Debit = line.Debit,
                         Credit = line.Credit,
                         Memo = line.Memo,
+                        PerspectiveId = (int)line.PerspectiveId,
                         CreatedBy = journalEntry.CreatedBy
                     }, transaction: transaction);
                 }
@@ -242,9 +262,11 @@ public partial class JournalEntryRepository
                 AccountingPeriod = journalEntry.AccountingPeriod,
                 PostingStatusId = (int)journalEntry.PostingStatusId,
                 TransactionTypeId = currentEntity.TransactionTypeId,
-                SourceTypeId = journalEntry.SourceTypeId,
-                SourceId = journalEntry.SourceId,
+                JournalEntryKindId = (int)journalEntry.JournalEntryKindId,
+                SourceCode = journalEntry.SourceCode,
+                CheckNumber = journalEntry.CheckNumber,
                 Memo = journalEntry.Memo,
+                IsCashOnly = journalEntry.IsCashOnly,
                 ModifiedBy = journalEntry.ModifiedBy
             }, transaction: transaction);
 
@@ -275,6 +297,7 @@ public partial class JournalEntryRepository
                         Debit = line.Debit,
                         Credit = line.Credit,
                         Memo = line.Memo,
+                        PerspectiveId = (int)line.PerspectiveId,
                         CreatedBy = journalEntry.CreatedBy
                     }, transaction: transaction);
                 }
@@ -292,6 +315,7 @@ public partial class JournalEntryRepository
                         Debit = line.Debit,
                         Credit = line.Credit,
                         Memo = line.Memo,
+                        PerspectiveId = (int)line.PerspectiveId,
                         ModifiedBy = journalEntry.ModifiedBy
                     }, transaction: transaction);
                 }
@@ -321,13 +345,26 @@ public partial class JournalEntryRepository
         });
     }
 
-    public async Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, Guid sourceId)
+    public async Task DeleteOpenJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.JournalEntry_DeleteOpenById", new
+        {
+            JournalEntryId = journalEntryId,
+            OrganizationId = organizationId
+        });
+    }
+
+    public async Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, int sourceTypeId, Guid sourceId, int? journalEntryKindId = null, bool includeCashOnly = true)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>("Accounting.JournalEntry_DeleteBySourceId", new
         {
             OrganizationId = organizationId,
+            SourceTypeId = sourceTypeId,
             SourceId = sourceId,
+            JournalEntryKindId = journalEntryKindId,
+            IncludeCashOnly = includeCashOnly,
         });
 
         return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;

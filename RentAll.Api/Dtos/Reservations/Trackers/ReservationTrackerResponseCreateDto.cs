@@ -19,4 +19,3 @@ public class ReservationTrackerResponseCreateDto
         return (true, null);
     }
 }
-

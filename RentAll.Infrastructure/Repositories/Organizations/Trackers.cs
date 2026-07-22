@@ -282,4 +282,3 @@ public partial class OrganizationRepository
     #endregion
 
 }
-

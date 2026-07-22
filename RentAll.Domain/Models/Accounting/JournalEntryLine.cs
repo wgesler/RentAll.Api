@@ -1,5 +1,7 @@
 namespace RentAll.Domain.Models;
 
+using RentAll.Domain.Enums;
+
 public class JournalEntryLine
 {
     public Guid JournalEntryLineId { get; set; }
@@ -15,6 +17,7 @@ public class JournalEntryLine
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
+    public Perspective PerspectiveId { get; set; } = Perspective.Company;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

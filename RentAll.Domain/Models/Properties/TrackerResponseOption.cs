@@ -27,4 +27,3 @@ public class TrackerResponseOption
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
 }
-

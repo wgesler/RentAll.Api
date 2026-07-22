@@ -54,7 +54,6 @@ public class ContactResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 
-
     public ContactResponseDto(Contact contact)
     {
         ContactId = contact.ContactId;

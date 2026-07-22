@@ -65,7 +65,6 @@ public class CreateReservationDto
 
     public bool IsActive { get; set; }
 
-
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (OrganizationId == Guid.Empty)
@@ -207,5 +206,3 @@ public class CreateReservationDto
         };
     }
 }
-
-

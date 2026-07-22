@@ -49,4 +49,3 @@ public class ReservationList
     public Guid? dInspectorUserId { get; set; }
     public DateOnly? dInspectingDate { get; set; }
 }
-

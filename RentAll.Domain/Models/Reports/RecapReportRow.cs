@@ -34,6 +34,7 @@ public class RecapReportRow
     public string Payment { get; set; } = string.Empty;
     public string PrePayment { get; set; } = string.Empty;
     public string UnPaid { get; set; } = string.Empty;
+    public string OwnerUnrec { get; set; } = string.Empty;
     public string OwnerRent { get; set; } = string.Empty;
     public string OwnerRentActual { get; set; } = string.Empty;
     public string OwnerExpense { get; set; } = string.Empty;
@@ -46,6 +47,7 @@ public class RecapReportRow
     public decimal PaymentValue { get; set; }
     public decimal PrePaymentValue { get; set; }
     public decimal UnPaidValue { get; set; }
+    public decimal OwnerUnrecValue { get; set; }
     public decimal OwnerRentValue { get; set; }
     public decimal OwnerRentActualValue { get; set; }
     public decimal OwnerExpenseValue { get; set; }

@@ -356,6 +356,18 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                         && (criteria.SourceId == null || entry.SourceId == criteria.SourceId)).ToList();
                 });
             journalEntryRepository
+                .Setup(r => r.GetJournalEntriesBySourceIdAsync(It.IsAny<JournalEntryGetBySourceIdCriteria>()))
+                .ReturnsAsync((JournalEntryGetBySourceIdCriteria criteria) =>
+                {
+                    return _journalEntries.Where(entry =>
+                        entry.OrganizationId == criteria.OrganizationId
+                        && entry.SourceTypeId == criteria.SourceTypeId
+                        && entry.SourceId == criteria.SourceId
+                        && (criteria.IncludeUnposted || entry.PostingStatusId != PostingStatus.Open)
+                        && (criteria.IncludeCashOnly || !entry.IsCashOnly)
+                        && (criteria.JournalEntryKindId == null || (int)entry.JournalEntryKindId == criteria.JournalEntryKindId)).ToList();
+                });
+            journalEntryRepository
                 .Setup(r => r.ExistsByJournalEntryCodeAsync(It.IsAny<string>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
                 .ReturnsAsync(false);
             journalEntryRepository
@@ -389,6 +401,30 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     _journalEntries.RemoveAll(entry => entry.JournalEntryId == journalEntryId);
                     return Task.CompletedTask;
+                });
+            journalEntryRepository
+                .Setup(r => r.DeleteOpenJournalEntryByIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
+                .Returns((Guid journalEntryId, Guid _) =>
+                {
+                    _journalEntries.RemoveAll(entry => entry.JournalEntryId == journalEntryId);
+                    return Task.CompletedTask;
+                });
+            journalEntryRepository
+                .Setup(r => r.DeleteJournalEntriesBySourceIdAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<int>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<bool>()))
+                .ReturnsAsync((Guid organizationId, int sourceTypeId, Guid sourceId, int? journalEntryKindId, bool includeCashOnly) =>
+                {
+                    var removed = _journalEntries.RemoveAll(entry =>
+                        entry.OrganizationId == organizationId
+                        && entry.SourceTypeId == sourceTypeId
+                        && entry.SourceId == sourceId
+                        && (journalEntryKindId == null || (int)entry.JournalEntryKindId == journalEntryKindId)
+                        && (includeCashOnly || !entry.IsCashOnly));
+                    return removed;
                 });
 
             var reservationRepository = new Mock<IReservationRepository>();
@@ -468,6 +504,9 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 PostingStatusId = entry.PostingStatusId,
                 SourceTypeId = entry.SourceTypeId,
                 SourceId = entry.SourceId,
+                SourceCode = entry.SourceCode,
+                JournalEntryKindId = entry.JournalEntryKindId,
+                IsCashOnly = entry.IsCashOnly,
                 Memo = entry.Memo,
                 CreatedBy = entry.CreatedBy,
                 ModifiedBy = entry.ModifiedBy,

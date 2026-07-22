@@ -8,4 +8,3 @@ public class RefreshTokenEntity
     public DateTimeOffset ExpiresOn { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
 }
-

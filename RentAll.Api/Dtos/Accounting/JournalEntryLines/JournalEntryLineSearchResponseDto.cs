@@ -22,6 +22,8 @@ public class JournalEntryLineSearchResponseDto
     public DateOnly TransactionDate { get; set; }
     public DateOnly AccountingPeriod { get; set; }
     public int PostingStatusId { get; set; }
+    public int JournalEntryKindId { get; set; }
+    public int PerspectiveId { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
@@ -31,6 +33,7 @@ public class JournalEntryLineSearchResponseDto
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
+    public DateTimeOffset JournalEntryCreatedOn { get; set; }
 
     public JournalEntryLineSearchResponseDto(JournalEntryLineSearchResult result)
     {
@@ -54,6 +57,8 @@ public class JournalEntryLineSearchResponseDto
         TransactionDate = result.TransactionDate;
         AccountingPeriod = result.AccountingPeriod;
         PostingStatusId = result.PostingStatusId;
+        JournalEntryKindId = result.JournalEntryKindId;
+        PerspectiveId = result.PerspectiveId;
         SourceTypeId = result.SourceTypeId;
         SourceId = result.SourceId;
         SourceCode = result.SourceCode;
@@ -63,5 +68,6 @@ public class JournalEntryLineSearchResponseDto
         CreatedBy = result.CreatedBy;
         ModifiedOn = result.ModifiedOn;
         ModifiedBy = result.ModifiedBy;
+        JournalEntryCreatedOn = result.JournalEntryCreatedOn;
     }
 }

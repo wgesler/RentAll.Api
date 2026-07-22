@@ -20,7 +20,6 @@ public class UpdatePropertyDto
     public int CheckInTimeId { get; set; }
     public int CheckOutTimeId { get; set; }
 
-
     // Property Classification
     public int PropertyStyleId { get; set; }
     public int PropertyTypeId { get; set; }

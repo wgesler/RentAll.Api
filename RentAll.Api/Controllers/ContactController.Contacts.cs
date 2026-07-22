@@ -266,7 +266,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-
         #endregion
 
         #region Owner Login

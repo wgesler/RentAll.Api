@@ -50,4 +50,3 @@ public class OrganizationManager : IOrganizationManager
         return await _commonRepository.GetNextCodeAsync(organizationId, (int)entityType, entityType.ToString());
     }
 }
-

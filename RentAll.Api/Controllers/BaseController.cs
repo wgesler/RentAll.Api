@@ -239,6 +239,102 @@ namespace RentAll.Api.Controllers
             return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals("OfficeAdmin", StringComparison.OrdinalIgnoreCase));
         }
 
+        protected bool HasUserGroup(RoleType role)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentUserGroups))
+                return false;
+
+            var roleName = role.ToString();
+            return CurrentUserGroups.Split(',').Any(g => g.Trim().Equals(roleName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        protected bool HasAnyUserGroup(params RoleType[] roles)
+            => roles.Any(HasUserGroup);
+
+        protected bool CanModifyPostedDocument()
+            => HasAnyUserGroup(
+                RoleType.SuperAdmin,
+                RoleType.Admin,
+                RoleType.OfficeAdmin,
+                RoleType.Accounting,
+                RoleType.AccountingAdmin);
+
+        protected bool CanModifySoftClosedDocument()
+            => HasAnyUserGroup(RoleType.SuperAdmin, RoleType.Admin, RoleType.OfficeAdmin);
+
+        protected IActionResult? RefuseIfDocumentUpdateNotAllowed(PostingStatus postingStatus, string documentLabel)
+        {
+            var hardClosedResult = RefuseIfDocumentHardClosed(postingStatus, documentLabel, "update");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
+            switch (postingStatus)
+            {
+                case PostingStatus.Open:
+                    return null;
+                case PostingStatus.Posted:
+                    if (!CanModifyPostedDocument())
+                        return Unauthorized($"You are not authorized to update a posted {documentLabel}.");
+                    return null;
+                case PostingStatus.SoftClosed:
+                    if (!CanModifySoftClosedDocument())
+                        return Unauthorized($"You are not authorized to update a soft-closed {documentLabel}.");
+                    return null;
+                default:
+                    return Unauthorized($"You are not authorized to update this {documentLabel}.");
+            }
+        }
+
+        protected IActionResult? RefuseIfDocumentUpdateNotAllowed(int? postingStatusId, string documentLabel)
+            => RefuseIfDocumentUpdateNotAllowed(ResolvePostingStatus(postingStatusId), documentLabel);
+
+        protected IActionResult? RefuseIfDocumentDeleteNotAllowed(PostingStatus postingStatus, string documentLabel)
+        {
+            var hardClosedResult = RefuseIfDocumentHardClosed(postingStatus, documentLabel, "delete");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
+            switch (postingStatus)
+            {
+                case PostingStatus.Open:
+                    return null;
+                case PostingStatus.SoftClosed:
+                    if (!CanModifySoftClosedDocument())
+                        return Unauthorized($"You are not authorized to delete a soft-closed {documentLabel}.");
+                    return null;
+                case PostingStatus.Posted:
+                    return Unauthorized($"You are not authorized to delete a posted {documentLabel}.");
+                default:
+                    return Unauthorized($"You are not authorized to delete this {documentLabel}.");
+            }
+        }
+
+        protected IActionResult? RefuseIfDocumentDeleteNotAllowed(int? postingStatusId, string documentLabel)
+            => RefuseIfDocumentDeleteNotAllowed(ResolvePostingStatus(postingStatusId), documentLabel);
+
+        protected IActionResult? RefuseIfJournalEntryUpdateNotAllowed(int? postingStatusId, string documentLabel = "journal entry")
+            => RefuseIfDocumentUpdateNotAllowed(postingStatusId, documentLabel);
+
+        protected IActionResult? RefuseIfJournalEntryUpdateNotAllowed(PostingStatus postingStatus, string documentLabel = "journal entry")
+            => RefuseIfDocumentUpdateNotAllowed(postingStatus, documentLabel);
+
+        protected IActionResult? RefuseIfJournalEntryDeleteNotAllowed(int? postingStatusId, string documentLabel = "journal entry")
+            => RefuseIfDocumentDeleteNotAllowed(postingStatusId, documentLabel);
+
+        protected IActionResult? RefuseIfJournalEntryDeleteNotAllowed(PostingStatus postingStatus, string documentLabel = "journal entry")
+            => RefuseIfDocumentDeleteNotAllowed(postingStatus, documentLabel);
+
+        private static PostingStatus ResolvePostingStatus(int? postingStatusId)
+            => Enum.IsDefined(typeof(PostingStatus), postingStatusId ?? 0)
+                ? (PostingStatus)(postingStatusId ?? 0)
+                : PostingStatus.Open;
+
+        protected static PostingStatus StrictestPostingStatus(IEnumerable<int?> postingStatusIds)
+            => postingStatusIds
+                .Select(ResolvePostingStatus)
+                .DefaultIfEmpty(PostingStatus.Open)
+                .Max();
+
         protected bool CanOverrideSoftClosedAccountingPeriod()
         {
             return IsSuperAdmin() || IsAdmin() || IsOfficeAdmin();
@@ -265,14 +361,19 @@ namespace RentAll.Api.Controllers
             return null;
         }
 
+        protected IActionResult? RefuseIfDocumentHardClosed(int? postingStatusId, string documentLabel)
+            => RefuseIfDocumentHardClosed(ResolvePostingStatus(postingStatusId), documentLabel, "update");
+
         protected IActionResult? RefuseIfJournalEntryHardClosed(int? postingStatusId, string documentLabel)
+            => RefuseIfDocumentHardClosed(postingStatusId, documentLabel);
+
+        private IActionResult? RefuseIfDocumentHardClosed(PostingStatus postingStatus, string documentLabel, string action)
         {
-            if (postingStatusId == (int)PostingStatus.HardClosed)
-                return Conflict($"Cannot update {documentLabel} because the linked journal entry is hard closed.");
+            if (postingStatus == PostingStatus.HardClosed)
+                return Conflict($"Cannot {action} {documentLabel} because it is hard closed.");
 
             return null;
         }
 
     }
 }
-

@@ -4,8 +4,8 @@ internal sealed class GroupAccumulator
 {
     public string PropertyCode { get; set; } = string.Empty;
     public string ReservationCode { get; set; } = string.Empty;
-    public string ReservationKey { get; set; } = string.Empty;
     public string PropertyKey { get; set; } = string.Empty;
+    public string RollupSourceKey { get; set; } = string.Empty;
     public string PropertyId { get; set; } = string.Empty;
     public string ReservationId { get; set; } = string.Empty;
     public int OfficeId { get; set; }
@@ -51,4 +51,8 @@ internal sealed class GroupAccumulator
     public decimal OwnerExpenseValue { get; set; }
     public decimal OwnerPaymentReceivedValue { get; set; }
     public decimal OwnerPaymentValue { get; set; }
+    /// <summary>
+    /// Owner portion of OwnRent for a future period that is held in PrePay received in this period (UnRec).
+    /// </summary>
+    public decimal PrePayOwnerUnpaidValue { get; set; }
 }

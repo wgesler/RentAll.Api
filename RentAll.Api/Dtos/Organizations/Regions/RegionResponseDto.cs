@@ -23,4 +23,3 @@ public class RegionResponseDto
         IsActive = region.IsActive;
     }
 }
-

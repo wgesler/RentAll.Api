@@ -12,10 +12,3 @@ public enum ReservationStatus
     ArrivalDeparture = 7,
     Offline = 8
 }
-
-
-
-
-
-
-

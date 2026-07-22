@@ -138,13 +138,7 @@ public partial class AccountingController
             deposit = await _accountingManager.PrepareDepositForSaveAsync(deposit);
             var created = await _accountingRepository.CreateDepositAsync(deposit);
 
-            var journalEntry = await _accountingManager.CreateJournalEntryFromDepositAsync(created, CurrentUser);
-            if (journalEntry != null)
-            {
-                created.JournalEntryId = journalEntry.JournalEntryId;
-                created.ModifiedBy = CurrentUser;
-                created = await _accountingRepository.UpdateDepositAsync(created);
-            }
+            await _accountingManager.CreateJournalEntryFromDepositAsync(created, CurrentUser);
 
             var response = new DepositResponseDto(created);
             return Ok(response);
@@ -179,9 +173,9 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Deposit record not found");
 
-            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "deposit");
-            if (hardClosedResult != null)
-                return hardClosedResult;
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "deposit");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             var deposit = dto.ToModel(CurrentUser);
             var updated = await _accountingManager.UpdateDepositAsync(deposit, CurrentUser);
@@ -210,6 +204,10 @@ public partial class AccountingController
             var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, CurrentOrganizationId);
             if (deposit == null)
                 return NotFound("Deposit record not found");
+
+            var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(deposit.PostingStatusId, "deposit");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             await _accountingManager.DeleteJournalEntriesForDepositAsync(deposit);
             await _accountingRepository.DeleteDepositByIdAsync(depositId, CurrentOrganizationId, CurrentUser);

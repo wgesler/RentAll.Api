@@ -11,6 +11,7 @@ public class JournalEntryEntity
     public int PostingStatusId { get; set; }
     public int TransactionTypeId { get; set; }
     public int? SourceTypeId { get; set; }
+    public int JournalEntryKindId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }

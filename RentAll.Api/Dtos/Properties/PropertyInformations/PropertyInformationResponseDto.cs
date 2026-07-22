@@ -41,4 +41,3 @@ public class PropertyInformationResponseDto
         AdditionalNotes = propertyInformation.AdditionalNotes;
     }
 }
-

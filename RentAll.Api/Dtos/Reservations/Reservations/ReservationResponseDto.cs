@@ -76,7 +76,6 @@ public class ReservationResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 
-
     public ReservationResponseDto(Reservation reservation)
     {
         ReservationId = reservation.ReservationId;
@@ -149,5 +148,3 @@ public class ReservationResponseDto
         ModifiedBy = reservation.ModifiedBy;
     }
 }
-
-

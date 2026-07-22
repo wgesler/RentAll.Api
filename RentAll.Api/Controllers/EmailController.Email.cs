@@ -119,7 +119,6 @@ namespace RentAll.Api.Controllers
                 if (email != null && !string.IsNullOrWhiteSpace(email.AttachmentPath))
                     await _fileService.DeleteDocumentAsync(email.OrganizationId, email.OfficeName, email.AttachmentPath);
 
-
                 await _emailRepository.DeleteEmailByIdAsync(emailId, CurrentOrganizationId);
                 return NoContent();
             }

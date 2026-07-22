@@ -17,5 +17,3 @@ public class AuthResponseDto
         Scope = "OAuth 2.0";
     }
 }
-
-

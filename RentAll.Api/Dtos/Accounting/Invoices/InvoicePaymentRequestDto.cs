@@ -8,7 +8,6 @@ public class InvoicePaymentRequestDto
     public decimal Amount { get; set; }
     public List<Guid> Invoices { get; set; } = new List<Guid>();
 
-
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (PaymentDate == default)
@@ -26,5 +25,3 @@ public class InvoicePaymentRequestDto
         return (true, null);
     }
 }
-
-

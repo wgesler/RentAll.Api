@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.JournalEntryLines;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Accounting.JournalEntries;
 
@@ -12,6 +13,7 @@ public class JournalEntryResponseDto
     public DateOnly AccountingPeriod { get; set; }
     public int PostingStatusId { get; set; }
     public int? SourceTypeId { get; set; }
+    public int JournalEntryKindId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }
@@ -33,6 +35,7 @@ public class JournalEntryResponseDto
         AccountingPeriod = journalEntry.AccountingPeriod;
         PostingStatusId = (int)journalEntry.PostingStatusId;
         SourceTypeId = journalEntry.SourceTypeId;
+        JournalEntryKindId = (int)journalEntry.JournalEntryKindId;
         SourceId = journalEntry.SourceId;
         SourceCode = journalEntry.SourceCode;
         CheckNumber = journalEntry.CheckNumber;

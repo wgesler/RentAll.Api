@@ -83,4 +83,3 @@ public class OfficeEntity
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }
 }
-

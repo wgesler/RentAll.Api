@@ -16,7 +16,6 @@ public partial class AccountingManager
     int PET_FEE_EXPENSE_COST_CODE = 0;
     int PARKING_EXPENSE_COST_CODE = 0;
 
-
     #region Setup
     public async Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate)
     {
@@ -31,7 +30,6 @@ public partial class AccountingManager
         var daysInMonth = DateTime.DaysInMonth(startDateYear, requestedDate.Month);
         var isMonthPartial = (requestedDate.Day != 1);
         var days = CalculateNumberOfBillingDays(startDate, endDate);
-
 
         // Get the Offices for the Organization
         IEnumerable<Office> offices = await _organizationRepository.GetOfficesByOrganizationIdAsync(organization.OrganizationId);
@@ -403,8 +401,6 @@ public partial class AccountingManager
             if (reservation.DepositType == DepositType.SDW)
                 lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Security Deposit Waiver", Amount = (reservation.Deposit / PRORATE_DAYS) * days, CostCodeId = SECURITY_DEPOSIT_WAIVER_COST_CODE });
         }
-
-
     }
 
     private void AddMaidServiceLines(Reservation reservation, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, List<LedgerLine> lines, ref int lineNumber)

@@ -31,17 +31,21 @@ public partial class ReportManager
 
         var officeIds = ParseOfficeIds(criteria.OfficeIds);
         var accountIdsByOffice = await LoadTransferReportAccountIdsByOfficeAsync(criteria.OrganizationId, officeIds);
+        var journalEntriesByTransferId = await LoadTransferJournalEntriesByTransferIdAsync(criteria.OrganizationId, transfers);
         var journalEntryCodesById = await LoadJournalEntryCodesByIdAsync(
             criteria.OrganizationId,
-            transfers.Select(transfer => transfer.JournalEntryId).Where(id => id.HasValue && id.Value != Guid.Empty).Select(id => id!.Value));
+            journalEntriesByTransferId.Values.Select(entry => entry.JournalEntryId));
 
         var rows = transfers
             .Select(transfer =>
             {
                 accountIdsByOffice.TryGetValue(transfer.OfficeId, out var accountIds);
                 accountIds ??= new TransferReportAccountIds();
-                journalEntryCodesById.TryGetValue(transfer.JournalEntryId ?? Guid.Empty, out var journalEntryCode);
-                return BuildTransferReportRowFromTransfer(transfer, accountIds, journalEntryCode);
+                journalEntriesByTransferId.TryGetValue(transfer.TransferId, out var journalEntry);
+                string? journalEntryCode = null;
+                if (journalEntry != null)
+                    journalEntryCodesById.TryGetValue(journalEntry.JournalEntryId, out journalEntryCode);
+                return BuildTransferReportRowFromTransfer(transfer, accountIds, journalEntry?.JournalEntryId, journalEntryCode);
             })
             .Where(row => row != null && HasTransferReportMeaningfulAmount(row!))
             .Cast<TransferReportRow>()
@@ -96,9 +100,35 @@ public partial class ReportManager
         return codesById;
     }
 
+    private async Task<Dictionary<Guid, JournalEntry>> LoadTransferJournalEntriesByTransferIdAsync(
+        Guid organizationId,
+        IReadOnlyList<Transfer> transfers)
+    {
+        var journalEntriesByTransferId = new Dictionary<Guid, JournalEntry>();
+        foreach (var transfer in transfers)
+        {
+            var entries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+            {
+                OrganizationId = organizationId,
+                OfficeIds = transfer.OfficeId.ToString(),
+                SourceTypeId = (int)SourceType.Transfer,
+                SourceId = transfer.TransferId,
+                IncludeVoided = true,
+                IncludeUnposted = true
+            })).ToList();
+
+            var entry = entries.FirstOrDefault();
+            if (entry != null)
+                journalEntriesByTransferId[transfer.TransferId] = entry;
+        }
+
+        return journalEntriesByTransferId;
+    }
+
     private static TransferReportRow? BuildTransferReportRowFromTransfer(
         Transfer transfer,
         TransferReportAccountIds accountIds,
+        Guid? journalEntryId,
         string? journalEntryCode)
     {
         var splits = transfer.Splits ?? [];
@@ -147,7 +177,7 @@ public partial class ReportManager
             SdwValue = sdwValue,
             FeeValue = businessValue,
             SortDateValue = sortDateValue,
-            JournalEntryId = transfer.JournalEntryId,
+            JournalEntryId = journalEntryId,
             JournalEntryLineId = null
         };
     }

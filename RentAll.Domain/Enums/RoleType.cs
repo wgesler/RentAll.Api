@@ -22,12 +22,3 @@ public enum RoleType
     OfficeAdmin = 17,
     Realtor = 18
 }
-
-
-
-
-
-
-
-
-

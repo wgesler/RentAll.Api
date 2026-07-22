@@ -5,51 +5,51 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private async Task PersistReceiptJournalEntryIdIfChangedAsync(Receipt receipt, Guid? journalEntryId, Guid currentUser)
-    {
-        if (receipt.JournalEntryId == journalEntryId)
-            return;
-
-        receipt.JournalEntryId = journalEntryId;
-        receipt.ModifiedBy = currentUser;
-        await _maintenanceRepository.UpdateReceiptAsync(receipt);
-    }
-
-    private async Task PersistWorkOrderJournalEntryIdIfChangedAsync(WorkOrder workOrder, Guid? journalEntryId, Guid currentUser)
-    {
-        if (workOrder.JournalEntryId == journalEntryId)
-            return;
-
-        workOrder.JournalEntryId = journalEntryId;
-        workOrder.ModifiedBy = currentUser;
-        await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
-    }
-
-    private async Task PersistInvoiceJournalEntryIdIfChangedAsync(Invoice invoice, Guid? journalEntryId, Guid currentUser)
-    {
-        if (invoice.JournalEntryId == journalEntryId)
-            return;
-
-        invoice.JournalEntryId = journalEntryId;
-        invoice.ModifiedBy = currentUser;
-        await _accountingRepository.UpdateInvoiceJournalEntryIdAsync(invoice);
-    }
-
     private async Task<List<JournalEntry>> GetJournalEntriesForSourceAsync(
         Guid organizationId,
         int officeId,
         SourceType sourceType,
         Guid sourceId)
     {
-        return (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        return (await _journalEntryRepository.GetJournalEntriesBySourceIdAsync(new JournalEntryGetBySourceIdCriteria
         {
             OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
             SourceTypeId = (int)sourceType,
             SourceId = sourceId,
-            IncludeVoided = true,
-            IncludeUnposted = true
+            OfficeIds = officeId.ToString(),
+            IncludeUnposted = true,
+            IncludeCashOnly = true
         })).ToList();
+    }
+
+    private async Task<List<JournalEntry>> GetAllJournalEntriesForInvoiceAsync(
+        Guid organizationId,
+        int officeId,
+        Guid invoiceId)
+        => await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId);
+
+    private static bool MatchesJournalEntryAccountingPeriod(JournalEntry entry, DateOnly accountingPeriod)
+    {
+        if (entry.AccountingPeriod != default)
+            return entry.AccountingPeriod == accountingPeriod;
+
+        return entry.TransactionDate == accountingPeriod;
+    }
+
+    private static List<JournalEntry> FilterInvoiceJournalEntriesForAccountingPeriod(
+        IEnumerable<JournalEntry> entries,
+        DateOnly accountingPeriod)
+        => entries.Where(entry => MatchesJournalEntryAccountingPeriod(entry, accountingPeriod)).ToList();
+
+    private static bool IsInvoicePaymentLedgerLineJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        _ = paymentLedgerLine;
+        return entry.SourceId == invoice.InvoiceId
+            && entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.JournalEntryKindId is JournalEntryKind.Payment
+                or JournalEntryKind.PrePaymentReceive
+                or JournalEntryKind.PrePaymentApply
+                or JournalEntryKind.OwnerActual;
     }
 
     private static void AssignRebuiltJournalEntryFromExisting(JournalEntry rebuilt, JournalEntry existing, Guid currentUser)
@@ -77,7 +77,7 @@ public partial class AccountingManager
 
         while (candidates.Count > 1)
         {
-            await DeleteJournalEntryAsync(candidates[^1].JournalEntryId, organizationId);
+            await DeleteOpenJournalEntryAsync(candidates[^1].JournalEntryId, organizationId);
             candidates.RemoveAt(candidates.Count - 1);
         }
 
@@ -138,7 +138,7 @@ public partial class AccountingManager
         foreach (var entry in entries)
         {
             if (!retainJournalEntryIds.Contains(entry.JournalEntryId))
-                await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+                await DeleteOpenJournalEntryAsync(entry.JournalEntryId, organizationId);
         }
     }
 
@@ -146,9 +146,15 @@ public partial class AccountingManager
         IEnumerable<JournalEntry> orphanEntries,
         Guid organizationId)
     {
-        foreach (var entry in orphanEntries)
-            await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+        foreach (var entry in orphanEntries.Where(IsInvoicePaymentFlowOrphanCandidate))
+            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, organizationId);
     }
+
+    private static bool IsInvoicePaymentFlowOrphanCandidate(JournalEntry entry)
+        => entry.JournalEntryKindId is JournalEntryKind.Payment
+            or JournalEntryKind.PrePaymentReceive
+            or JournalEntryKind.PrePaymentApply
+            or JournalEntryKind.OwnerActual;
 
     private static (JournalEntry? Main, JournalEntry? OwnerUtility) ClassifyBillJournalEntries(
         IReadOnlyList<JournalEntry> entries,
@@ -175,34 +181,36 @@ public partial class AccountingManager
     }
 
     private static bool IsInvoiceChargeJournalEntry(JournalEntry entry, int accountsReceivableAccountId)
-    {
-        if (entry.SourceTypeId != (int)SourceType.Invoice)
-            return false;
-
-        if (IsInvoiceOwnerShareJournalEntry(entry))
-            return false;
-
-        return entry.JournalEntryLines.Any(line => line.ChartOfAccountId == accountsReceivableAccountId);
-    }
+        => entry.JournalEntryKindId == JournalEntryKind.Charge
+            && entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == accountsReceivableAccountId);
 
     private static bool IsInvoiceOwnerShareJournalEntry(JournalEntry entry)
-        => MatchOwnerExpectedRentMemo(entry.Memo).Category != JournalEntryMemoCategory.None;
+        => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected
+            && entry.SourceTypeId == (int)SourceType.Invoice;
+
+    private static bool IsInvoiceChargeOrOwnerExpectedJournalEntry(JournalEntry entry)
+        => entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.JournalEntryKindId is JournalEntryKind.Charge or JournalEntryKind.OwnerExpected;
 
     private static bool IsStandardInvoicePaymentJournalEntry(JournalEntry entry)
-        => entry.SourceTypeId == (int)SourceType.InvoicePayment && !entry.IsCashOnly;
+        => entry.JournalEntryKindId == JournalEntryKind.Payment
+           && entry.SourceTypeId == (int)SourceType.Invoice
+           && !entry.IsCashOnly;
 
     private static bool IsStandardInvoicePaymentJournalEntry(JournalEntry entry, int prePaymentAccountId)
-        => IsStandardInvoicePaymentJournalEntry(entry)
-           && !IsInvoicePrePaymentReceivedJournalEntry(entry, prePaymentAccountId);
+        => IsStandardInvoicePaymentJournalEntry(entry);
 
     private static bool IsInvoiceOwnerActualPaymentJournalEntry(JournalEntry entry)
-        => entry.SourceTypeId == (int)SourceType.InvoicePayment && entry.IsCashOnly;
+        => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
+           && entry.SourceTypeId == (int)SourceType.Invoice
+           && entry.IsCashOnly;
 
     private static bool IsInvoicePrePaymentReceivedJournalEntry(JournalEntry entry, int prePaymentAccountId)
-        => entry.SourceTypeId == (int)SourceType.InvoicePayment
-           && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == prePaymentAccountId);
+        => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
+           && entry.SourceTypeId == (int)SourceType.Invoice;
 
     private static bool IsInvoicePrePaymentApplyJournalEntry(JournalEntry entry, int prePaymentAccountId)
-        => entry.SourceTypeId == (int)SourceType.Invoice
-           && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == prePaymentAccountId);
+        => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
+           && entry.SourceTypeId == (int)SourceType.Invoice;
 }

@@ -157,4 +157,3 @@ public class ContactManager : IContactManager
         return await _contactRepository.UpdateByIdAsync(contact);
     }
 }
-

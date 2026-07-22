@@ -94,9 +94,9 @@ public partial class MaintenanceRepository
                 AgreementLineId = receipt.AgreementLineId,
                 ReceiptPath = receipt.ReceiptPath,
                 PaymentTypeId = receipt.PaymentTypeId,
-                JournalEntryId = receipt.JournalEntryId,
                 CheckPrinted = receipt.CheckPrinted,
                 IsUtility = receipt.IsUtility,
+                PostingStatusId = receipt.PostingStatusId ?? 0,
                 IsActive = receipt.IsActive,
                 CreatedBy = receipt.CreatedBy
             }, transaction: transaction);
@@ -188,9 +188,9 @@ public partial class MaintenanceRepository
             AgreementLineId = receipt.AgreementLineId,
             ReceiptPath = receipt.ReceiptPath,
             PaymentTypeId = receipt.PaymentTypeId,
-            JournalEntryId = receipt.JournalEntryId,
             CheckPrinted = receipt.CheckPrinted,
             IsUtility = receipt.IsUtility,
+            PostingStatusId = receipt.PostingStatusId ?? 0,
             IsActive = receipt.IsActive,
             ModifiedBy = receipt.ModifiedBy
         }, transaction: transaction);

@@ -6,13 +6,3 @@ public class DailyQuoteEntity
     public string Author { get; set; } = string.Empty;
     public string HTML { get; set; } = string.Empty;
 }
-
-
-
-
-
-
-
-
-
-

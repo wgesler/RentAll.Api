@@ -6,4 +6,3 @@ public enum PropertyStyle
     Corporate = 1,
     Vacation = 2
 }
-

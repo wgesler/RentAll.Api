@@ -6,4 +6,3 @@ public class DailyQuote
     public string a { get; set; } = string.Empty;
     public string h { get; set; } = string.Empty;
 }
-

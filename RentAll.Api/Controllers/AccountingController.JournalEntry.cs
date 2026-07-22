@@ -252,6 +252,10 @@ namespace RentAll.Api.Controllers
                 if (existingJournalEntry == null)
                     return NotFound("Journal entry not found");
 
+                var postingStatusCheck = RefuseIfJournalEntryUpdateNotAllowed(existingJournalEntry.PostingStatusId);
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
+
                 var journalEntry = dto.ToModel(CurrentUser);
                 journalEntry.OrganizationId = CurrentOrganizationId;
 
@@ -298,6 +302,14 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var existingJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, CurrentOrganizationId);
+                if (existingJournalEntry == null)
+                    return NotFound("Journal entry not found");
+
+                var postingStatusCheck = RefuseIfJournalEntryUpdateNotAllowed(existingJournalEntry.PostingStatusId);
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
+
                 var journalEntry = await _accountingManager.UnpostJournalEntryAsync(journalEntryId, CurrentOrganizationId, CurrentUser);
                 var response = new JournalEntryResponseDto(journalEntry);
                 return Ok(response);
@@ -317,6 +329,14 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var existingJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, CurrentOrganizationId);
+                if (existingJournalEntry == null)
+                    return NotFound("Journal entry not found");
+
+                var postingStatusCheck = RefuseIfJournalEntryUpdateNotAllowed(existingJournalEntry.PostingStatusId);
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
+
                 var journalEntry = await _accountingManager.VoidJournalEntryAsync(journalEntryId, CurrentOrganizationId, CurrentUser);
                 var response = new JournalEntryResponseDto(journalEntry);
                 return Ok(response);
@@ -408,6 +428,14 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var existingJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, CurrentOrganizationId);
+                if (existingJournalEntry == null)
+                    return NotFound("Journal entry not found");
+
+                var postingStatusCheck = RefuseIfJournalEntryDeleteNotAllowed(existingJournalEntry.PostingStatusId);
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
+
                 await _accountingManager.DeleteJournalEntryAsync(journalEntryId, CurrentOrganizationId);
                 return NoContent();
             }

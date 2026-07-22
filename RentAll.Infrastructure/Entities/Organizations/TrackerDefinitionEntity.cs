@@ -17,4 +17,3 @@ public class TrackerDefinitionEntity
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-

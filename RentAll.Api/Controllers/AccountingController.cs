@@ -17,6 +17,7 @@ namespace RentAll.Api.Controllers
 
         private readonly IAccountingRepository _accountingRepository;
         private readonly IJournalEntryRepository _journalEntryRepository;
+        private readonly IMaintenanceRepository _maintenanceRepository;
         private readonly IReservationRepository _reservationRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IOrganizationManager _organizationManager;
@@ -30,6 +31,7 @@ namespace RentAll.Api.Controllers
         public AccountingController(
             IAccountingRepository accountingRepository,
             IJournalEntryRepository journalEntryRepository,
+            IMaintenanceRepository maintenanceRepository,
             IReservationRepository reservationRepository,
             IOrganizationRepository organizationRepository,
             IOrganizationManager organizationManager,
@@ -42,6 +44,7 @@ namespace RentAll.Api.Controllers
         {
             _accountingRepository = accountingRepository;
             _journalEntryRepository = journalEntryRepository;
+            _maintenanceRepository = maintenanceRepository;
             _reservationRepository = reservationRepository;
             _organizationRepository = organizationRepository;
             _organizationManager = organizationManager;

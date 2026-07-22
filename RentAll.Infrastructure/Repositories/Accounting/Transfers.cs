@@ -87,7 +87,7 @@ public partial class AccountingRepository
                 PropertyId = ResolveTransferHeaderPropertyId(transfer),
                 BankAccountId = transfer.BankAccountId,
                 Splits = SerializeTransferSplits(transfer.Splits),
-                JournalEntryId = transfer.JournalEntryId,
+                PostingStatusId = transfer.PostingStatusId ?? 0,
                 IsActive = transfer.IsActive,
                 CreatedBy = transfer.CreatedBy
             }, transaction: transaction);
@@ -167,8 +167,8 @@ public partial class AccountingRepository
             PropertyId = ResolveTransferHeaderPropertyId(transfer),
             BankAccountId = transfer.BankAccountId,
             Splits = SerializeTransferSplits(transfer.Splits),
-            JournalEntryId = transfer.JournalEntryId,
             HasBeenTransfered = transfer.HasBeenTransfered,
+            PostingStatusId = transfer.PostingStatusId ?? 0,
             IsActive = transfer.IsActive,
             ModifiedBy = transfer.ModifiedBy
         }, transaction: transaction);

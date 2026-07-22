@@ -313,7 +313,7 @@ public partial class AccountingManager
         };
         ApplyJournalEntryLineContext(escrowLine, lineContext);
 
-        return new JournalEntry
+        return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = reservation.OrganizationId,
             OfficeId = reservation.OfficeId,
@@ -324,7 +324,7 @@ public partial class AccountingManager
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine> { securityDepositLine, escrowLine },
             CreatedBy = currentUser
-        };
+        }, JournalEntryKind.SecurityDepositReturn, Perspective.Tenant);
     }
 
     private JournalEntry BuildJournalEntryForSecurityDepositTransfer(
@@ -363,7 +363,7 @@ public partial class AccountingManager
         };
         ApplyJournalEntryLineContext(escrowLine, lineContext);
 
-        return new JournalEntry
+        return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = reservation.OrganizationId,
             OfficeId = reservation.OfficeId,
@@ -374,7 +374,7 @@ public partial class AccountingManager
             Memo = memo,
             JournalEntryLines = new List<JournalEntryLine> { bankLine, escrowLine },
             CreatedBy = currentUser
-        };
+        }, JournalEntryKind.SecurityDepositTransfer, Perspective.Company);
     }
 
     #endregion
@@ -1184,9 +1184,6 @@ public partial class AccountingManager
                 sourceIds.Add(line.LedgerLineId);
         }
 
-        if (TryCreateCrossPeriodInvoiceSlices(invoice, out _, out var secondPeriodInvoice))
-            sourceIds.Add(GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod));
-
         return sourceIds;
     }
 
@@ -1219,6 +1216,13 @@ public partial class AccountingManager
 
     private static (Guid? JournalEntryId, string JournalEntryCode) ResolvePaymentJournalEntryForDepositInvoice(SecurityDepositPaymentAllocation paymentAllocation, IReadOnlyDictionary<Guid, List<JournalEntry>> journalEntriesBySourceId, int undepositedFundsAccountId)
     {
+        foreach (var journalEntries in journalEntriesBySourceId.Values)
+        {
+            var paymentJournalEntry = SelectSecurityDepositPaymentJournalEntry(journalEntries, undepositedFundsAccountId);
+            if (paymentJournalEntry != null)
+                return (paymentJournalEntry.JournalEntryId, paymentJournalEntry.JournalEntryCode?.Trim() ?? string.Empty);
+        }
+
         for (var index = paymentAllocation.SecurityDepositPaymentLedgerLineIds.Count - 1; index >= 0; index--)
         {
             var paymentLedgerLineId = paymentAllocation.SecurityDepositPaymentLedgerLineIds[index];
@@ -1241,13 +1245,14 @@ public partial class AccountingManager
             return null;
 
         var standardPayment = journalEntries.FirstOrDefault(entry =>
-            entry.SourceTypeId == (int)SourceType.InvoicePayment
+            entry.JournalEntryKindId == JournalEntryKind.Payment
             && !entry.IsCashOnly
             && (entry.JournalEntryLines ?? []).Any(line => line.ChartOfAccountId == undepositedFundsAccountId && line.Debit > 0));
         if (standardPayment != null)
             return standardPayment;
 
-        return journalEntries.FirstOrDefault(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment && !entry.IsCashOnly);
+        return journalEntries.FirstOrDefault(entry =>
+            entry.JournalEntryKindId == JournalEntryKind.Payment && !entry.IsCashOnly);
     }
 
     private static List<int> ParseOfficeIdsFromAccess(string officeAccess)

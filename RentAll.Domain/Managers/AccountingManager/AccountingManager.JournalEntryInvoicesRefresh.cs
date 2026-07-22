@@ -10,7 +10,6 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
         {
             await DeleteJournalEntriesForInvoiceChargesAsync(invoice);
-            await PersistInvoiceJournalEntryIdIfChangedAsync(invoice, null, currentUser);
             return;
         }
 
@@ -20,7 +19,13 @@ public partial class AccountingManager
             if (refreshed)
                 return;
 
-            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: "Cross-period refresh failed; posting as a single journal entry.");
+            // Never fall back to a single full-invoice Charge for a cross-period invoice — that posts
+            // the whole amount on period 1 and can leave a stale period-2 slice (e.g. $5,950 + $2,385).
+            await LogInvoiceSplitDecisionAsync(
+                invoice,
+                split: false,
+                message: "Cross-period refresh failed; leaving existing charge journal entries unchanged.");
+            return;
         }
 
         await RefreshStandardInvoiceChargeJournalEntriesAsync(invoice, currentUser);
@@ -70,18 +75,16 @@ public partial class AccountingManager
             return false;
 
         var chartOfAccounts = accountingContext.ChartOfAccounts.ToList();
-        var secondPeriodSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
-
-        var firstExistingEntries = await GetJournalEntriesForSourceAsync(
+        var allInvoiceEntries = await GetAllJournalEntriesForInvoiceAsync(
             invoice.OrganizationId,
             invoice.OfficeId,
-            SourceType.Invoice,
             invoice.InvoiceId);
-        var secondExistingEntries = await GetJournalEntriesForSourceAsync(
-            invoice.OrganizationId,
-            invoice.OfficeId,
-            SourceType.Invoice,
-            secondPeriodSourceId);
+        var firstExistingEntries = FilterInvoiceJournalEntriesForAccountingPeriod(
+            allInvoiceEntries,
+            firstPeriodInvoice.AccountingPeriod);
+        var secondExistingEntries = FilterInvoiceJournalEntriesForAccountingPeriod(
+            allInvoiceEntries,
+            secondPeriodInvoice.AccountingPeriod);
 
         var firstEntry = await UpsertCrossPeriodSliceJournalEntryAsync(
             firstPeriodInvoice,
@@ -93,14 +96,11 @@ public partial class AccountingManager
 
         var secondEntry = await UpsertCrossPeriodSliceJournalEntryAsync(
             secondPeriodInvoice,
-            secondPeriodSourceId,
+            invoice.InvoiceId,
             chartOfAccounts,
             accountingContext.AccountingOffice,
             secondExistingEntries,
             currentUser);
-
-        if (firstEntry != null)
-            await PersistInvoiceJournalEntryIdIfChangedAsync(invoice, firstEntry.JournalEntryId, currentUser);
 
         var retainedEntryIds = new HashSet<Guid>();
         if (firstEntry != null)
@@ -139,8 +139,16 @@ public partial class AccountingManager
             }
         }
 
-        await DeleteJournalEntriesExceptAsync(firstExistingEntries, retainedEntryIds, invoice.OrganizationId);
-        await DeleteJournalEntriesExceptAsync(secondExistingEntries, retainedEntryIds, invoice.OrganizationId);
+        // Only prune Charge / OwnerExpected. Payment, PrePay, and OwnAct share SourceId=InvoiceId
+        // and must survive charge refresh.
+        await DeleteJournalEntriesExceptAsync(
+            firstExistingEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
+            retainedEntryIds,
+            invoice.OrganizationId);
+        await DeleteJournalEntriesExceptAsync(
+            secondExistingEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
+            retainedEntryIds,
+            invoice.OrganizationId);
 
         await DeleteOwnerDistributionJournalEntriesForInvoiceAsync(invoice);
         await LogInvoiceSplitDecisionAsync(invoice, split: true, firstPeriodInvoice, secondPeriodInvoice, message: "Cross-period split applied.");
@@ -152,28 +160,18 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
 
-        var existingInvoiceEntries = await GetJournalEntriesForSourceAsync(
+        var allInvoiceEntries = await GetAllJournalEntriesForInvoiceAsync(
             invoice.OrganizationId,
             invoice.OfficeId,
-            SourceType.Invoice,
             invoice.InvoiceId);
-
-        if (TryCreateCrossPeriodInvoiceSlices(invoice, out _, out var secondPeriodInvoice))
-        {
-            var secondPeriodSourceId = GetInvoiceAccountingPeriodSourceId(invoice.InvoiceId, secondPeriodInvoice.AccountingPeriod);
-            var secondPeriodEntries = await GetJournalEntriesForSourceAsync(
-                invoice.OrganizationId,
-                invoice.OfficeId,
-                SourceType.Invoice,
-                secondPeriodSourceId);
-            await DeleteJournalEntriesExceptAsync(secondPeriodEntries, Array.Empty<Guid>(), invoice.OrganizationId);
-        }
+        var existingInvoiceEntries = allInvoiceEntries
+            .Where(entry => entry.JournalEntryKindId is JournalEntryKind.Charge or JournalEntryKind.OwnerExpected)
+            .Where(entry => MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod))
+            .ToList();
 
         await DeleteOwnerDistributionJournalEntriesForInvoiceAsync(invoice);
 
-        var chargeExisting = invoice.JournalEntryId is { } journalEntryId && journalEntryId != Guid.Empty
-            ? existingInvoiceEntries.FirstOrDefault(entry => entry.JournalEntryId == journalEntryId)
-            : existingInvoiceEntries.FirstOrDefault(entry => IsInvoiceChargeJournalEntry(entry, accountsReceivableAccountId));
+        var chargeExisting = existingInvoiceEntries.FirstOrDefault(entry => IsInvoiceChargeJournalEntry(entry, accountsReceivableAccountId));
 
         var rebuiltCharge = await CreateJournalEntryFromInvoiceAsync(invoice, chartOfAccounts, accountingOffice, currentUser);
         var updatedCharge = await UpsertAutoGeneratedJournalEntryAsync(
@@ -181,9 +179,6 @@ public partial class AccountingManager
             chargeExisting != null ? [chargeExisting] : [],
             currentUser,
             invoice.OrganizationId);
-
-        if (updatedCharge != null)
-            await PersistInvoiceJournalEntryIdIfChangedAsync(invoice, updatedCharge.JournalEntryId, currentUser);
 
         var retainedEntryIds = new HashSet<Guid>();
         if (updatedCharge != null)
@@ -203,13 +198,16 @@ public partial class AccountingManager
         {
             var existingOwnerShare = existingInvoiceEntries.FirstOrDefault(IsInvoiceOwnerShareJournalEntry);
             if (existingOwnerShare != null)
-                await DeleteJournalEntryAsync(existingOwnerShare.JournalEntryId, invoice.OrganizationId);
+                await DeleteOpenJournalEntryAsync(existingOwnerShare.JournalEntryId, invoice.OrganizationId);
         }
 
         if (updatedOwnerShare != null)
             retainedEntryIds.Add(updatedOwnerShare.JournalEntryId);
 
-        await DeleteJournalEntriesExceptAsync(existingInvoiceEntries, retainedEntryIds, invoice.OrganizationId);
+        await DeleteJournalEntriesExceptAsync(
+            existingInvoiceEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
+            retainedEntryIds,
+            invoice.OrganizationId);
     }
 
     private async Task DeleteOwnerDistributionJournalEntriesForInvoiceAsync(Invoice invoice)
@@ -224,14 +222,11 @@ public partial class AccountingManager
     private async Task<List<JournalEntry>> GetJournalEntriesForInvoicePaymentLedgerLineAsync(
         Guid organizationId,
         int officeId,
-        Guid ledgerLineId)
+        Invoice invoice,
+        LedgerLine paymentLedgerLine)
     {
-        var paymentEntries = await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.InvoicePayment, ledgerLineId);
-        var applyEntries = await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, ledgerLineId);
-        return paymentEntries
-            .Concat(applyEntries)
-            .GroupBy(entry => entry.JournalEntryId)
-            .Select(group => group.First())
+        return (await GetAllJournalEntriesForInvoiceAsync(organizationId, officeId, invoice.InvoiceId))
+            .Where(entry => IsInvoicePaymentLedgerLineJournalEntry(entry, invoice, paymentLedgerLine))
             .ToList();
     }
 }

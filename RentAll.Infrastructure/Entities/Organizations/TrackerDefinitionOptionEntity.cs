@@ -17,4 +17,3 @@ public class TrackerDefinitionOptionEntity
     public int OptionSortOrder { get; set; }
     public bool IsActive { get; set; }
 }
-

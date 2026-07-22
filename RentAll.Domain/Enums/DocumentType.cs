@@ -20,5 +20,3 @@ public enum DocumentType
     ApAging = 15,
     SecurityDepositReport = 16
 }
-
-

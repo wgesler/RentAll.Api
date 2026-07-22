@@ -19,7 +19,6 @@ public class UpdateWorkOrderDto
     public DateOnly AccountingPeriod { get; set; }
     public bool UseDepartureFee { get; set; } = true;
     public bool EnteredInQb { get; set; }
-    public Guid? JournalEntryId { get; set; }
     public List<UpdateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<UpdateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -87,7 +86,6 @@ public class UpdateWorkOrderDto
                 : AccountingPeriod,
             UseDepartureFee = UseDepartureFee,
             EnteredInQb = EnteredInQb,
-            JournalEntryId = JournalEntryId,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = IsActive,
             ModifiedBy = currentUser

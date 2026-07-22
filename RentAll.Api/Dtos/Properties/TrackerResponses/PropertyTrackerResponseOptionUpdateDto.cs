@@ -20,4 +20,3 @@ public class PropertyTrackerResponseOptionUpdateDto
         return (true, null);
     }
 }
-

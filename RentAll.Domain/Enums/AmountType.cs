@@ -6,12 +6,3 @@ public enum AmountType
     Monthly = 1,
     Yearly = 2
 }
-
-
-
-
-
-
-
-
-

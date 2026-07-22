@@ -65,7 +65,6 @@ public partial class MaintenanceController
         }
     }
 
-
     [HttpGet("receipt/property/{propertyId:guid}")]
     public async Task<IActionResult> GetReceiptsByPropertyId(Guid propertyId)
     {
@@ -178,9 +177,9 @@ public partial class MaintenanceController
             if (existing == null)
                 return NotFound("Receipt record not found");
 
-            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "receipt");
-            if (hardClosedResult != null)
-                return hardClosedResult;
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "receipt");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             var receipt = dto.ToModel(CurrentUser);
             receipt.PaymentTypeId = existing.PaymentTypeId;
@@ -218,6 +217,10 @@ public partial class MaintenanceController
             var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, CurrentOrganizationId);
             if (receipt == null)
                 return NotFound("Receipt record not found");
+
+            var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(receipt.PostingStatusId, "receipt");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             await _accountingManager.DeleteJournalEntriesForReceiptAsync(receipt);
             await _maintenanceRepository.DeleteReceiptByIdAsync(receiptId, CurrentOrganizationId, CurrentUser);

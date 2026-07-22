@@ -8,9 +8,3 @@ public enum ReservationNotice
     SixtyDays = 3,
     FirmEndDate = 4
 }
-
-
-
-
-
-

@@ -138,13 +138,7 @@ public partial class AccountingController
             transfer = await _accountingManager.PrepareTransferForSaveAsync(transfer);
             var created = await _accountingRepository.CreateTransferAsync(transfer);
 
-            var journalEntry = await _accountingManager.CreateJournalEntryFromTransferAsync(created, CurrentUser);
-            if (journalEntry != null)
-            {
-                created.JournalEntryId = journalEntry.JournalEntryId;
-                created.ModifiedBy = CurrentUser;
-                created = await _accountingRepository.UpdateTransferAsync(created);
-            }
+            await _accountingManager.CreateJournalEntryFromTransferAsync(created, CurrentUser);
 
             var response = await MapTransferResponseAsync(created);
             return Ok(response);
@@ -168,7 +162,7 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Transfer record not found");
 
-            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "transfer");
+            var hardClosedResult = RefuseIfDocumentHardClosed(existing.PostingStatusId, "transfer");
             if (hardClosedResult != null)
                 return hardClosedResult;
 
@@ -218,9 +212,9 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Transfer record not found");
 
-            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "transfer");
-            if (hardClosedResult != null)
-                return hardClosedResult;
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "transfer");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             var transfer = dto.ToModel(CurrentUser);
             var updated = await _accountingManager.UpdateTransferAsync(transfer, CurrentUser);
@@ -249,6 +243,10 @@ public partial class AccountingController
             var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, CurrentOrganizationId);
             if (transfer == null)
                 return NotFound("Transfer record not found");
+
+            var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(transfer.PostingStatusId, "transfer");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             await _accountingManager.DeleteJournalEntriesForTransferAsync(transfer);
             await _accountingRepository.DeleteTransferByIdAsync(transferId, CurrentOrganizationId, CurrentUser);

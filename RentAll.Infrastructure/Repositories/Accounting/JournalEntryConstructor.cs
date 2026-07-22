@@ -36,6 +36,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             AccountingPeriod = e.AccountingPeriod,
             PostingStatusId = (PostingStatus)e.PostingStatusId,
             SourceTypeId = e.SourceTypeId,
+            JournalEntryKindId = (JournalEntryKind)e.JournalEntryKindId,
             SourceId = e.SourceId,
             SourceCode = e.SourceCode,
             CheckNumber = e.CheckNumber,
@@ -120,6 +121,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             Debit = e.Debit,
             Credit = e.Credit,
             Memo = e.Memo,
+            PerspectiveId = (Perspective)e.PerspectiveId,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
@@ -146,6 +148,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             Memo = e.Memo,
             IsCleared = e.IsCleared,
             ClearedOn = e.ClearedOn,
+            PerspectiveId = e.PerspectiveId,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
@@ -155,11 +158,13 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             TransactionDate = e.TransactionDate,
             AccountingPeriod = e.AccountingPeriod,
             PostingStatusId = e.PostingStatusId,
+            JournalEntryKindId = e.JournalEntryKindId,
             SourceTypeId = e.SourceTypeId,
             SourceId = e.SourceId,
             SourceCode = e.SourceCode,
             CheckNumber = e.CheckNumber,
             JournalEntryMemo = e.JournalEntryMemo,
+            JournalEntryCreatedOn = e.JournalEntryCreatedOn,
         };
     }
 

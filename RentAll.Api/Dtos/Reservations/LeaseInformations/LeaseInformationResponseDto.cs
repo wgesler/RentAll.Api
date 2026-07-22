@@ -65,4 +65,3 @@ public class LeaseInformationResponseDto
         Miscellaneous = leaseInformation.Miscellaneous;
     }
 }
-

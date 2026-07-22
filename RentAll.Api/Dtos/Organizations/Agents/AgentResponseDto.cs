@@ -14,7 +14,6 @@ public class AgentResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 
-
     public AgentResponseDto(Agent agent)
     {
         AgentId = agent.AgentId;
@@ -30,4 +29,3 @@ public class AgentResponseDto
         ModifiedBy = agent.ModifiedBy;
     }
 }
-

@@ -36,4 +36,3 @@ public class LeaseInformationEntity
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-

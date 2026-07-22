@@ -16,7 +16,6 @@ public class DepositResponseDto
     public int? BankAccountId { get; set; }
     public string BankAccountDisplayName { get; set; } = string.Empty;
     public List<DepositSplitDto> Splits { get; set; } = new List<DepositSplitDto>();
-    public Guid? JournalEntryId { get; set; }
     public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -42,7 +41,6 @@ public class DepositResponseDto
         BankAccountId = deposit.BankAccountId;
         BankAccountDisplayName = deposit.BankAccountDisplayName;
         Splits = (deposit.Splits ?? new List<DepositSplit>()).Select(split => new DepositSplitDto(split)).ToList();
-        JournalEntryId = deposit.JournalEntryId;
         PostingStatusId = deposit.PostingStatusId;
         IsActive = deposit.IsActive;
         CreatedOn = deposit.CreatedOn;

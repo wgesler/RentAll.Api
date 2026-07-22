@@ -149,7 +149,7 @@ public partial class AccountingManager
             ? BuildLinenAndTowelUnusedMemo(propertyCode)
             : BuildLinenAndTowelIncomeMemo(propertyCode, isMonthly);
 
-        return new JournalEntry
+        return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = organizationId,
             OfficeId = agreement.OfficeId,
@@ -179,7 +179,9 @@ public partial class AccountingManager
                 }
             ],
             CreatedBy = SystemOrganization
-        };
+        },
+            reverseEntryDirection ? JournalEntryKind.LinenTowelUnusedReversal : JournalEntryKind.LinenTowelFee,
+            Perspective.Company);
     }
     #endregion
 

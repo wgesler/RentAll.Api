@@ -44,7 +44,12 @@ public partial class AccountingManager
         refreshedTransfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
             ?? throw new Exception("Transfer not found after journal entry refresh");
 
-        if (!refreshedTransfer.JournalEntryId.HasValue || refreshedTransfer.JournalEntryId == Guid.Empty)
+        var transferJournalEntries = await GetJournalEntriesForSourceAsync(
+            refreshedTransfer.OrganizationId,
+            refreshedTransfer.OfficeId,
+            SourceType.Transfer,
+            transferId);
+        if (!transferJournalEntries.Any(entry => entry.JournalEntryId != Guid.Empty))
             throw new Exception("Unable to create transfer journal entry");
 
         refreshedTransfer.HasBeenTransfered = true;

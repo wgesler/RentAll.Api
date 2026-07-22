@@ -12,12 +12,12 @@ public class JournalEntryRecapLineClassifierTests
     private const int TenantIncome = 130;
 
     [Fact]
-    public void Classify_OwnerExpected_MatchesAccountingManagerMemo()
+    public void Classify_OwnerExpected_UsesKind()
     {
         var line = BuildLine(
+            kind: JournalEntryKind.OwnerExpected,
             chartOfAccountId: OwnerAp,
             ownerApAccountId: OwnerAp,
-            memo: "R-000177-001: Owner: Expected: Rent",
             credit: 49.70m);
 
         Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
@@ -26,13 +26,13 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
-    public void Classify_OwnerActual_MirrorsOwnRentSign()
+    public void Classify_OwnerActual_UsesKind()
     {
         var line = BuildLine(
+            kind: JournalEntryKind.OwnerActual,
             sourceTypeId: (int)SourceType.InvoicePayment,
             chartOfAccountId: OwnerAp,
             ownerApAccountId: OwnerAp,
-            memo: "R-000177-001: Owner: Actual: Rent",
             credit: 49.70m);
 
         Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
@@ -41,13 +41,13 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
-    public void Classify_Payment_MatchesAccountingManagerMemo()
+    public void Classify_Payment_UsesKind()
     {
         var line = BuildLine(
+            kind: JournalEntryKind.Payment,
             sourceTypeId: (int)SourceType.InvoicePayment,
             chartOfAccountId: UndepFunds,
             undepFundsAccountId: UndepFunds,
-            memo: "R-000177-001: Payment: Check #123",
             debit: 2130m);
 
         Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
@@ -59,6 +59,7 @@ public class JournalEntryRecapLineClassifierTests
     public void Classify_SecurityDepositWaiver_UsesExactChargeMemoSuffix()
     {
         var line = BuildLine(
+            kind: JournalEntryKind.Charge,
             chartOfAccountId: 999,
             tenantIncomeAccountId: TenantIncome,
             memo: "R-000177-001: Security Deposit Waiver",
@@ -70,15 +71,16 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
-    public void ExtractReachBackInvoiceCodes_UsesPaymentMemoInvoiceCode()
+    public void ExtractReachBackInvoiceCodes_UsesKindAndSourceDocumentCode()
     {
         var lines = new[]
         {
             BuildLine(
+                kind: JournalEntryKind.Payment,
                 sourceTypeId: (int)SourceType.InvoicePayment,
                 chartOfAccountId: UndepFunds,
                 undepFundsAccountId: UndepFunds,
-                memo: "R-000177-001: Payment: Check #123",
+                sourceDocumentCode: "R-000177-001",
                 debit: 100m,
                 isInDateRange: true)
         };
@@ -90,6 +92,7 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     private static JournalEntryRecapClassificationLine BuildLine(
+        JournalEntryKind kind = JournalEntryKind.Charge,
         int sourceTypeId = (int)SourceType.Invoice,
         int chartOfAccountId = TenantIncome,
         int? ownerApAccountId = null,
@@ -98,6 +101,7 @@ public class JournalEntryRecapLineClassifierTests
         int? accountsReceivableAccountId = null,
         int? tenantIncomeAccountId = null,
         string memo = "",
+        string sourceDocumentCode = "",
         decimal debit = 0m,
         decimal credit = 0m,
         bool isInDateRange = true,
@@ -107,6 +111,8 @@ public class JournalEntryRecapLineClassifierTests
         return new JournalEntryRecapClassificationLine
         {
             SourceTypeId = sourceTypeId,
+            JournalEntryKindId = (int)kind,
+            SourceDocumentCode = sourceDocumentCode,
             ChartOfAccountId = chartOfAccountId,
             Debit = debit,
             Credit = credit,

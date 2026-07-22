@@ -88,7 +88,6 @@ public class SendGridSystemTests
         Assert.False(string.IsNullOrWhiteSpace(settings.KeyVaultUri),
             "KeyVaultUri was not loaded. Check SendGridSettings:KeyVaultUri in appsettings.Development.json or env vars.");
 
-
         return settings;
     }
 

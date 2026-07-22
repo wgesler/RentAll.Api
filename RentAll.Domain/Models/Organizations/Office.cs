@@ -84,4 +84,3 @@ public class Office
     public Office() { }
     public Office(int officeId) { OfficeId = officeId; IsActive = true; }
 }
-

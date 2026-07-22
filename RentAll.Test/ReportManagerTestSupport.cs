@@ -47,7 +47,7 @@ internal static class ReportManagerTestSupport
             ReservationId = ReservationId,
             ReservationCode = reservationCode ?? ResolveReservationCode(sourceDocumentCode),
             SourceTypeId = sourceTypeId,
-            SourceId = sourceId,
+            SourceId = sourceId ?? ResolveTestSourceId(sourceDocumentCode),
             SourceDocumentCode = sourceDocumentCode,
             Description = description ?? sourceDocumentCode,
             RecapCategory = recapCategory,
@@ -59,6 +59,23 @@ internal static class ReportManagerTestSupport
     {
         var dashIndex = sourceDocumentCode.LastIndexOf('-');
         return dashIndex > 0 ? sourceDocumentCode[..dashIndex] : sourceDocumentCode;
+    }
+
+    private static readonly Dictionary<string, Guid> TestSourceIdByDocumentCode = new(StringComparer.OrdinalIgnoreCase);
+
+    private static Guid? ResolveTestSourceId(string sourceDocumentCode)
+    {
+        var code = (sourceDocumentCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(code))
+            return null;
+
+        if (!TestSourceIdByDocumentCode.TryGetValue(code, out var sourceId))
+        {
+            sourceId = Guid.NewGuid();
+            TestSourceIdByDocumentCode[code] = sourceId;
+        }
+
+        return sourceId;
     }
 
     internal static void AssertActivityLine(

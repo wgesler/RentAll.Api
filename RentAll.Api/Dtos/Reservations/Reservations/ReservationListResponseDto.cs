@@ -93,4 +93,3 @@ public class ReservationListResponseDto
         dInspectingDate = reservationList.dInspectingDate;
     }
 }
-

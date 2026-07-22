@@ -115,8 +115,7 @@ internal static class AccountingManagerJournalEntryTestSupport
                 || memo.StartsWith(lineDescriptionPrefix, StringComparison.Ordinal));
 
     internal static bool IsOwnerRentJournalEntry(JournalEntry entry)
-        => AccountingManager.MatchOwnerExpectedRentMemo(entry.Memo).IsMatch
-            || AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch;
+        => entry.JournalEntryKindId is JournalEntryKind.OwnerExpected or JournalEntryKind.OwnerActual;
 
     internal static void AssertJournalEntriesBalanceInvoice(
         IReadOnlyList<JournalEntry> journalEntries,
@@ -325,7 +324,38 @@ internal static class AccountingManagerJournalEntryTestSupport
             var journalEntryRepository = new Mock<IJournalEntryRepository>();
             journalEntryRepository
                 .Setup(r => r.GetJournalEntriesAsync(It.IsAny<JournalEntryGetCriteria>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync((JournalEntryGetCriteria criteria) =>
+                {
+                    return _createdJournalEntries.Where(entry =>
+                    {
+                        if (criteria.SourceTypeId is int sourceTypeId && entry.SourceTypeId != sourceTypeId)
+                            return false;
+                        if (criteria.SourceId is Guid sourceId && entry.SourceId != sourceId)
+                            return false;
+                        if (!criteria.IncludeVoided
+                            && entry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
+                            return false;
+                        // Mirror JournalEntry_GetByCriteria: exclude cash-only.
+                        if (entry.IsCashOnly)
+                            return false;
+                        return true;
+                    }).ToList();
+                });
+            journalEntryRepository
+                .Setup(r => r.GetJournalEntriesBySourceIdAsync(It.IsAny<JournalEntryGetBySourceIdCriteria>()))
+                .ReturnsAsync((JournalEntryGetBySourceIdCriteria criteria) =>
+                {
+                    return _createdJournalEntries.Where(entry =>
+                    {
+                        if (entry.SourceTypeId != criteria.SourceTypeId || entry.SourceId != criteria.SourceId)
+                            return false;
+                        if (criteria.JournalEntryKindId is int kindId && (int)entry.JournalEntryKindId != kindId)
+                            return false;
+                        if (!criteria.IncludeCashOnly && entry.IsCashOnly)
+                            return false;
+                        return true;
+                    }).ToList();
+                });
             journalEntryRepository
                 .Setup(r => r.ExistsByJournalEntryCodeAsync(It.IsAny<string>(), OrganizationId))
                 .ReturnsAsync(false);

@@ -9,4 +9,3 @@ public enum CheckInTime
     FourPM = 5,
     FivePM = 6
 }
-

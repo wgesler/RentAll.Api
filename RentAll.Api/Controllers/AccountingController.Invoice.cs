@@ -224,9 +224,9 @@ namespace RentAll.Api.Controllers
                 if (existingInvoice == null)
                     return NotFound("Invoice not found");
 
-                var hardClosedResult = RefuseIfJournalEntryHardClosed(existingInvoice.PostingStatusId, "invoice");
-                if (hardClosedResult != null)
-                    return hardClosedResult;
+                var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existingInvoice.PostingStatusId, "invoice");
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
 
                 var invoice = dto.ToModel(CurrentUser);
                 var updatedInvoice = await _accountingManager.UpdateInvoiceAsync(invoice);
@@ -291,6 +291,20 @@ namespace RentAll.Api.Controllers
 
             try
             {
+                var postingStatuses = new List<int?>();
+                foreach (var invoiceId in dto.Invoices)
+                {
+                    var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
+                    if (invoice == null)
+                        return NotFound($"Invoice not found: {invoiceId}");
+
+                    postingStatuses.Add(invoice.PostingStatusId);
+                }
+
+                var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(StrictestPostingStatus(postingStatuses), "invoice");
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
+
                 var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
                     dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
 
@@ -324,6 +338,10 @@ namespace RentAll.Api.Controllers
 
                 if (invoice.PaidAmount != 0)
                     return BadRequest("Invoices with payments applied may not be deleted.");
+
+                var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(invoice.PostingStatusId, "invoice");
+                if (postingStatusCheck != null)
+                    return postingStatusCheck;
 
                 await _accountingManager.DeleteJournalEntriesForInvoiceAsync(invoice);
                 await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, CurrentOrganizationId);

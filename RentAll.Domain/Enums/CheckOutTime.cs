@@ -9,4 +9,3 @@ public enum CheckOutTime
     TwelvePM = 5,
     OnePM = 6
 }
-

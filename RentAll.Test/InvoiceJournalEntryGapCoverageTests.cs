@@ -100,7 +100,7 @@ public class InvoiceJournalEntryGapCoverageTests
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         var paymentEntry = Assert.Single(context.ActiveJournalEntries, entry => entry.SourceTypeId == (int)SourceType.InvoicePayment);
-        Assert.Equal(payment.LedgerLineId, paymentEntry.SourceId);
+        Assert.Equal(invoice.InvoiceId, paymentEntry.SourceId);
         AssertBalancedJournalEntry(paymentEntry);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId).Debit);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo)).Credit);
@@ -131,21 +131,19 @@ public class InvoiceJournalEntryGapCoverageTests
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        // Pre-payments produce three journal entries: the standard payment JE that keeps the cash in
-        // Undeposited Funds, the "received" JE that moves it into the Pre-Payment liability on the
-        // payment date, and the future-dated "apply" JE that reverses the liability on the accounting
-        // period date. The standard payment and received entries share the InvoicePayment source, so
-        // they are distinguished by the account they touch.
+        // Pre-payments produce three journal entries: payment, received, and apply. All share InvoiceId
+        // as SourceId and are distinguished by JournalEntryKindId.
         var standardPaymentEntry = Assert.Single(context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-                && entry.SourceId == payment.LedgerLineId
+            entry => entry.JournalEntryKindId == JournalEntryKind.Payment
+                && entry.SourceId == invoice.InvoiceId
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId));
         var receivedEntry = Assert.Single(context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-                && entry.SourceId == payment.LedgerLineId
+            entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
+                && entry.SourceId == invoice.InvoiceId
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId));
         var applyEntry = Assert.Single(context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.SourceId == payment.LedgerLineId);
+            entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
+                && entry.SourceId == invoice.InvoiceId);
 
         AssertBalancedJournalEntry(standardPaymentEntry);
         AssertBalancedJournalEntry(receivedEntry);
@@ -319,11 +317,11 @@ public class InvoiceJournalEntryGapCoverageTests
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         var ownerActualEntries = context.ActiveJournalEntries
-            .Where(entry => AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch)
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual)
             .ToList();
 
         var ownerActualEntry = Assert.Single(ownerActualEntries);
-        Assert.Equal(payment.LedgerLineId, ownerActualEntry.SourceId);
+        Assert.Equal(invoice.InvoiceId, ownerActualEntry.SourceId);
         Assert.Equal(new DateOnly(2026, 2, 1), ownerActualEntry.TransactionDate);
         AssertBalancedJournalEntry(ownerActualEntry);
 
@@ -362,9 +360,9 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch);
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
 
-        Assert.Equal(payment.LedgerLineId, ownerActualEntry.SourceId);
+        Assert.Equal(invoice.InvoiceId, ownerActualEntry.SourceId);
         Assert.Equal(paymentDate, ownerActualEntry.TransactionDate);
         AssertBalancedJournalEntry(ownerActualEntry);
 
@@ -418,8 +416,8 @@ public class InvoiceJournalEntryGapCoverageTests
         var julyChargeCap = paymentAmount - juneChargeCap;
         var expectedFutureSlicePrePayment = Math.Min(paymentAmount - juneChargeCap, julyChargeCap);
         var prepaymentCredits = context.ActiveJournalEntries
-            .Where(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-                && entry.SourceId == payment.LedgerLineId
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
+                && entry.SourceId == invoice.InvoiceId
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId))
             .SelectMany(entry => entry.JournalEntryLines)
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
@@ -429,8 +427,8 @@ public class InvoiceJournalEntryGapCoverageTests
         Assert.NotEqual(paymentAmount, prepaymentCredits);
 
         var paymentEntry = Assert.Single(context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-                && entry.SourceId == payment.LedgerLineId
+            entry => entry.JournalEntryKindId == JournalEntryKind.Payment
+                && entry.SourceId == invoice.InvoiceId
                 && entry.TransactionDate == paymentDate
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId
                     && line.Debit == paymentAmount));
@@ -510,7 +508,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch);
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
 
         Assert.Equal(
             expectedOwnerRent,
@@ -594,7 +592,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch);
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
 
         Assert.Equal(
             expectedOwnerActual,
@@ -634,7 +632,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerExpectedEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerExpectedRentMemo(entry.Memo).IsMatch
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected
                 && entry.TransactionDate == accountingPeriod);
 
         var expectedOwnerRent = ownerExpectedEntry.JournalEntryLines
@@ -651,7 +649,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
                 && entry.TransactionDate == accountingPeriod);
 
         var actualOwnerRent = ownerActualEntry.JournalEntryLines
@@ -726,7 +724,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerExpectedEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerExpectedRentMemo(entry.Memo).IsMatch
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected
                 && entry.TransactionDate == accountingPeriod);
 
         var expectedOwnerRent = ownerExpectedEntry.JournalEntryLines
@@ -743,7 +741,7 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
-            entry => AccountingManager.MatchOwnerActualRentMemo(entry.Memo).IsMatch
+            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
                 && entry.TransactionDate == accountingPeriod);
 
         var actualOwnerRent = ownerActualEntry.JournalEntryLines

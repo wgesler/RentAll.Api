@@ -51,4 +51,3 @@ public class ReservationTrackerResponseResponseDto
         ModifiedBy = trackerResponse.ModifiedBy;
     }
 }
-

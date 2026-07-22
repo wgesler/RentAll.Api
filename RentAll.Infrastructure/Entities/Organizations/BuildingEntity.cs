@@ -37,4 +37,3 @@ public class BuildingEntity
     public bool Gym { get; set; }
     public bool IsActive { get; set; }
 }
-

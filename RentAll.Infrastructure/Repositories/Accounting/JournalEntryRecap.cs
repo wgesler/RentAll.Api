@@ -86,6 +86,7 @@ public partial class JournalEntryRepository
                     continue;
 
                 var isReachBackCategory = string.Equals(classification.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(classification.RecapCategory, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(classification.RecapCategory, "ExpectedIncome", StringComparison.OrdinalIgnoreCase);
                 if (!isReachBackCategory)
                     continue;
@@ -100,6 +101,8 @@ public partial class JournalEntryRepository
         return new JournalEntryRecapClassificationLine
         {
             SourceTypeId = rawLine.SourceTypeId,
+            JournalEntryKindId = rawLine.JournalEntryKindId,
+            SourceDocumentCode = rawLine.SourceDocumentCode,
             ChartOfAccountId = rawLine.ChartOfAccountId,
             Debit = rawLine.Debit,
             Credit = rawLine.Credit,

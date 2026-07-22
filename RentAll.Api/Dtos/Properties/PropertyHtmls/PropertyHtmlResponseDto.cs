@@ -43,4 +43,3 @@ public class PropertyHtmlResponseDto
         ModifiedBy = propertyHtml.ModifiedBy;
     }
 }
-

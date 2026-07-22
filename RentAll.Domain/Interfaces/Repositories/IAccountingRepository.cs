@@ -12,7 +12,6 @@ public interface IAccountingRepository
 
     Task<Invoice> CreateAsync(Invoice invoice);
     Task<Invoice> UpdateByIdAsync(Invoice invoice);
-    Task UpdateInvoiceJournalEntryIdAsync(Invoice invoice);
     Task<IReadOnlyList<Invoice>> UpdateByIdsInTransactionAsync(IReadOnlyList<Invoice> invoices);
     Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
     Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
@@ -77,7 +76,6 @@ public interface IAccountingRepository
     Task<ReconcileDraft> UpsertReconcileDraftAsync(ReconcileDraft reconcileDraft);
     Task DeleteReconcileDraftByAccountIdAsync(Guid organizationId, int officeId, int accountId);
     #endregion
-
 
     #region AccountingErrors
     Task LogAccountingErrorAsync(AccountingError error);

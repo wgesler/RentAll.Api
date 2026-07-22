@@ -46,5 +46,3 @@ public class DocumentResponseDto
         ModifiedBy = document.ModifiedBy;
     }
 }
-
-

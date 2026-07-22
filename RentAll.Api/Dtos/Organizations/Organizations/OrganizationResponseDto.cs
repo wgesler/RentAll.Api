@@ -31,7 +31,6 @@ public class OrganizationResponseDto
     public string? SendGridName { get; set; }
     public bool IsActive { get; set; }
 
-
     public OrganizationResponseDto(Organization org)
     {
         OrganizationId = org.OrganizationId;
@@ -62,7 +61,3 @@ public class OrganizationResponseDto
         IsActive = org.IsActive;
     }
 }
-
-
-
-

@@ -8,4 +8,3 @@ public class Colour
     public int? NoticeDays { get; set; }
     public string Color { get; set; } = string.Empty;
 }
-

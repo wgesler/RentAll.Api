@@ -35,4 +35,3 @@ public class TrackerDefinitionOptionResponseDto
         IsActive = trackerDefinitionOption.IsActive;
     }
 }
-

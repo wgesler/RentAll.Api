@@ -22,7 +22,6 @@ public class CreateUserDto
     public decimal CommissionRate { get; set; }
     public bool IsActive { get; set; }
 
-
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
         if (OrganizationId == Guid.Empty)
@@ -88,8 +87,3 @@ public class CreateUserDto
         };
     }
 }
-
-
-
-
-

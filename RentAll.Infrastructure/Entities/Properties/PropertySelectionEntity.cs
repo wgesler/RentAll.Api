@@ -31,5 +31,3 @@ public class PropertySelectionEntity
     public string RegionCodes { get; set; } = string.Empty;
     public string AreaCodes { get; set; } = string.Empty;
 }
-
-

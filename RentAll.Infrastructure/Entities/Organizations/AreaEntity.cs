@@ -11,4 +11,3 @@ public class AreaEntity
     public string? Description { get; set; }
     public bool IsActive { get; set; }
 }
-

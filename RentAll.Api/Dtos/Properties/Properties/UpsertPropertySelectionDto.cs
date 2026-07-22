@@ -31,7 +31,6 @@ public class UpsertPropertySelectionDto
     public List<string> RegionCodes { get; set; } = new List<string>();
     public List<string> AreaCodes { get; set; } = new List<string>();
 
-
     public (bool IsValid, string? ErrorMessage) IsValid(Guid currentUser)
     {
         if (UserId == Guid.Empty || UserId != currentUser)
@@ -99,5 +98,3 @@ public class UpsertPropertySelectionDto
         };
     }
 }
-
-

@@ -5,6 +5,7 @@ namespace RentAll.Domain.Interfaces.Repositories;
 public interface IJournalEntryRepository
 {
     Task<IEnumerable<JournalEntry>> GetJournalEntriesAsync(JournalEntryGetCriteria criteria);
+    Task<IEnumerable<JournalEntry>> GetJournalEntriesBySourceIdAsync(JournalEntryGetBySourceIdCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetReconcileJournalEntryLinesAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);
     Task<decimal> GetReconcileBeginningBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);
@@ -17,7 +18,8 @@ public interface IJournalEntryRepository
     Task<JournalEntry> UpdateJournalEntryByIdAsync(JournalEntry journalEntry);
     Task<JournalEntry> UpdateJournalEntryCheckNumberByIdAsync(Guid journalEntryId, Guid organizationId, string checkNumber, Guid modifiedBy);
     Task DeleteJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
-    Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, Guid sourceId);
+    Task DeleteOpenJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
+    Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, int sourceTypeId, Guid sourceId, int? journalEntryKindId = null, bool includeCashOnly = true);
     Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<int> DeleteAllJournalEntriesByOrganizationIdAsync(Guid organizationId);
     Task<int> DeleteOwnerStatementStartingBalancesByCriteriaAsync(Guid organizationId, Guid propertyId);

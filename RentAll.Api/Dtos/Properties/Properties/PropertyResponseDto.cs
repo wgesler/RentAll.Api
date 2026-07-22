@@ -158,7 +158,6 @@ public class PropertyResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 
-
     public PropertyResponseDto(Property property)
     {
         PropertyId = property.PropertyId;

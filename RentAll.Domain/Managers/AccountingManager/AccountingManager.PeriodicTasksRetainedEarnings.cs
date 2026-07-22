@@ -243,7 +243,7 @@ public partial class AccountingManager
 
         if (journalEntryLines.Count == 0)
         {
-            return new JournalEntry
+            return ClassifyJournalEntry(new JournalEntry
             {
                 OrganizationId = organizationId,
                 OfficeId = accountingOffice.OfficeId,
@@ -253,7 +253,7 @@ public partial class AccountingManager
                 Memo = BuildRetainedEarningsMemo(processingDate),
                 JournalEntryLines = [],
                 CreatedBy = SystemOrganization
-            };
+            }, JournalEntryKind.RetainedEarnings, Perspective.System);
         }
 
         if (netIncome > 0m)
@@ -279,7 +279,7 @@ public partial class AccountingManager
             });
         }
 
-        return new JournalEntry
+        return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = organizationId,
             OfficeId = accountingOffice.OfficeId,
@@ -289,7 +289,7 @@ public partial class AccountingManager
             Memo = BuildRetainedEarningsMemo(processingDate),
             JournalEntryLines = journalEntryLines,
             CreatedBy = SystemOrganization
-        };
+        }, JournalEntryKind.RetainedEarnings, Perspective.System);
     }
 
     private JournalEntryLine? BuildRetainedEarningsClosingLineForAccount(ChartOfAccount account, decimal yearBalance)

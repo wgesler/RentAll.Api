@@ -7,7 +7,3 @@ public enum ReservationType
     Owner = 2,
     Platform = 3
 }
-
-
-
-

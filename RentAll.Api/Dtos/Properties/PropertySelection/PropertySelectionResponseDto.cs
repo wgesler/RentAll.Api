@@ -63,5 +63,3 @@ public class PropertySelectionResponseDto
         AreaCodes = s.AreaCodes;
     }
 }
-
-

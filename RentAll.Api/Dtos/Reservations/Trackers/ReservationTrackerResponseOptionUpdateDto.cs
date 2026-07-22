@@ -20,4 +20,3 @@ public class ReservationTrackerResponseOptionUpdateDto
         return (true, null);
     }
 }
-

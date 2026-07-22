@@ -61,7 +61,8 @@ public partial class AccountingManager
                     var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
                         invoice.OrganizationId,
                         invoice.OfficeId,
-                        line.LedgerLineId);
+                        invoice,
+                        line);
                     var beforeIds = existingPaymentEntries.Select(entry => entry.JournalEntryId).ToHashSet();
                     var paymentResult = await UpsertJournalEntryFromPaymentAsync(invoice, line, existingPaymentEntries, currentUser);
                     if (paymentResult.HasWarning)
@@ -70,7 +71,8 @@ public partial class AccountingManager
                     var afterEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
                         invoice.OrganizationId,
                         invoice.OfficeId,
-                        line.LedgerLineId);
+                        invoice,
+                        line);
                     if (afterEntries.Any(entry => !beforeIds.Contains(entry.JournalEntryId)))
                         result.JournalEntriesCreated++;
                     else if (afterEntries.Count > 0)
@@ -665,7 +667,7 @@ public partial class AccountingManager
             {
                 try
                 {
-                    await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+                    await DeleteOpenJournalEntryAsync(entry.JournalEntryId, organizationId);
                     result.JournalEntriesDeleted++;
                 }
                 catch (Exception ex)

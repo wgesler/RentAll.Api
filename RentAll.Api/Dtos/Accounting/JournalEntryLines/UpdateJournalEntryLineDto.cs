@@ -1,5 +1,8 @@
 namespace RentAll.Api.Dtos.Accounting.JournalEntryLines;
 
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
+
 public class UpdateJournalEntryLineDto
 {
     public Guid JournalEntryLineId { get; set; }
@@ -12,6 +15,7 @@ public class UpdateJournalEntryLineDto
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
+    public int PerspectiveId { get; set; } = (int)Perspective.Company;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -41,6 +45,7 @@ public class UpdateJournalEntryLineDto
             Debit = Debit,
             Credit = Credit,
             Memo = string.IsNullOrWhiteSpace(Memo) ? null : Memo.Trim(),
+            PerspectiveId = (Perspective)PerspectiveId,
             ModifiedBy = currentUser
         };
     }

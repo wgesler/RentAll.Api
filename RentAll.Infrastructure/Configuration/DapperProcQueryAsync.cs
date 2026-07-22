@@ -237,5 +237,3 @@ public static class SqlConnectionExtensions
         return message[..maxLength];
     }
 }
-
-

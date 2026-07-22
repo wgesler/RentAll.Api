@@ -12,7 +12,3 @@ public enum FrequencyType
     Annually = 7,
     Daily = 8
 }
-
-
-
-

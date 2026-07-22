@@ -187,7 +187,7 @@ public partial class AccountingManager
             journalEntryLines.Add(petIncomeLine);
         }
 
-        return new JournalEntry
+        return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = organizationId,
             OfficeId = reservation.OfficeId,
@@ -199,7 +199,7 @@ public partial class AccountingManager
             Memo = BuildDeparturesMemo(reservation.ReservationCode),
             JournalEntryLines = journalEntryLines,
             CreatedBy = SystemOrganization
-        };
+        }, JournalEntryKind.DepartureFee, Perspective.Company);
     }
     #endregion
 

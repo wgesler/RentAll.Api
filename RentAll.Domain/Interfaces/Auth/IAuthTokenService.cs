@@ -6,5 +6,3 @@ public interface IAuthTokenService
 {
     string GenerateToken(User user, string enabledFeatures = "");
 }
-
-

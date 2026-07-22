@@ -100,4 +100,3 @@ public class PropertyListResponseDto
         IsActive = propertyList.IsActive;
     }
 }
-

@@ -51,4 +51,3 @@ public class PropertyTrackerResponseResponseDto
         ModifiedBy = trackerResponse.ModifiedBy;
     }
 }
-

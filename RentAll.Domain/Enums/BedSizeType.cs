@@ -11,4 +11,3 @@ public enum BedSizeType
     DayBed = 6,
     SofaBed = 7
 }
-

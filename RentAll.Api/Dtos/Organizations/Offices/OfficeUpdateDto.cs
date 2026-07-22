@@ -97,7 +97,6 @@ public class OfficeUpdateDto
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
 
-
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
 
@@ -227,4 +226,3 @@ public class OfficeUpdateDto
         };
     }
 }
-

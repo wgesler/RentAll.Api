@@ -17,4 +17,3 @@ public class ColorResponseDto
         Color = c.Color;
     }
 }
-

@@ -1,4 +1,5 @@
 using RentAll.Domain.Enums;
+using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
 
 namespace RentAll.Test;
@@ -23,12 +24,12 @@ public class CrossPeriodInvoicePaymentTests
         var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(scenario.InvoiceTotal, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(0m, expectedUnapplied);
-        Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(expectedJunePayment, SumPrePaymentApplyDebits(scenario.Context, payment, JuneAccountingPeriod));
-        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
-        Assert.Equal(scenario.InvoiceTotal, SumPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedJunePayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
+        Assert.Equal(scenario.InvoiceTotal, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, MayPaymentDate, scenario.InvoiceTotal);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, MayPaymentDate, scenario.InvoiceTotal);
         AssertBalancedJournalEntry(paymentEntry);
     }
 
@@ -43,12 +44,12 @@ public class CrossPeriodInvoicePaymentTests
         Assert.Equal(scenario.FirstPeriodCharge, expectedJunePayment);
         Assert.Equal(scenario.SecondPeriodCharge, expectedJulyPayment);
 
-        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
-        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, payment, JuneAccountingPeriod));
-        Assert.Equal(expectedJulyPayment, SumPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
+        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, JunePaymentDate, scenario.InvoiceTotal);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, JunePaymentDate, scenario.InvoiceTotal);
         AssertBalancedJournalEntry(paymentEntry);
     }
 
@@ -61,14 +62,14 @@ public class CrossPeriodInvoicePaymentTests
         var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(overPaymentAmount, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(500m, expectedUnapplied);
-        Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(expectedJunePayment, SumPrePaymentApplyDebits(scenario.Context, payment, JuneAccountingPeriod));
-        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
-        Assert.Equal(scenario.InvoiceTotal, SumPrePaymentApplyDebits(scenario.Context, payment, JuneAccountingPeriod) + SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
-        Assert.Equal(overPaymentAmount, SumPrePaymentCredits(scenario.Context, payment));
-        Assert.Equal(expectedUnapplied, SumUnappliedPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedJunePayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
+        Assert.Equal(scenario.InvoiceTotal, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod) + SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
+        Assert.Equal(overPaymentAmount, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedUnapplied, SumUnappliedPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, MayPaymentDate, overPaymentAmount);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, MayPaymentDate, overPaymentAmount);
         AssertBalancedJournalEntry(paymentEntry);
     }
 
@@ -84,12 +85,12 @@ public class CrossPeriodInvoicePaymentTests
         Assert.Equal(scenario.FirstPeriodCharge, expectedJunePayment);
         Assert.Equal(300m, expectedJulyPayment);
 
-        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
-        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, payment, JuneAccountingPeriod));
-        Assert.Equal(expectedJulyPayment, SumPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
+        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, JunePaymentDate, partialPaymentAmount);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, JunePaymentDate, partialPaymentAmount);
         AssertBalancedJournalEntry(paymentEntry);
     }
 
@@ -99,10 +100,10 @@ public class CrossPeriodInvoicePaymentTests
         var scenario = await SetupCrossPeriodInvoice0626To0715Async();
         var payment = await ApplyPaymentAsync(scenario, new DateOnly(2026, 7, 20), scenario.InvoiceTotal);
 
-        Assert.Equal(0, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(0, CountPrePaymentReceivedEntries(scenario.Context, payment));
+        Assert.Equal(0, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(0, CountPrePaymentReceivedEntries(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, new DateOnly(2026, 7, 20), scenario.InvoiceTotal);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, new DateOnly(2026, 7, 20), scenario.InvoiceTotal);
         AssertBalancedJournalEntry(paymentEntry);
     }
 
@@ -118,12 +119,12 @@ public class CrossPeriodInvoicePaymentTests
         Assert.Equal(0m, expectedJulyPayment);
         Assert.Equal(0m, expectedUnapplied);
 
-        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(partialPaymentAmount, SumPrePaymentApplyDebits(scenario.Context, payment, JuneAccountingPeriod));
-        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, payment, JulyAccountingPeriod));
-        Assert.Equal(partialPaymentAmount, SumPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(partialPaymentAmount, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
+        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
+        Assert.Equal(partialPaymentAmount, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, MayPaymentDate, partialPaymentAmount);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, MayPaymentDate, partialPaymentAmount);
         AssertBalancedJournalEntry(paymentEntry);
     }
 
@@ -150,19 +151,19 @@ public class CrossPeriodInvoicePaymentTests
         Assert.Equal(265m, expectedDecemberPayment);
         Assert.Equal(2385m, expectedJanuaryPayment);
 
-        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(1, CountPrePaymentReceivedEntries(scenario.Context, payment));
-        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, payment, DecemberAccountingPeriod));
-        Assert.Equal(expectedJanuaryPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JanuaryAccountingPeriod));
-        Assert.Equal(expectedJanuaryPayment, SumPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(1, CountPrePaymentReceivedEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(0m, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, DecemberAccountingPeriod));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JanuaryAccountingPeriod));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
 
-        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, payment, DecemberPaymentDate, scenario.InvoiceTotal);
+        var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, DecemberPaymentDate, scenario.InvoiceTotal);
         AssertBalancedJournalEntry(paymentEntry);
 
         var januaryApply = Assert.Single(
             scenario.Context.ActiveJournalEntries,
-            entry => entry.SourceTypeId == (int)SourceType.Invoice
-                && entry.SourceId == payment.LedgerLineId
+            entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
+                && entry.SourceId == scenario.Invoice.InvoiceId
                 && entry.TransactionDate == JanuaryAccountingPeriod);
         Assert.Equal(JanuaryAccountingPeriod, januaryApply.AccountingPeriod);
         AssertBalancedJournalEntry(januaryApply);
@@ -191,13 +192,13 @@ public class CrossPeriodInvoicePaymentTests
         Assert.Equal(595m, expectedDecemberPayment);
         Assert.Equal(5355m, expectedJanuaryPayment);
 
-        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.Equal(expectedJanuaryPayment, SumPrePaymentApplyDebits(scenario.Context, payment, JanuaryAccountingPeriod));
-        Assert.Equal(expectedJanuaryPayment, SumPrePaymentCredits(scenario.Context, payment));
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JanuaryAccountingPeriod));
+        Assert.Equal(expectedJanuaryPayment, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
     }
 
     /// <summary>
-    /// Charge JEs first (P1 = invoice id, P2 = hashed year-boundary source id), then payment.
+    /// Charge JEs first (both periods use invoice id), then payment.
     /// </summary>
     [Fact]
     public async Task CrossPeriodPayment_YearBoundary_WithPostedChargeJes_CreatesJanuaryApply()
@@ -213,7 +214,7 @@ public class CrossPeriodInvoicePaymentTests
             .ToList();
         Assert.Equal(2, chargeEntries.Count);
         Assert.Equal(scenario.Invoice.InvoiceId, chargeEntries[0].SourceId);
-        Assert.NotEqual(scenario.Invoice.InvoiceId, chargeEntries[1].SourceId);
+        Assert.Equal(scenario.Invoice.InvoiceId, chargeEntries[1].SourceId);
         Assert.Equal(DecemberAccountingPeriod, chargeEntries[0].TransactionDate);
         Assert.Equal(JanuaryAccountingPeriod, chargeEntries[1].TransactionDate);
 
@@ -223,8 +224,8 @@ public class CrossPeriodInvoicePaymentTests
             scenario.InvoiceTotal,
             description: "CC (5295) 12/29-01/27");
 
-        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, payment));
-        Assert.True(SumPrePaymentApplyDebits(scenario.Context, payment, JanuaryAccountingPeriod) > 0m);
+        Assert.Equal(1, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
+        Assert.True(SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JanuaryAccountingPeriod) > 0m);
     }
 
     private static async Task<CrossPeriodPaymentScenario> SetupCrossPeriodInvoice0626To0715Async()
@@ -323,58 +324,64 @@ public class CrossPeriodInvoicePaymentTests
         return (firstPaymentAmount, secondPaymentAmount, unappliedAmount);
     }
 
-    private static int CountPrePaymentApplyEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment)
-        => context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.Invoice
-            && entry.SourceId == payment.LedgerLineId
+    private static int CountPrePaymentApplyEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment)
+        => context.ActiveJournalEntries.Count(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
+            && entry.SourceId == invoice.InvoiceId
+            && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal)
             && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId && line.Debit > 0));
 
-    private static int CountPrePaymentReceivedEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment)
-        => context.ActiveJournalEntries.Count(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-            && entry.SourceId == payment.LedgerLineId
+    private static int CountPrePaymentReceivedEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment)
+        => context.ActiveJournalEntries.Count(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
+            && entry.SourceId == invoice.InvoiceId
+            && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal)
             && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId && line.Credit > 0));
 
-    private static decimal SumPrePaymentApplyDebits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment, DateOnly accountingPeriod)
+    private static decimal SumPrePaymentApplyDebits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment, DateOnly accountingPeriod)
         => context.ActiveJournalEntries
-            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice
-                && entry.SourceId == payment.LedgerLineId
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
+                && entry.SourceId == invoice.InvoiceId
+                && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal)
                 && entry.TransactionDate == accountingPeriod)
             .SelectMany(entry => entry.JournalEntryLines)
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
             .Sum(line => line.Debit);
 
-    private static decimal SumPrePaymentCredits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment)
+    private static decimal SumPrePaymentCredits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment)
         => context.ActiveJournalEntries
-            .Where(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-                && entry.SourceId == payment.LedgerLineId)
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
+                && entry.SourceId == invoice.InvoiceId
+                && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal))
             .SelectMany(entry => entry.JournalEntryLines)
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
             .Sum(line => line.Credit);
 
-    private static decimal SumUnappliedPrePaymentCredits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment)
+    private static decimal SumUnappliedPrePaymentCredits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment)
     {
         var appliedAmount = context.ActiveJournalEntries
-            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice
-                && entry.SourceId == payment.LedgerLineId)
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
+                && entry.SourceId == invoice.InvoiceId
+                && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal))
             .SelectMany(entry => entry.JournalEntryLines)
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
             .Sum(line => line.Debit);
 
-        return SumPrePaymentCredits(context, payment) - appliedAmount;
+        return SumPrePaymentCredits(context, invoice, payment) - appliedAmount;
     }
 
-    private static JournalEntry AssertSingleFullPaymentEntry(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment, DateOnly paymentDate, decimal expectedAmount)
+    private static JournalEntry AssertSingleFullPaymentEntry(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment, DateOnly paymentDate, decimal expectedAmount)
     {
-        var paymentEntry = Assert.Single(GetStandardPaymentEntries(context, payment));
+        var paymentEntry = Assert.Single(GetStandardPaymentEntries(context, invoice, payment));
         Assert.Equal(paymentDate, paymentEntry.TransactionDate);
         Assert.Equal(expectedAmount, paymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId).Debit);
         Assert.Equal(expectedAmount, paymentEntry.JournalEntryLines.Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo)).Credit);
         return paymentEntry;
     }
 
-    private static List<JournalEntry> GetStandardPaymentEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, LedgerLine payment)
+    private static List<JournalEntry> GetStandardPaymentEntries(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment)
         => context.ActiveJournalEntries
-            .Where(entry => entry.SourceTypeId == (int)SourceType.InvoicePayment
-                && entry.SourceId == payment.LedgerLineId
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Payment
+                && entry.SourceId == invoice.InvoiceId
+                && string.Equals(entry.Memo, AccountingManager.BuildInvoicePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal)
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId))
             .ToList();
 

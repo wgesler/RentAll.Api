@@ -87,7 +87,7 @@ public partial class AccountingRepository
                 PropertyId = ResolveDepositHeaderPropertyId(deposit),
                 BankAccountId = deposit.BankAccountId,
                 Splits = SerializeDepositSplits(deposit.Splits),
-                JournalEntryId = deposit.JournalEntryId,
+                PostingStatusId = deposit.PostingStatusId ?? 0,
                 IsActive = deposit.IsActive,
                 CreatedBy = deposit.CreatedBy
             }, transaction: transaction);
@@ -167,7 +167,7 @@ public partial class AccountingRepository
             PropertyId = ResolveDepositHeaderPropertyId(deposit),
             BankAccountId = deposit.BankAccountId,
             Splits = SerializeDepositSplits(deposit.Splits),
-            JournalEntryId = deposit.JournalEntryId,
+            PostingStatusId = deposit.PostingStatusId ?? 0,
             IsActive = deposit.IsActive,
             ModifiedBy = deposit.ModifiedBy
         }, transaction: transaction);

@@ -15,6 +15,7 @@ public class JournalEntryLineEntity
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
+    public int PerspectiveId { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

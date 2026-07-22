@@ -68,7 +68,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToList();
 
         Assert.Equal(invoice.InvoiceId, chargeEntries[0].SourceId);
-        Assert.NotEqual(invoice.InvoiceId, chargeEntries[1].SourceId);
+        Assert.Equal(invoice.InvoiceId, chargeEntries[1].SourceId);
         Assert.Equal(new DateOnly(2026, 2, 1), chargeEntries[0].TransactionDate);
         Assert.Equal(new DateOnly(2026, 3, 1), chargeEntries[1].TransactionDate);
     }

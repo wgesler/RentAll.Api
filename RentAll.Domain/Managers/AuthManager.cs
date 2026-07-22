@@ -215,5 +215,3 @@ public class AuthManager
         return string.Join(",", enabledTypeIds);
     }
 }
-
-

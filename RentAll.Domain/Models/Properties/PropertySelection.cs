@@ -31,5 +31,3 @@ public class PropertySelection
     public List<string> RegionCodes { get; set; } = new List<string>();
     public List<string> AreaCodes { get; set; } = new List<string>();
 }
-
-

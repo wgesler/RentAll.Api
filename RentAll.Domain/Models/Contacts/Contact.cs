@@ -55,5 +55,3 @@ public class Contact
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-
-

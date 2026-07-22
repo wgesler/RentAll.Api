@@ -37,4 +37,3 @@ public class Building
 
     public bool IsActive { get; set; }
 }
-

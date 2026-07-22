@@ -11,4 +11,3 @@ public enum EmailType
     InspectionIssues = 6,
     Alert = 7
 }
-

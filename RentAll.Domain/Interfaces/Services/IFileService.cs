@@ -15,4 +15,3 @@ public interface IFileService
     Task<bool> DeleteDocumentAsync(Guid organizationId, string? officeName, string filePath);
     Task<FileDetails?> GetDocumentDetailsAsync(Guid organizationId, string? officeName, string filePath);
 }
-

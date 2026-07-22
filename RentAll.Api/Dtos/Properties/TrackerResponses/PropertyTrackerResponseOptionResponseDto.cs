@@ -51,4 +51,3 @@ public class PropertyTrackerResponseOptionResponseDto
         CreatedBy = trackerResponseOption.CreatedBy;
     }
 }
-

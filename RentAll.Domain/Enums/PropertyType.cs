@@ -21,4 +21,3 @@ public enum PropertyType
     Villa = 16,
     Hotel = 17
 }
-

@@ -8,4 +8,3 @@ public class ErrorResponseDto
     public string Route { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }
-

@@ -6,6 +6,3 @@ public enum DepositType
     CLR = 1,
     SDW = 2,
 }
-
-
-

@@ -20,7 +20,6 @@ public class CreateEmailDto
     public int EmailTypeId { get; set; }
     public FileDetails? FileDetails { get; set; }
 
-
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organization, string officeAccess)
     {
         ToRecipients ??= [];

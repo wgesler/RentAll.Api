@@ -15,6 +15,7 @@ public class JournalEntryLineSearchResult
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Memo { get; set; }
+    public int PerspectiveId { get; set; }
     public bool IsCleared { get; set; }
     public DateOnly? ClearedOn { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -26,9 +27,11 @@ public class JournalEntryLineSearchResult
     public DateOnly TransactionDate { get; set; }
     public DateOnly AccountingPeriod { get; set; }
     public int PostingStatusId { get; set; }
+    public int JournalEntryKindId { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }
     public string? JournalEntryMemo { get; set; }
+    public DateTimeOffset JournalEntryCreatedOn { get; set; }
 }

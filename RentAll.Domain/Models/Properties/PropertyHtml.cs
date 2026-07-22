@@ -21,4 +21,3 @@ public class PropertyHtml
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-

@@ -10,4 +10,3 @@ public enum PropertyStatus
     Maintenance = 5,
     Offline = 6
 }
-

@@ -35,5 +35,3 @@ public class PdfMargins
     public string? Bottom { get; set; }
     public string? Left { get; set; }
 }
-
-

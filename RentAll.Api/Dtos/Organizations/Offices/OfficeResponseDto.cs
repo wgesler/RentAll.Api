@@ -159,4 +159,3 @@ public class OfficeResponseDto
         IsActive = office.IsActive;
     }
 }
-

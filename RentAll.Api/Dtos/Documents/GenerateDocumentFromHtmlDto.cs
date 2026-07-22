@@ -24,5 +24,3 @@ public class GenerateDocumentFromHtmlDto
         return (true, null);
     }
 }
-
-

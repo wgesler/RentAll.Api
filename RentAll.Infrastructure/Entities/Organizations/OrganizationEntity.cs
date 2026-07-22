@@ -32,7 +32,3 @@ public class OrganizationEntity
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 }
-
-
-
-

@@ -22,7 +22,6 @@ public class WorkOrder
     public DateOnly AccountingPeriod { get; set; }
     public bool UseDepartureFee { get; set; }
     public bool EnteredInQb { get; set; }
-    public Guid? JournalEntryId { get; set; }
     public int? PostingStatusId { get; set; }
     public List<WorkOrderItem> WorkOrderItems { get; set; } = new List<WorkOrderItem>();
     public bool IsActive { get; set; }

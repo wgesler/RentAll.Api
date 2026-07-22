@@ -53,5 +53,3 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
         return new SqlConnection(_connectionString);
     }
 }
-
-

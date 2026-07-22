@@ -19,4 +19,3 @@ public class TrackerDefinitionOption
     public int OptionSortOrder { get; set; }
     public bool IsActive { get; set; }
 }
-

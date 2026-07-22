@@ -825,7 +825,7 @@ public partial class ReportManager : IReportManager
         => AccountingManager.MatchOwnerStartingBalanceMemo(journalMemo, lineMemo).IsMatch;
 
     private static bool IsRecapRowWithOwnerActivity(RecapReportRow row) =>
-        row.OwnerRentValue != 0 || row.UnPaidValue != 0 || row.OwnerExpenseValue != 0 || row.OwnerPaymentReceivedValue != 0 || row.PaymentValue != 0;
+        row.OwnerRentValue != 0 || row.UnPaidValue != 0 || row.OwnerUnrecValue != 0 || row.OwnerExpenseValue != 0 || row.OwnerPaymentReceivedValue != 0 || row.PaymentValue != 0;
 
     private static bool IsOwnerReportRecapCategory(string category) =>
         string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)

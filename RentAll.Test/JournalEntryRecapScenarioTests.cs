@@ -12,7 +12,7 @@ public class JournalEntryRecapScenarioTests
     private static readonly DateOnly MayJuneEnd = JuneEnd;
 
     [Fact]
-    public async Task LatePayment_JuneOnly_RollsPaymentToInvoiceWithOwnerRent()
+    public async Task LatePayment_JuneOnly_KeepsPaymentOnPaymentPeriod()
     {
         var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildLatePaymentScenarioLines());
 
@@ -20,12 +20,17 @@ public class JournalEntryRecapScenarioTests
         var rows = report.Rows.Where(row =>
             string.Equals(row.Source, OwnerReportScenarioFixtures.Invoice001, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        var rolledUpRow = Assert.Single(rows);
-        Assert.Equal("05.26", rolledUpRow.AccountingPeriod);
-        Assert.Equal(OwnerReportScenarioFixtures.TenantPayment001, rolledUpRow.PaymentValue);
-        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, rolledUpRow.OwnerRentValue);
-        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, rolledUpRow.OwnerRentActualValue);
-        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, rolledUpRow.OwnerPaymentValue);
+        Assert.Equal(2, rows.Count);
+
+        var invoiceRow = Assert.Single(rows, row => row.AccountingPeriod == "05.26");
+        Assert.Equal(OwnerReportScenarioFixtures.ExpectedIncome001, invoiceRow.ExpectedIncomeValue);
+        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, invoiceRow.OwnerRentValue);
+        Assert.Equal(0m, invoiceRow.PaymentValue);
+
+        var paymentRow = Assert.Single(rows, row => row.AccountingPeriod == "06.26");
+        Assert.Equal(OwnerReportScenarioFixtures.TenantPayment001, paymentRow.PaymentValue);
+        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, paymentRow.OwnerRentActualValue);
+        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, paymentRow.OwnerPaymentValue);
     }
 
     [Fact]
@@ -100,7 +105,8 @@ public class JournalEntryRecapScenarioTests
         Assert.Equal(100m, row.OwnerRentValue);
         Assert.Equal(0m, row.OwnerRentActualValue);
         Assert.Equal(0m, row.OwnerPaymentValue);
-        Assert.Equal(100m, row.UnPaidValue);
+        Assert.Equal(0m, row.OwnerUnrecValue);
+        Assert.Equal(1000m, row.UnPaidValue);
     }
 
     [Fact]
@@ -109,16 +115,22 @@ public class JournalEntryRecapScenarioTests
         var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildLatePaymentScenarioLines());
 
         var report = await context.GetRecapReportAsync(MayJuneStart, MayJuneEnd);
-        var mayInvoiceRow = Assert.Single(
-            report.Rows,
-            row => string.Equals(row.Source, OwnerReportScenarioFixtures.Invoice001, StringComparison.OrdinalIgnoreCase));
+        var invoice001Rows = report.Rows
+            .Where(row => string.Equals(row.Source, OwnerReportScenarioFixtures.Invoice001, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         var juneInvoiceRow = Assert.Single(
             report.Rows,
             row => string.Equals(row.Source, OwnerReportScenarioFixtures.Invoice002, StringComparison.OrdinalIgnoreCase));
 
-        Assert.Equal(OwnerReportScenarioFixtures.TenantPayment001, mayInvoiceRow.PaymentValue);
+        var mayInvoiceRow = Assert.Single(invoice001Rows, row => row.AccountingPeriod == "05.26");
+        var junePaymentRow = Assert.Single(invoice001Rows, row => row.AccountingPeriod == "06.26");
+
+        Assert.Equal(0m, mayInvoiceRow.PaymentValue);
         Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, mayInvoiceRow.OwnerRentValue);
+        Assert.Equal(OwnerReportScenarioFixtures.TenantPayment001, junePaymentRow.PaymentValue);
+        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, junePaymentRow.OwnerRentActualValue);
         Assert.Equal(0m, juneInvoiceRow.PaymentValue);
-        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent002, juneInvoiceRow.UnPaidValue);
+        Assert.Equal(44730m, juneInvoiceRow.UnPaidValue);
+        Assert.Equal(0m, juneInvoiceRow.OwnerUnrecValue);
     }
 }

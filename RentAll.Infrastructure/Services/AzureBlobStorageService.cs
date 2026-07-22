@@ -231,7 +231,6 @@ public class AzureBlobStorageService : IFileService
             var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
             var blobClient = containerClient.GetBlobClient(blobName);
 
-
             // Read stream into a fresh MemoryStream to avoid disposal issues during async upload
             MemoryStream uploadStream;
             if (fileStream is MemoryStream ms && ms.CanRead && ms.CanSeek)

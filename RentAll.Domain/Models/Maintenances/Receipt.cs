@@ -28,7 +28,6 @@ public class Receipt
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
-    public Guid? JournalEntryId { get; set; }
     public int? PostingStatusId { get; set; }
     public bool CheckPrinted { get; set; }
     public bool IsUtility { get; set; }

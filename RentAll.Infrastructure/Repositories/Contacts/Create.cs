@@ -66,8 +66,6 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             if (res == null || !res.Any())
                 throw new Exception("Contact not created");
 
-
-
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
     }

@@ -408,7 +408,3 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 }
-
-
-
-

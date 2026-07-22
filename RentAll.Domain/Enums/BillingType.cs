@@ -6,7 +6,3 @@ public enum BillingType
     Daily = 1,
     Nightly = 2
 }
-
-
-
-

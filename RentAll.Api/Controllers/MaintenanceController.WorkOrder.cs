@@ -158,9 +158,9 @@ public partial class MaintenanceController
             if (existing == null)
                 return NotFound("Work order record not found");
 
-            var hardClosedResult = RefuseIfJournalEntryHardClosed(existing.PostingStatusId, "work order");
-            if (hardClosedResult != null)
-                return hardClosedResult;
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "work order");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
 
             var workOrder = dto.ToModel(CurrentUser);
 
@@ -185,6 +185,14 @@ public partial class MaintenanceController
 
         try
         {
+            var existing = await _maintenanceRepository.GetWorkOrderByIdAsync(workOrderId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Work order record not found");
+
+            var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(existing.PostingStatusId, "work order");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
+
             await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
