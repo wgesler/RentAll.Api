@@ -1,16 +1,17 @@
 namespace RentAll.Infrastructure.Entities.Accounting;
 
-public class LedgerLineEntity
+public class PaymentLedgerLineEntity
 {
     public Guid LedgerLineId { get; set; }
     public Guid InvoiceId { get; set; }
+    public string InvoiceCode { get; set; } = string.Empty;
     public int LineNumber { get; set; }
     public Guid? ReservationId { get; set; }
     public int CostCodeId { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateOnly LedgerLineDate { get; set; }
-    public Guid? PaymentId { get; set; }
+    public Guid PaymentId { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

@@ -279,47 +279,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        [HttpPut("invoice/payment")]
-        public async Task<IActionResult> ApplyPayment([FromBody] InvoicePaymentRequestDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Invoice payment data is required");
-
-            var (isValid, errorMessage) = dto.IsValid();
-            if (!isValid)
-                return BadRequest(errorMessage ?? "Invalid request data");
-
-            try
-            {
-                var postingStatuses = new List<int?>();
-                foreach (var invoiceId in dto.Invoices)
-                {
-                    var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
-                    if (invoice == null)
-                        return NotFound($"Invoice not found: {invoiceId}");
-
-                    postingStatuses.Add(invoice.PostingStatusId);
-                }
-
-                var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(StrictestPostingStatus(postingStatuses), "invoice");
-                if (postingStatusCheck != null)
-                    return postingStatusCheck;
-
-                var invoicePayment = await _accountingManager.ApplyPaymentToInvoicesAsync(dto.Invoices, CurrentOrganizationId, CurrentOfficeAccess,
-                    dto.CostCodeId, dto.Description, dto.Amount, dto.PaymentDate, CurrentUser);
-
-                await _accountingManager.CreateJournalEntriesFromInvoicePaymentAsync(invoicePayment, CurrentUser);
-
-                var response = new InvoicePaymentResponseDto(invoicePayment);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error applying payments to invoices");
-                return ServerError("An error occurred while applying payments to invoices");
-            }
-        }
-
         #endregion
 
         #region Delete

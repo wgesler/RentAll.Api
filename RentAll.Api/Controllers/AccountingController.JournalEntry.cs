@@ -199,6 +199,8 @@ namespace RentAll.Api.Controllers
 
                 await _journalEntryRepository.UpdateReconcileMarksAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.Lines, setClearedOn: true, clearedOn: clearedOn, CurrentUser);
 
+                await _accountingManager.ApplyDocumentPostingStatusFromReconcileAsync(request, CurrentOrganizationId, CurrentUser);
+
                 var updatedAccount = await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.EndingBalance, request.StatementDate);
 
                 var reconcileDraft = await _accountingRepository.GetReconcileDraftByAccountIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId);

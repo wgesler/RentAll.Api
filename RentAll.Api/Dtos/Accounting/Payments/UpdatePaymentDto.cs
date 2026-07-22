@@ -1,0 +1,56 @@
+namespace RentAll.Api.Dtos.Accounting.Payments;
+
+public class UpdatePaymentDto
+{
+    public Guid PaymentId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public int OfficeId { get; set; }
+    public DateOnly PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public int CostCodeId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public int? PaymentTypeId { get; set; }
+    public Guid? DepositId { get; set; }
+    public bool IsActive { get; set; }
+
+    public (bool IsValid, string? ErrorMessage) IsValid()
+    {
+        if (PaymentId == Guid.Empty)
+            return (false, "PaymentId is required");
+
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required");
+
+        if (PaymentDate == default)
+            return (false, "PaymentDate is required");
+
+        if (CostCodeId <= 0)
+            return (false, "CostCodeId is required");
+
+        if (string.IsNullOrWhiteSpace(Description))
+            return (false, "Description is required");
+
+        return (true, null);
+    }
+
+    public Payment ToModel(Guid currentUser)
+    {
+        return new Payment
+        {
+            PaymentId = PaymentId,
+            OrganizationId = OrganizationId,
+            OfficeId = OfficeId,
+            PaymentDate = PaymentDate,
+            Amount = Amount,
+            CostCodeId = CostCodeId,
+            Description = Description,
+            PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
+            DepositId = DepositId is { } depositId && depositId != Guid.Empty ? depositId : null,
+            IsActive = IsActive,
+            ModifiedBy = currentUser
+        };
+    }
+}

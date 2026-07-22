@@ -31,6 +31,32 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/sync/payments")]
+    public async Task<IActionResult> SyncPaymentJournalEntries([FromBody] SyncJournalEntriesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var officeIds = ResolveRequestedOfficeIds(dto);
+            if (string.IsNullOrWhiteSpace(officeIds))
+                return Forbid();
+
+            var result = await _accountingManager.SyncPaymentJournalEntriesAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing payment journal entries");
+            return ServerError("An error occurred while syncing payment journal entries");
+        }
+    }
+
     [HttpPost("journal-entry/clear/invoices")]
     public async Task<IActionResult> ClearInvoiceJournalEntries([FromBody] SyncJournalEntriesRequestDto dto)
     {
@@ -379,6 +405,7 @@ public partial class AccountingController
             using var scope = _serviceScopeFactory.CreateScope();
             var scopedAccountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
             await scopedAccountingManager.SyncInvoiceJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+            await scopedAccountingManager.SyncPaymentJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
             await scopedAccountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
@@ -436,6 +463,7 @@ public partial class AccountingController
         return
         [
             ("invoice", "Invoices"),
+            ("payment", "Payments"),
             ("bill", "Bills"),
             ("receipt", "Receipts"),
             ("workOrder", "Work Orders"),
@@ -459,14 +487,15 @@ public partial class AccountingController
         return syncType switch
         {
             "invoice" => 1,
-            "bill" => 2,
-            "receipt" => 3,
-            "workOrder" => 4,
-            "deposit" => 5,
-            "transfer" => 6,
-            "departureFee" => 7,
-            "linenAndTowelFee" => 8,
-            "retainedEarnings" => 9,
+            "payment" => 2,
+            "bill" => 3,
+            "receipt" => 4,
+            "workOrder" => 5,
+            "deposit" => 6,
+            "transfer" => 7,
+            "departureFee" => 8,
+            "linenAndTowelFee" => 9,
+            "retainedEarnings" => 10,
             _ => int.MaxValue
         };
     }

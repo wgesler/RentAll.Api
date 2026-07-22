@@ -16,7 +16,6 @@ public partial class AccountingManager
             IncludePaid = true
         })).ToList();
 
-        var costCodesByOffice = new Dictionary<int, Dictionary<int, CostCode>>();
         var total = invoices.Count;
         var processed = 0;
         ReportSyncProgress(progress, "invoice", total, processed, result, "Running");
@@ -43,41 +42,6 @@ public partial class AccountingManager
                         IncludeUnposted = true
                     },
                     result);
-
-                if (!costCodesByOffice.TryGetValue(invoice.OfficeId, out var costCodeById))
-                {
-                    costCodeById = (await LoadCostCodeByOfficeIdAsync(organizationId, invoice.OfficeId)).ToDictionary(entry => entry.Key, entry => entry.Value);
-                    costCodesByOffice[invoice.OfficeId] = costCodeById;
-                }
-
-                foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
-                {
-                    costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                    if (!IsPaymentLedgerLine(costCode))
-                        continue;
-
-                    // Upsert (do not delete+skip): Posted/SoftClosed/HardClosed JEs cannot be deleted, so the old
-                    // delete-then-TrackJournalEntryCreate path skipped recreate and never added missing prepayment-apply JEs.
-                    var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
-                        invoice.OrganizationId,
-                        invoice.OfficeId,
-                        invoice,
-                        line);
-                    var beforeIds = existingPaymentEntries.Select(entry => entry.JournalEntryId).ToHashSet();
-                    var paymentResult = await UpsertJournalEntryFromPaymentAsync(invoice, line, existingPaymentEntries, currentUser);
-                    if (paymentResult.HasWarning)
-                        result.Errors.Add($"Invoice {invoice.InvoiceCode} payment: {paymentResult.Warning}");
-
-                    var afterEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
-                        invoice.OrganizationId,
-                        invoice.OfficeId,
-                        invoice,
-                        line);
-                    if (afterEntries.Any(entry => !beforeIds.Contains(entry.JournalEntryId)))
-                        result.JournalEntriesCreated++;
-                    else if (afterEntries.Count > 0)
-                        result.JournalEntriesSkipped++;
-                }
             }
             catch (Exception ex)
             {

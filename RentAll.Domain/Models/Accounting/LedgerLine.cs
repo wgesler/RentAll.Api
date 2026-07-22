@@ -10,6 +10,7 @@ public class LedgerLine
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateOnly LedgerLineDate { get; set; }
+    public Guid? PaymentId { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

@@ -195,6 +195,7 @@ public partial class AccountingRepository : IAccountingRepository
             Amount = e.Amount,
             Description = e.Description,
             LedgerLineDate = e.LedgerLineDate,
+            PaymentId = e.PaymentId == Guid.Empty ? null : e.PaymentId,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,
             ModifiedOn = e.ModifiedOn,
@@ -415,6 +416,85 @@ public partial class AccountingRepository : IAccountingRepository
         public Guid? ContactId { get; set; }
         public Guid? JournalEntryLineId { get; set; }
         public int? ChartOfAccountId { get; set; }
+    }
+    #endregion
+
+    #region Payment Helpers
+    private static List<Payment> MapPaymentsWithLedgerLineEntities(
+        IEnumerable<PaymentEntity>? paymentEntities,
+        IEnumerable<PaymentLedgerLineEntity>? ledgerLineEntities)
+    {
+        if (paymentEntities == null || !paymentEntities.Any())
+            return new List<Payment>();
+
+        var linesByPaymentId = (ledgerLineEntities ?? Enumerable.Empty<PaymentLedgerLineEntity>())
+            .GroupBy(line => line.PaymentId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertPaymentLedgerLineEntityToModel)
+                    .OrderBy(line => line.LedgerLineDate)
+                    .ThenBy(line => line.InvoiceCode)
+                    .ThenBy(line => line.LineNumber)
+                    .ToList());
+
+        var payments = paymentEntities.Select(ConvertPaymentEntityToModel).ToList();
+        foreach (var payment in payments)
+        {
+            if (linesByPaymentId.TryGetValue(payment.PaymentId, out var lines))
+                payment.LedgerLines = lines;
+        }
+
+        return payments;
+    }
+
+    private static Payment ConvertPaymentEntityToModel(PaymentEntity e)
+    {
+        return new Payment
+        {
+            PaymentId = e.PaymentId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            PaymentDate = e.PaymentDate,
+            Amount = e.Amount,
+            CostCodeId = e.CostCodeId,
+            CostCodeDescription = e.CostCodeDescription,
+            Description = e.Description,
+            PaymentTypeId = e.PaymentTypeId,
+            PaymentTypeDescription = e.PaymentTypeDescription,
+            DepositId = e.DepositId == Guid.Empty ? null : e.DepositId,
+            DepositCode = e.DepositCode,
+            PostingStatusId = e.PostingStatusId,
+            IsActive = e.IsActive,
+            CreatedBy = e.CreatedBy,
+            CreatedByName = e.CreatedByName,
+            CreatedOn = e.CreatedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static PaymentLedgerLine ConvertPaymentLedgerLineEntityToModel(PaymentLedgerLineEntity e)
+    {
+        return new PaymentLedgerLine
+        {
+            LedgerLineId = e.LedgerLineId,
+            InvoiceId = e.InvoiceId,
+            InvoiceCode = e.InvoiceCode,
+            LineNumber = e.LineNumber,
+            ReservationId = e.ReservationId == Guid.Empty ? null : e.ReservationId,
+            CostCodeId = e.CostCodeId,
+            Amount = e.Amount,
+            Description = e.Description,
+            LedgerLineDate = e.LedgerLineDate,
+            PaymentId = e.PaymentId,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
     }
     #endregion
 }

@@ -42,14 +42,36 @@ public partial class AccountingManager
         => entries.Where(entry => MatchesJournalEntryAccountingPeriod(entry, accountingPeriod)).ToList();
 
     private static bool IsInvoicePaymentLedgerLineJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+        => MatchesInvoicePaymentLedgerLineMemo(entry, invoice, paymentLedgerLine);
+
+    private static bool MatchesInvoicePaymentLedgerLineMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
     {
-        _ = paymentLedgerLine;
-        return entry.SourceId == invoice.InvoiceId
-            && entry.SourceTypeId == (int)SourceType.Invoice
-            && entry.JournalEntryKindId is JournalEntryKind.Payment
-                or JournalEntryKind.PrePaymentReceive
-                or JournalEntryKind.PrePaymentApply
-                or JournalEntryKind.OwnerActual;
+        if (entry.SourceId != invoice.InvoiceId || entry.SourceTypeId != (int)SourceType.Invoice)
+            return false;
+
+        return entry.JournalEntryKindId switch
+        {
+            JournalEntryKind.Payment => string.Equals(
+                entry.Memo,
+                BuildInvoicePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description),
+                StringComparison.Ordinal),
+            JournalEntryKind.PrePaymentReceive or JournalEntryKind.PrePaymentApply => string.Equals(
+                entry.Memo,
+                BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description),
+                StringComparison.Ordinal),
+            JournalEntryKind.OwnerActual => MatchesOwnerActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
+            _ => false
+        };
+    }
+
+    private static bool MatchesOwnerActualPaymentJournalEntryMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        var paymentMemo = BuildOwnerActualRentMemo(invoice, paymentLedgerLine);
+        if (string.Equals(entry.Memo, paymentMemo, StringComparison.Ordinal))
+            return true;
+
+        var legacyMemo = BuildOwnerActualRentMemo(invoice);
+        return string.Equals(entry.Memo, legacyMemo, StringComparison.Ordinal);
     }
 
     private static void AssignRebuiltJournalEntryFromExisting(JournalEntry rebuilt, JournalEntry existing, Guid currentUser)
@@ -205,6 +227,10 @@ public partial class AccountingManager
         => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
            && entry.SourceTypeId == (int)SourceType.Invoice
            && entry.IsCashOnly;
+
+    private static bool IsInvoiceOwnerActualPaymentJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+        => IsInvoiceOwnerActualPaymentJournalEntry(entry)
+           && MatchesInvoicePaymentLedgerLineMemo(entry, invoice, paymentLedgerLine);
 
     private static bool IsInvoicePrePaymentReceivedJournalEntry(JournalEntry entry, int prePaymentAccountId)
         => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive

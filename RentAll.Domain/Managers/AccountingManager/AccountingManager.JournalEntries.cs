@@ -277,6 +277,21 @@ public partial class AccountingManager
         await DeleteJournalEntriesForSourceAsync(transfer.OrganizationId, transfer.OfficeId, (int)SourceType.Transfer, transfer.TransferId);
     }
 
+    private async Task DeleteJournalEntriesForPaymentAsync(Payment payment)
+    {
+        if (payment.PaymentId == Guid.Empty)
+            return;
+
+        var entries = await GetJournalEntriesForSourceAsync(
+            payment.OrganizationId,
+            payment.OfficeId,
+            SourceType.InvoicePayment,
+            payment.PaymentId);
+
+        foreach (var entry in entries)
+            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
+    }
+
     public async Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);

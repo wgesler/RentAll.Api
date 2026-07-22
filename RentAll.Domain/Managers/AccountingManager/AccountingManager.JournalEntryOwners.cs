@@ -253,6 +253,7 @@ public partial class AccountingManager
         await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var (office, costCodeById) = await officeCostCodeContextTask;
+        var memo = BuildOwnerActualRentMemo(invoice, paymentLedgerLine);
         var journalEntryLines = BuildJournalEntryLinesForOwnerActual(
             invoice,
             actualAmount.Value,
@@ -262,6 +263,7 @@ public partial class AccountingManager
             office,
             costCodeById,
             propertyId.Value,
+            memo,
             currentUser);
         if (journalEntryLines.Count == 0)
             return null;
@@ -277,7 +279,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
             SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
-            Memo = BuildOwnerActualRentMemo(invoice),
+            Memo = memo,
             IsCashOnly = true,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
@@ -293,6 +295,7 @@ public partial class AccountingManager
         Office? office,
         IReadOnlyDictionary<int, CostCode> costCodeById,
         Guid propertyId,
+        string memo,
         Guid currentUser)
     {
         // OWNER-ACTUAL-JE-ACCOUNTS
@@ -304,7 +307,6 @@ public partial class AccountingManager
             return [];
 
         var isFurnished = !property.Unfurnished;
-        var memo = BuildOwnerActualRentMemo(invoice);
         var ownerContactId = property.Owner1Id;
         var lineContext = CreateJournalEntryLineContextFromInvoice(invoice, propertyId) with
         {

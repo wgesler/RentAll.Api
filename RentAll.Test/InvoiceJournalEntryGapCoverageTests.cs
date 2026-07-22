@@ -99,7 +99,9 @@ public class InvoiceJournalEntryGapCoverageTests
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        var paymentEntry = Assert.Single(context.ActiveJournalEntries, entry => entry.SourceTypeId == (int)SourceType.InvoicePayment);
+        var paymentEntry = Assert.Single(context.ActiveJournalEntries, entry =>
+            entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.JournalEntryKindId == JournalEntryKind.Payment);
         Assert.Equal(invoice.InvoiceId, paymentEntry.SourceId);
         AssertBalancedJournalEntry(paymentEntry);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId).Debit);
@@ -370,6 +372,67 @@ public class InvoiceJournalEntryGapCoverageTests
         Assert.Equal(
             expectedOwnerActual,
             ownerActualEntry.JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+                .Sum(line => line.Credit));
+    }
+
+    [Fact]
+    public async Task EachPayment_CreatesOwnerActualFromThatPaymentsRentPortion()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 6, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        var accountingPeriod = new DateOnly(2026, 4, 1);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 4, 30),
+            enableOwnerShare: true);
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var firstPayment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: 1000m,
+            paymentDate: new DateOnly(2026, 4, 10),
+            description: "Check #1001");
+        invoice.LedgerLines.Add(firstPayment);
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, firstPayment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var secondPayment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: 2000m,
+            paymentDate: new DateOnly(2026, 4, 20),
+            description: "Check #1002");
+        invoice.LedgerLines.Add(secondPayment);
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, secondPayment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var ownerActualEntries = context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual)
+            .OrderBy(entry => entry.TransactionDate)
+            .ToList();
+        Assert.Equal(2, ownerActualEntries.Count);
+        Assert.Equal(
+            AccountingManager.BuildOwnerActualRentMemo(invoice, firstPayment),
+            ownerActualEntries[0].Memo);
+        Assert.Equal(
+            AccountingManager.BuildOwnerActualRentMemo(invoice, secondPayment),
+            ownerActualEntries[1].Memo);
+
+        const decimal expectedFirstOwnerActual = 800m;
+        const decimal expectedSecondOwnerActual = 1600m;
+        Assert.Equal(
+            expectedFirstOwnerActual,
+            ownerActualEntries[0].JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+                .Sum(line => line.Credit));
+        Assert.Equal(
+            expectedSecondOwnerActual,
+            ownerActualEntries[1].JournalEntryLines
                 .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
                 .Sum(line => line.Credit));
     }

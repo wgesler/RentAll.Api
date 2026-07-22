@@ -48,6 +48,15 @@ public partial class AccountingManager
         return $"{invoice.InvoiceCode.Trim()}: {line.Description.Trim()}";
     }
 
+    // Example: Payment: Check #123
+    public static string BuildPaymentDocumentMemo(string paymentDescription)
+    {
+        if (string.IsNullOrWhiteSpace(paymentDescription))
+            throw new ArgumentException("Payment description is required.", nameof(paymentDescription));
+
+        return $"Payment: {paymentDescription.Trim()}";
+    }
+
     // Example: R-001053-001: Payment: Check #123
     public static string BuildInvoicePaymentMemo(string invoiceCode, string ledgerLineDescription)
     {
@@ -195,6 +204,16 @@ public partial class AccountingManager
             throw new ArgumentException("Rental ledger line description is required.");
 
         return $"{invoice.InvoiceCode.Trim()}: Owner: Actual: {rentalLine.Description.Trim()}";
+    }
+
+    // Example: R-001053-001: Owner: Actual: Rental Fee (04/01-04/30) (Check #1234)
+    public static string BuildOwnerActualRentMemo(Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        var memo = BuildOwnerActualRentMemo(invoice);
+        if (paymentLedgerLine == null || string.IsNullOrWhiteSpace(paymentLedgerLine.Description))
+            return memo;
+
+        return $"{memo} ({paymentLedgerLine.Description.Trim()})";
     }
 
     // Example: R-001053-001: Owner: Actual: Rental Fee (04/01-04/30)

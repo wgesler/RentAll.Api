@@ -106,6 +106,24 @@ public interface IAccountingRepository
     #endregion
 
     #region Get
+    Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<Payment?> GetPaymentByIdAsync(Guid paymentId, Guid organizationId);
+    #endregion
+
+    #region Post
+    Task<Payment> CreatePaymentAsync(Payment payment);
+    Task SetLedgerLinePaymentIdAsync(Guid ledgerLineId, Guid paymentId, Guid modifiedBy);
+    #endregion
+
+    #region Put
+    Task<Payment> UpdatePaymentAsync(Payment payment);
+    #endregion
+
+    #region Delete
+    Task DeletePaymentByIdAsync(Guid paymentId, Guid organizationId, Guid currentUser);
+    #endregion
+
+    #region Get
     Task<IEnumerable<Transfer>> GetTransfersByCriteriaAsync(TransferGetCriteria criteria);
     Task<IEnumerable<Transfer>> GetTransfersByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Transfer>> GetTransfersByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);

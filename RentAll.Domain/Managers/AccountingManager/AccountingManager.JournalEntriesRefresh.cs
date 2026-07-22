@@ -244,10 +244,17 @@ public partial class AccountingManager
 
             await RefreshInvoiceChargeJournalEntriesAsync(invoice, invoice.ModifiedBy);
 
+            var paymentIdsToRefresh = new HashSet<Guid>();
             foreach (var paymentLedgerLine in invoice.LedgerLines
                          .Where(line => line.Amount != 0)
                          .Where(line => costCodeById.TryGetValue(line.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode)))
             {
+                if (paymentLedgerLine.PaymentId is { } paymentId && paymentId != Guid.Empty)
+                {
+                    paymentIdsToRefresh.Add(paymentId);
+                    continue;
+                }
+
                 var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
                     invoice.OrganizationId,
                     invoice.OfficeId,
@@ -255,6 +262,9 @@ public partial class AccountingManager
                     paymentLedgerLine);
                 await UpsertJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, existingPaymentEntries, invoice.ModifiedBy);
             }
+
+            foreach (var paymentId in paymentIdsToRefresh)
+                await CreateJournalEntriesFromPaymentDocumentAsync(paymentId, invoice.OrganizationId, invoice.ModifiedBy);
         }
         catch (Exception ex)
         {
