@@ -18,7 +18,6 @@ public class OwnerReportScenarioTests
         var propertyRow = Assert.Single(report.Rows);
 
         Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, propertyRow.InvoicedIncome);
-        Assert.Equal(0m, propertyRow.PaidIncome);
         Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, propertyRow.UnpaidIncome);
 
         var invoiceLine = ReportManagerTestSupport.FindActivityLine(
@@ -44,7 +43,6 @@ public class OwnerReportScenarioTests
         var propertyRow = Assert.Single(report.Rows);
 
         Assert.Equal(OwnerReportScenarioFixtures.OwnerRent002, propertyRow.InvoicedIncome);
-        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, propertyRow.PaidIncome);
         Assert.Equal(
             OwnerReportScenarioFixtures.OwnerRent002 - OwnerReportScenarioFixtures.OwnerRent001,
             propertyRow.UnpaidIncome);
@@ -83,7 +81,6 @@ public class OwnerReportScenarioTests
         Assert.Equal(
             OwnerReportScenarioFixtures.OwnerRent001 + OwnerReportScenarioFixtures.OwnerRent002,
             propertyRow.InvoicedIncome);
-        Assert.Equal(OwnerReportScenarioFixtures.OwnerRent001, propertyRow.PaidIncome);
         Assert.Equal(OwnerReportScenarioFixtures.OwnerRent002, propertyRow.UnpaidIncome);
 
         var rolledUpLine = ReportManagerTestSupport.FindActivityLine(
@@ -153,8 +150,7 @@ public class OwnerReportScenarioTests
         var propertyRow = Assert.Single(report.Rows);
 
         Assert.Equal(0m, propertyRow.InvoicedIncome);
-        Assert.Equal(0m, propertyRow.PaidIncome);
-        Assert.Equal(2632m, propertyRow.PrepaidIncome);
+        Assert.Equal(0m, propertyRow.UnpaidIncome);
         Assert.DoesNotContain(report.PropertyActivityLines, line => line.ReceivedIncome > 0);
 
         var prepaidLine = Assert.Single(report.PropertyActivityLines);
@@ -172,7 +168,6 @@ public class OwnerReportScenarioTests
         var accrualRow = Assert.Single(accrualReport.Rows);
 
         Assert.Equal(49.70m, accrualRow.InvoicedIncome);
-        Assert.Equal(49.70m, accrualRow.PaidIncome);
         Assert.Equal(0m, accrualRow.UnpaidIncome);
 
         var rolledUpLine = Assert.Single(accrualReport.PropertyActivityLines);
@@ -198,7 +193,6 @@ public class OwnerReportScenarioTests
         var propertyRow = Assert.Single(report.Rows);
 
         Assert.Equal(60m, propertyRow.InvoicedIncome);
-        Assert.Equal(60m, propertyRow.PaidIncome);
         Assert.Equal(0m, propertyRow.UnpaidIncome);
 
         var juneLine = Assert.Single(report.PropertyActivityLines);
@@ -210,12 +204,15 @@ public class OwnerReportScenarioTests
     }
 
     [Fact]
-    public async Task CrossPeriodPrepayment_MayOnly_AccrualShowsFullPrepaidBalance()
+    public async Task CrossPeriodPrepayment_MayOnly_AccrualShowsPrepaidActivityWithoutInvoicedIncome()
     {
         var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildCrossPeriodPrepaymentScenarioLines());
         var report = await context.GetAccrualReportAsync(MayStart, MayEnd);
+        var propertyRow = Assert.Single(report.Rows);
 
-        Assert.Equal(2646m, Assert.Single(report.Rows).PrepaidIncome);
+        Assert.Equal(0m, propertyRow.InvoicedIncome);
+        Assert.Equal(0m, propertyRow.UnpaidIncome);
+        Assert.Contains(report.PropertyActivityLines, line => line.PrepaidIncome > 0);
     }
 
     [Fact]
@@ -228,7 +225,6 @@ public class OwnerReportScenarioTests
         Assert.Empty(cashReport.PropertyActivityLines);
 
         var accrualReport = await context.GetAccrualReportAsync(MayStart, MayEnd);
-        Assert.Equal(0m, Assert.Single(accrualReport.Rows).PaidIncome);
         Assert.Contains(accrualReport.PropertyActivityLines, line => line.PrepaidIncome > 0);
         Assert.DoesNotContain(accrualReport.PropertyActivityLines, line => line.ReceivedIncome > 0);
     }

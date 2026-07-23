@@ -12,8 +12,6 @@ public class OwnerAccrualReportRow
     public string OwnerNameLine { get; set; } = string.Empty;
     public decimal StartingBalance { get; set; }
     public decimal InvoicedIncome { get; set; }
-    public decimal PrepaidIncome { get; set; }
-    public decimal PaidIncome { get; set; }
     public decimal UnpaidIncome { get; set; }
     public decimal OwnerExpenses { get; set; }
     public decimal OwnerProfit { get; set; }
