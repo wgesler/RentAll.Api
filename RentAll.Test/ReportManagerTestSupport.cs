@@ -131,7 +131,13 @@ internal static class ReportManagerTestSupport
                 .ReturnsAsync((JournalEntryRecapGetCriteria criteria, DateOnly? _, DateOnly? __) => new OwnerReportBundleData
                 {
                     RecapLines = FilterRecapLines(criteria).ToList(),
-                    OwnerApLines = [],
+                    OwnerApLines = []
+                });
+            journalEntryRepository
+                .Setup(repository => repository.GetEscrowReportDataAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
+                .ReturnsAsync((JournalEntryRecapGetCriteria criteria) => new EscrowReportBundleData
+                {
+                    RecapLines = FilterRecapLines(criteria).ToList(),
                     EscrowOfficeBalances = [],
                     EscrowPrepaidPropertyBalances = []
                 });

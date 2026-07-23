@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Globalization;
 
@@ -5,16 +6,104 @@ namespace RentAll.Domain.Managers;
 
 public partial class ReportManager
 {
+    private sealed class EscrowReportLoadedData
+    {
+        public RecapLineSet RecapLineSet { get; init; } = new();
+        public List<PropertyReportData> Properties { get; init; } = [];
+        public List<int> OfficeIds { get; init; } = [];
+        public List<EscrowOfficeBalance> EscrowOfficeBalances { get; init; } = [];
+        public Dictionary<string, decimal> EscrowPrepaidByPropertyKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
     public async Task<EscrowReport> GetEscrowReportAsync(JournalEntryRecapGetCriteria criteria, decimal cushion)
     {
         var normalizedCriteria = NormalizeEscrowReportCriteria(criteria);
-        var loaded = await LoadOwnerReportLoadedDataAsync(normalizedCriteria);
-        var accrualReport = BuildOwnerAccrualReport(loaded, normalizedCriteria);
+        var loaded = await LoadEscrowReportLoadedDataAsync(normalizedCriteria);
+        var accrualReport = BuildEscrowAccrualReport(loaded);
         return BuildEscrowReport(loaded, normalizedCriteria, accrualReport, cushion);
     }
 
+    private async Task<EscrowReportLoadedData> LoadEscrowReportLoadedDataAsync(JournalEntryRecapGetCriteria criteria)
+    {
+        criteria.IncludePaymentInvoiceContext = true;
+        var bundle = await _journalEntryRepository.GetEscrowReportDataAsync(criteria);
+        var recapLineSet = new RecapLineSet
+        {
+            AllLines = bundle.RecapLines,
+            ActivityLines = bundle.RecapLines.Where(line => line.IsInDateRange).ToList()
+        };
+
+        var officeIds = GetReportOfficeIds(criteria.OfficeIds);
+        if (officeIds.Count == 0)
+        {
+            return new EscrowReportLoadedData
+            {
+                RecapLineSet = recapLineSet,
+                OfficeIds = officeIds,
+                EscrowOfficeBalances = bundle.EscrowOfficeBalances,
+                EscrowPrepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.EscrowPrepaidPropertyBalances)
+            };
+        }
+
+        var properties = await LoadOwnerPropertyReportDataAsync(criteria);
+        return new EscrowReportLoadedData
+        {
+            RecapLineSet = recapLineSet,
+            Properties = properties,
+            OfficeIds = officeIds,
+            EscrowOfficeBalances = bundle.EscrowOfficeBalances,
+            EscrowPrepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.EscrowPrepaidPropertyBalances)
+        };
+    }
+
+    private OwnerAccrualReport BuildEscrowAccrualReport(EscrowReportLoadedData loaded)
+    {
+        if (loaded.OfficeIds.Count == 0)
+            return new OwnerAccrualReport();
+
+        var propertyActivityLines = BuildOwnerActivityLines(
+            loaded.RecapLineSet.ActivityLines,
+            loaded.RecapLineSet.AllLines,
+            OwnerReportActivityMode.Accrual);
+        var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
+
+        var rows = loaded.Properties
+            .Select(property =>
+            {
+                var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
+                activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
+                activityLines ??= [];
+
+                var invoicedIncome = activityLines.Sum(line => line.ExpectedIncome);
+                var paidIncome = activityLines.Sum(line => line.ReceivedIncome);
+                var unpaidIncome = CalculateUnpaidIncome(invoicedIncome, paidIncome);
+
+                return new OwnerAccrualReportRow
+                {
+                    PropertyId = property.PropertyId,
+                    OfficeId = property.OfficeId,
+                    OfficeName = property.OfficeName,
+                    OwnerId = property.PrimaryOwnerId,
+                    PropertyCode = property.PropertyCode,
+                    CompanyName = property.CompanyName,
+                    OwnerNames = property.OwnerNames,
+                    OwnerNameLine = property.OwnerNameLine,
+                    InvoicedIncome = invoicedIncome,
+                    UnpaidIncome = unpaidIncome
+                };
+            })
+            .OrderBy(row => row.OfficeName)
+            .ThenBy(row => row.PropertyCode)
+            .ToList();
+
+        return new OwnerAccrualReport
+        {
+            Rows = rows
+        };
+    }
+
     private EscrowReport BuildEscrowReport(
-        OwnerReportLoadedData loaded,
+        EscrowReportLoadedData loaded,
         JournalEntryRecapGetCriteria criteria,
         OwnerAccrualReport accrualReport,
         decimal cushion)
@@ -40,21 +129,32 @@ public partial class ReportManager
         var endDate = criteria.EndDate
             ?? throw new ArgumentException("EndDate is required for the escrow report.");
 
-        var startDate = criteria.StartDate ?? new DateOnly(endDate.Year, 1, 1);
-        if (endDate < startDate)
-            throw new ArgumentException("EndDate must be on or after StartDate.");
-
         return new JournalEntryRecapGetCriteria
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
             PropertyId = criteria.PropertyId,
             ReservationId = criteria.ReservationId,
-            StartDate = startDate,
+            StartDate = null,
             EndDate = endDate,
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted
         };
+    }
+
+    private static Dictionary<string, decimal> BuildEscrowPrepaidByPropertyKey(IEnumerable<EscrowPrepaidPropertyBalance> balances)
+    {
+        var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        foreach (var balance in balances ?? [])
+        {
+            if (balance.PropertyId == Guid.Empty)
+                continue;
+
+            var key = GetPropertyReportKey(balance.OfficeId, balance.PropertyId);
+            byKey[key] = Math.Round(balance.Balance, 2, MidpointRounding.AwayFromZero);
+        }
+
+        return byKey;
     }
 
     private static (decimal Balance, string AccountLabel) ResolveEscrowOwnersAccountBalance(

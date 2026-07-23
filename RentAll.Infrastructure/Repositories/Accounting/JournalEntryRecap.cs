@@ -23,26 +23,46 @@ public partial class JournalEntryRepository
         DateOnly? periodStartDate)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (recapRaw, ownerApRaw, escrowRaw, prepaidRaw) = await db.DapperProcQueryQuadrupleAsync<
+        var (recapRaw, ownerApRaw) = await db.DapperProcQueryMultipleAsync<
             JournalEntryRecapRawLineEntity,
-            JournalEntryLineSearchEntity,
-            EscrowOfficeBalanceEntity,
-            EscrowPrepaidPropertyBalanceEntity>(
+            JournalEntryLineSearchEntity>(
             "Accounting.JournalEntryRecap_GetByCriteria",
-            BuildJournalEntryRecapProcParameters(criteria, includeBundleSupplemental: true, priorMonthCloseDate, periodStartDate),
+            BuildJournalEntryRecapProcParameters(
+                criteria,
+                includeOwnerReportSupplemental: true,
+                includeEscrowSupplemental: false,
+                priorMonthCloseDate,
+                periodStartDate),
             commandTimeout: 120);
-
-        var recapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList();
-        var ownerApLines = (ownerApRaw ?? []).Select(ConvertLineSearchEntityToModel).ToList();
-        var escrowOfficeBalances = (escrowRaw ?? []).Select(ConvertEscrowOfficeBalanceEntityToModel).ToList();
-        var escrowPrepaidPropertyBalances = (prepaidRaw ?? []).Select(ConvertEscrowPrepaidPropertyBalanceEntityToModel).ToList();
 
         return new OwnerReportBundleData
         {
-            RecapLines = recapLines,
-            OwnerApLines = ownerApLines,
-            EscrowOfficeBalances = escrowOfficeBalances,
-            EscrowPrepaidPropertyBalances = escrowPrepaidPropertyBalances
+            RecapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList(),
+            OwnerApLines = (ownerApRaw ?? []).Select(ConvertLineSearchEntityToModel).ToList()
+        };
+    }
+
+    public async Task<EscrowReportBundleData> GetEscrowReportDataAsync(JournalEntryRecapGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var (recapRaw, escrowRaw, prepaidRaw) = await db.DapperProcQueryTripleAsync<
+            JournalEntryRecapRawLineEntity,
+            EscrowOfficeBalanceEntity,
+            EscrowPrepaidPropertyBalanceEntity>(
+            "Accounting.JournalEntryRecap_GetByCriteria",
+            BuildJournalEntryRecapProcParameters(
+                criteria,
+                includeOwnerReportSupplemental: false,
+                includeEscrowSupplemental: true,
+                priorMonthCloseDate: null,
+                periodStartDate: null),
+            commandTimeout: 120);
+
+        return new EscrowReportBundleData
+        {
+            RecapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList(),
+            EscrowOfficeBalances = (escrowRaw ?? []).Select(ConvertEscrowOfficeBalanceEntityToModel).ToList(),
+            EscrowPrepaidPropertyBalances = (prepaidRaw ?? []).Select(ConvertEscrowPrepaidPropertyBalanceEntityToModel).ToList()
         };
     }
 
@@ -52,7 +72,12 @@ public partial class JournalEntryRepository
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<JournalEntryRecapRawLineEntity>(
             "Accounting.JournalEntryRecap_GetByCriteria",
-            BuildJournalEntryRecapProcParameters(criteria, includeBundleSupplemental: false, priorMonthCloseDate: null, periodStartDate: null),
+            BuildJournalEntryRecapProcParameters(
+                criteria,
+                includeOwnerReportSupplemental: false,
+                includeEscrowSupplemental: false,
+                priorMonthCloseDate: null,
+                periodStartDate: null),
             commandTimeout: 120);
 
         return res ?? Enumerable.Empty<JournalEntryRecapRawLineEntity>();
@@ -60,7 +85,8 @@ public partial class JournalEntryRepository
 
     private static object BuildJournalEntryRecapProcParameters(
         JournalEntryRecapGetCriteria criteria,
-        bool includeBundleSupplemental,
+        bool includeOwnerReportSupplemental,
+        bool includeEscrowSupplemental,
         DateOnly? priorMonthCloseDate,
         DateOnly? periodStartDate)
     {
@@ -76,7 +102,8 @@ public partial class JournalEntryRepository
             IncludeUnposted = criteria.IncludeUnposted,
             IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext,
             ReachBackInvoiceCodes = (string?)null,
-            IncludeBundleSupplemental = includeBundleSupplemental,
+            IncludeOwnerReportSupplemental = includeOwnerReportSupplemental,
+            IncludeEscrowSupplemental = includeEscrowSupplemental,
             PriorMonthCloseDate = priorMonthCloseDate,
             PeriodStartDate = periodStartDate
         };

@@ -12,6 +12,7 @@ public interface IJournalEntryRepository
     Task<JournalEntryLine?> GetJournalEntryLineByIdAsync(Guid journalEntryLineId);
     Task<IEnumerable<JournalEntryRecapLine>> GetJournalEntryRecapLinesAsync(JournalEntryRecapGetCriteria criteria);
     Task<OwnerReportBundleData> GetOwnerReportBundleDataAsync(JournalEntryRecapGetCriteria criteria, DateOnly? priorMonthCloseDate, DateOnly? periodStartDate);
+    Task<EscrowReportBundleData> GetEscrowReportDataAsync(JournalEntryRecapGetCriteria criteria);
     Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId);
     Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId);
