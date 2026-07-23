@@ -47,7 +47,10 @@ public partial class ReportManager : IReportManager
             .ToList();
     }
 
-    private async Task<Dictionary<string, OwnerStartingBalance>> LoadOwnerStartingBalanceByPropertyAsync(JournalEntryRecapGetCriteria criteria, IReadOnlyList<int> officeIds)
+    private Dictionary<string, OwnerStartingBalance> BuildOwnerStartingBalanceByProperty(
+        JournalEntryRecapGetCriteria criteria,
+        IReadOnlyList<int> officeIds,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines)
     {
         var startingBalanceByKey = new Dictionary<string, OwnerStartingBalance>(StringComparer.OrdinalIgnoreCase);
         var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
@@ -57,23 +60,10 @@ public partial class ReportManager : IReportManager
 
         foreach (var officeId in officeIds)
         {
-            var chartOfAccounts = (await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(criteria.OrganizationId, officeId)).ToList();
-            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(criteria.OrganizationId, officeId);
-            var ownerAccountsPayableAccountId = _accountingManager.GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
-
             if (priorMonthClose.HasValue)
             {
-                var priorMonthOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-                {
-                    OrganizationId = criteria.OrganizationId,
-                    OfficeIds = officeId.ToString(),
-                    ChartOfAccountId = ownerAccountsPayableAccountId,
-                    PropertyId = criteria.PropertyId,
-                    StartDate = null,
-                    EndDate = priorMonthClose,
-                    IncludeVoided = false,
-                    IncludeUnposted = true
-                });
+                var priorMonthOwnerApLines = ownerApLines
+                    .Where(line => line.OfficeId == officeId && line.TransactionDate <= priorMonthClose.Value);
 
                 foreach (var group in priorMonthOwnerApLines.Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty).GroupBy(line => GetPropertyReportKey(line.OfficeId, line.PropertyId!.Value)))
                 {
@@ -86,7 +76,7 @@ public partial class ReportManager : IReportManager
                 var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate);
                 if (reportEnd.HasValue)
                 {
-                    await LoadOwnerStartingBalanceInReportRangeAsync(criteria, officeId, ownerAccountsPayableAccountId, periodStart.Value, reportEnd.Value, startingBalanceByKey);
+                    ApplyOwnerStartingBalanceInReportRange(criteria, officeId, periodStart.Value, reportEnd.Value, ownerApLines, startingBalanceByKey);
                 }
             }
         }
@@ -94,19 +84,17 @@ public partial class ReportManager : IReportManager
         return startingBalanceByKey;
     }
 
-    private async Task LoadOwnerStartingBalanceInReportRangeAsync(JournalEntryRecapGetCriteria criteria, int officeId, int ownerAccountsPayableAccountId, DateOnly periodStart, DateOnly reportEnd, Dictionary<string, OwnerStartingBalance> startingBalanceByKey)
+    private static void ApplyOwnerStartingBalanceInReportRange(
+        JournalEntryRecapGetCriteria criteria,
+        int officeId,
+        DateOnly periodStart,
+        DateOnly reportEnd,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
+        Dictionary<string, OwnerStartingBalance> startingBalanceByKey)
     {
-        var inRangeOwnerApLines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-        {
-            OrganizationId = criteria.OrganizationId,
-            OfficeIds = officeId.ToString(),
-            ChartOfAccountId = ownerAccountsPayableAccountId,
-            PropertyId = criteria.PropertyId,
-            StartDate = periodStart,
-            EndDate = reportEnd,
-            IncludeVoided = false,
-            IncludeUnposted = true
-        });
+        var inRangeOwnerApLines = ownerApLines
+            .Where(line => line.OfficeId == officeId)
+            .Where(line => line.TransactionDate >= periodStart && line.TransactionDate <= reportEnd);
 
         foreach (var propertyGroup in inRangeOwnerApLines.Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty).Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo)).GroupBy(line => GetPropertyReportKey(line.OfficeId, line.PropertyId!.Value)))
         {

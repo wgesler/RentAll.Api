@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using RentAll.Domain.Accounting;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
 
@@ -9,41 +10,58 @@ public partial class JournalEntryRepository
 {
     public async Task<IEnumerable<JournalEntryRecapLine>> GetJournalEntryRecapLinesAsync(JournalEntryRecapGetCriteria criteria)
     {
-        var inRangeLines = (await QueryJournalEntryRecapRawLinesAsync(criteria, reachBackInvoiceCodes: null)).ToList();
-        if (inRangeLines.Count == 0)
+        var rawLines = (await QueryJournalEntryRecapRawLinesAsync(criteria)).ToList();
+        if (rawLines.Count == 0)
             return Enumerable.Empty<JournalEntryRecapLine>();
 
-        var allRawLines = inRangeLines;
-        if (criteria.IncludePaymentInvoiceContext)
+        return ClassifyAndFilterRecapLines(rawLines, criteria);
+    }
+
+    public async Task<OwnerReportBundleData> GetOwnerReportBundleDataAsync(
+        JournalEntryRecapGetCriteria criteria,
+        DateOnly? priorMonthCloseDate,
+        DateOnly? periodStartDate)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var (recapRaw, ownerApRaw, escrowRaw) = await db.DapperProcQueryTripleAsync<
+            JournalEntryRecapRawLineEntity,
+            JournalEntryLineSearchEntity,
+            EscrowOfficeBalanceEntity>(
+            "Accounting.JournalEntryRecap_GetByCriteria",
+            BuildJournalEntryRecapProcParameters(criteria, includeBundleSupplemental: true, priorMonthCloseDate, periodStartDate),
+            commandTimeout: 120);
+
+        var recapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList();
+        var ownerApLines = (ownerApRaw ?? []).Select(ConvertLineSearchEntityToModel).ToList();
+        var escrowOfficeBalances = (escrowRaw ?? []).Select(ConvertEscrowOfficeBalanceEntityToModel).ToList();
+
+        return new OwnerReportBundleData
         {
-            var classificationInputs = inRangeLines.Select(ConvertRawEntityToClassificationLine).ToList();
-            var reachBackInvoiceCodes = JournalEntryRecapLineClassifier
-                .ExtractReachBackInvoiceCodes(classificationInputs)
-                .ToList();
-
-            if (reachBackInvoiceCodes.Count > 0)
-            {
-                var reachBackLines = (await QueryJournalEntryRecapRawLinesAsync(
-                    criteria,
-                    string.Join(',', reachBackInvoiceCodes))).ToList();
-                var existingLineIds = allRawLines
-                    .Select(line => line.JournalEntryLineId)
-                    .ToHashSet();
-                allRawLines = allRawLines
-                    .Concat(reachBackLines.Where(line => !existingLineIds.Contains(line.JournalEntryLineId)))
-                    .ToList();
-            }
-        }
-
-        return ClassifyAndFilterRecapLines(allRawLines, criteria);
+            RecapLines = recapLines,
+            OwnerApLines = ownerApLines,
+            EscrowOfficeBalances = escrowOfficeBalances
+        };
     }
 
     private async Task<IEnumerable<JournalEntryRecapRawLineEntity>> QueryJournalEntryRecapRawLinesAsync(
-        JournalEntryRecapGetCriteria criteria,
-        string? reachBackInvoiceCodes)
+        JournalEntryRecapGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<JournalEntryRecapRawLineEntity>("Accounting.JournalEntryRecap_GetByCriteria", new
+        var res = await db.DapperProcQueryAsync<JournalEntryRecapRawLineEntity>(
+            "Accounting.JournalEntryRecap_GetByCriteria",
+            BuildJournalEntryRecapProcParameters(criteria, includeBundleSupplemental: false, priorMonthCloseDate: null, periodStartDate: null),
+            commandTimeout: 120);
+
+        return res ?? Enumerable.Empty<JournalEntryRecapRawLineEntity>();
+    }
+
+    private static object BuildJournalEntryRecapProcParameters(
+        JournalEntryRecapGetCriteria criteria,
+        bool includeBundleSupplemental,
+        DateOnly? priorMonthCloseDate,
+        DateOnly? periodStartDate)
+    {
+        return new
         {
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
@@ -54,10 +72,23 @@ public partial class JournalEntryRepository
             IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext,
-            ReachBackInvoiceCodes = reachBackInvoiceCodes
-        }, commandTimeout: 120);
+            ReachBackInvoiceCodes = (string?)null,
+            IncludeBundleSupplemental = includeBundleSupplemental,
+            PriorMonthCloseDate = priorMonthCloseDate,
+            PeriodStartDate = periodStartDate
+        };
+    }
 
-        return res ?? Enumerable.Empty<JournalEntryRecapRawLineEntity>();
+    private static EscrowOfficeBalance ConvertEscrowOfficeBalanceEntityToModel(EscrowOfficeBalanceEntity entity)
+    {
+        return new EscrowOfficeBalance
+        {
+            OfficeId = entity.OfficeId,
+            AccountId = entity.AccountId,
+            AccountNo = entity.AccountNo,
+            AccountName = entity.AccountName,
+            Balance = entity.Balance
+        };
     }
 
     private static IEnumerable<JournalEntryRecapLine> ClassifyAndFilterRecapLines(

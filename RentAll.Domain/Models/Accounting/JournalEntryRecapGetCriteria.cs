@@ -12,4 +12,5 @@ public class JournalEntryRecapGetCriteria
     public bool IncludeUnposted { get; set; } = true;
     public string RecapCategory { get; set; } = string.Empty;
     public bool IncludePaymentInvoiceContext { get; set; }
+    public bool IncludeBundleSupplemental { get; set; }
 }

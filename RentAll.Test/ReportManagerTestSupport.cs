@@ -61,6 +61,7 @@ internal static class ReportManagerTestSupport
         return dashIndex > 0 ? sourceDocumentCode[..dashIndex] : sourceDocumentCode;
     }
 
+    private static readonly object TestSourceIdLock = new();
     private static readonly Dictionary<string, Guid> TestSourceIdByDocumentCode = new(StringComparer.OrdinalIgnoreCase);
 
     private static Guid? ResolveTestSourceId(string sourceDocumentCode)
@@ -69,13 +70,16 @@ internal static class ReportManagerTestSupport
         if (string.IsNullOrWhiteSpace(code))
             return null;
 
-        if (!TestSourceIdByDocumentCode.TryGetValue(code, out var sourceId))
+        lock (TestSourceIdLock)
         {
-            sourceId = Guid.NewGuid();
-            TestSourceIdByDocumentCode[code] = sourceId;
-        }
+            if (!TestSourceIdByDocumentCode.TryGetValue(code, out var sourceId))
+            {
+                sourceId = Guid.NewGuid();
+                TestSourceIdByDocumentCode[code] = sourceId;
+            }
 
-        return sourceId;
+            return sourceId;
+        }
     }
 
     internal static void AssertActivityLine(
@@ -122,6 +126,14 @@ internal static class ReportManagerTestSupport
             journalEntryRepository
                 .Setup(repository => repository.GetJournalEntryRecapLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
                 .ReturnsAsync((JournalEntryRecapGetCriteria criteria) => FilterRecapLines(criteria));
+            journalEntryRepository
+                .Setup(repository => repository.GetOwnerReportBundleDataAsync(It.IsAny<JournalEntryRecapGetCriteria>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>()))
+                .ReturnsAsync((JournalEntryRecapGetCriteria criteria, DateOnly? _, DateOnly? __) => new OwnerReportBundleData
+                {
+                    RecapLines = FilterRecapLines(criteria).ToList(),
+                    OwnerApLines = [],
+                    EscrowOfficeBalances = []
+                });
             journalEntryRepository
                 .Setup(repository => repository.GetJournalEntryLinesAsync(It.IsAny<JournalEntryLineGetCriteria>()))
                 .ReturnsAsync([]);

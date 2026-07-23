@@ -11,6 +11,7 @@ public interface IJournalEntryRepository
     Task<decimal> GetReconcileBeginningBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);
     Task<JournalEntryLine?> GetJournalEntryLineByIdAsync(Guid journalEntryLineId);
     Task<IEnumerable<JournalEntryRecapLine>> GetJournalEntryRecapLinesAsync(JournalEntryRecapGetCriteria criteria);
+    Task<OwnerReportBundleData> GetOwnerReportBundleDataAsync(JournalEntryRecapGetCriteria criteria, DateOnly? priorMonthCloseDate, DateOnly? periodStartDate);
     Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId);
     Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId);

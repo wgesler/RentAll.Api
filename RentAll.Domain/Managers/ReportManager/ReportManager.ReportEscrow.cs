@@ -11,17 +11,26 @@ public partial class ReportManager
         var loaded = await LoadOwnerReportLoadedDataAsync(normalizedCriteria);
         var accrualReport = BuildOwnerAccrualReport(loaded, normalizedCriteria);
         var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
-        var officeIds = GetReportOfficeIds(normalizedCriteria.OfficeIds);
-        var (escrowOwnersBalance, escrowOwnersAccountLabel) = await LoadEscrowOwnersAccountBalanceAsync(
-            normalizedCriteria.OrganizationId,
-            officeIds,
-            normalizedCriteria.EndDate);
+        return BuildEscrowReport(loaded, normalizedCriteria, accrualReport, recapRows, cushion);
+    }
+
+    private EscrowReport BuildEscrowReport(
+        OwnerReportLoadedData loaded,
+        JournalEntryRecapGetCriteria criteria,
+        OwnerAccrualReport accrualReport,
+        IReadOnlyList<RecapReportRow> recapRows,
+        decimal cushion)
+    {
+        var officeIds = GetReportOfficeIds(criteria.OfficeIds);
+        var (escrowOwnersBalance, escrowOwnersAccountLabel) = ResolveEscrowOwnersAccountBalance(
+            loaded.EscrowOfficeBalances,
+            officeIds);
 
         return BuildEscrowReport(
             accrualReport.Rows,
             recapRows,
-            normalizedCriteria.PropertyId,
-            normalizedCriteria.EndDate,
+            criteria.PropertyId,
+            criteria.EndDate,
             ResolveEscrowEntityLineLabel(accrualReport.Rows, officeIds.Count),
             cushion,
             escrowOwnersBalance,
@@ -50,47 +59,31 @@ public partial class ReportManager
         };
     }
 
-    private async Task<(decimal Balance, string AccountLabel)> LoadEscrowOwnersAccountBalanceAsync(
-        Guid organizationId,
-        IReadOnlyList<int> officeIds,
-        DateOnly? asOfDate)
+    private static (decimal Balance, string AccountLabel) ResolveEscrowOwnersAccountBalance(
+        IReadOnlyList<EscrowOfficeBalance> escrowOfficeBalances,
+        IReadOnlyList<int> officeIds)
     {
-        decimal totalBalance = 0m;
-        string? accountLabel = null;
+        if (officeIds.Count == 0 || escrowOfficeBalances.Count == 0)
+            return (0m, "Escrow Owners");
 
-        foreach (var officeId in officeIds)
-        {
-            var chartOfAccounts = (await _accountingRepository.GetChartOfAccountsByOfficeIdAsync(organizationId, officeId)).ToList();
-            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
-            var accountId = _accountingManager.GetDefaultEscrowOwnersAccount(chartOfAccounts, officeId, accountingOffice);
+        var officeIdSet = officeIds.ToHashSet();
+        var balances = escrowOfficeBalances
+            .Where(balance => officeIdSet.Contains(balance.OfficeId))
+            .ToList();
 
-            var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-            {
-                OrganizationId = organizationId,
-                OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
-                ChartOfAccountId = accountId,
-                IncludeVoided = false,
-                IncludeUnposted = true,
-                StartDate = null,
-                EndDate = asOfDate
-            });
+        var totalBalance = RoundFinancialReportAmount(balances.Sum(balance => balance.Balance));
+        var firstBalance = balances.FirstOrDefault();
+        var accountLabel = firstBalance == null
+            ? "Escrow Owners"
+            : FormatEscrowAccountLabel(firstBalance.AccountNo, firstBalance.AccountName);
 
-            totalBalance += SumEscrowLiabilityAccountBalance(lines);
-            accountLabel ??= FormatChartOfAccountLabel(chartOfAccounts.FirstOrDefault(account => account.AccountId == accountId));
-        }
-
-        return (RoundFinancialReportAmount(totalBalance), accountLabel ?? "Escrow Owners");
+        return (totalBalance, accountLabel);
     }
 
-    private static decimal SumEscrowLiabilityAccountBalance(IEnumerable<JournalEntryLineSearchResult> lines)
-        => RoundFinancialReportAmount((lines ?? []).Sum(line => line.Credit - line.Debit));
-
-    private static string FormatChartOfAccountLabel(ChartOfAccount? account)
+    private static string FormatEscrowAccountLabel(string accountNo, string accountName)
     {
-        if (account == null)
-            return string.Empty;
-
-        return $"{account.AccountNo} {account.Name}".Trim();
+        var label = $"{accountNo} {accountName}".Trim();
+        return string.IsNullOrWhiteSpace(label) ? "Escrow Owners" : label;
     }
 
     private static string? ResolveEscrowEntityLineLabel(IReadOnlyList<OwnerAccrualReportRow> rows, int officeCount)

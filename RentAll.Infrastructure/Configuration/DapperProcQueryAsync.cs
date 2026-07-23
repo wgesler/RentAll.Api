@@ -121,6 +121,51 @@ public static class SqlConnectionExtensions
         }
     }
 
+    public static async Task<(IEnumerable<TFirst> First, IEnumerable<TSecond> Second, IEnumerable<TThird> Third)> DapperProcQueryTripleAsync<TFirst, TSecond, TThird>(
+        this SqlConnection connection,
+        string procedureName,
+        object? parameters = null,
+        int? commandTimeout = null,
+        IDbTransaction? transaction = null)
+    {
+        try
+        {
+            using var multi = await connection.QueryMultipleAsync(
+                sql: procedureName,
+                param: parameters,
+                commandType: CommandType.StoredProcedure,
+                commandTimeout: commandTimeout,
+                transaction: transaction
+            );
+
+            if (multi.IsConsumed)
+                return (Enumerable.Empty<TFirst>(), Enumerable.Empty<TSecond>(), Enumerable.Empty<TThird>());
+
+            var first = await multi.ReadAsync<TFirst>();
+            var second = multi.IsConsumed
+                ? Enumerable.Empty<TSecond>()
+                : await multi.ReadAsync<TSecond>();
+            var third = multi.IsConsumed
+                ? Enumerable.Empty<TThird>()
+                : await multi.ReadAsync<TThird>();
+
+            return (first, second, third);
+        }
+        catch (SqlException ex)
+        {
+            await TryLogDatabaseErrorAsync(connection, procedureName, parameters, ex);
+            throw new InvalidOperationException(
+                $"Error executing stored procedure '{procedureName}': {ex.Message}",
+                ex);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Error executing stored procedure '{procedureName}': {ex.Message}",
+                ex);
+        }
+    }
+
     public static async Task DapperProcExecuteAsync(
         this SqlConnection connection,
         string procedureName,

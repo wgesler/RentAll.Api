@@ -10,19 +10,26 @@ public partial class ReportManager
         public List<PropertyReportData> Properties { get; init; } = [];
         public Dictionary<string, OwnerStartingBalance> StartingBalanceByKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
         public List<int> OfficeIds { get; init; } = [];
+        public List<EscrowOfficeBalance> EscrowOfficeBalances { get; init; } = [];
     }
 
     public async Task<OwnerReportsBundle> GetOwnerReportsBundleAsync(JournalEntryRecapGetCriteria criteria)
     {
         var loaded = await LoadOwnerReportLoadedDataAsync(criteria);
+        var cash = BuildOwnerCashReport(loaded, criteria);
+        var accrual = BuildOwnerAccrualReport(loaded, criteria);
+        var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
+        var escrow = BuildEscrowReport(loaded, criteria, accrual, recapRows, cushion: 0m);
+
         return new OwnerReportsBundle
         {
-            Cash = BuildOwnerCashReport(loaded, criteria),
-            Accrual = BuildOwnerAccrualReport(loaded, criteria),
+            Cash = cash,
+            Accrual = accrual,
             Recap = new RecapReport
             {
-                Rows = BuildRecapReportRows(loaded.RecapLineSet.AllLines)
-            }
+                Rows = recapRows
+            },
+            Escrow = escrow
         };
     }
 
@@ -40,25 +47,37 @@ public partial class ReportManager
 
     private async Task<OwnerReportLoadedData> LoadOwnerReportLoadedDataAsync(JournalEntryRecapGetCriteria criteria)
     {
-        var recapLineSet = await LoadRecapLinesAsync(criteria, includePaymentInvoiceContext: true);
+        var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
+        var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        criteria.IncludePaymentInvoiceContext = true;
+
+        var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(criteria, priorMonthClose, periodStart);
+        var recapLineSet = new RecapLineSet
+        {
+            AllLines = bundle.RecapLines,
+            ActivityLines = bundle.RecapLines.Where(line => line.IsInDateRange).ToList()
+        };
+
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
         if (officeIds.Count == 0)
         {
             return new OwnerReportLoadedData
             {
                 RecapLineSet = recapLineSet,
-                OfficeIds = officeIds
+                OfficeIds = officeIds,
+                EscrowOfficeBalances = bundle.EscrowOfficeBalances
             };
         }
 
         var properties = await LoadOwnerPropertyReportDataAsync(criteria);
-        var startingBalanceByKey = await LoadOwnerStartingBalanceByPropertyAsync(criteria, officeIds);
+        var startingBalanceByKey = BuildOwnerStartingBalanceByProperty(criteria, officeIds, bundle.OwnerApLines);
         return new OwnerReportLoadedData
         {
             RecapLineSet = recapLineSet,
             Properties = properties,
             StartingBalanceByKey = startingBalanceByKey,
-            OfficeIds = officeIds
+            OfficeIds = officeIds,
+            EscrowOfficeBalances = bundle.EscrowOfficeBalances
         };
     }
 }
