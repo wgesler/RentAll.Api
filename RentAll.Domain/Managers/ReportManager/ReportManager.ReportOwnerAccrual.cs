@@ -25,10 +25,8 @@ public partial class ReportManager
                 activityLines ??= [];
 
                 var invoicedIncome = activityLines.Sum(line => line.ExpectedIncome);
-                var paidIncome = activityLines.Sum(line => line.ReceivedIncome);
                 var ownerExpenses = activityLines.Sum(line => line.Expenses);
-                var unpaidIncome = CalculateUnpaidIncome(invoicedIncome, paidIncome);
-                var ownerProfit = CalculateAccrualOwnerProfit(activityLines);
+                var ownerProfit = CalculateAccrualOwnerProfit(invoicedIncome, ownerExpenses);
 
                 return new OwnerAccrualReportRow
                 {
@@ -42,7 +40,6 @@ public partial class ReportManager
                     OwnerNameLine = property.OwnerNameLine,
                     StartingBalance = startingBalance,
                     InvoicedIncome = invoicedIncome,
-                    UnpaidIncome = unpaidIncome,
                     OwnerExpenses = ownerExpenses,
                     OwnerProfit = ownerProfit
                 };
@@ -60,8 +57,8 @@ public partial class ReportManager
 
     #region Calculate
 
-    private static decimal CalculateAccrualOwnerProfit(IEnumerable<OwnerStatementPropertyActivityLine> activityLines) =>
-        (activityLines ?? []).Sum(line => line.ReceivedIncome - line.Expenses);
+    private static decimal CalculateAccrualOwnerProfit(decimal invoicedIncome, decimal ownerExpenses) =>
+        Math.Max(0m, invoicedIncome - ownerExpenses);
 
     #endregion
 }

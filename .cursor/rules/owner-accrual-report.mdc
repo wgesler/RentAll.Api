@@ -11,12 +11,11 @@ Read this file before changing owner accrual logic. Owner **cash** uses the same
 ## What the report means (human terms)
 
 - **Invoiced Income** = owner rent invoiced for that invoice/period (owner share posted on owner AP when the owner invoice JE runs).
-- **Paid Income** = owner’s portion of money actually received from the tenant, by **payment date** — not when the invoice was posted.
-- **Unpaid Income** = `max(0, invoiced − paid)` at property level; per line `max(0, expected − paid)`.
-- **Prepaid Income** = tenant prepayment balance (from recap `PrePaymentValue` per reservation) — not the same as Paid Income.
 - **Owner Expenses** = bills / receipts / work orders on owner AP.
+- **Owner Profit** = `max(0, invoiced − expenses)` at property level; accrual report does **not** expose unpaid/received income columns.
+- **Prepaid Income** = tenant prepayment balance (from recap `PrePaymentValue` per reservation) — activity lines only; not Owner Profit.
 
-Late payment example: May invoice can stay **unpaid** in May; the **owner paid line** appears in June when the tenant pays — on the **same invoice source**, not merged into June’s different invoice.
+Late payment example: May invoice appears in May accrual as invoiced income; June payment activity may still appear on expanded lines but does not drive Owner Profit.
 
 ## Data pipeline (do not shortcut)
 
@@ -112,11 +111,11 @@ paid = min(ownerRent, payment × ownerRent / expectedIncome)
 
 ```
 invoiced = sum(activity.ExpectedIncome)
-paid     = sum(activity.ReceivedIncome)
-unpaid   = max(0, invoiced - paid)
-profit   = sum(paid - expenses)
+profit   = max(0, invoiced - expenses)
 prepaid  = recap PrePaymentValue (reservation-level, from BuildRecapReportRows — unchanged)
 ```
+
+Unpaid / not-collected is **not** on the owner accrual report. Escrow (E2) computes `max(0, invoiced − paid)` separately in `ReportManager.ReportEscrow.cs` as **Not Collected**.
 
 ## Regression fixture — BWA24 / R-000177
 
@@ -139,7 +138,7 @@ Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invo
 2. Re-read `ReportManager.ReportOwnerAccrual.cs` end-to-end.
 3. Write the acceptance table (use BWA24 + one same-period rollup case).
 4. Change **one behavior** per deploy when possible.
-5. After change: property totals must still satisfy `unpaid = max(0, invoiced − paid)`.
+5. After change: property totals must still satisfy `profit = max(0, invoiced − expenses)`.
 
 ## Files — touch / do not touch
 
@@ -149,4 +148,4 @@ Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invo
 | `ReportManager.cs` | |
 | `ReportManager.ReportOwnerCash.cs` (calls shared income builder) | |
 | `JournalEntryRecap_GetByCriteria.sql` | Owner cash UI columns |
-| `mapping.service.ts` (`unpaidValue`, accrual mapping) | Global recap grouping in `ReportRecap.cs` unless recap report itself needs it |
+| `mapping.service.ts` (accrual mapping) | Global recap grouping in `ReportRecap.cs` unless recap report itself needs it |
