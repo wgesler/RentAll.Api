@@ -108,9 +108,11 @@ public partial class AccountingManager
         if (payment == null)
             throw new Exception("Payment record not found");
 
+        var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
+
         await DeleteJournalEntriesForPaymentAsync(payment);
 
-        foreach (var invoiceGroup in payment.LedgerLines.GroupBy(line => line.InvoiceId))
+        foreach (var invoiceGroup in paymentLedgerLines.GroupBy(line => line.InvoiceId))
         {
             var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceGroup.Key, organizationId);
             if (invoice == null)
@@ -118,9 +120,7 @@ public partial class AccountingManager
 
             foreach (var paymentLine in invoiceGroup)
             {
-                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(
-                    invoice,
-                    ToInvoicePaymentLedgerLine(paymentLine));
+                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, ToInvoicePaymentLedgerLine(paymentLine));
                 invoice.PaidAmount -= paymentLine.Amount;
                 invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == paymentLine.LedgerLineId);
             }

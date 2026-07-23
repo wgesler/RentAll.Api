@@ -11,12 +11,8 @@ public partial class AccountingManager
         if (existingInvoice == null)
             throw new Exception("Invoice not found");
 
-        var priorPaymentLedgerLineIds = existingInvoice.LedgerLines
-            .Where(l => l.LedgerLineId != Guid.Empty)
-            .Select(l => l.LedgerLineId);
-
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
-        await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, priorPaymentLedgerLineIds);
+        await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, existingInvoice);
         return updatedInvoice;
     }
 
@@ -216,7 +212,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TryReplaceJournalEntriesFromInvoiceAsync(Invoice invoice, IEnumerable<Guid> priorPaymentLedgerLineIds)
+    private async Task TryReplaceJournalEntriesFromInvoiceAsync(Invoice invoice, Invoice priorInvoice)
     {
         try
         {
@@ -225,26 +221,27 @@ public partial class AccountingManager
 
             var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
 
+            var priorPaymentLedgerLines = priorInvoice.LedgerLines
+                .Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0)
+                .Where(line => costCodeById.TryGetValue(line.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode))
+                .ToList();
+
             var currentPaymentLedgerLineIds = invoice.LedgerLines
                 .Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0)
                 .Where(line => costCodeById.TryGetValue(line.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode))
                 .Select(line => line.LedgerLineId)
                 .ToHashSet();
 
-            var removedPaymentLedgerLineIds = priorPaymentLedgerLineIds
-                .Where(ledgerLineId => ledgerLineId != Guid.Empty && !currentPaymentLedgerLineIds.Contains(ledgerLineId))
-                .Distinct()
-                .ToList();
-
-            foreach (var ledgerLineId in removedPaymentLedgerLineIds)
+            var paymentIdsToRefresh = new HashSet<Guid>();
+            foreach (var removedPaymentLedgerLine in priorPaymentLedgerLines.Where(line => !currentPaymentLedgerLineIds.Contains(line.LedgerLineId)))
             {
-                var removedLedgerLine = new LedgerLine { LedgerLineId = ledgerLineId, InvoiceId = invoice.InvoiceId };
-                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, removedLedgerLine);
+                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, removedPaymentLedgerLine);
+                if (removedPaymentLedgerLine.PaymentId is { } removedPaymentId && removedPaymentId != Guid.Empty)
+                    paymentIdsToRefresh.Add(removedPaymentId);
             }
 
             await RefreshInvoiceChargeJournalEntriesAsync(invoice, invoice.ModifiedBy);
 
-            var paymentIdsToRefresh = new HashSet<Guid>();
             foreach (var paymentLedgerLine in invoice.LedgerLines
                          .Where(line => line.Amount != 0)
                          .Where(line => costCodeById.TryGetValue(line.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode)))

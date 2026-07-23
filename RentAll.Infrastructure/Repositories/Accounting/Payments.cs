@@ -30,6 +30,23 @@ public partial class AccountingRepository
 
         return MapPaymentsWithLedgerLineEntities(headers, lines).FirstOrDefault();
     }
+
+    public async Task<IReadOnlyList<PaymentLedgerLine>> GetLedgerLinesByPaymentIdAsync(Guid paymentId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var lineEntities = await db.DapperProcQueryAsync<PaymentLedgerLineEntity>("Accounting.LedgerLine_GetByPaymentId", new
+        {
+            PaymentId = paymentId,
+            OrganizationId = organizationId
+        });
+
+        return (lineEntities ?? Enumerable.Empty<PaymentLedgerLineEntity>())
+            .Select(ConvertPaymentLedgerLineEntityToModel)
+            .OrderBy(line => line.LedgerLineDate)
+            .ThenBy(line => line.InvoiceCode)
+            .ThenBy(line => line.LineNumber)
+            .ToList();
+    }
     #endregion
 
     #region Post

@@ -110,9 +110,14 @@ public partial class AccountingManager
     {
         if (paymentLedgerLine.PaymentId is { } paymentId && paymentId != Guid.Empty)
         {
-            var journalEntries = await CreateJournalEntriesFromPaymentDocumentAsync(paymentId, invoice.OrganizationId, currentUser);
-            var mainEntry = journalEntries.FirstOrDefault(entry => IsConsolidatedPaymentJournalEntry(entry, paymentId));
-            return AccountingJournalEntryResult.Success(mainEntry);
+            await CreateJournalEntriesFromPaymentDocumentAsync(paymentId, invoice.OrganizationId, currentUser);
+            var linkedPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                invoice.OrganizationId,
+                invoice.OfficeId,
+                invoice,
+                paymentLedgerLine);
+            var paymentEntry = linkedPaymentEntries.FirstOrDefault(IsStandardInvoicePaymentJournalEntry);
+            return AccountingJournalEntryResult.Success(paymentEntry);
         }
 
         var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(

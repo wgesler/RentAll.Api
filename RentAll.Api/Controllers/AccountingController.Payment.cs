@@ -235,7 +235,8 @@ public partial class AccountingController
                 return NotFound("Payment record not found");
 
             var postingStatuses = new List<int?> { payment.PostingStatusId };
-            foreach (var invoiceId in payment.LedgerLines.Select(line => line.InvoiceId).Distinct())
+            var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, CurrentOrganizationId);
+            foreach (var invoiceId in paymentLedgerLines.Select(line => line.InvoiceId).Distinct())
             {
                 var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
                 if (invoice != null)

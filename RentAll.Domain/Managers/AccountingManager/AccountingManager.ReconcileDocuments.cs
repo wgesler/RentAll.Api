@@ -68,7 +68,41 @@ public partial class AccountingManager
         payment.PostingStatusId = (int)PostingStatus.Posted;
         payment.ModifiedBy = currentUser;
         await _accountingRepository.UpdatePaymentAsync(payment);
-        await PostOpenJournalEntriesForSourceAsync(payment.OrganizationId, payment.OfficeId, SourceType.InvoicePayment, paymentId, organizationId, currentUser);
+        await PostOpenJournalEntriesForPaymentAsync(payment, organizationId, currentUser);
+    }
+
+    private async Task PostOpenJournalEntriesForPaymentAsync(Payment payment, Guid organizationId, Guid currentUser)
+    {
+        await PostOpenJournalEntriesForSourceAsync(
+            payment.OrganizationId,
+            payment.OfficeId,
+            SourceType.InvoicePayment,
+            payment.PaymentId,
+            organizationId,
+            currentUser);
+
+        var paymentWithLines = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, organizationId);
+        if (paymentWithLines == null)
+            return;
+
+        foreach (var paymentLine in paymentWithLines.LedgerLines.Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0))
+        {
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, organizationId);
+            if (invoice == null)
+                continue;
+
+            var paymentLedgerLine = invoice.LedgerLines.SingleOrDefault(line => line.LedgerLineId == paymentLine.LedgerLineId);
+            if (paymentLedgerLine == null)
+                continue;
+
+            var paymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                invoice.OrganizationId,
+                invoice.OfficeId,
+                invoice,
+                paymentLedgerLine);
+            foreach (var entry in paymentEntries.Where(entry => entry.PostingStatusId == PostingStatus.Open))
+                await PostJournalEntryAsync(entry.JournalEntryId, organizationId, currentUser);
+        }
     }
 
     private async Task MarkDepositPostedFromReconcileAsync(Guid depositId, Guid organizationId, Guid currentUser)

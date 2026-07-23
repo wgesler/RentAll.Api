@@ -75,6 +75,18 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
+    public void ConsolidatedPaymentDocument_ApplicationLineMemo_UsesInvoicePaymentPattern()
+    {
+        const string invoiceCode = "R-001052-003";
+        const string paymentDescription = "CC";
+
+        var memo = AccountingManager.BuildInvoicePaymentMemo(invoiceCode, paymentDescription);
+
+        Assert.Equal($"{invoiceCode}: Payment: {paymentDescription}", memo);
+        Assert.True(AccountingManager.MatchPaymentMemo(memo).IsMatch);
+    }
+
+    [Fact]
     public async Task StandardPayment_OnInvoice_CreatesBalancedPaymentJe()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
@@ -106,6 +118,46 @@ public class InvoiceJournalEntryGapCoverageTests
         AssertBalancedJournalEntry(paymentEntry);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId).Debit);
         Assert.Equal(1500m, paymentEntry.JournalEntryLines.Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo)).Credit);
+    }
+
+    [Fact]
+    public async Task UpdateInvoice_RemovedPaymentLedgerLine_DeletesPaymentJournalEntries()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 6, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+
+        var periodStart = new DateOnly(2026, 4, 1);
+        var periodEnd = new DateOnly(2026, 4, 30);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(reservation, periodStart, periodEnd);
+        var manager = context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: 1500m,
+            paymentDate: new DateOnly(2026, 4, 15),
+            description: "Check 8979");
+        invoice.LedgerLines.Add(payment);
+        invoice.PaidAmount += payment.Amount;
+        context.TrackInvoice(invoice);
+
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+        Assert.Contains(context.ActiveJournalEntries, entry => entry.JournalEntryKindId == JournalEntryKind.Payment);
+
+        invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == payment.LedgerLineId);
+        invoice.PaidAmount -= payment.Amount;
+        invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        await manager.UpdateInvoiceAsync(invoice);
+
+        Assert.DoesNotContain(context.ActiveJournalEntries, entry =>
+            entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.JournalEntryKindId == JournalEntryKind.Payment);
     }
 
     [Fact]
