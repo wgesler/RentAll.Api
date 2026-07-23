@@ -23,10 +23,11 @@ public partial class JournalEntryRepository
         DateOnly? periodStartDate)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (recapRaw, ownerApRaw, escrowRaw) = await db.DapperProcQueryTripleAsync<
+        var (recapRaw, ownerApRaw, escrowRaw, prepaidRaw) = await db.DapperProcQueryQuadrupleAsync<
             JournalEntryRecapRawLineEntity,
             JournalEntryLineSearchEntity,
-            EscrowOfficeBalanceEntity>(
+            EscrowOfficeBalanceEntity,
+            EscrowPrepaidPropertyBalanceEntity>(
             "Accounting.JournalEntryRecap_GetByCriteria",
             BuildJournalEntryRecapProcParameters(criteria, includeBundleSupplemental: true, priorMonthCloseDate, periodStartDate),
             commandTimeout: 120);
@@ -34,12 +35,14 @@ public partial class JournalEntryRepository
         var recapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList();
         var ownerApLines = (ownerApRaw ?? []).Select(ConvertLineSearchEntityToModel).ToList();
         var escrowOfficeBalances = (escrowRaw ?? []).Select(ConvertEscrowOfficeBalanceEntityToModel).ToList();
+        var escrowPrepaidPropertyBalances = (prepaidRaw ?? []).Select(ConvertEscrowPrepaidPropertyBalanceEntityToModel).ToList();
 
         return new OwnerReportBundleData
         {
             RecapLines = recapLines,
             OwnerApLines = ownerApLines,
-            EscrowOfficeBalances = escrowOfficeBalances
+            EscrowOfficeBalances = escrowOfficeBalances,
+            EscrowPrepaidPropertyBalances = escrowPrepaidPropertyBalances
         };
     }
 
@@ -87,6 +90,16 @@ public partial class JournalEntryRepository
             AccountId = entity.AccountId,
             AccountNo = entity.AccountNo,
             AccountName = entity.AccountName,
+            Balance = entity.Balance
+        };
+    }
+
+    private static EscrowPrepaidPropertyBalance ConvertEscrowPrepaidPropertyBalanceEntityToModel(EscrowPrepaidPropertyBalanceEntity entity)
+    {
+        return new EscrowPrepaidPropertyBalance
+        {
+            OfficeId = entity.OfficeId,
+            PropertyId = entity.PropertyId,
             Balance = entity.Balance
         };
     }

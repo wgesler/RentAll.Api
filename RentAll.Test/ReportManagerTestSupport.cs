@@ -132,7 +132,8 @@ internal static class ReportManagerTestSupport
                 {
                     RecapLines = FilterRecapLines(criteria).ToList(),
                     OwnerApLines = [],
-                    EscrowOfficeBalances = []
+                    EscrowOfficeBalances = [],
+                    EscrowPrepaidPropertyBalances = []
                 });
             journalEntryRepository
                 .Setup(repository => repository.GetJournalEntryLinesAsync(It.IsAny<JournalEntryLineGetCriteria>()))

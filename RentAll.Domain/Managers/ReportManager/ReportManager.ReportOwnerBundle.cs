@@ -11,6 +11,7 @@ public partial class ReportManager
         public Dictionary<string, OwnerStartingBalance> StartingBalanceByKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
         public List<int> OfficeIds { get; init; } = [];
         public List<EscrowOfficeBalance> EscrowOfficeBalances { get; init; } = [];
+        public Dictionary<string, decimal> EscrowPrepaidByPropertyKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<OwnerReportsBundle> GetOwnerReportsBundleAsync(JournalEntryRecapGetCriteria criteria)
@@ -19,7 +20,7 @@ public partial class ReportManager
         var cash = BuildOwnerCashReport(loaded, criteria);
         var accrual = BuildOwnerAccrualReport(loaded, criteria);
         var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
-        var escrow = BuildEscrowReport(loaded, criteria, accrual, recapRows, cushion: 0m);
+        var escrow = BuildEscrowReport(loaded, criteria, accrual, cushion: 0m);
 
         return new OwnerReportsBundle
         {
@@ -65,7 +66,8 @@ public partial class ReportManager
             {
                 RecapLineSet = recapLineSet,
                 OfficeIds = officeIds,
-                EscrowOfficeBalances = bundle.EscrowOfficeBalances
+                EscrowOfficeBalances = bundle.EscrowOfficeBalances,
+                EscrowPrepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.EscrowPrepaidPropertyBalances)
             };
         }
 
@@ -77,7 +79,23 @@ public partial class ReportManager
             Properties = properties,
             StartingBalanceByKey = startingBalanceByKey,
             OfficeIds = officeIds,
-            EscrowOfficeBalances = bundle.EscrowOfficeBalances
+            EscrowOfficeBalances = bundle.EscrowOfficeBalances,
+            EscrowPrepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.EscrowPrepaidPropertyBalances)
         };
+    }
+
+    private static Dictionary<string, decimal> BuildEscrowPrepaidByPropertyKey(IEnumerable<EscrowPrepaidPropertyBalance> balances)
+    {
+        var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        foreach (var balance in balances ?? [])
+        {
+            if (balance.PropertyId == Guid.Empty)
+                continue;
+
+            var key = GetPropertyReportKey(balance.OfficeId, balance.PropertyId);
+            byKey[key] = Math.Round(balance.Balance, 2, MidpointRounding.AwayFromZero);
+        }
+
+        return byKey;
     }
 }

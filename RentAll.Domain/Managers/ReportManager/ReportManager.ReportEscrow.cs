@@ -10,15 +10,13 @@ public partial class ReportManager
         var normalizedCriteria = NormalizeEscrowReportCriteria(criteria);
         var loaded = await LoadOwnerReportLoadedDataAsync(normalizedCriteria);
         var accrualReport = BuildOwnerAccrualReport(loaded, normalizedCriteria);
-        var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
-        return BuildEscrowReport(loaded, normalizedCriteria, accrualReport, recapRows, cushion);
+        return BuildEscrowReport(loaded, normalizedCriteria, accrualReport, cushion);
     }
 
     private EscrowReport BuildEscrowReport(
         OwnerReportLoadedData loaded,
         JournalEntryRecapGetCriteria criteria,
         OwnerAccrualReport accrualReport,
-        IReadOnlyList<RecapReportRow> recapRows,
         decimal cushion)
     {
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
@@ -28,7 +26,7 @@ public partial class ReportManager
 
         return BuildEscrowReport(
             accrualReport.Rows,
-            recapRows,
+            loaded.EscrowPrepaidByPropertyKey,
             criteria.PropertyId,
             criteria.EndDate,
             ResolveEscrowEntityLineLabel(accrualReport.Rows, officeIds.Count),
@@ -96,7 +94,7 @@ public partial class ReportManager
 
     private static EscrowReport BuildEscrowReport(
         IReadOnlyList<OwnerAccrualReportRow> accrualRows,
-        IReadOnlyList<RecapReportRow> recapRows,
+        IReadOnlyDictionary<string, decimal> prepaidByPropertyKey,
         Guid? propertyId,
         DateOnly? asOfDate,
         string? entityLineLabel,
@@ -104,16 +102,17 @@ public partial class ReportManager
         decimal escrowBankBalance,
         string escrowBankAccountLabel)
     {
-        var lastRecapByProperty = BuildEscrowLastRecapAmountsByProperty(recapRows);
         var rows = (accrualRows ?? [])
             .Where(row => !propertyId.HasValue || propertyId.Value == Guid.Empty || row.PropertyId == propertyId.Value)
             .Select(row =>
             {
-                var propertyKey = row.PropertyId.ToString("D");
-                lastRecapByProperty.TryGetValue(propertyKey, out var recapAmounts);
-                var arBalance = RoundFinancialReportAmount(row.UnpaidIncome);
-                var prepaids = RoundFinancialReportAmount(recapAmounts?.Prepaids ?? row.PrepaidIncome);
-                var notCollected = RoundFinancialReportAmount(recapAmounts?.NotCollected ?? 0m);
+                var propertyKey = GetPropertyReportKey(row.OfficeId, row.PropertyId);
+                var arBalance = RoundFinancialReportAmount(row.InvoicedIncome);
+                var prepaidRaw = prepaidByPropertyKey.TryGetValue(propertyKey, out var prepaidBalance)
+                    ? prepaidBalance
+                    : 0m;
+                var prepaids = RoundFinancialReportAmount(prepaidRaw);
+                var notCollected = RoundFinancialReportAmount(row.UnpaidIncome);
                 var total = RoundFinancialReportAmount(arBalance - prepaids - notCollected);
                 var e2 = total < 0m ? 0m : total;
 
@@ -184,59 +183,6 @@ public partial class ReportManager
 
         ownerName = (row.CompanyName ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(ownerName) ? "—" : ownerName;
-    }
-
-    private sealed class EscrowRecapPropertyAmounts
-    {
-        public decimal Prepaids { get; set; }
-        public decimal NotCollected { get; set; }
-    }
-
-    private static Dictionary<string, EscrowRecapPropertyAmounts> BuildEscrowLastRecapAmountsByProperty(
-        IReadOnlyList<RecapReportRow> recapRows)
-    {
-        var byPropertyReservation = new Dictionary<string, RecapReportRow>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var row in recapRows ?? [])
-        {
-            if (!row.PropertyId.HasValue || row.PropertyId.Value == Guid.Empty)
-                continue;
-
-            var propertyId = row.PropertyId.Value.ToString("D");
-            var reservationKey = (row.ReservationCode ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(reservationKey))
-                reservationKey = "no-reservation";
-
-            var key = $"{propertyId}|{reservationKey}";
-            if (!byPropertyReservation.TryGetValue(key, out var existing))
-            {
-                byPropertyReservation[key] = row;
-                continue;
-            }
-
-            var periodCompare = string.Compare(row.AccountingPeriod, existing.AccountingPeriod, StringComparison.OrdinalIgnoreCase);
-            if (periodCompare > 0 || (periodCompare == 0 && row.SortDateValue >= existing.SortDateValue))
-                byPropertyReservation[key] = row;
-        }
-
-        var totals = new Dictionary<string, EscrowRecapPropertyAmounts>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in byPropertyReservation.Values)
-        {
-            if (!row.PropertyId.HasValue || row.PropertyId.Value == Guid.Empty)
-                continue;
-
-            var propertyId = row.PropertyId.Value.ToString("D");
-            if (!totals.TryGetValue(propertyId, out var existing))
-            {
-                existing = new EscrowRecapPropertyAmounts();
-                totals[propertyId] = existing;
-            }
-
-            existing.Prepaids = RoundFinancialReportAmount(existing.Prepaids + row.PrePaymentValue);
-            existing.NotCollected = RoundFinancialReportAmount(existing.NotCollected + row.UnPaidValue);
-        }
-
-        return totals;
     }
 
     private static decimal RoundFinancialReportAmount(decimal amount)
