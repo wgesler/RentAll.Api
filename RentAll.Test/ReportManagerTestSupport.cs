@@ -140,7 +140,17 @@ internal static class ReportManagerTestSupport
                     Properties = [CreateEscrowPropertyReportData()],
                     PrepaidPropertyBalances = [],
                     NotCollectedPropertyBalances = [],
-                    EscrowOfficeBalances = []
+                    EscrowOfficeBalances =
+                    [
+                        new EscrowOfficeBalance
+                        {
+                            OfficeId = OfficeId,
+                            AccountId = 9001,
+                            AccountNo = "1050",
+                            AccountName = "Escrow Owners",
+                            Balance = 500m
+                        }
+                    ]
                 });
             journalEntryRepository
                 .Setup(repository => repository.GetEscrowOwnerApJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
@@ -207,6 +217,13 @@ internal static class ReportManagerTestSupport
             _criteria.StartDate = startDate;
             _criteria.EndDate = endDate;
             return _manager.GetJournalEntryRecapReportAsync(_criteria);
+        }
+
+        internal Task<EscrowReport> GetEscrowReportAsync(DateOnly endDate, decimal cushion = 0m)
+        {
+            _criteria.StartDate = null;
+            _criteria.EndDate = endDate;
+            return _manager.GetEscrowReportAsync(_criteria, cushion);
         }
 
         private IEnumerable<JournalEntryRecapLine> FilterRecapLines(JournalEntryRecapGetCriteria criteria)

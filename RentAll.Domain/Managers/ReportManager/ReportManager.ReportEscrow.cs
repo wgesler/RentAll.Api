@@ -20,8 +20,9 @@ public partial class ReportManager
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
         var prepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.PrepaidPropertyBalances);
         var notCollectedByPropertyKey = BuildEscrowNotCollectedByPropertyKey(bundle.NotCollectedPropertyBalances);
+        var escrowOfficeBalances = FilterEscrowOfficeBalances(bundle.EscrowOfficeBalances, officeIds);
         var (escrowOwnersBalance, escrowOwnersAccountLabel) = ResolveEscrowOwnersAccountBalance(
-            bundle.EscrowOfficeBalances,
+            escrowOfficeBalances,
             officeIds);
 
         var rows = (bundle.Properties ?? [])
@@ -92,6 +93,7 @@ public partial class ReportManager
             EscrowBankAccountLabel = string.IsNullOrWhiteSpace(escrowOwnersAccountLabel)
                 ? "Escrow Owners"
                 : escrowOwnersAccountLabel.Trim(),
+            EscrowOfficeBalances = escrowOfficeBalances,
             Transfer = RoundFinancialReportAmount(roundedBankBalance + totals.Total - roundedCushion)
         };
     }
@@ -144,6 +146,28 @@ public partial class ReportManager
         }
 
         return byKey;
+    }
+
+    private static List<EscrowOfficeBalance> FilterEscrowOfficeBalances(
+        IEnumerable<EscrowOfficeBalance> escrowOfficeBalances,
+        IReadOnlyList<int> officeIds)
+    {
+        if (officeIds.Count == 0)
+            return [];
+
+        var officeIdSet = officeIds.ToHashSet();
+        return (escrowOfficeBalances ?? [])
+            .Where(balance => officeIdSet.Contains(balance.OfficeId))
+            .Select(balance => new EscrowOfficeBalance
+            {
+                OfficeId = balance.OfficeId,
+                AccountId = balance.AccountId,
+                AccountNo = balance.AccountNo,
+                AccountName = balance.AccountName,
+                Balance = RoundFinancialReportAmount(balance.Balance)
+            })
+            .OrderBy(balance => balance.OfficeId)
+            .ToList();
     }
 
     private static (decimal Balance, string AccountLabel) ResolveEscrowOwnersAccountBalance(

@@ -10,5 +10,6 @@ public class EscrowReport
     public decimal Cushion { get; set; }
     public decimal EscrowBankBalance { get; set; }
     public string EscrowBankAccountLabel { get; set; } = "Escrow Owners";
+    public List<EscrowOfficeBalance> EscrowOfficeBalances { get; set; } = [];
     public decimal Transfer { get; set; }
 }

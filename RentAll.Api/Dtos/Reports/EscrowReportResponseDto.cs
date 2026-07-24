@@ -10,6 +10,7 @@ public class EscrowReportResponseDto
     public decimal Cushion { get; set; }
     public decimal EscrowBankBalance { get; set; }
     public string EscrowBankAccountLabel { get; set; } = string.Empty;
+    public List<EscrowOfficeBalanceResponseDto> EscrowOfficeBalances { get; set; } = [];
     public decimal Transfer { get; set; }
 
     public EscrowReportResponseDto(EscrowReport report)
@@ -22,6 +23,9 @@ public class EscrowReportResponseDto
         Cushion = report.Cushion;
         EscrowBankBalance = report.EscrowBankBalance;
         EscrowBankAccountLabel = report.EscrowBankAccountLabel;
+        EscrowOfficeBalances = (report.EscrowOfficeBalances ?? [])
+            .Select(balance => new EscrowOfficeBalanceResponseDto(balance))
+            .ToList();
         Transfer = report.Transfer;
     }
 }
