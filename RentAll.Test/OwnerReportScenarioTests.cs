@@ -35,7 +35,7 @@ public class OwnerReportScenarioTests
     }
 
     [Fact]
-    public async Task LatePayment_JuneOnly_ShowsJuneInvoiceUnpaidAndMayPaymentPaid()
+    public async Task LatePayment_JuneOnly_ShowsJuneInvoiceOnly()
     {
         var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildLatePaymentScenarioLines());
 
@@ -55,17 +55,10 @@ public class OwnerReportScenarioTests
             OwnerReportScenarioFixtures.OwnerRent002,
             0m);
 
-        var mayPaymentLine = ReportManagerTestSupport.FindActivityLine(
+        Assert.DoesNotContain(
             report.PropertyActivityLines,
-            $"JE-{OwnerReportScenarioFixtures.Invoice001}");
-        Assert.NotNull(mayPaymentLine);
-        ReportManagerTestSupport.AssertActivityLine(
-            mayPaymentLine!,
-            $"JE-{OwnerReportScenarioFixtures.Invoice001}",
-            0m,
-            OwnerReportScenarioFixtures.OwnerRent001);
-        Assert.Equal(OwnerReportScenarioFixtures.JunePaymentDate, mayPaymentLine!.ActivityDate);
-        Assert.Equal("06.26", mayPaymentLine.AccountingPeriod);
+            line => string.Equals(line.DocumentCode, $"JE-{OwnerReportScenarioFixtures.Invoice001}", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(report.PropertyActivityLines, line => line.ReceivedIncome > 0);
     }
 
     [Fact]
@@ -91,7 +84,7 @@ public class OwnerReportScenarioTests
             rolledUpLine!,
             $"JE-{OwnerReportScenarioFixtures.Invoice001}",
             OwnerReportScenarioFixtures.OwnerRent001,
-            OwnerReportScenarioFixtures.OwnerRent001);
+            0m);
 
         var juneInvoiceLine = ReportManagerTestSupport.FindActivityLine(
             report.PropertyActivityLines,
@@ -173,7 +166,7 @@ public class OwnerReportScenarioTests
             rolledUpLine,
             $"JE-{OwnerReportScenarioFixtures.CrossPeriodInvoice}",
             49.70m,
-            49.70m);
+            0m);
         Assert.Equal(0m, rolledUpLine.PrepaidIncome);
         ReportManagerTestSupport.AssertNoNegativePrepaidActivityLines(accrualReport.PropertyActivityLines);
 
@@ -197,7 +190,7 @@ public class OwnerReportScenarioTests
             juneLine,
             $"JE-{OwnerReportScenarioFixtures.CrossPeriodInvoice}",
             60m,
-            60m);
+            0m);
     }
 
     [Fact]

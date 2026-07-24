@@ -276,7 +276,7 @@ public partial class ReportManager : IReportManager
                 SourceDocumentCode = GetOwnerActivityRefNo(group),
                 Description = GetOwnerRentActivityDescription(group),
                 ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
-                ReceivedIncome = paidIncome,
+                ReceivedIncome = isAccrual ? 0 : paidIncome,
                 Expenses = 0,
                 OwnerPayment = 0
             };
@@ -302,7 +302,7 @@ public partial class ReportManager : IReportManager
                 OwnerPayment = 0
             };
         }
-        else if (hasPaidIncome)
+        else if (hasPaidIncome && !isAccrual)
         {
             yield return new OwnerStatementPropertyActivityLine
             {
@@ -824,6 +824,9 @@ public partial class ReportManager : IReportManager
         || string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsOwnerInvoiceGroupWithActivity(OwnerInvoiceActivityGroup group) =>
+        group.OwnerRentValue != 0 || group.OwnerRentActualValue != 0 || group.OwnerExpenseValue != 0 || group.OwnerPaymentReceivedValue != 0 || group.PaymentValue != 0;
+
     private static bool IsPrepaymentPaymentRecapLine(JournalEntryRecapLine line, IReadOnlySet<Guid> prepaymentPaymentSourceIds, IReadOnlyDictionary<string, DateOnly> invoiceAccountingPeriodByKey)
     {
         if (!string.Equals(line.RecapCategory, "Payment", StringComparison.OrdinalIgnoreCase))
@@ -845,9 +848,6 @@ public partial class ReportManager : IReportManager
 
         return line.TransactionDate < invoiceAccountingPeriod;
     }
-
-    private static bool IsOwnerInvoiceGroupWithActivity(OwnerInvoiceActivityGroup group) =>
-        group.OwnerRentValue != 0 || group.OwnerRentActualValue != 0 || group.OwnerExpenseValue != 0 || group.OwnerPaymentReceivedValue != 0 || group.PaymentValue != 0;
 
     private static bool TryGetRecapLinePropertyId(JournalEntryRecapLine line, out Guid propertyId)
     {

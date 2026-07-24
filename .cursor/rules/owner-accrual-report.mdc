@@ -10,12 +10,14 @@ Read this file before changing owner accrual logic. Owner **cash** uses the same
 
 ## What the report means (human terms)
 
-- **Invoiced Income** = owner rent invoiced for that invoice/period (owner share posted on owner AP when the owner invoice JE runs).
+- **Accrual owner income** (Invoiced Income column + property total) = **`OwnerRent` only** on activity lines.
+- **Cash owner income** (Received Income column + property total) = **`OwnerRentActual` only** on activity lines.
+- **`Payment`**, **`PrePayment`**, **`ExpectedIncome`** still roll up in `BuildOwnerActivityLines` for invoice context and other logic — **do not remove from rollup**. They are **not** owner income on either report.
+- **Prepaid activity lines** (positive `PrePayment` receive) stay on accrual for visibility; they are **not** owner income / profit.
 - **Owner Expenses** = bills / receipts / work orders on owner AP.
-- **Owner Profit** = `max(0, invoiced − expenses)` at property level; accrual report does **not** expose unpaid/received income columns.
-- **Prepaid Income** = tenant prepayment balance (from recap `PrePaymentValue` per reservation) — activity lines only; not Owner Profit.
+- **Owner Profit** = `max(0, invoiced − expenses)` at property level.
 
-Late payment example: May invoice appears in May accrual as invoiced income; June payment activity may still appear on expanded lines but does not drive Owner Profit.
+Late payment example: May invoice appears in May accrual as OwnerRent; a June payment for that invoice does **not** appear as accrual income (cash shows OwnerRentActual).
 
 ## Data pipeline (do not shortcut)
 
@@ -58,10 +60,10 @@ Income activity lines group by **`propertyId + invoiceSourceCode`** (invoice cod
 
 | Situation | Lines shown |
 |-----------|-------------|
-| Invoice only (no payment in range for this source) | One line: invoiced > 0, paid = 0, unpaid > 0 |
-| Payment only (cross-period pay of prior invoice) | One line: invoiced = 0, paid > 0 |
+| Invoice only (no payment in range for this source) | One line: invoiced > 0, paid = 0 |
+| Payment only (cross-period pay of prior invoice) | **Accrual: omit** — cash report only |
 | Expense (utility, bill, WO, etc.) | **One line per expense JE** — never roll up multiple receipts into one row |
-| Invoice + payment, **same invoice source, both in report range** | **One rolled-up line**: invoiced and paid on same row, unpaid = 0 if paid ≥ invoiced |
+| Invoice + payment, **same invoice source, both in report range** | **Accrual: one OwnerRent line** — invoiced only, `ReceivedIncome = 0` |
 
 ## Paid income — how to compute (verify JEs first)
 
@@ -124,11 +126,11 @@ When report includes these periods, expect:
 | Date | Source | Invoiced | Paid | Unpaid |
 |------|--------|----------|------|--------|
 | May only | `R-000177-001` invoice | $49.70 | $0 | $49.70 |
-| Jun only | `R-000177-002` invoice | $1,491 | $0 | $1,491 |
-| Jun only | `R-000177-001` payment (owner portion) | $0 | ~$49.70 | $0 |
-| May + Jun | `R-000177-001` invoice + payment | $49.70 | ~$49.70 | $0 |
+| Jun only | `R-000177-002` invoice | $1,491 | $0 | $0 |
+| Jun only | `R-000177-001` payment | **omitted on accrual** | — | — |
+| May + Jun | `R-000177-001` invoice + payment | $49.70 | $0 | $0 |
 
-**June-only report** must still show the payment line (yellow); **May-only** must show only the May invoice (blue), not the June payment.
+**June-only accrual report** must show only the June invoice (blue), not the June payment for the May invoice. Cash report still shows the payment line.
 
 Must **not** show $2,130 paid (full tenant payment). Must **not** roll June invoice and May payment into one line.
 
