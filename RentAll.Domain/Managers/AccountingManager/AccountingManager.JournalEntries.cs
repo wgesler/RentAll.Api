@@ -11,6 +11,10 @@ public partial class AccountingManager
             return null;
 
         ApplyManualJournalEntryClassification(journalEntry);
+
+        if (!IsUserEditableJournalEntry(journalEntry))
+            throw new Exception("Journal entry kind must be Manual, Opening Balance Sheet, or Retained Earnings.");
+
         return await CreateJournalEntryAsync(journalEntry, requireActiveLines: true);
     }
 
@@ -64,8 +68,11 @@ public partial class AccountingManager
         if (existing == null)
             throw new Exception("Journal entry not found");
 
-        if (!IsManualJournalEntry(existing))
-            throw new Exception("Only manual journal entries can be updated.");
+        if (!IsUserEditableJournalEntry(existing))
+            throw new Exception("Only Manual, Opening Balance Sheet, and Retained Earnings journal entries can be updated.");
+
+        if (!IsUserEditableJournalEntry(journalEntry))
+            throw new Exception("Journal entry kind must be Manual, Opening Balance Sheet, or Retained Earnings.");
 
         return await UpdateJournalEntryAsync(journalEntry, requireActiveLines: true);
     }
@@ -355,6 +362,12 @@ public partial class AccountingManager
     private static bool IsManualJournalEntry(JournalEntry journalEntry)
         => journalEntry.SourceTypeId == (int)SourceType.Journal
             && journalEntry.JournalEntryKindId == JournalEntryKind.Manual;
+
+    private static bool IsUserEditableJournalEntry(JournalEntry journalEntry)
+        => journalEntry.SourceTypeId == (int)SourceType.Journal
+            && journalEntry.JournalEntryKindId is JournalEntryKind.Manual
+                or JournalEntryKind.OpeningBalanceSheet
+                or JournalEntryKind.RetainedEarnings;
 
     private static bool IsDeletableManualJournalEntry(JournalEntry journalEntry)
         => IsManualJournalEntry(journalEntry)

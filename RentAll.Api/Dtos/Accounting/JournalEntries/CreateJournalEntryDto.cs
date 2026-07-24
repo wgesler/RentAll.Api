@@ -16,6 +16,7 @@ public class CreateJournalEntryDto
     public string? SourceCode { get; set; }
     public string? Memo { get; set; }
     public bool IsCashOnly { get; set; } = false;
+    public int JournalEntryKindId { get; set; } = (int)JournalEntryKind.Manual;
     public List<CreateJournalEntryLineDto> JournalEntryLines { get; set; } = new List<CreateJournalEntryLineDto>();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -59,6 +60,7 @@ public class CreateJournalEntryDto
             SourceCode = SourceCode,
             Memo = Memo,
             IsCashOnly = IsCashOnly,
+            JournalEntryKindId = (JournalEntryKind)JournalEntryKindId,
             JournalEntryLines = JournalEntryLines?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<JournalEntryLine>(),
             CreatedBy = currentUser
         };
