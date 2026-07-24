@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Text.RegularExpressions;
 
@@ -8,6 +9,7 @@ public partial class AccountingManager
     private static readonly Regex DocumentSourceCodePattern = new(@"\b(?:WO-[A-Za-z0-9-]+|R-\d+(?:-\d+)*|RC-[A-Za-z0-9-]+|TR-[A-Za-z0-9-]+|DP-[A-Za-z0-9-]+)\b", RegexOptions.Compiled);
     private static readonly Regex InvoiceSourceCodePattern = new(@"\bR-\d+-\d+\b", RegexOptions.Compiled);
     private static readonly Regex OwnerStartingBalanceMemoPattern = new(@": Owner: BAL-\d{2}-\d{4}$", RegexOptions.Compiled);
+    private static readonly Regex OfficeOpeningBalanceSheetMemoPattern = new(@"^Opening Balance Sheet\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex OwnerExpectedRentMemoPattern = new(@"^R-\d+-\d+: Owner: Expected: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerActualRentMemoPattern = new(@"^R-\d+-\d+: Owner: Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerPaymentMemoPattern = new(@"^R-\d+-\d+: Owner: Payment: .+$", RegexOptions.Compiled);
@@ -371,6 +373,27 @@ public partial class AccountingManager
             Detail = parts.Length > 1 ? parts[1].Trim() : string.Empty
         };
     }
+
+    // Example: Opening Balance Sheet - May 31 2026
+    public static JournalEntryMemoMatch MatchOfficeOpeningBalanceSheetMemo(string? journalMemo, string? lineMemo = null)
+        => MatchOfficeOpeningBalanceSheetMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
+
+    public static JournalEntryMemoMatch MatchOfficeOpeningBalanceSheetMemo(string? memo)
+    {
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        if (!OfficeOpeningBalanceSheetMemoPattern.IsMatch(normalizedMemo))
+            return JournalEntryMemoMatch.None;
+
+        return new JournalEntryMemoMatch
+        {
+            Category = JournalEntryMemoCategory.OfficeOpeningBalanceSheet,
+            Detail = normalizedMemo
+        };
+    }
+
+    public static bool IsOfficeOpeningBalanceSheetJournalEntry(JournalEntry journalEntry)
+        => journalEntry.SourceTypeId == (int)SourceType.Journal
+            && journalEntry.JournalEntryKindId == JournalEntryKind.OpeningBalanceSheet;
 
     // Example: BAR505: Owner: Monthly Linen & Towel
     public static string BuildOwnerLinenAndTowelMemo(string propertyCode, bool isMonthly)

@@ -15,6 +15,7 @@ public class UpdateJournalEntryDto
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
     public string? Memo { get; set; }
+    public bool IsCashOnly { get; set; }
     public int JournalEntryKindId { get; set; } = (int)JournalEntryKind.Manual;
     public List<UpdateJournalEntryLineDto> JournalEntryLines { get; set; } = new List<UpdateJournalEntryLineDto>();
 
@@ -61,6 +62,7 @@ public class UpdateJournalEntryDto
             SourceTypeId = SourceTypeId,
             SourceId = SourceId,
             Memo = Memo,
+            IsCashOnly = IsCashOnly,
             JournalEntryKindId = (JournalEntryKind)JournalEntryKindId,
             JournalEntryLines = JournalEntryLines?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<JournalEntryLine>(),
             ModifiedBy = currentUser,

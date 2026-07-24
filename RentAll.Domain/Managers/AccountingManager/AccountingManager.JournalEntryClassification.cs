@@ -43,7 +43,7 @@ public partial class AccountingManager
             return;
         }
 
-        if (MatchOwnerStartingBalanceMemo(journalEntry.Memo).IsMatch)
+        if (MatchOfficeOpeningBalanceSheetMemo(journalEntry.Memo).IsMatch)
         {
             journalEntry.JournalEntryKindId = JournalEntryKind.OpeningBalanceSheet;
             ApplyUniformLinePerspective(journalEntry, Perspective.Company);

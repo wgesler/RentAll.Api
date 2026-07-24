@@ -7,6 +7,7 @@ public enum JournalEntryMemoCategory
     OwnerRentActual,
     OwnerPayment,
     OwnerStartingBalance,
+    OfficeOpeningBalanceSheet,
     OwnerBill,
     OwnerWorkOrder,
     OwnerLinenAndTowel,

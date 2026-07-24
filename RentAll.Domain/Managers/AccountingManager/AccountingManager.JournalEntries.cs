@@ -71,6 +71,14 @@ public partial class AccountingManager
         if (!IsUserEditableJournalEntry(existing))
             throw new Exception("Only Manual, Opening Balance Sheet, and Retained Earnings journal entries can be updated.");
 
+        journalEntry.SourceTypeId = existing.SourceTypeId;
+        journalEntry.SourceId = existing.SourceId;
+        journalEntry.IsCashOnly = existing.IsCashOnly;
+        if (string.IsNullOrWhiteSpace(journalEntry.SourceCode))
+            journalEntry.SourceCode = existing.SourceCode;
+
+        ApplyManualJournalEntryClassification(journalEntry);
+
         if (!IsUserEditableJournalEntry(journalEntry))
             throw new Exception("Journal entry kind must be Manual, Opening Balance Sheet, or Retained Earnings.");
 
@@ -137,6 +145,9 @@ public partial class AccountingManager
             throw new Exception("Journal entry is already posted");
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines: true);
+
+        if (journalEntry.SourceTypeId == (int)SourceType.Journal)
+            ApplyManualJournalEntryClassification(journalEntry);
 
         if (accountingPeriod != null && accountingPeriod != default)
             journalEntry.AccountingPeriod = accountingPeriod.Value;
