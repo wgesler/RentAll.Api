@@ -39,7 +39,7 @@ public partial class ReportManager
                 var notCollected = notCollectedByPropertyKey.TryGetValue(propertyKey, out var notCollectedBalance)
                     ? RoundFinancialReportAmount(notCollectedBalance)
                     : 0m;
-                var total = RoundFinancialReportAmount(apBalance - prepaids - notCollected);
+                var total = RoundFinancialReportAmount(apBalance + prepaids - notCollected);
                 var e2 = total > 0m ? total : 0m;
 
                 return new EscrowReportRow

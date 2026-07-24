@@ -139,7 +139,7 @@ public partial class ReportManager
                 .Where(line => line.PropertyId.HasValue)
                 .GroupBy(line => $"{line.PropertyId!.Value:N}|{(line.SourceDocumentCode ?? string.Empty).Trim()}", StringComparer.OrdinalIgnoreCase)
                 .Sum(group => CalculateEscrowInvoiceUnpaidAmount(group));
-            var total = arBalance - prepaids - notCollected;
+            var total = arBalance + prepaids - notCollected;
             if (total <= 0.005m)
                 return [];
 

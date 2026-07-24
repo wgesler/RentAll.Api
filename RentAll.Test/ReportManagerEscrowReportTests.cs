@@ -14,6 +14,6 @@ public class ReportManagerEscrowReportTests
         Assert.Equal("1050 Escrow Owners", report.EscrowBankAccountLabel);
         Assert.Single(report.EscrowOfficeBalances);
         Assert.Equal(500m, report.EscrowOfficeBalances[0].Balance);
-        Assert.Equal(-25m, report.Transfer);
+        Assert.Equal(475m, report.Transfer);
     }
 }
