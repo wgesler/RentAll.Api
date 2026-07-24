@@ -24,9 +24,35 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
         var ownerExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice);
+        var ownerContactId = ResolvePropertyPrimaryOwnerContactId(property) ?? ownerId;
+        if (ownerContactId == Guid.Empty)
+            throw new Exception("Owner contact is required to create owner starting balance.");
+
+        var lineContext = await ResolvePropertyOwnerJournalEntryLineContextAsync(property, ownerContactId, organizationId);
         var memo = BuildOwnerStartingBalanceMemo(property.PropertyCode, transactionDate);
         var startingBalance = Math.Abs(amount);
         var isPositive = amount > 0;
+
+        var ownerExpenseLine = new JournalEntryLine
+        {
+            ChartOfAccountId = ownerExpenseAccountId,
+            Debit = isPositive ? startingBalance : 0,
+            Credit = isPositive ? 0 : startingBalance,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(ownerExpenseLine, lineContext);
+
+        var ownerPayableLine = new JournalEntryLine
+        {
+            ChartOfAccountId = ownerAccountsPayableAccountId,
+            Debit = isPositive ? 0 : startingBalance,
+            Credit = isPositive ? startingBalance : 0,
+            Memo = memo,
+            CreatedBy = currentUser
+        };
+        ApplyJournalEntryLineContext(ownerPayableLine, lineContext);
+
         var journalEntry = new JournalEntry
         {
             OrganizationId = organizationId,
@@ -35,29 +61,11 @@ public partial class AccountingManager
             AccountingPeriod = transactionDate,
             SourceTypeId = (int)SourceType.Adjustment,
             Memo = memo,
-            JournalEntryLines = new List<JournalEntryLine>
-            {
-                new JournalEntryLine
-                {
-                    ChartOfAccountId = ownerExpenseAccountId,
-                    PropertyId = propertyId,
-                    ContactId = ownerId,
-                    Debit = isPositive ? startingBalance : 0,
-                    Credit = isPositive ? 0 : startingBalance,
-                    Memo = memo,
-                    CreatedBy = currentUser
-                },
-                new JournalEntryLine
-                {
-                    ChartOfAccountId = ownerAccountsPayableAccountId,
-                    PropertyId = propertyId,
-                    ContactId = ownerId,
-                    Debit = isPositive ? 0 : startingBalance,
-                    Credit = isPositive ? startingBalance : 0,
-                    Memo = memo,
-                    CreatedBy = currentUser
-                }
-            },
+            JournalEntryLines =
+            [
+                ownerExpenseLine,
+                ownerPayableLine
+            ],
             CreatedBy = currentUser
         };
         var createdJournalEntry = await CreateJournalEntryAsync(journalEntry);

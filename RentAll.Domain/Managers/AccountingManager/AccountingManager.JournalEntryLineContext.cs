@@ -279,6 +279,48 @@ public partial class AccountingManager
         return new JournalEntryLineContext(propertyId, propertyCode, lineReservationId, reservationCode, contactId, contactName);
     }
 
+    private static Guid? ResolvePropertyPrimaryOwnerContactId(Property property)
+    {
+        if (property.PropertyLeaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty)
+            return NormalizeOptionalGuid(property.VendorId);
+
+        return NormalizeOptionalGuid(property.Owner1Id);
+    }
+
+    private async Task<JournalEntryLineContext> ResolvePropertyOwnerJournalEntryLineContextAsync(
+        Property property,
+        Guid ownerContactId,
+        Guid organizationId)
+    {
+        string? contactName = null;
+        if (ownerContactId != Guid.Empty)
+        {
+            var contact = await _contactRepository.GetContactByIdAsync(ownerContactId, organizationId);
+            contactName = NormalizeOptionalString(contact?.DisplayName)
+                ?? NormalizeOptionalString(contact?.CompanyName)
+                ?? NormalizeOptionalString(contact?.FullName);
+        }
+
+        return new JournalEntryLineContext(
+            property.PropertyId,
+            NormalizeOptionalString(property.PropertyCode),
+            null,
+            null,
+            ownerContactId,
+            contactName);
+    }
+
+    private async Task<JournalEntryLineContext> ResolveOwnerJournalEntryLineContextForPropertyAsync(
+        Guid organizationId,
+        Property property)
+    {
+        var ownerContactId = ResolvePropertyPrimaryOwnerContactId(property);
+        if (ownerContactId is not { } resolvedOwnerId || resolvedOwnerId == Guid.Empty)
+            throw new Exception($"Owner contact is required for property {property.PropertyCode}.");
+
+        return await ResolvePropertyOwnerJournalEntryLineContextAsync(property, resolvedOwnerId, organizationId);
+    }
+
     private async Task<JournalEntryLineContext> ResolveReceiptJournalEntryLineContextAsync(Receipt receipt, Guid? propertyId = null, Guid? contactId = null, string? contactName = null)
     {
         var resolvedPropertyId = NormalizeOptionalGuid(propertyId) ?? FirstReceiptPropertyId(receipt);
