@@ -48,7 +48,7 @@ public partial class AccountingManager
     }
 
     /// <summary>
-    /// Given owner A/P lines, resolve starting balance date per property and drop lines before that date.
+    /// Given owner A/P lines, resolve kind-110 starting balance transaction date per property and drop earlier lines.
     /// Used as an API safety net after <see cref="SearchOwnerApAgingJournalEntryLinesAsync"/> loads from the database proc.
     /// </summary>
     public async Task<IReadOnlyList<JournalEntryLineSearchResult>> FilterOwnerApAgingJournalEntryLinesAsync(
@@ -120,12 +120,7 @@ public partial class AccountingManager
             .ToList();
 
     private static bool IsOwnerApStartingBalanceLine(JournalEntryLineSearchResult line)
-    {
-        if (line.JournalEntryKindId == (int)JournalEntryKind.OwnerStartingBalance)
-            return true;
-
-        return MatchOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo).IsMatch;
-    }
+        => line.JournalEntryKindId == (int)JournalEntryKind.OwnerStartingBalance;
 
     private static bool ShouldIncludeOwnerApAgingLine(
         JournalEntryLineSearchResult line,

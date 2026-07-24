@@ -34,6 +34,13 @@ public partial class AccountingManager
 
     private static void ApplyManualJournalEntryClassification(JournalEntry journalEntry)
     {
+        if (journalEntry.JournalEntryKindId == JournalEntryKind.OwnerStartingBalance)
+        {
+            journalEntry.SourceTypeId = (int)SourceType.Journal;
+            ApplyUniformLinePerspective(journalEntry, Perspective.Owner);
+            return;
+        }
+
         if (MatchOwnerStartingBalanceMemo(journalEntry.Memo).IsMatch)
         {
             journalEntry.SourceTypeId = (int)SourceType.Journal;

@@ -60,6 +60,7 @@ public partial class AccountingManager
             TransactionDate = transactionDate,
             AccountingPeriod = transactionDate,
             SourceTypeId = (int)SourceType.Adjustment,
+            JournalEntryKindId = JournalEntryKind.OwnerStartingBalance,
             Memo = memo,
             JournalEntryLines =
             [
@@ -82,52 +83,35 @@ public partial class AccountingManager
         if (officeId <= 0 || propertyId == Guid.Empty)
             return null;
 
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
-        JournalEntryLineSearchResult? current = null;
-        foreach (var accountId in ResolveOwnerApAccountIds(chartOfAccounts, officeId, accountingOffice))
+        var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
         {
-            var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
-            {
-                OrganizationId = organizationId,
-                OfficeIds = officeId.ToString(),
-                ChartOfAccountId = accountId,
-                PropertyId = propertyId,
-                IncludeVoided = false,
-                IncludeUnposted = true,
-                IncludeCashOnly = true
-            });
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            PropertyId = propertyId,
+            IncludeVoided = false,
+            IncludeUnposted = true,
+            IncludeCashOnly = true
+        });
 
-            var match = lines
-                .Where(line => MatchOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo).IsMatch)
-                .OrderByDescending(line => line.TransactionDate)
-                .ThenByDescending(line => line.JournalEntryCode)
-                .FirstOrDefault();
+        var match = lines
+            .Where(line => line.JournalEntryKindId == (int)JournalEntryKind.OwnerStartingBalance)
+            .OrderByDescending(line => line.TransactionDate)
+            .ThenByDescending(line => line.JournalEntryCode)
+            .FirstOrDefault();
 
-            if (match == null)
-                continue;
-
-            if (current == null
-                || match.TransactionDate > current.TransactionDate
-                || (match.TransactionDate == current.TransactionDate
-                    && string.Compare(match.JournalEntryCode, current.JournalEntryCode, StringComparison.OrdinalIgnoreCase) > 0))
-            {
-                current = match;
-            }
-        }
-
-        if (current == null)
+        if (match == null)
             return null;
 
         return new OwnerStatementStartingBalanceEntry
         {
-            JournalEntryId = current.JournalEntryId,
-            OfficeId = current.OfficeId,
-            OwnerId = current.ContactId ?? ownerId,
-            PropertyId = current.PropertyId ?? Guid.Empty,
-            TransactionDate = current.TransactionDate,
-            Amount = current.Credit - current.Debit,
-            Memo = (current.JournalEntryMemo ?? current.Memo ?? string.Empty).Trim(),
-            IsPosted = current.PostingStatusId == (int)PostingStatus.Posted
+            JournalEntryId = match.JournalEntryId,
+            OfficeId = match.OfficeId,
+            OwnerId = match.ContactId ?? ownerId,
+            PropertyId = match.PropertyId ?? Guid.Empty,
+            TransactionDate = match.TransactionDate,
+            Amount = match.Credit - match.Debit,
+            Memo = (match.JournalEntryMemo ?? match.Memo ?? string.Empty).Trim(),
+            IsPosted = match.PostingStatusId == (int)PostingStatus.Posted
         };
     }
 }
