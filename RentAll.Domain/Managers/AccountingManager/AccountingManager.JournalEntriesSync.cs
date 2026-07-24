@@ -485,10 +485,12 @@ public partial class AccountingManager
         IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();
+        var accountingOffices = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds)).ToList();
+        var (clampedStartDate, clampedEndDate) = ClampPeriodicSyncDateRange(startDate, endDate, accountingOffices);
 
-        await SyncDepartureFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
-        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, startDate, endDate, result, progress);
-        await SyncRetainedEarningsAsync(organizationId, officeIds, startDate, endDate, result, progress);
+        await SyncDepartureFeesAsync(organizationId, officeIds, clampedStartDate, clampedEndDate, result, progress);
+        await ProcessLinenAndTowelFeesAsync(organizationId, officeIds, clampedStartDate, clampedEndDate, result, progress);
+        await SyncRetainedEarningsAsync(organizationId, officeIds, clampedStartDate, clampedEndDate, accountingOffices, result, progress);
 
         return result;
     }
@@ -694,11 +696,14 @@ public partial class AccountingManager
         string officeIds,
         DateOnly? startDate,
         DateOnly? endDate,
+        IReadOnlyCollection<AccountingOffice> accountingOffices,
         JournalEntrySyncResult result,
         IProgress<JournalEntrySyncProgress>? progress = null)
     {
-        var (syncStartDate, syncEndDate) = await ResolveRetainedEarningsSyncDateRangeFromJournalEntriesAsync(organizationId, officeIds);
-        var accountingOffices = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds)).ToList();
+        var (jeStartDate, jeEndDate) = await ResolveRetainedEarningsSyncDateRangeFromJournalEntriesAsync(organizationId, officeIds);
+        var syncStartDate = startDate ?? jeStartDate;
+        var syncEndDate = endDate ?? jeEndDate;
+        (syncStartDate, syncEndDate) = ClampPeriodicSyncDateRange(syncStartDate, syncEndDate, accountingOffices);
         var processingDates = ResolveRetainedEarningsSyncProcessingDatesInRange(accountingOffices, syncStartDate, syncEndDate);
         ReportSyncProgress(progress, "retainedEarnings", total: 1, processed: 0, result, processingDates.Count == 0 ? "Completed" : "Running");
 

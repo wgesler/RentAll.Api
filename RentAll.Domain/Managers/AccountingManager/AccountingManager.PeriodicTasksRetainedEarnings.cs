@@ -19,7 +19,9 @@ public partial class AccountingManager
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         if (!startDate.HasValue && !endDate.HasValue)
         {
-            var dueOffices = accountingOffices.Where(o => IsRetainedEarningsDueOnDate(o, today)).ToList();
+            var dueOffices = accountingOffices
+                .Where(o => IsRetainedEarningsDueOnDate(o, today) && IsOnOrAfterAccountingOfficeStart(o, today))
+                .ToList();
             if (logDecisions)
             {
                 await LogRetainedEarningsRunAsync(organizationId, ResolveFirstOfficeIdFromCsv(officeIds), today, dueOffices.Count, dueOffices.Count == 0 ? "No accounting offices with day-after year-end today" : "Processing accounting offices on day after year-end");
@@ -34,7 +36,9 @@ public partial class AccountingManager
         foreach (var runDate in processingDates)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var dueOffices = accountingOffices.Where(o => IsRetainedEarningsDueOnDate(o, runDate)).ToList();
+            var dueOffices = accountingOffices
+                .Where(o => IsRetainedEarningsDueOnDate(o, runDate) && IsOnOrAfterAccountingOfficeStart(o, runDate))
+                .ToList();
             if (logDecisions)
             {
                 await LogRetainedEarningsRunAsync(organizationId, ResolveFirstOfficeIdFromCsv(officeIds), runDate, dueOffices.Count, dueOffices.Count == 0 ? "No accounting offices with day-after year-end on date" : "Processing accounting offices on day after year-end");
@@ -97,6 +101,15 @@ public partial class AccountingManager
         foreach (var (fiscalYearStart, fiscalYearEnd) in fiscalYearsToClose)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (fiscalYearEnd < GetAccountingOfficeStartDate(accountingOffice))
+            {
+                if (logDecisions)
+                {
+                    await LogRetainedEarningsDecisionAsync(organizationId, accountingOffice.OfficeId, processingDate, amount: null, $"Skipped fiscal year {fiscalYearStart:MM/dd/yyyy}-{fiscalYearEnd:MM/dd/yyyy} — before accounting office start ({accountingOffice.StartMonth:00}/{accountingOffice.StartYear}).");
+                }
+                continue;
+            }
 
             if (IsFiscalYearHardClosed(closedDates, accountingOffice.OfficeId, fiscalYearStart, fiscalYearEnd))
             {
@@ -760,7 +773,9 @@ public partial class AccountingManager
             {
                 var fiscalYearEndDate = new DateOnly(year, accountingOffice.YearEndMonth, accountingOffice.YearEndDay);
                 var processingDate = fiscalYearEndDate.AddDays(1);
-                if (processingDate >= rangeStart && processingDate <= rangeEnd)
+                if (processingDate >= rangeStart
+                    && processingDate <= rangeEnd
+                    && IsOnOrAfterAccountingOfficeStart(accountingOffice, processingDate))
                     dates.Add(processingDate);
             }
         }

@@ -12,12 +12,19 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return 0;
 
+        var accountingOffices = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds)).ToList();
+        var officeById = ToAccountingOfficeLookup(accountingOffices);
+        var (clampedStartDate, clampedEndDate) = ClampPeriodicSyncDateRange(startDate, endDate, accountingOffices);
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var (rangeStart, rangeEnd) = ResolveDepartureFeeDateRange(startDate, endDate, today);
+        var (rangeStart, rangeEnd) = ResolveDepartureFeeDateRange(clampedStartDate, clampedEndDate, today);
         if (rangeStart > rangeEnd)
             return 0;
 
-        var departures = (await _reservationRepository.GetMonthlyDepartedReservationsAsync(organizationId, officeIds, rangeStart, rangeEnd)).ToList();
+        var departures = (await _reservationRepository.GetMonthlyDepartedReservationsAsync(organizationId, officeIds, rangeStart, rangeEnd))
+            .Where(departure => !officeById.TryGetValue(departure.OfficeId, out var office)
+                || IsOnOrAfterAccountingOfficeStart(office, departure.DepartureDate))
+            .ToList();
 
         if (logDecisions)
         {

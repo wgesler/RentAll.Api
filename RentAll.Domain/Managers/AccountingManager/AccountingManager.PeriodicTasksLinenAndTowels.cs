@@ -50,6 +50,10 @@ public partial class AccountingManager
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, agreement.OfficeId);
+        if (!ShouldProcessPeriodicTaskMonthForOffice(accountingOffice, processingDate))
+            return;
+
         var property = await _propertyRepository.GetPropertyByIdAsync(agreement.PropertyId, organizationId)
             ?? throw new Exception($"Property {agreement.PropertyId} was not found");
         var propertyCode = property.PropertyCode;
