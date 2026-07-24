@@ -77,9 +77,7 @@ public interface IAccountingManager
     int GetDefaultRetainedEarningsAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     #endregion
 
-    #region Owner Starting Balance
-    Task<OwnerStatementStartingBalanceEntry?> GetOwnerStatementStartingBalanceAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId);
-    Task<JournalEntry?> CreateOwnerStatementStartingBalanceJournalEntryAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId, DateOnly transactionDate, decimal amount, Guid currentUser);
+    #region Owner AP Aging
     Task<IReadOnlyList<JournalEntryLineSearchResult>> SearchOwnerApAgingJournalEntryLinesAsync(Guid organizationId, IReadOnlyList<int> officeIds, DateOnly? endDate, bool includeVoided = false, bool includeUnposted = true);
     Task<IReadOnlyList<JournalEntryLineSearchResult>> FilterOwnerApAgingJournalEntryLinesAsync(Guid organizationId, IReadOnlyList<JournalEntryLineSearchResult> lines);
     #endregion

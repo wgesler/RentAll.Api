@@ -34,18 +34,18 @@ public partial class AccountingManager
 
     private static void ApplyManualJournalEntryClassification(JournalEntry journalEntry)
     {
-        if (journalEntry.JournalEntryKindId == JournalEntryKind.OwnerStartingBalance)
+        if (journalEntry.JournalEntryKindId == JournalEntryKind.OpeningBalanceSheet)
         {
             journalEntry.SourceTypeId = (int)SourceType.Journal;
-            ApplyUniformLinePerspective(journalEntry, Perspective.Owner);
+            ApplyUniformLinePerspective(journalEntry, Perspective.Company);
             return;
         }
 
         if (MatchOwnerStartingBalanceMemo(journalEntry.Memo).IsMatch)
         {
             journalEntry.SourceTypeId = (int)SourceType.Journal;
-            journalEntry.JournalEntryKindId = JournalEntryKind.OwnerStartingBalance;
-            ApplyUniformLinePerspective(journalEntry, Perspective.Owner);
+            journalEntry.JournalEntryKindId = JournalEntryKind.OpeningBalanceSheet;
+            ApplyUniformLinePerspective(journalEntry, Perspective.Company);
             return;
         }
 

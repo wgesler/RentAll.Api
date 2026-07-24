@@ -68,7 +68,7 @@ public partial class JournalEntryRepository
                 je.[OrganizationId] = @OrganizationId
                 AND (@IncludeUnposted = 1 OR je.[PostingStatusId] <> 0)
                 AND ao.[DefaultPrePayAccountId] IS NOT NULL
-                AND je.[JournalEntryKindId] = 5
+                AND je.[JournalEntryKindId] = 15 -- PrePaymentApply
                 AND (@EndDate IS NULL OR sourceInvoice.[AccountingPeriod] >= @EndDate)
                 AND (@PropertyId IS NULL OR COALESCE(
                     NULLIF(jel.[PropertyId], '00000000-0000-0000-0000-000000000000'),

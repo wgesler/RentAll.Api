@@ -412,18 +412,6 @@ public partial class JournalEntryRepository
         return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
     }
 
-    public async Task<int> DeleteOwnerStatementStartingBalancesByCriteriaAsync(Guid organizationId, Guid propertyId)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>("Accounting.OwnerStatementStartingBalance_DeleteByCriteria", new
-        {
-            OrganizationId = organizationId,
-            PropertyId = propertyId
-        });
-
-        return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
-    }
-
     sealed class JournalEntryDeleteAllResult
     {
         public int JournalEntriesDeleted { get; set; }
