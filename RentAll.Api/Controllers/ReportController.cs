@@ -183,4 +183,28 @@ public class ReportController : BaseController
             return ServerError("An error occurred while retrieving owner report journal entry lines");
         }
     }
+
+    [HttpPost("escrow/journal-entry-line/search")]
+    public async Task<IActionResult> SearchEscrowReportJournalEntryLines([FromBody] GetEscrowReportJournalEntryLineDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Escrow report journal entry line search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var lines = await _reportManager.GetEscrowReportJournalEntryLinesAsync(criteria);
+            var response = lines.Select(line => new OwnerReportJournalEntryLineResponseDto(line)).ToList();
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching escrow report journal entry lines");
+            return ServerError("An error occurred while retrieving escrow report journal entry lines");
+        }
+    }
 }

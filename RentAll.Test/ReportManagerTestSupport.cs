@@ -142,6 +142,12 @@ internal static class ReportManagerTestSupport
                     EscrowPrepaidPropertyBalances = []
                 });
             journalEntryRepository
+                .Setup(repository => repository.GetEscrowPrepaidApplyJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
+                .ReturnsAsync([]);
+            journalEntryRepository
+                .Setup(repository => repository.GetEscrowBankJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
+                .ReturnsAsync([]);
+            journalEntryRepository
                 .Setup(repository => repository.GetJournalEntryLinesAsync(It.IsAny<JournalEntryLineGetCriteria>()))
                 .ReturnsAsync([]);
 

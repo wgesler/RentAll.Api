@@ -13,6 +13,8 @@ public interface IJournalEntryRepository
     Task<IEnumerable<JournalEntryRecapLine>> GetJournalEntryRecapLinesAsync(JournalEntryRecapGetCriteria criteria);
     Task<OwnerReportBundleData> GetOwnerReportBundleDataAsync(JournalEntryRecapGetCriteria criteria, DateOnly? priorMonthCloseDate, DateOnly? periodStartDate);
     Task<EscrowReportBundleData> GetEscrowReportDataAsync(JournalEntryRecapGetCriteria criteria);
+    Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowPrepaidApplyJournalEntryLinesAsync(JournalEntryRecapGetCriteria criteria);
+    Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowBankJournalEntryLinesAsync(JournalEntryRecapGetCriteria criteria);
     Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId);
     Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId);
