@@ -79,26 +79,42 @@ public partial class AccountingManager
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return null;
-        if (officeId <= 0 || ownerId == Guid.Empty || propertyId == Guid.Empty)
+        if (officeId <= 0 || propertyId == Guid.Empty)
             return null;
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, officeId);
-        var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice);
-        var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+        JournalEntryLineSearchResult? current = null;
+        foreach (var accountId in ResolveOwnerApAccountIds(chartOfAccounts, officeId, accountingOffice))
         {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            SourceTypeId = (int)SourceType.Adjustment,
-            ChartOfAccountId = ownerAccountsPayableAccountId,
-            PropertyId = propertyId,
-            IncludeVoided = false,
-            IncludeUnposted = true
-        });
-        var current = lines
-            .Where(line => MatchOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo).IsMatch)
-            .OrderByDescending(line => line.TransactionDate)
-            .ThenByDescending(line => line.JournalEntryCode)
-            .FirstOrDefault();
+            var lines = await _journalEntryRepository.GetJournalEntryLinesAsync(new JournalEntryLineGetCriteria
+            {
+                OrganizationId = organizationId,
+                OfficeIds = officeId.ToString(),
+                ChartOfAccountId = accountId,
+                PropertyId = propertyId,
+                IncludeVoided = false,
+                IncludeUnposted = true,
+                IncludeCashOnly = true
+            });
+
+            var match = lines
+                .Where(line => MatchOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo).IsMatch)
+                .OrderByDescending(line => line.TransactionDate)
+                .ThenByDescending(line => line.JournalEntryCode)
+                .FirstOrDefault();
+
+            if (match == null)
+                continue;
+
+            if (current == null
+                || match.TransactionDate > current.TransactionDate
+                || (match.TransactionDate == current.TransactionDate
+                    && string.Compare(match.JournalEntryCode, current.JournalEntryCode, StringComparison.OrdinalIgnoreCase) > 0))
+            {
+                current = match;
+            }
+        }
+
         if (current == null)
             return null;
 
@@ -106,7 +122,7 @@ public partial class AccountingManager
         {
             JournalEntryId = current.JournalEntryId,
             OfficeId = current.OfficeId,
-            OwnerId = current.ContactId ?? Guid.Empty,
+            OwnerId = current.ContactId ?? ownerId,
             PropertyId = current.PropertyId ?? Guid.Empty,
             TransactionDate = current.TransactionDate,
             Amount = current.Credit - current.Debit,

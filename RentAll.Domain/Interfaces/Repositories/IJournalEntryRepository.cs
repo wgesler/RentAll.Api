@@ -7,6 +7,7 @@ public interface IJournalEntryRepository
     Task<IEnumerable<JournalEntry>> GetJournalEntriesAsync(JournalEntryGetCriteria criteria);
     Task<IEnumerable<JournalEntry>> GetJournalEntriesBySourceIdAsync(JournalEntryGetBySourceIdCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria);
+    Task<IEnumerable<JournalEntryLineSearchResult>> GetOwnerApAgingJournalEntryLinesAsync(JournalEntryLineOwnerApAgingGetCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetReconcileJournalEntryLinesAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);
     Task<decimal> GetReconcileBeginningBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);
     Task<JournalEntryLine?> GetJournalEntryLineByIdAsync(Guid journalEntryLineId);

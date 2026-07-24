@@ -73,6 +73,25 @@ public partial class JournalEntryRepository
         return results;
     }
 
+    public async Task<IEnumerable<JournalEntryLineSearchResult>> GetOwnerApAgingJournalEntryLinesAsync(JournalEntryLineOwnerApAgingGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<JournalEntryLineSearchEntity>("Accounting.JournalEntryLine_GetForOwnerApAging", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            ChartOfAccountIds = criteria.ChartOfAccountIds,
+            IncludeVoided = criteria.IncludeVoided,
+            IncludeUnposted = criteria.IncludeUnposted,
+            EndDate = criteria.EndDate
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<JournalEntryLineSearchResult>();
+
+        return res.Select(ConvertLineSearchEntityToModel);
+    }
+
     public async Task<IEnumerable<JournalEntryLineSearchResult>> GetReconcileJournalEntryLinesAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate)
     {
         await using var db = new SqlConnection(_dbConnectionString);

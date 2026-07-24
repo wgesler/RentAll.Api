@@ -8,6 +8,34 @@ namespace RentAll.Api.Controllers
     {
         #region Get
 
+        [HttpPost("owner-ap-aging/journal-entry-lines")]
+        public async Task<IActionResult> SearchOwnerApAgingJournalEntryLines([FromBody] GetOwnerApAgingJournalEntryLinesDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Owner AP aging line criteria is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var lines = await _accountingManager.SearchOwnerApAgingJournalEntryLinesAsync(
+                    CurrentOrganizationId,
+                    dto.OfficeIds,
+                    dto.EndDate,
+                    dto.IncludeVoided,
+                    dto.IncludeUnposted);
+                var response = lines.Select(line => new JournalEntryLineSearchResponseDto(line)).ToList();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching owner AP aging journal entry lines");
+                return ServerError("An error occurred while retrieving owner AP aging journal entry lines");
+            }
+        }
+
         [HttpPost("journal-entry-line/search")]
         public async Task<IActionResult> SearchJournalEntryLines([FromBody] GetJournalEntryLineDto dto)
         {
