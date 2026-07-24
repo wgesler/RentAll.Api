@@ -8,7 +8,7 @@ public partial class ReportManager
     public async Task<EscrowReport> GetEscrowReportAsync(JournalEntryRecapGetCriteria criteria, decimal cushion)
     {
         var normalizedCriteria = NormalizeEscrowReportCriteria(criteria);
-        var bundle = await _journalEntryRepository.GetEscrowReportDataAsync(normalizedCriteria);
+        var bundle = await _journalEntryRepository.GetEscrowReportBundleDataAsync(normalizedCriteria);
         return BuildEscrowReport(bundle, normalizedCriteria, cushion);
     }
 

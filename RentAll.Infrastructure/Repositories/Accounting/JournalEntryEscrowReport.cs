@@ -1,4 +1,3 @@
-using Dapper;
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
@@ -9,26 +8,81 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 
 public partial class JournalEntryRepository
 {
-    public async Task<EscrowReportBundleData> GetEscrowReportDataAsync(JournalEntryRecapGetCriteria criteria)
+    private const string EscrowReportProcName = "Accounting.JournalEntryLine_GetOwnerEscrowByCriteria";
+
+    public async Task<EscrowReportBundleData> GetEscrowReportBundleDataAsync(
+        JournalEntryRecapGetCriteria criteria,
+        bool includeDrillDownLines = false)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (propertyRaw, prepaidRaw, notCollectedRaw, escrowOfficeRaw) = await db.DapperProcQueryQuadrupleAsync<
+        var procParameters = BuildEscrowReportProcParameters(criteria, includeDrillDownLines);
+
+        if (!includeDrillDownLines)
+        {
+            var (propertyRaw, prepaidRaw, notCollectedRaw, escrowOfficeRaw) = await db.DapperProcQueryQuadrupleAsync<
+                EscrowPropertyReportDataEntity,
+                EscrowPrepaidPropertyBalanceEntity,
+                EscrowNotCollectedPropertyBalanceEntity,
+                EscrowOfficeBalanceEntity>(
+                EscrowReportProcName,
+                procParameters,
+                commandTimeout: 120);
+
+            return BuildEscrowReportBundleData(propertyRaw, prepaidRaw, notCollectedRaw, escrowOfficeRaw);
+        }
+
+        var (
+            propertyWithDrillDownRaw,
+            prepaidWithDrillDownRaw,
+            notCollectedWithDrillDownRaw,
+            escrowOfficeWithDrillDownRaw,
+            ownerApRaw,
+            prepaidApplyRaw,
+            escrowBankRaw) = await db.DapperProcQuerySeptupleAsync<
             EscrowPropertyReportDataEntity,
             EscrowPrepaidPropertyBalanceEntity,
             EscrowNotCollectedPropertyBalanceEntity,
-            EscrowOfficeBalanceEntity>(
-            "Accounting.JournalEntryLine_GetOwnerEscrowByCriteria",
-            new
-            {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = criteria.OfficeIds,
-                PropertyId = criteria.PropertyId,
-                ReservationId = criteria.ReservationId,
-                EndDate = criteria.EndDate,
-                IncludeUnposted = criteria.IncludeUnposted
-            },
+            EscrowOfficeBalanceEntity,
+            EscrowJournalEntryLineEntity,
+            EscrowJournalEntryLineEntity,
+            EscrowJournalEntryLineEntity>(
+            EscrowReportProcName,
+            procParameters,
             commandTimeout: 120);
 
+        var bundle = BuildEscrowReportBundleData(
+            propertyWithDrillDownRaw,
+            prepaidWithDrillDownRaw,
+            notCollectedWithDrillDownRaw,
+            escrowOfficeWithDrillDownRaw);
+        bundle.OwnerApLines = (ownerApRaw ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel).ToList();
+        bundle.PrepaidApplyLines = (prepaidApplyRaw ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel).ToList();
+        bundle.EscrowBankLines = (escrowBankRaw ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel).ToList();
+        return bundle;
+    }
+
+    private static object BuildEscrowReportProcParameters(
+        JournalEntryRecapGetCriteria criteria,
+        bool includeDrillDownLines)
+    {
+        return new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            ReservationId = criteria.ReservationId,
+            EndDate = criteria.EndDate,
+            IncludeUnposted = criteria.IncludeUnposted,
+            IncludeDrillDownLines = includeDrillDownLines
+        };
+    }
+
+    private static EscrowReportBundleData BuildEscrowReportBundleData(
+        IEnumerable<EscrowPropertyReportDataEntity>? propertyRaw,
+        IEnumerable<EscrowPrepaidPropertyBalanceEntity>? prepaidRaw,
+        IEnumerable<EscrowNotCollectedPropertyBalanceEntity>? notCollectedRaw,
+        IEnumerable<EscrowOfficeBalanceEntity>? escrowOfficeRaw)
+    {
         return new EscrowReportBundleData
         {
             Properties = (propertyRaw ?? []).Select(ConvertEscrowPropertyReportDataEntityToModel).ToList(),
@@ -93,6 +147,29 @@ public partial class JournalEntryRepository
             OfficeId = entity.OfficeId,
             PropertyId = entity.PropertyId,
             Balance = entity.Balance
+        };
+    }
+
+    private static OwnerStatementJournalEntryLine ConvertEscrowJournalEntryLineEntityToModel(
+        EscrowJournalEntryLineEntity entity)
+    {
+        return new OwnerStatementJournalEntryLine
+        {
+            JournalEntryLineId = entity.JournalEntryLineId,
+            JournalEntryId = entity.JournalEntryId,
+            JournalEntryCode = entity.JournalEntryCode,
+            TransactionDate = entity.TransactionDate,
+            OfficeId = entity.OfficeId,
+            PropertyId = entity.PropertyId ?? Guid.Empty,
+            PropertyCode = (entity.PropertyCode ?? string.Empty).Trim(),
+            ChartOfAccountId = entity.ChartOfAccountId,
+            AccountNo = entity.AccountNo,
+            ChartOfAccountName = entity.ChartOfAccountName,
+            Description = entity.Description,
+            Debit = entity.Debit,
+            Credit = entity.Credit,
+            Category = string.IsNullOrWhiteSpace(entity.Category) ? "Other" : entity.Category.Trim(),
+            Amount = entity.Amount
         };
     }
 }

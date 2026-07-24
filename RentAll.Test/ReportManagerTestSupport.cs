@@ -134,8 +134,8 @@ internal static class ReportManagerTestSupport
                     OwnerApLines = []
                 });
             journalEntryRepository
-                .Setup(repository => repository.GetEscrowReportDataAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
-                .ReturnsAsync((JournalEntryRecapGetCriteria criteria) => new EscrowReportBundleData
+                .Setup(repository => repository.GetEscrowReportBundleDataAsync(It.IsAny<JournalEntryRecapGetCriteria>(), It.IsAny<bool>()))
+                .ReturnsAsync((JournalEntryRecapGetCriteria criteria, bool includeDrillDownLines) => new EscrowReportBundleData
                 {
                     Properties = [CreateEscrowPropertyReportData()],
                     PrepaidPropertyBalances = [],
@@ -150,17 +150,11 @@ internal static class ReportManagerTestSupport
                             AccountName = "Escrow Owners",
                             Balance = 500m
                         }
-                    ]
+                    ],
+                    OwnerApLines = includeDrillDownLines ? [] : [],
+                    PrepaidApplyLines = includeDrillDownLines ? [] : [],
+                    EscrowBankLines = includeDrillDownLines ? [] : []
                 });
-            journalEntryRepository
-                .Setup(repository => repository.GetEscrowOwnerApJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
-                .ReturnsAsync([]);
-            journalEntryRepository
-                .Setup(repository => repository.GetEscrowPrepaidApplyJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
-                .ReturnsAsync([]);
-            journalEntryRepository
-                .Setup(repository => repository.GetEscrowBankJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
-                .ReturnsAsync([]);
             journalEntryRepository
                 .Setup(repository => repository.GetJournalEntryLinesAsync(It.IsAny<JournalEntryLineGetCriteria>()))
                 .ReturnsAsync([]);

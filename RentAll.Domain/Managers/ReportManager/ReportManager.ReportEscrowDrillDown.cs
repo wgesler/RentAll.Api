@@ -13,19 +13,27 @@ public partial class ReportManager
 
         var recapCriteria = BuildEscrowDrillDownRecapCriteria(criteria);
         var metric = (criteria.Metric ?? string.Empty).Trim().ToLowerInvariant();
+        var needsRecapLines = EscrowDrillDownMetricNeedsRecapLines(metric);
+        var bundle = await _journalEntryRepository.GetEscrowReportBundleDataAsync(recapCriteria, includeDrillDownLines: true);
+        var recapLines = needsRecapLines
+            ? await LoadEscrowDrillDownRecapLinesAsync(recapCriteria)
+            : [];
 
         return metric switch
         {
-            "arbalance" => await BuildEscrowOwnerApBalanceLinesAsync(recapCriteria),
-            "notcollected" => BuildEscrowNotCollectedLines(await LoadEscrowDrillDownRecapLinesAsync(recapCriteria)),
-            "prepaids" => await BuildEscrowPrepaidLinesAsync(recapCriteria),
-            "total" => await BuildEscrowTotalLinesAsync(recapCriteria),
-            "e2" => await BuildEscrowE2LinesAsync(recapCriteria),
-            "escrowbankbalance" => await BuildEscrowBankBalanceLinesAsync(recapCriteria),
-            "transfer" => await BuildEscrowTransferLinesAsync(recapCriteria),
+            "arbalance" => FilterEscrowDrillDownLines(FilterEscrowDrillDownLinesByProperty(bundle.OwnerApLines, recapCriteria.PropertyId)),
+            "notcollected" => BuildEscrowNotCollectedLines(recapLines),
+            "prepaids" => FilterEscrowDrillDownLines(FilterEscrowDrillDownLinesByProperty(bundle.PrepaidApplyLines, recapCriteria.PropertyId)),
+            "total" => BuildEscrowTotalDrillDownLines(bundle, recapLines, recapCriteria.PropertyId),
+            "e2" => BuildEscrowE2DrillDownLines(bundle, recapLines, recapCriteria),
+            "escrowbankbalance" => FilterEscrowDrillDownLines(bundle.EscrowBankLines, useAbsoluteAmount: true),
+            "transfer" => BuildEscrowTransferDrillDownLines(bundle, recapLines, recapCriteria.PropertyId),
             _ => []
         };
     }
+
+    private static bool EscrowDrillDownMetricNeedsRecapLines(string metric)
+        => metric is "notcollected" or "total" or "e2" or "transfer";
 
     private static JournalEntryRecapGetCriteria BuildEscrowDrillDownRecapCriteria(
         EscrowReportJournalEntryDrillDownCriteria criteria)
@@ -61,16 +69,45 @@ public partial class ReportManager
             .ToList();
     }
 
-    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowOwnerApBalanceLinesAsync(
-        JournalEntryRecapGetCriteria criteria)
+    private static IEnumerable<OwnerStatementJournalEntryLine> FilterEscrowDrillDownLinesByProperty(
+        IEnumerable<OwnerStatementJournalEntryLine> lines,
+        Guid? propertyId)
     {
-        var rows = await _journalEntryRepository.GetEscrowOwnerApJournalEntryLinesAsync(criteria);
-        return rows
+        if (!propertyId.HasValue || propertyId.Value == Guid.Empty)
+            return lines;
+
+        return lines.Where(line => line.PropertyId == propertyId.Value);
+    }
+
+    private static IEnumerable<OwnerStatementJournalEntryLine> FilterEscrowDrillDownLines(
+        IEnumerable<OwnerStatementJournalEntryLine> lines,
+        bool useAbsoluteAmount = false)
+    {
+        return lines
             .Where(row => row.Amount != 0)
             .OrderByDescending(line => line.TransactionDate)
             .ThenByDescending(line => line.JournalEntryCode)
-            .ThenByDescending(line => Math.Abs(line.Amount));
+            .ThenByDescending(line => useAbsoluteAmount ? Math.Abs(line.Amount) : line.Amount);
     }
+
+    private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowTotalDrillDownLines(
+        EscrowReportBundleData bundle,
+        List<JournalEntryRecapLine> recapLines,
+        Guid? propertyId)
+        => DistinctEscrowJournalEntryLines(
+            FilterEscrowDrillDownLines(FilterEscrowDrillDownLinesByProperty(bundle.OwnerApLines, propertyId))
+                .Concat(BuildEscrowNotCollectedLines(recapLines))
+                .Concat(FilterEscrowDrillDownLines(FilterEscrowDrillDownLinesByProperty(bundle.PrepaidApplyLines, propertyId))));
+
+    private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowTransferDrillDownLines(
+        EscrowReportBundleData bundle,
+        List<JournalEntryRecapLine> recapLines,
+        Guid? propertyId)
+        => DistinctEscrowJournalEntryLines(
+            FilterEscrowDrillDownLines(FilterEscrowDrillDownLinesByProperty(bundle.OwnerApLines, propertyId))
+                .Concat(BuildEscrowNotCollectedLines(recapLines))
+                .Concat(FilterEscrowDrillDownLines(FilterEscrowDrillDownLinesByProperty(bundle.PrepaidApplyLines, propertyId)))
+                .Concat(FilterEscrowDrillDownLines(bundle.EscrowBankLines, useAbsoluteAmount: true)));
 
     private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowNotCollectedLines(IEnumerable<JournalEntryRecapLine> recapLines)
     {
@@ -104,103 +141,48 @@ public partial class ReportManager
         return CalculateUnpaidIncome(ownerRent, ownerPaid);
     }
 
-    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowPrepaidLinesAsync(
-        JournalEntryRecapGetCriteria criteria)
-    {
-        var rows = await _journalEntryRepository.GetEscrowPrepaidApplyJournalEntryLinesAsync(criteria);
-        return rows
-            .Where(row => row.Amount != 0)
-            .OrderByDescending(line => line.TransactionDate)
-            .ThenByDescending(line => line.JournalEntryCode)
-            .ThenByDescending(line => line.Amount);
-    }
-
-    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowTotalLinesAsync(
-        JournalEntryRecapGetCriteria criteria)
-    {
-        var recapLines = await LoadEscrowDrillDownRecapLinesAsync(criteria);
-        return DistinctEscrowJournalEntryLines(
-            (await BuildEscrowOwnerApBalanceLinesAsync(criteria))
-                .Concat(BuildEscrowNotCollectedLines(recapLines))
-                .Concat(await BuildEscrowPrepaidLinesAsync(criteria)));
-    }
-
-    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowE2LinesAsync(
+    private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowE2DrillDownLines(
+        EscrowReportBundleData bundle,
+        List<JournalEntryRecapLine> recapLines,
         JournalEntryRecapGetCriteria criteria)
     {
         if (criteria.PropertyId.HasValue && criteria.PropertyId.Value != Guid.Empty)
-        {
-            var recapLines = await LoadEscrowDrillDownRecapLinesAsync(criteria);
-            var arBalance = (await _journalEntryRepository.GetEscrowOwnerApJournalEntryLinesAsync(criteria))
-                .Sum(line => line.Amount);
-            var prepaids = (await _journalEntryRepository.GetEscrowPrepaidApplyJournalEntryLinesAsync(criteria))
-                .Sum(line => line.Amount);
-            var notCollected = recapLines
-                .Where(line => line.PropertyId.HasValue)
-                .GroupBy(line => $"{line.PropertyId!.Value:N}|{(line.SourceDocumentCode ?? string.Empty).Trim()}", StringComparer.OrdinalIgnoreCase)
-                .Sum(group => CalculateEscrowInvoiceUnpaidAmount(group));
-            var total = arBalance + prepaids - notCollected;
-            if (total <= 0.005m)
-                return [];
-
-            return await BuildEscrowTotalLinesAsync(criteria);
-        }
-
-        var properties = await LoadOwnerPropertyReportDataAsync(criteria);
-        var propertyIds = properties
-            .Where(property => !criteria.PropertyId.HasValue || property.PropertyId == criteria.PropertyId.Value)
-            .Select(property => property.PropertyId)
-            .ToHashSet();
+            return BuildEscrowE2DrillDownLinesForProperty(bundle, recapLines, criteria.PropertyId.Value);
 
         var allLines = new List<OwnerStatementJournalEntryLine>();
-        foreach (var propertyId in propertyIds)
+        foreach (var property in bundle.Properties ?? [])
         {
-            var propertyCriteria = new JournalEntryRecapGetCriteria
-            {
-                OrganizationId = criteria.OrganizationId,
-                OfficeIds = criteria.OfficeIds,
-                PropertyId = propertyId,
-                StartDate = null,
-                EndDate = criteria.EndDate,
-                IncludeUnposted = criteria.IncludeUnposted,
-                IncludePaymentInvoiceContext = true
-            };
+            if (property.PropertyId == Guid.Empty)
+                continue;
 
-            var propertyLines = await BuildEscrowE2LinesAsync(propertyCriteria);
-            allLines.AddRange(propertyLines);
+            var propertyRecapLines = FilterEscrowDrillDownRecapLines(recapLines, property.PropertyId);
+            allLines.AddRange(BuildEscrowE2DrillDownLinesForProperty(bundle, propertyRecapLines, property.PropertyId));
         }
 
         return DistinctEscrowJournalEntryLines(allLines);
     }
 
-    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowBankBalanceLinesAsync(
-        JournalEntryRecapGetCriteria criteria)
+    private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowE2DrillDownLinesForProperty(
+        EscrowReportBundleData bundle,
+        List<JournalEntryRecapLine> recapLines,
+        Guid propertyId)
     {
-        var rows = await _journalEntryRepository.GetEscrowBankJournalEntryLinesAsync(criteria);
-        return rows
-            .Where(row => row.Amount != 0)
-            .OrderByDescending(line => line.TransactionDate)
-            .ThenByDescending(line => line.JournalEntryCode)
-            .ThenByDescending(line => Math.Abs(line.Amount));
-    }
-
-    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowTransferLinesAsync(
-        JournalEntryRecapGetCriteria criteria)
-    {
-        var propertyCriteria = new JournalEntryRecapGetCriteria
-        {
-            OrganizationId = criteria.OrganizationId,
-            OfficeIds = criteria.OfficeIds,
-            PropertyId = null,
-            StartDate = null,
-            EndDate = criteria.EndDate,
-            IncludeUnposted = criteria.IncludeUnposted,
-            IncludePaymentInvoiceContext = true
-        };
+        var ownerApLines = FilterEscrowDrillDownLinesByProperty(bundle.OwnerApLines, propertyId).ToList();
+        var prepaidLines = FilterEscrowDrillDownLinesByProperty(bundle.PrepaidApplyLines, propertyId).ToList();
+        var arBalance = ownerApLines.Sum(line => line.Amount);
+        var prepaids = prepaidLines.Sum(line => line.Amount);
+        var notCollected = recapLines
+            .Where(line => line.PropertyId.HasValue)
+            .GroupBy(line => $"{line.PropertyId!.Value:N}|{(line.SourceDocumentCode ?? string.Empty).Trim()}", StringComparer.OrdinalIgnoreCase)
+            .Sum(group => CalculateEscrowInvoiceUnpaidAmount(group));
+        var total = arBalance + prepaids - notCollected;
+        if (total <= 0.005m)
+            return [];
 
         return DistinctEscrowJournalEntryLines(
-            (await BuildEscrowTotalLinesAsync(propertyCriteria))
-                .Concat(await BuildEscrowBankBalanceLinesAsync(criteria)));
+            FilterEscrowDrillDownLines(ownerApLines)
+                .Concat(BuildEscrowNotCollectedLines(recapLines))
+                .Concat(FilterEscrowDrillDownLines(prepaidLines)));
     }
 
     private static IEnumerable<OwnerStatementJournalEntryLine> DistinctEscrowJournalEntryLines(
@@ -236,5 +218,4 @@ public partial class ReportManager
             Amount = amount
         };
     }
-
 }
