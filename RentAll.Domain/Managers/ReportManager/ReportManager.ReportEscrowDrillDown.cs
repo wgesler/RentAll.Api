@@ -16,7 +16,7 @@ public partial class ReportManager
 
         return metric switch
         {
-            "arbalance" => BuildEscrowArBalanceLines(await LoadEscrowDrillDownRecapLinesAsync(recapCriteria)),
+            "arbalance" => await BuildEscrowOwnerApBalanceLinesAsync(recapCriteria),
             "notcollected" => BuildEscrowNotCollectedLines(await LoadEscrowDrillDownRecapLinesAsync(recapCriteria)),
             "prepaids" => await BuildEscrowPrepaidLinesAsync(recapCriteria),
             "total" => await BuildEscrowTotalLinesAsync(recapCriteria),
@@ -61,13 +61,16 @@ public partial class ReportManager
             .ToList();
     }
 
-    private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowArBalanceLines(IEnumerable<JournalEntryRecapLine> recapLines)
-        => recapLines
-            .Where(line => string.Equals(line.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase))
-            .Select(line => BuildEscrowJournalEntryLine(line, "Actual", line.Amount))
+    private async Task<IEnumerable<OwnerStatementJournalEntryLine>> BuildEscrowOwnerApBalanceLinesAsync(
+        JournalEntryRecapGetCriteria criteria)
+    {
+        var rows = await _journalEntryRepository.GetEscrowOwnerApJournalEntryLinesAsync(criteria);
+        return rows
+            .Where(row => row.Amount != 0)
             .OrderByDescending(line => line.TransactionDate)
             .ThenByDescending(line => line.JournalEntryCode)
-            .ThenByDescending(line => line.Amount);
+            .ThenByDescending(line => Math.Abs(line.Amount));
+    }
 
     private static IEnumerable<OwnerStatementJournalEntryLine> BuildEscrowNotCollectedLines(IEnumerable<JournalEntryRecapLine> recapLines)
     {
@@ -117,7 +120,7 @@ public partial class ReportManager
     {
         var recapLines = await LoadEscrowDrillDownRecapLinesAsync(criteria);
         return DistinctEscrowJournalEntryLines(
-            BuildEscrowArBalanceLines(recapLines)
+            (await BuildEscrowOwnerApBalanceLinesAsync(criteria))
                 .Concat(BuildEscrowNotCollectedLines(recapLines))
                 .Concat(await BuildEscrowPrepaidLinesAsync(criteria)));
     }
@@ -128,8 +131,7 @@ public partial class ReportManager
         if (criteria.PropertyId.HasValue && criteria.PropertyId.Value != Guid.Empty)
         {
             var recapLines = await LoadEscrowDrillDownRecapLinesAsync(criteria);
-            var arBalance = recapLines
-                .Where(line => string.Equals(line.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase))
+            var arBalance = (await _journalEntryRepository.GetEscrowOwnerApJournalEntryLinesAsync(criteria))
                 .Sum(line => line.Amount);
             var prepaids = (await _journalEntryRepository.GetEscrowPrepaidApplyJournalEntryLinesAsync(criteria))
                 .Sum(line => line.Amount);

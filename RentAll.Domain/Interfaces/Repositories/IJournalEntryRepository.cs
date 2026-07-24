@@ -16,6 +16,7 @@ public interface IJournalEntryRepository
     Task<EscrowReportBundleData> GetEscrowReportDataAsync(JournalEntryRecapGetCriteria criteria);
     Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowPrepaidApplyJournalEntryLinesAsync(JournalEntryRecapGetCriteria criteria);
     Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowBankJournalEntryLinesAsync(JournalEntryRecapGetCriteria criteria);
+    Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowOwnerApJournalEntryLinesAsync(JournalEntryRecapGetCriteria criteria);
     Task<JournalEntry?> GetJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task<JournalEntry?> GetJournalEntryByCodeAsync(string journalEntryCode, Guid organizationId);
     Task<bool> ExistsByJournalEntryCodeAsync(string journalEntryCode, Guid organizationId);

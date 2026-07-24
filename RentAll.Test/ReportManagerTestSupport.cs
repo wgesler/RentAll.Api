@@ -137,10 +137,14 @@ internal static class ReportManagerTestSupport
                 .Setup(repository => repository.GetEscrowReportDataAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
                 .ReturnsAsync((JournalEntryRecapGetCriteria criteria) => new EscrowReportBundleData
                 {
-                    RecapLines = FilterRecapLines(criteria).ToList(),
-                    EscrowOfficeBalances = [],
-                    EscrowPrepaidPropertyBalances = []
+                    Properties = [CreateEscrowPropertyReportData()],
+                    PrepaidPropertyBalances = [],
+                    NotCollectedPropertyBalances = [],
+                    EscrowOfficeBalances = []
                 });
+            journalEntryRepository
+                .Setup(repository => repository.GetEscrowOwnerApJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
+                .ReturnsAsync([]);
             journalEntryRepository
                 .Setup(repository => repository.GetEscrowPrepaidApplyJournalEntryLinesAsync(It.IsAny<JournalEntryRecapGetCriteria>()))
                 .ReturnsAsync([]);
@@ -236,6 +240,21 @@ internal static class ReportManagerTestSupport
                 return true;
 
             return line.TransactionDate >= startDate.Value && line.TransactionDate <= endDate.Value;
+        }
+
+        private static EscrowPropertyReportData CreateEscrowPropertyReportData()
+        {
+            return new EscrowPropertyReportData
+            {
+                PropertyId = PropertyId,
+                PropertyCode = PropertyCode,
+                OfficeId = OfficeId,
+                OfficeName = OfficeName,
+                PropertyLeaseType = PropertyLeaseType.PropertyManagement,
+                PrimaryOwnerId = OwnerId,
+                WorkingCapitalBalance = 0m,
+                ApBalance = 0m
+            };
         }
 
         private static PropertyReportData CreatePropertyReportData()

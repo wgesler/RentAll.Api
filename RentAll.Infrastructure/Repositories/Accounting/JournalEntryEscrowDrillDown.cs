@@ -91,6 +91,111 @@ public partial class JournalEntryRepository
         return (rows ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel);
     }
 
+    public async Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowOwnerApJournalEntryLinesAsync(
+        JournalEntryRecapGetCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        const string sql = """
+            ;WITH OfficeOpeningBalanceSheet AS (
+                SELECT
+                    je.[OfficeId],
+                    je.[TransactionDate],
+                    ROW_NUMBER() OVER (
+                        PARTITION BY je.[OfficeId]
+                        ORDER BY je.[TransactionDate] DESC, je.[JournalEntryCode] DESC, je.[JournalEntryId]
+                    ) AS [RowNum]
+                FROM [Accounting].[JournalEntry] AS je
+                INNER JOIN (
+                    SELECT CAST(value AS INT) AS OfficeId
+                    FROM STRING_SPLIT(@OfficeIds, ',')
+                    WHERE RTRIM(LTRIM(value)) <> ''
+                ) AS oi
+                    ON je.[OfficeId] = oi.[OfficeId]
+                WHERE
+                    je.[OrganizationId] = @OrganizationId
+                    AND je.[JournalEntryKindId] = 1 -- OpeningBalanceSheet
+                    AND (@IncludeUnposted = 1 OR je.[PostingStatusId] <> 0)
+            )
+            SELECT
+                jel.[JournalEntryLineId],
+                je.[JournalEntryId],
+                je.[JournalEntryCode],
+                je.[TransactionDate],
+                je.[OfficeId],
+                PropertyId = COALESCE(
+                    NULLIF(jel.[PropertyId], '00000000-0000-0000-0000-000000000000'),
+                    r.[PropertyId],
+                    propertyFromReservation.[PropertyId]
+                ),
+                PropertyCode = COALESCE(
+                    p.[PropertyCode],
+                    propertyFromReservation.[PropertyCode],
+                    ''
+                ),
+                jel.[ChartOfAccountId],
+                AccountNo = coa.[AccountNo],
+                ChartOfAccountName = coa.[Name],
+                Description = COALESCE(NULLIF(LTRIM(RTRIM(jel.[Memo])), ''), NULLIF(LTRIM(RTRIM(je.[Memo])), ''), ''),
+                jel.[Debit],
+                jel.[Credit],
+                Amount = jel.[Credit] - jel.[Debit],
+                Category = 'OwnerAP'
+            FROM [Accounting].[JournalEntry] AS je
+            INNER JOIN (
+                SELECT CAST(value AS INT) AS OfficeId
+                FROM STRING_SPLIT(@OfficeIds, ',')
+                WHERE RTRIM(LTRIM(value)) <> ''
+            ) AS oi
+                ON je.[OfficeId] = oi.[OfficeId]
+            INNER JOIN [Organization].[AccountingOffice] AS ao
+                ON ao.[OrganizationId] = @OrganizationId
+                AND ao.[OfficeId] = je.[OfficeId]
+            INNER JOIN [Accounting].[JournalEntryLine] AS jel
+                ON jel.[JournalEntryId] = je.[JournalEntryId]
+                AND jel.[ChartOfAccountId] = ao.[DefaultOwnActPayableAccountId]
+            LEFT OUTER JOIN OfficeOpeningBalanceSheet AS obs
+                ON obs.[OfficeId] = je.[OfficeId]
+                AND obs.[RowNum] = 1
+            LEFT OUTER JOIN [Property].[Reservation] AS r
+                ON jel.[ReservationId] = r.[ReservationId]
+            LEFT OUTER JOIN [Property].[Property] AS p
+                ON jel.[PropertyId] = p.[PropertyId]
+            LEFT OUTER JOIN [Property].[Property] AS propertyFromReservation
+                ON r.[PropertyId] = propertyFromReservation.[PropertyId]
+            LEFT OUTER JOIN [Accounting].[ChartOfAccounts] AS coa
+                ON coa.[OrganizationId] = @OrganizationId
+                AND coa.[OfficeId] = je.[OfficeId]
+                AND coa.[AccountId] = jel.[ChartOfAccountId]
+            WHERE
+                je.[OrganizationId] = @OrganizationId
+                AND (@IncludeUnposted = 1 OR je.[PostingStatusId] <> 0)
+                AND ao.[DefaultOwnActPayableAccountId] IS NOT NULL
+                AND (@EndDate IS NULL OR je.[TransactionDate] <= @EndDate)
+                AND (
+                    obs.[TransactionDate] IS NULL
+                    OR je.[TransactionDate] >= obs.[TransactionDate]
+                )
+                AND (@PropertyId IS NULL OR COALESCE(
+                    NULLIF(jel.[PropertyId], '00000000-0000-0000-0000-000000000000'),
+                    r.[PropertyId],
+                    propertyFromReservation.[PropertyId]
+                ) = @PropertyId)
+                AND (@ReservationId IS NULL OR jel.[ReservationId] = @ReservationId)
+            """;
+
+        var rows = await db.QueryAsync<EscrowJournalEntryLineEntity>(sql, new
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            ReservationId = criteria.ReservationId,
+            EndDate = criteria.EndDate,
+            IncludeUnposted = criteria.IncludeUnposted
+        });
+
+        return (rows ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel);
+    }
+
     public async Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowBankJournalEntryLinesAsync(
         JournalEntryRecapGetCriteria criteria)
     {

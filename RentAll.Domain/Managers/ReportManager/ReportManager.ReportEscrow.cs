@@ -1,4 +1,3 @@
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Globalization;
 
@@ -6,122 +5,95 @@ namespace RentAll.Domain.Managers;
 
 public partial class ReportManager
 {
-    private sealed class EscrowReportLoadedData
-    {
-        public RecapLineSet RecapLineSet { get; init; } = new();
-        public List<PropertyReportData> Properties { get; init; } = [];
-        public List<int> OfficeIds { get; init; } = [];
-        public List<EscrowOfficeBalance> EscrowOfficeBalances { get; init; } = [];
-        public Dictionary<string, decimal> EscrowPrepaidByPropertyKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-    }
-
     public async Task<EscrowReport> GetEscrowReportAsync(JournalEntryRecapGetCriteria criteria, decimal cushion)
     {
         var normalizedCriteria = NormalizeEscrowReportCriteria(criteria);
-        var loaded = await LoadEscrowReportLoadedDataAsync(normalizedCriteria);
-        var accrualReport = BuildEscrowAccrualReport(loaded);
-        return BuildEscrowReport(loaded, normalizedCriteria, accrualReport, cushion);
+        var bundle = await _journalEntryRepository.GetEscrowReportDataAsync(normalizedCriteria);
+        return BuildEscrowReport(bundle, normalizedCriteria, cushion);
     }
 
-    private async Task<EscrowReportLoadedData> LoadEscrowReportLoadedDataAsync(JournalEntryRecapGetCriteria criteria)
-    {
-        criteria.IncludePaymentInvoiceContext = true;
-        var bundle = await _journalEntryRepository.GetEscrowReportDataAsync(criteria);
-        var recapLineSet = new RecapLineSet
-        {
-            AllLines = bundle.RecapLines,
-            ActivityLines = bundle.RecapLines.Where(line => line.IsInDateRange).ToList()
-        };
-
-        var officeIds = GetReportOfficeIds(criteria.OfficeIds);
-        if (officeIds.Count == 0)
-        {
-            return new EscrowReportLoadedData
-            {
-                RecapLineSet = recapLineSet,
-                OfficeIds = officeIds,
-                EscrowOfficeBalances = bundle.EscrowOfficeBalances,
-                EscrowPrepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.EscrowPrepaidPropertyBalances)
-            };
-        }
-
-        var properties = await LoadOwnerPropertyReportDataAsync(criteria);
-        return new EscrowReportLoadedData
-        {
-            RecapLineSet = recapLineSet,
-            Properties = properties,
-            OfficeIds = officeIds,
-            EscrowOfficeBalances = bundle.EscrowOfficeBalances,
-            EscrowPrepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.EscrowPrepaidPropertyBalances)
-        };
-    }
-
-    private OwnerAccrualReport BuildEscrowAccrualReport(EscrowReportLoadedData loaded)
-    {
-        if (loaded.OfficeIds.Count == 0)
-            return new OwnerAccrualReport();
-
-        var propertyActivityLines = BuildOwnerActivityLines(
-            loaded.RecapLineSet.ActivityLines,
-            loaded.RecapLineSet.AllLines,
-            OwnerReportActivityMode.Accrual);
-        var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
-
-        var rows = loaded.Properties
-            .Select(property =>
-            {
-                var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
-                activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
-                activityLines ??= [];
-
-                var invoicedIncome = activityLines.Sum(line => line.ExpectedIncome);
-                var paidIncome = activityLines.Sum(line => line.ReceivedIncome);
-                var unpaidIncome = CalculateUnpaidIncome(invoicedIncome, paidIncome);
-
-                return new OwnerAccrualReportRow
-                {
-                    PropertyId = property.PropertyId,
-                    OfficeId = property.OfficeId,
-                    OfficeName = property.OfficeName,
-                    OwnerId = property.PrimaryOwnerId,
-                    PropertyCode = property.PropertyCode,
-                    CompanyName = property.CompanyName,
-                    OwnerNames = property.OwnerNames,
-                    OwnerNameLine = property.OwnerNameLine,
-                    InvoicedIncome = invoicedIncome,
-                    UnpaidIncome = unpaidIncome
-                };
-            })
-            .OrderBy(row => row.OfficeName)
-            .ThenBy(row => row.PropertyCode)
-            .ToList();
-
-        return new OwnerAccrualReport
-        {
-            Rows = rows
-        };
-    }
-
-    private EscrowReport BuildEscrowReport(
-        EscrowReportLoadedData loaded,
+    private static EscrowReport BuildEscrowReport(
+        EscrowReportBundleData bundle,
         JournalEntryRecapGetCriteria criteria,
-        OwnerAccrualReport accrualReport,
         decimal cushion)
     {
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
+        var prepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.PrepaidPropertyBalances);
+        var notCollectedByPropertyKey = BuildEscrowNotCollectedByPropertyKey(bundle.NotCollectedPropertyBalances);
         var (escrowOwnersBalance, escrowOwnersAccountLabel) = ResolveEscrowOwnersAccountBalance(
-            loaded.EscrowOfficeBalances,
+            bundle.EscrowOfficeBalances,
             officeIds);
 
-        return BuildEscrowReport(
-            accrualReport.Rows,
-            loaded.EscrowPrepaidByPropertyKey,
-            criteria.PropertyId,
-            criteria.EndDate,
-            ResolveEscrowEntityLineLabel(accrualReport.Rows, officeIds.Count),
-            cushion,
-            escrowOwnersBalance,
-            escrowOwnersAccountLabel);
+        var rows = (bundle.Properties ?? [])
+            .Where(property => !criteria.PropertyId.HasValue
+                || criteria.PropertyId.Value == Guid.Empty
+                || property.PropertyId == criteria.PropertyId.Value)
+            .Select(property =>
+            {
+                var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
+                var apBalance = RoundFinancialReportAmount(property.ApBalance);
+                var prepaids = prepaidByPropertyKey.TryGetValue(propertyKey, out var prepaidBalance)
+                    ? RoundFinancialReportAmount(prepaidBalance)
+                    : 0m;
+                var notCollected = notCollectedByPropertyKey.TryGetValue(propertyKey, out var notCollectedBalance)
+                    ? RoundFinancialReportAmount(notCollectedBalance)
+                    : 0m;
+                var total = RoundFinancialReportAmount(apBalance - prepaids - notCollected);
+                var e2 = total > 0m ? total : 0m;
+
+                return new EscrowReportRow
+                {
+                    RowId = $"{property.OfficeId}-{propertyKey}",
+                    OwnerName = ResolveEscrowOwnerName(property),
+                    PropertyId = property.PropertyId,
+                    PropertyCode = string.IsNullOrWhiteSpace(property.PropertyCode) ? "—" : property.PropertyCode.Trim(),
+                    OfficeId = property.OfficeId,
+                    ArBalance = apBalance,
+                    Prepaids = prepaids,
+                    NotCollected = notCollected,
+                    Total = total,
+                    E2 = e2
+                };
+            })
+            .Where(row =>
+                Math.Abs(row.ArBalance) > 0.005m
+                || Math.Abs(row.Prepaids) > 0.005m
+                || Math.Abs(row.NotCollected) > 0.005m
+                || Math.Abs(row.Total) > 0.005m)
+            .OrderBy(row => row.OwnerName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var totals = rows.Aggregate(
+            new EscrowReportTotals(),
+            (acc, row) => new EscrowReportTotals
+            {
+                ArBalance = RoundFinancialReportAmount(acc.ArBalance + row.ArBalance),
+                Prepaids = RoundFinancialReportAmount(acc.Prepaids + row.Prepaids),
+                NotCollected = RoundFinancialReportAmount(acc.NotCollected + row.NotCollected),
+                Total = RoundFinancialReportAmount(acc.Total + row.Total),
+                E2 = RoundFinancialReportAmount(acc.E2 + row.E2)
+            });
+
+        var roundedCushion = RoundFinancialReportAmount(cushion);
+        var roundedBankBalance = RoundFinancialReportAmount(escrowOwnersBalance);
+
+        return new EscrowReport
+        {
+            ReportTitle = "Escrow Report",
+            PeriodLabel = criteria.EndDate.HasValue
+                ? $"As of {criteria.EndDate.Value.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)}"
+                : string.Empty,
+            EntityLineLabel = ResolveEscrowEntityLineLabel(bundle.Properties ?? [], officeIds.Count),
+            Rows = rows,
+            Totals = totals,
+            Cushion = roundedCushion,
+            EscrowBankBalance = roundedBankBalance,
+            EscrowBankAccountLabel = string.IsNullOrWhiteSpace(escrowOwnersAccountLabel)
+                ? "Escrow Owners"
+                : escrowOwnersAccountLabel.Trim(),
+            Transfer = RoundFinancialReportAmount(roundedBankBalance + totals.Total - roundedCushion)
+        };
     }
 
     private static JournalEntryRecapGetCriteria NormalizeEscrowReportCriteria(JournalEntryRecapGetCriteria criteria)
@@ -142,7 +114,8 @@ public partial class ReportManager
         };
     }
 
-    private static Dictionary<string, decimal> BuildEscrowPrepaidByPropertyKey(IEnumerable<EscrowPrepaidPropertyBalance> balances)
+    private static Dictionary<string, decimal> BuildEscrowPrepaidByPropertyKey(
+        IEnumerable<EscrowPrepaidPropertyBalance> balances)
     {
         var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         foreach (var balance in balances ?? [])
@@ -152,6 +125,22 @@ public partial class ReportManager
 
             var key = GetPropertyReportKey(balance.OfficeId, balance.PropertyId);
             byKey[key] = Math.Round(balance.Balance, 2, MidpointRounding.AwayFromZero);
+        }
+
+        return byKey;
+    }
+
+    private static Dictionary<string, decimal> BuildEscrowNotCollectedByPropertyKey(
+        IEnumerable<EscrowNotCollectedPropertyBalance> balances)
+    {
+        var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        foreach (var balance in balances ?? [])
+        {
+            if (balance.PropertyId == Guid.Empty)
+                continue;
+
+            var key = GetPropertyReportKey(balance.OfficeId, balance.PropertyId);
+            byKey[key] = Math.Round(balance.NotCollectedAmount, 2, MidpointRounding.AwayFromZero);
         }
 
         return byKey;
@@ -184,104 +173,25 @@ public partial class ReportManager
         return string.IsNullOrWhiteSpace(label) ? "Escrow Owners" : label;
     }
 
-    private static string? ResolveEscrowEntityLineLabel(IReadOnlyList<OwnerAccrualReportRow> rows, int officeCount)
+    private static string? ResolveEscrowEntityLineLabel(IReadOnlyList<EscrowPropertyReportData> properties, int officeCount)
     {
         if (officeCount != 1)
             return "All Offices";
 
-        return rows.FirstOrDefault(row => !string.IsNullOrWhiteSpace(row.OfficeName))?.OfficeName;
+        return properties.FirstOrDefault(property => !string.IsNullOrWhiteSpace(property.OfficeName))?.OfficeName;
     }
 
-    private static EscrowReport BuildEscrowReport(
-        IReadOnlyList<OwnerAccrualReportRow> accrualRows,
-        IReadOnlyDictionary<string, decimal> prepaidByPropertyKey,
-        Guid? propertyId,
-        DateOnly? asOfDate,
-        string? entityLineLabel,
-        decimal cushion,
-        decimal escrowBankBalance,
-        string escrowBankAccountLabel)
+    private static string ResolveEscrowOwnerName(EscrowPropertyReportData property)
     {
-        var rows = (accrualRows ?? [])
-            .Where(row => !propertyId.HasValue || propertyId.Value == Guid.Empty || row.PropertyId == propertyId.Value)
-            .Select(row =>
-            {
-                var propertyKey = GetPropertyReportKey(row.OfficeId, row.PropertyId);
-                var arBalance = RoundFinancialReportAmount(row.InvoicedIncome);
-                var prepaidRaw = prepaidByPropertyKey.TryGetValue(propertyKey, out var prepaidBalance)
-                    ? prepaidBalance
-                    : 0m;
-                var prepaids = RoundFinancialReportAmount(prepaidRaw);
-                var notCollected = RoundFinancialReportAmount(row.UnpaidIncome);
-                var total = RoundFinancialReportAmount(arBalance - prepaids - notCollected);
-                var e2 = total < 0m ? 0m : total;
-
-                return new EscrowReportRow
-                {
-                    RowId = $"{row.OfficeId}-{propertyKey}",
-                    OwnerName = ResolveEscrowOwnerName(row),
-                    PropertyId = row.PropertyId,
-                    PropertyCode = string.IsNullOrWhiteSpace(row.PropertyCode) ? "—" : row.PropertyCode.Trim(),
-                    OfficeId = row.OfficeId,
-                    ArBalance = arBalance,
-                    Prepaids = prepaids,
-                    NotCollected = notCollected,
-                    Total = total,
-                    E2 = e2
-                };
-            })
-            .Where(row =>
-                Math.Abs(row.ArBalance) > 0.005m
-                || Math.Abs(row.Prepaids) > 0.005m
-                || Math.Abs(row.NotCollected) > 0.005m
-                || Math.Abs(row.Total) > 0.005m)
-            .OrderBy(row => row.OwnerName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var totals = rows.Aggregate(
-            new EscrowReportTotals(),
-            (acc, row) => new EscrowReportTotals
-            {
-                ArBalance = RoundFinancialReportAmount(acc.ArBalance + row.ArBalance),
-                Prepaids = RoundFinancialReportAmount(acc.Prepaids + row.Prepaids),
-                NotCollected = RoundFinancialReportAmount(acc.NotCollected + row.NotCollected),
-                Total = RoundFinancialReportAmount(acc.Total + row.Total),
-                E2 = RoundFinancialReportAmount(acc.E2 + row.E2)
-            });
-
-        var roundedCushion = RoundFinancialReportAmount(cushion);
-        var roundedBankBalance = RoundFinancialReportAmount(escrowBankBalance);
-
-        return new EscrowReport
-        {
-            ReportTitle = "Escrow Report",
-            PeriodLabel = asOfDate.HasValue
-                ? $"As of {asOfDate.Value.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)}"
-                : string.Empty,
-            EntityLineLabel = string.IsNullOrWhiteSpace(entityLineLabel) ? null : entityLineLabel.Trim(),
-            Rows = rows,
-            Totals = totals,
-            Cushion = roundedCushion,
-            EscrowBankBalance = roundedBankBalance,
-            EscrowBankAccountLabel = string.IsNullOrWhiteSpace(escrowBankAccountLabel)
-                ? "Escrow Owners"
-                : escrowBankAccountLabel.Trim(),
-            Transfer = RoundFinancialReportAmount(roundedBankBalance + totals.Total - roundedCushion)
-        };
-    }
-
-    private static string ResolveEscrowOwnerName(OwnerAccrualReportRow row)
-    {
-        var ownerName = (row.OwnerNames ?? string.Empty).Trim();
+        var ownerName = (property.OwnerNames ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(ownerName))
             return ownerName;
 
-        ownerName = (row.OwnerNameLine ?? string.Empty).Trim();
+        ownerName = (property.OwnerNameLine ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(ownerName))
             return ownerName;
 
-        ownerName = (row.CompanyName ?? string.Empty).Trim();
+        ownerName = (property.CompanyName ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(ownerName) ? "—" : ownerName;
     }
 
