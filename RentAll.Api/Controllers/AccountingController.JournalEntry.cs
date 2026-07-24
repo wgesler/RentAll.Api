@@ -21,7 +21,14 @@ namespace RentAll.Api.Controllers
             try
             {
                 var criteria = dto.ToCriteria(CurrentOrganizationId);
-                var journalEntryLines = await _journalEntryRepository.GetJournalEntryLinesAsync(criteria);
+                var journalEntryLines = (await _journalEntryRepository.GetJournalEntryLinesAsync(criteria)).ToList();
+                if (dto.ExcludeBeforeOwnerStartingBalance)
+                {
+                    journalEntryLines = (await _accountingManager.FilterOwnerApAgingJournalEntryLinesAsync(
+                        CurrentOrganizationId,
+                        journalEntryLines)).ToList();
+                }
+
                 var response = journalEntryLines.Select(l => new JournalEntryLineSearchResponseDto(l)).ToList();
                 return Ok(response);
             }

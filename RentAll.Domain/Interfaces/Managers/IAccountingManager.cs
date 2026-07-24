@@ -80,6 +80,7 @@ public interface IAccountingManager
     #region Owner Starting Balance
     Task<OwnerStatementStartingBalanceEntry?> GetOwnerStatementStartingBalanceAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId);
     Task<JournalEntry?> CreateOwnerStatementStartingBalanceJournalEntryAsync(Guid organizationId, int officeId, Guid ownerId, Guid propertyId, DateOnly transactionDate, decimal amount, Guid currentUser);
+    Task<IReadOnlyList<JournalEntryLineSearchResult>> FilterOwnerApAgingJournalEntryLinesAsync(Guid organizationId, IReadOnlyList<JournalEntryLineSearchResult> lines);
     #endregion
 
     #region Journal Entry Sync

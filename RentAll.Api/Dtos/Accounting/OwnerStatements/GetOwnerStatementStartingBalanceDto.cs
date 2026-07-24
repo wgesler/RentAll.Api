@@ -10,8 +10,6 @@ public class GetOwnerStatementStartingBalanceDto
     {
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
-        if (OwnerId == Guid.Empty)
-            return (false, "OwnerId is required");
         if (PropertyId == Guid.Empty)
             return (false, "PropertyId is required");
 

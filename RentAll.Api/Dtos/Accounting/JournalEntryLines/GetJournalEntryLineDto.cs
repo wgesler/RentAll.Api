@@ -13,6 +13,10 @@ public class GetJournalEntryLineDto
     public bool IncludeUnposted { get; set; } = true;
     public bool UnclearedOnly { get; set; }
     public bool IncludeCashOnly { get; set; }
+    /// <summary>
+    /// When true (Owner AP Aging), exclude journal entry lines dated before the property's owner starting balance.
+    /// </summary>
+    public bool ExcludeBeforeOwnerStartingBalance { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 
