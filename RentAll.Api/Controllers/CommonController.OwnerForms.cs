@@ -698,6 +698,7 @@ namespace RentAll.Api.Controllers
                                 BankName = null,
                                 RoutingNumber = null,
                                 AccountNumber = null,
+                                OwnerPaymentType = OwnerPaymentType.Ach,
                                 Notes = null,
                                 AgreementLines = new List<AgreementLine>()
                             });
@@ -751,6 +752,7 @@ namespace RentAll.Api.Controllers
                             BankName = null,
                             RoutingNumber = null,
                             AccountNumber = null,
+                            OwnerPaymentType = OwnerPaymentType.Ach,
                             Notes = null,
                             AgreementLines = new List<AgreementLine>()
                         });

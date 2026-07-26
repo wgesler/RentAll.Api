@@ -21,6 +21,7 @@ public class CreatePropertyAgreementDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? OwnerPaymentTypeId { get; set; }
     public string? Notes { get; set; }
     public List<CreatePropertyAgreementLineDto> AgreementLines { get; set; } = new();
 
@@ -28,6 +29,9 @@ public class CreatePropertyAgreementDto
     {
         if (ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
             return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
+
+        if (OwnerPaymentTypeId.HasValue && !Enum.IsDefined(typeof(OwnerPaymentType), OwnerPaymentTypeId.Value))
+            return (false, $"Invalid OwnerPaymentType value: {OwnerPaymentTypeId.Value}");
 
         if (FlatRateAmount.HasValue && FlatRateAmount.Value < 0)
             return (false, "FlatRateAmount cannot be negative");
@@ -80,6 +84,7 @@ public class CreatePropertyAgreementDto
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
+            OwnerPaymentType = OwnerPaymentTypeId.HasValue ? (OwnerPaymentType)OwnerPaymentTypeId.Value : OwnerPaymentType.Ach,
             Notes = Notes,
             AgreementLines = AgreementLines?.Select(line => line.ToModel(propertyId)).ToList() ?? new List<AgreementLine>()
         };

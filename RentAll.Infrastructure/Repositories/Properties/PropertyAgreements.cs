@@ -126,6 +126,7 @@ public partial class PropertyRepository
                 BankName = agreement.BankName,
                 RoutingNumber = agreement.RoutingNumber,
                 AccountNumber = agreement.AccountNumber,
+                OwnerPaymentTypeId = (int)agreement.OwnerPaymentType,
                 Notes = agreement.Notes
             }, transaction: transaction);
 
@@ -219,6 +220,7 @@ public partial class PropertyRepository
                 BankName = agreement.BankName,
                 RoutingNumber = agreement.RoutingNumber,
                 AccountNumber = agreement.AccountNumber,
+                OwnerPaymentTypeId = (int)agreement.OwnerPaymentType,
                 Notes = agreement.Notes
             }, transaction: transaction);
 

@@ -25,6 +25,7 @@ public class PropertyAgreementResponseDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int OwnerPaymentTypeId { get; set; }
     public string? Notes { get; set; }
     public List<PropertyAgreementLineResponseDto> AgreementLines { get; set; } = new();
 
@@ -48,6 +49,7 @@ public class PropertyAgreementResponseDto
         BankName = a.BankName;
         RoutingNumber = a.RoutingNumber;
         AccountNumber = a.AccountNumber;
+        OwnerPaymentTypeId = (int)a.OwnerPaymentType;
         Notes = a.Notes;
         AgreementLines = a.AgreementLines?.Select(l => new PropertyAgreementLineResponseDto(l)).ToList() ?? new List<PropertyAgreementLineResponseDto>();
     }

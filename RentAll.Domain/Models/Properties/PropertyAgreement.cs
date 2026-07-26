@@ -22,6 +22,7 @@ public class PropertyAgreement
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public OwnerPaymentType OwnerPaymentType { get; set; }
     public string? Notes { get; set; }
     public List<AgreementLine> AgreementLines { get; set; } = new List<AgreementLine>();
 }
