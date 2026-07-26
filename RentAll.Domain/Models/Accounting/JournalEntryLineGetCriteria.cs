@@ -13,6 +13,7 @@ public class JournalEntryLineGetCriteria
     public bool IncludeUnposted { get; set; } = true;
     public bool UnclearedOnly { get; set; }
     public bool IncludeCashOnly { get; set; }
+    public bool ShowAll { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 }

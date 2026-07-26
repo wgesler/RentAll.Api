@@ -17,6 +17,7 @@ public static class GetJournalEntryLineDtoExtensions
             IncludeUnposted = dto.IncludeUnposted,
             UnclearedOnly = dto.UnclearedOnly,
             IncludeCashOnly = dto.IncludeCashOnly,
+            ShowAll = dto.ShowAll,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate
         };
