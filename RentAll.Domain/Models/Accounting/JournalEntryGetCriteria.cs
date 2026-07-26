@@ -12,7 +12,6 @@ public class JournalEntryGetCriteria
 
     public Guid? SourceId { get; set; }
 
-    public bool IncludeVoided { get; set; }
 
     public bool IncludeUnposted { get; set; } = true;
 

@@ -16,7 +16,6 @@ public partial class JournalEntryRepository
             OfficeIds = criteria.OfficeIds,
             SourceTypeId = criteria.SourceTypeId,
             SourceId = criteria.SourceId,
-            IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
@@ -55,7 +54,6 @@ public partial class JournalEntryRepository
             ReservationId = criteria.ReservationId,
             PropertyId = criteria.PropertyId,
             ContactId = criteria.ContactId,
-            IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             UnclearedOnly = criteria.UnclearedOnly,
             IncludeCashOnly = criteria.IncludeCashOnly,
@@ -81,7 +79,6 @@ public partial class JournalEntryRepository
             OrganizationId = criteria.OrganizationId,
             OfficeIds = criteria.OfficeIds,
             ChartOfAccountIds = criteria.ChartOfAccountIds,
-            IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             EndDate = criteria.EndDate
         });

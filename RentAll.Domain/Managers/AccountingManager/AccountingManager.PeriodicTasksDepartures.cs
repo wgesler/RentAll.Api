@@ -66,7 +66,6 @@ public partial class AccountingManager
             OfficeIds = reservation.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Reservation,
             SourceId = reservation.ReservationId,
-            IncludeVoided = true,
             IncludeUnposted = true
         });
 

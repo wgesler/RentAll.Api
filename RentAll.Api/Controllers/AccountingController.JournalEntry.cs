@@ -24,7 +24,6 @@ namespace RentAll.Api.Controllers
                     CurrentOrganizationId,
                     dto.OfficeIds,
                     dto.EndDate,
-                    dto.IncludeVoided,
                     dto.IncludeUnposted);
                 var response = lines.Select(line => new JournalEntryLineSearchResponseDto(line)).ToList();
                 return Ok(response);

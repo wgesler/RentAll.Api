@@ -351,7 +351,6 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     return _journalEntries.Where(entry =>
                         entry.OrganizationId == criteria.OrganizationId
-                        && (criteria.IncludeVoided || entry.PostingStatusId is not PostingStatus.SoftClosed and not PostingStatus.HardClosed)
                         && (criteria.SourceTypeId == null || entry.SourceTypeId == criteria.SourceTypeId)
                         && (criteria.SourceId == null || entry.SourceId == criteria.SourceId)).ToList();
                 });

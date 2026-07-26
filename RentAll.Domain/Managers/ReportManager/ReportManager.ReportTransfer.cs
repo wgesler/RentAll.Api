@@ -113,7 +113,6 @@ public partial class ReportManager
                 OfficeIds = transfer.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.Transfer,
                 SourceId = transfer.TransferId,
-                IncludeVoided = true,
                 IncludeUnposted = true
             })).ToList();
 

@@ -34,7 +34,6 @@ public class GetTransferReportDto
             ReservationId = ReservationId,
             StartDate = StartDate,
             EndDate = EndDate,
-            IncludeVoided = false,
             IncludeUnposted = true
         };
     }

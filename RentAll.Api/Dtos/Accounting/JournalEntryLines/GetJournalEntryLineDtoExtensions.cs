@@ -14,7 +14,6 @@ public static class GetJournalEntryLineDtoExtensions
             ReservationId = dto.ReservationId,
             PropertyId = dto.PropertyId,
             ContactId = dto.ContactId,
-            IncludeVoided = dto.IncludeVoided,
             IncludeUnposted = dto.IncludeUnposted,
             UnclearedOnly = dto.UnclearedOnly,
             IncludeCashOnly = dto.IncludeCashOnly,

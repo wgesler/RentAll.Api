@@ -111,7 +111,6 @@ public partial class ReportManager
             ReservationId = criteria.ReservationId,
             StartDate = null,
             EndDate = endDate,
-            IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted
         };
     }

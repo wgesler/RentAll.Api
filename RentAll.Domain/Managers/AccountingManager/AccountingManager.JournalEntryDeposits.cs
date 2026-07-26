@@ -98,7 +98,6 @@ public partial class AccountingManager
                 OfficeIds = deposit.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.Deposit,
                 SourceId = deposit.DepositId,
-                IncludeVoided = true,
                 IncludeUnposted = true
             })).ToList();
 

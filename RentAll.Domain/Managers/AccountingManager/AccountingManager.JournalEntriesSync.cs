@@ -38,7 +38,6 @@ public partial class AccountingManager
                         OfficeIds = invoice.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Invoice,
                         SourceId = invoice.InvoiceId,
-                        IncludeVoided = true,
                         IncludeUnposted = true
                     },
                     result);
@@ -114,7 +113,6 @@ public partial class AccountingManager
                         OfficeIds = bill.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Bill,
                         SourceId = bill.ReceiptId,
-                        IncludeVoided = true,
                         IncludeUnposted = true
                     },
                     result);
@@ -220,7 +218,6 @@ public partial class AccountingManager
                         OfficeIds = receipt.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Receipt,
                         SourceId = receipt.ReceiptId,
-                        IncludeVoided = true,
                         IncludeUnposted = true
                     },
                     result);
@@ -291,7 +288,6 @@ public partial class AccountingManager
                         OfficeIds = workOrder.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.WorkOrder,
                         SourceId = workOrder.WorkOrderId,
-                        IncludeVoided = true,
                         IncludeUnposted = true
                     },
                     result);
@@ -365,7 +361,6 @@ public partial class AccountingManager
                         OfficeIds = deposit.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Deposit,
                         SourceId = deposit.DepositId,
-                        IncludeVoided = true,
                         IncludeUnposted = true
                     },
                     result);
@@ -442,7 +437,6 @@ public partial class AccountingManager
                         OfficeIds = transfer.OfficeId.ToString(),
                         SourceTypeId = (int)SourceType.Transfer,
                         SourceId = transfer.TransferId,
-                        IncludeVoided = true,
                         IncludeUnposted = true
                     },
                     result);
@@ -608,7 +602,6 @@ public partial class AccountingManager
                 OfficeIds = bill.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.BillPayment,
                 SourceId = bill.ReceiptId,
-                IncludeVoided = true,
                 IncludeUnposted = true
             },
             result);
@@ -625,7 +618,6 @@ public partial class AccountingManager
                 OrganizationId = organizationId,
                 OfficeIds = officeIds,
                 SourceTypeId = sourceTypeId,
-                IncludeVoided = true,
                 IncludeUnposted = true
             })).ToList();
 

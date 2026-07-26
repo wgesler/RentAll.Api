@@ -32,7 +32,6 @@ public class GetOwnerCashReportDto
             PropertyId = PropertyId,
             StartDate = StartDate,
             EndDate = EndDate,
-            IncludeVoided = false,
             IncludeUnposted = true
         };
     }

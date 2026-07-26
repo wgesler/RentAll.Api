@@ -74,7 +74,6 @@ public partial class AccountingManager
                 OfficeIds = workOrder.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.WorkOrder,
                 SourceId = workOrder.WorkOrderId,
-                IncludeVoided = true,
                 IncludeUnposted = true
             })).ToList();
 
@@ -154,7 +153,6 @@ public partial class AccountingManager
                 OfficeIds = receipt.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.Receipt,
                 SourceId = receipt.ReceiptId,
-                IncludeVoided = true,
                 IncludeUnposted = true
             })).ToList();
 
@@ -431,7 +429,6 @@ public partial class AccountingManager
             OfficeIds = officeId.ToString(),
             SourceTypeId = sourceTypeId,
             SourceId = sourceId,
-            IncludeVoided = true,
             IncludeUnposted = true
         })).ToList();
 
@@ -448,7 +445,6 @@ public partial class AccountingManager
             OrganizationId = bill.OrganizationId,
             OfficeIds = bill.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.BillPayment,
-            IncludeVoided = true,
             IncludeUnposted = true
         })).ToList();
 

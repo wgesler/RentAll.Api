@@ -99,7 +99,6 @@ public partial class AccountingManager
             OrganizationId = transfer.OrganizationId,
             OfficeIds = transfer.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Deposit,
-            IncludeVoided = false,
             IncludeUnposted = true
         })).ToList();
 

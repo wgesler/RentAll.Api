@@ -208,7 +208,6 @@ public partial class AccountingManager
             OfficeIds = agreement.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.LinensAndTowels,
             SourceId = agreement.PropertyId,
-            IncludeVoided = true,
             IncludeUnposted = true,
             StartDate = startDate,
             EndDate = endDate

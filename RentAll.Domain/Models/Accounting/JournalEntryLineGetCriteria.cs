@@ -10,7 +10,6 @@ public class JournalEntryLineGetCriteria
     public Guid? ReservationId { get; set; }
     public Guid? PropertyId { get; set; }
     public Guid? ContactId { get; set; }
-    public bool IncludeVoided { get; set; }
     public bool IncludeUnposted { get; set; } = true;
     public bool UnclearedOnly { get; set; }
     public bool IncludeCashOnly { get; set; }

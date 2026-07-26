@@ -3,7 +3,6 @@ namespace RentAll.Api.Dtos.Accounting.JournalEntryLines;
 public class GetOwnerApAgingJournalEntryLinesDto
 {
     public int[] OfficeIds { get; set; } = [];
-    public bool IncludeVoided { get; set; }
     public bool IncludeUnposted { get; set; } = true;
     public DateOnly? EndDate { get; set; }
 

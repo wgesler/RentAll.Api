@@ -69,7 +69,6 @@ public partial class AccountingManager
             OrganizationId = deposit.OrganizationId,
             OfficeIds = deposit.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Invoice,
-            IncludeVoided = false,
             IncludeUnposted = true
         }))
             .Where(entry => IsStandardInvoicePaymentJournalEntry(entry))

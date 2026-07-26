@@ -138,7 +138,6 @@ public partial class AccountingManager
             {
                 OrganizationId = organizationId,
                 OfficeIds = accountingOffice.OfficeId.ToString(),
-                IncludeVoided = false,
                 IncludeUnposted = true,
                 StartDate = fiscalYearStart,
                 EndDate = fiscalYearEnd
@@ -204,7 +203,6 @@ public partial class AccountingManager
         {
             OrganizationId = organizationId,
             OfficeIds = accountingOffice.OfficeId.ToString(),
-            IncludeVoided = false,
             IncludeUnposted = true,
             StartDate = fiscalYearStart,
             EndDate = fiscalYearEnd
@@ -453,7 +451,6 @@ public partial class AccountingManager
         {
             OrganizationId = organizationId,
             OfficeIds = accountingOffice.OfficeId.ToString(),
-            IncludeVoided = false,
             IncludeUnposted = true,
             StartDate = fiscalYearStart,
             EndDate = fiscalYearEnd
@@ -530,7 +527,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeIds = officeId.ToString(),
             SourceTypeId = (int)SourceType.Journal,
-            IncludeVoided = true,
             IncludeUnposted = true,
             StartDate = processingDate,
             EndDate = processingDate
@@ -741,7 +737,6 @@ public partial class AccountingManager
         {
             OrganizationId = organizationId,
             OfficeIds = officeIds,
-            IncludeVoided = false,
             IncludeUnposted = true
         })).ToList();
 

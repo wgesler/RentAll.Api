@@ -12,7 +12,6 @@ public partial class AccountingManager
         Guid organizationId,
         IReadOnlyList<int> officeIds,
         DateOnly? endDate,
-        bool includeVoided = false,
         bool includeUnposted = true)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -38,7 +37,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeIds = string.Join(',', distinctOfficeIds),
             ChartOfAccountIds = string.Join(',', accountIds),
-            IncludeVoided = includeVoided,
             IncludeUnposted = includeUnposted,
             EndDate = endDate
         });
@@ -93,7 +91,6 @@ public partial class AccountingManager
         {
             OrganizationId = organizationId,
             OfficeIds = officeId.ToString(),
-            IncludeVoided = false,
             IncludeUnposted = true,
             IncludeCashOnly = true
         });

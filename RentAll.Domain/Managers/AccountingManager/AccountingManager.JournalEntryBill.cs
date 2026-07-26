@@ -342,7 +342,6 @@ public partial class AccountingManager
             OfficeIds = bill.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = bill.ReceiptId,
-            IncludeVoided = true,
             IncludeUnposted = true
         });
 

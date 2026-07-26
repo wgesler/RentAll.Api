@@ -467,7 +467,6 @@ public partial class AccountingManager
                     OfficeIds = invoice.OfficeId.ToString(),
                     SourceTypeId = (int)SourceType.Invoice,
                     SourceId = invoice.InvoiceId,
-                    IncludeVoided = false,
                     IncludeUnposted = true
                 })).ToList();
                 amountContextEntries = invoiceEntries
@@ -1012,7 +1011,6 @@ public partial class AccountingManager
             OfficeIds = invoice.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
-            IncludeVoided = false,
             IncludeUnposted = true
         })).ToList();
 

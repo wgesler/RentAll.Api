@@ -95,7 +95,6 @@ public partial class AccountingManager
             OfficeIds = departure.OfficeId.ToString(CultureInfo.InvariantCulture),
             SourceTypeId = (int)SourceType.SecurityDeposit,
             SourceId = reservationId,
-            IncludeVoided = false,
             IncludeUnposted = true
         });
 
@@ -730,7 +729,6 @@ public partial class AccountingManager
                 OrganizationId = organizationId,
                 OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
                 ChartOfAccountId = accountId,
-                IncludeVoided = false,
                 IncludeUnposted = true,
                 StartDate = null,
                 EndDate = null
@@ -764,7 +762,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeIds = string.Join(',', officeIds),
             SourceTypeId = (int)SourceType.SecurityDeposit,
-            IncludeVoided = false,
             IncludeUnposted = true
         });
 
@@ -788,7 +785,6 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             OfficeIds = string.Join(',', officeIds),
             SourceTypeId = (int)SourceType.SecurityDeposit,
-            IncludeVoided = false,
             IncludeUnposted = true
         });
 
@@ -1203,7 +1199,6 @@ public partial class AccountingManager
                 OrganizationId = organizationId,
                 OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
                 SourceId = sourceId,
-                IncludeVoided = false,
                 IncludeUnposted = true
             })).ToList();
 

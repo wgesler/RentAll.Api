@@ -332,9 +332,6 @@ internal static class AccountingManagerJournalEntryTestSupport
                             return false;
                         if (criteria.SourceId is Guid sourceId && entry.SourceId != sourceId)
                             return false;
-                        if (!criteria.IncludeVoided
-                            && entry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
-                            return false;
                         // Mirror JournalEntry_GetByCriteria: exclude cash-only.
                         if (entry.IsCashOnly)
                             return false;

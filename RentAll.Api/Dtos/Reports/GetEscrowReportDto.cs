@@ -33,7 +33,6 @@ public class GetEscrowReportDto
             PropertyId = PropertyId,
             StartDate = StartDate,
             EndDate = EndDate,
-            IncludeVoided = false,
             IncludeUnposted = true
         };
     }

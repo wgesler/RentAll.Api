@@ -75,7 +75,6 @@ public partial class JournalEntryRepository
             ReservationId = criteria.ReservationId,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate,
-            IncludeVoided = criteria.IncludeVoided,
             IncludeUnposted = criteria.IncludeUnposted,
             IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext,
             ReachBackInvoiceCodes = (string?)null,
