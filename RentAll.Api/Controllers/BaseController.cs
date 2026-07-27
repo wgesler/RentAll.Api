@@ -319,10 +319,30 @@ namespace RentAll.Api.Controllers
             => RefuseIfDocumentUpdateNotAllowed(postingStatus, documentLabel);
 
         protected IActionResult? RefuseIfJournalEntryDeleteNotAllowed(int? postingStatusId, string documentLabel = "journal entry")
-            => RefuseIfDocumentDeleteNotAllowed(postingStatusId, documentLabel);
+            => RefuseIfJournalEntryDeleteNotAllowed(ResolvePostingStatus(postingStatusId), documentLabel);
 
         protected IActionResult? RefuseIfJournalEntryDeleteNotAllowed(PostingStatus postingStatus, string documentLabel = "journal entry")
-            => RefuseIfDocumentDeleteNotAllowed(postingStatus, documentLabel);
+        {
+            var hardClosedResult = RefuseIfDocumentHardClosed(postingStatus, documentLabel, "delete");
+            if (hardClosedResult != null)
+                return hardClosedResult;
+
+            switch (postingStatus)
+            {
+                case PostingStatus.Open:
+                    return null;
+                case PostingStatus.Posted:
+                    if (!CanModifySoftClosedDocument())
+                        return Unauthorized($"You are not authorized to delete a posted {documentLabel}.");
+                    return null;
+                case PostingStatus.SoftClosed:
+                    if (!CanModifySoftClosedDocument())
+                        return Unauthorized($"You are not authorized to delete a soft-closed {documentLabel}.");
+                    return null;
+                default:
+                    return Unauthorized($"You are not authorized to delete this {documentLabel}.");
+            }
+        }
 
         private static PostingStatus ResolvePostingStatus(int? postingStatusId)
             => Enum.IsDefined(typeof(PostingStatus), postingStatusId ?? 0)

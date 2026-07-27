@@ -14,6 +14,7 @@ public class OwnerCashReportRowResponseDto
     public decimal ReceivedIncome { get; set; }
     public decimal OwnerExpenses { get; set; }
     public decimal OwnerPayment { get; set; }
+    public decimal OwnerPaymentPaid { get; set; }
     public decimal EndingBalance { get; set; }
     public decimal WorkingCapital { get; set; }
 
@@ -31,6 +32,7 @@ public class OwnerCashReportRowResponseDto
         ReceivedIncome = row.ReceivedIncome;
         OwnerExpenses = row.OwnerExpenses;
         OwnerPayment = row.OwnerPayment;
+        OwnerPaymentPaid = row.OwnerPaymentPaid;
         EndingBalance = row.EndingBalance;
         WorkingCapital = row.WorkingCapital;
     }

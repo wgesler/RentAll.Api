@@ -56,6 +56,22 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_OwnerPayment_BillPayment_UsesKind()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.BillPayment,
+            sourceTypeId: (int)SourceType.OwnerDistribution,
+            chartOfAccountId: OwnerAp,
+            ownerApAccountId: OwnerAp,
+            memo: "P-001053: Owner: Payment: ACH",
+            debit: 4119.99m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("OwnerPayment", result.RecapCategory);
+        Assert.Equal(4119.99m, result.Amount);
+    }
+
+    [Fact]
     public void Classify_SecurityDepositWaiver_UsesExactChargeMemoSuffix()
     {
         var line = BuildLine(

@@ -31,6 +31,7 @@ public partial class ReportManager
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
 
         var priorPeriodUnpaidByProperty = CalculatePriorPeriodUnpaidByProperty(lines, criteria, startingBalanceByKey);
+        var ownerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(lines);
 
         var rows = properties
 
@@ -63,6 +64,7 @@ public partial class ReportManager
                 var ownerPayment = CalculateCashOwnerPayment(startingBalance, receivedIncome, ownerExpenses, property.WorkingCapitalBalance);
 
                 var endingBalance = CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
+                ownerPaymentPaidByProperty.TryGetValue(propertyKey, out var ownerPaymentPaid);
 
                 return new OwnerCashReportRow
 
@@ -92,6 +94,8 @@ public partial class ReportManager
 
                     OwnerPayment = ownerPayment,
 
+                    OwnerPaymentPaid = ownerPaymentPaid,
+
                     EndingBalance = endingBalance,
 
                     WorkingCapital = property.WorkingCapitalBalance
@@ -119,6 +123,18 @@ public partial class ReportManager
     }
 
     #region Calculate
+
+    private static Dictionary<string, decimal> CalculateOwnerPaymentPaidByProperty(IReadOnlyList<JournalEntryRecapLine> lines)
+    {
+        return (lines ?? [])
+            .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
+            .Where(line => string.Equals(line.RecapCategory, "OwnerPayment", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(line => GetPropertyReportKey(line.OfficeId, line.PropertyId!.Value))
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(line => Math.Abs(line.Amount)),
+                StringComparer.OrdinalIgnoreCase);
+    }
 
     private static decimal CalculateCashOwnerPayment(decimal startingBalance, decimal receivedIncome, decimal ownerExpenses, decimal workingCapitalBalance)
 

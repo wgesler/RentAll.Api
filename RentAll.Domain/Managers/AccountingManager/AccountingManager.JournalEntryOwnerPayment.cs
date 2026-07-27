@@ -6,13 +6,13 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Triggers
-    public async Task<List<JournalEntry>> CreateJournalEntriesFromOwnerPaymentAsync(OwnerPayment ownerPayment, Guid currentUser)
+    public async Task<List<JournalEntry>> CreateJournalEntriesFromOwnerPaymentAsync(OwnerPaymentBatch ownerPaymentBatch, Guid currentUser)
     {
         var journalEntries = new List<JournalEntry>();
-        if (ownerPayment.PaymentApplications.Count == 0)
+        if (ownerPaymentBatch.PaymentApplications.Count == 0)
             return journalEntries;
 
-        foreach (var paymentApplication in ownerPayment.PaymentApplications)
+        foreach (var paymentApplication in ownerPaymentBatch.PaymentApplications)
         {
             var journalEntry = await CreateJournalEntryFromOwnerPaymentAsync(paymentApplication, currentUser);
             if (journalEntry != null)

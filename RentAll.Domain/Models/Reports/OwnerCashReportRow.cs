@@ -14,6 +14,7 @@ public class OwnerCashReportRow
     public decimal ReceivedIncome { get; set; }
     public decimal OwnerExpenses { get; set; }
     public decimal OwnerPayment { get; set; }
+    public decimal OwnerPaymentPaid { get; set; }
     public decimal EndingBalance { get; set; }
     public decimal WorkingCapital { get; set; }
 }

@@ -6,49 +6,68 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Owners
-    public async Task<OwnerPayment> ApplyPaymentToOwnersAsync(IReadOnlyList<OwnerPaymentLine> lines, Guid organizationId, string offices, int chartOfAccountId, string description, DateOnly paymentDate, PaymentType paymentType, Guid currentUser)
+    public async Task<List<JournalEntry>> ApplyPaymentToOwnersAsync(OwnerPayments ownerPayments, Guid organizationId, string offices, Guid currentUser)
     {
-        if (lines.Count == 0)
-            throw new Exception("No owner statement lines submitted for payment");
+        if (ownerPayments.Payments.Count == 0)
+            throw new Exception("No owner payments submitted");
 
         var accessOfficeIds = ParseOfficeIdsFromAccess(offices);
         var paymentApplications = new List<OwnerPaymentApplication>();
-        foreach (var line in lines)
+        foreach (var payment in ownerPayments.Payments)
         {
-            if (accessOfficeIds.Count > 0 && !accessOfficeIds.Contains(line.OfficeId))
-                throw new Exception($"Office access denied for office {line.OfficeId}");
+            if (accessOfficeIds.Count > 0 && !accessOfficeIds.Contains(payment.OfficeId))
+                throw new Exception($"Office access denied for office {payment.OfficeId}");
 
-            var property = await _propertyRepository.GetPropertyByIdAsync(line.PropertyId, organizationId);
-            if (property == null || property.OfficeId != line.OfficeId)
+            var property = await _propertyRepository.GetPropertyByIdAsync(payment.PropertyId, organizationId);
+            if (property == null || property.OfficeId != payment.OfficeId)
                 throw new Exception("Invalid property for owner payment");
 
-            if (property.Owner1Id != line.OwnerId && property.Owner2Id != line.OwnerId)
+            if (property.Owner1Id != payment.OwnerId && property.Owner2Id != payment.OwnerId)
                 throw new Exception("Owner does not match property for owner payment");
 
             string? ownerName = null;
-            var contact = await _contactRepository.GetContactByIdAsync(line.OwnerId, organizationId);
+            var contact = await _contactRepository.GetContactByIdAsync(payment.OwnerId, organizationId);
             if (contact != null)
                 ownerName = NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
+
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, payment.OfficeId);
+            var chartOfAccountId = GetDefaultBankAccount(chartOfAccounts, payment.OfficeId, accountingOffice);
 
             paymentApplications.Add(new OwnerPaymentApplication
             {
                 OrganizationId = organizationId,
-                OfficeId = line.OfficeId,
-                OwnerId = line.OwnerId,
-                PropertyId = line.PropertyId,
+                OfficeId = payment.OfficeId,
+                OwnerId = payment.OwnerId,
+                PropertyId = payment.PropertyId,
                 PropertyCode = NormalizeOptionalString(property.PropertyCode) ?? string.Empty,
                 OwnerName = ownerName,
-                AmountApplied = line.Amount,
-                PaymentDate = paymentDate,
+                AmountApplied = payment.Amount,
+                PaymentDate = ownerPayments.PaymentDate,
                 ChartOfAccountId = chartOfAccountId,
-                Description = description.Trim(),
-                PaymentType = paymentType
+                Description = FormatOwnerPaymentReference(payment.PaymentType),
+                PaymentType = payment.PaymentType
             });
         }
 
-        return new OwnerPayment
+        var ownerPaymentBatch = new OwnerPaymentBatch
         {
             PaymentApplications = paymentApplications
+        };
+
+        return await CreateJournalEntriesFromOwnerPaymentAsync(ownerPaymentBatch, currentUser);
+    }
+
+    private static string FormatOwnerPaymentReference(PaymentType paymentType)
+    {
+        return paymentType switch
+        {
+            PaymentType.Check => "Check",
+            PaymentType.Ach => "ACH",
+            PaymentType.Eft => "EFT",
+            PaymentType.OnlineBanking => "Online banking",
+            PaymentType.WireTransfer => "Wire transfer",
+            PaymentType.CreditCard => "Credit card",
+            _ => paymentType.ToString()
         };
     }
     #endregion

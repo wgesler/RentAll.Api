@@ -1,12 +1,11 @@
 using RentAll.Api.Dtos.Accounting.Owners;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 
 public partial class AccountingController
 {
     [HttpPut("owner/payment")]
-    public async Task<IActionResult> ApplyOwnerPayment([FromBody] OwnerPaymentRequestDto dto)
+    public async Task<IActionResult> ApplyOwnerPayment([FromBody] OwnerPaymentsRequestDto dto)
     {
         if (dto == null)
             return BadRequest("Owner payment data is required");
@@ -17,10 +16,8 @@ public partial class AccountingController
 
         try
         {
-            var ownerPayment = await _accountingManager.ApplyPaymentToOwnersAsync(dto.Lines.Select(line => new OwnerPaymentLine(line.OfficeId, line.OwnerId, line.PropertyId, line.Amount)).ToList(), CurrentOrganizationId, CurrentOfficeAccess, dto.ChartOfAccountId, dto.Description, dto.PaymentDate, (PaymentType)dto.PaymentTypeId, CurrentUser);
-            var journalEntries = await _accountingManager.CreateJournalEntriesFromOwnerPaymentAsync(ownerPayment, CurrentUser);
-            var response = new OwnerPaymentResponseDto(journalEntries);
-            return Ok(response);
+            var journalEntries = await _accountingManager.ApplyPaymentToOwnersAsync(dto.ToModel(), CurrentOrganizationId, CurrentOfficeAccess, CurrentUser);
+            return Ok(new OwnerPaymentResponseDto(journalEntries));
         }
         catch (Exception ex)
         {

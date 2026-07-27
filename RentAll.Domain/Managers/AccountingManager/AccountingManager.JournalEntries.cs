@@ -254,8 +254,8 @@ public partial class AccountingManager
         if (journalEntry == null)
             throw new Exception("Journal entry not found");
 
-        if (!IsDeletableManualJournalEntry(journalEntry))
-            throw new Exception("Only open manual journal entries can be deleted.");
+        if (!IsDeletableJournalEntry(journalEntry))
+            throw new Exception("Only open journal entries can be deleted.");
 
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
@@ -380,7 +380,8 @@ public partial class AccountingManager
                 or JournalEntryKind.OpeningBalanceSheet
                 or JournalEntryKind.RetainedEarnings;
 
-    private static bool IsDeletableManualJournalEntry(JournalEntry journalEntry)
-        => IsManualJournalEntry(journalEntry)
-            && journalEntry.PostingStatusId is PostingStatus.Open or PostingStatus.SoftClosed;
+    private static bool IsDeletableJournalEntry(JournalEntry journalEntry)
+        => journalEntry.PostingStatusId is PostingStatus.Open
+            or PostingStatus.Posted
+            or PostingStatus.SoftClosed;
 }

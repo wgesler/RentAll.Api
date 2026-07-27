@@ -47,6 +47,16 @@ public static class JournalEntryRecapLineClassifier
             return true;
         }
 
+        if (kind == (int)JournalEntryKind.BillPayment
+            && sourceTypeId == (int)SourceType.OwnerDistribution
+            && line.DefaultOwnActPayableAccountId is > 0
+            && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId
+            && debit > 0)
+        {
+            result = BuildResult("OwnerPayment", debit - credit, line, memo, sourceTypeId);
+            return true;
+        }
+
         if ((kind is (int)JournalEntryKind.Bill or (int)JournalEntryKind.Receipt or (int)JournalEntryKind.Expense
                 or (int)JournalEntryKind.OwnerUtility or (int)JournalEntryKind.OwnerTransfer)
             && line.DefaultOwnActPayableAccountId is > 0
