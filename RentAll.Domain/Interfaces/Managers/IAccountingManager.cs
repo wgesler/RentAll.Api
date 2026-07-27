@@ -22,6 +22,8 @@ public interface IAccountingManager
     Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
     Task DeletePaymentAsync(Guid paymentId, Guid organizationId, Guid currentUser);
     Task<BillPayment> ApplyPaymentToBillsAsync(List<Guid> billIds, Guid organizationId, string offices, int chartOfAccountId, string description, decimal amountPaid, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
+    Task<OwnerPayment> ApplyPaymentToOwnersAsync(IReadOnlyList<OwnerPaymentLine> lines, Guid organizationId, string offices, int chartOfAccountId, string description, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
+    Task<List<JournalEntry>> CreateJournalEntriesFromOwnerPaymentAsync(OwnerPayment ownerPayment, Guid currentUser);
     Task<Reservation> ApplySecurityDepositReturnAsync(Guid reservationId, Guid organizationId, string officeAccess, int chartOfAccountId, string description, decimal amount, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
     Task<Reservation> ApplySecurityDepositTransferAsync(Guid reservationId, Guid organizationId, string officeAccess, int chartOfAccountId, string description, decimal amount, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
     Task<UnreturnedSecurityDepositsResult> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess, int? officeId = null);

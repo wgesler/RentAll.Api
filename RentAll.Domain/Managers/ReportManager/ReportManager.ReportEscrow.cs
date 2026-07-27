@@ -61,8 +61,8 @@ public partial class ReportManager
                 || Math.Abs(row.Prepaids) > 0.005m
                 || Math.Abs(row.NotCollected) > 0.005m
                 || Math.Abs(row.Total) > 0.005m)
-            .OrderBy(row => row.OwnerName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(row => row.PropertyCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(row => row.OwnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var totals = rows.Aggregate(
