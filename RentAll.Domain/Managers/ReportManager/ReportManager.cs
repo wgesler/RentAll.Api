@@ -276,7 +276,7 @@ public partial class ReportManager : IReportManager
                 SourceDocumentCode = GetOwnerActivityRefNo(group),
                 Description = GetOwnerRentActivityDescription(group),
                 ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
-                ReceivedIncome = isAccrual ? 0 : paidIncome,
+                ReceivedIncome = paidIncome,
                 Expenses = 0,
                 OwnerPayment = 0
             };
