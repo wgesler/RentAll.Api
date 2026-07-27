@@ -76,8 +76,8 @@ public partial class ReportManager
                 E2 = RoundFinancialReportAmount(acc.E2 + row.E2)
             });
 
-        var roundedCushion = RoundFinancialReportAmount(cushion);
-        var roundedBankBalance = RoundFinancialReportAmount(escrowOwnersBalance);
+        var roundedCushion = RoundFinancialReportAmount(Math.Abs(cushion));
+        var roundedBankBalance = RoundFinancialReportAmount(Math.Abs(escrowOwnersBalance));
 
         return new EscrowReport
         {
@@ -94,7 +94,7 @@ public partial class ReportManager
                 ? "Escrow Owners"
                 : escrowOwnersAccountLabel.Trim(),
             EscrowOfficeBalances = escrowOfficeBalances,
-            Transfer = RoundFinancialReportAmount(roundedBankBalance + totals.Total - roundedCushion)
+            Transfer = RoundFinancialReportAmount(roundedBankBalance - (totals.E2 + roundedCushion))
         };
     }
 
@@ -163,7 +163,7 @@ public partial class ReportManager
                 AccountId = balance.AccountId,
                 AccountNo = balance.AccountNo,
                 AccountName = balance.AccountName,
-                Balance = RoundFinancialReportAmount(balance.Balance)
+                Balance = RoundFinancialReportAmount(Math.Abs(balance.Balance))
             })
             .OrderBy(balance => balance.OfficeId)
             .ToList();

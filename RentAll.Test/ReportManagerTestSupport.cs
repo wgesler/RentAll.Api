@@ -110,6 +110,12 @@ internal static class ReportManagerTestSupport
         private readonly IReadOnlyList<JournalEntryRecapLine> _recapLines;
         private readonly ReportManager _manager;
         private readonly JournalEntryRecapGetCriteria _criteria;
+        private decimal _escrowOwnersBalance = 500m;
+        private decimal _escrowPropertyApBalance;
+
+        internal void SetEscrowOwnersBalance(decimal balance) => _escrowOwnersBalance = balance;
+
+        internal void SetEscrowPropertyE2Totals(decimal apBalance) => _escrowPropertyApBalance = apBalance;
 
         internal ReportManagerTestContext(IEnumerable<JournalEntryRecapLine> recapLines)
         {
@@ -137,7 +143,7 @@ internal static class ReportManagerTestSupport
                 .Setup(repository => repository.GetEscrowReportBundleDataAsync(It.IsAny<JournalEntryRecapGetCriteria>(), It.IsAny<bool>()))
                 .ReturnsAsync((JournalEntryRecapGetCriteria criteria, bool includeDrillDownLines) => new EscrowReportBundleData
                 {
-                    Properties = [CreateEscrowPropertyReportData()],
+                    Properties = [CreateEscrowPropertyReportData(_escrowPropertyApBalance)],
                     PrepaidPropertyBalances = [],
                     NotCollectedPropertyBalances = [],
                     EscrowOfficeBalances =
@@ -148,7 +154,7 @@ internal static class ReportManagerTestSupport
                             AccountId = 9001,
                             AccountNo = "1050",
                             AccountName = "Escrow Owners",
-                            Balance = 500m
+                            Balance = _escrowOwnersBalance
                         }
                     ],
                     OwnerApLines = includeDrillDownLines ? [] : [],
@@ -253,7 +259,7 @@ internal static class ReportManagerTestSupport
             return line.TransactionDate >= startDate.Value && line.TransactionDate <= endDate.Value;
         }
 
-        private static EscrowPropertyReportData CreateEscrowPropertyReportData()
+        private static EscrowPropertyReportData CreateEscrowPropertyReportData(decimal apBalance = 0m)
         {
             return new EscrowPropertyReportData
             {
@@ -264,7 +270,7 @@ internal static class ReportManagerTestSupport
                 PropertyLeaseType = PropertyLeaseType.PropertyManagement,
                 PrimaryOwnerId = OwnerId,
                 WorkingCapitalBalance = 0m,
-                ApBalance = 0m
+                ApBalance = apBalance
             };
         }
 
