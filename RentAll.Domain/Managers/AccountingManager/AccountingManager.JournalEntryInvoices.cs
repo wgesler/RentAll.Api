@@ -79,8 +79,7 @@ public partial class AccountingManager
         {
             try
             {
-                var rentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(invoice);
-                await CreateJournalEntryFromInvoiceForOwnerShareAsync(invoice, rentPlus4000Base, currentUser);
+                await CreateJournalEntryFromInvoiceForOwnerShareAsync(invoice, currentUser);
             }
             catch (Exception ex)
             {

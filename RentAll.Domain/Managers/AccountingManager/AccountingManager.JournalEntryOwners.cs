@@ -6,12 +6,11 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Trigger Invoice Owner Share
-    private async Task<JournalEntry?> CreateJournalEntryFromInvoiceForOwnerShareAsync(Invoice invoice, decimal rentPlus4000Base, Guid currentUser)
-        => await UpsertJournalEntryFromInvoiceForOwnerShareAsync(invoice, rentPlus4000Base, [], currentUser);
+    private async Task<JournalEntry?> CreateJournalEntryFromInvoiceForOwnerShareAsync(Invoice invoice, Guid currentUser)
+        => await UpsertJournalEntryFromInvoiceForOwnerShareAsync(invoice, [], currentUser);
 
     private async Task<JournalEntry?> UpsertJournalEntryFromInvoiceForOwnerShareAsync(
         Invoice invoice,
-        decimal rentPlus4000Base,
         IReadOnlyList<JournalEntry> existingInvoiceEntries,
         Guid currentUser)
     {
@@ -30,7 +29,7 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var (office, costCodeById) = await officeCostCodeContextTask;
 
-        var ownerAmount = await CalculateOwnerShareAmountForInvoiceAsync(invoice, rentPlus4000Base);
+        var ownerAmount = await ResolveOwnerShareAmountAsync(invoice);
         if (!ownerAmount.HasValue || ownerAmount.Value == 0)
         {
             var existingOwnerShare = existingInvoiceEntries.FirstOrDefault(entry =>
@@ -244,7 +243,7 @@ public partial class AccountingManager
         // Cross-period slices: OwnAct = Owner Expected (OwnRent) for that period when the slice is collected.
         var actualAmount = InvoiceCrossesAccountingPeriodBoundary(invoice)
             ? await ResolveOwnerActualAmountForSliceAsync(invoice, paymentAmount, workingEntries)
-            : await CalculateOwnerActualAmountForInvoicePaymentAsync(invoice, paymentAmount);
+            : await ResolveOwnerShareAmountAsync(invoice, paymentAmount);
         if (!actualAmount.HasValue || actualAmount.Value == 0)
             return null;
 
@@ -343,39 +342,56 @@ public partial class AccountingManager
         return [ownerExpenseLine, ownerPayableLine];
     }
 
-    private async Task<decimal?> CalculateOwnerActualAmountForInvoicePaymentAsync(Invoice invoice, decimal paymentAmount)
+    /// <summary>
+    /// Single owner-share amount resolver. <paramref name="paymentAmount"/> null = Owner Expected
+    /// (full rent accrual); non-null = Owner Actual (payment waterfall, then owner % on rent portion).
+    /// </summary>
+    private async Task<decimal?> ResolveOwnerShareAmountAsync(Invoice invoice, decimal? paymentAmount = null)
     {
-        if (paymentAmount == 0)
-            return null;
-
         var ownerShareInvoice = await ResolveInvoiceForOwnerShareAsync(invoice);
 
         if (!TryGetInvoiceRentalLedgerLine(ownerShareInvoice, out _))
             return null;
 
-        var rentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(ownerShareInvoice);
-        if (rentPlus4000Base == 0)
+        var ownerRentShareBase = await GetInvoiceOwnerRentShareBaseAsync(ownerShareInvoice);
+        if (ownerRentShareBase == 0)
             return null;
 
-        var securityDepositBase = await GetInvoiceSecurityDepositBaseAsync(ownerShareInvoice);
-        var sdwBase = await GetInvoiceSecurityDepositWaiverBaseAsync(ownerShareInvoice);
-        var feesBase = await GetInvoiceFeesBaseAsync(ownerShareInvoice);
-        var invoiceTotal = rentPlus4000Base + securityDepositBase + sdwBase + feesBase;
-        if (invoiceTotal == 0)
-            return null;
+        decimal amountForShareCalculation;
+        if (!paymentAmount.HasValue)
+        {
+            amountForShareCalculation = ownerRentShareBase;
+        }
+        else
+        {
+            if (paymentAmount.Value == 0)
+                return null;
 
-        var nonRentPaymentAmount = securityDepositBase + sdwBase + feesBase;
+            var securityDepositBase = await GetInvoiceSecurityDepositBaseAsync(ownerShareInvoice);
+            var sdwBase = await GetInvoiceSecurityDepositWaiverBaseAsync(ownerShareInvoice);
+            var feesBase = await GetInvoiceFeesBaseAsync(ownerShareInvoice);
+            var invoiceTotal = ownerRentShareBase + securityDepositBase + sdwBase + feesBase;
+            if (invoiceTotal == 0)
+                return null;
 
-        var rentPaymentAmount = paymentAmount <= nonRentPaymentAmount
-            ? 0m
-            : Math.Min(paymentAmount - nonRentPaymentAmount, rentPlus4000Base);
+            var nonRentPaymentAmount = securityDepositBase + sdwBase + feesBase;
+            var rentPaymentAmount = paymentAmount.Value <= nonRentPaymentAmount
+                ? 0m
+                : Math.Min(paymentAmount.Value - nonRentPaymentAmount, ownerRentShareBase);
 
-        if (rentPaymentAmount == 0)
-            return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(invoice);
+            if (rentPaymentAmount == 0)
+                return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(invoice);
 
-        var ownerAmount = await CalculateOwnerShareAmountForInvoiceAsync(ownerShareInvoice, rentPaymentAmount);
+            amountForShareCalculation = rentPaymentAmount;
+        }
+
+        var ownerAmount = await CalculateOwnerShareAmountForInvoiceAsync(ownerShareInvoice, amountForShareCalculation);
         if (!ownerAmount.HasValue || ownerAmount.Value == 0)
-            return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(invoice);
+        {
+            if (paymentAmount.HasValue)
+                return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(invoice);
+            return null;
+        }
 
         return ownerAmount;
     }
@@ -391,7 +407,7 @@ public partial class AccountingManager
         var ownerExpectedAmount = TryGetOwnerExpectedAmountFromEntries(workingEntries ?? [], sliceInvoice)
             ?? await TryGetOwnerExpectedAmountForInvoicePeriodAsync(sliceInvoice);
         if (!ownerExpectedAmount.HasValue || ownerExpectedAmount.Value == 0)
-            return await CalculateOwnerActualAmountForInvoicePaymentAsync(sliceInvoice, slicePaymentAmount);
+            return await ResolveOwnerShareAmountAsync(sliceInvoice, slicePaymentAmount);
 
         // Collected slice → OwnAct is the OwnRent (Owner Expected) for that period.
         var postedPeriodArCharge = await TryGetPostedInvoiceArChargeAmountForAccountingPeriodAsync(sliceInvoice);
@@ -403,7 +419,7 @@ public partial class AccountingManager
         if (sliceChargeTotal > 0 && slicePaymentAmount >= sliceChargeTotal)
             return ownerExpectedAmount;
 
-        var sliceRentBase = postedPeriodArCharge ?? await GetInvoiceRentPlus4000BaseAsync(ownerShareInvoice);
+        var sliceRentBase = await GetInvoiceOwnerRentShareBaseAsync(ownerShareInvoice);
         if (sliceRentBase <= 0)
             return ownerExpectedAmount;
 
@@ -447,11 +463,11 @@ public partial class AccountingManager
 
     private async Task<decimal> GetInvoiceChargeTotalForOwnerActualAsync(Invoice invoice)
     {
-        var rentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(invoice);
+        var ownerRentShareBase = await GetInvoiceOwnerRentShareBaseAsync(invoice);
         var securityDepositBase = await GetInvoiceSecurityDepositBaseAsync(invoice);
         var sdwBase = await GetInvoiceSecurityDepositWaiverBaseAsync(invoice);
         var feesBase = await GetInvoiceFeesBaseAsync(invoice);
-        return rentPlus4000Base + securityDepositBase + sdwBase + feesBase;
+        return ownerRentShareBase + securityDepositBase + sdwBase + feesBase;
     }
 
     private static decimal? TryGetOwnerExpectedAmountFromEntries(IEnumerable<JournalEntry> entries, Invoice invoice)
