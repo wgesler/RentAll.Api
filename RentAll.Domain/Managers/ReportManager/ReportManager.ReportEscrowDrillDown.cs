@@ -199,35 +199,27 @@ public partial class ReportManager
         EscrowReportBundleData bundle,
         Guid? propertyId)
     {
-        var ownerShareByLineId = BuildEscrowPrepaidOwnerShareByLineId(bundle.PrepaidPropertyBalances);
         return FilterEscrowDrillDownLines(
             FilterEscrowDrillDownLinesByProperty(bundle.PrepaidApplyLines, propertyId)
-                .Select(line =>
+                .Where(line => line.Amount > 0.005m)
+                .Select(line => new OwnerStatementJournalEntryLine
                 {
-                    if (!ownerShareByLineId.TryGetValue(line.JournalEntryLineId, out var ownerShare) || ownerShare <= 0.005m)
-                        return null;
-
-                    return new OwnerStatementJournalEntryLine
-                    {
-                        JournalEntryLineId = line.JournalEntryLineId,
-                        JournalEntryId = line.JournalEntryId,
-                        JournalEntryCode = line.JournalEntryCode,
-                        TransactionDate = line.TransactionDate,
-                        OfficeId = line.OfficeId,
-                        PropertyId = line.PropertyId,
-                        PropertyCode = line.PropertyCode,
-                        ChartOfAccountId = line.ChartOfAccountId,
-                        AccountNo = line.AccountNo,
-                        ChartOfAccountName = line.ChartOfAccountName,
-                        Description = line.Description,
-                        Debit = line.Debit,
-                        Credit = line.Credit,
-                        Category = "PrePaid",
-                        Amount = ownerShare
-                    };
-                })
-                .Where(line => line != null)
-                .Select(line => line!));
+                    JournalEntryLineId = line.JournalEntryLineId,
+                    JournalEntryId = line.JournalEntryId,
+                    JournalEntryCode = line.JournalEntryCode,
+                    TransactionDate = line.TransactionDate,
+                    OfficeId = line.OfficeId,
+                    PropertyId = line.PropertyId,
+                    PropertyCode = line.PropertyCode,
+                    ChartOfAccountId = line.ChartOfAccountId,
+                    AccountNo = line.AccountNo,
+                    ChartOfAccountName = line.ChartOfAccountName,
+                    Description = line.Description,
+                    Debit = line.Debit,
+                    Credit = line.Credit,
+                    Category = "PrePaid",
+                    Amount = line.Amount
+                }));
     }
 
     private static IEnumerable<OwnerStatementJournalEntryLine> DistinctEscrowJournalEntryLines(

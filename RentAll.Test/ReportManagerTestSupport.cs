@@ -113,6 +113,7 @@ internal static class ReportManagerTestSupport
         private decimal _escrowOwnersBalance = 500m;
         private decimal _escrowPropertyApBalance;
         private List<EscrowPrepaidPropertyBalance> _escrowPrepaidPropertyBalances = [];
+        private List<EscrowNotCollectedPropertyBalance> _escrowNotCollectedPropertyBalances = [];
 
         internal void SetEscrowOwnersBalance(decimal balance) => _escrowOwnersBalance = balance;
 
@@ -120,6 +121,24 @@ internal static class ReportManagerTestSupport
 
         internal void SetEscrowPrepaidDetails(params EscrowPrepaidPropertyBalance[] details)
             => _escrowPrepaidPropertyBalances = details.ToList();
+
+        internal void SetEscrowNotCollectedByProperty(
+            int officeId,
+            Guid propertyId,
+            decimal expectedIncome,
+            decimal actualIncome,
+            decimal? notCollectedAmount = null)
+            => _escrowNotCollectedPropertyBalances =
+            [
+                new EscrowNotCollectedPropertyBalance
+                {
+                    OfficeId = officeId,
+                    PropertyId = propertyId,
+                    ExpectedIncome = expectedIncome,
+                    ActualIncome = actualIncome,
+                    NotCollectedAmount = notCollectedAmount ?? Math.Max(0m, expectedIncome - actualIncome)
+                }
+            ];
 
         internal ReportManagerTestContext(IEnumerable<JournalEntryRecapLine> recapLines)
         {
@@ -149,7 +168,7 @@ internal static class ReportManagerTestSupport
                 {
                     Properties = [CreateEscrowPropertyReportData(_escrowPropertyApBalance)],
                     PrepaidPropertyBalances = _escrowPrepaidPropertyBalances,
-                    NotCollectedPropertyBalances = [],
+                    NotCollectedPropertyBalances = _escrowNotCollectedPropertyBalances,
                     EscrowOfficeBalances =
                     [
                         new EscrowOfficeBalance

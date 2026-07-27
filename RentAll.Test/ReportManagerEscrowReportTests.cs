@@ -69,12 +69,9 @@ public class ReportManagerEscrowReportTests
         ]);
         context.SetEscrowPrepaidDetails(new RentAll.Domain.Models.EscrowPrepaidPropertyBalance
         {
-            JournalEntryLineId = Guid.Parse("66666666-6666-6666-6666-666666666666"),
             OfficeId = ReportManagerTestSupport.OfficeId,
             PropertyId = ReportManagerTestSupport.PropertyId,
-            Balance = 2385m,
-            ExpectedIncome = 2385m,
-            OwnerRent = janOwnerRent
+            Prepaids = janOwnerRent
         });
 
         var recap = await context.GetRecapReportAsync(decPeriod, new DateOnly(2026, 1, 31));
@@ -86,5 +83,26 @@ public class ReportManagerEscrowReportTests
         Assert.Single(report.Rows);
         Assert.Equal(janOwnerRent, report.Rows[0].Prepaids);
         Assert.Equal(janOwnerRent, report.Totals.Prepaids);
+    }
+
+    [Fact]
+    public async Task GetEscrowReportAsync_NotCollectedUsesOwnerRentMinusOwnerRentActual()
+    {
+        const decimal decOwnerRent = 185.50m;
+        const decimal decOwnerAct = 100m;
+
+        var context = ReportManagerTestSupport.CreateContext([]);
+        context.SetEscrowPropertyE2Totals(apBalance: 0m);
+        context.SetEscrowNotCollectedByProperty(
+            ReportManagerTestSupport.OfficeId,
+            ReportManagerTestSupport.PropertyId,
+            decOwnerRent,
+            decOwnerAct);
+
+        var report = await context.GetEscrowReportAsync(new DateOnly(2026, 1, 31));
+
+        Assert.Single(report.Rows);
+        Assert.Equal(85.50m, report.Rows[0].NotCollected);
+        Assert.Equal(85.50m, report.Totals.NotCollected);
     }
 }

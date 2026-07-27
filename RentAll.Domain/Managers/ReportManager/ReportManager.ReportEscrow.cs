@@ -18,8 +18,6 @@ public partial class ReportManager
         decimal cushion)
     {
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
-        var prepaidByPropertyKey = BuildEscrowPrepaidByPropertyKey(bundle.PrepaidPropertyBalances);
-        var notCollectedByPropertyKey = BuildEscrowNotCollectedByPropertyKey(bundle.NotCollectedPropertyBalances);
         var escrowOfficeBalances = FilterEscrowOfficeBalances(bundle.EscrowOfficeBalances, officeIds);
         var (escrowOwnersBalance, escrowOwnersAccountLabel) = ResolveEscrowOwnersAccountBalance(
             escrowOfficeBalances,
@@ -33,12 +31,8 @@ public partial class ReportManager
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
                 var apBalance = RoundFinancialReportAmount(property.ApBalance);
-                var prepaids = prepaidByPropertyKey.TryGetValue(propertyKey, out var prepaidBalance)
-                    ? RoundFinancialReportAmount(prepaidBalance)
-                    : 0m;
-                var notCollected = notCollectedByPropertyKey.TryGetValue(propertyKey, out var notCollectedBalance)
-                    ? RoundFinancialReportAmount(notCollectedBalance)
-                    : 0m;
+                var prepaids = RoundFinancialReportAmount(property.Prepaids);
+                var notCollected = RoundFinancialReportAmount(property.NotCollectedAmount);
                 var total = RoundFinancialReportAmount(apBalance + prepaids - notCollected);
                 var e2 = total > 0m ? total : 0m;
 
@@ -115,57 +109,11 @@ public partial class ReportManager
         };
     }
 
-    private static Dictionary<string, decimal> BuildEscrowPrepaidByPropertyKey(
-        IEnumerable<EscrowPrepaidPropertyBalance> prepaidDetails)
-    {
-        var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        foreach (var detail in prepaidDetails ?? [])
-        {
-            if (detail.PropertyId == Guid.Empty)
-                continue;
-
-            var ownerShare = CalculatePrePayOwnerShare(detail.Balance, detail.OwnerRent, detail.ExpectedIncome);
-            if (ownerShare <= 0.005m)
-                continue;
-
-            var key = GetPropertyReportKey(detail.OfficeId, detail.PropertyId);
-            byKey[key] = RoundFinancialReportAmount(byKey.GetValueOrDefault(key) + ownerShare);
-        }
-
-        return byKey;
-    }
-
     private static decimal CalculateEscrowPrepaidAmount(IEnumerable<EscrowPrepaidPropertyBalance> prepaidDetails)
         => RoundFinancialReportAmount(
             (prepaidDetails ?? [])
                 .Where(detail => detail.PropertyId != Guid.Empty)
-                .Sum(detail => CalculatePrePayOwnerShare(detail.Balance, detail.OwnerRent, detail.ExpectedIncome)));
-
-    private static Dictionary<Guid, decimal> BuildEscrowPrepaidOwnerShareByLineId(
-        IEnumerable<EscrowPrepaidPropertyBalance> prepaidDetails)
-    {
-        return (prepaidDetails ?? [])
-            .Where(detail => detail.JournalEntryLineId != Guid.Empty)
-            .ToDictionary(
-                detail => detail.JournalEntryLineId,
-                detail => CalculatePrePayOwnerShare(detail.Balance, detail.OwnerRent, detail.ExpectedIncome));
-    }
-
-    private static Dictionary<string, decimal> BuildEscrowNotCollectedByPropertyKey(
-        IEnumerable<EscrowNotCollectedPropertyBalance> balances)
-    {
-        var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        foreach (var balance in balances ?? [])
-        {
-            if (balance.PropertyId == Guid.Empty)
-                continue;
-
-            var key = GetPropertyReportKey(balance.OfficeId, balance.PropertyId);
-            byKey[key] = Math.Round(balance.NotCollectedAmount, 2, MidpointRounding.AwayFromZero);
-        }
-
-        return byKey;
-    }
+                .Sum(detail => detail.Prepaids));
 
     private static List<EscrowOfficeBalance> FilterEscrowOfficeBalances(
         IEnumerable<EscrowOfficeBalance> escrowOfficeBalances,

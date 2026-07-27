@@ -21,4 +21,8 @@ public class EscrowPropertyReportData
     public decimal RevenueSplitOwner { get; set; }
     public decimal RevenueSplitOffice { get; set; }
     public decimal ApBalance { get; set; }
+    public decimal Prepaids { get; set; }
+    public decimal ExpectedIncome { get; set; }
+    public decimal ActualIncome { get; set; }
+    public decimal NotCollectedAmount { get; set; }
 }

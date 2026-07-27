@@ -19,29 +19,23 @@ public partial class JournalEntryRepository
 
         if (!includeDrillDownLines)
         {
-            var (propertyRaw, prepaidRaw, notCollectedRaw, escrowOfficeRaw) = await db.DapperProcQueryQuadrupleAsync<
+            var (propertyRaw, escrowOfficeRaw) = await db.DapperProcQueryMultipleAsync<
                 EscrowPropertyReportDataEntity,
-                EscrowPrepaidPropertyBalanceEntity,
-                EscrowNotCollectedPropertyBalanceEntity,
                 EscrowOfficeBalanceEntity>(
                 EscrowReportProcName,
                 procParameters,
                 commandTimeout: 120);
 
-            return BuildEscrowReportBundleData(propertyRaw, prepaidRaw, notCollectedRaw, escrowOfficeRaw);
+            return BuildEscrowReportBundleData(propertyRaw, escrowOfficeRaw);
         }
 
         var (
             propertyWithDrillDownRaw,
-            prepaidWithDrillDownRaw,
-            notCollectedWithDrillDownRaw,
             escrowOfficeWithDrillDownRaw,
             ownerApRaw,
             prepaidApplyRaw,
-            escrowBankRaw) = await db.DapperProcQuerySeptupleAsync<
+            escrowBankRaw) = await db.DapperProcQueryQuintupleAsync<
             EscrowPropertyReportDataEntity,
-            EscrowPrepaidPropertyBalanceEntity,
-            EscrowNotCollectedPropertyBalanceEntity,
             EscrowOfficeBalanceEntity,
             EscrowJournalEntryLineEntity,
             EscrowJournalEntryLineEntity,
@@ -50,11 +44,7 @@ public partial class JournalEntryRepository
             procParameters,
             commandTimeout: 120);
 
-        var bundle = BuildEscrowReportBundleData(
-            propertyWithDrillDownRaw,
-            prepaidWithDrillDownRaw,
-            notCollectedWithDrillDownRaw,
-            escrowOfficeWithDrillDownRaw);
+        var bundle = BuildEscrowReportBundleData(propertyWithDrillDownRaw, escrowOfficeWithDrillDownRaw);
         bundle.OwnerApLines = (ownerApRaw ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel).ToList();
         bundle.PrepaidApplyLines = (prepaidApplyRaw ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel).ToList();
         bundle.EscrowBankLines = (escrowBankRaw ?? []).Select(ConvertEscrowJournalEntryLineEntityToModel).ToList();
@@ -79,15 +69,38 @@ public partial class JournalEntryRepository
 
     private static EscrowReportBundleData BuildEscrowReportBundleData(
         IEnumerable<EscrowPropertyReportDataEntity>? propertyRaw,
-        IEnumerable<EscrowPrepaidPropertyBalanceEntity>? prepaidRaw,
-        IEnumerable<EscrowNotCollectedPropertyBalanceEntity>? notCollectedRaw,
         IEnumerable<EscrowOfficeBalanceEntity>? escrowOfficeRaw)
     {
+        var properties = (propertyRaw ?? []).Select(ConvertEscrowPropertyReportDataEntityToModel).ToList();
+
         return new EscrowReportBundleData
         {
-            Properties = (propertyRaw ?? []).Select(ConvertEscrowPropertyReportDataEntityToModel).ToList(),
-            PrepaidPropertyBalances = (prepaidRaw ?? []).Select(ConvertEscrowPrepaidPropertyBalanceEntityToModel).ToList(),
-            NotCollectedPropertyBalances = (notCollectedRaw ?? []).Select(ConvertEscrowNotCollectedPropertyBalanceEntityToModel).ToList(),
+            Properties = properties,
+            PrepaidPropertyBalances = properties
+                .Where(property => property.Prepaids > 0.005m)
+                .Select(property => new EscrowPrepaidPropertyBalance
+                {
+                    PropertyId = property.PropertyId,
+                    PropertyCode = property.PropertyCode,
+                    OfficeId = property.OfficeId,
+                    Prepaids = property.Prepaids
+                })
+                .ToList(),
+            NotCollectedPropertyBalances = properties
+                .Where(property =>
+                    Math.Abs(property.ExpectedIncome) > 0.005m
+                    || Math.Abs(property.ActualIncome) > 0.005m
+                    || Math.Abs(property.NotCollectedAmount) > 0.005m)
+                .Select(property => new EscrowNotCollectedPropertyBalance
+                {
+                    PropertyId = property.PropertyId,
+                    PropertyCode = property.PropertyCode,
+                    OfficeId = property.OfficeId,
+                    ExpectedIncome = property.ExpectedIncome,
+                    ActualIncome = property.ActualIncome,
+                    NotCollectedAmount = property.NotCollectedAmount
+                })
+                .ToList(),
             EscrowOfficeBalances = (escrowOfficeRaw ?? []).Select(ConvertEscrowOfficeBalanceEntityToModel).ToList()
         };
     }
@@ -112,17 +125,10 @@ public partial class JournalEntryRepository
             ManagementFeeType = (ManagementFeeType)entity.ManagementFeeTypeId,
             RevenueSplitOwner = entity.RevenueSplitOwner,
             RevenueSplitOffice = entity.RevenueSplitOffice,
-            ApBalance = entity.ApBalance
-        };
-    }
-
-    private static EscrowNotCollectedPropertyBalance ConvertEscrowNotCollectedPropertyBalanceEntityToModel(
-        EscrowNotCollectedPropertyBalanceEntity entity)
-    {
-        return new EscrowNotCollectedPropertyBalance
-        {
-            OfficeId = entity.OfficeId,
-            PropertyId = entity.PropertyId,
+            ApBalance = entity.ApBalance,
+            Prepaids = entity.Prepaids,
+            ExpectedIncome = entity.ExpectedIncome,
+            ActualIncome = entity.ActualIncome,
             NotCollectedAmount = entity.NotCollectedAmount
         };
     }
@@ -136,20 +142,6 @@ public partial class JournalEntryRepository
             AccountNo = entity.AccountNo,
             AccountName = entity.AccountName,
             Balance = entity.Balance
-        };
-    }
-
-    private static EscrowPrepaidPropertyBalance ConvertEscrowPrepaidPropertyBalanceEntityToModel(
-        EscrowPrepaidPropertyBalanceEntity entity)
-    {
-        return new EscrowPrepaidPropertyBalance
-        {
-            JournalEntryLineId = entity.JournalEntryLineId,
-            OfficeId = entity.OfficeId,
-            PropertyId = entity.PropertyId,
-            Balance = entity.Balance,
-            ExpectedIncome = entity.ExpectedIncome,
-            OwnerRent = entity.OwnerRent
         };
     }
 
