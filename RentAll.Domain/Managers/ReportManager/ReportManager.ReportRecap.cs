@@ -534,18 +534,32 @@ public partial class ReportManager
         if (applyPeriodGroup == null || prepayAmount <= 0 || applyPeriodGroup.OwnerRentValue <= 0)
             return 0;
 
-        // Owner portion of the prepaid slice = OwnRent on the apply-period row (from the agreement).
-        if (applyPeriodGroup.ExpectedIncomeValue > 0
-            && prepayAmount >= applyPeriodGroup.ExpectedIncomeValue)
-            return applyPeriodGroup.OwnerRentValue;
+        return CalculatePrePayOwnerShare(
+            prepayAmount,
+            applyPeriodGroup.OwnerRentValue,
+            applyPeriodGroup.ExpectedIncomeValue);
+    }
 
-        if (applyPeriodGroup.ExpectedIncomeValue <= 0)
+    private static decimal CalculatePrePayOwnerShare(
+        decimal prepayAmount,
+        decimal ownerRentValue,
+        decimal expectedIncomeValue)
+    {
+        if (prepayAmount <= 0 || ownerRentValue <= 0)
+            return 0;
+
+        // Owner portion of the prepaid slice = OwnRent on the apply-period row (from the agreement).
+        if (expectedIncomeValue > 0
+            && prepayAmount >= expectedIncomeValue)
+            return ownerRentValue;
+
+        if (expectedIncomeValue <= 0)
             return 0;
 
         return Math.Min(
-            applyPeriodGroup.OwnerRentValue,
+            ownerRentValue,
             Math.Round(
-                prepayAmount * applyPeriodGroup.OwnerRentValue / applyPeriodGroup.ExpectedIncomeValue,
+                prepayAmount * ownerRentValue / expectedIncomeValue,
                 2,
                 MidpointRounding.AwayFromZero));
     }

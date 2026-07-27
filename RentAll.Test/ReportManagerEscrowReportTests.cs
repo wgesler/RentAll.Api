@@ -44,4 +44,47 @@ public class ReportManagerEscrowReportTests
         Assert.Equal(1000m, report.Totals.E2);
         Assert.Equal(-525m, report.Transfer);
     }
+
+    [Fact]
+    public async Task GetEscrowReportAsync_PrepaidsUseOwnerShareFromBundlePrepaidDetails()
+    {
+        const string invoice = "R-001070-001";
+        var decPeriod = new DateOnly(2025, 12, 1);
+        var janPeriod = new DateOnly(2026, 1, 1);
+        var decPaymentDate = new DateOnly(2025, 12, 15);
+        var janApplyDate = new DateOnly(2026, 1, 1);
+        const decimal janOwnerRent = 1669.50m;
+
+        var context = ReportManagerTestSupport.CreateContext(
+        [
+            ReportManagerTestSupport.RecapLine("ExpectedIncome", 3585m, invoice, decPeriod, decPeriod),
+            ReportManagerTestSupport.RecapLine("OwnerRent", 185.50m, invoice, decPeriod, decPeriod),
+            ReportManagerTestSupport.RecapLine("OwnerRentActual", 185.50m, invoice, decPeriod, decPeriod),
+            ReportManagerTestSupport.RecapLine("Payment", 5950m, invoice, decPeriod, decPaymentDate),
+            ReportManagerTestSupport.RecapLine("PrePayment", 2385m, invoice, decPeriod, decPaymentDate, $"Prepayment: {invoice}"),
+            ReportManagerTestSupport.RecapLine("ExpectedIncome", 2385m, invoice, janPeriod, janPeriod),
+            ReportManagerTestSupport.RecapLine("OwnerRent", janOwnerRent, invoice, janPeriod, janPeriod),
+            ReportManagerTestSupport.RecapLine("OwnerRentActual", janOwnerRent, invoice, janPeriod, janApplyDate),
+            ReportManagerTestSupport.RecapLine("PrePayment", -2385m, invoice, janPeriod, janApplyDate, $"Prepayment: {invoice}")
+        ]);
+        context.SetEscrowPrepaidDetails(new RentAll.Domain.Models.EscrowPrepaidPropertyBalance
+        {
+            JournalEntryLineId = Guid.Parse("66666666-6666-6666-6666-666666666666"),
+            OfficeId = ReportManagerTestSupport.OfficeId,
+            PropertyId = ReportManagerTestSupport.PropertyId,
+            Balance = 2385m,
+            ExpectedIncome = 2385m,
+            OwnerRent = janOwnerRent
+        });
+
+        var recap = await context.GetRecapReportAsync(decPeriod, new DateOnly(2026, 1, 31));
+        var ownerUnrecTotal = recap.Rows.Sum(row => row.OwnerUnrecValue);
+
+        var report = await context.GetEscrowReportAsync(new DateOnly(2026, 1, 31));
+
+        Assert.Equal(janOwnerRent, ownerUnrecTotal);
+        Assert.Single(report.Rows);
+        Assert.Equal(janOwnerRent, report.Rows[0].Prepaids);
+        Assert.Equal(janOwnerRent, report.Totals.Prepaids);
+    }
 }

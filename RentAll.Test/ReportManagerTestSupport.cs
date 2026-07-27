@@ -112,10 +112,14 @@ internal static class ReportManagerTestSupport
         private readonly JournalEntryRecapGetCriteria _criteria;
         private decimal _escrowOwnersBalance = 500m;
         private decimal _escrowPropertyApBalance;
+        private List<EscrowPrepaidPropertyBalance> _escrowPrepaidPropertyBalances = [];
 
         internal void SetEscrowOwnersBalance(decimal balance) => _escrowOwnersBalance = balance;
 
         internal void SetEscrowPropertyE2Totals(decimal apBalance) => _escrowPropertyApBalance = apBalance;
+
+        internal void SetEscrowPrepaidDetails(params EscrowPrepaidPropertyBalance[] details)
+            => _escrowPrepaidPropertyBalances = details.ToList();
 
         internal ReportManagerTestContext(IEnumerable<JournalEntryRecapLine> recapLines)
         {
@@ -144,7 +148,7 @@ internal static class ReportManagerTestSupport
                 .ReturnsAsync((JournalEntryRecapGetCriteria criteria, bool includeDrillDownLines) => new EscrowReportBundleData
                 {
                     Properties = [CreateEscrowPropertyReportData(_escrowPropertyApBalance)],
-                    PrepaidPropertyBalances = [],
+                    PrepaidPropertyBalances = _escrowPrepaidPropertyBalances,
                     NotCollectedPropertyBalances = [],
                     EscrowOfficeBalances =
                     [

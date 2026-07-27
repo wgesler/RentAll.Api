@@ -144,9 +144,12 @@ public partial class JournalEntryRepository
     {
         return new EscrowPrepaidPropertyBalance
         {
+            JournalEntryLineId = entity.JournalEntryLineId,
             OfficeId = entity.OfficeId,
             PropertyId = entity.PropertyId,
-            Balance = entity.Balance
+            Balance = entity.Balance,
+            ExpectedIncome = entity.ExpectedIncome,
+            OwnerRent = entity.OwnerRent
         };
     }
 

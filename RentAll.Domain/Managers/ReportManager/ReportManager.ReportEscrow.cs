@@ -116,19 +116,39 @@ public partial class ReportManager
     }
 
     private static Dictionary<string, decimal> BuildEscrowPrepaidByPropertyKey(
-        IEnumerable<EscrowPrepaidPropertyBalance> balances)
+        IEnumerable<EscrowPrepaidPropertyBalance> prepaidDetails)
     {
         var byKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        foreach (var balance in balances ?? [])
+        foreach (var detail in prepaidDetails ?? [])
         {
-            if (balance.PropertyId == Guid.Empty)
+            if (detail.PropertyId == Guid.Empty)
                 continue;
 
-            var key = GetPropertyReportKey(balance.OfficeId, balance.PropertyId);
-            byKey[key] = Math.Round(balance.Balance, 2, MidpointRounding.AwayFromZero);
+            var ownerShare = CalculatePrePayOwnerShare(detail.Balance, detail.OwnerRent, detail.ExpectedIncome);
+            if (ownerShare <= 0.005m)
+                continue;
+
+            var key = GetPropertyReportKey(detail.OfficeId, detail.PropertyId);
+            byKey[key] = RoundFinancialReportAmount(byKey.GetValueOrDefault(key) + ownerShare);
         }
 
         return byKey;
+    }
+
+    private static decimal CalculateEscrowPrepaidAmount(IEnumerable<EscrowPrepaidPropertyBalance> prepaidDetails)
+        => RoundFinancialReportAmount(
+            (prepaidDetails ?? [])
+                .Where(detail => detail.PropertyId != Guid.Empty)
+                .Sum(detail => CalculatePrePayOwnerShare(detail.Balance, detail.OwnerRent, detail.ExpectedIncome)));
+
+    private static Dictionary<Guid, decimal> BuildEscrowPrepaidOwnerShareByLineId(
+        IEnumerable<EscrowPrepaidPropertyBalance> prepaidDetails)
+    {
+        return (prepaidDetails ?? [])
+            .Where(detail => detail.JournalEntryLineId != Guid.Empty)
+            .ToDictionary(
+                detail => detail.JournalEntryLineId,
+                detail => CalculatePrePayOwnerShare(detail.Balance, detail.OwnerRent, detail.ExpectedIncome));
     }
 
     private static Dictionary<string, decimal> BuildEscrowNotCollectedByPropertyKey(
