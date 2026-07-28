@@ -18,5 +18,7 @@ public enum DocumentType
     ReconcileAccountSummary = 13,
     ReconcileAccountDetail = 14,
     ApAging = 15,
-    SecurityDepositReport = 16
+    SecurityDepositReport = 16,
+    Escrow = 17,
+    OwnerApAging = 18
 }
