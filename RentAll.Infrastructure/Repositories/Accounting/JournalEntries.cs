@@ -387,6 +387,37 @@ public partial class JournalEntryRepository
         return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
     }
 
+    public async Task<int> DeleteOpenJournalEntriesBySourceCodesAsync(
+        Guid organizationId,
+        int officeId,
+        IEnumerable<int> sourceTypeIds,
+        IEnumerable<string> sourceCodes)
+    {
+        var normalizedSourceTypeIds = (sourceTypeIds ?? [])
+            .Where(sourceTypeId => sourceTypeId > 0)
+            .Distinct()
+            .ToList();
+        var normalizedSourceCodes = (sourceCodes ?? [])
+            .Select(sourceCode => (sourceCode ?? string.Empty).Trim())
+            .Where(sourceCode => !string.IsNullOrWhiteSpace(sourceCode))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (normalizedSourceTypeIds.Count == 0 || normalizedSourceCodes.Count == 0)
+            return 0;
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>("Accounting.JournalEntry_DeleteOpenBySourceCodes", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            SourceTypeIds = string.Join(",", normalizedSourceTypeIds),
+            SourceCodes = string.Join(",", normalizedSourceCodes)
+        });
+
+        return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
+    }
+
     public async Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds)
     {
         await using var db = new SqlConnection(_dbConnectionString);

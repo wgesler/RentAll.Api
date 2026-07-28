@@ -128,16 +128,16 @@ public partial class AccountingManager
         // AGENT-NOTE: DO NOT TOUCH.
         // DEPARTURES-JE-ACCOUNTS
         // Departure Fee:
-        // Line 1 — Debit: Default departure account (GetDefaultDepartureAccount).
-        // Line 2 — Credit: Departure income account (GetDefaultDepartureIncome).
+        // Line 1 — Debit: Departure expense / reserve (GetDefaultDepartureExpense + cost code).
+        // Line 2 — Credit: Departure income (GetDefaultDepartureIncome).
         // Pet Fee:
-        // Line 1 — Debit: Default pet account (GetDefaultPetAccount).
-        // Line 2 — Credit: Departure income account (GetDefaultDepartureIncome).
+        // Line 1 — Debit: Pet expense (GetDefaultDepartureExpense + pet cost code).
+        // Line 2 — Credit: Departure income (GetDefaultDepartureIncome).
         // END DEPARTURES-JE-ACCOUNTS
 
-        var defaultDepartureAccountId = GetDefaultTenantExpense(chartOfAccounts, reservation.OfficeId, accountingOffice, departureFeeCostCode);
-        var defaultPetAccountId = GetDefaultTenantExpense(chartOfAccounts, reservation.OfficeId, accountingOffice, petFeeCostCode);
-        var defaultDepartureIncomeAccountId = GetDefaultDepartureIncome(chartOfAccounts, reservation.OfficeId, accountingOffice, departureFeeCostCode);
+        var defaultDepartureAccountId = GetDefaultDepartureExpense(chartOfAccounts, reservation.OfficeId, accountingOffice, departureFeeCostCode);
+        var defaultPetAccountId = GetDefaultDepartureExpense(chartOfAccounts, reservation.OfficeId, accountingOffice, petFeeCostCode);
+        var defaultDepartureIncomeAccountId = GetDefaultDepartureIncome(chartOfAccounts, reservation.OfficeId, accountingOffice);
         var journalEntryLines = new List<JournalEntryLine>();
         var lineContext = await ResolveReservationJournalEntryLineContextAsync(organizationId, reservation, reservationDetail);
 

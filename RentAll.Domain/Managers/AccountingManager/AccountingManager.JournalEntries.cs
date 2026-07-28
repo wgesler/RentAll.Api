@@ -279,6 +279,27 @@ public partial class AccountingManager
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(receipt.OrganizationId, (int)SourceType.Receipt, receipt.ReceiptId);
     }
 
+    public async Task DeleteJournalEntriesForBillAsync(Receipt bill)
+    {
+        if (bill.ReceiptId == Guid.Empty)
+            return;
+
+        // Primary link: bill ReceiptId (covers main bill, owner utility, and bill payment JEs).
+        await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(bill.OrganizationId, (int)SourceType.Bill, bill.ReceiptId);
+        await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(bill.OrganizationId, (int)SourceType.BillPayment, bill.ReceiptId);
+
+        // Legacy/orphan cleanup: also delete open JEs whose Source is RCXXX or vendor BillNumber.
+        var sourceCodes = ResolveBillJournalEntrySourceCodeCandidates(bill).ToList();
+        if (sourceCodes.Count == 0)
+            return;
+
+        await _journalEntryRepository.DeleteOpenJournalEntriesBySourceCodesAsync(
+            bill.OrganizationId,
+            bill.OfficeId,
+            [(int)SourceType.Bill, (int)SourceType.BillPayment],
+            sourceCodes);
+    }
+
     public async Task DeleteJournalEntriesForDepositAsync(Deposit deposit)
     {
         if (deposit.DepositId == Guid.Empty)

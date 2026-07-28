@@ -55,6 +55,7 @@ public interface IAccountingManager
     Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice);
     Task DeleteJournalEntriesForReceiptAsync(Receipt receipt);
+    Task DeleteJournalEntriesForBillAsync(Receipt bill);
     Task DeleteJournalEntriesForDepositAsync(Deposit deposit);
     Task DeleteJournalEntriesForTransferAsync(Transfer transfer);
     #endregion

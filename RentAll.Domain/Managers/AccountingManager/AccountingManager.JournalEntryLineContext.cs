@@ -134,7 +134,22 @@ public partial class AccountingManager
         => NormalizeOptionalString(invoice.InvoiceCode);
 
     private static string? ResolveJournalEntrySourceCodeFromReceipt(Receipt receipt)
-        => NormalizeOptionalString(receipt.BillNumber) ?? NormalizeOptionalString(receipt.ReceiptCode);
+        => NormalizeOptionalString(receipt.ReceiptCode);
+
+    private static IEnumerable<string> ResolveBillJournalEntrySourceCodeCandidates(Receipt bill)
+    {
+        var sourceCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var receiptCode = NormalizeOptionalString(bill.ReceiptCode);
+        if (!string.IsNullOrWhiteSpace(receiptCode))
+            sourceCodes.Add(receiptCode);
+
+        var billNumber = NormalizeOptionalString(bill.BillNumber);
+        if (!string.IsNullOrWhiteSpace(billNumber))
+            sourceCodes.Add(billNumber);
+
+        return sourceCodes;
+    }
 
     private static string? ResolveJournalEntrySourceCodeFromDeposit(Deposit deposit)
         => NormalizeOptionalString(deposit.DepositCode);

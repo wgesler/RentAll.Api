@@ -398,13 +398,7 @@ public partial class AccountingManager
 
     private async Task DeleteAllBillJournalEntriesAsync(Receipt bill)
     {
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
-        await DeleteBillPaymentJournalEntriesAsync(bill, chartOfAccounts, accountingOffice);
-        await DeleteJournalEntriesForSourceAsync(
-            bill.OrganizationId,
-            bill.OfficeId,
-            (int)SourceType.Bill,
-            bill.ReceiptId);
+        await DeleteJournalEntriesForBillAsync(bill);
     }
 
     private async Task DeleteJournalEntriesForSourceByKindAsync(
@@ -434,29 +428,6 @@ public partial class AccountingManager
 
         foreach (var entry in entries)
             await DeleteOpenJournalEntryAsync(entry.JournalEntryId, organizationId);
-    }
-
-    private async Task<int?> DeleteBillPaymentJournalEntriesAsync(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
-    {
-        var liabilityAccountId = GetBillReceiptLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
-
-        var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = bill.OrganizationId,
-            OfficeIds = bill.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.BillPayment,
-            IncludeUnposted = true
-        })).ToList();
-
-        int? paymentOffsetAccountId = null;
-
-        foreach (var entry in existingEntries.Where(e => e.SourceId == bill.ReceiptId))
-        {
-            paymentOffsetAccountId ??= ResolveBillPaymentOffsetAccountId(entry, liabilityAccountId);
-            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, bill.OrganizationId);
-        }
-
-        return paymentOffsetAccountId;
     }
 
     private static int? ResolveBillPaymentOffsetAccountId(JournalEntry entry, int liabilityAccountId)

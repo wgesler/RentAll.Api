@@ -222,7 +222,10 @@ public partial class MaintenanceController
             if (postingStatusCheck != null)
                 return postingStatusCheck;
 
-            await _accountingManager.DeleteJournalEntriesForReceiptAsync(receipt);
+            if (receipt.BankCardId == null)
+                await _accountingManager.DeleteJournalEntriesForBillAsync(receipt);
+            else
+                await _accountingManager.DeleteJournalEntriesForReceiptAsync(receipt);
             await _maintenanceRepository.DeleteReceiptByIdAsync(receiptId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
