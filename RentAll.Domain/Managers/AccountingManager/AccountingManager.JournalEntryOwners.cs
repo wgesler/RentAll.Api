@@ -241,10 +241,9 @@ public partial class AccountingManager
         if (property == null || propertyAgreement == null || property.PropertyLeaseType != PropertyLeaseType.PropertyManagement)
             return null;
 
-        // Cross-period slices: OwnAct = Owner Expected (OwnRent) for that period when the slice is collected.
-        var actualAmount = InvoiceCrossesAccountingPeriodBoundary(invoice)
-            ? await ResolveOwnerActualAmountForSliceAsync(invoice, paymentAmount, workingEntries)
-            : await CalculateOwnerActualAmountForInvoicePaymentAsync(invoice, paymentAmount);
+        // Same rent/agreement path as Owner Expected; payment apply decides full vs partial vs waterfall.
+        var ownerShareInvoice = await ResolveInvoiceForOwnerShareAsync(invoice);
+        var actualAmount = await CalculateOwnerActualAmountForInvoicePaymentAsync(ownerShareInvoice, paymentAmount, workingEntries);
         if (!actualAmount.HasValue || actualAmount.Value == 0)
             return null;
 
@@ -343,12 +342,21 @@ public partial class AccountingManager
         return [ownerExpenseLine, ownerPayableLine];
     }
 
-    private async Task<decimal?> CalculateOwnerActualAmountForInvoicePaymentAsync(Invoice invoice, decimal paymentAmount)
+    private async Task<decimal?> CalculateOwnerActualAmountForInvoicePaymentAsync(Invoice invoice, decimal paymentAmount, IReadOnlyList<JournalEntry>? workingEntries = null)
     {
         if (paymentAmount == 0)
             return null;
 
         var ownerShareInvoice = await ResolveInvoiceForOwnerShareAsync(invoice);
+
+        var sliceChargeTotal = await SumInvoiceChargeLinesAsync(ownerShareInvoice);
+        if (sliceChargeTotal > 0 && paymentAmount >= sliceChargeTotal)
+        {
+            var ownerExpectedAmount = TryGetOwnerExpectedAmountFromEntries(workingEntries ?? [], ownerShareInvoice)
+                ?? await TryGetOwnerExpectedAmountForInvoicePeriodAsync(ownerShareInvoice, workingEntries);
+            if (ownerExpectedAmount.HasValue && ownerExpectedAmount.Value != 0)
+                return ownerExpectedAmount;
+        }
 
         if (!TryGetInvoiceRentalLedgerLine(ownerShareInvoice, out _))
             return null;
@@ -371,111 +379,30 @@ public partial class AccountingManager
             : Math.Min(paymentAmount - nonRentPaymentAmount, rentPlus4000Base);
 
         if (rentPaymentAmount == 0)
-            return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(invoice);
+            return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(ownerShareInvoice, workingEntries);
 
         var ownerAmount = await CalculateOwnerShareAmountForInvoiceAsync(ownerShareInvoice, rentPaymentAmount);
         if (!ownerAmount.HasValue || ownerAmount.Value == 0)
-            return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(invoice);
+            return await TryGetOwnerExpectedAmountForInvoicePeriodAsync(ownerShareInvoice, workingEntries);
 
         return ownerAmount;
     }
 
-    private async Task<decimal?> ResolveOwnerActualAmountForSliceAsync(
-        Invoice sliceInvoice,
-        decimal slicePaymentAmount,
-        IReadOnlyList<JournalEntry>? workingEntries)
+    private Task<decimal?> TryGetOwnerExpectedAmountForInvoicePeriodAsync(Invoice invoice, IReadOnlyList<JournalEntry>? workingEntries = null)
+        => TryGetOwnerExpectedAmountForInvoicePeriodCoreAsync(invoice, workingEntries, fromDbOnly: false);
+
+    private async Task<decimal?> TryGetOwnerExpectedAmountForInvoicePeriodCoreAsync(Invoice invoice, IReadOnlyList<JournalEntry>? workingEntries, bool fromDbOnly)
     {
-        if (slicePaymentAmount == 0 || sliceInvoice.AccountingPeriod == default)
-            return null;
-
-        var ownerExpectedAmount = TryGetOwnerExpectedAmountFromEntries(workingEntries ?? [], sliceInvoice)
-            ?? await TryGetOwnerExpectedAmountForInvoicePeriodAsync(sliceInvoice);
-        if (!ownerExpectedAmount.HasValue || ownerExpectedAmount.Value == 0)
-            return await CalculateOwnerActualAmountForInvoicePaymentAsync(sliceInvoice, slicePaymentAmount);
-
-        // Collected slice → OwnAct is the OwnRent (Owner Expected) for that period.
-        var postedPeriodArCharge = await TryGetPostedInvoiceArChargeAmountForAccountingPeriodAsync(sliceInvoice);
-        if (postedPeriodArCharge is > 0 && slicePaymentAmount >= postedPeriodArCharge.Value)
-            return ownerExpectedAmount;
-
-        var ownerShareInvoice = await ResolveInvoiceForOwnerShareAsync(sliceInvoice);
-        var sliceChargeTotal = await GetInvoiceChargeTotalForOwnerActualAsync(ownerShareInvoice);
-        if (sliceChargeTotal > 0 && slicePaymentAmount >= sliceChargeTotal)
-            return ownerExpectedAmount;
-
-        var sliceRentBase = postedPeriodArCharge ?? await GetInvoiceRentPlus4000BaseAsync(ownerShareInvoice);
-        if (sliceRentBase <= 0)
-            return ownerExpectedAmount;
-
-        if (slicePaymentAmount >= sliceRentBase)
-            return ownerExpectedAmount;
-
-        return Math.Min(
-            ownerExpectedAmount.Value,
-            Math.Round(ownerExpectedAmount.Value * slicePaymentAmount / sliceRentBase, 2, MidpointRounding.AwayFromZero));
-    }
-
-    private async Task<decimal?> TryGetPostedInvoiceArChargeAmountForAccountingPeriodAsync(Invoice invoice)
-    {
-        if (invoice.AccountingPeriod == default)
-            return null;
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        if (accountsReceivableAccountId <= 0)
-            return null;
-
-        var sourceJournalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        if (!fromDbOnly)
         {
-            OrganizationId = invoice.OrganizationId,
-            OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            SourceId = invoice.InvoiceId,
-            IncludeUnposted = true
-        })).ToList();
+            var fromEntries = TryGetOwnerExpectedAmountFromEntries(workingEntries ?? [], invoice);
+            if (fromEntries.HasValue)
+                return fromEntries;
+        }
 
-        var arAmount = sourceJournalEntries
-            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Charge
-                && MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod))
-            .SelectMany(entry => entry.JournalEntryLines)
-            .Where(line => line.ChartOfAccountId == accountsReceivableAccountId)
-            .Sum(line => line.Debit - line.Credit);
-
-        arAmount = Math.Abs(arAmount);
-        return arAmount == 0 ? null : arAmount;
-    }
-
-    private async Task<decimal> GetInvoiceChargeTotalForOwnerActualAsync(Invoice invoice)
-    {
-        var rentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(invoice);
-        var securityDepositBase = await GetInvoiceSecurityDepositBaseAsync(invoice);
-        var sdwBase = await GetInvoiceSecurityDepositWaiverBaseAsync(invoice);
-        var feesBase = await GetInvoiceFeesBaseAsync(invoice);
-        return rentPlus4000Base + securityDepositBase + sdwBase + feesBase;
-    }
-
-    private static decimal? TryGetOwnerExpectedAmountFromEntries(IEnumerable<JournalEntry> entries, Invoice invoice)
-    {
-        var ownerExpected = entries.FirstOrDefault(entry =>
-            entry.JournalEntryKindId == JournalEntryKind.OwnerExpected
-            && entry.SourceId == invoice.InvoiceId
-            && MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod));
-        if (ownerExpected == null)
-            return null;
-
-        // Balanced JE: use AP credit (same as DB lookup), not Credit-Debit across all lines (that is always 0).
-        var amount = ownerExpected.JournalEntryLines.Sum(line => line.Credit);
-        if (amount == 0)
-            amount = Math.Abs(ownerExpected.JournalEntryLines.Sum(line => line.Debit));
-        return amount == 0 ? null : amount;
-    }
-
-    private async Task<decimal?> TryGetOwnerExpectedAmountForInvoicePeriodAsync(Invoice invoice)
-    {
         if (invoice.AccountingPeriod == default)
             return null;
 
-        // OwnerExpected is not cash-only; GetByCriteria is fine. Prefer Kind over memo.
         var entries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
             OrganizationId = invoice.OrganizationId,
@@ -497,6 +424,22 @@ public partial class AccountingManager
             .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
             .Sum(line => line.Credit - line.Debit);
 
+        return amount == 0 ? null : amount;
+    }
+
+    private static decimal? TryGetOwnerExpectedAmountFromEntries(IEnumerable<JournalEntry> entries, Invoice invoice)
+    {
+        var ownerExpected = entries.FirstOrDefault(entry =>
+            entry.JournalEntryKindId == JournalEntryKind.OwnerExpected
+            && entry.SourceId == invoice.InvoiceId
+            && MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod));
+        if (ownerExpected == null)
+            return null;
+
+        // Balanced JE: use AP credit (same as DB lookup), not Credit-Debit across all lines (that is always 0).
+        var amount = ownerExpected.JournalEntryLines.Sum(line => line.Credit);
+        if (amount == 0)
+            amount = Math.Abs(ownerExpected.JournalEntryLines.Sum(line => line.Debit));
         return amount == 0 ? null : amount;
     }
 

@@ -181,7 +181,7 @@ public partial class AccountingManager
 
                 foreach (var splitAllocation in splitAllocations)
                 {
-                    var splitInvoice = CloneInvoiceForPaymentAccountingPeriod(invoice, splitAllocation.AccountingPeriod);
+                    var splitInvoice = await ResolveApportionedSliceForPaymentAsync(invoice, splitAllocation.AccountingPeriod);
                     var splitPaymentLedgerLine = ClonePaymentLedgerLineWithAmount(paymentLedgerLine, splitAllocation.Amount);
                     if (IsInvoicePrePayment(splitInvoice, splitPaymentLedgerLine))
                     {
@@ -206,7 +206,8 @@ public partial class AccountingManager
                             ResolveInvoicePaymentJournalEntryDate(splitPaymentLedgerLine),
                             workingEntries,
                             retainedEntryIds,
-                            currentUser);
+                            currentUser,
+                            loadCrossPeriodExpectedContext: true);
                     }
                 }
 
@@ -232,7 +233,7 @@ public partial class AccountingManager
 
                 foreach (var splitAllocation in splitAllocations)
                 {
-                    var splitInvoice = CloneInvoiceForPaymentAccountingPeriod(invoice, splitAllocation.AccountingPeriod);
+                    var splitInvoice = await ResolveApportionedSliceForPaymentAsync(invoice, splitAllocation.AccountingPeriod);
                     var splitPaymentLedgerLine = ClonePaymentLedgerLineWithAmount(paymentLedgerLine, splitAllocation.Amount);
                     if (!IsInvoicePrePayment(splitInvoice, splitPaymentLedgerLine))
                         continue;
@@ -246,7 +247,8 @@ public partial class AccountingManager
                         workingEntries,
                         prePaymentAccountId,
                         retainedEntryIds,
-                        currentUser);
+                        currentUser,
+                        loadCrossPeriodExpectedContext: true);
                     if (applyResult.HasWarning)
                         return AccountingJournalEntryResult.WarningResult(applyResult.Warning!, updatedPayment);
                 }
@@ -393,15 +395,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<AccountingJournalEntryResult> UpsertPrePaymentApplyJournalEntryAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        List<ChartOfAccount> chartOfAccounts,
-        AccountingOffice? accountingOffice,
-        List<JournalEntry> workingEntries,
-        int prePaymentAccountId,
-        ISet<Guid> retainedEntryIds,
-        Guid currentUser)
+    private async Task<AccountingJournalEntryResult> UpsertPrePaymentApplyJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, List<JournalEntry> workingEntries, int prePaymentAccountId, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false)
     {
         try
         {
@@ -423,7 +417,8 @@ public partial class AccountingManager
                 invoice.AccountingPeriod,
                 workingEntries,
                 retainedEntryIds,
-                currentUser);
+                currentUser,
+                loadCrossPeriodExpectedContext);
             return AccountingJournalEntryResult.Success(updated);
         }
         catch (Exception ex)
@@ -443,14 +438,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task UpsertOwnerActualJournalEntryForPaymentAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        decimal paymentAmount,
-        DateOnly transactionDate,
-        List<JournalEntry> workingEntries,
-        ISet<Guid> retainedEntryIds,
-        Guid currentUser)
+    private async Task UpsertOwnerActualJournalEntryForPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false)
     {
         if (paymentAmount == 0 || paymentLedgerLine.LedgerLineId == Guid.Empty)
             return;
@@ -459,7 +447,7 @@ public partial class AccountingManager
         {
             // Amount context: Owner Expected lives on SourceType Invoice (Kind OwnerExpected).
             IReadOnlyList<JournalEntry> amountContextEntries = workingEntries;
-            if (InvoiceCrossesAccountingPeriodBoundary(invoice))
+            if (loadCrossPeriodExpectedContext || InvoiceCrossesAccountingPeriodBoundary(invoice))
             {
                 var invoiceEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
                 {
@@ -975,14 +963,24 @@ public partial class AccountingManager
         }
         else
         {
-            var firstSliceDays = CountInclusiveDays(firstSliceStart, firstSliceEnd);
-            var secondSliceDays = CountInclusiveDays(secondSliceStart, secondSliceEnd);
-            if (firstSliceDays <= 0 || secondSliceDays <= 0)
-                return new List<InvoicePaymentSplitAllocation>();
+            var apportionedSlices = await TryBuildCrossPeriodApportionedSlicesAsync(invoice);
+            if (apportionedSlices.HasValue)
+            {
+                var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+                firstChargeCap = SumInvoiceChargeLines(apportionedSlices.Value.FirstSlice, costCodeById);
+                secondChargeCap = SumInvoiceChargeLines(apportionedSlices.Value.SecondSlice, costCodeById);
+            }
+            else
+            {
+                var firstSliceDays = CountInclusiveDays(firstSliceStart, firstSliceEnd);
+                var secondSliceDays = CountInclusiveDays(secondSliceStart, secondSliceEnd);
+                if (firstSliceDays <= 0 || secondSliceDays <= 0)
+                    return new List<InvoicePaymentSplitAllocation>();
 
-            var totalSliceDays = firstSliceDays + secondSliceDays;
-            firstChargeCap = Math.Round(invoice.TotalAmount * (firstSliceDays / (decimal)totalSliceDays), 2, MidpointRounding.AwayFromZero);
-            secondChargeCap = invoice.TotalAmount - firstChargeCap;
+                var totalSliceDays = firstSliceDays + secondSliceDays;
+                firstChargeCap = Math.Round(invoice.TotalAmount * (firstSliceDays / (decimal)totalSliceDays), 2, MidpointRounding.AwayFromZero);
+                secondChargeCap = invoice.TotalAmount - firstChargeCap;
+            }
         }
 
         if (firstChargeCap <= 0 || secondChargeCap <= 0)

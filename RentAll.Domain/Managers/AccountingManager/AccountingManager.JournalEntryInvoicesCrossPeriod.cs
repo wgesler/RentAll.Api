@@ -188,32 +188,23 @@ public partial class AccountingManager
             sliceInvoice.OrganizationId);
     }
 
-    private async Task<Invoice> ResolveInvoiceForOwnerShareAsync(Invoice invoice)
+    private async Task<(Invoice FirstSlice, Invoice SecondSlice)?> TryBuildCrossPeriodApportionedSlicesAsync(Invoice invoice)
     {
-        if (!InvoiceCrossesAccountingPeriodBoundary(invoice) || invoice.AccountingPeriod == default)
-            return invoice;
+        if (!InvoiceCrossesAccountingPeriodBoundary(invoice))
+            return null;
 
         if (!invoice.ReservationId.HasValue || invoice.ReservationId == Guid.Empty)
-            return invoice;
+            return null;
 
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
-            return invoice;
-
-        var sliceInvoice = firstPeriodInvoice.AccountingPeriod == invoice.AccountingPeriod
-            ? firstPeriodInvoice
-            : secondPeriodInvoice.AccountingPeriod == invoice.AccountingPeriod
-                ? secondPeriodInvoice
-                : null;
-
-        if (sliceInvoice == null)
-            return invoice;
+            return null;
 
         var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId);
         if (reservation == null)
-            return invoice;
+            return null;
 
         if (TryGetNaFrequencyExtraFee(invoice, reservation, out _))
-            return invoice;
+            return null;
 
         var accountingContext = await LoadCrossPeriodInvoiceAccountingContextAsync(invoice);
         var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation, accountingContext);
@@ -225,10 +216,37 @@ public partial class AccountingManager
                 apportionableIncomeLines,
                 accountingContext.CostCodeById))
         {
-            return invoice;
+            return null;
         }
 
-        return sliceInvoice;
+        firstPeriodInvoice.TotalAmount = firstPeriodInvoice.LedgerLines.Sum(l => l.Amount);
+        secondPeriodInvoice.TotalAmount = secondPeriodInvoice.LedgerLines.Sum(l => l.Amount);
+        return (firstPeriodInvoice, secondPeriodInvoice);
+    }
+
+    private async Task<Invoice> ResolveInvoiceForOwnerShareAsync(Invoice invoice)
+    {
+        if (!InvoiceCrossesAccountingPeriodBoundary(invoice) || invoice.AccountingPeriod == default)
+            return invoice;
+
+        var apportionedSlices = await TryBuildCrossPeriodApportionedSlicesAsync(invoice);
+        if (apportionedSlices == null)
+            return invoice;
+
+        var (firstPeriodInvoice, secondPeriodInvoice) = apportionedSlices.Value;
+        if (firstPeriodInvoice.AccountingPeriod == invoice.AccountingPeriod)
+            return firstPeriodInvoice;
+
+        if (secondPeriodInvoice.AccountingPeriod == invoice.AccountingPeriod)
+            return secondPeriodInvoice;
+
+        return invoice;
+    }
+
+    private async Task<Invoice> ResolveApportionedSliceForPaymentAsync(Invoice source, DateOnly accountingPeriod)
+    {
+        var periodTaggedInvoice = CloneInvoiceForPaymentAccountingPeriod(source, accountingPeriod);
+        return await ResolveInvoiceForOwnerShareAsync(periodTaggedInvoice);
     }
 
     private async Task<bool> TryPopulateCrossPeriodInvoiceLedgerLinesAsync(Invoice sliceInvoice, Reservation reservation)
