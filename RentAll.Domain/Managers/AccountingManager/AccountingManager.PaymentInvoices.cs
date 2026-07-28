@@ -101,8 +101,7 @@ public partial class AccountingManager
     #endregion
 
     #region Invoices
-    public async Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId,
-        string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser)
+    public async Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser)
     {
         var invoices = new List<Invoice>();
         foreach (var invoiceGuid in invoiceGuids)
@@ -368,8 +367,7 @@ public partial class AccountingManager
         lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Departure Fee", Amount = reservation.DepartureFee, CostCodeId = DEPARTURE_EXPENSE_COST_CODE });
     }
 
-    private void AddRentalLine(int days, Reservation reservation, DateOnly startDate, DateOnly endDate, int daysInMonth,
-        bool isDepartureMonthYear, bool isLastDayOfMonth, List<LedgerLine> lines, ref int lineNumber, int costCodeId)
+    private void AddRentalLine(int days, Reservation reservation, DateOnly startDate, DateOnly endDate, int daysInMonth, bool isDepartureMonthYear, bool isLastDayOfMonth, List<LedgerLine> lines, ref int lineNumber, int costCodeId)
     {
         if (days <= 0)
             return;
@@ -486,8 +484,7 @@ public partial class AccountingManager
             _ => 0
         };
 
-    private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, bool isProratedMonth, int days,
-        List<LedgerLine> lines, ref int lineNumber)
+    private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, bool isProratedMonth, int days, List<LedgerLine> lines, ref int lineNumber)
     {
         var fees = CountScheduledOccurrences(startDate, startDate, endDate, extraFeeLine.FeeFrequency);
 

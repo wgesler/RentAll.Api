@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Journal Entry
     private async Task RefreshInvoiceChargeJournalEntriesAsync(Invoice invoice, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
@@ -219,14 +220,11 @@ public partial class AccountingManager
             invoice.InvoiceId);
     }
 
-    private async Task<List<JournalEntry>> GetJournalEntriesForInvoicePaymentLedgerLineAsync(
-        Guid organizationId,
-        int officeId,
-        Invoice invoice,
-        LedgerLine paymentLedgerLine)
+    private async Task<List<JournalEntry>> GetJournalEntriesForInvoicePaymentLedgerLineAsync(Guid organizationId, int officeId, Invoice invoice, LedgerLine paymentLedgerLine)
     {
         return (await GetAllJournalEntriesForInvoiceAsync(organizationId, officeId, invoice.InvoiceId))
             .Where(entry => IsInvoicePaymentLedgerLineJournalEntry(entry, invoice, paymentLedgerLine))
             .ToList();
     }
+    #endregion
 }

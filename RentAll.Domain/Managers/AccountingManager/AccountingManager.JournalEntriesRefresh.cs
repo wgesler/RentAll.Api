@@ -401,12 +401,7 @@ public partial class AccountingManager
         await DeleteJournalEntriesForBillAsync(bill);
     }
 
-    private async Task DeleteJournalEntriesForSourceByKindAsync(
-        Guid organizationId,
-        int officeId,
-        SourceType sourceType,
-        Guid sourceId,
-        JournalEntryKind journalEntryKind)
+    private async Task DeleteJournalEntriesForSourceByKindAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, JournalEntryKind journalEntryKind)
     {
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(
             organizationId,

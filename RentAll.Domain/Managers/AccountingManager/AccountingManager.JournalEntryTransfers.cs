@@ -287,12 +287,6 @@ public partial class AccountingManager
         };
     }
 
-    private static bool IsAllowedTransferDebitAccountId(int chartOfAccountId, TransferJournalEntryAccounts accounts)
-        => chartOfAccountId == accounts.EscrowSecurityDepositAccountId
-            || chartOfAccountId == accounts.EscrowSdwAccountId
-            || chartOfAccountId == accounts.EscrowOwnersAccountId
-            || chartOfAccountId == accounts.BankAccountId;
-
     private static int GetTransferCreditAccountSortOrder(int chartOfAccountId, TransferJournalEntryAccounts accounts)
     {
         if (chartOfAccountId == accounts.EscrowSecurityDepositAccountId)

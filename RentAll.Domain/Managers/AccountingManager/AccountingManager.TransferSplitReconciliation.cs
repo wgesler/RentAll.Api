@@ -90,9 +90,7 @@ public partial class AccountingManager
         return groups.Values;
     }
 
-    private async Task<List<EscrowDepositLineCandidate>> BuildEscrowDepositLineCandidatesAsync(
-        Transfer transfer,
-        int escrowDepositAccountId)
+    private async Task<List<EscrowDepositLineCandidate>> BuildEscrowDepositLineCandidatesAsync(Transfer transfer, int escrowDepositAccountId)
     {
         var depositEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
@@ -155,10 +153,7 @@ public partial class AccountingManager
         return claimedLineIds;
     }
 
-    private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(
-        IReadOnlyList<TransferSplit> splitGroup,
-        Guid journalEntryLineId,
-        int escrowDepositAccountId)
+    private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(IReadOnlyList<TransferSplit> splitGroup, Guid journalEntryLineId, int escrowDepositAccountId)
     {
         var line = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
         if (line == null)
@@ -170,12 +165,7 @@ public partial class AccountingManager
         return splitGroup.Any(split => TransferSplitContextMatchesLine(split, line));
     }
 
-    private static Guid? ResolveTransferSplitGroupJournalEntryLineId(
-        Transfer transfer,
-        IReadOnlyList<TransferSplit> splitGroup,
-        IReadOnlyList<EscrowDepositLineCandidate> candidates,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private static Guid? ResolveTransferSplitGroupJournalEntryLineId(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<EscrowDepositLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         var groupAmount = splitGroup.Sum(split => split.Amount);
         if (Math.Abs(groupAmount) <= 0.005m)
@@ -215,11 +205,7 @@ public partial class AccountingManager
     private static bool TransferSplitContextMatchesCandidate(TransferSplit split, EscrowDepositLineCandidate candidate)
         => TransferSplitContextMatches(split, candidate.PropertyId, candidate.ReservationId, candidate.ContactId);
 
-    private static bool TransferSplitContextMatches(
-        TransferSplit split,
-        Guid? propertyId,
-        Guid? reservationId,
-        Guid? contactId)
+    private static bool TransferSplitContextMatches(TransferSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)
     {
         if (!TransferSplitGuidMatches(split.PropertyId, propertyId))
             return false;
@@ -240,9 +226,7 @@ public partial class AccountingManager
         return normalizedExpected == normalizedActual;
     }
 
-    private static bool TransferSplitJournalEntryLineIdsChanged(
-        IReadOnlyList<Guid?> originalLineIds,
-        IReadOnlyList<TransferSplit>? reconciledSplits)
+    private static bool TransferSplitJournalEntryLineIdsChanged(IReadOnlyList<Guid?> originalLineIds, IReadOnlyList<TransferSplit>? reconciledSplits)
     {
         var currentLineIds = (reconciledSplits ?? [])
             .Select(split => split.JournalEntryLineId)

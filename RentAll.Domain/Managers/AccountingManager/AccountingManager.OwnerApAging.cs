@@ -8,11 +8,7 @@ public partial class AccountingManager
     /// <summary>
     /// Owner AP Aging: load owner A/P lines via database proc (opening balance sheet cutoff), then API double-check.
     /// </summary>
-    public async Task<IReadOnlyList<JournalEntryLineSearchResult>> SearchOwnerApAgingJournalEntryLinesAsync(
-        Guid organizationId,
-        IReadOnlyList<int> officeIds,
-        DateOnly? endDate,
-        bool includeUnposted = true)
+    public async Task<IReadOnlyList<JournalEntryLineSearchResult>> SearchOwnerApAgingJournalEntryLinesAsync(Guid organizationId, IReadOnlyList<int> officeIds, DateOnly? endDate, bool includeUnposted = true)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return [];
@@ -49,9 +45,7 @@ public partial class AccountingManager
     /// Given owner A/P lines, resolve the office Opening Balance Sheet transaction date and drop earlier lines.
     /// Used as an API safety net after <see cref="SearchOwnerApAgingJournalEntryLinesAsync"/> loads from the database proc.
     /// </summary>
-    public async Task<IReadOnlyList<JournalEntryLineSearchResult>> FilterOwnerApAgingJournalEntryLinesAsync(
-        Guid organizationId,
-        IReadOnlyList<JournalEntryLineSearchResult> lines)
+    public async Task<IReadOnlyList<JournalEntryLineSearchResult>> FilterOwnerApAgingJournalEntryLinesAsync(Guid organizationId, IReadOnlyList<JournalEntryLineSearchResult> lines)
     {
         var lineList = (lines ?? Array.Empty<JournalEntryLineSearchResult>()).ToList();
         if (lineList.Count == 0)
@@ -103,16 +97,12 @@ public partial class AccountingManager
             .FirstOrDefault();
     }
 
-    internal static IReadOnlyList<JournalEntryLineSearchResult> ApplyOwnerApOpeningBalanceCutoffFilter(
-        IReadOnlyList<JournalEntryLineSearchResult> lines,
-        IReadOnlyDictionary<int, DateOnly> cutoffs)
+    internal static IReadOnlyList<JournalEntryLineSearchResult> ApplyOwnerApOpeningBalanceCutoffFilter(IReadOnlyList<JournalEntryLineSearchResult> lines, IReadOnlyDictionary<int, DateOnly> cutoffs)
         => (lines ?? Array.Empty<JournalEntryLineSearchResult>())
             .Where(line => ShouldIncludeOwnerApAgingLine(line, cutoffs))
             .ToList();
 
-    private static bool ShouldIncludeOwnerApAgingLine(
-        JournalEntryLineSearchResult line,
-        IReadOnlyDictionary<int, DateOnly> cutoffs)
+    private static bool ShouldIncludeOwnerApAgingLine(JournalEntryLineSearchResult line, IReadOnlyDictionary<int, DateOnly> cutoffs)
     {
         if (!cutoffs.TryGetValue(line.OfficeId, out var cutoff))
             return true;

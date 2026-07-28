@@ -13,6 +13,7 @@ public partial class AccountingManager
         Guid? ContactId = null,
         string? ContactName = null);
 
+    #region Helpers
     private static void ApplyJournalEntryLineContext(JournalEntryLine line, JournalEntryLineContext context)
     {
         if (context.PropertyId is { } propertyId && propertyId != Guid.Empty)
@@ -46,27 +47,6 @@ public partial class AccountingManager
             NormalizeOptionalGuid(invoice.ContactId),
             NormalizeOptionalString(invoice.ContactName));
 
-    private static JournalEntryLineContext CreateJournalEntryLineContextFromInvoicePayment(Invoice invoice, LedgerLine? paymentLedgerLine, Guid? propertyId = null)
-    {
-        var reservationId = NormalizeOptionalGuid(paymentLedgerLine?.ReservationId) ?? NormalizeOptionalGuid(invoice.ReservationId);
-        return new JournalEntryLineContext(
-            NormalizeOptionalGuid(propertyId ?? invoice.PropertyId),
-            NormalizeOptionalString(invoice.PropertyCode),
-            reservationId,
-            NormalizeOptionalString(invoice.ReservationCode),
-            NormalizeOptionalGuid(invoice.ContactId),
-            NormalizeOptionalString(invoice.ContactName));
-    }
-
-    private static JournalEntryLineContext CreateJournalEntryLineContextFromReceipt(Receipt receipt, Guid? propertyId = null, Guid? contactId = null, string? contactName = null)
-        => new(
-            NormalizeOptionalGuid(propertyId) ?? FirstReceiptPropertyId(receipt),
-            null,
-            null,
-            null,
-            NormalizeOptionalGuid(contactId ?? receipt.VendorId),
-            NormalizeOptionalString(contactName ?? receipt.VendorName));
-
     private static JournalEntryLineContext CreateJournalEntryLineContextFromReceiptSplit(Receipt receipt, ReceiptSplit split, Guid? contactId = null, string? contactName = null)
         => new(
             NormalizeOptionalGuid(split.PropertyId) ?? FirstReceiptPropertyId(receipt),
@@ -86,15 +66,6 @@ public partial class AccountingManager
             NormalizeOptionalString(contactName));
 
     private static JournalEntryLineContext CreateJournalEntryLineContextFromDepositSplit(DepositSplit split)
-        => new(
-            NormalizeOptionalGuid(split.PropertyId),
-            NormalizeOptionalString(split.PropertyCode),
-            NormalizeOptionalGuid(split.ReservationId),
-            NormalizeOptionalString(split.ReservationCode),
-            NormalizeOptionalGuid(split.ContactId),
-            NormalizeOptionalString(split.ContactName));
-
-    private static JournalEntryLineContext CreateJournalEntryLineContextFromTransferSplit(TransferSplit split)
         => new(
             NormalizeOptionalGuid(split.PropertyId),
             NormalizeOptionalString(split.PropertyCode),
@@ -198,10 +169,7 @@ public partial class AccountingManager
             contactName);
     }
 
-    private async Task<JournalEntryLineContext> ResolveReservationJournalEntryLineContextAsync(
-        Guid organizationId,
-        ReservationDeparture reservation,
-        Reservation reservationDetail)
+    private async Task<JournalEntryLineContext> ResolveReservationJournalEntryLineContextAsync(Guid organizationId, ReservationDeparture reservation, Reservation reservationDetail)
     {
         var context = CreateJournalEntryLineContextFromReservation(reservation, reservationDetail);
         if (context.ContactId is not { } contactId)
@@ -302,10 +270,7 @@ public partial class AccountingManager
         return NormalizeOptionalGuid(property.Owner1Id);
     }
 
-    private async Task<JournalEntryLineContext> ResolvePropertyOwnerJournalEntryLineContextAsync(
-        Property property,
-        Guid ownerContactId,
-        Guid organizationId)
+    private async Task<JournalEntryLineContext> ResolvePropertyOwnerJournalEntryLineContextAsync(Property property, Guid ownerContactId, Guid organizationId)
     {
         string? contactName = null;
         if (ownerContactId != Guid.Empty)
@@ -325,9 +290,7 @@ public partial class AccountingManager
             contactName);
     }
 
-    private async Task<JournalEntryLineContext> ResolveOwnerJournalEntryLineContextForPropertyAsync(
-        Guid organizationId,
-        Property property)
+    private async Task<JournalEntryLineContext> ResolveOwnerJournalEntryLineContextForPropertyAsync(Guid organizationId, Property property)
     {
         var ownerContactId = ResolvePropertyPrimaryOwnerContactId(property);
         if (ownerContactId is not { } resolvedOwnerId || resolvedOwnerId == Guid.Empty)
@@ -363,4 +326,5 @@ public partial class AccountingManager
             resolvedContactId,
             resolvedContactName);
     }
+    #endregion
 }

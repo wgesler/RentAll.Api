@@ -471,12 +471,7 @@ public partial class AccountingManager
         return result;
     }
 
-    public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(
-        Guid organizationId,
-        string officeIds,
-        DateOnly? startDate = null,
-        DateOnly? endDate = null,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();
         var accountingOffices = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds)).ToList();
@@ -505,13 +500,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task SyncDepartureFeesAsync(
-        Guid organizationId,
-        string officeIds,
-        DateOnly? startDate,
-        DateOnly? endDate,
-        JournalEntrySyncResult result,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    private async Task SyncDepartureFeesAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         ReportSyncProgress(progress, "departureFee", total: 1, processed: 0, result, "Running");
 
@@ -535,13 +524,7 @@ public partial class AccountingManager
         ReportSyncProgress(progress, "departureFee", total: 1, processed: 1, result, "Completed");
     }
 
-    private async Task ProcessLinenAndTowelFeesAsync(
-        Guid organizationId,
-        string officeIds,
-        DateOnly? startDate,
-        DateOnly? endDate,
-        JournalEntrySyncResult result,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    private async Task ProcessLinenAndTowelFeesAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         // Sync replays linen/towel once per month in the criteria range, using the last day of each month
         // (e.g. 5/28-7/31 => 5/31, 6/30, 7/31) as the processing date for that month's occupancy check.
@@ -657,19 +640,6 @@ public partial class AccountingManager
             result.Errors.Add(createResult.Warning!);
     }
 
-    private static int ResolveDefaultPaymentCostCodeId(List<CostCode> costCodes)
-    {
-        var paymentCostCode = costCodes
-            .Where(c => c.TransactionType == TransactionType.Payment)
-            .OrderBy(c => c.CostCodeId)
-            .FirstOrDefault();
-
-        if (paymentCostCode == null)
-            throw new Exception("No payment cost code is configured");
-
-        return paymentCostCode.CostCodeId;
-    }
-
     private static void ReportSyncProgress(IProgress<JournalEntrySyncProgress>? progress, string syncType, int total, int processed, JournalEntrySyncResult result, string status)
     {
         progress?.Report(new JournalEntrySyncProgress
@@ -683,14 +653,7 @@ public partial class AccountingManager
         });
     }
 
-    private async Task SyncRetainedEarningsAsync(
-        Guid organizationId,
-        string officeIds,
-        DateOnly? startDate,
-        DateOnly? endDate,
-        IReadOnlyCollection<AccountingOffice> accountingOffices,
-        JournalEntrySyncResult result,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    private async Task SyncRetainedEarningsAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, IReadOnlyCollection<AccountingOffice> accountingOffices, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var (jeStartDate, jeEndDate) = await ResolveRetainedEarningsSyncDateRangeFromJournalEntriesAsync(organizationId, officeIds);
         var syncStartDate = startDate ?? jeStartDate;

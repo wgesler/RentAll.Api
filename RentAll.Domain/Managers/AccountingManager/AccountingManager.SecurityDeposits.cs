@@ -274,16 +274,7 @@ public partial class AccountingManager
 
     #region Journal Entry
 
-    private JournalEntry BuildJournalEntryForSecurityDepositReturn(
-        Reservation reservation,
-        JournalEntryLineContext lineContext,
-        int securityDepositAccountId,
-        int escrowSecurityDepositAccountId,
-        int? securityDepositCostCodeId,
-        string memo,
-        decimal amount,
-        DateOnly paymentDate,
-        Guid currentUser)
+    private JournalEntry BuildJournalEntryForSecurityDepositReturn(Reservation reservation, JournalEntryLineContext lineContext, int securityDepositAccountId, int escrowSecurityDepositAccountId, int? securityDepositCostCodeId, string memo, decimal amount, DateOnly paymentDate, Guid currentUser)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-RETURN-JE-ACCOUNTS
@@ -326,15 +317,7 @@ public partial class AccountingManager
         }, JournalEntryKind.SecurityDepositReturn, Perspective.Tenant);
     }
 
-    private JournalEntry BuildJournalEntryForSecurityDepositTransfer(
-        Reservation reservation,
-        JournalEntryLineContext lineContext,
-        int escrowSecurityDepositAccountId,
-        int chartOfAccountId,
-        string memo,
-        decimal amount,
-        DateOnly paymentDate,
-        Guid currentUser)
+    private JournalEntry BuildJournalEntryForSecurityDepositTransfer(Reservation reservation, JournalEntryLineContext lineContext, int escrowSecurityDepositAccountId, int chartOfAccountId, string memo, decimal amount, DateOnly paymentDate, Guid currentUser)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-TRANSFER-JE-ACCOUNTS
@@ -954,12 +937,7 @@ public partial class AccountingManager
             .ToList();
     }
 
-    private static SecurityDepositDetailLine CreateSecurityDepositDetailLine(
-        Invoice invoice,
-        LedgerLine line,
-        decimal amount,
-        Guid? journalEntryId,
-        string? journalEntryCode)
+    private static SecurityDepositDetailLine CreateSecurityDepositDetailLine(Invoice invoice, LedgerLine line, decimal amount, Guid? journalEntryId, string? journalEntryCode)
     {
         return new SecurityDepositDetailLine
         {
@@ -1009,9 +987,7 @@ public partial class AccountingManager
         public decimal Remaining { get; set; }
     }
 
-    private static List<ReservationChargeLineBalance> CalculateReservationChargeLineBalances(
-        IReadOnlyList<Invoice> invoices,
-        IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static List<ReservationChargeLineBalance> CalculateReservationChargeLineBalances(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         var chargeEntries = new List<ReservationChargeLineBalance>();
         foreach (var invoice in invoices)
@@ -1020,9 +996,7 @@ public partial class AccountingManager
         return chargeEntries;
     }
 
-    private static List<ReservationChargeLineBalance> CalculateInvoiceChargeLineBalances(
-        Invoice invoice,
-        IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static List<ReservationChargeLineBalance> CalculateInvoiceChargeLineBalances(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         var chargeEntries = (invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)

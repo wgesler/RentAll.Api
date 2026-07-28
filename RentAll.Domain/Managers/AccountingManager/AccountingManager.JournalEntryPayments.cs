@@ -5,10 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(
-        Guid paymentId,
-        Guid organizationId,
-        Guid currentUser)
+    #region Journal Entry
+    public async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser)
     {
         var journalEntries = new List<JournalEntry>();
 
@@ -60,11 +58,7 @@ public partial class AccountingManager
         return journalEntries;
     }
 
-    public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(
-        Guid organizationId,
-        string officeIds,
-        Guid currentUser,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();
         var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds)).ToList();
@@ -150,7 +144,9 @@ public partial class AccountingManager
 
         return result;
     }
+    #endregion
 
+    #region Helpers
     private async Task<List<PaymentApplicationContext>> LoadPaymentApplicationsAsync(Payment payment, Guid organizationId)
     {
         var applications = new List<PaymentApplicationContext>();
@@ -183,4 +179,5 @@ public partial class AccountingManager
     }
 
     private sealed record PaymentApplicationContext(Invoice Invoice, LedgerLine PaymentLedgerLine);
+    #endregion
 }

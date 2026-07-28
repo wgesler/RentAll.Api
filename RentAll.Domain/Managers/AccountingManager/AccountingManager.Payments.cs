@@ -4,19 +4,11 @@ using RentAll.Domain.Models;
 
 public partial class AccountingManager
 {
-    public Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(
-        Payment payment,
-        IReadOnlyList<PaymentInvoiceAllocation> allocations,
-        string officeAccess,
-        Guid currentUser)
+    #region Payments
+    public Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser)
         => ApplyInvoicePaymentAsync(payment, null, allocations, officeAccess, currentUser);
 
-    public async Task<Payment> ApplyInvoicePaymentAsync(
-        Payment payment,
-        IReadOnlyList<Guid>? autoSplitInvoiceIds,
-        IReadOnlyList<PaymentInvoiceAllocation>? explicitAllocations,
-        string officeAccess,
-        Guid currentUser)
+    public async Task<Payment> ApplyInvoicePaymentAsync(Payment payment, IReadOnlyList<Guid>? autoSplitInvoiceIds, IReadOnlyList<PaymentInvoiceAllocation>? explicitAllocations, string officeAccess, Guid currentUser)
     {
         if (explicitAllocations != null && explicitAllocations.Count > 0)
             return await ApplyInvoicePaymentWithExplicitAllocationsAsync(payment, explicitAllocations, officeAccess, currentUser);
@@ -27,11 +19,7 @@ public partial class AccountingManager
         throw new ArgumentException("At least one invoice or allocation is required.", nameof(autoSplitInvoiceIds));
     }
 
-    private async Task<Payment> ApplyInvoicePaymentWithAutoSplitAsync(
-        Payment payment,
-        IReadOnlyList<Guid> invoiceIds,
-        string officeAccess,
-        Guid currentUser)
+    private async Task<Payment> ApplyInvoicePaymentWithAutoSplitAsync(Payment payment, IReadOnlyList<Guid> invoiceIds, string officeAccess, Guid currentUser)
     {
         var createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
 
@@ -52,11 +40,7 @@ public partial class AccountingManager
             ?? createdPayment;
     }
 
-    private async Task<Payment> ApplyInvoicePaymentWithExplicitAllocationsAsync(
-        Payment payment,
-        IReadOnlyList<PaymentInvoiceAllocation> allocations,
-        string officeAccess,
-        Guid currentUser)
+    private async Task<Payment> ApplyInvoicePaymentWithExplicitAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser)
     {
         if (allocations == null || allocations.Count == 0)
             throw new ArgumentException("At least one invoice allocation is required.", nameof(allocations));
@@ -146,10 +130,7 @@ public partial class AccountingManager
             PaymentId = paymentLine.PaymentId
         };
 
-    private async Task LinkInvoicePaymentApplicationsAsync(
-        Guid paymentId,
-        InvoicePayment invoicePayment,
-        Guid currentUser)
+    private async Task LinkInvoicePaymentApplicationsAsync(Guid paymentId, InvoicePayment invoicePayment, Guid currentUser)
     {
         foreach (var application in invoicePayment.PaymentApplications)
         {
@@ -160,4 +141,5 @@ public partial class AccountingManager
             application.PaymentLedgerLine.PaymentId = paymentId;
         }
     }
+    #endregion
 }

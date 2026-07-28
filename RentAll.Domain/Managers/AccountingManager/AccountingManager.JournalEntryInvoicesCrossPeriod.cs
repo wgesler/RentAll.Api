@@ -1,7 +1,5 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace RentAll.Domain.Managers;
@@ -160,16 +158,7 @@ public partial class AccountingManager
         };
     }
 
-    private async Task<JournalEntry?> CreateCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
-        => await UpsertCrossPeriodSliceJournalEntryAsync(sliceInvoice, sourceId, chartOfAccounts, accountingOffice, [], currentUser);
-
-    private async Task<JournalEntry?> UpsertCrossPeriodSliceJournalEntryAsync(
-        Invoice sliceInvoice,
-        Guid sourceId,
-        List<ChartOfAccount> chartOfAccounts,
-        AccountingOffice? accountingOffice,
-        IReadOnlyList<JournalEntry> existingSliceEntries,
-        Guid currentUser)
+    private async Task<JournalEntry?> UpsertCrossPeriodSliceJournalEntryAsync(Invoice sliceInvoice, Guid sourceId, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, IReadOnlyList<JournalEntry> existingSliceEntries, Guid currentUser)
     {
         var journalEntry = await CreateJournalEntryFromInvoiceAsync(
             sliceInvoice,
@@ -383,15 +372,6 @@ public partial class AccountingManager
                 return !IsPaymentLedgerLine(costCode);
             })
             .Sum(l => l.Amount);
-    }
-
-    private async Task<string> BuildCrossPeriodChargeBreakdownAsync(Invoice original, Invoice firstSlice, Invoice secondSlice)
-    {
-        // Diagnostic detail for split mismatches: dump every non-payment charge line (description, amount,
-        // cost code) for the original invoice and both regenerated period slices so the offending line is
-        // obvious. The Message column is VARCHAR(2500), so each section is capped to stay within bounds.
-        var costCodeById = await LoadCostCodeByOfficeIdAsync(original.OrganizationId, original.OfficeId);
-        return BuildCrossPeriodChargeBreakdown(original, firstSlice, secondSlice, costCodeById);
     }
 
     private static string BuildCrossPeriodChargeBreakdown(Invoice original, Invoice firstSlice, Invoice secondSlice, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -1187,15 +1167,6 @@ public partial class AccountingManager
     private static bool IsLastDayOfMonth(DateOnly date)
         => date == LastDayOfMonth(date);
 
-    private static void RemoveMatchingFeeLine(Invoice slice, LedgerLine template)
-        => slice.LedgerLines.RemoveAll(l =>
-            l.Amount != 0
-            && l.CostCodeId == template.CostCodeId
-            && string.Equals(l.Description, template.Description, StringComparison.Ordinal));
-
-    private static void RemoveGeneratedRentalFeeLines(Invoice slice)
-        => slice.LedgerLines.RemoveAll(l => l.Amount != 0 && RentalFeePeriodRegex.IsMatch(l.Description.Trim()));
-
     private static void RemoveMaidServiceLines(Invoice slice)
         => slice.LedgerLines.RemoveAll(l => l.Amount != 0 && l.Description.StartsWith("Maid Service", StringComparison.Ordinal));
 
@@ -1348,16 +1319,5 @@ public partial class AccountingManager
 
     private static DateOnly LastDayOfMonth(DateOnly date)
         => new(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month));
-
-    private static Guid GetInvoiceAccountingPeriodSourceId(Guid invoiceId, DateOnly accountingPeriod)
-    {
-        var input = $"{invoiceId:D}|{accountingPeriod:yyyy-MM-dd}";
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        var guidBytes = new byte[16];
-        Array.Copy(hash, guidBytes, 16);
-        guidBytes[6] = (byte)((guidBytes[6] & 0x0F) | 0x50);
-        guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
-        return new Guid(guidBytes);
-    }
     #endregion
 }

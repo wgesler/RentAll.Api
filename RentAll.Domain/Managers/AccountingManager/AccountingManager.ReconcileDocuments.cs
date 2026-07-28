@@ -5,10 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task ApplyDocumentPostingStatusFromReconcileAsync(
-        CompleteReconcileRequest request,
-        Guid organizationId,
-        Guid currentUser)
+    #region Reconcile Documents
+    public async Task ApplyDocumentPostingStatusFromReconcileAsync(CompleteReconcileRequest request, Guid organizationId, Guid currentUser)
     {
         if (request.Lines.Count == 0)
             return;
@@ -39,11 +37,7 @@ public partial class AccountingManager
             await MarkDocumentPostedFromReconcileAsync(sourceType, sourceId, organizationId, currentUser);
     }
 
-    private async Task MarkDocumentPostedFromReconcileAsync(
-        SourceType sourceType,
-        Guid sourceId,
-        Guid organizationId,
-        Guid currentUser)
+    private async Task MarkDocumentPostedFromReconcileAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser)
     {
         switch (sourceType)
         {
@@ -138,16 +132,11 @@ public partial class AccountingManager
         return postingStatus == PostingStatus.Open;
     }
 
-    private async Task PostOpenJournalEntriesForSourceAsync(
-        Guid organizationId,
-        int officeId,
-        SourceType sourceType,
-        Guid sourceId,
-        Guid currentOrganizationId,
-        Guid currentUser)
+    private async Task PostOpenJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, Guid currentOrganizationId, Guid currentUser)
     {
         var journalEntries = await GetJournalEntriesForSourceAsync(organizationId, officeId, sourceType, sourceId);
         foreach (var journalEntry in journalEntries.Where(entry => entry.PostingStatusId == PostingStatus.Open))
             await PostJournalEntryAsync(journalEntry.JournalEntryId, currentOrganizationId, currentUser);
     }
+    #endregion
 }

@@ -204,14 +204,7 @@ public partial class AccountingManager
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
 
-    public async Task<CloseAccountingPeriodResult> CloseAccountingPeriodAsync(
-        Guid organizationId,
-        int officeId,
-        DateOnly startDate,
-        DateOnly endDate,
-        PostingStatus closeStatus,
-        IEnumerable<Guid> journalEntryIds,
-        Guid currentUser)
+    public async Task<CloseAccountingPeriodResult> CloseAccountingPeriodAsync(Guid organizationId, int officeId, DateOnly startDate, DateOnly endDate, PostingStatus closeStatus, IEnumerable<Guid> journalEntryIds, Guid currentUser)
     {
         if (closeStatus is not (PostingStatus.SoftClosed or PostingStatus.HardClosed))
             throw new ArgumentException("Close status must be SoftClosed or HardClosed", nameof(closeStatus));
@@ -390,10 +383,6 @@ public partial class AccountingManager
         if (Math.Abs(totalDebit - totalCredit) > 0.005m)
             throw new Exception("Journal entry debits and credits must balance");
     }
-
-    private static bool IsManualJournalEntry(JournalEntry journalEntry)
-        => journalEntry.SourceTypeId == (int)SourceType.Journal
-            && journalEntry.JournalEntryKindId == JournalEntryKind.Manual;
 
     private static bool IsUserEditableJournalEntry(JournalEntry journalEntry)
         => journalEntry.SourceTypeId == (int)SourceType.Journal

@@ -128,11 +128,7 @@ public partial class AccountingManager
         return await UpsertJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, existingPaymentEntries, currentUser);
     }
 
-    private Task<AccountingJournalEntryResult> UpsertJournalEntryFromPaymentAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        IReadOnlyList<JournalEntry> existingPaymentEntries,
-        Guid currentUser)
+    private Task<AccountingJournalEntryResult> UpsertJournalEntryFromPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, IReadOnlyList<JournalEntry> existingPaymentEntries, Guid currentUser)
         => UpsertInvoicePaymentSideEffectsAsync(
             invoice,
             paymentLedgerLine,
@@ -140,12 +136,7 @@ public partial class AccountingManager
             currentUser,
             createMainCashJournalEntry: true);
 
-    private async Task<AccountingJournalEntryResult> UpsertInvoicePaymentSideEffectsAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        IReadOnlyList<JournalEntry> existingPaymentEntries,
-        Guid currentUser,
-        bool createMainCashJournalEntry)
+    private async Task<AccountingJournalEntryResult> UpsertInvoicePaymentSideEffectsAsync(Invoice invoice, LedgerLine paymentLedgerLine, IReadOnlyList<JournalEntry> existingPaymentEntries, Guid currentUser, bool createMainCashJournalEntry)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
             return AccountingJournalEntryResult.Success();
@@ -316,14 +307,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<AccountingJournalEntryResult> UpsertJournalEntriesFromPrePaymentAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        List<ChartOfAccount> chartOfAccounts,
-        AccountingOffice? accountingOffice,
-        List<JournalEntry> workingEntries,
-        ISet<Guid> retainedEntryIds,
-        Guid currentUser)
+    private async Task<AccountingJournalEntryResult> UpsertJournalEntriesFromPrePaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser)
     {
         var receivedResult = await UpsertPrePaymentReceivedJournalEntryAsync(
             invoice,
@@ -355,15 +339,7 @@ public partial class AccountingManager
         return AccountingJournalEntryResult.Success(receivedResult.JournalEntry);
     }
 
-    private async Task<AccountingJournalEntryResult> UpsertPrePaymentReceivedJournalEntryAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        List<ChartOfAccount> chartOfAccounts,
-        AccountingOffice? accountingOffice,
-        List<JournalEntry> workingEntries,
-        int prePaymentAccountId,
-        ISet<Guid> retainedEntryIds,
-        Guid currentUser)
+    private async Task<AccountingJournalEntryResult> UpsertPrePaymentReceivedJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, List<JournalEntry> workingEntries, int prePaymentAccountId, ISet<Guid> retainedEntryIds, Guid currentUser)
     {
         try
         {

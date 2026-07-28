@@ -60,9 +60,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(
-        Deposit deposit,
-        int undepositedFundsAccountId)
+    private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(Deposit deposit, int undepositedFundsAccountId)
     {
         var paymentEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
@@ -143,12 +141,7 @@ public partial class AccountingManager
         return DepositSplitMatchesUndepositedLine(split, line);
     }
 
-    private static Guid? ResolveDepositSplitJournalEntryLineId(
-        Deposit deposit,
-        DepositSplit split,
-        IReadOnlyList<UndepositedPaymentLineCandidate> candidates,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private static Guid? ResolveDepositSplitJournalEntryLineId(Deposit deposit, DepositSplit split, IReadOnlyList<UndepositedPaymentLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         var matches = candidates
             .Where(candidate =>
@@ -185,11 +178,7 @@ public partial class AccountingManager
         => Math.Abs(candidate.NetAmount - split.Amount) <= 0.005m
             && DepositSplitContextMatches(split, candidate.PropertyId, candidate.ReservationId, candidate.ContactId);
 
-    private static bool DepositSplitContextMatches(
-        DepositSplit split,
-        Guid? propertyId,
-        Guid? reservationId,
-        Guid? contactId)
+    private static bool DepositSplitContextMatches(DepositSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)
     {
         if (!GuidMatches(split.PropertyId, propertyId))
             return false;
@@ -210,9 +199,7 @@ public partial class AccountingManager
         return normalizedExpected == normalizedActual;
     }
 
-    private static bool DepositSplitJournalEntryLineIdsChanged(
-        IReadOnlyList<Guid?> originalLineIds,
-        IReadOnlyList<DepositSplit>? reconciledSplits)
+    private static bool DepositSplitJournalEntryLineIdsChanged(IReadOnlyList<Guid?> originalLineIds, IReadOnlyList<DepositSplit>? reconciledSplits)
     {
         var currentLineIds = (reconciledSplits ?? [])
             .Select(split => split.JournalEntryLineId)

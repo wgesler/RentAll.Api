@@ -9,11 +9,7 @@ public partial class AccountingManager
     private async Task<JournalEntry?> CreateJournalEntryFromInvoiceForOwnerShareAsync(Invoice invoice, decimal rentPlus4000Base, Guid currentUser)
         => await UpsertJournalEntryFromInvoiceForOwnerShareAsync(invoice, rentPlus4000Base, [], currentUser);
 
-    private async Task<JournalEntry?> UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-        Invoice invoice,
-        decimal rentPlus4000Base,
-        IReadOnlyList<JournalEntry> existingInvoiceEntries,
-        Guid currentUser)
+    private async Task<JournalEntry?> UpsertJournalEntryFromInvoiceForOwnerShareAsync(Invoice invoice, decimal rentPlus4000Base, IReadOnlyList<JournalEntry> existingInvoiceEntries, Guid currentUser)
     {
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         if (propertyId == null || propertyId == Guid.Empty)
@@ -224,13 +220,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<JournalEntry?> BuildJournalEntryFromPaymentForOwnerActualAsync(
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        decimal paymentAmount,
-        DateOnly transactionDate,
-        Guid currentUser,
-        IReadOnlyList<JournalEntry>? workingEntries = null)
+    private async Task<JournalEntry?> BuildJournalEntryFromPaymentForOwnerActualAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, Guid currentUser, IReadOnlyList<JournalEntry>? workingEntries = null)
     {
         var propertyId = await ResolveInvoicePropertyIdAsync(invoice);
         if (propertyId == null || propertyId == Guid.Empty)
@@ -285,17 +275,7 @@ public partial class AccountingManager
         }, JournalEntryKind.OwnerActual, Perspective.Owner);
     }
 
-    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerActual(
-        Invoice invoice,
-        decimal actualAmount,
-        Property property,
-        List<ChartOfAccount> chartOfAccounts,
-        AccountingOffice? accountingOffice,
-        Office? office,
-        IReadOnlyDictionary<int, CostCode> costCodeById,
-        Guid propertyId,
-        string memo,
-        Guid currentUser)
+    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerActual(Invoice invoice, decimal actualAmount, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, string memo, Guid currentUser)
     {
         // OWNER-ACTUAL-JE-ACCOUNTS
         // Line 1 — Debit: Tenant rental expense for the invoice rental ledger line.

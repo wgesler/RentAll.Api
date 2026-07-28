@@ -175,11 +175,7 @@ public partial class AccountingManager
         }
     }
 
-    public async Task<JournalEntry> PreviewRetainedEarningsJournalEntryForFiscalYearEndAsync(
-        Guid organizationId,
-        int officeId,
-        int fiscalYearEndYear,
-        CancellationToken cancellationToken = default)
+    public async Task<JournalEntry> PreviewRetainedEarningsJournalEntryForFiscalYearEndAsync(Guid organizationId, int officeId, int fiscalYearEndYear, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -408,15 +404,7 @@ public partial class AccountingManager
             logDecisions);
     }
 
-    private async Task TryRefreshRetainedEarningsJournalEntryAsync(
-        Guid organizationId,
-        AccountingOffice accountingOffice,
-        List<ChartOfAccount> chartOfAccounts,
-        IReadOnlyCollection<ChartOfAccount> profitLossAccounts,
-        DateOnly fiscalYearStart,
-        DateOnly fiscalYearEnd,
-        DateOnly processingDate,
-        bool logDecisions)
+    private async Task TryRefreshRetainedEarningsJournalEntryAsync(Guid organizationId, AccountingOffice accountingOffice, List<ChartOfAccount> chartOfAccounts, IReadOnlyCollection<ChartOfAccount> profitLossAccounts, DateOnly fiscalYearStart, DateOnly fiscalYearEnd, DateOnly processingDate, bool logDecisions)
     {
         var closedDates = await _accountingRepository.GetClosedDateByCriteriaAsync(
             organizationId,
@@ -655,9 +643,7 @@ public partial class AccountingManager
             or AccountType.Expense
             or AccountType.OtherExpense;
 
-    private static decimal CalculateProfitLossNetIncome(
-        IReadOnlyDictionary<int, decimal> accountYearBalances,
-        IReadOnlyDictionary<int, AccountType> accountTypeById)
+    private static decimal CalculateProfitLossNetIncome(IReadOnlyDictionary<int, decimal> accountYearBalances, IReadOnlyDictionary<int, AccountType> accountTypeById)
     {
         var totalIncome = SumProfitLossCategoryBalances(accountYearBalances, accountTypeById, AccountType.Income, AccountType.OtherIncome);
         var totalCogs = SumProfitLossCategoryBalances(accountYearBalances, accountTypeById, AccountType.CostOfGoodsSold);
@@ -666,10 +652,7 @@ public partial class AccountingManager
         return RoundRetainedEarningsAmount(grossProfit - totalExpense);
     }
 
-    private static decimal SumProfitLossCategoryBalances(
-        IReadOnlyDictionary<int, decimal> accountYearBalances,
-        IReadOnlyDictionary<int, AccountType> accountTypeById,
-        params AccountType[] accountTypes)
+    private static decimal SumProfitLossCategoryBalances(IReadOnlyDictionary<int, decimal> accountYearBalances, IReadOnlyDictionary<int, AccountType> accountTypeById, params AccountType[] accountTypes)
     {
         var allowedTypes = new HashSet<AccountType>(accountTypes);
         var total = accountYearBalances.Sum(entry =>
@@ -778,17 +761,7 @@ public partial class AccountingManager
         return dates.OrderBy(d => d).ToList();
     }
 
-    private async Task SaveRetainedEarningsJournalEntryAsync(
-        Guid organizationId,
-        AccountingOffice accountingOffice,
-        List<ChartOfAccount> chartOfAccounts,
-        IReadOnlyCollection<ChartOfAccount> profitLossAccounts,
-        JournalEntry journalEntry,
-        decimal netIncome,
-        IReadOnlyDictionary<int, decimal> accountYearBalances,
-        DateOnly fiscalYearStart,
-        DateOnly fiscalYearEnd,
-        DateOnly processingDate)
+    private async Task SaveRetainedEarningsJournalEntryAsync(Guid organizationId, AccountingOffice accountingOffice, List<ChartOfAccount> chartOfAccounts, IReadOnlyCollection<ChartOfAccount> profitLossAccounts, JournalEntry journalEntry, decimal netIncome, IReadOnlyDictionary<int, decimal> accountYearBalances, DateOnly fiscalYearStart, DateOnly fiscalYearEnd, DateOnly processingDate)
     {
         await LogRetainedEarningsJournalEntryLinesAsync(
             organizationId,
@@ -825,17 +798,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task UpdateRetainedEarningsJournalEntryAsync(
-        Guid organizationId,
-        AccountingOffice accountingOffice,
-        List<ChartOfAccount> chartOfAccounts,
-        IReadOnlyCollection<ChartOfAccount> profitLossAccounts,
-        JournalEntry journalEntry,
-        decimal netIncome,
-        IReadOnlyDictionary<int, decimal> accountYearBalances,
-        DateOnly fiscalYearStart,
-        DateOnly fiscalYearEnd,
-        DateOnly processingDate)
+    private async Task UpdateRetainedEarningsJournalEntryAsync(Guid organizationId, AccountingOffice accountingOffice, List<ChartOfAccount> chartOfAccounts, IReadOnlyCollection<ChartOfAccount> profitLossAccounts, JournalEntry journalEntry, decimal netIncome, IReadOnlyDictionary<int, decimal> accountYearBalances, DateOnly fiscalYearStart, DateOnly fiscalYearEnd, DateOnly processingDate)
     {
         await LogRetainedEarningsJournalEntryLinesAsync(
             organizationId,
@@ -874,18 +837,7 @@ public partial class AccountingManager
         }
     }
 
-    private Task LogRetainedEarningsJournalEntryLinesAsync(
-        Guid organizationId,
-        int officeId,
-        DateOnly processingDate,
-        DateOnly fiscalYearStart,
-        DateOnly fiscalYearEnd,
-        JournalEntry journalEntry,
-        IReadOnlyCollection<ChartOfAccount> chartOfAccounts,
-        IReadOnlyCollection<ChartOfAccount> profitLossAccounts,
-        decimal netIncome,
-        IReadOnlyDictionary<int, decimal> accountYearBalances,
-        string context)
+    private Task LogRetainedEarningsJournalEntryLinesAsync(Guid organizationId, int officeId, DateOnly processingDate, DateOnly fiscalYearStart, DateOnly fiscalYearEnd, JournalEntry journalEntry, IReadOnlyCollection<ChartOfAccount> chartOfAccounts, IReadOnlyCollection<ChartOfAccount> profitLossAccounts, decimal netIncome, IReadOnlyDictionary<int, decimal> accountYearBalances, string context)
         => Task.CompletedTask;
 
     private Task LogRetainedEarningsRunAsync(Guid organizationId, int? officeId, DateOnly processingDate, int officeCount, string message)

@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Helpers
     private static JournalEntry ClassifyJournalEntry(JournalEntry journalEntry, JournalEntryKind kind, Perspective linePerspective)
     {
         journalEntry.JournalEntryKindId = kind;
@@ -60,4 +61,5 @@ public partial class AccountingManager
 
         throw new Exception("Auto-generated journal entries must set JournalEntryKindId before save.");
     }
+    #endregion
 }

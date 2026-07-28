@@ -129,26 +129,6 @@ public partial class AccountingManager : IAccountingManager
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.UnfurnishedRentExpenseCcId, costCodeById, accountingOffice);
     }
 
-    private int GetDefaultMaidServiceExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
-    {
-        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.MaidServiceExpenseCcId, costCodeById, accountingOffice);
-    }
-
-    private int GetDefaultParkingExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
-    {
-        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.ParkingExpenseCcId, costCodeById, accountingOffice);
-    }
-
-    private int GetDefaultDepartureAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
-    {
-        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.DepartureFeeCcId, costCodeById, accountingOffice);
-    }
-
-    private int GetDefaultPetAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
-    {
-        return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.PetFeeCcId, costCodeById, accountingOffice);
-    }
-
     private int GetDefaultSecurityDepositAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         CostCode? costCode = null;
@@ -338,32 +318,6 @@ public partial class AccountingManager : IAccountingManager
 
             return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
         });
-    }
-
-    private int GetDefaultLaborIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)
-    {
-        int defaultAccountId;
-        if (accountingOffice?.@DefaultLaborIncAccountId is > 0)
-            defaultAccountId = accountingOffice.@DefaultLaborIncAccountId.Value;
-        else
-        {
-            var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-                .Where(a => a.Name.Contains("PM Utility", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
-                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.Income)
-                    .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
-
-            if (account == null)
-                throw new Exception($"No PM Utility Income chart of account is configured for office {officeId}");
-
-            defaultAccountId = account.AccountId;
-        }
-
-        return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
     private int GetDefaultLinenAndTowelIncome(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, CostCode? costCode = null)

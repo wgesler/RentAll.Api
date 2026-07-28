@@ -415,9 +415,6 @@ public partial class AccountingManager
     private static bool IsCrossOfficeBankCardReceipt(Receipt receipt, BankCard bankCard)
         => bankCard.OfficeId != receipt.OfficeId;
 
-    private static string GetReceiptOfficeLabel(Receipt receipt)
-        => string.IsNullOrWhiteSpace(receipt.OfficeName) ? receipt.ReceiptCode.Trim() : receipt.OfficeName.Trim();
-
     private static bool ContactRepresentsOffice(Contact contact, string officeName)
     {
         var candidates = new[]
