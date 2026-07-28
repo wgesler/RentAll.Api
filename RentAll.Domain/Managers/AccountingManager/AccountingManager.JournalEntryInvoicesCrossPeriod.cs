@@ -13,6 +13,7 @@ public partial class AccountingManager
         public required IReadOnlyList<ChartOfAccount> ChartOfAccounts { get; init; }
         public required AccountingOffice? AccountingOffice { get; init; }
         public required IReadOnlyDictionary<int, CostCode> CostCodeById { get; init; }
+        public required Office? Office { get; init; }
     }
 
     #region Cross-Period Invoice Journal Entries
@@ -143,16 +144,19 @@ public partial class AccountingManager
     {
         var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodesTask = LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        await Task.WhenAll(accountContextTask, costCodesTask);
+        var officeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        await Task.WhenAll(accountContextTask, costCodesTask, officeContextTask);
 
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var costCodeById = await costCodesTask;
+        var (office, _) = await officeContextTask;
 
         return new CrossPeriodInvoiceAccountingContext
         {
             ChartOfAccounts = chartOfAccounts,
             AccountingOffice = accountingOffice,
-            CostCodeById = costCodeById
+            CostCodeById = costCodeById,
+            Office = office
         };
     }
 
@@ -338,7 +342,7 @@ public partial class AccountingManager
             if (IsPaymentLedgerLine(costCode))
                 continue;
 
-            if (costCode != null && IsRentPlus4000CostCode(costCode, accountingContext.ChartOfAccounts, invoice.OfficeId))
+            if (costCode != null && IsCostCodeInRentalIncomeTree(costCode, accountingContext.ChartOfAccounts.ToList(), invoice.OfficeId, accountingContext.Office, accountingContext.CostCodeById, accountingContext.AccountingOffice))
                 matchedLines.Add(line);
         }
 
