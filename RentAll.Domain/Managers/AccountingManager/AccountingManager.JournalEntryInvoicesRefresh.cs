@@ -114,19 +114,25 @@ public partial class AccountingManager
 
         if (invoice.LedgerLines.Any(line => line.Amount != 0 && IsCrossMonthRentalLine(line, referenceYear)))
         {
-            var firstOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-                firstPeriodInvoice,
-                firstExistingEntries,
-                currentUser);
-            if (firstOwnerShare != null)
-                retainedEntryIds.Add(firstOwnerShare.JournalEntryId);
+            if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out _))
+            {
+                var firstOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
+                    firstPeriodInvoice,
+                    firstExistingEntries,
+                    currentUser);
+                if (firstOwnerShare != null)
+                    retainedEntryIds.Add(firstOwnerShare.JournalEntryId);
+            }
 
-            var secondOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-                secondPeriodInvoice,
-                secondExistingEntries,
-                currentUser);
-            if (secondOwnerShare != null)
-                retainedEntryIds.Add(secondOwnerShare.JournalEntryId);
+            if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out _))
+            {
+                var secondOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
+                    secondPeriodInvoice,
+                    secondExistingEntries,
+                    currentUser);
+                if (secondOwnerShare != null)
+                    retainedEntryIds.Add(secondOwnerShare.JournalEntryId);
+            }
         }
 
         // Only prune Charge / OwnerExpected. Payment, PrePay, and OwnAct share SourceId=InvoiceId
@@ -174,10 +180,20 @@ public partial class AccountingManager
         if (updatedCharge != null)
             retainedEntryIds.Add(updatedCharge.JournalEntryId);
 
-        var updatedOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-            invoice,
-            existingInvoiceEntries,
-            currentUser);
+        JournalEntry? updatedOwnerShare = null;
+        if (TryGetInvoiceRentalLineAmount(invoice, out _))
+        {
+            updatedOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
+                invoice,
+                existingInvoiceEntries,
+                currentUser);
+        }
+        else
+        {
+            var existingOwnerShare = existingInvoiceEntries.FirstOrDefault(IsInvoiceOwnerShareJournalEntry);
+            if (existingOwnerShare != null)
+                await DeleteOpenJournalEntryAsync(existingOwnerShare.JournalEntryId, invoice.OrganizationId);
+        }
 
         if (updatedOwnerShare != null)
             retainedEntryIds.Add(updatedOwnerShare.JournalEntryId);

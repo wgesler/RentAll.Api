@@ -161,13 +161,16 @@ public partial class AccountingManager
     // Example: R-001053-001: Owner: Expected: Rental Fee (04/01-04/30)
     public static string BuildOwnerExpectedRentMemo(Invoice invoice)
     {
+        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+            throw new InvalidOperationException("Invoice rental ledger line is required to build owner expected rent memo.");
+
         if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
             throw new ArgumentException("Invoice code is required.", nameof(invoice));
 
-        if (TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine) && !string.IsNullOrWhiteSpace(rentalLine.Description))
-            return $"{invoice.InvoiceCode.Trim()}: Owner: Expected: {rentalLine.Description.Trim()}";
+        if (string.IsNullOrWhiteSpace(rentalLine.Description))
+            throw new ArgumentException("Rental ledger line description is required.");
 
-        return $"{invoice.InvoiceCode.Trim()}: Owner: Expected: Rent";
+        return $"{invoice.InvoiceCode.Trim()}: Owner: Expected: {rentalLine.Description.Trim()}";
     }
 
     // Example: R-001053-001: Owner: Expected: Rental Fee (04/01-04/30)
