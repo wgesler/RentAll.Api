@@ -30,17 +30,7 @@ public partial class AccountingManager
                 if (invoice == null)
                     continue;
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = invoice.OrganizationId,
-                        OfficeIds = invoice.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.Invoice,
-                        SourceId = invoice.InvoiceId,
-                        IncludeUnposted = true
-                    },
-                    result);
+                await SyncSingleInvoiceJournalEntryAsync(invoice, result, currentUser);
             }
             catch (Exception ex)
             {
@@ -67,6 +57,30 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "invoice", total, processed, result, "Completed");
 
         return result;
+    }
+
+    private async Task SyncSingleInvoiceJournalEntryAsync(Invoice invoice, JournalEntrySyncResult result, Guid currentUser)
+    {
+        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = invoice.OrganizationId,
+            OfficeIds = invoice.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.Invoice,
+            SourceId = invoice.InvoiceId,
+            IncludeUnposted = true
+        });
+        if (existingEntries.Any())
+        {
+            result.JournalEntriesSkipped++;
+            return;
+        }
+
+        var createResult = await CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser);
+        if (createResult.JournalEntry != null)
+            result.JournalEntriesCreated++;
+
+        if (createResult.HasWarning)
+            result.Errors.Add(createResult.Warning!);
     }
 
     public async Task<JournalEntrySyncResult> ClearInvoiceJournalEntriesAsync(Guid organizationId, string officeIds)

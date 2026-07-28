@@ -13,6 +13,7 @@ public partial class AccountingManager
         public required IReadOnlyList<ChartOfAccount> ChartOfAccounts { get; init; }
         public required AccountingOffice? AccountingOffice { get; init; }
         public required IReadOnlyDictionary<int, CostCode> CostCodeById { get; init; }
+        public required HashSet<int> RentalIncomeAccountIds { get; init; }
     }
 
     #region Cross-Period Invoice Journal Entries
@@ -100,25 +101,19 @@ public partial class AccountingManager
 
         if (invoice.LedgerLines.Any(l => l.Amount != 0 && IsCrossMonthRentalLine(l, referenceYear)))
         {
-            if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out _))
-            {
-                var firstOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-                    firstPeriodInvoice,
-                    firstExistingEntries,
-                    currentUser);
-                if (firstOwnerShare != null)
-                    retainedEntryIds.Add(firstOwnerShare.JournalEntryId);
-            }
+            var firstOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
+                firstPeriodInvoice,
+                firstExistingEntries,
+                currentUser);
+            if (firstOwnerShare != null)
+                retainedEntryIds.Add(firstOwnerShare.JournalEntryId);
 
-            if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out _))
-            {
-                var secondOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-                    secondPeriodInvoice,
-                    secondExistingEntries,
-                    currentUser);
-                if (secondOwnerShare != null)
-                    retainedEntryIds.Add(secondOwnerShare.JournalEntryId);
-            }
+            var secondOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
+                secondPeriodInvoice,
+                secondExistingEntries,
+                currentUser);
+            if (secondOwnerShare != null)
+                retainedEntryIds.Add(secondOwnerShare.JournalEntryId);
         }
 
         await DeleteJournalEntriesExceptAsync(
@@ -139,16 +134,22 @@ public partial class AccountingManager
     {
         var accountContextTask = LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var costCodesTask = LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        await Task.WhenAll(accountContextTask, costCodesTask);
+        var officeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
+        await Task.WhenAll(accountContextTask, costCodesTask, officeContextTask);
 
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var costCodeById = await costCodesTask;
+        var (office, _) = await officeContextTask;
+        var rentalIncomeAccountIds = GetRentalIncomeAccounts(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
+            .Select(account => account.AccountId)
+            .ToHashSet();
 
         return new CrossPeriodInvoiceAccountingContext
         {
             ChartOfAccounts = chartOfAccounts,
             AccountingOffice = accountingOffice,
-            CostCodeById = costCodeById
+            CostCodeById = costCodeById,
+            RentalIncomeAccountIds = rentalIncomeAccountIds
         };
     }
 
@@ -334,7 +335,7 @@ public partial class AccountingManager
             if (IsPaymentLedgerLine(costCode))
                 continue;
 
-            if (costCode != null && IsRentPlus4000CostCode(costCode, accountingContext.ChartOfAccounts, invoice.OfficeId))
+            if (costCode != null && IsCostCodeMappedToRentalIncomeAccount(costCode, accountingContext.ChartOfAccounts.ToList(), invoice.OfficeId, accountingContext.RentalIncomeAccountIds))
                 matchedLines.Add(line);
         }
 
