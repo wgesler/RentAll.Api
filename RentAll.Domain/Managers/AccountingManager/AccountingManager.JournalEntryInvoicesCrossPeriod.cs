@@ -102,8 +102,10 @@ public partial class AccountingManager
         {
             if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out _))
             {
+                var firstRentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(firstPeriodInvoice);
                 var firstOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
                     firstPeriodInvoice,
+                    firstRentPlus4000Base,
                     firstExistingEntries,
                     currentUser);
                 if (firstOwnerShare != null)
@@ -112,8 +114,10 @@ public partial class AccountingManager
 
             if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out _))
             {
+                var secondRentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(secondPeriodInvoice);
                 var secondOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
                     secondPeriodInvoice,
+                    secondRentPlus4000Base,
                     secondExistingEntries,
                     currentUser);
                 if (secondOwnerShare != null)

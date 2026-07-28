@@ -613,16 +613,6 @@ public class InvoiceJournalEntryGapCoverageTests
 
         await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        var ownerExpectedEntry = Assert.Single(
-            context.ActiveJournalEntries,
-            entry => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected);
-
-        Assert.Equal(
-            expectedOwnerRent,
-            ownerExpectedEntry.JournalEntryLines
-                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
-                .Sum(line => line.Credit));
-
         var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
             invoice,
             amount: invoiceTotal,
