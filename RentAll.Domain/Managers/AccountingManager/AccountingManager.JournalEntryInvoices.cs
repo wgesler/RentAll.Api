@@ -198,7 +198,8 @@ public partial class AccountingManager
                             workingEntries,
                             retainedEntryIds,
                             currentUser,
-                            loadCrossPeriodExpectedContext: true);
+                            loadCrossPeriodExpectedContext: true,
+                            paymentSourceInvoice: invoice);
                     }
                 }
 
@@ -414,7 +415,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task UpsertOwnerActualJournalEntryForPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false)
+    private async Task UpsertOwnerActualJournalEntryForPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false, Invoice? paymentSourceInvoice = null)
     {
         if (paymentAmount == 0 || paymentLedgerLine.LedgerLineId == Guid.Empty)
             return;
@@ -446,7 +447,8 @@ public partial class AccountingManager
                 paymentAmount,
                 transactionDate,
                 currentUser,
-                amountContextEntries);
+                amountContextEntries,
+                paymentSourceInvoice);
             if (journalEntry == null || !journalEntry.JournalEntryLines.Any(line => line.Debit != 0 || line.Credit != 0))
                 return;
 
