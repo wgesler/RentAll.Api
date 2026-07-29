@@ -375,12 +375,10 @@ public partial class AccountingManager
         return incrementalOwnerActual > 0 ? incrementalOwnerActual : null;
     }
 
-    /// <summary>
-    /// Invoice payment application order for owner-actual rent recognition:
-    /// (1) Security deposit — no owner share;
-    /// (2) Rent — owner share applies here;
-    /// (3) Remaining fees (departure, SDW, etc.) — business keeps until rent is fully covered.
-    /// </summary>
+    // Invoice payment application order for owner-actual rent recognition:
+    // (1) Security deposit — no owner share;
+    // (2) Rent — owner share applies here;
+    // (3) Remaining fees (departure, SDW, etc.) — business keeps until rent is fully covered.
     private static decimal CalculateCumulativeRentPaidThroughWaterfall(decimal securityDepositDue, decimal rentDue, decimal feesDue, IReadOnlyList<LedgerLine> orderedPayments, Guid throughPaymentLedgerLineId)
     {
         var securityDepositRemaining = securityDepositDue;
