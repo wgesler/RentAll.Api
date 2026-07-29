@@ -354,7 +354,7 @@ public partial class AccountingManager
 
         // Step 1 — Walk payments in date order through the waterfall (Security Deposit → Rent → Fees incl. SDW).
         // Step 2 — Owner share is based on cumulative rent paid through this payment, not this payment alone.
-        // Step 3 — Subtract Owner Actual already posted for earlier payments on this invoice/period.
+        // Step 3 — Subtract existing Owner Actual JEs for this invoice/period (DB by kind; excludes this payment line).
         var cumulativeRentPaid = CalculateCumulativeRentPaidThroughWaterfall(
             securityDepositDue,
             rentDue,
@@ -375,10 +375,6 @@ public partial class AccountingManager
         return incrementalOwnerActual > 0 ? incrementalOwnerActual : null;
     }
 
-    // Invoice payment application order for owner-actual rent recognition:
-    // (1) Security deposit — no owner share;
-    // (2) Rent — owner share applies here;
-    // (3) Remaining fees (departure, SDW, etc.) — business keeps until rent is fully covered.
     private static decimal CalculateCumulativeRentPaidThroughWaterfall(decimal securityDepositDue, decimal rentDue, decimal feesDue, IReadOnlyList<LedgerLine> orderedPayments, Guid throughPaymentLedgerLineId)
     {
         var securityDepositRemaining = securityDepositDue;
@@ -458,28 +454,23 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
 
-        var dbEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = invoice.OrganizationId,
-            OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            SourceId = invoice.InvoiceId,
-            IncludeUnposted = true
-        })).ToList();
+        // Owner Actual is cash-only; JournalEntry_GetByCriteria excludes those — load by source + kind from DB.
+        var dbEntries = await GetOwnerActualJournalEntriesForInvoiceAsync(
+            invoice.OrganizationId,
+            invoice.OfficeId,
+            invoice.InvoiceId);
 
         var entries = (workingEntries ?? [])
-            .Concat(dbEntries)
+            .Where(entry => IsOwnerActualJournalEntryForInvoice(entry, invoice))
+            .Concat(dbEntries.Where(entry => MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod)))
             .GroupBy(entry => entry.JournalEntryId)
             .Select(group => group.First())
+            .Where(entry => !IsOwnerActualJournalEntryForPaymentLedgerLine(entry, invoice, currentPaymentLedgerLine))
             .ToList();
 
-        // Match by kind + invoice/period; exclude only this payment's Owner Actual (exact payment-line memo).
-        return entries
-            .Where(entry => IsOwnerActualJournalEntryForInvoice(entry, invoice))
-            .Where(entry => !IsOwnerActualJournalEntryForPaymentLedgerLine(entry, invoice, currentPaymentLedgerLine))
-            .Sum(entry => entry.JournalEntryLines
-                .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
-                .Sum(line => line.Credit - line.Debit));
+        return entries.Sum(entry => entry.JournalEntryLines
+            .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
+            .Sum(line => line.Credit - line.Debit));
     }
 
     private Task<decimal?> TryGetOwnerExpectedAmountForInvoicePeriodAsync(Invoice invoice, IReadOnlyList<JournalEntry>? workingEntries = null)

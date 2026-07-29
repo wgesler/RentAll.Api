@@ -6,7 +6,7 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Helpers
-    private async Task<List<JournalEntry>> GetJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId)
+    private async Task<List<JournalEntry>> GetJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, JournalEntryKind? journalEntryKind = null)
     {
         return (await _journalEntryRepository.GetJournalEntriesBySourceIdAsync(new JournalEntryGetBySourceIdCriteria
         {
@@ -14,10 +14,14 @@ public partial class AccountingManager
             SourceTypeId = (int)sourceType,
             SourceId = sourceId,
             OfficeIds = officeId.ToString(),
+            JournalEntryKindId = journalEntryKind.HasValue ? (int)journalEntryKind.Value : null,
             IncludeUnposted = true,
             IncludeCashOnly = true
         })).ToList();
     }
+
+    private Task<List<JournalEntry>> GetOwnerActualJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
+        => GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId, JournalEntryKind.OwnerActual);
 
     private async Task<List<JournalEntry>> GetAllJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
         => await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId);

@@ -583,6 +583,188 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
+    public async Task PrePayThenPayoff_OwnerActualSecondPaymentDeductsFirst_R000081004()
+    {
+        const decimal rentAmount = 2464m;
+        const decimal feeAmount = 87.04m;
+        const decimal firstPaymentAmount = 891.68m;
+        const decimal secondPaymentAmount = 1659.36m;
+        const decimal ownerSharePercent = 70m;
+        const decimal expectedOwnerExpected = 1724.80m;
+        const decimal expectedFirstOwnerActual = 624.18m;
+        const decimal expectedSecondOwnerActual = 1100.62m;
+
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 7, 1),
+            new DateOnly(2026, 12, 31),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        var accountingPeriod = new DateOnly(2026, 7, 1);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 7, 28),
+            enableOwnerShare: true,
+            revenueSplitOwner: ownerSharePercent);
+        var manager = context.CreateManager();
+
+        invoice.LedgerLines.Clear();
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = 1,
+            ReservationId = reservation.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+            Amount = rentAmount,
+            Description = "Rental Fee (07/01-07/28)",
+            LedgerLineDate = accountingPeriod
+        });
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = 2,
+            ReservationId = reservation.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId,
+            Amount = feeAmount,
+            Description = "Additional Dept Fee",
+            LedgerLineDate = accountingPeriod
+        });
+        invoice.TotalAmount = rentAmount + feeAmount;
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var ownerExpectedAp = context.ActiveJournalEntries
+            .Single(entry => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected)
+            .JournalEntryLines
+            .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+            .Sum(line => line.Credit);
+        Assert.Equal(expectedOwnerExpected, ownerExpectedAp);
+
+        var firstPayment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: firstPaymentAmount,
+            paymentDate: new DateOnly(2026, 6, 16),
+            description: "ACH 06/06-07/09");
+        invoice.LedgerLines.Add(firstPayment);
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, firstPayment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var secondPayment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: secondPaymentAmount,
+            paymentDate: new DateOnly(2026, 7, 13),
+            description: "ACH 07/10-07/28");
+        invoice.LedgerLines.Add(secondPayment);
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, secondPayment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var ownerActualEntries = context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual)
+            .OrderBy(entry => entry.TransactionDate)
+            .ToList();
+        Assert.Equal(2, ownerActualEntries.Count);
+
+        Assert.Equal(
+            expectedFirstOwnerActual,
+            ownerActualEntries[0].JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+                .Sum(line => line.Credit));
+        Assert.Equal(
+            expectedSecondOwnerActual,
+            ownerActualEntries[1].JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+                .Sum(line => line.Credit));
+        Assert.Equal(expectedOwnerExpected, expectedFirstOwnerActual + expectedSecondOwnerActual);
+    }
+
+    [Fact]
+    public async Task PrePayThenPayoff_SecondOwnerActualSubtractsExistingFirstFromDatabaseByKind()
+    {
+        const decimal rentAmount = 2464m;
+        const decimal feeAmount = 87.04m;
+        const decimal firstPaymentAmount = 891.68m;
+        const decimal secondPaymentAmount = 1659.36m;
+        const decimal ownerSharePercent = 70m;
+        const decimal expectedFirstOwnerActual = 624.18m;
+        const decimal expectedSecondOwnerActual = 1100.62m;
+
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 7, 1),
+            new DateOnly(2026, 12, 31),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        var accountingPeriod = new DateOnly(2026, 7, 1);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 7, 28),
+            enableOwnerShare: true,
+            revenueSplitOwner: ownerSharePercent);
+        var manager = context.CreateManager();
+
+        invoice.LedgerLines.Clear();
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = 1,
+            ReservationId = reservation.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+            Amount = rentAmount,
+            Description = "Rental Fee (07/01-07/28)",
+            LedgerLineDate = accountingPeriod
+        });
+        invoice.LedgerLines.Add(new LedgerLine
+        {
+            LedgerLineId = Guid.NewGuid(),
+            InvoiceId = invoice.InvoiceId,
+            LineNumber = 2,
+            ReservationId = reservation.ReservationId,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId,
+            Amount = feeAmount,
+            Description = "Additional Dept Fee",
+            LedgerLineDate = accountingPeriod
+        });
+        invoice.TotalAmount = rentAmount + feeAmount;
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var firstPayment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: firstPaymentAmount,
+            paymentDate: new DateOnly(2026, 6, 16),
+            description: "ACH 06/06-07/09");
+        invoice.LedgerLines.Add(firstPayment);
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, firstPayment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var secondPayment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: secondPaymentAmount,
+            paymentDate: new DateOnly(2026, 7, 13),
+            description: "ACH 07/10-07/28");
+        invoice.LedgerLines.Add(secondPayment);
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, secondPayment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var ownerActualEntries = context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual)
+            .OrderBy(entry => entry.TransactionDate)
+            .ToList();
+        Assert.Equal(2, ownerActualEntries.Count);
+        Assert.Equal(
+            expectedFirstOwnerActual,
+            ownerActualEntries[0].JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+                .Sum(line => line.Credit));
+        Assert.Equal(
+            expectedSecondOwnerActual,
+            ownerActualEntries[1].JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
+                .Sum(line => line.Credit));
+    }
+
+    [Fact]
     public async Task CrossMonthPayment_OnlyFutureAccountingPeriodSliceUsesPrePaymentPath()
     {
         var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(

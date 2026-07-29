@@ -61,7 +61,10 @@ public partial class AccountingManager
     public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();
-        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds)).ToList();
+        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
+            .OrderBy(payment => payment.PaymentDate)
+            .ThenBy(payment => payment.PaymentId)
+            .ToList();
         var total = payments.Count;
         var processed = 0;
         ReportSyncProgress(progress, "payment", total, processed, result, "Running");
