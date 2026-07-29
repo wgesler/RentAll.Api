@@ -455,33 +455,28 @@ public partial class AccountingManager
 
     private async Task<decimal> SumPriorOwnerActualAmountAsync(Invoice invoice, LedgerLine currentPaymentLedgerLine, IReadOnlyList<JournalEntry>? workingEntries)
     {
-        var currentPaymentMemo = BuildOwnerActualRentMemo(invoice, currentPaymentLedgerLine);
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
 
-        var entries = (workingEntries ?? []).ToList();
-        if (invoice.AccountingPeriod != default)
+        var dbEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
-            var dbEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-            {
-                OrganizationId = invoice.OrganizationId,
-                OfficeIds = invoice.OfficeId.ToString(),
-                SourceTypeId = (int)SourceType.Invoice,
-                SourceId = invoice.InvoiceId,
-                IncludeUnposted = true
-            })).ToList();
-            entries = entries
-                .Concat(dbEntries)
-                .GroupBy(entry => entry.JournalEntryId)
-                .Select(group => group.First())
-                .ToList();
-        }
+            OrganizationId = invoice.OrganizationId,
+            OfficeIds = invoice.OfficeId.ToString(),
+            SourceTypeId = (int)SourceType.Invoice,
+            SourceId = invoice.InvoiceId,
+            IncludeUnposted = true
+        })).ToList();
 
+        var entries = (workingEntries ?? [])
+            .Concat(dbEntries)
+            .GroupBy(entry => entry.JournalEntryId)
+            .Select(group => group.First())
+            .ToList();
+
+        // Match by kind + invoice/period; exclude only this payment's Owner Actual (exact payment-line memo).
         return entries
-            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
-                && entry.SourceId == invoice.InvoiceId
-                && MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod)
-                && !string.Equals(entry.Memo, currentPaymentMemo, StringComparison.Ordinal))
+            .Where(entry => IsOwnerActualJournalEntryForInvoice(entry, invoice))
+            .Where(entry => !IsOwnerActualJournalEntryForPaymentLedgerLine(entry, invoice, currentPaymentLedgerLine))
             .Sum(entry => entry.JournalEntryLines
                 .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
                 .Sum(line => line.Credit - line.Debit));
