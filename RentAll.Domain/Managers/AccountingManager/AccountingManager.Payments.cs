@@ -4,10 +4,6 @@ using RentAll.Domain.Models;
 
 public partial class AccountingManager
 {
-    #region Payments
-    public Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser)
-        => ApplyInvoicePaymentAsync(payment, null, allocations, officeAccess, currentUser);
-
     public async Task<Payment> ApplyInvoicePaymentAsync(Payment payment, IReadOnlyList<Guid>? autoSplitInvoiceIds, IReadOnlyList<PaymentInvoiceAllocation>? explicitAllocations, string officeAccess, Guid currentUser)
     {
         if (explicitAllocations != null && explicitAllocations.Count > 0)
@@ -42,78 +38,68 @@ public partial class AccountingManager
 
     private async Task<Payment> ApplyInvoicePaymentWithExplicitAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser)
     {
+        ValidateExplicitPaymentAllocations(payment, allocations);
+
+        Payment? createdPayment = null;
+        try
+        {
+            createdPayment = await _accountingRepository.CreatePaymentWithAllocationsAsync(payment, allocations, currentUser);
+            await CreateJournalEntriesFromPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+        }
+        catch
+        {
+            if (createdPayment != null)
+                await TryDeleteIncompletePaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+
+            throw;
+        }
+
+        return await _accountingRepository.GetPaymentByIdAsync(createdPayment.PaymentId, payment.OrganizationId)
+            ?? createdPayment;
+    }
+
+    private async Task<Payment> UpdateInvoicePaymentWithExplicitAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser)
+    {
+        if (payment.PaymentId == Guid.Empty)
+            throw new ArgumentException("PaymentId is required.", nameof(payment));
+
+        ValidateExplicitPaymentAllocations(payment, allocations);
+
+        var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId);
+        if (existing == null)
+            throw new Exception("Payment record not found");
+
+        await DeleteJournalEntriesForPaymentAsync(existing);
+
+        var updatedPayment = await _accountingRepository.UpdatePaymentWithAllocationsAsync(payment, allocations, currentUser);
+        await CreateJournalEntriesFromPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+
+        return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
+            ?? updatedPayment;
+    }
+
+    private static void ValidateExplicitPaymentAllocations(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations)
+    {
         if (allocations == null || allocations.Count == 0)
             throw new ArgumentException("At least one invoice allocation is required.", nameof(allocations));
 
         var allocationTotal = allocations.Sum(allocation => allocation.Amount);
         if (allocationTotal != payment.Amount)
             throw new ArgumentException("Allocation total must equal the payment amount.", nameof(allocations));
-
-        var createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
-
-        foreach (var allocation in allocations)
-        {
-            var invoice = await _accountingRepository.GetInvoiceByIdAsync(allocation.InvoiceId, payment.OrganizationId);
-            if (invoice == null)
-                throw new Exception("Invalid Invoice");
-
-            if (invoice.OfficeId != payment.OfficeId)
-                throw new Exception("Invoice office does not match payment office.");
-
-            var allocationDescription = string.IsNullOrWhiteSpace(allocation.Description)
-                ? payment.Description
-                : allocation.Description.Trim();
-
-            var invoicePayment = await ApplyPaymentToInvoicesAsync(
-                new List<Guid> { allocation.InvoiceId },
-                payment.OrganizationId,
-                officeAccess,
-                payment.CostCodeId,
-                allocationDescription,
-                allocation.Amount,
-                payment.PaymentDate,
-                currentUser);
-
-            await LinkInvoicePaymentApplicationsAsync(createdPayment.PaymentId, invoicePayment, currentUser);
-        }
-
-        await CreateJournalEntriesFromPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
-
-        return await _accountingRepository.GetPaymentByIdAsync(createdPayment.PaymentId, payment.OrganizationId)
-            ?? createdPayment;
     }
 
-    public async Task DeletePaymentAsync(Guid paymentId, Guid organizationId, Guid currentUser)
+    private async Task TryDeleteIncompletePaymentAsync(Guid paymentId, Guid organizationId, Guid currentUser)
     {
-        if (paymentId == Guid.Empty)
-            throw new ArgumentException("PaymentId is required.", nameof(paymentId));
-
-        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
-        if (payment == null)
-            throw new Exception("Payment record not found");
-
-        var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
-
-        await DeleteJournalEntriesForPaymentAsync(payment);
-
-        foreach (var invoiceGroup in paymentLedgerLines.GroupBy(line => line.InvoiceId))
+        try
         {
-            var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceGroup.Key, organizationId);
-            if (invoice == null)
-                continue;
-
-            foreach (var paymentLine in invoiceGroup)
-            {
-                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, ToInvoicePaymentLedgerLine(paymentLine));
-                invoice.PaidAmount -= paymentLine.Amount;
-                invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == paymentLine.LedgerLineId);
-            }
-
-            invoice.ModifiedBy = currentUser;
-            await _accountingRepository.UpdateByIdAsync(invoice);
+            var existing = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+            if (existing != null)
+                await DeletePaymentAsync(paymentId, organizationId, currentUser);
         }
-
-        await _accountingRepository.DeletePaymentByIdAsync(paymentId, organizationId, currentUser);
+        catch
+        {
+            // Best-effort cleanup after a failed create.
+        }
     }
 
     private static LedgerLine ToInvoicePaymentLedgerLine(PaymentLedgerLine paymentLine)
@@ -141,5 +127,4 @@ public partial class AccountingManager
             application.PaymentLedgerLine.PaymentId = paymentId;
         }
     }
-    #endregion
 }

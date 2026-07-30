@@ -135,10 +135,7 @@ public partial class AccountingController
                 return ServerError("Unable to generate deposit code");
 
             var deposit = dto.ToModel(depositCode, CurrentUser);
-            deposit = await _accountingManager.PrepareDepositForSaveAsync(deposit);
-            var created = await _accountingRepository.CreateDepositAsync(deposit);
-
-            await _accountingManager.CreateJournalEntryFromDepositAsync(created, CurrentUser);
+            var created = await _accountingManager.CreateDepositAsync(deposit, CurrentUser);
 
             var response = new DepositResponseDto(created);
             return Ok(response);
@@ -209,8 +206,7 @@ public partial class AccountingController
             if (postingStatusCheck != null)
                 return postingStatusCheck;
 
-            await _accountingManager.DeleteJournalEntriesForDepositAsync(deposit);
-            await _accountingRepository.DeleteDepositByIdAsync(depositId, CurrentOrganizationId, CurrentUser);
+            await _accountingManager.DeleteDepositAsync(depositId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)

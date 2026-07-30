@@ -19,8 +19,6 @@ public interface IAccountingManager
     #region Payments
     Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser);
     Task<Payment> ApplyInvoicePaymentAsync(Payment payment, IReadOnlyList<Guid>? autoSplitInvoiceIds, IReadOnlyList<PaymentInvoiceAllocation>? explicitAllocations, string officeAccess, Guid currentUser);
-    Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
-    Task DeletePaymentAsync(Guid paymentId, Guid organizationId, Guid currentUser);
     Task<BillPayment> ApplyPaymentToBillsAsync(List<Guid> billIds, Guid organizationId, string offices, int chartOfAccountId, string description, decimal amountPaid, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
     Task<List<JournalEntry>> ApplyPaymentToOwnersAsync(OwnerPayments ownerPayments, Guid organizationId, string offices, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromOwnerPaymentAsync(OwnerPaymentBatch ownerPaymentBatch, Guid currentUser);
@@ -53,24 +51,54 @@ public interface IAccountingManager
     Task<JournalEntry?> CreateJournalEntryFromDepositAsync(Deposit deposit, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromTransferAsync(Transfer transfer, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
-    Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice);
-    Task DeleteJournalEntriesForReceiptAsync(Receipt receipt);
-    Task DeleteJournalEntriesForBillAsync(Receipt bill);
-    Task DeleteJournalEntriesForDepositAsync(Deposit deposit);
-    Task DeleteJournalEntriesForTransferAsync(Transfer transfer);
+    Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
+    Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
     #endregion
 
-    #region Document Updates
+    #region Document Lifecycle
+
+    #region Invoice
+    Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser);
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
+    Task DeleteInvoiceAsync(Guid invoiceId, Guid organizationId);
+    Task DeleteInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId);
+    #endregion
+
+    #region Receipt
+    Task<Receipt> CreateReceiptAsync(Receipt receipt, Guid currentUser);
     Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser);
     Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser);
+    Task DeleteReceiptAsync(Guid receiptId, Guid organizationId, Guid currentUser);
+    #endregion
+
+    #region Work Order
+    Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
     Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
-    Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit);
-    Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer);
-    Task EnrichTransferSplitsForDisplayAsync(Transfer transfer);
+    Task DeleteWorkOrderAsync(Guid workOrderId, Guid organizationId, Guid currentUser);
+    #endregion
+
+    #region Payment
+    Task<Payment> CreatePaymentAsync(Payment payment, Guid currentUser);
+    Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
+    Task<Payment> UpdatePaymentAsync(Payment payment, Guid currentUser);
+    Task<Payment> UpdatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
+    Task DeletePaymentAsync(Guid paymentId, Guid organizationId, Guid currentUser);
+    #endregion
+
+    #region Deposit
+    Task<Deposit> CreateDepositAsync(Deposit deposit, Guid currentUser);
     Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser);
+    Task DeleteDepositAsync(Guid depositId, Guid organizationId, Guid currentUser);
+    #endregion
+
+    #region Transfer
+    Task<Transfer> CreateTransferAsync(Transfer transfer, Guid currentUser);
     Task<Transfer> UpdateTransferAsync(Transfer transfer, Guid currentUser);
     Task<Transfer> PostTransferReportAsync(Guid transferId, Guid organizationId, Guid currentUser);
+    Task DeleteTransferAsync(Guid transferId, Guid organizationId, Guid currentUser);
+    Task EnrichTransferSplitsForDisplayAsync(Transfer transfer);
+    #endregion
+
     Task ApplyDocumentPostingStatusFromReconcileAsync(CompleteReconcileRequest request, Guid organizationId, Guid currentUser);
     #endregion
 

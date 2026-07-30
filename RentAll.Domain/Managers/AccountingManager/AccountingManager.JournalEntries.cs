@@ -262,26 +262,46 @@ public partial class AccountingManager
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
     }
 
-    public async Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice)
+    private async Task DeleteJournalEntriesForDepositAsync(Deposit deposit)
+    {
+        if (deposit.DepositId == Guid.Empty)
+            return;
+
+        await DeleteJournalEntriesForSourceAsync(deposit.OrganizationId, deposit.OfficeId, (int)SourceType.Deposit, deposit.DepositId);
+    }
+
+    private async Task DeleteJournalEntriesForTransferAsync(Transfer transfer)
+    {
+        if (transfer.TransferId == Guid.Empty)
+            return;
+
+        await DeleteJournalEntriesForSourceAsync(transfer.OrganizationId, transfer.OfficeId, (int)SourceType.Transfer, transfer.TransferId);
+    }
+
+    private async Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice)
     {
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(invoice.OrganizationId, (int)SourceType.Invoice, invoice.InvoiceId);
+        await DeleteJournalEntriesForSourceAsync(
+            invoice.OrganizationId,
+            invoice.OfficeId,
+            (int)SourceType.OwnerDistribution,
+            invoice.InvoiceId);
     }
 
-    public async Task DeleteJournalEntriesForReceiptAsync(Receipt receipt)
+    private async Task DeleteJournalEntriesForReceiptAsync(Receipt receipt)
     {
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(receipt.OrganizationId, (int)SourceType.Receipt, receipt.ReceiptId);
+        await DeleteAllCrossOfficeReceiptCompanionEntriesAsync(receipt);
     }
 
-    public async Task DeleteJournalEntriesForBillAsync(Receipt bill)
+    private async Task DeleteJournalEntriesForBillAsync(Receipt bill)
     {
         if (bill.ReceiptId == Guid.Empty)
             return;
 
-        // Primary link: bill ReceiptId (covers main bill, owner utility, and bill payment JEs).
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(bill.OrganizationId, (int)SourceType.Bill, bill.ReceiptId);
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(bill.OrganizationId, (int)SourceType.BillPayment, bill.ReceiptId);
 
-        // Legacy/orphan cleanup: also delete open JEs whose Source is RCXXX or vendor BillNumber.
         var sourceCodes = ResolveBillJournalEntrySourceCodeCandidates(bill).ToList();
         if (sourceCodes.Count == 0)
             return;
@@ -293,20 +313,16 @@ public partial class AccountingManager
             sourceCodes);
     }
 
-    public async Task DeleteJournalEntriesForDepositAsync(Deposit deposit)
+    private async Task DeleteJournalEntriesForWorkOrderAsync(WorkOrder workOrder)
     {
-        if (deposit.DepositId == Guid.Empty)
+        if (workOrder.WorkOrderId == Guid.Empty)
             return;
 
-        await DeleteJournalEntriesForSourceAsync(deposit.OrganizationId, deposit.OfficeId, (int)SourceType.Deposit, deposit.DepositId);
-    }
-
-    public async Task DeleteJournalEntriesForTransferAsync(Transfer transfer)
-    {
-        if (transfer.TransferId == Guid.Empty)
-            return;
-
-        await DeleteJournalEntriesForSourceAsync(transfer.OrganizationId, transfer.OfficeId, (int)SourceType.Transfer, transfer.TransferId);
+        await DeleteJournalEntriesForSourceAsync(
+            workOrder.OrganizationId,
+            workOrder.OfficeId,
+            (int)SourceType.WorkOrder,
+            workOrder.WorkOrderId);
     }
 
     private async Task DeleteJournalEntriesForPaymentAsync(Payment payment)

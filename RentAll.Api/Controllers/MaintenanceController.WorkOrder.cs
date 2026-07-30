@@ -127,9 +127,7 @@ public partial class MaintenanceController
         try
         {
             var workOrder = dto.ToModel(CurrentUser);
-            var created = await _maintenanceRepository.CreateWorkOrderAsync(workOrder);
-
-            await _accountingManager.CreateJournalEntryFromWorkOrderAsync(created, CurrentUser);
+            var created = await _accountingManager.CreateWorkOrderAsync(workOrder, CurrentUser);
 
             return Ok(new WorkOrderResponseDto(created));
         }
@@ -193,7 +191,7 @@ public partial class MaintenanceController
             if (postingStatusCheck != null)
                 return postingStatusCheck;
 
-            await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, CurrentOrganizationId, CurrentUser);
+            await _accountingManager.DeleteWorkOrderAsync(workOrderId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)

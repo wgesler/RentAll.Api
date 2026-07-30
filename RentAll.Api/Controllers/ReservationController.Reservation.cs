@@ -202,23 +202,13 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-                {
-                    OrganizationId = CurrentOrganizationId,
-                    OfficeIds = CurrentOfficeAccess,
-                    ReservationId = reservationId,
-                    IncludeInactive = true,
-                    IncludePaid = true
-                })).ToList();
-
-                if (invoices.Any(i => i.PaidAmount != 0))
-                    return BadRequest("This reservation has paid invoices applied to it. It may not be deleted.");
-
-                foreach (var invoice in invoices)
-                    await _accountingRepository.DeleteInvoiceByIdAsync(invoice.InvoiceId, CurrentOrganizationId);
-
+                await _accountingManager.DeleteInvoicesByReservationIdAsync(CurrentOrganizationId, reservationId);
                 await _reservationRepository.DeleteReservationByIdAsync(reservationId, CurrentOrganizationId);
                 return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

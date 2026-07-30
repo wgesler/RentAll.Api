@@ -4,7 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit)
+    private async Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit)
     {
         await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
         await EnrichDepositSplitsFromJournalEntryLinesAsync(deposit);
@@ -12,7 +12,7 @@ public partial class AccountingManager
         return deposit;
     }
 
-    public async Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer)
+    private async Task<Transfer> PrepareTransferForSaveAsync(Transfer transfer)
     {
         await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
         await EnrichTransferSplitsFromJournalEntryLinesAsync(transfer);

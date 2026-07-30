@@ -52,25 +52,6 @@ public partial class AccountingManager
         }
     }
 
-    public async Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser)
-    {
-        var existing = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, deposit.OrganizationId)
-            ?? throw new Exception("Deposit not found");
-
-        deposit.CreatedBy = existing.CreatedBy;
-        deposit.DepositCode = existing.DepositCode;
-
-        await PrepareDepositForSaveAsync(deposit);
-        await _accountingRepository.UpdateDepositAsync(deposit);
-
-        var freshDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, deposit.OrganizationId)
-            ?? throw new Exception("Deposit not found after update");
-
-        await TryReplaceJournalEntriesFromDepositAsync(freshDeposit, currentUser);
-
-        return await _accountingRepository.GetDepositByIdAsync(freshDeposit.DepositId, freshDeposit.OrganizationId)
-            ?? freshDeposit;
-    }
     #endregion
 
     #region Journal Entry

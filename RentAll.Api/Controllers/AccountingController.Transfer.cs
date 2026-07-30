@@ -135,10 +135,7 @@ public partial class AccountingController
                 return ServerError("Unable to generate transfer code");
 
             var transfer = dto.ToModel(transferCode, CurrentUser);
-            transfer = await _accountingManager.PrepareTransferForSaveAsync(transfer);
-            var created = await _accountingRepository.CreateTransferAsync(transfer);
-
-            await _accountingManager.CreateJournalEntryFromTransferAsync(created, CurrentUser);
+            var created = await _accountingManager.CreateTransferAsync(transfer, CurrentUser);
 
             var response = await MapTransferResponseAsync(created);
             return Ok(response);
@@ -248,8 +245,7 @@ public partial class AccountingController
             if (postingStatusCheck != null)
                 return postingStatusCheck;
 
-            await _accountingManager.DeleteJournalEntriesForTransferAsync(transfer);
-            await _accountingRepository.DeleteTransferByIdAsync(transferId, CurrentOrganizationId, CurrentUser);
+            await _accountingManager.DeleteTransferAsync(transferId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)

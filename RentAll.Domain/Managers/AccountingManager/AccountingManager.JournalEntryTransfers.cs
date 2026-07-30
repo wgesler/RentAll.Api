@@ -61,26 +61,6 @@ public partial class AccountingManager
         }
     }
 
-    public async Task<Transfer> UpdateTransferAsync(Transfer transfer, Guid currentUser)
-    {
-        var existing = await _accountingRepository.GetTransferByIdAsync(transfer.TransferId, transfer.OrganizationId)
-            ?? throw new Exception("Transfer not found");
-
-        transfer.CreatedBy = existing.CreatedBy;
-        transfer.TransferCode = existing.TransferCode;
-        transfer.HasBeenTransfered = existing.HasBeenTransfered;
-
-        await PrepareTransferForSaveAsync(transfer);
-        await _accountingRepository.UpdateTransferAsync(transfer);
-
-        var freshTransfer = await _accountingRepository.GetTransferByIdAsync(transfer.TransferId, transfer.OrganizationId)
-            ?? throw new Exception("Transfer not found after update");
-
-        await TryReplaceJournalEntriesFromTransferAsync(freshTransfer, currentUser);
-
-        return await _accountingRepository.GetTransferByIdAsync(freshTransfer.TransferId, freshTransfer.OrganizationId)
-            ?? freshTransfer;
-    }
     #endregion
 
     #region Journal Entry

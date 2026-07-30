@@ -137,12 +137,7 @@ public partial class MaintenanceController
             var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
             receipt.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
 
-            var created = await _maintenanceRepository.CreateReceiptAsync(receipt);
-
-            if (created.BankCardId == null)
-                await _accountingManager.CreateJournalEntryFromBillAsync(created, CurrentUser);
-            else
-                await _accountingManager.CreateJournalEntryFromReceiptAsync(created, CurrentUser);
+            var created = await _accountingManager.CreateReceiptAsync(receipt, CurrentUser);
 
             var response = new ReceiptResponseDto(created);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
@@ -222,11 +217,7 @@ public partial class MaintenanceController
             if (postingStatusCheck != null)
                 return postingStatusCheck;
 
-            if (receipt.BankCardId == null)
-                await _accountingManager.DeleteJournalEntriesForBillAsync(receipt);
-            else
-                await _accountingManager.DeleteJournalEntriesForReceiptAsync(receipt);
-            await _maintenanceRepository.DeleteReceiptByIdAsync(receiptId, CurrentOrganizationId, CurrentUser);
+            await _accountingManager.DeleteReceiptAsync(receiptId, CurrentOrganizationId, CurrentUser);
             return NoContent();
         }
         catch (Exception ex)

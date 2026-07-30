@@ -113,11 +113,13 @@ public interface IAccountingRepository
 
     #region Post
     Task<Payment> CreatePaymentAsync(Payment payment);
+    Task<Payment> CreatePaymentWithAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
     Task SetLedgerLinePaymentIdAsync(Guid ledgerLineId, Guid paymentId, Guid modifiedBy);
     #endregion
 
     #region Put
     Task<Payment> UpdatePaymentAsync(Payment payment);
+    Task<Payment> UpdatePaymentWithAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
     #endregion
 
     #region Delete

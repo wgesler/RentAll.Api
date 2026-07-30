@@ -142,9 +142,7 @@ namespace RentAll.Api.Controllers
             {
                 var invoice = dto.ToModel(CurrentUser);
                 invoice.OrganizationId = CurrentOrganizationId;
-                var createdInvoice = await _accountingRepository.CreateAsync(invoice);
-
-                await _accountingManager.CreateJournalEntryFromInvoiceAsync(createdInvoice, CurrentUser);
+                var createdInvoice = await _accountingManager.CreateInvoiceAsync(invoice, CurrentUser);
 
                 var response = new InvoiceResponseDto(createdInvoice);
                 return Ok(response);
@@ -249,7 +247,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var deactivatedCount = await _accountingRepository.DeactivateInvoicesByReservationIdAsync(
+                var deactivatedCount = await _accountingManager.DeactivateInvoicesByReservationIdAsync(
                     CurrentOrganizationId, reservationId, CurrentUser);
                 return Ok(new { deactivatedCount });
             }
@@ -268,7 +266,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reactivatedCount = await _accountingRepository.ReactivateInvoicesByReservationIdAsync(
+                var reactivatedCount = await _accountingManager.ReactivateInvoicesByReservationIdAsync(
                     CurrentOrganizationId, reservationId, CurrentUser);
                 return Ok(new { reactivatedCount });
             }
@@ -302,8 +300,7 @@ namespace RentAll.Api.Controllers
                 if (postingStatusCheck != null)
                     return postingStatusCheck;
 
-                await _accountingManager.DeleteJournalEntriesForInvoiceAsync(invoice);
-                await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
+                await _accountingManager.DeleteInvoiceAsync(invoiceId, CurrentOrganizationId);
                 return NoContent();
             }
             catch (Exception ex)

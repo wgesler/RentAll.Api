@@ -84,7 +84,7 @@ public partial class AccountingController
         try
         {
             var payment = dto.ToModel(CurrentUser);
-            var created = await _accountingRepository.CreatePaymentAsync(payment);
+            var created = await _accountingManager.CreatePaymentAsync(payment, CurrentUser);
             var response = new PaymentResponseDto(created);
             return Ok(response);
         }
@@ -112,9 +112,8 @@ public partial class AccountingController
         {
             var payment = dto.ToModel(CurrentUser);
             var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
-            var created = await _accountingManager.ApplyInvoicePaymentAsync(
+            var created = await _accountingManager.CreatePaymentWithInvoiceAllocationsAsync(
                 payment,
-                null,
                 allocations,
                 CurrentOfficeAccess,
                 CurrentUser);
@@ -180,6 +179,60 @@ public partial class AccountingController
 
     #region Put
 
+    [HttpPut("payment/allocations")]
+    public async Task<IActionResult> UpdatePaymentWithAllocations([FromBody] UpdatePaymentWithAllocationsDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var existing = await _accountingRepository.GetPaymentByIdAsync(dto.PaymentId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Payment record not found");
+
+            var postingStatuses = new List<int?> { existing.PostingStatusId };
+            foreach (var allocation in dto.Allocations)
+            {
+                var invoice = await _accountingRepository.GetInvoiceByIdAsync(allocation.InvoiceId, CurrentOrganizationId);
+                if (invoice == null)
+                    return NotFound($"Invoice not found: {allocation.InvoiceId}");
+
+                postingStatuses.Add(invoice.PostingStatusId);
+            }
+
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(StrictestPostingStatus(postingStatuses), "payment");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
+
+            var payment = dto.ToModel(CurrentUser);
+            payment.PostingStatusId = existing.PostingStatusId;
+            if (payment.DepositId is null || payment.DepositId == Guid.Empty)
+                payment.DepositId = existing.DepositId;
+
+            var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
+            var updated = await _accountingManager.UpdatePaymentWithInvoiceAllocationsAsync(
+                payment,
+                allocations,
+                CurrentOfficeAccess,
+                CurrentUser);
+            var response = new PaymentResponseDto(updated);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating payment with allocations: {PaymentId}", dto.PaymentId);
+            return ServerError("An error occurred while updating the payment");
+        }
+    }
+
     [HttpPut("payment")]
     public async Task<IActionResult> UpdatePayment([FromBody] UpdatePaymentDto dto)
     {
@@ -207,7 +260,7 @@ public partial class AccountingController
             payment.PostingStatusId = existing.PostingStatusId;
             if (payment.DepositId is null || payment.DepositId == Guid.Empty)
                 payment.DepositId = existing.DepositId;
-            var updated = await _accountingRepository.UpdatePaymentAsync(payment);
+            var updated = await _accountingManager.UpdatePaymentAsync(payment, CurrentUser);
             var response = new PaymentResponseDto(updated);
             return Ok(response);
         }
