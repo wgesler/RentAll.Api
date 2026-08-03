@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
@@ -186,7 +187,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             {
                 return pairs
                     .Select(x => x.PropertyId)
-                    .Where(id => id != Guid.Empty)
                     .Distinct()
                     .ToList();
             }
@@ -199,7 +199,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         try
         {
             return (JsonSerializer.Deserialize<List<Guid>>(propertiesJson, JsonOptions) ?? new List<Guid>())
-                .Where(id => id != Guid.Empty)
                 .Distinct()
                 .ToList();
         }
@@ -272,7 +271,6 @@ public partial class MaintenanceRepository : IMaintenanceRepository
     private static string SerializeReceiptPropertyIds(List<Guid>? properties)
     {
         var propertyIds = (properties ?? new List<Guid>())
-            .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
 

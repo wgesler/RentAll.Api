@@ -291,10 +291,7 @@ public partial class MaintenanceRepository
         {
             var workOrderId = ResolveSplitWorkOrderId(split, existing: null, workOrderCodeLookup);
             var chartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null;
-            var fallbackPropertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
-            Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
-                ? incomingPropertyId
-                : (fallbackPropertyId != Guid.Empty ? fallbackPropertyId : null);
+            var propertyId = NormalizeSplitPropertyId(split.PropertyId);
             await db.DapperProcQueryAsync<ReceiptSplitEntity>("Maintenance.ReceiptSplit_Add", new
             {
                 ReceiptId = receipt.ReceiptId,
@@ -345,10 +342,7 @@ public partial class MaintenanceRepository
                 : null;
             var workOrderId = ResolveSplitWorkOrderId(split, existing, workOrderCodeLookup);
             var chartOfAccountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId : null;
-            var fallbackPropertyId = receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
-            Guid? propertyId = split.PropertyId is { } incomingPropertyId && incomingPropertyId != Guid.Empty
-                ? incomingPropertyId
-                : (fallbackPropertyId != Guid.Empty ? fallbackPropertyId : null);
+            var propertyId = NormalizeSplitPropertyId(split.PropertyId);
 
             if (split.ReceiptSplitId > 0 && currentSplitIds.Contains(split.ReceiptSplitId))
             {
@@ -433,5 +427,8 @@ public partial class MaintenanceRepository
 
         return existing?.WorkOrderId;
     }
+
+    private static Guid? NormalizeSplitPropertyId(Guid? propertyId) =>
+        propertyId is Guid id && id != Guid.Empty ? id : null;
     #endregion
 }

@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -99,7 +100,9 @@ public partial class AccountingManager
     }
 
     private static Guid? FirstReceiptPropertyId(Receipt receipt)
-        => receipt.PropertyIds.FirstOrDefault(id => id != Guid.Empty) is { } id && id != Guid.Empty ? id : null;
+        => receipt.PropertyIds.FirstOrDefault(id => !ReceiptPropertyConstants.IsCompanyPropertyId(id)) is { } id
+            ? id
+            : null;
 
     private static string? ResolveJournalEntrySourceCodeFromInvoice(Invoice invoice)
         => NormalizeOptionalString(invoice.InvoiceCode);

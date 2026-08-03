@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -566,7 +567,7 @@ public partial class AccountingManager
         var propertyId = ownerSplitLines
             .Select(split => split.PropertyId)
             .FirstOrDefault(splitPropertyId => splitPropertyId is { } id && id != Guid.Empty)
-            ?? bill.PropertyIds.FirstOrDefault(id => id != Guid.Empty);
+            ?? bill.PropertyIds.FirstOrDefault(id => !ReceiptPropertyConstants.IsCompanyPropertyId(id));
         Guid? ownerContactId = null;
         string? propertyCode = null;
         string? ownerContactName = null;

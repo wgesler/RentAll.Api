@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
@@ -43,11 +44,12 @@ public class UpdateReceiptDto
         var requiresPropertyIds = (Splits ?? new List<ReceiptSplitDto>())
             .Any(split => split.ReceiptTypeId != (int)ReceiptType.Company);
 
-        if (requiresPropertyIds && (PropertyIds == null || PropertyIds.Count == 0))
-            return (false, "At least one PropertyId is required");
+        var propertyIds = PropertyIds ?? new List<Guid>();
+        var hasCompanyPropertyId = propertyIds.Any(ReceiptPropertyConstants.IsCompanyPropertyId);
+        var hasRealPropertyIds = propertyIds.Any(id => !ReceiptPropertyConstants.IsCompanyPropertyId(id));
 
-        if (PropertyIds.Any(id => id == Guid.Empty))
-            return (false, "PropertyIds cannot contain empty Guid values");
+        if (requiresPropertyIds && !hasRealPropertyIds && !hasCompanyPropertyId)
+            return (false, "At least one PropertyId is required");
 
         if (ReceiptDate == default)
             return (false, "ReceiptDate is required");
