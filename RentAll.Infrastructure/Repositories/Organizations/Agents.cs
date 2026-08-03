@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 
@@ -68,10 +69,14 @@ public partial class OrganizationRepository
     public async Task<Agent> CreateAgentAsync(Agent agent)
     {
         await using var db = new SqlConnection(_dbConnectionString);
+        var officesJson = agent.Offices != null && agent.Offices.Any()
+            ? JsonSerializer.Serialize(agent.Offices)
+            : "[]";
         var res = await db.DapperProcQueryAsync<AgentEntity>("Organization.Agent_Add", new
         {
             OrganizationId = agent.OrganizationId,
             OfficeId = agent.OfficeId,
+            Offices = officesJson,
             AgentCode = agent.AgentCode,
             Name = agent.Name,
             IsActive = agent.IsActive,
@@ -89,11 +94,15 @@ public partial class OrganizationRepository
     public async Task<Agent> UpdateAgentByIdAsync(Agent agent)
     {
         await using var db = new SqlConnection(_dbConnectionString);
+        var officesJson = agent.Offices != null && agent.Offices.Any()
+            ? JsonSerializer.Serialize(agent.Offices)
+            : "[]";
         var res = await db.DapperProcQueryAsync<AgentEntity>("Organization.Agent_UpdateById", new
         {
             AgentId = agent.AgentId,
             OrganizationId = agent.OrganizationId,
             OfficeId = agent.OfficeId,
+            Offices = officesJson,
             AgentCode = agent.AgentCode,
             Name = agent.Name,
             IsActive = agent.IsActive,

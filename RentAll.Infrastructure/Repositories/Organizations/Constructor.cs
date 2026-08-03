@@ -199,12 +199,29 @@ public partial class OrganizationRepository : IOrganizationRepository
     #region Agents
     private Agent ConvertEntityToModel(AgentEntity e)
     {
+        List<int> offices = new List<int>();
+        if (!string.IsNullOrWhiteSpace(e.Offices))
+        {
+            try
+            {
+                offices = JsonSerializer.Deserialize<List<int>>(e.Offices) ?? new List<int>();
+            }
+            catch
+            {
+                offices = new List<int>();
+            }
+        }
+
+        if (!offices.Any() && e.OfficeId.HasValue && e.OfficeId.Value > 0)
+            offices = new List<int> { e.OfficeId.Value };
+
         var response = new Agent()
         {
             AgentId = e.AgentId,
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             OfficeName = e.OfficeName,
+            Offices = offices,
             AgentCode = e.AgentCode,
             Name = e.Name,
             IsActive = e.IsActive,

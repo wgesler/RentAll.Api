@@ -6,6 +6,7 @@ public class AgentResponseDto
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public List<int> Offices { get; set; } = new List<int>();
     public string AgentCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
@@ -20,6 +21,7 @@ public class AgentResponseDto
         OrganizationId = agent.OrganizationId;
         OfficeId = agent.OfficeId;
         OfficeName = agent.OfficeName;
+        Offices = agent.Offices;
         AgentCode = agent.AgentCode;
         Name = agent.Name;
         IsActive = agent.IsActive;

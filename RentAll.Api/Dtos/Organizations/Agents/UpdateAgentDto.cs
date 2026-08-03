@@ -5,6 +5,7 @@ public class UpdateAgentDto
     public Guid AgentId { get; set; }
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
+    public List<int> Offices { get; set; } = new List<int>();
     public string AgentCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
@@ -26,6 +27,9 @@ public class UpdateAgentDto
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 
+        if ((Offices == null || !Offices.Any(id => id > 0)) && (!OfficeId.HasValue || OfficeId.Value <= 0))
+            return (false, "At least one Office is required");
+
         return (true, null);
     }
 
@@ -36,6 +40,7 @@ public class UpdateAgentDto
             AgentId = AgentId,
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
+            Offices = AgentOfficeDtoExtensions.ResolveOffices(OfficeId, Offices),
             AgentCode = AgentCode,
             Name = Name,
             IsActive = IsActive,

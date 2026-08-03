@@ -6,6 +6,7 @@ public class Agent
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public List<int> Offices { get; set; } = new List<int>();
     public string AgentCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }

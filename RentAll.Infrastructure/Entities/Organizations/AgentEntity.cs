@@ -6,6 +6,7 @@ public class AgentEntity
     public Guid OrganizationId { get; set; }
     public int? OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
+    public string Offices { get; set; } = string.Empty;
     public string AgentCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
