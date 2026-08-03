@@ -22,6 +22,7 @@ public class CreateReceiptDto
     public string? ReceiptPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsUtility { get; set; }
+    public bool BusinessPrivate { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -87,6 +88,7 @@ public class CreateReceiptDto
             PaymentTypeId = 0,
             CheckPrinted = false,
             IsUtility = IsUtility,
+            BusinessPrivate = BusinessPrivate,
             IsActive = true,
             CreatedBy = currentUser
         };

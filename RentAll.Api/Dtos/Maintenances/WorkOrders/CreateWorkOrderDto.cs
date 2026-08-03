@@ -16,6 +16,7 @@ public class CreateWorkOrderDto
     public DateOnly AccountingPeriod { get; set; }
     public bool UseDepartureFee { get; set; } = true;
     public bool EnteredInQb { get; set; }
+    public bool BusinessPrivate { get; set; }
     public List<CreateWorkOrderItemDto> WorkOrderItems { get; set; } = new List<CreateWorkOrderItemDto>();
     public bool IsActive { get; set; }
 
@@ -79,6 +80,7 @@ public class CreateWorkOrderDto
                 : AccountingPeriod,
             UseDepartureFee = UseDepartureFee,
             EnteredInQb = EnteredInQb,
+            BusinessPrivate = BusinessPrivate,
             WorkOrderItems = WorkOrderItems?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<WorkOrderItem>(),
             IsActive = true,
             CreatedBy = currentUser

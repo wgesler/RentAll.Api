@@ -20,6 +20,7 @@ public class WorkOrderResponseDto
     public DateOnly AccountingPeriod { get; set; }
     public bool UseDepartureFee { get; set; }
     public bool EnteredInQb { get; set; }
+    public bool BusinessPrivate { get; set; }
     public int? PostingStatusId { get; set; }
     public List<WorkOrderItem> WorkOrderItems { get; set; } = new List<WorkOrderItem>();
     public bool IsActive { get; set; }
@@ -48,6 +49,7 @@ public class WorkOrderResponseDto
         AccountingPeriod = workOrder.AccountingPeriod;
         UseDepartureFee = workOrder.UseDepartureFee;
         EnteredInQb = workOrder.EnteredInQb;
+        BusinessPrivate = workOrder.BusinessPrivate;
         PostingStatusId = workOrder.PostingStatusId;
         WorkOrderItems = workOrder.WorkOrderItems;
         IsActive = workOrder.IsActive;

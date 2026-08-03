@@ -136,6 +136,7 @@ public partial class MaintenanceRepository
                 UseDepartureFee = workOrder.UseDepartureFee,
                 EnteredInQb = workOrder.EnteredInQb,
                 PostingStatusId = workOrder.PostingStatusId ?? 0,
+                BusinessPrivate = workOrder.BusinessPrivate,
                 IsActive = workOrder.IsActive,
                 CreatedBy = workOrder.CreatedBy
             }, transaction: transaction);
@@ -211,6 +212,7 @@ public partial class MaintenanceRepository
                 UseDepartureFee = workOrder.UseDepartureFee,
                 EnteredInQb = workOrder.EnteredInQb,
                 PostingStatusId = workOrder.PostingStatusId ?? 0,
+                BusinessPrivate = workOrder.BusinessPrivate,
                 IsActive = workOrder.IsActive,
                 ModifiedBy = workOrder.ModifiedBy
             }, transaction: transaction);

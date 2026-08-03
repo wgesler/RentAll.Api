@@ -96,6 +96,7 @@ public partial class MaintenanceRepository
                 PaymentTypeId = receipt.PaymentTypeId,
                 CheckPrinted = receipt.CheckPrinted,
                 IsUtility = receipt.IsUtility,
+                BusinessPrivate = receipt.BusinessPrivate,
                 PostingStatusId = receipt.PostingStatusId ?? 0,
                 IsActive = receipt.IsActive,
                 CreatedBy = receipt.CreatedBy
@@ -190,6 +191,7 @@ public partial class MaintenanceRepository
             PaymentTypeId = receipt.PaymentTypeId,
             CheckPrinted = receipt.CheckPrinted,
             IsUtility = receipt.IsUtility,
+            BusinessPrivate = receipt.BusinessPrivate,
             PostingStatusId = receipt.PostingStatusId ?? 0,
             IsActive = receipt.IsActive,
             ModifiedBy = receipt.ModifiedBy

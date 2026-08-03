@@ -31,6 +31,7 @@ public class Receipt
     public int? PostingStatusId { get; set; }
     public bool CheckPrinted { get; set; }
     public bool IsUtility { get; set; }
+    public bool BusinessPrivate { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

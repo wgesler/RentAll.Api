@@ -31,6 +31,7 @@ public class ReceiptResponseDto
     public int? PostingStatusId { get; set; }
     public bool CheckPrinted { get; set; }
     public bool IsUtility { get; set; }
+    public bool BusinessPrivate { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
@@ -66,6 +67,7 @@ public class ReceiptResponseDto
         PostingStatusId = receipt.PostingStatusId;
         CheckPrinted = receipt.CheckPrinted;
         IsUtility = receipt.IsUtility;
+        BusinessPrivate = receipt.BusinessPrivate;
         IsActive = receipt.IsActive;
         CreatedOn = receipt.CreatedOn;
         CreatedBy = receipt.CreatedByName;

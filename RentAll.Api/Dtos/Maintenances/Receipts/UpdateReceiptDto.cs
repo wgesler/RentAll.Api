@@ -26,6 +26,7 @@ public class UpdateReceiptDto
     public int PaymentTypeId { get; set; }
     public bool CheckPrinted { get; set; }
     public bool IsUtility { get; set; }
+    public bool BusinessPrivate { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -92,6 +93,7 @@ public class UpdateReceiptDto
             PaymentTypeId = PaymentTypeId,
             CheckPrinted = CheckPrinted,
             IsUtility = IsUtility,
+            BusinessPrivate = BusinessPrivate,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

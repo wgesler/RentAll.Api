@@ -22,6 +22,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public bool UseDepartureFee { get; set; }
         public bool EnteredInQb { get; set; }
         public int? PostingStatusId { get; set; }
+        public bool BusinessPrivate { get; set; }
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public Guid CreatedBy { get; set; }
