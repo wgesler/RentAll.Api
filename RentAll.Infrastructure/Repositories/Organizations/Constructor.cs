@@ -3,6 +3,7 @@ using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 
