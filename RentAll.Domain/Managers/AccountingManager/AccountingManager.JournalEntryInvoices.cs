@@ -9,6 +9,8 @@ public partial class AccountingManager
     {
         public DateOnly AccountingPeriod { get; set; }
         public decimal Amount { get; set; }
+        public int Days { get; set; }
+        public decimal PerDiem { get; set; }
     }
 
     #region Triggers
@@ -936,6 +938,12 @@ public partial class AccountingManager
 
         var firstAccountingPeriod = firstPeriodInvoice.AccountingPeriod;
         var secondAccountingPeriod = secondPeriodInvoice.AccountingPeriod;
+        var firstSliceDays = CountInclusiveDays(firstSliceStart, firstSliceEnd);
+        var secondSliceDays = CountInclusiveDays(secondSliceStart, secondSliceEnd);
+        var totalSliceDays = firstSliceDays + secondSliceDays;
+        if (firstSliceDays <= 0 || secondSliceDays <= 0)
+            return new List<InvoicePaymentSplitAllocation>();
+
         decimal firstChargeCap;
         decimal secondChargeCap;
 
@@ -956,12 +964,6 @@ public partial class AccountingManager
             }
             else
             {
-                var firstSliceDays = CountInclusiveDays(firstSliceStart, firstSliceEnd);
-                var secondSliceDays = CountInclusiveDays(secondSliceStart, secondSliceEnd);
-                if (firstSliceDays <= 0 || secondSliceDays <= 0)
-                    return new List<InvoicePaymentSplitAllocation>();
-
-                var totalSliceDays = firstSliceDays + secondSliceDays;
                 firstChargeCap = Math.Round(invoice.TotalAmount * (firstSliceDays / (decimal)totalSliceDays), 2, MidpointRounding.AwayFromZero);
                 secondChargeCap = invoice.TotalAmount - firstChargeCap;
             }
@@ -969,6 +971,9 @@ public partial class AccountingManager
 
         if (firstChargeCap <= 0 || secondChargeCap <= 0)
             return new List<InvoicePaymentSplitAllocation>();
+
+        var chargeTotal = firstChargeCap + secondChargeCap;
+        var perDiem = totalSliceDays > 0 ? chargeTotal / totalSliceDays : 0m;
 
         var firstPaymentAmount = Math.Min(paymentAmount, firstChargeCap);
         var remainingAfterFirst = paymentAmount - firstPaymentAmount;
@@ -978,9 +983,11 @@ public partial class AccountingManager
 
         var allocations = new List<InvoicePaymentSplitAllocation>();
         if (firstPaymentAmount > 0)
-            allocations.Add(new InvoicePaymentSplitAllocation { AccountingPeriod = firstAccountingPeriod, Amount = firstPaymentAmount });
+            allocations.Add(new InvoicePaymentSplitAllocation {AccountingPeriod = firstAccountingPeriod, Amount = firstPaymentAmount, Days = firstSliceDays, PerDiem = perDiem});
+
         if (secondPaymentAmount > 0)
-            allocations.Add(new InvoicePaymentSplitAllocation { AccountingPeriod = secondAccountingPeriod, Amount = secondPaymentAmount });
+            allocations.Add(new InvoicePaymentSplitAllocation {AccountingPeriod = secondAccountingPeriod, Amount = secondPaymentAmount, Days = secondSliceDays, PerDiem = perDiem});
+
         return allocations;
     }
 
@@ -1087,10 +1094,7 @@ public partial class AccountingManager
             .ToList();
         var firstAllocation = orderedAllocations.ElementAtOrDefault(0);
         var secondAllocation = orderedAllocations.ElementAtOrDefault(1);
-        var allocationSummary = string.Join(", ", orderedAllocations.Select(allocation => $"{allocation.AccountingPeriod:MM/yyyy}={allocation.Amount:0.00}"));
-        var finalMessage = string.IsNullOrWhiteSpace(message)
-            ? $"Payment split allocations: {allocationSummary}"
-            : $"{message} {allocationSummary}";
+        var finalMessage = BuildInvoicePaymentSplitLogMessage(paymentLedgerLine.Amount, orderedAllocations, message);
 
         await LogAccountingLogAsync(new AccountingLog
         {
@@ -1107,6 +1111,17 @@ public partial class AccountingManager
             SecondAmount = secondAllocation?.Amount,
             Message = finalMessage
         });
+    }
+
+    private static string BuildInvoicePaymentSplitLogMessage(decimal paymentTotal, IReadOnlyList<InvoicePaymentSplitAllocation> splitAllocations, string? prefix = null)
+    {
+        var allocationDetails = (splitAllocations ?? Array.Empty<InvoicePaymentSplitAllocation>())
+            .OrderBy(allocation => allocation.AccountingPeriod)
+            .Select(allocation =>
+                $"{allocation.AccountingPeriod:MM/yyyy}: {allocation.Days} days @ {allocation.PerDiem:0.00}/day, amount {allocation.Amount:0.00}");
+
+        var body = $"Total payment {paymentTotal:0.00}. {string.Join("; ", allocationDetails)}";
+        return string.IsNullOrWhiteSpace(prefix) ? body : $"{prefix.Trim()} {body}";
     }
     #endregion
 }
