@@ -63,6 +63,7 @@ public partial class AccountingManager
             return;
 
         var sourceLines = await LoadJournalEntryLinesByIdsAsync(sourceLineIds);
+        var escrowDepositAccountId = transfer.BankAccountId is > 0 ? transfer.BankAccountId.Value : 0;
 
         foreach (var split in transfer.Splits)
         {
@@ -73,7 +74,40 @@ public partial class AccountingManager
                 continue;
 
             ApplyJournalEntryLineContextToTransferSplit(split, sourceLine);
+
+            if (escrowDepositAccountId > 0)
+            {
+                var escrowSourceAmount = await ResolveTransferEscrowDepositSourceAmountAsync(
+                    transfer.OrganizationId,
+                    sourceLine,
+                    escrowDepositAccountId);
+                if (escrowSourceAmount.HasValue)
+                    split.SourceJournalEntryLineAmount = escrowSourceAmount.Value;
+            }
         }
+    }
+
+    private async Task<decimal?> ResolveTransferEscrowDepositSourceAmountAsync(
+        Guid organizationId,
+        JournalEntryLine linkedSourceLine,
+        int escrowDepositAccountId)
+    {
+        if (linkedSourceLine.ChartOfAccountId == escrowDepositAccountId)
+            return linkedSourceLine.Debit - linkedSourceLine.Credit;
+
+        if (linkedSourceLine.JournalEntryId == Guid.Empty)
+            return null;
+
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(linkedSourceLine.JournalEntryId, organizationId);
+        if (journalEntry?.JournalEntryLines == null || journalEntry.JournalEntryLines.Count == 0)
+            return null;
+
+        var escrowLine = journalEntry.JournalEntryLines
+            .FirstOrDefault(line => line.ChartOfAccountId == escrowDepositAccountId);
+        if (escrowLine == null)
+            return null;
+
+        return escrowLine.Debit - escrowLine.Credit;
     }
 
     private async Task<Dictionary<Guid, JournalEntryLine>> LoadJournalEntryLinesByIdsAsync(IEnumerable<Guid> journalEntryLineIds)
@@ -105,7 +139,7 @@ public partial class AccountingManager
         split.PropertyId = NormalizeOptionalGuid(sourceLine.PropertyId);
         split.ReservationId = NormalizeOptionalGuid(sourceLine.ReservationId);
         split.ContactId = NormalizeOptionalGuid(sourceLine.ContactId);
-        split.SourceJournalEntryLineAmount = Math.Abs(sourceLine.Debit - sourceLine.Credit);
+        split.SourceJournalEntryLineAmount = sourceLine.Debit - sourceLine.Credit;
     }
 
     public Task EnrichTransferSplitsForDisplayAsync(Transfer transfer)
