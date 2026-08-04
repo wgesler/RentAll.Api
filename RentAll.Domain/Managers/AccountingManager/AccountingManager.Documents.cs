@@ -213,7 +213,8 @@ public partial class AccountingManager
             }
 
             invoice.ModifiedBy = currentUser;
-            await _accountingRepository.UpdateByIdAsync(invoice);
+            var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
+            await PruneOrphanedInvoicePaymentJournalEntriesAsync(updatedInvoice, await GetActiveInvoicePaymentLedgerLinesAsync(updatedInvoice));
         }
 
         await _accountingRepository.DeletePaymentByIdAsync(paymentId, organizationId, currentUser);

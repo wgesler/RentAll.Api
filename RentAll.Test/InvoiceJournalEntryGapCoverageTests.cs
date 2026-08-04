@@ -152,6 +152,7 @@ public class InvoiceJournalEntryGapCoverageTests
         invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == payment.LedgerLineId);
         invoice.PaidAmount -= payment.Amount;
         invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+        context.TrackInvoice(invoice);
 
         await manager.UpdateInvoiceAsync(invoice);
 

@@ -61,7 +61,25 @@ public partial class AccountingManager
     }
 
     private static bool MatchesOwnerActualPaymentJournalEntryMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
-        => string.Equals(entry.Memo, BuildOwnerActualRentMemo(invoice, paymentLedgerLine), StringComparison.Ordinal);
+    {
+        if (entry.JournalEntryKindId != JournalEntryKind.OwnerActual
+            || entry.SourceTypeId != (int)SourceType.Invoice
+            || entry.SourceId != invoice.InvoiceId)
+        {
+            return false;
+        }
+
+        if (string.Equals(entry.Memo, BuildOwnerActualRentMemo(invoice, paymentLedgerLine), StringComparison.Ordinal))
+            return true;
+
+        var paymentDescription = (paymentLedgerLine.Description ?? string.Empty).Trim();
+        if (paymentDescription.Length == 0)
+            return false;
+
+        var memo = (entry.Memo ?? string.Empty).Trim();
+        return memo.Contains(": Owner: Actual:", StringComparison.Ordinal)
+            && memo.EndsWith($"({paymentDescription})", StringComparison.Ordinal);
+    }
 
     private static void AssignRebuiltJournalEntryFromExisting(JournalEntry rebuilt, JournalEntry existing, Guid currentUser)
     {

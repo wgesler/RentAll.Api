@@ -886,6 +886,34 @@ public partial class AccountingManager
             await DeleteOpenJournalEntryAsync(entry.JournalEntryId, invoice.OrganizationId);
     }
 
+    private async Task PruneOrphanedInvoicePaymentJournalEntriesAsync(Invoice invoice, IReadOnlyCollection<LedgerLine> currentPaymentLedgerLines)
+    {
+        var activePaymentLines = (currentPaymentLedgerLines ?? Array.Empty<LedgerLine>())
+            .Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0)
+            .ToList();
+
+        var paymentFlowEntries = (await GetAllJournalEntriesForInvoiceAsync(invoice.OrganizationId, invoice.OfficeId, invoice.InvoiceId))
+            .Where(IsInvoicePaymentFlowOrphanCandidate)
+            .ToList();
+
+        foreach (var entry in paymentFlowEntries)
+        {
+            if (activePaymentLines.Any(line => IsInvoicePaymentLedgerLineJournalEntry(entry, invoice, line)))
+                continue;
+
+            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, invoice.OrganizationId);
+        }
+    }
+
+    private async Task<List<LedgerLine>> GetActiveInvoicePaymentLedgerLinesAsync(Invoice invoice)
+    {
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        return invoice.LedgerLines
+            .Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0)
+            .Where(line => costCodeById.TryGetValue(line.CostCodeId, out var costCode) && IsPaymentLedgerLine(costCode))
+            .ToList();
+    }
+
     private async Task<Guid?> ResolveInvoicePropertyIdAsync(Invoice invoice)
     {
         if (invoice.PropertyId.HasValue && invoice.PropertyId != Guid.Empty)
