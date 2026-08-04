@@ -1115,26 +1115,13 @@ public partial class AccountingManager
         if (rentalStart.Year == rentalEnd.Year && rentalStart.Month == rentalEnd.Month)
             return false;
 
-        var departureDate = reservation.DepartureDate;
-        totalDays = CalculateNumberOfDays(
-            rentalStart,
-            rentalEnd,
-            reservation.BillingType,
-            IsDepartureMonthYear(rentalEnd, departureDate),
-            IsLastDayOfMonth(rentalEnd));
-
+        totalDays = CountInclusiveDays(rentalStart, rentalEnd);
         if (totalDays <= 0)
             return false;
 
         var firstMonthEnd = LastDayOfMonth(rentalStart);
         var firstPeriodEnd = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
-
-        firstDays = CalculateNumberOfDays(
-            rentalStart,
-            firstPeriodEnd,
-            reservation.BillingType,
-            IsDepartureMonthYear(firstPeriodEnd, departureDate),
-            IsLastDayOfMonth(firstPeriodEnd));
+        firstDays = CountInclusiveDays(rentalStart, firstPeriodEnd);
 
         return firstDays > 0 && firstDays <= totalDays;
     }

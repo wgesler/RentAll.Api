@@ -159,7 +159,7 @@ public partial class AccountingManager
 
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
             var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
-            var splitAllocations = await GetInvoicePaymentSplitAllocationsAsync(invoice, paymentLedgerLine, chartOfAccounts, accountingOffice);
+            var splitAllocations = await GetInvoicePaymentSplitAllocationsAsync(invoice, paymentLedgerLine);
 
             if (splitAllocations.Count > 0)
             {
@@ -919,7 +919,7 @@ public partial class AccountingManager
         return costCode?.TransactionType == TransactionType.Payment;
     }
 
-    private async Task<List<InvoicePaymentSplitAllocation>> GetInvoicePaymentSplitAllocationsAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
+    private async Task<List<InvoicePaymentSplitAllocation>> GetInvoicePaymentSplitAllocationsAsync(Invoice invoice, LedgerLine paymentLedgerLine)
     {
         var paymentAmount = paymentLedgerLine.Amount;
         if (paymentAmount == 0)
@@ -947,26 +947,17 @@ public partial class AccountingManager
         decimal firstChargeCap;
         decimal secondChargeCap;
 
-        var postedCharges = await GetCrossPeriodChargesForPaymentSplitAsync(invoice, chartOfAccounts, accountingOffice, firstAccountingPeriod, secondAccountingPeriod);
-        if (postedCharges.HasValue)
+        var apportionedSlices = await TryBuildCrossPeriodApportionedSlicesAsync(invoice);
+        if (apportionedSlices.HasValue)
         {
-            firstChargeCap = postedCharges.Value.FirstPeriodCharge;
-            secondChargeCap = postedCharges.Value.SecondPeriodCharge;
+            var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+            firstChargeCap = SumInvoiceChargeLines(apportionedSlices.Value.FirstSlice, costCodeById);
+            secondChargeCap = SumInvoiceChargeLines(apportionedSlices.Value.SecondSlice, costCodeById);
         }
         else
         {
-            var apportionedSlices = await TryBuildCrossPeriodApportionedSlicesAsync(invoice);
-            if (apportionedSlices.HasValue)
-            {
-                var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-                firstChargeCap = SumInvoiceChargeLines(apportionedSlices.Value.FirstSlice, costCodeById);
-                secondChargeCap = SumInvoiceChargeLines(apportionedSlices.Value.SecondSlice, costCodeById);
-            }
-            else
-            {
-                firstChargeCap = Math.Round(invoice.TotalAmount * (firstSliceDays / (decimal)totalSliceDays), 2, MidpointRounding.AwayFromZero);
-                secondChargeCap = invoice.TotalAmount - firstChargeCap;
-            }
+            firstChargeCap = Math.Round(invoice.TotalAmount * (firstSliceDays / (decimal)totalSliceDays), 2, MidpointRounding.AwayFromZero);
+            secondChargeCap = invoice.TotalAmount - firstChargeCap;
         }
 
         if (firstChargeCap <= 0 || secondChargeCap <= 0)
@@ -989,45 +980,6 @@ public partial class AccountingManager
             allocations.Add(new InvoicePaymentSplitAllocation {AccountingPeriod = secondAccountingPeriod, Amount = secondPaymentAmount, Days = secondSliceDays, PerDiem = perDiem});
 
         return allocations;
-    }
-
-    private async Task<(decimal FirstPeriodCharge, decimal SecondPeriodCharge)?> GetCrossPeriodChargesForPaymentSplitAsync(Invoice invoice, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, DateOnly firstAccountingPeriod, DateOnly secondAccountingPeriod)
-    {
-        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var sourceJournalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = invoice.OrganizationId,
-            OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            SourceId = invoice.InvoiceId,
-            IncludeUnposted = true
-        })).ToList();
-
-        if (sourceJournalEntries.Count == 0)
-            return null;
-
-        var arAmountByPeriod = sourceJournalEntries
-            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Charge)
-            .Select(entry => new
-            {
-                entry.TransactionDate,
-                ArAmount = entry.JournalEntryLines
-                    .Where(line => line.ChartOfAccountId == accountsReceivableAccountId)
-                    .Sum(line => line.Debit - line.Credit)
-            })
-            .Where(item => item.ArAmount != 0)
-            .GroupBy(item => item.TransactionDate)
-            .ToDictionary(group => group.Key, group => Math.Abs(group.Sum(item => item.ArAmount)));
-
-        if (!arAmountByPeriod.TryGetValue(firstAccountingPeriod, out var firstPeriodCharge)
-            || !arAmountByPeriod.TryGetValue(secondAccountingPeriod, out var secondPeriodCharge)
-            || firstPeriodCharge == 0
-            || secondPeriodCharge == 0)
-        {
-            return null;
-        }
-
-        return (firstPeriodCharge, secondPeriodCharge);
     }
 
     private static int CountInclusiveDays(DateOnly start, DateOnly end)
