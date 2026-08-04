@@ -746,9 +746,9 @@ public partial class AccountingManager
 
     private async Task<decimal> GetProratedOwnerFlatAmountAsync(Invoice invoice, decimal flatAmount, LedgerLine rentalLine)
     {
-        // The owner's flat (and minimum) amount is a full-month figure. When the tenant only stays
-        // part of the month, the owner is paid pro rata on the same 30-day basis used for rent — e.g.
-        // a 3000 flat for a 5-day stay pays the owner 500.
+        // The owner's flat (and minimum) amount is a full-month figure. Partial stays use the same
+        // 30-day proration as rent (e.g. 3000 flat for 5 days → 500). Full calendar months
+        // (Feb 28, Jul 31, etc.) and 30+ day stays use the full flat amount.
         if (flatAmount == 0)
             return 0m;
 
@@ -756,7 +756,23 @@ public partial class AccountingManager
         if (days <= 0)
             return 0m;
 
+        var daysInMonth = ResolveOwnerFlatProrateDaysInMonth(invoice, rentalLine);
+        if (!(days < daysInMonth && days < PRORATE_DAYS))
+            return flatAmount;
+
         return Math.Round(flatAmount / PRORATE_DAYS * days, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static int ResolveOwnerFlatProrateDaysInMonth(Invoice invoice, LedgerLine rentalLine)
+    {
+        if (invoice.AccountingPeriod != default)
+            return DateTime.DaysInMonth(invoice.AccountingPeriod.Year, invoice.AccountingPeriod.Month);
+
+        var referenceYear = invoice.InvoiceDate.Year;
+        if (TryParseRentalFeeDateRange(rentalLine.Description, referenceYear, out var rentalStart, out _))
+            return DateTime.DaysInMonth(rentalStart.Year, rentalStart.Month);
+
+        return PRORATE_DAYS;
     }
 
     private async Task<int> GetRentalLedgerLineDaysAsync(Invoice invoice, LedgerLine rentalLine)
