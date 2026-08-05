@@ -168,6 +168,19 @@ public partial class AccountingManager
         var (ownerEscrow, secDep, sdw, fee, propertyId, reservationId, contactId, description) =
             await ClassifyTransferDepositAllocationAsync(organizationId, officeId, scopedDepositJournalEntries, allocationScope, recapContext);
 
+        if (matchedSplit != null)
+        {
+            propertyId = matchedSplit.PropertyId ?? propertyId;
+            reservationId = matchedSplit.ReservationId ?? reservationId;
+            contactId = matchedSplit.ContactId ?? contactId;
+        }
+        else if (allocationScope != null)
+        {
+            propertyId = allocationScope.PropertyId ?? propertyId;
+            reservationId = allocationScope.ReservationId ?? reservationId;
+            contactId = allocationScope.ContactId ?? contactId;
+        }
+
         return BuildTransferDepositAllocationResult(
             depositId,
             resolvedJournalEntryLineId,
