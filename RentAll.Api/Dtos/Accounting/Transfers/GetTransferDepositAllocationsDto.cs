@@ -52,6 +52,7 @@ public class TransferDepositAllocationResponseDto
     {
         DepositId = result.DepositId;
         JournalEntryLineId = result.JournalEntryLineId;
+        EscrowAmount = result.EscrowAmount;
         OwnerEscrow = result.OwnerEscrow;
         SecDep = result.SecDep;
         Sdw = result.Sdw;
@@ -64,6 +65,7 @@ public class TransferDepositAllocationResponseDto
 
     public Guid DepositId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
+    public decimal EscrowAmount { get; set; }
     public decimal OwnerEscrow { get; set; }
     public decimal SecDep { get; set; }
     public decimal Sdw { get; set; }

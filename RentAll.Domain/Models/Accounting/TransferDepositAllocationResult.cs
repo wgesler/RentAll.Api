@@ -11,6 +11,7 @@ public class TransferDepositAllocationResult
 {
     public Guid DepositId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
+    public decimal EscrowAmount { get; set; }
     public decimal OwnerEscrow { get; set; }
     public decimal SecDep { get; set; }
     public decimal Sdw { get; set; }
