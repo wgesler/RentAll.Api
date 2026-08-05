@@ -206,8 +206,8 @@ public partial class AccountingManager
             var contextSplit = group.First();
             var sourceAmount = contextSplit.SourceJournalEntryLineAmount;
             var escrowAmount = sourceAmount.HasValue && sourceAmount.Value != 0
-                ? RoundCurrency(Math.Abs(sourceAmount.Value))
-                : RoundCurrency(Math.Abs(group.Sum(split => split.Amount)));
+                ? RoundCurrency(sourceAmount.Value)
+                : RoundCurrency(group.Sum(split => split.Amount));
 
             var allocation = await ResolveTransferDepositAllocationAsync(
                 organizationId,
