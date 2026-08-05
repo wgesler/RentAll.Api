@@ -197,10 +197,9 @@ public partial class AccountingManager
         // Line 1 — Escrow deposit (transfer.BankAccountId or default escrow deposit):
         //   positive transfer: Debit 0 / Credit escrow deposit
         //   negative transfer: Debit escrow deposit / Credit 0
-        // Lines 2+ — One consolidated line per split account (SecDep / SDW / Owners / Business):
-        //   sum TransferSplit amounts by ChartOfAccountId (not one JE line per sub-ledger split)
-        //   positive total: Debit total / Credit 0
-        //   negative total: Debit 0 / Credit total
+        // Lines 2+ — One JE line per transfer split (each linked to a source escrow JE line).
+        //   positive split: Debit split / Credit 0
+        //   negative split: Debit 0 / Credit split
         // END TRANSFER-JE-ACCOUNTS
 
         var accounts = ResolveTransferJournalEntryAccounts(chartOfAccounts, transfer.OfficeId, accountingOffice);
@@ -223,25 +222,25 @@ public partial class AccountingManager
         ApplyJournalEntryLineContext(bankLine, headerLineContext);
         var journalEntryLines = new List<JournalEntryLine> { bankLine };
 
-        var creditTotalsByAccount = transfer.Splits
-            .GroupBy(split => split.ChartOfAccountId!.Value)
-            .Select(group => (ChartOfAccountId: group.Key, Amount: group.Sum(split => split.Amount)))
-            .Where(group => group.Amount != 0)
-            .OrderBy(group => GetTransferCreditAccountSortOrder(group.ChartOfAccountId, accounts))
-            .ThenBy(group => group.ChartOfAccountId)
+        var destinationSplits = (transfer.Splits ?? [])
+            .Where(split => split.ChartOfAccountId is > 0 && split.Amount != 0)
+            .OrderBy(split => GetTransferCreditAccountSortOrder(split.ChartOfAccountId!.Value, accounts))
+            .ThenBy(split => split.JournalEntryLineId ?? Guid.Empty)
+            .ThenBy(split => split.ChartOfAccountId!.Value)
             .ToList();
 
-        foreach (var creditTotal in creditTotalsByAccount)
+        foreach (var split in destinationSplits)
         {
+            var splitMemo = string.IsNullOrWhiteSpace(split.Description) ? memo : split.Description.Trim();
             var splitLine = new JournalEntryLine
             {
-                ChartOfAccountId = creditTotal.ChartOfAccountId,
-                Debit = creditTotal.Amount > 0 ? creditTotal.Amount : 0,
-                Credit = creditTotal.Amount < 0 ? Math.Abs(creditTotal.Amount) : 0,
-                Memo = memo,
+                ChartOfAccountId = split.ChartOfAccountId!.Value,
+                Debit = split.Amount > 0 ? split.Amount : 0,
+                Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
+                Memo = splitMemo,
                 CreatedBy = currentUser
             };
-            ApplyJournalEntryLineContext(splitLine, headerLineContext);
+            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromTransferSplit(split));
             journalEntryLines.Add(splitLine);
         }
 

@@ -37,14 +37,28 @@ public partial class AccountingManager
             if (item.DepositId == Guid.Empty)
                 continue;
 
-            results.Add(await ResolveTransferDepositAllocationAsync(organizationId, officeId, item.DepositId, item.EscrowAmount, recapContext));
+            results.Add(await ResolveTransferDepositAllocationAsync(
+                organizationId,
+                officeId,
+                item.DepositId,
+                item.EscrowAmount,
+                recapContext,
+                item.JournalEntryLineId));
         }
 
         return results;
     }
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext)
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(
+        Guid organizationId,
+        int officeId,
+        Guid depositId,
+        decimal escrowAmount,
+        TransferDepositRecapAccountContext recapContext,
+        Guid? journalEntryLineId = null)
     {
+        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+
         var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
         {
             OrganizationId = organizationId,
@@ -151,6 +165,17 @@ public partial class AccountingManager
         sdw = RoundCurrency(sdw);
         fee = RoundCurrency(fee);
         var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        var fullDepositEscrowAmount = RoundCurrency(deposit?.Amount ?? normalizedEscrowAmount);
+        if (fullDepositEscrowAmount != 0
+            && Math.Abs(normalizedEscrowAmount - fullDepositEscrowAmount) > 0.005m)
+        {
+            var ratio = normalizedEscrowAmount / fullDepositEscrowAmount;
+            ownerEscrow = RoundCurrency(ownerEscrow * ratio);
+            secDep = RoundCurrency(secDep * ratio);
+            sdw = RoundCurrency(sdw * ratio);
+            fee = RoundCurrency(fee * ratio);
+        }
+
         var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw - fee);
         var drift = RoundCurrency(normalizedEscrowAmount - (ownerEscrow + secDep + sdw + fee + business));
         if (drift != 0)
@@ -159,6 +184,7 @@ public partial class AccountingManager
         return new TransferDepositAllocationResult
         {
             DepositId = depositId,
+            JournalEntryLineId = journalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
             OwnerEscrow = ownerEscrow,
             SecDep = secDep,
             Sdw = sdw,
@@ -214,7 +240,8 @@ public partial class AccountingManager
                 transfer.OfficeId,
                 depositId,
                 escrowAmount,
-                recapContext);
+                recapContext,
+                journalEntryLineId);
 
             results.Add(new TransferReportLineAllocationResult
             {

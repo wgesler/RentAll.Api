@@ -75,6 +75,15 @@ public partial class AccountingManager
             NormalizeOptionalGuid(split.ContactId),
             NormalizeOptionalString(split.ContactName));
 
+    private static JournalEntryLineContext CreateJournalEntryLineContextFromTransferSplit(TransferSplit split)
+        => new(
+            NormalizeOptionalGuid(split.PropertyId),
+            NormalizeOptionalString(split.PropertyCode),
+            NormalizeOptionalGuid(split.ReservationId),
+            NormalizeOptionalString(split.ReservationCode),
+            NormalizeOptionalGuid(split.ContactId),
+            NormalizeOptionalString(split.ContactName));
+
     private static JournalEntryLineContext FirstDepositSplitContext(IEnumerable<DepositSplit> splits)
     {
         var propertyId = FirstSplitContextId(splits, split => split.PropertyId);
