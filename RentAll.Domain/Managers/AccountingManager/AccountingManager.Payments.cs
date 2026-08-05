@@ -145,4 +145,38 @@ public partial class AccountingManager
             application.PaymentLedgerLine.PaymentId = paymentId;
         }
     }
+
+    private async Task SyncLinkedPaymentAmountsFromInvoiceAsync(Invoice invoice, Guid currentUser)
+    {
+        var paymentIds = invoice.LedgerLines
+            .Where(line => line.PaymentId is { } paymentId && paymentId != Guid.Empty)
+            .Select(line => line.PaymentId!.Value)
+            .Distinct()
+            .ToList();
+
+        foreach (var paymentId in paymentIds)
+            await SyncPaymentAmountFromLinkedLedgerLinesAsync(paymentId, invoice.OrganizationId, currentUser);
+    }
+
+    private async Task SyncPaymentAmountFromLinkedLedgerLinesAsync(Guid paymentId, Guid organizationId, Guid currentUser)
+    {
+        if (paymentId == Guid.Empty)
+            return;
+
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        if (payment == null)
+            return;
+
+        var linkedLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
+        if (linkedLines.Count == 0)
+            return;
+
+        var linkedTotal = linkedLines.Sum(line => line.Amount);
+        if (payment.Amount == linkedTotal)
+            return;
+
+        payment.Amount = linkedTotal;
+        payment.ModifiedBy = currentUser;
+        await _accountingRepository.UpdatePaymentAsync(payment);
+    }
 }

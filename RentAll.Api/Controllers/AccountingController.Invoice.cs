@@ -147,6 +147,10 @@ namespace RentAll.Api.Controllers
                 var response = new InvoiceResponseDto(createdInvoice);
                 return Ok(response);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating invoice");
@@ -231,6 +235,10 @@ namespace RentAll.Api.Controllers
 
                 var response = new InvoiceResponseDto(updatedInvoice);
                 return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

@@ -10,6 +10,7 @@ public class UpdateLedgerLineDto
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateOnly LedgerLineDate { get; set; }
+    public Guid? PaymentId { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -38,6 +39,7 @@ public class UpdateLedgerLineDto
             Amount = Amount,
             Description = Description.Trim(),
             LedgerLineDate = LedgerLineDate,
+            PaymentId = PaymentId,
             ModifiedBy = currentUser
         };
     }

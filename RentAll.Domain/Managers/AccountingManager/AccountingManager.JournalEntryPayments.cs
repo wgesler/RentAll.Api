@@ -51,6 +51,8 @@ public partial class AccountingManager
     public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
     {
         var result = new JournalEntrySyncResult();
+        await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
+
         var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
@@ -109,8 +111,6 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
         }
 
-        await CreateJournalEntriesFromUnlinkedInvoicePaymentLinesAsync(organizationId, officeIds, currentUser, result);
-
         if (total == 0)
             ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
 
@@ -158,46 +158,6 @@ public partial class AccountingManager
         await SyncPaymentDocumentLinksAsync(payment, currentUser);
 
         return journalEntries;
-    }
-
-    private async Task CreateJournalEntriesFromUnlinkedInvoicePaymentLinesAsync(Guid organizationId, string officeIds, Guid currentUser, JournalEntrySyncResult result)
-    {
-        foreach (var invoiceSummary in (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IncludeInactive = true,
-            IncludePaid = true
-        })).ToList())
-        {
-            try
-            {
-                var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceSummary.InvoiceId, organizationId);
-                if (invoice == null)
-                    continue;
-
-                var costCodesByOffice = await LoadCostCodeByOfficeIdAsync(organizationId, invoice.OfficeId);
-                foreach (var line in invoice.LedgerLines.Where(line => line.Amount != 0))
-                {
-                    if (!costCodesByOffice.TryGetValue(line.CostCodeId, out var costCode) || !IsPaymentLedgerLine(costCode))
-                        continue;
-
-                    if (line.PaymentId is { } paymentId && paymentId != Guid.Empty)
-                        continue;
-
-                    var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
-                        invoice.OrganizationId,
-                        invoice.OfficeId,
-                        invoice,
-                        line);
-                    await UpsertJournalEntryFromPaymentAsync(invoice, line, existingPaymentEntries, currentUser);
-                }
-            }
-            catch (Exception ex)
-            {
-                result.Errors.Add($"Invoice {invoiceSummary.InvoiceCode} legacy payment: {ex.Message}");
-            }
-        }
     }
 
     private async Task<PaymentApplicationLoadResult> LoadPaymentApplicationsAsync(Payment payment, Guid organizationId, bool strict)

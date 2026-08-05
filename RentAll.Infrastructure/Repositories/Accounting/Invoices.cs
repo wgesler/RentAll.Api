@@ -198,6 +198,8 @@ public partial class AccountingRepository
         {
             if (line.LedgerLineId != Guid.Empty && currentLedgerLineIds.Contains(line.LedgerLineId))
             {
+                var existingLineForId = currentInvoice.LedgerLines.Single(existing => existing.LedgerLineId == line.LedgerLineId);
+                MergeLedgerLineFromExisting(line, existingLineForId);
                 normalizedIncomingLedgerLines.Add(line);
                 incomingLedgerLineIds.Add(line.LedgerLineId);
                 continue;
@@ -209,6 +211,7 @@ public partial class AccountingRepository
                 && !incomingLedgerLineIds.Contains(existingLineForNumber.LedgerLineId))
             {
                 line.LedgerLineId = existingLineForNumber.LedgerLineId;
+                MergeLedgerLineFromExisting(line, existingLineForNumber);
                 normalizedIncomingLedgerLines.Add(line);
                 incomingLedgerLineIds.Add(existingLineForNumber.LedgerLineId);
                 continue;
@@ -218,6 +221,13 @@ public partial class AccountingRepository
             line.LedgerLineId = Guid.Empty;
             normalizedIncomingLedgerLines.Add(line);
         }
+
+        var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
+        var omittedProtectedPaymentTotal = currentInvoice.LedgerLines
+            .Where(line => line.PaymentId is { } paymentId && paymentId != Guid.Empty && !incomingLedgerLineIds.Contains(line.LedgerLineId))
+            .Sum(line => line.Amount);
+        if (omittedProtectedPaymentTotal > 0)
+            invoice.PaidAmount += omittedProtectedPaymentTotal;
 
         // Update the Invoice
         var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_UpdateById", new
@@ -249,9 +259,19 @@ public partial class AccountingRepository
             throw new Exception("Invoice not updated");
 
         // Delete LedgerLines that are no longer in the incoming list
-        var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
         foreach (var ledgerLineId in ledgerLinesToDelete)
         {
+            var lineToDelete = currentInvoice.LedgerLines.Single(existing => existing.LedgerLineId == ledgerLineId);
+            if (lineToDelete.PaymentId is { } paymentId && paymentId != Guid.Empty)
+            {
+                _logger.LogWarning(
+                    "Invoice {InvoiceId} update omitted payment-linked ledger line {LedgerLineId} (PaymentId {PaymentId}). Line was preserved.",
+                    invoice.InvoiceId,
+                    ledgerLineId,
+                    paymentId);
+                continue;
+            }
+
             await db.DapperProcExecuteAsync("Accounting.LedgerLine_DeleteById", new
             {
                 LedgerLineId = ledgerLineId
@@ -279,7 +299,8 @@ public partial class AccountingRepository
             }
             else if (currentLedgerLineIds.Contains(line.LedgerLineId))
             {
-                // Update existing LedgerLine
+                var existingLine = currentInvoice.LedgerLines.Single(existing => existing.LedgerLineId == line.LedgerLineId);
+                MergeLedgerLineFromExisting(line, existingLine);
                 await db.DapperProcQueryAsync<LedgerLineEntity>("Accounting.LedgerLine_UpdateById", new
                 {
                     LedgerLineId = line.LedgerLineId,
@@ -290,6 +311,7 @@ public partial class AccountingRepository
                     Amount = line.Amount,
                     Description = line.Description,
                     LedgerLineDate = line.LedgerLineDate,
+                    PaymentId = ResolvePaymentId(line.PaymentId, existingLine.PaymentId),
                     ModifiedBy = invoice.ModifiedBy
                 }, transaction: transaction);
             }
@@ -300,6 +322,22 @@ public partial class AccountingRepository
             throw new Exception("Invoice not updated");
 
         return updatedInvoice;
+    }
+
+    private static void MergeLedgerLineFromExisting(LedgerLine incoming, LedgerLine existing)
+    {
+        incoming.PaymentId = ResolvePaymentId(incoming.PaymentId, existing.PaymentId);
+        if (incoming.CreatedBy == Guid.Empty)
+            incoming.CreatedBy = existing.CreatedBy;
+    }
+
+    private static Guid? ResolvePaymentId(Guid? incoming, Guid? existing)
+    {
+        if (incoming is { } incomingId && incomingId != Guid.Empty)
+            return incomingId;
+        if (existing is { } existingId && existingId != Guid.Empty)
+            return existingId;
+        return null;
     }
 
     private async Task<Invoice?> LoadInvoiceByIdAsync(

@@ -162,6 +162,56 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
+    public async Task UpdateInvoice_ChangedLinkedPaymentLineAmount_SyncsPaymentHeaderAmount()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 4, 1),
+            new DateOnly(2026, 6, 30),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+
+        var periodStart = new DateOnly(2026, 4, 1);
+        var periodEnd = new DateOnly(2026, 4, 30);
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(reservation, periodStart, periodEnd);
+        var manager = context.CreateManager();
+        var paymentId = Guid.NewGuid();
+
+        var paymentLine = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: 1500m,
+            paymentDate: new DateOnly(2026, 4, 15),
+            description: "Check 8979");
+        paymentLine.PaymentId = paymentId;
+        invoice.LedgerLines.Add(paymentLine);
+        invoice.PaidAmount = 1500m;
+        context.TrackInvoice(invoice);
+        context.TrackPayment(new Payment
+        {
+            PaymentId = paymentId,
+            OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+            OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+            PaymentCode = "PAY-0001",
+            PaymentDate = new DateOnly(2026, 4, 15),
+            Amount = 1500m,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.PaymentCostCodeId,
+            Description = "Check 8979",
+            IsActive = true
+        });
+
+        paymentLine.Amount = 1200m;
+        invoice.PaidAmount = 1200m;
+        invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+        context.TrackInvoice(invoice);
+
+        await manager.UpdateInvoiceAsync(invoice);
+
+        var updatedPayment = context.GetPayment(paymentId);
+        Assert.NotNull(updatedPayment);
+        Assert.Equal(1200m, updatedPayment!.Amount);
+    }
+
+    [Fact]
     public async Task PrePayment_BeforeAccountingPeriod_CreatesReceivedAndApplyJes()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(

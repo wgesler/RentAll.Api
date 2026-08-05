@@ -9,6 +9,7 @@ public partial class AccountingManager
 
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser)
     {
+        await ValidateIncomingInvoicePaymentLedgerLinesAsync(invoice);
         var created = await _accountingRepository.CreateAsync(invoice);
         await CreateJournalEntryFromInvoiceAsync(created, currentUser);
         return created;
@@ -20,9 +21,23 @@ public partial class AccountingManager
         if (existingInvoice == null)
             throw new Exception("Invoice not found");
 
+        MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
+        await ValidateIncomingInvoicePaymentLedgerLinesAsync(invoice);
+
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
+        await SyncLinkedPaymentAmountsFromInvoiceAsync(updatedInvoice, invoice.ModifiedBy);
         await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, existingInvoice);
         return updatedInvoice;
+    }
+
+    private static void MergeInvoiceHeaderFromExisting(Invoice incoming, Invoice existing)
+    {
+        incoming.OrganizationId = existing.OrganizationId;
+        incoming.InvoiceCode = existing.InvoiceCode;
+        incoming.ReservationId = existing.ReservationId;
+        incoming.PostingStatusId = existing.PostingStatusId;
+        incoming.CreatedBy = existing.CreatedBy;
+        incoming.CreatedOn = existing.CreatedOn;
     }
 
     public async Task DeleteInvoiceAsync(Guid invoiceId, Guid organizationId)
