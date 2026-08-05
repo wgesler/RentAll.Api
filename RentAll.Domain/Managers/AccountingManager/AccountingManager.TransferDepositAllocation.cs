@@ -6,7 +6,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private sealed class TransferDepositRecapAccountContext
+    private class TransferDepositRecapAccountContext
     {
         public int AccountsReceivableAccountId { get; init; }
         public int UndepositedFundsAccountId { get; init; }
@@ -15,6 +15,17 @@ public partial class AccountingManager
         public int OwnerExpenseAccountId { get; init; }
         public int TenantIncomeAccountId { get; init; }
         public HashSet<int> RentalIncomeAccountIds { get; init; } = [];
+    }
+
+    private class TransferDepositAllocationScope
+    {
+        public Guid? PaymentId { get; set; }
+        public Guid? InvoiceId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? ReservationId { get; set; }
+        public Guid? ContactId { get; set; }
+        public string? SourceCode { get; set; }
+        public decimal? SplitAmount { get; set; }
     }
 
     public async Task<IReadOnlyList<TransferDepositAllocationResult>> ResolveTransferDepositAllocationsAsync(Guid organizationId, int officeId, IReadOnlyList<TransferDepositAllocationRequestItem> items)
@@ -49,76 +60,180 @@ public partial class AccountingManager
         return results;
     }
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(
-        Guid organizationId,
-        int officeId,
-        Guid depositId,
-        decimal escrowAmount,
-        TransferDepositRecapAccountContext recapContext,
-        Guid? journalEntryLineId = null)
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? journalEntryLineId = null)
     {
         var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
-
         var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
         {
             OrganizationId = organizationId,
             DepositId = depositId
         })).ToList();
 
+        TransferDepositAllocationScope? allocationScope = null;
+        if (journalEntryLineId is { } scopedLineId && scopedLineId != Guid.Empty)
+            allocationScope = await ResolveTransferDepositAllocationScopeAsync(organizationId, deposit, scopedLineId);
+
+        var scopedDepositJournalEntries = await LoadScopedTransferDepositJournalEntriesAsync(organizationId, depositId, depositJournalEntries, allocationScope);
+        var (ownerEscrow, secDep, sdw, fee, propertyId, reservationId, contactId, description) =
+            await ClassifyTransferDepositAllocationAsync(organizationId, officeId, scopedDepositJournalEntries, allocationScope, recapContext);
+
+        return BuildTransferDepositAllocationResult(
+            depositId,
+            journalEntryLineId,
+            escrowAmount,
+            deposit,
+            allocationScope,
+            ownerEscrow,
+            secDep,
+            sdw,
+            fee,
+            propertyId,
+            reservationId,
+            contactId,
+            description);
+    }
+
+    private async Task<TransferDepositAllocationScope?> ResolveTransferDepositAllocationScopeAsync(Guid organizationId, Deposit? deposit, Guid journalEntryLineId)
+    {
+        var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+        if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
+            return null;
+
+        var sourceEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
+        if (sourceEntry == null)
+            return null;
+
+        var scope = new TransferDepositAllocationScope
+        {
+            PropertyId = sourceLine.PropertyId,
+            ReservationId = sourceLine.ReservationId,
+            ContactId = sourceLine.ContactId,
+            SourceCode = sourceEntry.SourceCode,
+            PaymentId = sourceEntry.PaymentId,
+            InvoiceId = sourceEntry.SourceTypeId == (int)SourceType.Invoice ? sourceEntry.SourceId : null
+        };
+
+        var matchedSplit = deposit?.Splits?.FirstOrDefault(split => split.JournalEntryLineId == journalEntryLineId);
+        if (matchedSplit == null && deposit?.Splits != null)
+        {
+            foreach (var split in deposit.Splits)
+            {
+                if (split.JournalEntryLineId is not { } candidateSplitLineId || candidateSplitLineId == Guid.Empty)
+                    continue;
+
+                var candidateSplitSourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(candidateSplitLineId);
+                if (candidateSplitSourceLine == null || candidateSplitSourceLine.JournalEntryId == Guid.Empty)
+                    continue;
+
+                var candidateSplitSourceEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(candidateSplitSourceLine.JournalEntryId, organizationId);
+                if (candidateSplitSourceEntry == null || !JournalEntriesShareTransferDepositAllocationContext(sourceEntry, candidateSplitSourceEntry))
+                    continue;
+
+                matchedSplit = split;
+                break;
+            }
+        }
+
+        if (matchedSplit == null)
+            return scope;
+
+        scope.PropertyId ??= matchedSplit.PropertyId;
+        scope.ReservationId ??= matchedSplit.ReservationId;
+        scope.ContactId ??= matchedSplit.ContactId;
+        scope.SplitAmount = matchedSplit.Amount;
+
+        if (matchedSplit.JournalEntryLineId is not { } matchedSplitLineId || matchedSplitLineId == Guid.Empty)
+            return scope;
+
+        var splitSourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(matchedSplitLineId);
+        if (splitSourceLine == null || splitSourceLine.JournalEntryId == Guid.Empty)
+            return scope;
+
+        var splitSourceEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(splitSourceLine.JournalEntryId, organizationId);
+        if (splitSourceEntry == null)
+            return scope;
+
+        scope.PaymentId ??= splitSourceEntry.PaymentId;
+        scope.InvoiceId ??= splitSourceEntry.SourceTypeId == (int)SourceType.Invoice ? splitSourceEntry.SourceId : null;
+        scope.SourceCode ??= splitSourceEntry.SourceCode;
+
+        return scope;
+    }
+
+    private async Task<List<JournalEntry>> LoadScopedTransferDepositJournalEntriesAsync(Guid organizationId, Guid depositId, IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope? allocationScope)
+    {
+        if (allocationScope == null)
+            return depositJournalEntries.ToList();
+
+        var scopedDepositJournalEntries = depositJournalEntries
+            .Where(entry => MatchesTransferDepositAllocationScope(entry, allocationScope))
+            .ToList();
+
+        if (allocationScope.PaymentId is not { } scopedPaymentId || scopedPaymentId == Guid.Empty)
+            return scopedDepositJournalEntries;
+
+        var paymentJournalEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
+        {
+            OrganizationId = organizationId,
+            PaymentId = scopedPaymentId
+        })).ToList();
+
+        foreach (var paymentJournalEntry in paymentJournalEntries)
+        {
+            if (paymentJournalEntry.DepositId != depositId)
+                continue;
+
+            if (scopedDepositJournalEntries.Any(entry => entry.JournalEntryId == paymentJournalEntry.JournalEntryId))
+                continue;
+
+            if (MatchesTransferDepositAllocationScope(paymentJournalEntry, allocationScope))
+                scopedDepositJournalEntries.Add(paymentJournalEntry);
+        }
+
+        return scopedDepositJournalEntries;
+    }
+
+    private async Task<(decimal OwnerEscrow, decimal SecDep, decimal Sdw, decimal Fee, Guid? PropertyId, Guid? ReservationId, Guid? ContactId, string Description)> ClassifyTransferDepositAllocationAsync(Guid organizationId, int officeId, IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositAllocationScope? allocationScope, TransferDepositRecapAccountContext recapContext)
+    {
         var ownerEscrow = 0m;
         var secDep = 0m;
         var sdw = 0m;
         var fee = 0m;
-        Guid? propertyId = null;
-        Guid? reservationId = null;
-        Guid? contactId = null;
-        var description = string.Empty;
+        Guid? propertyId = allocationScope?.PropertyId;
+        Guid? reservationId = allocationScope?.ReservationId;
+        Guid? contactId = allocationScope?.ContactId;
+        var description = allocationScope?.SourceCode ?? string.Empty;
 
-        foreach (var entry in depositJournalEntries)
+        foreach (var entry in scopedDepositJournalEntries)
         {
-            foreach (var line in entry.JournalEntryLines)
-            {
-                if (!JournalEntryRecapLineClassifier.TryClassify(
-                        BuildTransferDepositRecapClassificationLine(entry, line, recapContext),
-                        out var classification))
-                {
-                    continue;
-                }
-
-                switch (classification.RecapCategory)
-                {
-                    case "OwnerRentActual":
-                        ownerEscrow = RoundCurrency(ownerEscrow + classification.Amount);
-                        break;
-                    case "SecurityDeposit":
-                        secDep = RoundCurrency(secDep + classification.Amount);
-                        break;
-                    case "SDW":
-                        sdw = RoundCurrency(sdw + classification.Amount);
-                        break;
-                    case "Fee":
-                        fee = RoundCurrency(fee + classification.Amount);
-                        break;
-                }
-            }
+            AccumulateTransferDepositClassification(
+                entry,
+                recapContext,
+                ref ownerEscrow,
+                ref secDep,
+                ref sdw,
+                ref fee,
+                includeOwnerEscrow: true);
 
             var contextLine = entry.JournalEntryLines.FirstOrDefault();
             if (contextLine != null)
             {
-                propertyId ??= NormalizeOptionalGuid(contextLine.PropertyId);
-                reservationId ??= NormalizeOptionalGuid(contextLine.ReservationId);
-                contactId ??= NormalizeOptionalGuid(contextLine.ContactId);
+                propertyId ??= contextLine.PropertyId;
+                reservationId ??= contextLine.ReservationId;
+                contactId ??= contextLine.ContactId;
             }
 
             if (string.IsNullOrWhiteSpace(description))
-                description = (entry.SourceCode ?? entry.Memo ?? string.Empty).Trim();
+                description = entry.SourceCode ?? entry.Memo ?? string.Empty;
         }
 
-        var invoiceIds = depositJournalEntries
-            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.SourceId is { } sourceId && sourceId != Guid.Empty)
-            .Select(entry => entry.SourceId!.Value)
-            .Distinct()
-            .ToList();
+        var invoiceIds = allocationScope?.InvoiceId is { } scopedInvoiceId && scopedInvoiceId != Guid.Empty
+            ? [scopedInvoiceId]
+            : scopedDepositJournalEntries
+                .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.SourceId is { } sourceId && sourceId != Guid.Empty)
+                .Select(entry => entry.SourceId!.Value)
+                .Distinct()
+                .ToList();
 
         foreach (var invoiceId in invoiceIds)
         {
@@ -135,37 +250,64 @@ public partial class AccountingManager
 
             foreach (var entry in chargeEntries)
             {
-                foreach (var line in entry.JournalEntryLines)
-                {
-                    if (!JournalEntryRecapLineClassifier.TryClassify(
-                            BuildTransferDepositRecapClassificationLine(entry, line, recapContext),
-                            out var classification))
-                    {
-                        continue;
-                    }
-
-                    switch (classification.RecapCategory)
-                    {
-                        case "SecurityDeposit":
-                            secDep = RoundCurrency(secDep + classification.Amount);
-                            break;
-                        case "SDW":
-                            sdw = RoundCurrency(sdw + classification.Amount);
-                            break;
-                        case "Fee":
-                            fee = RoundCurrency(fee + classification.Amount);
-                            break;
-                    }
-                }
+                AccumulateTransferDepositClassification(
+                    entry,
+                    recapContext,
+                    ref ownerEscrow,
+                    ref secDep,
+                    ref sdw,
+                    ref fee,
+                    includeOwnerEscrow: false);
             }
         }
 
-        ownerEscrow = RoundCurrency(ownerEscrow);
-        secDep = RoundCurrency(secDep);
-        sdw = RoundCurrency(sdw);
-        fee = RoundCurrency(fee);
+        return (
+            RoundCurrency(ownerEscrow),
+            RoundCurrency(secDep),
+            RoundCurrency(sdw),
+            RoundCurrency(fee),
+            propertyId,
+            reservationId,
+            contactId,
+            description);
+    }
+
+    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, bool includeOwnerEscrow)
+    {
+        foreach (var line in entry.JournalEntryLines)
+        {
+            if (!JournalEntryRecapLineClassifier.TryClassify(
+                    BuildTransferDepositRecapClassificationLine(entry, line, recapContext),
+                    out var classification))
+            {
+                continue;
+            }
+
+            switch (classification.RecapCategory)
+            {
+                case "OwnerRentActual" when includeOwnerEscrow:
+                    ownerEscrow = RoundCurrency(ownerEscrow + classification.Amount);
+                    break;
+                case "SecurityDeposit":
+                    secDep = RoundCurrency(secDep + classification.Amount);
+                    break;
+                case "SDW":
+                    sdw = RoundCurrency(sdw + classification.Amount);
+                    break;
+                case "Fee":
+                    fee = RoundCurrency(fee + classification.Amount);
+                    break;
+            }
+        }
+    }
+
+    private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? journalEntryLineId, decimal escrowAmount, Deposit? deposit, TransferDepositAllocationScope? allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, decimal fee, Guid? propertyId, Guid? reservationId, Guid? contactId, string description)
+    {
         var normalizedEscrowAmount = RoundCurrency(escrowAmount);
-        var fullDepositEscrowAmount = RoundCurrency(deposit?.Amount ?? normalizedEscrowAmount);
+        var fullDepositEscrowAmount = allocationScope?.SplitAmount is decimal splitAmount && splitAmount != 0
+            ? RoundCurrency(Math.Abs(splitAmount))
+            : RoundCurrency(deposit?.Amount ?? normalizedEscrowAmount);
+
         if (fullDepositEscrowAmount != 0
             && Math.Abs(normalizedEscrowAmount - fullDepositEscrowAmount) > 0.005m)
         {
@@ -194,6 +336,79 @@ public partial class AccountingManager
             ContactId = contactId,
             Description = description
         };
+    }
+
+    private static bool MatchesTransferDepositAllocationScope(JournalEntry entry, TransferDepositAllocationScope scope)
+    {
+        if (entry.SourceTypeId == (int)SourceType.Deposit)
+            return false;
+
+        if (scope.PaymentId is { } paymentId && paymentId != Guid.Empty && entry.PaymentId == paymentId)
+            return true;
+
+        if (scope.InvoiceId is { } invoiceId
+            && invoiceId != Guid.Empty
+            && entry.SourceTypeId == (int)SourceType.Invoice
+            && entry.SourceId == invoiceId)
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(scope.SourceCode)
+            && string.Equals(entry.SourceCode, scope.SourceCode, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!scope.PropertyId.HasValue && !scope.ReservationId.HasValue)
+            return false;
+
+        return entry.JournalEntryLines.Any(line => JournalEntryLineMatchesTransferDepositAllocationScope(line, scope));
+    }
+
+    private static bool JournalEntryLineMatchesTransferDepositAllocationScope(JournalEntryLine line, TransferDepositAllocationScope scope)
+    {
+        if (scope.PropertyId is { } propertyId
+            && propertyId != Guid.Empty
+            && line.PropertyId != propertyId)
+        {
+            return false;
+        }
+
+        if (scope.ReservationId is { } reservationId
+            && reservationId != Guid.Empty
+            && line.ReservationId != reservationId)
+        {
+            return false;
+        }
+
+        return scope.PropertyId is { } matchedPropertyId && matchedPropertyId != Guid.Empty
+            || scope.ReservationId is { } matchedReservationId && matchedReservationId != Guid.Empty;
+    }
+
+    private static bool JournalEntriesShareTransferDepositAllocationContext(JournalEntry left, JournalEntry right)
+    {
+        if (left.JournalEntryId == right.JournalEntryId)
+            return true;
+
+        if (left.PaymentId is { } leftPaymentId
+            && leftPaymentId != Guid.Empty
+            && leftPaymentId == right.PaymentId)
+        {
+            return true;
+        }
+
+        if (left.SourceTypeId == (int)SourceType.Invoice
+            && right.SourceTypeId == (int)SourceType.Invoice
+            && left.SourceId is { } leftInvoiceId
+            && leftInvoiceId != Guid.Empty
+            && leftInvoiceId == right.SourceId)
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(left.SourceCode)
+            && string.Equals(left.SourceCode, right.SourceCode, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<IReadOnlyList<TransferReportLineAllocationResult>> ResolveTransferReportLineAllocationsAsync(Guid organizationId, Guid transferId)
@@ -305,5 +520,7 @@ public partial class AccountingManager
     }
 
     private static decimal RoundCurrency(decimal value)
-        => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    {
+        return Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    }
 }
