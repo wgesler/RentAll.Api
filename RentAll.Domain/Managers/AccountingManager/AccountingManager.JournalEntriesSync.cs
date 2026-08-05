@@ -319,7 +319,7 @@ public partial class AccountingManager
         return result;
     }
 
-    public async Task<JournalEntrySyncResult> SyncDepositJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> SyncDepositJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
     {
         var result = new JournalEntrySyncResult();
         var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
@@ -383,12 +383,13 @@ public partial class AccountingManager
         if (total == 0)
             ReportSyncProgress(progress, "deposit", total, processed, result, "Completed");
 
-        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+        if (syncDocumentLinksAtEnd)
+            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
         return result;
     }
 
-    public async Task<JournalEntrySyncResult> SyncTransferJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> SyncTransferJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
     {
         var result = new JournalEntrySyncResult();
         var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
@@ -452,7 +453,8 @@ public partial class AccountingManager
         if (total == 0)
             ReportSyncProgress(progress, "transfer", total, processed, result, "Completed");
 
-        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+        if (syncDocumentLinksAtEnd)
+            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
         return result;
     }

@@ -48,7 +48,7 @@ public partial class AccountingManager
         return await CreateJournalEntriesFromPaymentApplicationsAsync(payment, loadResult.Applications, currentUser);
     }
 
-    public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
     {
         var result = new JournalEntrySyncResult();
         var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
@@ -114,7 +114,8 @@ public partial class AccountingManager
         if (total == 0)
             ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
 
-        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+        if (syncDocumentLinksAtEnd)
+            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
         return result;
     }

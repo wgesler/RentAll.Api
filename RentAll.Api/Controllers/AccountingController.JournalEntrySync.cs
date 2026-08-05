@@ -428,29 +428,34 @@ public partial class AccountingController
 
         try
         {
-            using var scope = _serviceScopeFactory.CreateScope();
-            var scopedAccountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
-            await scopedAccountingManager.SyncInvoiceJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncPaymentJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncDepositJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncTransferJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
-            await scopedAccountingManager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, startDate, endDate, progress);
+            SetSyncJobMessage(job, "Syncing invoices...");
+            await RunScopedJournalEntrySyncAsync(manager => manager.SyncInvoiceJournalEntriesAsync(organizationId, officeIds, currentUser, progress));
 
-            lock (job.SyncRoot)
-            {
-                job.Message = "Sync complete.";
-            }
+            SetSyncJobMessage(job, "Syncing payments, bills, receipts, and work orders...");
+            await Task.WhenAll(
+                RunScopedJournalEntrySyncAsync(manager => manager.SyncPaymentJournalEntriesAsync(organizationId, officeIds, currentUser, progress, syncDocumentLinksAtEnd: false)),
+                RunScopedJournalEntrySyncAsync(manager => manager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress)),
+                RunScopedJournalEntrySyncAsync(manager => manager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress)),
+                RunScopedJournalEntrySyncAsync(manager => manager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress)));
+
+            SetSyncJobMessage(job, "Syncing deposits...");
+            await RunScopedJournalEntrySyncAsync(manager => manager.SyncDepositJournalEntriesAsync(organizationId, officeIds, currentUser, progress, syncDocumentLinksAtEnd: false));
+
+            SetSyncJobMessage(job, "Syncing transfers...");
+            await RunScopedJournalEntrySyncAsync(manager => manager.SyncTransferJournalEntriesAsync(organizationId, officeIds, currentUser, progress, syncDocumentLinksAtEnd: false));
+
+            SetSyncJobMessage(job, "Syncing periodic fees...");
+            await RunScopedJournalEntrySyncAsync(manager => manager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, startDate, endDate, progress));
+
+            SetSyncJobMessage(job, "Syncing document links...");
+            await RunScopedJournalEntrySyncAsync(manager => manager.SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress));
+
+            SetSyncJobMessage(job, "Sync complete.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error running journal-entry sync job {JobId}", job.JobId);
-            lock (job.SyncRoot)
-            {
-                job.Message = $"Sync failed: {ex.Message}";
-            }
+            SetSyncJobMessage(job, $"Sync failed: {ex.Message}");
         }
         finally
         {
@@ -459,6 +464,21 @@ public partial class AccountingController
                 job.IsRunning = false;
                 job.IsCompleted = true;
             }
+        }
+    }
+
+    private async Task RunScopedJournalEntrySyncAsync(Func<IAccountingManager, Task> syncAction)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var scopedAccountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
+        await syncAction(scopedAccountingManager);
+    }
+
+    private static void SetSyncJobMessage(JournalEntrySyncJobState job, string message)
+    {
+        lock (job.SyncRoot)
+        {
+            job.Message = message;
         }
     }
 
