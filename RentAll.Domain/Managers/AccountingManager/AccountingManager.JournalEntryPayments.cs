@@ -67,9 +67,26 @@ public partial class AccountingManager
             {
                 var createdEntries = await CreateJournalEntriesFromPaymentDocumentAsync(paymentSummary.PaymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch: true);
                 if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
+                {
                     result.JournalEntriesCreated++;
+                }
                 else
+                {
                     result.JournalEntriesSkipped++;
+                    var payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
+                    var skipMessage = await BuildPaymentSkipDiagnosticMessageAsync(payment, paymentSummary, organizationId);
+                    await LogAccountingErrorAsync(
+                        trigger: "PaymentSkip",
+                        organizationId: organizationId,
+                        officeId: paymentSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.InvoicePayment,
+                        sourceId: paymentSummary.PaymentId,
+                        documentCode: ResolvePaymentDocumentCode(payment, paymentSummary),
+                        accountingPeriod: null,
+                        amount: paymentSummary.Amount,
+                        message: skipMessage,
+                        currentUser: currentUser);
+                }
             }
             catch (Exception ex)
             {
@@ -261,6 +278,73 @@ public partial class AccountingManager
             "Likely cause: invoice payment lines were removed or changed without updating the Payment header (use Delete Payment or Update Payment with allocations to keep them in sync).");
 
         return builder.ToString().Trim();
+    }
+
+    private async Task<string> BuildPaymentSkipDiagnosticMessageAsync(Payment? payment, Payment paymentSummary, Guid organizationId)
+    {
+        var builder = new StringBuilder();
+        AppendPaymentIdentity(builder, payment, paymentSummary);
+        builder.AppendLine($"Description: {ResolvePaymentDescription(payment, paymentSummary)}");
+
+        if (payment == null)
+        {
+            builder.Append("Reason: payment record not found.");
+            return builder.ToString().Trim();
+        }
+
+        builder.AppendLine($"PaymentDate: {payment.PaymentDate:yyyy-MM-dd}");
+        builder.AppendLine($"Header amount: {payment.Amount:0.00}");
+
+        if (payment.LedgerLines.Count == 0)
+        {
+            builder.Append("Reason: no linked invoice ledger lines.");
+            return builder.ToString().Trim();
+        }
+
+        var linkedLedgerLineTotal = payment.LedgerLines.Sum(line => line.Amount);
+        builder.AppendLine($"Linked ledger lines: {payment.LedgerLines.Count} totaling {linkedLedgerLineTotal:0.00}");
+
+        var loadResult = await LoadPaymentApplicationsAsync(payment, organizationId, strict: false);
+        if (loadResult.Applications.Count == 0)
+        {
+            builder.AppendLine("Reason: linked ledger lines exist but none resolved to invoice payment lines.");
+            AppendPaymentLedgerLineIssues(builder, "Skipped linked lines", loadResult.SkippedLines);
+            AppendPaymentLedgerLineIssues(builder, "Failed linked lines", loadResult.FailedLines);
+            return builder.ToString().Trim();
+        }
+
+        var applicationTotal = loadResult.Applications.Sum(application => application.PaymentLedgerLine.Amount);
+        builder.AppendLine($"Resolved applications: {loadResult.Applications.Count} totaling {applicationTotal:0.00}");
+        builder.Append("Reason: payment applications were processed but no journal entries were created or found.");
+        return builder.ToString().Trim();
+    }
+
+    private static void AppendPaymentIdentity(StringBuilder builder, Payment? payment, Payment paymentSummary)
+    {
+        builder.AppendLine($"PaymentId: {paymentSummary.PaymentId}");
+        builder.AppendLine($"PaymentCode: {ResolvePaymentDocumentCode(payment, paymentSummary)}");
+    }
+
+    private static string ResolvePaymentDocumentCode(Payment? payment, Payment paymentSummary)
+    {
+        if (!string.IsNullOrWhiteSpace(payment?.PaymentCode))
+            return payment.PaymentCode.Trim();
+
+        if (!string.IsNullOrWhiteSpace(paymentSummary.PaymentCode))
+            return paymentSummary.PaymentCode.Trim();
+
+        return paymentSummary.PaymentId.ToString();
+    }
+
+    private static string ResolvePaymentDescription(Payment? payment, Payment paymentSummary)
+    {
+        if (!string.IsNullOrWhiteSpace(payment?.Description))
+            return payment.Description.Trim();
+
+        if (!string.IsNullOrWhiteSpace(paymentSummary.Description))
+            return paymentSummary.Description.Trim();
+
+        return ResolvePaymentDocumentCode(payment, paymentSummary);
     }
 
     private static void AppendPaymentLedgerLineIssues(StringBuilder builder, string heading, IReadOnlyList<PaymentLedgerLineLoadIssue> issues)
