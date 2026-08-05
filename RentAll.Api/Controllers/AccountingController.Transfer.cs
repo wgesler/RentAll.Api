@@ -107,6 +107,48 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("transfer/deposit-allocation")]
+    public async Task<IActionResult> ResolveTransferDepositAllocations([FromBody] GetTransferDepositAllocationsDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Transfer deposit allocation criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var allocations = await _accountingManager.ResolveTransferDepositAllocationsAsync(CurrentOrganizationId, dto.OfficeId, dto.ToRequestItems());
+            var response = allocations.Select(allocation => new TransferDepositAllocationResponseDto(allocation)).ToList();
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving transfer deposit allocations");
+            return ServerError("An error occurred while resolving transfer deposit allocations");
+        }
+    }
+
+    [HttpGet("transfer/{transferId:guid}/report-line-allocations")]
+    public async Task<IActionResult> GetTransferReportLineAllocations(Guid transferId)
+    {
+        if (transferId == Guid.Empty)
+            return BadRequest("TransferId is required");
+
+        try
+        {
+            var allocations = await _accountingManager.ResolveTransferReportLineAllocationsAsync(CurrentOrganizationId, transferId);
+            var response = allocations.Select(allocation => new TransferReportLineAllocationResponseDto(allocation)).ToList();
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving transfer report line allocations: {TransferId}", transferId);
+            return ServerError(ex.Message);
+        }
+    }
+
     #endregion
 
     #region Post

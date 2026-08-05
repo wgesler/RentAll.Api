@@ -6,6 +6,9 @@ public interface IJournalEntryRepository
 {
     Task<IEnumerable<JournalEntry>> GetJournalEntriesAsync(JournalEntryGetCriteria criteria);
     Task<IEnumerable<JournalEntry>> GetJournalEntriesBySourceIdAsync(JournalEntryGetBySourceIdCriteria criteria);
+    Task<IEnumerable<JournalEntry>> GetJournalEntriesByPaymentIdAsync(JournalEntryGetByPaymentIdCriteria criteria);
+    Task<IEnumerable<JournalEntry>> GetJournalEntriesByDepositIdAsync(JournalEntryGetByDepositIdCriteria criteria);
+    Task<IEnumerable<JournalEntry>> GetJournalEntriesByTransferIdAsync(JournalEntryGetByTransferIdCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetOwnerApAgingJournalEntryLinesAsync(JournalEntryLineOwnerApAgingGetCriteria criteria);
     Task<IEnumerable<JournalEntryLineSearchResult>> GetReconcileJournalEntryLinesAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);

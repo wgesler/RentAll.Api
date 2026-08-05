@@ -19,6 +19,12 @@ public class JournalEntryResponseDto
     public string? CheckNumber { get; set; }
     public string? Memo { get; set; }
     public bool IsCashOnly { get; set; } = false;
+    public Guid? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public Guid? DepositId { get; set; }
+    public string? DepositCode { get; set; }
+    public Guid? TransferId { get; set; }
+    public string? TransferCode { get; set; }
     public List<JournalEntryLineResponseDto> JournalEntryLines { get; set; } = new List<JournalEntryLineResponseDto>();
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -41,6 +47,12 @@ public class JournalEntryResponseDto
         CheckNumber = journalEntry.CheckNumber;
         Memo = journalEntry.Memo;
         IsCashOnly = journalEntry.IsCashOnly;
+        PaymentId = journalEntry.PaymentId;
+        PaymentCode = journalEntry.PaymentCode;
+        DepositId = journalEntry.DepositId;
+        DepositCode = journalEntry.DepositCode;
+        TransferId = journalEntry.TransferId;
+        TransferCode = journalEntry.TransferCode;
         JournalEntryLines = journalEntry.JournalEntryLines.Select(l => new JournalEntryLineResponseDto(l)).ToList();
         CreatedOn = journalEntry.CreatedOn;
         CreatedBy = journalEntry.CreatedBy;

@@ -168,6 +168,7 @@ public partial class AccountingManager
 
     public async Task<Payment> CreatePaymentAsync(Payment payment, Guid currentUser)
     {
+        await EnsurePaymentCodeAsync(payment);
         var created = await _accountingRepository.CreatePaymentAsync(payment);
         return await _accountingRepository.GetPaymentByIdAsync(created.PaymentId, created.OrganizationId)
             ?? created;
@@ -178,6 +179,11 @@ public partial class AccountingManager
 
     public async Task<Payment> UpdatePaymentAsync(Payment payment, Guid currentUser)
     {
+        var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId)
+            ?? throw new Exception("Payment record not found");
+
+        payment.PaymentCode = existing.PaymentCode;
+
         var updated = await _accountingRepository.UpdatePaymentAsync(payment);
         return await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
             ?? updated;
@@ -194,6 +200,8 @@ public partial class AccountingManager
         var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
         if (payment == null)
             throw new Exception("Payment record not found");
+
+        await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
 
         var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
 
@@ -261,6 +269,7 @@ public partial class AccountingManager
         if (deposit == null)
             throw new Exception("Deposit record not found");
 
+        await ClearDepositDocumentLinksAsync(deposit.OrganizationId, deposit.DepositId, currentUser);
         await DeleteJournalEntriesForDepositAsync(deposit);
         await _accountingRepository.DeleteDepositByIdAsync(depositId, organizationId, currentUser);
     }
@@ -362,6 +371,7 @@ public partial class AccountingManager
         if (transfer == null)
             throw new Exception("Transfer record not found");
 
+        await ClearTransferDocumentLinksAsync(transfer.OrganizationId, transfer.TransferId, currentUser);
         await DeleteJournalEntriesForTransferAsync(transfer);
         await _accountingRepository.DeleteTransferByIdAsync(transferId, organizationId, currentUser);
     }

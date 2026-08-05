@@ -5,6 +5,7 @@ public class PaymentResponseDto
     public Guid PaymentId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
+    public string PaymentCode { get; set; } = string.Empty;
     public string OfficeName { get; set; } = string.Empty;
     public DateOnly PaymentDate { get; set; }
     public decimal Amount { get; set; }
@@ -28,6 +29,7 @@ public class PaymentResponseDto
         PaymentId = payment.PaymentId;
         OrganizationId = payment.OrganizationId;
         OfficeId = payment.OfficeId;
+        PaymentCode = payment.PaymentCode;
         OfficeName = payment.OfficeName;
         PaymentDate = payment.PaymentDate;
         Amount = payment.Amount;

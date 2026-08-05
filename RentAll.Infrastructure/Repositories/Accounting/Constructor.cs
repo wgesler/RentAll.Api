@@ -455,6 +455,7 @@ public partial class AccountingRepository : IAccountingRepository
             PaymentId = e.PaymentId,
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
+            PaymentCode = e.PaymentCode,
             OfficeName = e.OfficeName,
             PaymentDate = e.PaymentDate,
             Amount = e.Amount,

@@ -29,6 +29,12 @@ public class JournalEntryLineSearchResponseDto
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }
     public string? JournalEntryMemo { get; set; }
+    public Guid? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public Guid? DepositId { get; set; }
+    public string? DepositCode { get; set; }
+    public Guid? TransferId { get; set; }
+    public string? TransferCode { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -64,6 +70,12 @@ public class JournalEntryLineSearchResponseDto
         SourceCode = result.SourceCode;
         CheckNumber = result.CheckNumber;
         JournalEntryMemo = result.JournalEntryMemo;
+        PaymentId = result.PaymentId;
+        PaymentCode = result.PaymentCode;
+        DepositId = result.DepositId;
+        DepositCode = result.DepositCode;
+        TransferId = result.TransferId;
+        TransferCode = result.TransferCode;
         CreatedOn = result.CreatedOn;
         CreatedBy = result.CreatedBy;
         ModifiedOn = result.ModifiedOn;

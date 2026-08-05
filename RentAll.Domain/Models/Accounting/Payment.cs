@@ -5,6 +5,7 @@ public class Payment
     public Guid PaymentId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
+    public string PaymentCode { get; set; } = string.Empty;
     public string OfficeName { get; set; } = string.Empty;
     public DateOnly PaymentDate { get; set; }
     public decimal Amount { get; set; }

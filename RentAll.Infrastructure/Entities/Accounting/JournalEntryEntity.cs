@@ -17,6 +17,12 @@ public class JournalEntryEntity
     public string? CheckNumber { get; set; }
     public string? Memo { get; set; }
     public bool IsCashOnly { get; set; } = false;
+    public Guid? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public Guid? DepositId { get; set; }
+    public string? DepositCode { get; set; }
+    public Guid? TransferId { get; set; }
+    public string? TransferCode { get; set; }
     public string? JournalEntryLines { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

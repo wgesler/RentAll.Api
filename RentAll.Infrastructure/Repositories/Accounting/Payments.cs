@@ -106,10 +106,15 @@ public partial class AccountingRepository
 
     private async Task<Payment> CreatePaymentCoreAsync(SqlConnection db, IDbTransaction? transaction, Payment payment)
     {
+        var paymentCode = payment.PaymentCode?.Trim();
+        if (string.IsNullOrWhiteSpace(paymentCode))
+            throw new ArgumentException("PaymentCode is required.", nameof(payment));
+
         var (headers, lines) = await db.DapperProcQueryMultipleAsync<PaymentEntity, PaymentLedgerLineEntity>("Accounting.Payment_Add", new
         {
             OrganizationId = payment.OrganizationId,
             OfficeId = payment.OfficeId,
+            PaymentCode = paymentCode,
             PaymentDate = payment.PaymentDate,
             Amount = payment.Amount,
             CostCodeId = payment.CostCodeId,

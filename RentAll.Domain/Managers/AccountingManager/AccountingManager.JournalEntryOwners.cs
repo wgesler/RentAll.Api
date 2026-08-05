@@ -263,7 +263,7 @@ public partial class AccountingManager
         if (journalEntryLines.Count == 0)
             return null;
 
-        return ClassifyJournalEntry(new JournalEntry
+        var journalEntry = ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
@@ -279,6 +279,9 @@ public partial class AccountingManager
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         }, JournalEntryKind.OwnerActual, Perspective.Owner);
+
+        await ApplyPaymentDocumentLinkAsync(journalEntry, paymentLedgerLine, invoice.OrganizationId);
+        return journalEntry;
     }
 
     private List<JournalEntryLine> BuildJournalEntryLinesForOwnerActual(Invoice invoice, decimal actualAmount, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, string memo, Guid currentUser)

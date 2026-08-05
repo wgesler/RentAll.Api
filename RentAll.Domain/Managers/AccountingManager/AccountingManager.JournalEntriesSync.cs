@@ -392,6 +392,8 @@ public partial class AccountingManager
         if (total == 0)
             ReportSyncProgress(progress, "deposit", total, processed, result, "Completed");
 
+        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+
         return result;
     }
 
@@ -467,6 +469,8 @@ public partial class AccountingManager
 
         if (total == 0)
             ReportSyncProgress(progress, "transfer", total, processed, result, "Completed");
+
+        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
         return result;
     }

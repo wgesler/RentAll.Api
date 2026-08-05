@@ -55,6 +55,8 @@ public partial class AccountingManager
             }
         }
 
+        await SyncPaymentDocumentLinksAsync(payment, currentUser);
+
         return journalEntries;
     }
 
@@ -145,6 +147,8 @@ public partial class AccountingManager
         if (total == 0)
             ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
 
+        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+
         return result;
     }
     #endregion
@@ -182,5 +186,102 @@ public partial class AccountingManager
     }
 
     private sealed record PaymentApplicationContext(Invoice Invoice, LedgerLine PaymentLedgerLine);
+    #endregion
+
+    #region Document Link
+    private async Task ApplyPaymentDocumentLinkAsync(JournalEntry journalEntry, LedgerLine paymentLedgerLine, Guid organizationId)
+    {
+        if (paymentLedgerLine.PaymentId is not { } paymentId || paymentId == Guid.Empty)
+            return;
+
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId)
+            ?? throw new Exception($"Payment record not found for PaymentId {paymentId}.");
+
+        ApplyPaymentDocumentLink(journalEntry, payment);
+    }
+
+    private static void ApplyPaymentDocumentLink(JournalEntry journalEntry, Payment payment)
+    {
+        if (payment.PaymentId == Guid.Empty)
+            return;
+
+        journalEntry.PaymentId = payment.PaymentId;
+        journalEntry.PaymentCode = payment.PaymentCode.Trim();
+    }
+
+    private static void ClearPaymentDocumentLink(JournalEntry journalEntry)
+    {
+        journalEntry.PaymentId = null;
+        journalEntry.PaymentCode = null;
+    }
+
+    private async Task SyncPaymentDocumentLinksAsync(Payment payment, Guid currentUser)
+    {
+        if (payment.PaymentId == Guid.Empty || !payment.IsActive)
+            return;
+
+        if (!await IsAccountingFeatureEnabledAsync(payment.OrganizationId))
+            return;
+
+        await EnsurePaymentCodePersistedAsync(payment, currentUser);
+
+        await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
+
+        var linkedEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
+        {
+            OrganizationId = payment.OrganizationId,
+            PaymentId = payment.PaymentId
+        })).ToList();
+
+        foreach (var journalEntry in linkedEntries)
+        {
+            ApplyPaymentDocumentLink(journalEntry, payment);
+            journalEntry.ModifiedBy = currentUser;
+            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+        }
+
+        foreach (var paymentLine in payment.LedgerLines.Where(line => line.Amount != 0))
+        {
+            if (paymentLine.InvoiceId == Guid.Empty)
+                continue;
+
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, payment.OrganizationId);
+            if (invoice == null)
+                continue;
+
+            var ledgerLine = ToInvoicePaymentLedgerLine(paymentLine);
+            var paymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                invoice.OrganizationId,
+                invoice.OfficeId,
+                invoice,
+                ledgerLine);
+
+            foreach (var journalEntry in paymentEntries)
+            {
+                ApplyPaymentDocumentLink(journalEntry, payment);
+                journalEntry.ModifiedBy = currentUser;
+                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+            }
+        }
+    }
+
+    private async Task ClearPaymentDocumentLinksAsync(Guid organizationId, Guid paymentId, Guid currentUser)
+    {
+        if (paymentId == Guid.Empty)
+            return;
+
+        var linkedEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
+        {
+            OrganizationId = organizationId,
+            PaymentId = paymentId
+        })).ToList();
+
+        foreach (var journalEntry in linkedEntries)
+        {
+            ClearPaymentDocumentLink(journalEntry);
+            journalEntry.ModifiedBy = currentUser;
+            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+        }
+    }
     #endregion
 }

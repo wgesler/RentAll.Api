@@ -97,6 +97,8 @@ public interface IAccountingManager
     Task<Transfer> PostTransferReportAsync(Guid transferId, Guid organizationId, Guid currentUser);
     Task DeleteTransferAsync(Guid transferId, Guid organizationId, Guid currentUser);
     Task EnrichTransferSplitsForDisplayAsync(Transfer transfer);
+    Task<IReadOnlyList<TransferDepositAllocationResult>> ResolveTransferDepositAllocationsAsync(Guid organizationId, int officeId, IReadOnlyList<TransferDepositAllocationRequestItem> items);
+    Task<IReadOnlyList<TransferReportLineAllocationResult>> ResolveTransferReportLineAllocationsAsync(Guid organizationId, Guid transferId);
     #endregion
 
     Task ApplyDocumentPostingStatusFromReconcileAsync(CompleteReconcileRequest request, Guid organizationId, Guid currentUser);
@@ -124,6 +126,7 @@ public interface IAccountingManager
     Task<JournalEntrySyncResult> SyncWorkOrderJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> SyncDepositJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> SyncTransferJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
+    Task SyncDocumentLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(
         Guid organizationId,
         string officeIds,

@@ -41,6 +41,42 @@ public partial class JournalEntryRepository
         return MapJournalEntriesWithLineEntities(headers, lines);
     }
 
+    public async Task<IEnumerable<JournalEntry>> GetJournalEntriesByPaymentIdAsync(JournalEntryGetByPaymentIdCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetByPaymentId", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            PaymentId = criteria.PaymentId
+        });
+
+        return MapJournalEntriesWithLineEntities(headers, lines);
+    }
+
+    public async Task<IEnumerable<JournalEntry>> GetJournalEntriesByDepositIdAsync(JournalEntryGetByDepositIdCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetByDepositId", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            DepositId = criteria.DepositId
+        });
+
+        return MapJournalEntriesWithLineEntities(headers, lines);
+    }
+
+    public async Task<IEnumerable<JournalEntry>> GetJournalEntriesByTransferIdAsync(JournalEntryGetByTransferIdCriteria criteria)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var (headers, lines) = await db.DapperProcQueryMultipleAsync<JournalEntryEntity, JournalEntryLineEntity>("Accounting.JournalEntry_GetByTransferId", new
+        {
+            OrganizationId = criteria.OrganizationId,
+            TransferId = criteria.TransferId
+        });
+
+        return MapJournalEntriesWithLineEntities(headers, lines);
+    }
+
     public async Task<IEnumerable<JournalEntryLineSearchResult>> GetJournalEntryLinesAsync(JournalEntryLineGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -205,6 +241,12 @@ public partial class JournalEntryRepository
                     CheckNumber = journalEntry.CheckNumber,
                     Memo = journalEntry.Memo,
                     IsCashOnly = journalEntry.IsCashOnly,
+                    PaymentId = journalEntry.PaymentId,
+                    PaymentCode = journalEntry.PaymentCode,
+                    DepositId = journalEntry.DepositId,
+                    DepositCode = journalEntry.DepositCode,
+                    TransferId = journalEntry.TransferId,
+                    TransferCode = journalEntry.TransferCode,
                     CreatedBy = journalEntry.CreatedBy
                 }, transaction: transaction);
 
@@ -284,6 +326,12 @@ public partial class JournalEntryRepository
                 CheckNumber = journalEntry.CheckNumber,
                 Memo = journalEntry.Memo,
                 IsCashOnly = journalEntry.IsCashOnly,
+                PaymentId = journalEntry.PaymentId,
+                PaymentCode = journalEntry.PaymentCode,
+                DepositId = journalEntry.DepositId,
+                DepositCode = journalEntry.DepositCode,
+                TransferId = journalEntry.TransferId,
+                TransferCode = journalEntry.TransferCode,
                 ModifiedBy = journalEntry.ModifiedBy
             }, transaction: transaction);
 

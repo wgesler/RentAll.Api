@@ -74,6 +74,12 @@ public partial class AccountingManager
         journalEntry.SourceTypeId = existing.SourceTypeId;
         journalEntry.SourceId = existing.SourceId;
         journalEntry.IsCashOnly = existing.IsCashOnly;
+        journalEntry.PaymentId = existing.PaymentId;
+        journalEntry.PaymentCode = existing.PaymentCode;
+        journalEntry.DepositId = existing.DepositId;
+        journalEntry.DepositCode = existing.DepositCode;
+        journalEntry.TransferId = existing.TransferId;
+        journalEntry.TransferCode = existing.TransferCode;
         if (string.IsNullOrWhiteSpace(journalEntry.SourceCode))
             journalEntry.SourceCode = existing.SourceCode;
 
@@ -100,6 +106,7 @@ public partial class AccountingManager
         journalEntry.JournalEntryCode = existing.JournalEntryCode;
         // SourceTypeId/SourceId are insert-only in SQL; keep rebuilt Kind/SourceCode/IsCashOnly.
         journalEntry.SourceCode = string.IsNullOrWhiteSpace(journalEntry.SourceCode) ? existing.SourceCode : journalEntry.SourceCode;
+        PreserveJournalEntryDocumentLinksUnlessSet(journalEntry, existing);
         journalEntry.PostingStatusId = postImmediately ? PostingStatus.Posted : existing.PostingStatusId;
         journalEntry.CreatedBy = existing.CreatedBy;
 
@@ -410,4 +417,22 @@ public partial class AccountingManager
         => journalEntry.PostingStatusId is PostingStatus.Open
             or PostingStatus.Posted
             or PostingStatus.SoftClosed;
+
+    private static void PreserveJournalEntryDocumentLinksUnlessSet(JournalEntry journalEntry, JournalEntry existing)
+    {
+        if (journalEntry.PaymentId is null || journalEntry.PaymentId == Guid.Empty)
+            journalEntry.PaymentId = existing.PaymentId;
+        if (string.IsNullOrWhiteSpace(journalEntry.PaymentCode))
+            journalEntry.PaymentCode = existing.PaymentCode;
+
+        if (journalEntry.DepositId is null || journalEntry.DepositId == Guid.Empty)
+            journalEntry.DepositId = existing.DepositId;
+        if (string.IsNullOrWhiteSpace(journalEntry.DepositCode))
+            journalEntry.DepositCode = existing.DepositCode;
+
+        if (journalEntry.TransferId is null || journalEntry.TransferId == Guid.Empty)
+            journalEntry.TransferId = existing.TransferId;
+        if (string.IsNullOrWhiteSpace(journalEntry.TransferCode))
+            journalEntry.TransferCode = existing.TransferCode;
+    }
 }

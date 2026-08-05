@@ -33,5 +33,11 @@ public class JournalEntryLineSearchEntity
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }
     public string? JournalEntryMemo { get; set; }
+    public Guid? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public Guid? DepositId { get; set; }
+    public string? DepositCode { get; set; }
+    public Guid? TransferId { get; set; }
+    public string? TransferCode { get; set; }
     public DateTimeOffset JournalEntryCreatedOn { get; set; }
 }

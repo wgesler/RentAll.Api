@@ -735,7 +735,7 @@ public partial class AccountingManager
         };
         ApplyJournalEntryLineContext(accountsReceivableLine, lineContext);
 
-        return ClassifyJournalEntry(new JournalEntry
+        var journalEntry = ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
@@ -750,6 +750,9 @@ public partial class AccountingManager
             JournalEntryLines = new List<JournalEntryLine> { undepositedFundsLine, accountsReceivableLine },
             CreatedBy = currentUser
         }, JournalEntryKind.Payment, Perspective.Company);
+
+        await ApplyPaymentDocumentLinkAsync(journalEntry, paymentLedgerLine, invoice.OrganizationId);
+        return journalEntry;
     }
 
     private async Task<JournalEntry> CreateJournalEntryFromPrePaymentReceivedAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
@@ -791,7 +794,7 @@ public partial class AccountingManager
         };
         ApplyJournalEntryLineContext(prePaymentLine, lineContext);
 
-        return ClassifyJournalEntry(new JournalEntry
+        var journalEntry = ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
@@ -804,6 +807,9 @@ public partial class AccountingManager
             JournalEntryLines = new List<JournalEntryLine> { accountsReceivableLine, prePaymentLine },
             CreatedBy = currentUser
         }, JournalEntryKind.PrePaymentReceive, Perspective.Tenant);
+
+        await ApplyPaymentDocumentLinkAsync(journalEntry, paymentLedgerLine, invoice.OrganizationId);
+        return journalEntry;
     }
 
     private async Task<JournalEntry> CreateJournalEntryFromPrePaymentApplyAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
@@ -845,7 +851,7 @@ public partial class AccountingManager
         };
         ApplyJournalEntryLineContext(accountsReceivableLine, lineContext);
 
-        return ClassifyJournalEntry(new JournalEntry
+        var journalEntry = ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
@@ -858,6 +864,9 @@ public partial class AccountingManager
             JournalEntryLines = new List<JournalEntryLine> { prePaymentLine, accountsReceivableLine },
             CreatedBy = currentUser
         }, JournalEntryKind.PrePaymentApply, Perspective.Company);
+
+        await ApplyPaymentDocumentLinkAsync(journalEntry, paymentLedgerLine, invoice.OrganizationId);
+        return journalEntry;
     }
 
     private async Task ValidatePrePaymentLedgerLineForJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine)
@@ -1059,6 +1068,7 @@ public partial class AccountingManager
             Amount = amount,
             Description = source.Description,
             LedgerLineDate = source.LedgerLineDate,
+            PaymentId = source.PaymentId,
             CreatedOn = source.CreatedOn,
             CreatedBy = source.CreatedBy,
             ModifiedOn = source.ModifiedOn,

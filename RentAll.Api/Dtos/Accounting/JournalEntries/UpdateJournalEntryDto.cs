@@ -16,6 +16,12 @@ public class UpdateJournalEntryDto
     public Guid? SourceId { get; set; }
     public string? Memo { get; set; }
     public bool IsCashOnly { get; set; }
+    public Guid? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public Guid? DepositId { get; set; }
+    public string? DepositCode { get; set; }
+    public Guid? TransferId { get; set; }
+    public string? TransferCode { get; set; }
     public int JournalEntryKindId { get; set; } = (int)JournalEntryKind.Manual;
     public List<UpdateJournalEntryLineDto> JournalEntryLines { get; set; } = new List<UpdateJournalEntryLineDto>();
 
@@ -63,6 +69,12 @@ public class UpdateJournalEntryDto
             SourceId = SourceId,
             Memo = Memo,
             IsCashOnly = IsCashOnly,
+            PaymentId = PaymentId is { } paymentId && paymentId != Guid.Empty ? paymentId : null,
+            PaymentCode = PaymentCode,
+            DepositId = DepositId is { } depositId && depositId != Guid.Empty ? depositId : null,
+            DepositCode = DepositCode,
+            TransferId = TransferId is { } transferId && transferId != Guid.Empty ? transferId : null,
+            TransferCode = TransferCode,
             JournalEntryKindId = (JournalEntryKind)JournalEntryKindId,
             JournalEntryLines = JournalEntryLines?.Select(l => l.ToModel(currentUser)).ToList() ?? new List<JournalEntryLine>(),
             ModifiedBy = currentUser,

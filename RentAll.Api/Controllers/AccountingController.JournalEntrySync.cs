@@ -239,6 +239,32 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/sync/document-links")]
+    public async Task<IActionResult> SyncDocumentLinks([FromBody] SyncJournalEntriesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var officeIds = ResolveRequestedOfficeIds(dto);
+            if (string.IsNullOrWhiteSpace(officeIds))
+                return Forbid();
+
+            await _accountingManager.SyncDocumentLinksAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            return Ok(new { message = "Document links synced." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing journal entry document links");
+            return ServerError("An error occurred while syncing journal entry document links");
+        }
+    }
+
     [HttpPost("journal-entry/sync/all/start")]
     public IActionResult StartAllJournalEntriesSync([FromBody] SyncJournalEntriesRequestDto dto)
     {

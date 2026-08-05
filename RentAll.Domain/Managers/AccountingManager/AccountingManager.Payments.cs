@@ -1,9 +1,22 @@
 namespace RentAll.Domain.Managers;
 
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 public partial class AccountingManager
 {
+    private async Task EnsurePaymentCodeAsync(Payment payment)
+    {
+        if (!string.IsNullOrWhiteSpace(payment.PaymentCode))
+            return;
+
+        var paymentCode = await _organizationManager.GenerateEntityCodeAsync(payment.OrganizationId, EntityType.Payment);
+        if (string.IsNullOrWhiteSpace(paymentCode))
+            throw new Exception("Unable to generate payment code");
+
+        payment.PaymentCode = paymentCode.Trim();
+    }
+
     public async Task<Payment> ApplyInvoicePaymentAsync(Payment payment, IReadOnlyList<Guid>? autoSplitInvoiceIds, IReadOnlyList<PaymentInvoiceAllocation>? explicitAllocations, string officeAccess, Guid currentUser)
     {
         if (explicitAllocations != null && explicitAllocations.Count > 0)
@@ -17,6 +30,7 @@ public partial class AccountingManager
 
     private async Task<Payment> ApplyInvoicePaymentWithAutoSplitAsync(Payment payment, IReadOnlyList<Guid> invoiceIds, string officeAccess, Guid currentUser)
     {
+        await EnsurePaymentCodeAsync(payment);
         var createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
 
         var invoicePayment = await ApplyPaymentToInvoicesAsync(
@@ -43,6 +57,7 @@ public partial class AccountingManager
         Payment? createdPayment = null;
         try
         {
+            await EnsurePaymentCodeAsync(payment);
             createdPayment = await _accountingRepository.CreatePaymentWithAllocationsAsync(payment, allocations, currentUser);
             await CreateJournalEntriesFromPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
         }
@@ -69,6 +84,9 @@ public partial class AccountingManager
         if (existing == null)
             throw new Exception("Payment record not found");
 
+        payment.PaymentCode = existing.PaymentCode;
+
+        await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
         await DeleteJournalEntriesForPaymentAsync(existing);
 
         var updatedPayment = await _accountingRepository.UpdatePaymentWithAllocationsAsync(payment, allocations, currentUser);
