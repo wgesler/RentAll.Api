@@ -353,17 +353,8 @@ public partial class AccountingManager
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromDepositWithResultAsync(deposit, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = deposit.OrganizationId,
-                        OfficeIds = deposit.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.Deposit,
-                        SourceId = deposit.DepositId,
-                        IncludeUnposted = true
-                    },
-                    result);
+                await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
+                result.JournalEntriesCreated++;
             }
             catch (Exception ex)
             {
@@ -431,17 +422,8 @@ public partial class AccountingManager
                     transfer = await _accountingRepository.UpdateTransferAsync(transfer);
                 }
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromTransferWithResultAsync(transfer, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = transfer.OrganizationId,
-                        OfficeIds = transfer.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.Transfer,
-                        SourceId = transfer.TransferId,
-                        IncludeUnposted = true
-                    },
-                    result);
+                await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
+                result.JournalEntriesCreated++;
             }
             catch (Exception ex)
             {

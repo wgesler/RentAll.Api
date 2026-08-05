@@ -70,13 +70,7 @@ public partial class AccountingManager
         });
 
         if (existingEntries.Any())
-        {
-            if (logDecisions)
-            {
-                await LogDepartureFeeDecisionAsync(organizationId, reservation.OfficeId, reservation.PropertyId, reservation.PropertyCode, reservation.ReservationCode, reservation.DepartureDate, amount: null, "Skipped — departure journal entry already exists.");
-            }
             return;
-        }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, reservation.OfficeId);
         var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);

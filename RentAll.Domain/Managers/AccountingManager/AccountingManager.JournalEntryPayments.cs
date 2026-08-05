@@ -81,7 +81,7 @@ public partial class AccountingManager
                     paymentSummary.PaymentId,
                     organizationId,
                     currentUser);
-                if (createdEntries.Count > 0)
+                if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
                     result.JournalEntriesCreated++;
                 else
                     result.JournalEntriesSkipped++;
@@ -186,6 +186,40 @@ public partial class AccountingManager
     }
 
     private sealed record PaymentApplicationContext(Invoice Invoice, LedgerLine PaymentLedgerLine);
+
+    private async Task<bool> PaymentHasJournalEntriesAsync(Guid paymentId, Guid organizationId)
+    {
+        if (paymentId == Guid.Empty)
+            return false;
+
+        var linkedEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria {OrganizationId = organizationId, PaymentId = paymentId});
+        if (linkedEntries.Any())
+            return true;
+
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        if (payment == null)
+            return false;
+
+        foreach (var paymentLine in payment.LedgerLines.Where(line => line.Amount != 0))
+        {
+            if (paymentLine.InvoiceId == Guid.Empty)
+                continue;
+
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, organizationId);
+            if (invoice == null)
+                continue;
+
+            var paymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                invoice.OrganizationId,
+                invoice.OfficeId,
+                invoice,
+                ToInvoicePaymentLedgerLine(paymentLine));
+            if (paymentEntries.Any())
+                return true;
+        }
+
+        return false;
+    }
     #endregion
 
     #region Document Link
