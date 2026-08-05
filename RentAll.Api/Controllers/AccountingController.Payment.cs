@@ -306,7 +306,7 @@ public partial class AccountingController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting payment: {PaymentId}", paymentId);
-            return ServerError("An error occurred while deleting the payment");
+            return BadRequest(ex.Message);
         }
     }
 

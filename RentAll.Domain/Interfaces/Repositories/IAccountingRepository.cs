@@ -11,7 +11,7 @@ public interface IAccountingRepository
     Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId, Guid organizationId);
 
     Task<Invoice> CreateAsync(Invoice invoice);
-    Task<Invoice> UpdateByIdAsync(Invoice invoice);
+    Task<Invoice> UpdateByIdAsync(Invoice invoice, bool allowPaymentLinkedLineDeletion = false);
     Task<IReadOnlyList<Invoice>> UpdateByIdsInTransactionAsync(IReadOnlyList<Invoice> invoices);
     Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
     Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);

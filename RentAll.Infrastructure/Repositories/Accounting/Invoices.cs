@@ -120,7 +120,7 @@ public partial class AccountingRepository
     #endregion
 
     #region Updates
-    public async Task<Invoice> UpdateByIdAsync(Invoice invoice)
+    public async Task<Invoice> UpdateByIdAsync(Invoice invoice, bool allowPaymentLinkedLineDeletion = false)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.OpenAsync();
@@ -128,7 +128,7 @@ public partial class AccountingRepository
 
         try
         {
-            var updatedInvoice = await UpdateByIdCoreAsync(db, transaction, invoice);
+            var updatedInvoice = await UpdateByIdCoreAsync(db, transaction, invoice, allowPaymentLinkedLineDeletion);
             await transaction.CommitAsync();
             return updatedInvoice;
         }
@@ -152,7 +152,7 @@ public partial class AccountingRepository
         {
             var updatedInvoices = new List<Invoice>(invoices.Count);
             foreach (var invoice in invoices)
-                updatedInvoices.Add(await UpdateByIdCoreAsync(db, transaction, invoice));
+                updatedInvoices.Add(await UpdateByIdCoreAsync(db, transaction, invoice, allowPaymentLinkedLineDeletion: false));
 
             await transaction.CommitAsync();
             return updatedInvoices;
@@ -164,7 +164,7 @@ public partial class AccountingRepository
         }
     }
 
-    private async Task<Invoice> UpdateByIdCoreAsync(SqlConnection db, IDbTransaction transaction, Invoice invoice)
+    private async Task<Invoice> UpdateByIdCoreAsync(SqlConnection db, IDbTransaction transaction, Invoice invoice, bool allowPaymentLinkedLineDeletion = false)
     {
         var currentInvoice = await LoadInvoiceByIdAsync(db, transaction, invoice.InvoiceId, invoice.OrganizationId);
         if (currentInvoice == null)
@@ -223,11 +223,14 @@ public partial class AccountingRepository
         }
 
         var ledgerLinesToDelete = currentLedgerLineIds.Except(incomingLedgerLineIds).ToList();
-        var omittedProtectedPaymentTotal = currentInvoice.LedgerLines
-            .Where(line => line.PaymentId is { } paymentId && paymentId != Guid.Empty && !incomingLedgerLineIds.Contains(line.LedgerLineId))
-            .Sum(line => line.Amount);
-        if (omittedProtectedPaymentTotal > 0)
-            invoice.PaidAmount += omittedProtectedPaymentTotal;
+        if (!allowPaymentLinkedLineDeletion)
+        {
+            var omittedProtectedPaymentTotal = currentInvoice.LedgerLines
+                .Where(line => line.PaymentId is { } paymentId && paymentId != Guid.Empty && !incomingLedgerLineIds.Contains(line.LedgerLineId))
+                .Sum(line => line.Amount);
+            if (omittedProtectedPaymentTotal > 0)
+                invoice.PaidAmount += omittedProtectedPaymentTotal;
+        }
 
         // Update the Invoice
         var response = await db.DapperProcQueryAsync<InvoiceEntity>("Accounting.Invoice_UpdateById", new
@@ -262,7 +265,9 @@ public partial class AccountingRepository
         foreach (var ledgerLineId in ledgerLinesToDelete)
         {
             var lineToDelete = currentInvoice.LedgerLines.Single(existing => existing.LedgerLineId == ledgerLineId);
-            if (lineToDelete.PaymentId is { } paymentId && paymentId != Guid.Empty)
+            if (!allowPaymentLinkedLineDeletion
+                && lineToDelete.PaymentId is { } paymentId
+                && paymentId != Guid.Empty)
             {
                 _logger.LogWarning(
                     "Invoice {InvoiceId} update omitted payment-linked ledger line {LedgerLineId} (PaymentId {PaymentId}). Line was preserved.",
