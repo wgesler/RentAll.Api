@@ -45,7 +45,7 @@ public interface IAccountingManager
     Task<JournalEntry?> CreateJournalEntriesFromPrePaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
     Task<JournalEntry?> CreatePrePaymentReceivedJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
     Task<JournalEntry?> CreatePrePaymentApplyJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
-    Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser);
+    Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false);
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromDepositAsync(Deposit deposit, Guid currentUser);

@@ -1,12 +1,13 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
+using System.Text;
 
 namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
     #region Journal Entry
-    public async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser)
+    public async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
     {
         var journalEntries = new List<JournalEntry>();
 
@@ -20,11 +21,92 @@ public partial class AccountingManager
         if (payment == null || payment.LedgerLines.Count == 0)
             return journalEntries;
 
-        var applications = await LoadPaymentApplicationsAsync(payment, organizationId);
-        if (applications.Count == 0)
+        var loadResult = await LoadPaymentApplicationsAsync(payment, organizationId, strict: !allowPartialAllocationsOnMismatch);
+        if (loadResult.Applications.Count == 0)
             return journalEntries;
 
-        ValidatePaymentApplicationsTotal(payment, applications);
+        var allocationTotal = loadResult.Applications.Sum(application => application.PaymentLedgerLine.Amount);
+        if (allocationTotal != payment.Amount)
+        {
+            var diagnostic = BuildPaymentAllocationDiagnosticMessage(payment, loadResult, allocationTotal);
+            if (!allowPartialAllocationsOnMismatch)
+                throw new Exception(diagnostic);
+
+            await LogAccountingErrorAsync(
+                trigger: "Payment",
+                organizationId: payment.OrganizationId,
+                officeId: payment.OfficeId,
+                sourceTypeId: (int)SourceType.InvoicePayment,
+                sourceId: payment.PaymentId,
+                documentCode: payment.PaymentCode,
+                accountingPeriod: null,
+                amount: payment.Amount,
+                message: diagnostic,
+                currentUser: currentUser);
+        }
+
+        return await CreateJournalEntriesFromPaymentApplicationsAsync(payment, loadResult.Applications, currentUser);
+    }
+
+    public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var result = new JournalEntrySyncResult();
+        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
+            .OrderBy(payment => payment.PaymentDate)
+            .ThenBy(payment => payment.PaymentId)
+            .ToList();
+        var total = payments.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "payment", total, processed, result, "Running");
+
+        foreach (var paymentSummary in payments)
+        {
+            result.DocumentsProcessed++;
+
+            try
+            {
+                var createdEntries = await CreateJournalEntriesFromPaymentDocumentAsync(paymentSummary.PaymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch: true);
+                if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
+                    result.JournalEntriesCreated++;
+                else
+                    result.JournalEntriesSkipped++;
+            }
+            catch (Exception ex)
+            {
+                var message = $"Payment {paymentSummary.Description}: {ex.Message}";
+                result.Errors.Add(message);
+                await LogAccountingErrorAsync(
+                    trigger: "Payment",
+                    organizationId: organizationId,
+                    officeId: paymentSummary.OfficeId,
+                    sourceTypeId: (int)SourceType.InvoicePayment,
+                    sourceId: paymentSummary.PaymentId,
+                    documentCode: paymentSummary.Description,
+                    accountingPeriod: null,
+                    amount: paymentSummary.Amount,
+                    message: message,
+                    currentUser: currentUser);
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        await CreateJournalEntriesFromUnlinkedInvoicePaymentLinesAsync(organizationId, officeIds, currentUser, result);
+
+        if (total == 0)
+            ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
+
+        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+
+        return result;
+    }
+    #endregion
+
+    #region Helpers
+    private async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentApplicationsAsync(Payment payment, IReadOnlyList<PaymentApplicationContext> applications, Guid currentUser)
+    {
+        var journalEntries = new List<JournalEntry>();
 
         var existingPaymentDocumentEntries = await GetJournalEntriesForSourceAsync(
             payment.OrganizationId,
@@ -60,53 +142,8 @@ public partial class AccountingManager
         return journalEntries;
     }
 
-    public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    private async Task CreateJournalEntriesFromUnlinkedInvoicePaymentLinesAsync(Guid organizationId, string officeIds, Guid currentUser, JournalEntrySyncResult result)
     {
-        var result = new JournalEntrySyncResult();
-        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
-            .OrderBy(payment => payment.PaymentDate)
-            .ThenBy(payment => payment.PaymentId)
-            .ToList();
-        var total = payments.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "payment", total, processed, result, "Running");
-
-        foreach (var paymentSummary in payments)
-        {
-            result.DocumentsProcessed++;
-
-            try
-            {
-                var createdEntries = await CreateJournalEntriesFromPaymentDocumentAsync(
-                    paymentSummary.PaymentId,
-                    organizationId,
-                    currentUser);
-                if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
-                    result.JournalEntriesCreated++;
-                else
-                    result.JournalEntriesSkipped++;
-            }
-            catch (Exception ex)
-            {
-                var message = $"Payment {paymentSummary.Description}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Payment",
-                    organizationId: organizationId,
-                    officeId: paymentSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.InvoicePayment,
-                    sourceId: paymentSummary.PaymentId,
-                    documentCode: paymentSummary.Description,
-                    accountingPeriod: null,
-                    amount: paymentSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
-            }
-
-            processed++;
-            ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
-
         foreach (var invoiceSummary in (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
@@ -143,49 +180,107 @@ public partial class AccountingManager
                 result.Errors.Add($"Invoice {invoiceSummary.InvoiceCode} legacy payment: {ex.Message}");
             }
         }
-
-        if (total == 0)
-            ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
-
-        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
-
-        return result;
     }
-    #endregion
 
-    #region Helpers
-    private async Task<List<PaymentApplicationContext>> LoadPaymentApplicationsAsync(Payment payment, Guid organizationId)
+    private async Task<PaymentApplicationLoadResult> LoadPaymentApplicationsAsync(Payment payment, Guid organizationId, bool strict)
     {
         var applications = new List<PaymentApplicationContext>();
+        var skippedLines = new List<PaymentLedgerLineLoadIssue>();
+        var failedLines = new List<PaymentLedgerLineLoadIssue>();
 
         foreach (var paymentLine in payment.LedgerLines.OrderBy(line => line.InvoiceCode).ThenBy(line => line.LineNumber))
         {
-            if (paymentLine.LedgerLineId == Guid.Empty || paymentLine.Amount == 0)
+            if (paymentLine.LedgerLineId == Guid.Empty)
+            {
+                skippedLines.Add(new PaymentLedgerLineLoadIssue(paymentLine, "LedgerLineId is empty"));
                 continue;
+            }
+
+            if (paymentLine.Amount == 0)
+            {
+                skippedLines.Add(new PaymentLedgerLineLoadIssue(paymentLine, "Amount is zero"));
+                continue;
+            }
 
             var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, organizationId);
             if (invoice == null)
-                throw new Exception($"Invoice not found for payment allocation: {paymentLine.InvoiceCode}");
+            {
+                var reason = $"Invoice not found: {paymentLine.InvoiceCode}";
+                if (strict)
+                    throw new Exception(reason);
+
+                failedLines.Add(new PaymentLedgerLineLoadIssue(paymentLine, reason));
+                continue;
+            }
 
             var paymentLedgerLine = invoice.LedgerLines.SingleOrDefault(line => line.LedgerLineId == paymentLine.LedgerLineId);
             if (paymentLedgerLine == null)
-                throw new Exception($"Payment ledger line not found on invoice {invoice.InvoiceCode}");
+            {
+                var reason = $"Payment ledger line not found on invoice {invoice.InvoiceCode} (line may have been removed from the invoice without deleting the payment).";
+                if (strict)
+                    throw new Exception(reason);
+
+                failedLines.Add(new PaymentLedgerLineLoadIssue(paymentLine, reason));
+                continue;
+            }
 
             paymentLedgerLine.PaymentId = payment.PaymentId;
             applications.Add(new PaymentApplicationContext(invoice, paymentLedgerLine));
         }
 
-        return applications;
+        return new PaymentApplicationLoadResult(applications, skippedLines, failedLines);
     }
 
-    private static void ValidatePaymentApplicationsTotal(Payment payment, IReadOnlyList<PaymentApplicationContext> applications)
+    private static string BuildPaymentAllocationDiagnosticMessage(Payment payment, PaymentApplicationLoadResult loadResult, decimal resolvedApplicationTotal)
     {
-        var allocationTotal = applications.Sum(application => application.PaymentLedgerLine.Amount);
-        if (allocationTotal != payment.Amount)
-            throw new Exception($"Payment allocation total {allocationTotal:0.00} does not match payment amount {payment.Amount:0.00}.");
+        var linkedLedgerLineTotal = payment.LedgerLines.Sum(line => line.Amount);
+        var builder = new StringBuilder();
+        builder.AppendLine($"Payment allocation mismatch for {payment.Description.Trim()} ({payment.PaymentCode}).");
+        builder.AppendLine($"PaymentId: {payment.PaymentId}");
+        builder.AppendLine($"PaymentDate: {payment.PaymentDate:yyyy-MM-dd}");
+        builder.AppendLine($"Header amount: {payment.Amount:0.00}");
+        builder.AppendLine($"Linked ledger lines: {payment.LedgerLines.Count} totaling {linkedLedgerLineTotal:0.00}");
+        builder.AppendLine($"Resolved applications: {loadResult.Applications.Count} totaling {resolvedApplicationTotal:0.00}");
+        builder.AppendLine($"Unallocated on payment header: {(payment.Amount - resolvedApplicationTotal):0.00}");
+
+        if (loadResult.Applications.Count > 0)
+        {
+            builder.AppendLine("Applied lines:");
+            foreach (var application in loadResult.Applications)
+            {
+                var line = application.PaymentLedgerLine;
+                builder.AppendLine(
+                    $"  - {application.Invoice.InvoiceCode} line {line.LineNumber}: {line.Amount:0.00} ({line.Description}) [LedgerLineId={line.LedgerLineId}]");
+            }
+        }
+
+        AppendPaymentLedgerLineIssues(builder, "Skipped linked lines", loadResult.SkippedLines);
+        AppendPaymentLedgerLineIssues(builder, "Failed linked lines", loadResult.FailedLines);
+
+        builder.Append(
+            "Likely cause: invoice payment lines were removed or changed without updating the Payment header (use Delete Payment or Update Payment with allocations to keep them in sync).");
+
+        return builder.ToString().Trim();
+    }
+
+    private static void AppendPaymentLedgerLineIssues(StringBuilder builder, string heading, IReadOnlyList<PaymentLedgerLineLoadIssue> issues)
+    {
+        if (issues.Count == 0)
+            return;
+
+        builder.AppendLine($"{heading}:");
+        foreach (var issue in issues)
+        {
+            builder.AppendLine(
+                $"  - {issue.Line.InvoiceCode} line {issue.Line.LineNumber}: {issue.Line.Amount:0.00} ({issue.Line.Description}) [LedgerLineId={issue.Line.LedgerLineId}] — {issue.Reason}");
+        }
     }
 
     private sealed record PaymentApplicationContext(Invoice Invoice, LedgerLine PaymentLedgerLine);
+
+    private sealed record PaymentLedgerLineLoadIssue(PaymentLedgerLine Line, string Reason);
+
+    private sealed record PaymentApplicationLoadResult(IReadOnlyList<PaymentApplicationContext> Applications, IReadOnlyList<PaymentLedgerLineLoadIssue> SkippedLines, IReadOnlyList<PaymentLedgerLineLoadIssue> FailedLines);
 
     private async Task<bool> PaymentHasJournalEntriesAsync(Guid paymentId, Guid organizationId)
     {
