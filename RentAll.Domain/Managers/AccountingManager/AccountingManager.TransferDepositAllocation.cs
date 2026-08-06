@@ -16,13 +16,17 @@ public partial class AccountingManager
         public int OwnerAccountsPayableAccountId { get; init; }
         public int OwnerExpenseAccountId { get; init; }
         public int TenantIncomeAccountId { get; init; }
+        public int EscrowSecDepAccountId { get; init; }
+        public int EscrowSdwAccountId { get; init; }
         public HashSet<int> RentalIncomeAccountIds { get; init; } = [];
     }
 
     private class TransferDepositAllocationScope
     {
         public Guid PaymentId { get; init; }
+        public Guid? InvoiceId { get; init; }
         public string SourceCode { get; init; } = string.Empty;
+        public string PaymentMemoSourceCode { get; init; } = string.Empty;
         public decimal SplitAmount { get; init; }
         public Guid? PropertyId { get; init; }
         public Guid? ReservationId { get; init; }
@@ -159,6 +163,8 @@ public partial class AccountingManager
             OrganizationId = organizationId,
             DepositId = depositId
         })).ToList();
+
+        depositJournalEntries = await MergeTransferDepositInvoiceChargeJournalEntriesAsync(organizationId, deposit.OfficeId, depositJournalEntries, allocationScope);
 
         var scopedDepositJournalEntries = FilterDepositLinkedJournalEntriesForScope(depositJournalEntries, allocationScope);
         if (scopedDepositJournalEntries.Count == 0)
@@ -365,10 +371,18 @@ public partial class AccountingManager
                 $"Payment journal entry {paymentJournalEntry.JournalEntryCode} is missing SourceCode for deposit {deposit.DepositCode}.");
         }
 
+        Guid? invoiceId = paymentJournalEntry.SourceTypeId == (int)SourceType.Invoice
+            && paymentJournalEntry.SourceId is { } sourceInvoiceId
+            && sourceInvoiceId != Guid.Empty
+            ? sourceInvoiceId
+            : null;
+
         return new TransferDepositAllocationScope
         {
             PaymentId = paymentId,
+            InvoiceId = invoiceId,
             SourceCode = paymentJournalEntry.SourceCode.Trim(),
+            PaymentMemoSourceCode = ResolveTransferDepositPaymentMemoSourceCode(paymentJournalEntry, paymentLine),
             SplitAmount = split.Amount,
             PropertyId = split.PropertyId,
             ReservationId = split.ReservationId,
@@ -379,6 +393,27 @@ public partial class AccountingManager
     #endregion
 
     #region Deposit-Linked Journal Entry Selection
+
+    private async Task<List<JournalEntry>> MergeTransferDepositInvoiceChargeJournalEntriesAsync(Guid organizationId, int officeId, IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope allocationScope)
+    {
+        var mergedEntries = depositJournalEntries.ToList();
+        if (allocationScope.InvoiceId is not { } invoiceId || invoiceId == Guid.Empty || string.IsNullOrWhiteSpace(allocationScope.SourceCode))
+            return mergedEntries;
+
+        var existingJournalEntryIds = mergedEntries.Select(entry => entry.JournalEntryId).ToHashSet();
+        var invoiceChargeJournalEntries = (await GetAllJournalEntriesForInvoiceAsync(organizationId, officeId, invoiceId))
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Charge
+                && string.Equals(entry.SourceCode, allocationScope.SourceCode, StringComparison.OrdinalIgnoreCase)
+                && MatchesTransferDepositInvoiceChargeJournalEntry(entry, allocationScope));
+
+        foreach (var invoiceChargeJournalEntry in invoiceChargeJournalEntries)
+        {
+            if (existingJournalEntryIds.Add(invoiceChargeJournalEntry.JournalEntryId))
+                mergedEntries.Add(invoiceChargeJournalEntry);
+        }
+
+        return mergedEntries;
+    }
 
     private static List<JournalEntry> FilterDepositLinkedJournalEntriesForScope(IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope allocationScope)
     {
@@ -397,6 +432,8 @@ public partial class AccountingManager
         var secDep = 0m;
         var sdw = 0m;
         var fee = 0m;
+        var hasSecurityDepositActual = scopedDepositJournalEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositActual);
+        var hasSecurityDepositWaiverActual = scopedDepositJournalEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositWaiverActual);
 
         foreach (var entry in scopedDepositJournalEntries)
         {
@@ -407,7 +444,9 @@ public partial class AccountingManager
                 ref secDep,
                 ref sdw,
                 ref fee,
-                includeOwnerEscrow: entry.JournalEntryKindId != JournalEntryKind.Charge);
+                includeOwnerEscrow: entry.JournalEntryKindId != JournalEntryKind.Charge,
+                preferChargeSecurityDeposit: !hasSecurityDepositActual,
+                preferChargeSdw: !hasSecurityDepositWaiverActual);
         }
 
         return (
@@ -469,11 +508,56 @@ public partial class AccountingManager
         if (entry.SourceTypeId == (int)SourceType.Deposit)
             return false;
 
-        return entry.PaymentId == scope.PaymentId
-            && string.Equals(entry.SourceCode, scope.SourceCode, StringComparison.OrdinalIgnoreCase);
+        if (!string.Equals(entry.SourceCode, scope.SourceCode, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (entry.JournalEntryKindId == JournalEntryKind.Charge
+            && entry.SourceTypeId == (int)SourceType.Invoice)
+        {
+            return MatchesTransferDepositInvoiceChargeJournalEntry(entry, scope);
+        }
+
+        return entry.PaymentId == scope.PaymentId;
     }
 
-    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, bool includeOwnerEscrow)
+    private static string ResolveTransferDepositPaymentMemoSourceCode(JournalEntry paymentJournalEntry, JournalEntryLine? paymentLine = null)
+    {
+        var paymentMemoMatch = MatchPaymentMemo(paymentJournalEntry.Memo, paymentLine?.Memo);
+        if (paymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(paymentMemoMatch.SourceCode))
+            return paymentMemoMatch.SourceCode.Trim();
+
+        return paymentJournalEntry.SourceCode?.Trim() ?? string.Empty;
+    }
+
+    private static bool MatchesTransferDepositInvoiceChargeJournalEntry(JournalEntry chargeEntry, TransferDepositAllocationScope scope)
+    {
+        if (chargeEntry.JournalEntryKindId != JournalEntryKind.Charge
+            || chargeEntry.SourceTypeId != (int)SourceType.Invoice)
+        {
+            return false;
+        }
+
+        if (scope.InvoiceId is { } scopeInvoiceId
+            && scopeInvoiceId != Guid.Empty
+            && chargeEntry.SourceId is { } invoiceId
+            && invoiceId != Guid.Empty
+            && scopeInvoiceId != invoiceId)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(scope.PaymentMemoSourceCode))
+            return true;
+
+        var memo = CoalesceJournalEntryMemo(chargeEntry.Memo, chargeEntry.JournalEntryLines?.FirstOrDefault()?.Memo);
+        if (string.IsNullOrWhiteSpace(memo))
+            return false;
+
+        var chargePrefix = memo.Split(':', 2, StringSplitOptions.None)[0].Trim();
+        return string.Equals(chargePrefix, scope.PaymentMemoSourceCode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, bool includeOwnerEscrow, bool preferChargeSecurityDeposit = true, bool preferChargeSdw = true)
     {
         foreach (var line in entry.JournalEntryLines ?? [])
         {
@@ -489,10 +573,10 @@ public partial class AccountingManager
                 case "OwnerRentActual" when includeOwnerEscrow:
                     ownerEscrow = RoundCurrency(ownerEscrow + classification.Amount);
                     break;
-                case "SecurityDeposit":
+                case "SecurityDeposit" when preferChargeSecurityDeposit || entry.JournalEntryKindId != JournalEntryKind.Charge:
                     secDep = RoundCurrency(secDep + classification.Amount);
                     break;
-                case "SDW":
+                case "SDW" when preferChargeSdw || entry.JournalEntryKindId != JournalEntryKind.Charge:
                     sdw = RoundCurrency(sdw + classification.Amount);
                     break;
                 case "Fee":
@@ -517,6 +601,8 @@ public partial class AccountingManager
             OwnerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, officeId, accountingOffice),
             OwnerExpenseAccountId = GetDefaultOwnerExpense(chartOfAccounts, officeId, accountingOffice),
             TenantIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice),
+            EscrowSecDepAccountId = GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, officeId, accountingOffice),
+            EscrowSdwAccountId = GetDefaultEscrowSdwAccount(chartOfAccounts, officeId, accountingOffice),
             RentalIncomeAccountIds = rentalIncomeAccountIds
         };
     }
@@ -539,6 +625,8 @@ public partial class AccountingManager
             DefaultOwnActPayableAccountId = recapContext.OwnerAccountsPayableAccountId,
             DefaultOwnerExpAccountId = recapContext.OwnerExpenseAccountId,
             DefaultTenantIncAccountId = recapContext.TenantIncomeAccountId,
+            DefaultEscrowSecDepAccountId = recapContext.EscrowSecDepAccountId,
+            DefaultEscrowSdwAccountId = recapContext.EscrowSdwAccountId,
             IsRentalIncomeAccount = recapContext.RentalIncomeAccountIds.Contains(line.ChartOfAccountId),
             IsCashOnly = entry.IsCashOnly
         };

@@ -39,6 +39,24 @@ public static class JournalEntryRecapLineClassifier
             return true;
         }
 
+        if (kind == (int)JournalEntryKind.SecurityDepositActual
+            && line.DefaultEscrowSecDepAccountId is > 0
+            && line.ChartOfAccountId == line.DefaultEscrowSecDepAccountId
+            && credit > 0)
+        {
+            result = BuildResult("SecurityDeposit", credit - debit, line, memo, sourceTypeId);
+            return true;
+        }
+
+        if (kind == (int)JournalEntryKind.SecurityDepositWaiverActual
+            && line.DefaultEscrowSdwAccountId is > 0
+            && line.ChartOfAccountId == line.DefaultEscrowSdwAccountId
+            && credit > 0)
+        {
+            result = BuildResult("SDW", credit - debit, line, memo, sourceTypeId);
+            return true;
+        }
+
         if (kind == (int)JournalEntryKind.OwnerExpected
             && line.DefaultOwnActPayableAccountId is > 0
             && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId)
@@ -190,6 +208,8 @@ public static class JournalEntryRecapLineClassifier
         return journalEntryKindId switch
         {
             (int)JournalEntryKind.OwnerExpected or (int)JournalEntryKind.OwnerActual => "Owner",
+            (int)JournalEntryKind.SecurityDepositActual => "Invoice",
+            (int)JournalEntryKind.SecurityDepositWaiverActual => "Invoice",
             (int)JournalEntryKind.Charge => "Invoice",
             (int)JournalEntryKind.Payment or (int)JournalEntryKind.PrePaymentReceive or (int)JournalEntryKind.PrePaymentApply => "Payment",
             (int)JournalEntryKind.Bill => "Bill",
@@ -225,6 +245,8 @@ public sealed class JournalEntryRecapClassificationLine
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultOwnerExpAccountId { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
+    public int? DefaultEscrowSecDepAccountId { get; set; }
+    public int? DefaultEscrowSdwAccountId { get; set; }
     public bool IsRentalIncomeAccount { get; set; }
     public bool IsCashOnly { get; set; }
     public bool IsInDateRange { get; set; } = true;

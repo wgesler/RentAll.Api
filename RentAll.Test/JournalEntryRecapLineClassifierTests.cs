@@ -87,6 +87,53 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_SecurityDepositActual_UsesKind()
+    {
+        const int escrowSecDep = 910;
+        var line = BuildLine(
+            kind: JournalEntryKind.SecurityDepositActual,
+            chartOfAccountId: escrowSecDep,
+            escrowSecDepAccountId: escrowSecDep,
+            memo: "R-000177-001: Security Deposit Actual: Security Deposit (Check #1234)",
+            credit: 1500m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("SecurityDeposit", result.RecapCategory);
+        Assert.Equal(1500m, result.Amount);
+    }
+
+    [Fact]
+    public void Classify_SecurityDepositWaiverActual_UsesKind()
+    {
+        const int escrowSdw = 920;
+        var line = BuildLine(
+            kind: JournalEntryKind.SecurityDepositWaiverActual,
+            chartOfAccountId: escrowSdw,
+            escrowSdwAccountId: escrowSdw,
+            memo: "R-000177-001: Security Deposit Waiver Actual: Security Deposit Waiver (Check #1234)",
+            credit: 60m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("SDW", result.RecapCategory);
+        Assert.Equal(60m, result.Amount);
+    }
+
+    [Fact]
+    public void Classify_SecurityDeposit_UsesExactChargeMemoSuffix()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.Charge,
+            chartOfAccountId: 999,
+            tenantIncomeAccountId: TenantIncome,
+            memo: "R-000177-001: Security Deposit",
+            credit: 1500m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("SecurityDeposit", result.RecapCategory);
+        Assert.Equal(1500m, result.Amount);
+    }
+
+    [Fact]
     public void ExtractReachBackInvoiceCodes_UsesKindAndSourceDocumentCode()
     {
         var lines = new[]
@@ -116,6 +163,8 @@ public class JournalEntryRecapLineClassifierTests
         int? prepayAccountId = null,
         int? accountsReceivableAccountId = null,
         int? tenantIncomeAccountId = null,
+        int? escrowSecDepAccountId = null,
+        int? escrowSdwAccountId = null,
         string memo = "",
         string sourceDocumentCode = "",
         decimal debit = 0m,
@@ -138,6 +187,8 @@ public class JournalEntryRecapLineClassifierTests
             DefaultPrePayAccountId = prepayAccountId,
             DefaultActRcvableAccountId = accountsReceivableAccountId ?? AccountsReceivable,
             DefaultTenantIncAccountId = tenantIncomeAccountId ?? TenantIncome,
+            DefaultEscrowSecDepAccountId = escrowSecDepAccountId,
+            DefaultEscrowSdwAccountId = escrowSdwAccountId,
             IsRentalIncomeAccount = isRentalIncomeAccount,
             IsCashOnly = isCashOnly,
             IsInDateRange = isInDateRange

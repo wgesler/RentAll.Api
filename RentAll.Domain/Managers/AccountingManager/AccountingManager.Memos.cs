@@ -12,6 +12,8 @@ public partial class AccountingManager
     private static readonly Regex OfficeOpeningBalanceSheetMemoPattern = new(@"^Opening Balance Sheet\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex OwnerExpectedRentMemoPattern = new(@"^R-\d+-\d+: Owner: Expected: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerActualRentMemoPattern = new(@"^R-\d+-\d+: Owner: Actual: .+$", RegexOptions.Compiled);
+    private static readonly Regex SecurityDepositActualMemoPattern = new(@"^R-\d+-\d+: Security Deposit Actual: .+$", RegexOptions.Compiled);
+    private static readonly Regex SecurityDepositWaiverActualMemoPattern = new(@"^R-\d+-\d+: Security Deposit Waiver Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerPaymentMemoPattern = new(@"^R-\d+-\d+: Owner: Payment: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerBillMemoPattern = new(@"^RC-[^:]+: Owner: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerWorkOrderMemoPattern = new(@"^WO-[^:]+: Owner: .+$", RegexOptions.Compiled);
@@ -233,6 +235,86 @@ public partial class AccountingManager
         return new JournalEntryMemoMatch
         {
             Category = JournalEntryMemoCategory.OwnerRentActual,
+            SourceCode = invoiceSourceCode,
+            Detail = parts.Length > 1 ? parts[1].Trim() : string.Empty
+        };
+    }
+
+    // Example: R-001053-001: Security Deposit Actual: Security Deposit
+    public static string BuildSecurityDepositActualMemo(Invoice invoice, LedgerLine securityDepositLine)
+    {
+        if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
+            throw new ArgumentException("Invoice code is required.", nameof(invoice));
+        if (string.IsNullOrWhiteSpace(securityDepositLine.Description))
+            throw new ArgumentException("Security deposit ledger line description is required.", nameof(securityDepositLine));
+
+        return $"{invoice.InvoiceCode.Trim()}: Security Deposit Actual: {securityDepositLine.Description.Trim()}";
+    }
+
+    // Example: R-001053-001: Security Deposit Actual: Security Deposit (Check #1234)
+    public static string BuildSecurityDepositActualMemo(Invoice invoice, LedgerLine securityDepositLine, LedgerLine paymentLedgerLine)
+    {
+        var memo = BuildSecurityDepositActualMemo(invoice, securityDepositLine);
+        if (paymentLedgerLine == null || string.IsNullOrWhiteSpace(paymentLedgerLine.Description))
+            return memo;
+
+        return $"{memo} ({paymentLedgerLine.Description.Trim()})";
+    }
+
+    // Example: R-001053-001: Security Deposit Waiver Actual: Security Deposit Waiver
+    public static string BuildSecurityDepositWaiverActualMemo(Invoice invoice, LedgerLine securityDepositWaiverLine)
+    {
+        if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
+            throw new ArgumentException("Invoice code is required.", nameof(invoice));
+        if (string.IsNullOrWhiteSpace(securityDepositWaiverLine.Description))
+            throw new ArgumentException("Security deposit waiver ledger line description is required.", nameof(securityDepositWaiverLine));
+
+        return $"{invoice.InvoiceCode.Trim()}: Security Deposit Waiver Actual: {securityDepositWaiverLine.Description.Trim()}";
+    }
+
+    // Example: R-001053-001: Security Deposit Waiver Actual: Security Deposit Waiver (Check #1234)
+    public static string BuildSecurityDepositWaiverActualMemo(Invoice invoice, LedgerLine securityDepositWaiverLine, LedgerLine paymentLedgerLine)
+    {
+        var memo = BuildSecurityDepositWaiverActualMemo(invoice, securityDepositWaiverLine);
+        if (paymentLedgerLine == null || string.IsNullOrWhiteSpace(paymentLedgerLine.Description))
+            return memo;
+
+        return $"{memo} ({paymentLedgerLine.Description.Trim()})";
+    }
+
+    public static JournalEntryMemoMatch MatchSecurityDepositActualMemo(string? journalMemo, string? lineMemo = null)
+        => MatchSecurityDepositActualMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
+
+    public static JournalEntryMemoMatch MatchSecurityDepositActualMemo(string? memo)
+    {
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        if (!SecurityDepositActualMemoPattern.IsMatch(normalizedMemo))
+            return JournalEntryMemoMatch.None;
+
+        var parts = normalizedMemo.Split(": Security Deposit Actual: ", 2, StringSplitOptions.None);
+        _ = TryParseInvoiceSourceCodeFromMemo(normalizedMemo, out var invoiceSourceCode);
+        return new JournalEntryMemoMatch
+        {
+            Category = JournalEntryMemoCategory.Invoice,
+            SourceCode = invoiceSourceCode,
+            Detail = parts.Length > 1 ? parts[1].Trim() : string.Empty
+        };
+    }
+
+    public static JournalEntryMemoMatch MatchSecurityDepositWaiverActualMemo(string? journalMemo, string? lineMemo = null)
+        => MatchSecurityDepositWaiverActualMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
+
+    public static JournalEntryMemoMatch MatchSecurityDepositWaiverActualMemo(string? memo)
+    {
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        if (!SecurityDepositWaiverActualMemoPattern.IsMatch(normalizedMemo))
+            return JournalEntryMemoMatch.None;
+
+        var parts = normalizedMemo.Split(": Security Deposit Waiver Actual: ", 2, StringSplitOptions.None);
+        _ = TryParseInvoiceSourceCodeFromMemo(normalizedMemo, out var invoiceSourceCode);
+        return new JournalEntryMemoMatch
+        {
+            Category = JournalEntryMemoCategory.Invoice,
             SourceCode = invoiceSourceCode,
             Detail = parts.Length > 1 ? parts[1].Trim() : string.Empty
         };

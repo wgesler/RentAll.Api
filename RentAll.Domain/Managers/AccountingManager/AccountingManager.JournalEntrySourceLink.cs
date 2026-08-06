@@ -56,6 +56,8 @@ public partial class AccountingManager
                 BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description),
                 StringComparison.Ordinal),
             JournalEntryKind.OwnerActual => MatchesOwnerActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
+            JournalEntryKind.SecurityDepositActual => MatchesSecurityDepositActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
+            JournalEntryKind.SecurityDepositWaiverActual => MatchesSecurityDepositWaiverActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
             _ => false
         };
     }
@@ -79,6 +81,46 @@ public partial class AccountingManager
         var memo = (entry.Memo ?? string.Empty).Trim();
         return memo.Contains(": Owner: Actual:", StringComparison.Ordinal)
             && memo.EndsWith($"({paymentDescription})", StringComparison.Ordinal);
+    }
+
+    private static bool MatchesSecurityDepositActualPaymentJournalEntryMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        if (entry.JournalEntryKindId != JournalEntryKind.SecurityDepositActual
+            || entry.SourceTypeId != (int)SourceType.Invoice
+            || entry.SourceId != invoice.InvoiceId)
+        {
+            return false;
+        }
+
+        var memo = (entry.Memo ?? string.Empty).Trim();
+        if (!memo.Contains(": Security Deposit Actual:", StringComparison.Ordinal))
+            return false;
+
+        var paymentDescription = (paymentLedgerLine.Description ?? string.Empty).Trim();
+        if (paymentDescription.Length == 0)
+            return true;
+
+        return memo.EndsWith($"({paymentDescription})", StringComparison.Ordinal);
+    }
+
+    private static bool MatchesSecurityDepositWaiverActualPaymentJournalEntryMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        if (entry.JournalEntryKindId != JournalEntryKind.SecurityDepositWaiverActual
+            || entry.SourceTypeId != (int)SourceType.Invoice
+            || entry.SourceId != invoice.InvoiceId)
+        {
+            return false;
+        }
+
+        var memo = (entry.Memo ?? string.Empty).Trim();
+        if (!memo.Contains(": Security Deposit Waiver Actual:", StringComparison.Ordinal))
+            return false;
+
+        var paymentDescription = (paymentLedgerLine.Description ?? string.Empty).Trim();
+        if (paymentDescription.Length == 0)
+            return true;
+
+        return memo.EndsWith($"({paymentDescription})", StringComparison.Ordinal);
     }
 
     private static void AssignRebuiltJournalEntryFromExisting(JournalEntry rebuilt, JournalEntry existing, Guid currentUser)
@@ -208,6 +250,18 @@ public partial class AccountingManager
         => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
            && entry.SourceTypeId == (int)SourceType.Invoice
            && entry.IsCashOnly;
+
+    private static bool IsInvoiceSecurityDepositActualPaymentJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+        => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositActual
+           && entry.SourceTypeId == (int)SourceType.Invoice
+           && entry.IsCashOnly
+           && MatchesSecurityDepositActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine);
+
+    private static bool IsInvoiceSecurityDepositWaiverActualPaymentJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+        => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositWaiverActual
+           && entry.SourceTypeId == (int)SourceType.Invoice
+           && entry.IsCashOnly
+           && MatchesSecurityDepositWaiverActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine);
 
     private static bool IsOwnerActualJournalEntryForInvoice(JournalEntry entry, Invoice invoice)
         => entry.JournalEntryKindId == JournalEntryKind.OwnerActual

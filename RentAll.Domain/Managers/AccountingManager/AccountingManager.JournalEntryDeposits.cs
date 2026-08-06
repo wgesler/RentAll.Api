@@ -284,6 +284,14 @@ public partial class AccountingManager
                 journalEntry.ModifiedBy = currentUser;
                 await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
             }
+
+            var invoiceChargeJournalEntries = await LoadDepositInvoiceChargeJournalEntriesForPaymentJournalEntriesAsync(deposit.OrganizationId, deposit.OfficeId, paymentJournalEntries);
+            foreach (var invoiceChargeJournalEntry in invoiceChargeJournalEntries)
+            {
+                ApplyDepositDocumentLink(invoiceChargeJournalEntry, deposit);
+                invoiceChargeJournalEntry.ModifiedBy = currentUser;
+                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(invoiceChargeJournalEntry, requireActiveLines: true);
+            }
         }
 
         var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
@@ -406,6 +414,45 @@ public partial class AccountingManager
             await ApplyPaymentDocumentLinkAsync(journalEntry, ledgerLine, journalEntry.OrganizationId);
             return;
         }
+    }
+
+    private async Task<List<JournalEntry>> LoadDepositInvoiceChargeJournalEntriesForPaymentJournalEntriesAsync(Guid organizationId, int officeId, IReadOnlyList<JournalEntry> paymentJournalEntries)
+    {
+        var chargeJournalEntries = new List<JournalEntry>();
+        var processedJournalEntryIds = new HashSet<Guid>();
+
+        foreach (var paymentJournalEntry in paymentJournalEntries)
+        {
+            if (paymentJournalEntry.SourceTypeId != (int)SourceType.Invoice
+                || paymentJournalEntry.SourceId is not { } invoiceId
+                || invoiceId == Guid.Empty
+                || string.IsNullOrWhiteSpace(paymentJournalEntry.SourceCode))
+            {
+                continue;
+            }
+
+            var allocationScope = new TransferDepositAllocationScope
+            {
+                PaymentId = paymentJournalEntry.PaymentId ?? Guid.Empty,
+                InvoiceId = invoiceId,
+                SourceCode = paymentJournalEntry.SourceCode.Trim(),
+                PaymentMemoSourceCode = ResolveTransferDepositPaymentMemoSourceCode(paymentJournalEntry)
+            };
+
+            foreach (var chargeEntry in await GetAllJournalEntriesForInvoiceAsync(organizationId, officeId, invoiceId))
+            {
+                if (!string.Equals(chargeEntry.SourceCode, allocationScope.SourceCode, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!MatchesTransferDepositInvoiceChargeJournalEntry(chargeEntry, allocationScope))
+                    continue;
+
+                if (processedJournalEntryIds.Add(chargeEntry.JournalEntryId))
+                    chargeJournalEntries.Add(chargeEntry);
+            }
+        }
+
+        return chargeJournalEntries;
     }
     #endregion
 }

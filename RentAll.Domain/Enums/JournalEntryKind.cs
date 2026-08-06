@@ -11,6 +11,8 @@ public enum JournalEntryKind
     PrePaymentReceive = 14,
     PrePaymentApply = 15,
     OwnerActual = 16,
+    SecurityDepositActual = 17,
+    SecurityDepositWaiverActual = 18,
     Bill = 20,
     BillPayment = 21,
     Receipt = 22,
