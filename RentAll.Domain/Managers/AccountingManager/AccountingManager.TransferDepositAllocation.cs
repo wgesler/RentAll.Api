@@ -6,6 +6,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Types
+
     private class TransferDepositRecapAccountContext
     {
         public int AccountsReceivableAccountId { get; init; }
@@ -19,14 +21,17 @@ public partial class AccountingManager
 
     private class TransferDepositAllocationScope
     {
-        public Guid? PaymentId { get; set; }
-        public Guid? InvoiceId { get; set; }
-        public Guid? PropertyId { get; set; }
-        public Guid? ReservationId { get; set; }
-        public Guid? ContactId { get; set; }
-        public string? SourceCode { get; set; }
-        public decimal? SplitAmount { get; set; }
+        public Guid PaymentId { get; init; }
+        public string SourceCode { get; init; } = string.Empty;
+        public decimal SplitAmount { get; init; }
+        public Guid? PropertyId { get; init; }
+        public Guid? ReservationId { get; init; }
+        public Guid? ContactId { get; init; }
     }
+
+    #endregion
+
+    #region Resolve Transfer Deposit Allocations
 
     public async Task<IReadOnlyList<TransferDepositAllocationResult>> ResolveTransferDepositAllocationsAsync(Guid organizationId, int officeId, IReadOnlyList<TransferDepositAllocationRequestItem> items)
     {
@@ -47,7 +52,7 @@ public partial class AccountingManager
         foreach (var item in expandedItems)
         {
             if (item.DepositId == Guid.Empty)
-                continue;
+                throw new InvalidOperationException("DepositId is required for each transfer deposit allocation item.");
 
             results.Add(await ResolveTransferDepositAllocationAsync(
                 organizationId,
@@ -61,9 +66,7 @@ public partial class AccountingManager
         return results;
     }
 
-    private async Task<IReadOnlyList<TransferDepositAllocationRequestItem>> ExpandTransferDepositAllocationItemsAsync(
-        Guid organizationId,
-        IReadOnlyList<TransferDepositAllocationRequestItem> items)
+    private async Task<IReadOnlyList<TransferDepositAllocationRequestItem>> ExpandTransferDepositAllocationItemsAsync(Guid organizationId, IReadOnlyList<TransferDepositAllocationRequestItem> items)
     {
         var expandedItems = new List<TransferDepositAllocationRequestItem>();
 
@@ -72,12 +75,11 @@ public partial class AccountingManager
             if (item.DepositId == Guid.Empty)
                 continue;
 
-            var deposit = await _accountingRepository.GetDepositByIdAsync(item.DepositId, organizationId);
-            if (deposit?.Splits == null || deposit.Splits.Count == 0)
-            {
-                expandedItems.Add(item);
-                continue;
-            }
+            var deposit = await _accountingRepository.GetDepositByIdAsync(item.DepositId, organizationId)
+                ?? throw new InvalidOperationException($"Deposit {item.DepositId} was not found.");
+
+            if (deposit.Splits == null || deposit.Splits.Count == 0)
+                throw new InvalidOperationException($"Deposit {deposit.DepositCode} has no splits.");
 
             if (deposit.Splits.Count == 1)
             {
@@ -88,9 +90,7 @@ public partial class AccountingManager
                     EscrowAmount = Math.Abs(RoundCurrency(item.EscrowAmount)) > 0.005m
                         ? item.EscrowAmount
                         : singleSplit.Amount,
-                    JournalEntryLineId = singleSplit.JournalEntryLineId is { } singleSplitLineId && singleSplitLineId != Guid.Empty
-                        ? singleSplitLineId
-                        : item.JournalEntryLineId
+                    JournalEntryLineId = item.JournalEntryLineId
                 });
                 continue;
             }
@@ -105,7 +105,12 @@ public partial class AccountingManager
                     || (splitTotal > 0 && Math.Abs(normalizedAmount - splitTotal) <= 0.005m));
             if (!matchesFullDepositAmount)
             {
-                expandedItems.Add(item);
+                expandedItems.Add(new TransferDepositAllocationRequestItem
+                {
+                    DepositId = item.DepositId,
+                    EscrowAmount = item.EscrowAmount,
+                    JournalEntryLineId = item.JournalEntryLineId
+                });
                 continue;
             }
 
@@ -115,9 +120,7 @@ public partial class AccountingManager
                 {
                     DepositId = item.DepositId,
                     EscrowAmount = split.Amount,
-                    JournalEntryLineId = split.JournalEntryLineId is { } splitLineId && splitLineId != Guid.Empty
-                        ? splitLineId
-                        : item.JournalEntryLineId
+                    JournalEntryLineId = item.JournalEntryLineId
                 });
             }
         }
@@ -125,38 +128,17 @@ public partial class AccountingManager
         return expandedItems;
     }
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? journalEntryLineId = null)
+    #endregion
+
+    #region Resolve Single Deposit Allocation
+
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null)
     {
-        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
-        if (deposit == null)
-            return BuildFallbackTransferDepositAllocationResult(depositId, journalEntryLineId, escrowAmount);
+        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId)
+            ?? throw new InvalidOperationException($"Deposit {depositId} was not found.");
 
-        var matchedSplit = FindTransferDepositSplit(deposit, escrowAmount, journalEntryLineId);
-        var resolvedJournalEntryLineId = journalEntryLineId;
-        TransferDepositAllocationScope allocationScope;
-
-        if (matchedSplit != null)
-        {
-            allocationScope = await BuildTransferDepositAllocationScopeFromDepositSplitAsync(organizationId, deposit, matchedSplit);
-            if (matchedSplit.JournalEntryLineId is { } splitLineId && splitLineId != Guid.Empty)
-                resolvedJournalEntryLineId = splitLineId;
-            else
-            {
-                var resolvedPaymentLineId = await ResolveDepositSplitPaymentLineIdAsync(organizationId, deposit, matchedSplit);
-                if (resolvedPaymentLineId is { } paymentLineId && paymentLineId != Guid.Empty)
-                    resolvedJournalEntryLineId = paymentLineId;
-            }
-        }
-        else
-        {
-            allocationScope = BuildTransferDepositAllocationScopeFromDepositHeader(deposit, RoundCurrency(Math.Abs(escrowAmount)))
-                ?? new TransferDepositAllocationScope
-                {
-                    PropertyId = deposit.PropertyId ?? deposit.PropertyIds.FirstOrDefault(),
-                    SourceCode = deposit.DepositCode,
-                    SplitAmount = RoundCurrency(Math.Abs(escrowAmount))
-                };
-        }
+        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, escrowJournalEntryLineId);
+        var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit);
 
         var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
         {
@@ -164,437 +146,31 @@ public partial class AccountingManager
             DepositId = depositId
         })).ToList();
 
-        var scopedDepositJournalEntries = await LoadScopedTransferDepositJournalEntriesAsync(organizationId, depositId, depositJournalEntries, allocationScope);
-        var (ownerEscrow, secDep, sdw, fee, propertyId, reservationId, contactId, description) =
-            await ClassifyTransferDepositAllocationAsync(organizationId, officeId, scopedDepositJournalEntries, allocationScope, recapContext);
+        var scopedDepositJournalEntries = FilterDepositLinkedJournalEntriesForScope(depositJournalEntries, allocationScope);
+        if (scopedDepositJournalEntries.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"No deposit-linked journal entries matched payment {allocationScope.SourceCode} for deposit {deposit.DepositCode}.");
+        }
 
-        if (matchedSplit != null)
-        {
-            propertyId = matchedSplit.PropertyId ?? propertyId;
-            reservationId = matchedSplit.ReservationId ?? reservationId;
-            contactId = matchedSplit.ContactId ?? contactId;
-        }
-        else if (allocationScope != null)
-        {
-            propertyId = allocationScope.PropertyId ?? propertyId;
-            reservationId = allocationScope.ReservationId ?? reservationId;
-            contactId = allocationScope.ContactId ?? contactId;
-        }
+        var (ownerEscrow, secDep, sdw, fee, description) =
+            ClassifyTransferDepositAllocation(scopedDepositJournalEntries, allocationScope, recapContext);
 
         return BuildTransferDepositAllocationResult(
             depositId,
-            resolvedJournalEntryLineId,
+            escrowJournalEntryLineId,
             escrowAmount,
-            deposit,
             allocationScope,
             ownerEscrow,
             secDep,
             sdw,
             fee,
-            propertyId,
-            reservationId,
-            contactId,
             description);
     }
 
-    private static DepositSplit? FindTransferDepositSplit(Deposit deposit, decimal escrowAmount, Guid? journalEntryLineId)
-    {
-        var splits = (deposit.Splits ?? [])
-            .Where(split => Math.Abs(split.Amount) > 0.005m)
-            .ToList();
-        if (splits.Count == 0)
-            return null;
+    #endregion
 
-        if (journalEntryLineId is { } lineId && lineId != Guid.Empty)
-        {
-            var splitByLine = splits.FirstOrDefault(split => split.JournalEntryLineId == lineId);
-            if (splitByLine != null)
-                return splitByLine;
-        }
-
-        var normalizedEscrowAmount = RoundCurrency(Math.Abs(escrowAmount));
-        if (normalizedEscrowAmount != 0)
-        {
-            var splitByAmount = splits.FirstOrDefault(split =>
-                Math.Abs(Math.Abs(split.Amount) - normalizedEscrowAmount) <= 0.005m);
-            if (splitByAmount != null)
-                return splitByAmount;
-        }
-
-        return splits.Count == 1 ? splits[0] : null;
-    }
-
-    private async Task<TransferDepositAllocationScope> BuildTransferDepositAllocationScopeFromDepositSplitAsync(Guid organizationId, Deposit deposit, DepositSplit split)
-    {
-        if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
-        {
-            var existingScope = await BuildTransferDepositAllocationScopeFromSplitAsync(organizationId, split, existingLineId);
-            if (existingScope != null)
-                return existingScope;
-        }
-
-        var paymentLineId = await ResolveDepositSplitPaymentLineIdAsync(organizationId, deposit, split);
-        if (paymentLineId is { } resolvedPaymentLineId && resolvedPaymentLineId != Guid.Empty)
-        {
-            var resolvedScope = await BuildTransferDepositAllocationScopeFromSplitAsync(organizationId, split, resolvedPaymentLineId);
-            if (resolvedScope != null)
-                return resolvedScope;
-        }
-
-        return BuildTransferDepositAllocationScopeFromDepositSplit(split);
-    }
-
-    private static TransferDepositAllocationResult BuildFallbackTransferDepositAllocationResult(Guid depositId, Guid? journalEntryLineId, decimal escrowAmount)
-    {
-        var normalizedEscrowAmount = RoundCurrency(Math.Abs(escrowAmount));
-        return new TransferDepositAllocationResult
-        {
-            DepositId = depositId,
-            JournalEntryLineId = journalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
-            EscrowAmount = normalizedEscrowAmount,
-            Business = normalizedEscrowAmount,
-            Description = string.Empty
-        };
-    }
-
-    private static bool MatchesFullTransferDepositAmount(Deposit deposit, decimal normalizedEscrowAmount)
-    {
-        if (normalizedEscrowAmount == 0)
-            return false;
-
-        var depositAmount = RoundCurrency(Math.Abs(deposit.Amount));
-        if (Math.Abs(normalizedEscrowAmount - depositAmount) <= 0.005m)
-            return true;
-
-        if (deposit.Splits == null || deposit.Splits.Count == 0)
-            return false;
-
-        var splitTotal = RoundCurrency(deposit.Splits
-            .Where(split => Math.Abs(split.Amount) > 0.005m)
-            .Sum(split => Math.Abs(split.Amount)));
-        return splitTotal > 0 && Math.Abs(normalizedEscrowAmount - splitTotal) <= 0.005m;
-    }
-
-    private static TransferDepositAllocationScope? BuildTransferDepositAllocationScopeFromDepositHeader(Deposit deposit, decimal normalizedEscrowAmount)
-    {
-        if (normalizedEscrowAmount == 0 && RoundCurrency(Math.Abs(deposit.Amount)) == 0)
-            return null;
-
-        return new TransferDepositAllocationScope
-        {
-            PropertyId = deposit.PropertyId ?? deposit.PropertyIds.FirstOrDefault(),
-            SourceCode = deposit.DepositCode,
-            SplitAmount = normalizedEscrowAmount != 0 ? normalizedEscrowAmount : RoundCurrency(Math.Abs(deposit.Amount))
-        };
-    }
-
-    private static TransferDepositAllocationScope BuildTransferDepositAllocationScopeFromDepositSplit(DepositSplit split)
-    {
-        return new TransferDepositAllocationScope
-        {
-            PropertyId = split.PropertyId,
-            ReservationId = split.ReservationId,
-            ContactId = split.ContactId,
-            SourceCode = ExtractTransferSourceCodeFromSplitDescription(split.Description),
-            SplitAmount = split.Amount
-        };
-    }
-
-    private static string? ExtractTransferSourceCodeFromSplitDescription(string? description)
-    {
-        if (string.IsNullOrWhiteSpace(description))
-            return null;
-
-        var trimmed = description.Trim();
-        var colonIndex = trimmed.IndexOf(':');
-        return colonIndex > 0 ? trimmed[..colonIndex].Trim() : trimmed;
-    }
-
-    private async Task<Guid?> ResolveDepositSplitPaymentLineIdAsync(Guid organizationId, Deposit deposit, DepositSplit split)
-    {
-        if (deposit.OfficeId <= 0)
-            return null;
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
-        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
-        if (undepositedFundsAccountId <= 0)
-            return null;
-
-        if (split.JournalEntryLineId is { } existingLineId
-            && existingLineId != Guid.Empty
-            && await IsValidDepositSplitJournalEntryLineAsync(split, undepositedFundsAccountId))
-        {
-            return existingLineId;
-        }
-
-        var paymentLineCandidates = await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId);
-        if (paymentLineCandidates.Count == 0)
-            return null;
-
-        var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherDepositsAsync(deposit);
-        var assignedLineIds = (deposit.Splits ?? [])
-            .Where(otherSplit => otherSplit != split
-                && otherSplit.JournalEntryLineId is { } assignedLineId
-                && assignedLineId != Guid.Empty)
-            .Select(otherSplit => otherSplit.JournalEntryLineId!.Value)
-            .ToHashSet();
-
-        return ResolveDepositSplitJournalEntryLineId(
-            deposit,
-            split,
-            paymentLineCandidates,
-            claimedLineIds,
-            assignedLineIds);
-    }
-
-    private async Task<TransferDepositAllocationScope?> BuildTransferDepositAllocationScopeFromSplitAsync(Guid organizationId, DepositSplit split, Guid splitJournalEntryLineId)
-    {
-        var splitSourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(splitJournalEntryLineId);
-        if (splitSourceLine == null || splitSourceLine.JournalEntryId == Guid.Empty)
-            return null;
-
-        var splitSourceEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(splitSourceLine.JournalEntryId, organizationId);
-        if (splitSourceEntry == null)
-            return null;
-
-        return new TransferDepositAllocationScope
-        {
-            PropertyId = split.PropertyId ?? splitSourceLine.PropertyId,
-            ReservationId = split.ReservationId ?? splitSourceLine.ReservationId,
-            ContactId = split.ContactId ?? splitSourceLine.ContactId,
-            SourceCode = splitSourceEntry.SourceCode,
-            PaymentId = splitSourceEntry.PaymentId,
-            InvoiceId = splitSourceEntry.SourceTypeId == (int)SourceType.Invoice ? splitSourceEntry.SourceId : null,
-            SplitAmount = split.Amount
-        };
-    }
-
-    private async Task<List<JournalEntry>> LoadScopedTransferDepositJournalEntriesAsync(Guid organizationId, Guid depositId, IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope? allocationScope)
-    {
-        if (allocationScope == null)
-            return depositJournalEntries.ToList();
-
-        var scopedDepositJournalEntries = depositJournalEntries
-            .Where(entry => MatchesTransferDepositAllocationScope(entry, allocationScope))
-            .ToList();
-
-        if (allocationScope.PaymentId is not { } scopedPaymentId || scopedPaymentId == Guid.Empty)
-            return scopedDepositJournalEntries;
-
-        var paymentJournalEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
-        {
-            OrganizationId = organizationId,
-            PaymentId = scopedPaymentId
-        })).ToList();
-
-        foreach (var paymentJournalEntry in paymentJournalEntries)
-        {
-            if (paymentJournalEntry.DepositId != depositId)
-                continue;
-
-            if (scopedDepositJournalEntries.Any(entry => entry.JournalEntryId == paymentJournalEntry.JournalEntryId))
-                continue;
-
-            if (MatchesTransferDepositAllocationScope(paymentJournalEntry, allocationScope))
-                scopedDepositJournalEntries.Add(paymentJournalEntry);
-        }
-
-        return scopedDepositJournalEntries;
-    }
-
-    private async Task<(decimal OwnerEscrow, decimal SecDep, decimal Sdw, decimal Fee, Guid? PropertyId, Guid? ReservationId, Guid? ContactId, string Description)> ClassifyTransferDepositAllocationAsync(Guid organizationId, int officeId, IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositAllocationScope? allocationScope, TransferDepositRecapAccountContext recapContext)
-    {
-        var ownerEscrow = 0m;
-        var secDep = 0m;
-        var sdw = 0m;
-        var fee = 0m;
-        Guid? propertyId = allocationScope?.PropertyId;
-        Guid? reservationId = allocationScope?.ReservationId;
-        Guid? contactId = allocationScope?.ContactId;
-        var description = allocationScope?.SourceCode ?? string.Empty;
-
-        foreach (var entry in scopedDepositJournalEntries)
-        {
-            AccumulateTransferDepositClassification(
-                entry,
-                recapContext,
-                ref ownerEscrow,
-                ref secDep,
-                ref sdw,
-                ref fee,
-                includeOwnerEscrow: true);
-
-            var contextLine = (entry.JournalEntryLines ?? []).FirstOrDefault();
-            if (contextLine != null)
-            {
-                propertyId ??= contextLine.PropertyId;
-                reservationId ??= contextLine.ReservationId;
-                contactId ??= contextLine.ContactId;
-            }
-
-            if (string.IsNullOrWhiteSpace(description))
-                description = entry.SourceCode ?? entry.Memo ?? string.Empty;
-        }
-
-        var invoiceIds = allocationScope?.InvoiceId is { } scopedInvoiceId && scopedInvoiceId != Guid.Empty
-            ? [scopedInvoiceId]
-            : scopedDepositJournalEntries
-                .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.SourceId is { } sourceId && sourceId != Guid.Empty)
-                .Select(entry => entry.SourceId!.Value)
-                .Distinct()
-                .ToList();
-
-        foreach (var invoiceId in invoiceIds)
-        {
-            var chargeEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-            {
-                OrganizationId = organizationId,
-                OfficeIds = officeId.ToString(),
-                SourceTypeId = (int)SourceType.Invoice,
-                SourceId = invoiceId,
-                IncludeUnposted = true
-            }))
-                .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Charge)
-                .ToList();
-
-            foreach (var entry in chargeEntries)
-            {
-                AccumulateTransferDepositClassification(
-                    entry,
-                    recapContext,
-                    ref ownerEscrow,
-                    ref secDep,
-                    ref sdw,
-                    ref fee,
-                    includeOwnerEscrow: false);
-            }
-        }
-
-        return (
-            RoundCurrency(ownerEscrow),
-            RoundCurrency(secDep),
-            RoundCurrency(sdw),
-            RoundCurrency(fee),
-            propertyId,
-            reservationId,
-            contactId,
-            description);
-    }
-
-    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, bool includeOwnerEscrow)
-    {
-        foreach (var line in entry.JournalEntryLines ?? [])
-        {
-            if (!JournalEntryRecapLineClassifier.TryClassify(
-                    BuildTransferDepositRecapClassificationLine(entry, line, recapContext),
-                    out var classification))
-            {
-                continue;
-            }
-
-            switch (classification.RecapCategory)
-            {
-                case "OwnerRentActual" when includeOwnerEscrow:
-                    ownerEscrow = RoundCurrency(ownerEscrow + classification.Amount);
-                    break;
-                case "SecurityDeposit":
-                    secDep = RoundCurrency(secDep + classification.Amount);
-                    break;
-                case "SDW":
-                    sdw = RoundCurrency(sdw + classification.Amount);
-                    break;
-                case "Fee":
-                    fee = RoundCurrency(fee + classification.Amount);
-                    break;
-            }
-        }
-    }
-
-    private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? journalEntryLineId, decimal escrowAmount, Deposit? deposit, TransferDepositAllocationScope? allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, decimal fee, Guid? propertyId, Guid? reservationId, Guid? contactId, string description)
-    {
-        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
-        var fullDepositEscrowAmount = allocationScope?.SplitAmount is decimal splitAmount && splitAmount != 0
-            ? RoundCurrency(Math.Abs(splitAmount))
-            : RoundCurrency(deposit?.Amount ?? normalizedEscrowAmount);
-
-        if (fullDepositEscrowAmount != 0
-            && Math.Abs(normalizedEscrowAmount - fullDepositEscrowAmount) > 0.005m)
-        {
-            var ratio = normalizedEscrowAmount / fullDepositEscrowAmount;
-            ownerEscrow = RoundCurrency(ownerEscrow * ratio);
-            secDep = RoundCurrency(secDep * ratio);
-            sdw = RoundCurrency(sdw * ratio);
-            fee = RoundCurrency(fee * ratio);
-        }
-
-        var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw - fee);
-        var drift = RoundCurrency(normalizedEscrowAmount - (ownerEscrow + secDep + sdw + fee + business));
-        if (drift != 0)
-            business = RoundCurrency(business + drift);
-
-        return new TransferDepositAllocationResult
-        {
-            DepositId = depositId,
-            JournalEntryLineId = journalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
-            EscrowAmount = normalizedEscrowAmount,
-            OwnerEscrow = ownerEscrow,
-            SecDep = secDep,
-            Sdw = sdw,
-            Business = business,
-            PropertyId = propertyId,
-            ReservationId = reservationId,
-            ContactId = contactId,
-            Description = description
-        };
-    }
-
-    private static bool MatchesTransferDepositAllocationScope(JournalEntry entry, TransferDepositAllocationScope scope)
-    {
-        if (entry.SourceTypeId == (int)SourceType.Deposit)
-            return false;
-
-        if (scope.PaymentId is { } paymentId && paymentId != Guid.Empty && entry.PaymentId == paymentId)
-            return true;
-
-        if (scope.InvoiceId is { } invoiceId
-            && invoiceId != Guid.Empty
-            && entry.SourceTypeId == (int)SourceType.Invoice
-            && entry.SourceId == invoiceId)
-        {
-            return true;
-        }
-
-        if (!string.IsNullOrWhiteSpace(scope.SourceCode)
-            && string.Equals(entry.SourceCode, scope.SourceCode, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!scope.PropertyId.HasValue && !scope.ReservationId.HasValue)
-            return false;
-
-        return entry.JournalEntryLines?.Any(line => JournalEntryLineMatchesTransferDepositAllocationScope(line, scope)) == true;
-    }
-
-    private static bool JournalEntryLineMatchesTransferDepositAllocationScope(JournalEntryLine line, TransferDepositAllocationScope scope)
-    {
-        if (scope.PropertyId is { } propertyId
-            && propertyId != Guid.Empty
-            && line.PropertyId != propertyId)
-        {
-            return false;
-        }
-
-        if (scope.ReservationId is { } reservationId
-            && reservationId != Guid.Empty
-            && line.ReservationId != reservationId)
-        {
-            return false;
-        }
-
-        return scope.PropertyId is { } matchedPropertyId && matchedPropertyId != Guid.Empty
-            || scope.ReservationId is { } matchedReservationId && matchedReservationId != Guid.Empty;
-    }
+    #region Resolve Transfer Report Line Allocations
 
     public async Task<IReadOnlyList<TransferReportLineAllocationResult>> ResolveTransferReportLineAllocationsAsync(Guid organizationId, Guid transferId)
     {
@@ -662,6 +238,231 @@ public partial class AccountingManager
         return results;
     }
 
+    #endregion
+
+    #region Deposit Split Identification
+
+    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount, Guid? escrowJournalEntryLineId)
+    {
+        var splits = (deposit.Splits ?? [])
+            .Where(split => Math.Abs(split.Amount) > 0.005m)
+            .ToList();
+
+        if (splits.Count == 0)
+            throw new InvalidOperationException($"Deposit {deposit.DepositCode} has no non-zero splits.");
+
+        if (escrowJournalEntryLineId is { } escrowLineId && escrowLineId != Guid.Empty)
+        {
+            var splitByPaymentLine = splits.FirstOrDefault(split => split.JournalEntryLineId == escrowLineId);
+            if (splitByPaymentLine != null)
+                return splitByPaymentLine;
+        }
+
+        var normalizedEscrowAmount = RoundCurrency(Math.Abs(escrowAmount));
+        if (normalizedEscrowAmount != 0)
+        {
+            var amountMatches = splits
+                .Where(split => Math.Abs(Math.Abs(split.Amount) - normalizedEscrowAmount) <= 0.005m)
+                .ToList();
+
+            if (amountMatches.Count == 1)
+                return amountMatches[0];
+
+            if (amountMatches.Count > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Deposit {deposit.DepositCode} has multiple splits matching escrow amount {normalizedEscrowAmount:0.00}.");
+            }
+        }
+
+        if (splits.Count == 1)
+            return splits[0];
+
+        throw new InvalidOperationException(
+            $"Could not identify a deposit split for deposit {deposit.DepositCode} and escrow amount {escrowAmount:0.00}.");
+    }
+
+    #endregion
+
+    #region Payment Scope Resolution
+
+    private async Task<TransferDepositAllocationScope> RequireTransferDepositAllocationScopeAsync(Guid organizationId, Deposit deposit, DepositSplit split)
+    {
+        if (deposit.OfficeId <= 0)
+            throw new InvalidOperationException($"Deposit {deposit.DepositCode} is missing OfficeId.");
+
+        if (split.JournalEntryLineId is not { } paymentLineId || paymentLineId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                $"Deposit split for {deposit.DepositCode} is missing the undeposited payment JournalEntryLineId.");
+        }
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0)
+            throw new InvalidOperationException($"Undeposited funds account is not configured for office {deposit.OfficeId}.");
+
+        if (!await IsValidDepositSplitJournalEntryLineAsync(split, undepositedFundsAccountId))
+        {
+            throw new InvalidOperationException(
+                $"Deposit split JournalEntryLineId {paymentLineId} is not a valid undeposited payment line for deposit {deposit.DepositCode}.");
+        }
+
+        var paymentLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(paymentLineId)
+            ?? throw new InvalidOperationException($"Journal entry line {paymentLineId} was not found.");
+
+        var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(paymentLine.JournalEntryId, organizationId)
+            ?? throw new InvalidOperationException($"Journal entry {paymentLine.JournalEntryId} was not found.");
+
+        if (paymentJournalEntry.PaymentId is not { } paymentId || paymentId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                $"Payment journal entry {paymentJournalEntry.JournalEntryCode} is missing PaymentId for deposit {deposit.DepositCode}.");
+        }
+
+        if (string.IsNullOrWhiteSpace(paymentJournalEntry.SourceCode))
+        {
+            throw new InvalidOperationException(
+                $"Payment journal entry {paymentJournalEntry.JournalEntryCode} is missing SourceCode for deposit {deposit.DepositCode}.");
+        }
+
+        return new TransferDepositAllocationScope
+        {
+            PaymentId = paymentId,
+            SourceCode = paymentJournalEntry.SourceCode.Trim(),
+            SplitAmount = split.Amount,
+            PropertyId = split.PropertyId,
+            ReservationId = split.ReservationId,
+            ContactId = split.ContactId
+        };
+    }
+
+    #endregion
+
+    #region Deposit-Linked Journal Entry Selection
+
+    private static List<JournalEntry> FilterDepositLinkedJournalEntriesForScope(IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope allocationScope)
+    {
+        return depositJournalEntries
+            .Where(entry => MatchesTransferDepositAllocationScope(entry, allocationScope))
+            .ToList();
+    }
+
+    #endregion
+
+    #region Recap Classification
+
+    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw, decimal Fee, string Description) ClassifyTransferDepositAllocation(IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositAllocationScope allocationScope, TransferDepositRecapAccountContext recapContext)
+    {
+        var ownerEscrow = 0m;
+        var secDep = 0m;
+        var sdw = 0m;
+        var fee = 0m;
+
+        foreach (var entry in scopedDepositJournalEntries)
+        {
+            AccumulateTransferDepositClassification(
+                entry,
+                recapContext,
+                ref ownerEscrow,
+                ref secDep,
+                ref sdw,
+                ref fee,
+                includeOwnerEscrow: entry.JournalEntryKindId != JournalEntryKind.Charge);
+        }
+
+        return (
+            RoundCurrency(ownerEscrow),
+            RoundCurrency(secDep),
+            RoundCurrency(sdw),
+            RoundCurrency(fee),
+            allocationScope.SourceCode);
+    }
+
+    #endregion
+
+    #region Allocation Result
+
+    private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, TransferDepositAllocationScope allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, decimal fee, string description)
+    {
+        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        var fullSplitAmount = RoundCurrency(Math.Abs(allocationScope.SplitAmount));
+
+        if (fullSplitAmount != 0 && Math.Abs(normalizedEscrowAmount - fullSplitAmount) > 0.005m)
+        {
+            var ratio = normalizedEscrowAmount / fullSplitAmount;
+            ownerEscrow = RoundCurrency(ownerEscrow * ratio);
+            secDep = RoundCurrency(secDep * ratio);
+            sdw = RoundCurrency(sdw * ratio);
+            fee = RoundCurrency(fee * ratio);
+        }
+
+        var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw - fee);
+        var total = RoundCurrency(ownerEscrow + secDep + sdw + fee + business);
+        if (Math.Abs(total - normalizedEscrowAmount) > 0.005m)
+        {
+            throw new InvalidOperationException(
+                $"Transfer deposit allocation for {description} does not balance to escrow amount {normalizedEscrowAmount:0.00}.");
+        }
+
+        return new TransferDepositAllocationResult
+        {
+            DepositId = depositId,
+            JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
+            EscrowAmount = normalizedEscrowAmount,
+            OwnerEscrow = ownerEscrow,
+            SecDep = secDep,
+            Sdw = sdw,
+            Business = business,
+            PropertyId = allocationScope.PropertyId,
+            ReservationId = allocationScope.ReservationId,
+            ContactId = allocationScope.ContactId,
+            Description = description
+        };
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private static bool MatchesTransferDepositAllocationScope(JournalEntry entry, TransferDepositAllocationScope scope)
+    {
+        if (entry.SourceTypeId == (int)SourceType.Deposit)
+            return false;
+
+        return entry.PaymentId == scope.PaymentId
+            && string.Equals(entry.SourceCode, scope.SourceCode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, bool includeOwnerEscrow)
+    {
+        foreach (var line in entry.JournalEntryLines ?? [])
+        {
+            if (!JournalEntryRecapLineClassifier.TryClassify(
+                    BuildTransferDepositRecapClassificationLine(entry, line, recapContext),
+                    out var classification))
+            {
+                continue;
+            }
+
+            switch (classification.RecapCategory)
+            {
+                case "OwnerRentActual" when includeOwnerEscrow:
+                    ownerEscrow = RoundCurrency(ownerEscrow + classification.Amount);
+                    break;
+                case "SecurityDeposit":
+                    secDep = RoundCurrency(secDep + classification.Amount);
+                    break;
+                case "SDW":
+                    sdw = RoundCurrency(sdw + classification.Amount);
+                    break;
+                case "Fee":
+                    fee = RoundCurrency(fee + classification.Amount);
+                    break;
+            }
+        }
+    }
+
     private TransferDepositRecapAccountContext BuildTransferDepositRecapAccountContext(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
         var rentalIncomeAccountIds = chartOfAccounts
@@ -708,4 +509,6 @@ public partial class AccountingManager
     {
         return Math.Round(value, 2, MidpointRounding.AwayFromZero);
     }
+
+    #endregion
 }
