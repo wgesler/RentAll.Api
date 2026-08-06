@@ -61,9 +61,16 @@ public partial class AccountingManager
         if (reservationId == Guid.Empty)
             throw new ArgumentException("ReservationId is required.", nameof(reservationId));
 
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
+            ?? throw new Exception("Reservation not found");
+
+        if (reservation.OfficeId <= 0)
+            throw new Exception("Reservation office is required");
+
         var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
+            OfficeIds = reservation.OfficeId.ToString(),
             ReservationId = reservationId,
             IncludeInactive = true,
             IncludePaid = true
