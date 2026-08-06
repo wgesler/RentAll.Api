@@ -138,7 +138,21 @@ public partial class AccountingManager
             ?? throw new InvalidOperationException($"Deposit {depositId} was not found.");
 
         var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, escrowJournalEntryLineId);
-        var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0)
+            throw new InvalidOperationException($"Undeposited funds account is not configured for office {deposit.OfficeId}.");
+
+        if (!IsPaymentBackedDepositSplit(matchedSplit, undepositedFundsAccountId))
+            return BuildNonPaymentTransferDepositAllocationResult(depositId, escrowJournalEntryLineId, escrowAmount, deposit, matchedSplit);
+
+        if (matchedSplit.JournalEntryLineId is not { } existingPaymentLineId || existingPaymentLineId == Guid.Empty)
+        {
+            await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, escrowJournalEntryLineId);
+        }
+
+        var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit, undepositedFundsAccountId);
 
         var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
         {
@@ -166,6 +180,36 @@ public partial class AccountingManager
             sdw,
             fee,
             description);
+    }
+
+    #endregion
+
+    #region Non-Payment Deposit Allocation
+
+    private static bool IsPaymentBackedDepositSplit(DepositSplit split, int undepositedFundsAccountId)
+    {
+        return split.ChartOfAccountId is > 0 && split.ChartOfAccountId == undepositedFundsAccountId;
+    }
+
+    private static TransferDepositAllocationResult BuildNonPaymentTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, Deposit deposit, DepositSplit split)
+    {
+        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        var description = ResolveTransferDepositAllocationDescription(split.Description, deposit.DepositCode);
+
+        return new TransferDepositAllocationResult
+        {
+            DepositId = depositId,
+            JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
+            EscrowAmount = normalizedEscrowAmount,
+            OwnerEscrow = 0m,
+            SecDep = 0m,
+            Sdw = 0m,
+            Business = normalizedEscrowAmount,
+            PropertyId = split.PropertyId,
+            ReservationId = split.ReservationId,
+            ContactId = split.ContactId,
+            Description = description
+        };
     }
 
     #endregion
@@ -286,7 +330,7 @@ public partial class AccountingManager
 
     #region Payment Scope Resolution
 
-    private async Task<TransferDepositAllocationScope> RequireTransferDepositAllocationScopeAsync(Guid organizationId, Deposit deposit, DepositSplit split)
+    private async Task<TransferDepositAllocationScope> RequireTransferDepositAllocationScopeAsync(Guid organizationId, Deposit deposit, DepositSplit split, int undepositedFundsAccountId)
     {
         if (deposit.OfficeId <= 0)
             throw new InvalidOperationException($"Deposit {deposit.DepositCode} is missing OfficeId.");
@@ -296,11 +340,6 @@ public partial class AccountingManager
             throw new InvalidOperationException(
                 $"Deposit split for {deposit.DepositCode} is missing the undeposited payment JournalEntryLineId.");
         }
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
-        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
-        if (undepositedFundsAccountId <= 0)
-            throw new InvalidOperationException($"Undeposited funds account is not configured for office {deposit.OfficeId}.");
 
         if (!await IsValidDepositSplitJournalEntryLineAsync(split, undepositedFundsAccountId))
         {
@@ -508,6 +547,21 @@ public partial class AccountingManager
     private static decimal RoundCurrency(decimal value)
     {
         return Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static string ResolveTransferDepositAllocationDescription(string? splitDescription, string? depositCode)
+    {
+        if (!string.IsNullOrWhiteSpace(splitDescription))
+        {
+            var trimmed = splitDescription.Trim();
+            var colonIndex = trimmed.IndexOf(':');
+            if (colonIndex > 0)
+                return trimmed[..colonIndex].Trim();
+
+            return trimmed;
+        }
+
+        return depositCode?.Trim() ?? string.Empty;
     }
 
     #endregion

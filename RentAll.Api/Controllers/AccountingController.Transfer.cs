@@ -123,6 +123,11 @@ public partial class AccountingController
             var response = allocations.Select(allocation => new TransferDepositAllocationResponseDto(allocation)).ToList();
             return Ok(response);
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Error resolving transfer deposit allocations");
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resolving transfer deposit allocations");
