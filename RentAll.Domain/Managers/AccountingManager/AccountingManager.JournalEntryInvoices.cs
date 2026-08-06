@@ -257,7 +257,8 @@ public partial class AccountingManager
                         prePaymentAccountId,
                         retainedEntryIds,
                         currentUser,
-                        loadCrossPeriodExpectedContext: true);
+                        loadCrossPeriodExpectedContext: true,
+                        paymentSourceInvoice: invoice);
                     if (applyResult.HasWarning)
                         return AccountingJournalEntryResult.WarningResult(applyResult.Warning!, updatedPayment);
                 }
@@ -398,7 +399,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<AccountingJournalEntryResult> UpsertPrePaymentApplyJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, List<JournalEntry> workingEntries, int prePaymentAccountId, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false)
+    private async Task<AccountingJournalEntryResult> UpsertPrePaymentApplyJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, List<JournalEntry> workingEntries, int prePaymentAccountId, ISet<Guid> retainedEntryIds, Guid currentUser, bool loadCrossPeriodExpectedContext = false, Invoice? paymentSourceInvoice = null)
     {
         try
         {
@@ -413,6 +414,7 @@ public partial class AccountingManager
                 currentUser,
                 invoice.OrganizationId);
 
+            var sourceInvoice = paymentSourceInvoice ?? invoice;
             await UpsertOwnerActualJournalEntryForPaymentAsync(
                 invoice,
                 paymentLedgerLine,
@@ -421,7 +423,8 @@ public partial class AccountingManager
                 workingEntries,
                 retainedEntryIds,
                 currentUser,
-                loadCrossPeriodExpectedContext);
+                loadCrossPeriodExpectedContext,
+                sourceInvoice);
             await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
                 invoice,
                 paymentLedgerLine,
@@ -429,7 +432,8 @@ public partial class AccountingManager
                 invoice.AccountingPeriod,
                 workingEntries,
                 retainedEntryIds,
-                currentUser);
+                currentUser,
+                sourceInvoice);
             return AccountingJournalEntryResult.Success(updated);
         }
         catch (Exception ex)

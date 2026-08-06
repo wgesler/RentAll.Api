@@ -18,6 +18,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
     internal const int ExtraFeeCostCodeId = 84;
     internal const int UndepositedFundsAccountId = 300;
     internal const int PrePaymentAccountId = 400;
+    internal const int EscrowDepositAccountId = 425;
     internal const int OwnerAccountsPayableAccountId = 501;
     internal const int OwnerRentExpenseAccountId = 502;
     internal const int OwnerIncomeAccountId = 503;
@@ -212,6 +213,15 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
                     OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    AccountId = EscrowDepositAccountId,
+                    AccountType = AccountType.OtherCurrentLiability,
+                    Name = "Escrow Deposits",
+                    AccountNo = "1002"
+                },
+                new()
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
                     AccountId = SecurityDepositLiabilityAccountId,
                     AccountType = AccountType.OtherCurrentLiability,
                     Name = "Security Deposit",
@@ -341,6 +351,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     DefaultTenantIncAccountId = AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId,
                     DefaultUndepFundsAccountId = UndepositedFundsAccountId,
                     DefaultPrePayAccountId = PrePaymentAccountId,
+                    DefaultEscrowDepositAccountId = EscrowDepositAccountId,
                     DefaultOwnActPayableAccountId = _enableOwnerShare ? OwnerAccountsPayableAccountId : null,
                     DefaultOwnerIncAccountId = _enableOwnerShare ? OwnerIncomeAccountId : null
                 });

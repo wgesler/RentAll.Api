@@ -397,6 +397,62 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
+    public async Task PrePayment_CrossMonthRentPlusDepartureFee_CreatesFeesActualOnApply()
+    {
+        const decimal rentAmount = 2550m;
+        const decimal departureFee = 350m;
+        const decimal paymentAmount = rentAmount + departureFee;
+        var accountingPeriod = new DateOnly(2026, 8, 1);
+        var paymentDate = new DateOnly(2026, 7, 15);
+
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2026, 8, 31),
+            new DateOnly(2026, 9, 29),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            hasPets: false,
+            departureFee: departureFee,
+            billingRate: 2550m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 8, 31));
+        var manager = context.CreateManager();
+
+        var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal));
+        rentalLine.Description = "Rental Fee (08/31-09/29)";
+        rentalLine.Amount = rentAmount;
+        var departureLine = Assert.Single(invoice.LedgerLines, line => line.Description == "Departure Fee");
+        departureLine.Amount = departureFee;
+        invoice.TotalAmount = paymentAmount;
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: paymentAmount,
+            paymentDate: paymentDate,
+            description: "CC - 08/31-09/29");
+        invoice.LedgerLines.Add(payment);
+
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var feesActualEntry = Assert.Single(
+            context.ActiveJournalEntries,
+            entry => entry.JournalEntryKindId == JournalEntryKind.FeesActual);
+
+        Assert.Equal(invoice.InvoiceId, feesActualEntry.SourceId);
+        Assert.Equal(
+            departureFee,
+            feesActualEntry.JournalEntryLines
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.EscrowDepositAccountId)
+                .Sum(line => line.Credit - line.Debit));
+        AssertBalancedJournalEntry(feesActualEntry);
+    }
+
+    [Fact]
     public async Task PrePayment_CreatesOwnerActualJournalEntryOnApplyOnly()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
