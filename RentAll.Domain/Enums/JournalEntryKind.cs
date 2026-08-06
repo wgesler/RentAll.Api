@@ -13,6 +13,7 @@ public enum JournalEntryKind
     OwnerActual = 16,
     SecurityDepositActual = 17,
     SecurityDepositWaiverActual = 18,
+    FeesActual = 19,
     Bill = 20,
     BillPayment = 21,
     Receipt = 22,

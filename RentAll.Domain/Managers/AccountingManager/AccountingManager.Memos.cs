@@ -14,6 +14,7 @@ public partial class AccountingManager
     private static readonly Regex OwnerActualRentMemoPattern = new(@"^R-\d+-\d+: Owner: Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex SecurityDepositActualMemoPattern = new(@"^R-\d+-\d+: Security Deposit Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex SecurityDepositWaiverActualMemoPattern = new(@"^R-\d+-\d+: Security Deposit Waiver Actual: .+$", RegexOptions.Compiled);
+    private static readonly Regex FeesActualMemoPattern = new(@"^R-\d+-\d+: Fees Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerPaymentMemoPattern = new(@"^R-\d+-\d+: Owner: Payment: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerBillMemoPattern = new(@"^RC-[^:]+: Owner: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerWorkOrderMemoPattern = new(@"^WO-[^:]+: Owner: .+$", RegexOptions.Compiled);
@@ -311,6 +312,44 @@ public partial class AccountingManager
             return JournalEntryMemoMatch.None;
 
         var parts = normalizedMemo.Split(": Security Deposit Waiver Actual: ", 2, StringSplitOptions.None);
+        _ = TryParseInvoiceSourceCodeFromMemo(normalizedMemo, out var invoiceSourceCode);
+        return new JournalEntryMemoMatch
+        {
+            Category = JournalEntryMemoCategory.Invoice,
+            SourceCode = invoiceSourceCode,
+            Detail = parts.Length > 1 ? parts[1].Trim() : string.Empty
+        };
+    }
+
+    // Example: R-001053-001: Fees Actual: Fees
+    public static string BuildFeesActualMemo(Invoice invoice)
+    {
+        if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
+            throw new ArgumentException("Invoice code is required.", nameof(invoice));
+
+        return $"{invoice.InvoiceCode.Trim()}: Fees Actual: Fees";
+    }
+
+    // Example: R-001053-001: Fees Actual: Fees (Check #1234)
+    public static string BuildFeesActualMemo(Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        var memo = BuildFeesActualMemo(invoice);
+        if (paymentLedgerLine == null || string.IsNullOrWhiteSpace(paymentLedgerLine.Description))
+            return memo;
+
+        return $"{memo} ({paymentLedgerLine.Description.Trim()})";
+    }
+
+    public static JournalEntryMemoMatch MatchFeesActualMemo(string? journalMemo, string? lineMemo = null)
+        => MatchFeesActualMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
+
+    public static JournalEntryMemoMatch MatchFeesActualMemo(string? memo)
+    {
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        if (!FeesActualMemoPattern.IsMatch(normalizedMemo))
+            return JournalEntryMemoMatch.None;
+
+        var parts = normalizedMemo.Split(": Fees Actual: ", 2, StringSplitOptions.None);
         _ = TryParseInvoiceSourceCodeFromMemo(normalizedMemo, out var invoiceSourceCode);
         return new JournalEntryMemoMatch
         {

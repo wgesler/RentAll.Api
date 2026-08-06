@@ -119,6 +119,22 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_FeesActual_UsesKind()
+    {
+        const int escrowDeposit = 930;
+        var line = BuildLine(
+            kind: JournalEntryKind.FeesActual,
+            chartOfAccountId: escrowDeposit,
+            escrowDepositAccountId: escrowDeposit,
+            memo: "R-000177-001: Fees Actual: Fees (Check #1234)",
+            credit: 250m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("BusinessEscrow", result.RecapCategory);
+        Assert.Equal(250m, result.Amount);
+    }
+
+    [Fact]
     public void Classify_SecurityDeposit_UsesExactChargeMemoSuffix()
     {
         var line = BuildLine(
@@ -165,6 +181,7 @@ public class JournalEntryRecapLineClassifierTests
         int? tenantIncomeAccountId = null,
         int? escrowSecDepAccountId = null,
         int? escrowSdwAccountId = null,
+        int? escrowDepositAccountId = null,
         string memo = "",
         string sourceDocumentCode = "",
         decimal debit = 0m,
@@ -189,6 +206,7 @@ public class JournalEntryRecapLineClassifierTests
             DefaultTenantIncAccountId = tenantIncomeAccountId ?? TenantIncome,
             DefaultEscrowSecDepAccountId = escrowSecDepAccountId,
             DefaultEscrowSdwAccountId = escrowSdwAccountId,
+            DefaultEscrowDepositAccountId = escrowDepositAccountId,
             IsRentalIncomeAccount = isRentalIncomeAccount,
             IsCashOnly = isCashOnly,
             IsInDateRange = isInDateRange

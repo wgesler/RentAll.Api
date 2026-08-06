@@ -18,6 +18,7 @@ public partial class AccountingManager
         public int TenantIncomeAccountId { get; init; }
         public int EscrowSecDepAccountId { get; init; }
         public int EscrowSdwAccountId { get; init; }
+        public int EscrowDepositAccountId { get; init; }
         public HashSet<int> RentalIncomeAccountIds { get; init; } = [];
     }
 
@@ -173,7 +174,7 @@ public partial class AccountingManager
                 $"No deposit-linked journal entries matched payment {allocationScope.SourceCode} for deposit {deposit.DepositCode}.");
         }
 
-        var (ownerEscrow, secDep, sdw, fee, description) =
+        var (ownerEscrow, secDep, sdw, fee, businessEscrow, description) =
             ClassifyTransferDepositAllocation(scopedDepositJournalEntries, allocationScope, recapContext);
 
         return BuildTransferDepositAllocationResult(
@@ -185,6 +186,7 @@ public partial class AccountingManager
             secDep,
             sdw,
             fee,
+            businessEscrow,
             description);
     }
 
@@ -426,14 +428,16 @@ public partial class AccountingManager
 
     #region Recap Classification
 
-    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw, decimal Fee, string Description) ClassifyTransferDepositAllocation(IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositAllocationScope allocationScope, TransferDepositRecapAccountContext recapContext)
+    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw, decimal Fee, decimal BusinessEscrow, string Description) ClassifyTransferDepositAllocation(IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositAllocationScope allocationScope, TransferDepositRecapAccountContext recapContext)
     {
         var ownerEscrow = 0m;
         var secDep = 0m;
         var sdw = 0m;
         var fee = 0m;
+        var businessEscrow = 0m;
         var hasSecurityDepositActual = scopedDepositJournalEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositActual);
         var hasSecurityDepositWaiverActual = scopedDepositJournalEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositWaiverActual);
+        var hasFeesActual = scopedDepositJournalEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.FeesActual);
 
         foreach (var entry in scopedDepositJournalEntries)
         {
@@ -444,9 +448,11 @@ public partial class AccountingManager
                 ref secDep,
                 ref sdw,
                 ref fee,
+                ref businessEscrow,
                 includeOwnerEscrow: entry.JournalEntryKindId != JournalEntryKind.Charge,
                 preferChargeSecurityDeposit: !hasSecurityDepositActual,
-                preferChargeSdw: !hasSecurityDepositWaiverActual);
+                preferChargeSdw: !hasSecurityDepositWaiverActual,
+                preferChargeFees: !hasFeesActual);
         }
 
         return (
@@ -454,6 +460,7 @@ public partial class AccountingManager
             RoundCurrency(secDep),
             RoundCurrency(sdw),
             RoundCurrency(fee),
+            RoundCurrency(businessEscrow),
             allocationScope.SourceCode);
     }
 
@@ -461,7 +468,7 @@ public partial class AccountingManager
 
     #region Allocation Result
 
-    private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, TransferDepositAllocationScope allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, decimal fee, string description)
+    private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, TransferDepositAllocationScope allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, decimal fee, decimal businessEscrow, string description)
     {
         var normalizedEscrowAmount = RoundCurrency(escrowAmount);
         var fullSplitAmount = RoundCurrency(Math.Abs(allocationScope.SplitAmount));
@@ -473,9 +480,11 @@ public partial class AccountingManager
             secDep = RoundCurrency(secDep * ratio);
             sdw = RoundCurrency(sdw * ratio);
             fee = RoundCurrency(fee * ratio);
+            businessEscrow = RoundCurrency(businessEscrow * ratio);
         }
 
-        var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw - fee);
+        var computedBusiness = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw - fee);
+        var business = businessEscrow > 0 ? businessEscrow : computedBusiness;
         var total = RoundCurrency(ownerEscrow + secDep + sdw + fee + business);
         if (Math.Abs(total - normalizedEscrowAmount) > 0.005m)
         {
@@ -557,7 +566,7 @@ public partial class AccountingManager
         return string.Equals(chargePrefix, scope.PaymentMemoSourceCode, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, bool includeOwnerEscrow, bool preferChargeSecurityDeposit = true, bool preferChargeSdw = true)
+    private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, ref decimal fee, ref decimal businessEscrow, bool includeOwnerEscrow, bool preferChargeSecurityDeposit = true, bool preferChargeSdw = true, bool preferChargeFees = true)
     {
         foreach (var line in entry.JournalEntryLines ?? [])
         {
@@ -579,8 +588,11 @@ public partial class AccountingManager
                 case "SDW" when preferChargeSdw || entry.JournalEntryKindId != JournalEntryKind.Charge:
                     sdw = RoundCurrency(sdw + classification.Amount);
                     break;
-                case "Fee":
+                case "Fee" when preferChargeFees || entry.JournalEntryKindId != JournalEntryKind.Charge:
                     fee = RoundCurrency(fee + classification.Amount);
+                    break;
+                case "BusinessEscrow":
+                    businessEscrow = RoundCurrency(businessEscrow + classification.Amount);
                     break;
             }
         }
@@ -603,6 +615,7 @@ public partial class AccountingManager
             TenantIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice),
             EscrowSecDepAccountId = GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, officeId, accountingOffice),
             EscrowSdwAccountId = GetDefaultEscrowSdwAccount(chartOfAccounts, officeId, accountingOffice),
+            EscrowDepositAccountId = GetDefaultEscrowDepositAccount(chartOfAccounts, officeId, accountingOffice),
             RentalIncomeAccountIds = rentalIncomeAccountIds
         };
     }
@@ -627,6 +640,7 @@ public partial class AccountingManager
             DefaultTenantIncAccountId = recapContext.TenantIncomeAccountId,
             DefaultEscrowSecDepAccountId = recapContext.EscrowSecDepAccountId,
             DefaultEscrowSdwAccountId = recapContext.EscrowSdwAccountId,
+            DefaultEscrowDepositAccountId = recapContext.EscrowDepositAccountId,
             IsRentalIncomeAccount = recapContext.RentalIncomeAccountIds.Contains(line.ChartOfAccountId),
             IsCashOnly = entry.IsCashOnly
         };

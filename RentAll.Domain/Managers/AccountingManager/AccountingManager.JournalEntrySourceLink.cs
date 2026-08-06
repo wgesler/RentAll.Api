@@ -58,6 +58,7 @@ public partial class AccountingManager
             JournalEntryKind.OwnerActual => MatchesOwnerActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
             JournalEntryKind.SecurityDepositActual => MatchesSecurityDepositActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
             JournalEntryKind.SecurityDepositWaiverActual => MatchesSecurityDepositWaiverActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
+            JournalEntryKind.FeesActual => MatchesFeesActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine),
             _ => false
         };
     }
@@ -114,6 +115,26 @@ public partial class AccountingManager
 
         var memo = (entry.Memo ?? string.Empty).Trim();
         if (!memo.Contains(": Security Deposit Waiver Actual:", StringComparison.Ordinal))
+            return false;
+
+        var paymentDescription = (paymentLedgerLine.Description ?? string.Empty).Trim();
+        if (paymentDescription.Length == 0)
+            return true;
+
+        return memo.EndsWith($"({paymentDescription})", StringComparison.Ordinal);
+    }
+
+    private static bool MatchesFeesActualPaymentJournalEntryMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        if (entry.JournalEntryKindId != JournalEntryKind.FeesActual
+            || entry.SourceTypeId != (int)SourceType.Invoice
+            || entry.SourceId != invoice.InvoiceId)
+        {
+            return false;
+        }
+
+        var memo = (entry.Memo ?? string.Empty).Trim();
+        if (!memo.Contains(": Fees Actual:", StringComparison.Ordinal))
             return false;
 
         var paymentDescription = (paymentLedgerLine.Description ?? string.Empty).Trim();
@@ -262,6 +283,12 @@ public partial class AccountingManager
            && entry.SourceTypeId == (int)SourceType.Invoice
            && entry.IsCashOnly
            && MatchesSecurityDepositWaiverActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine);
+
+    private static bool IsInvoiceFeesActualPaymentJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+        => entry.JournalEntryKindId == JournalEntryKind.FeesActual
+           && entry.SourceTypeId == (int)SourceType.Invoice
+           && entry.IsCashOnly
+           && MatchesFeesActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine);
 
     private static bool IsOwnerActualJournalEntryForInvoice(JournalEntry entry, Invoice invoice)
         => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
