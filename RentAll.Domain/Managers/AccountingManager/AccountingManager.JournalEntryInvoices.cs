@@ -263,6 +263,20 @@ public partial class AccountingManager
                         return AccountingJournalEntryResult.WarningResult(applyResult.Warning!, updatedPayment);
                 }
 
+                // Escrow Actual JEs (Fees/SD/SDW) use the full payment waterfall on the source invoice.
+                // Cross-period PrePay slices only move AR/liability; they must not cap tier-4 fees to a slice amount.
+                await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
+                    invoice,
+                    paymentLedgerLine,
+                    paymentLedgerLine.Amount,
+                    invoice.AccountingPeriod != default
+                        ? invoice.AccountingPeriod
+                        : ResolveInvoicePaymentJournalEntryDate(paymentLedgerLine),
+                    workingEntries,
+                    retainedEntryIds,
+                    currentUser,
+                    paymentSourceInvoice: invoice);
+
                 await DeleteClaimedOrphanJournalEntriesAsync(workingEntries, invoice.OrganizationId);
                 return AccountingJournalEntryResult.Success(updatedPayment);
             }
