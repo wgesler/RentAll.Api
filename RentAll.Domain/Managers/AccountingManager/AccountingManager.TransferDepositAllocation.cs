@@ -137,12 +137,85 @@ public partial class AccountingManager
 
     #region Resolve Single Deposit Allocation
 
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationForEscrowLineAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId)
+    {
+        var expandedItems = await ExpandTransferDepositAllocationItemsAsync(
+            organizationId,
+            [
+                new TransferDepositAllocationRequestItem
+                {
+                    DepositId = depositId,
+                    EscrowAmount = escrowAmount,
+                    JournalEntryLineId = null
+                }
+            ]);
+
+        if (expandedItems.Count <= 1)
+        {
+            var singleAmount = expandedItems.Count == 1 ? expandedItems[0].EscrowAmount : escrowAmount;
+            return await ResolveTransferDepositAllocationAsync(
+                organizationId,
+                officeId,
+                depositId,
+                singleAmount,
+                recapContext,
+                escrowJournalEntryLineId);
+        }
+
+        var ownerEscrow = 0m;
+        var secDep = 0m;
+        var sdw = 0m;
+        Guid? propertyId = null;
+        Guid? reservationId = null;
+        Guid? contactId = null;
+        var description = string.Empty;
+
+        foreach (var item in expandedItems)
+        {
+            var part = await ResolveTransferDepositAllocationAsync(
+                organizationId,
+                officeId,
+                item.DepositId,
+                item.EscrowAmount,
+                recapContext,
+                null);
+
+            ownerEscrow = RoundCurrency(ownerEscrow + part.OwnerEscrow);
+            secDep = RoundCurrency(secDep + part.SecDep);
+            sdw = RoundCurrency(sdw + part.Sdw);
+            propertyId ??= part.PropertyId;
+            reservationId ??= part.ReservationId;
+            contactId ??= part.ContactId;
+            if (string.IsNullOrWhiteSpace(description) && !string.IsNullOrWhiteSpace(part.Description))
+                description = part.Description;
+        }
+
+        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        // Business is always the deposit residual (company rent + fees). FeesActual is not the Business split amount.
+        var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw);
+
+        return new TransferDepositAllocationResult
+        {
+            DepositId = depositId,
+            JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
+            EscrowAmount = normalizedEscrowAmount,
+            OwnerEscrow = ownerEscrow,
+            SecDep = secDep,
+            Sdw = sdw,
+            Business = business,
+            PropertyId = propertyId,
+            ReservationId = reservationId,
+            ContactId = contactId,
+            Description = description
+        };
+    }
+
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null)
     {
         var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId)
             ?? throw new InvalidOperationException($"Deposit {depositId} was not found.");
 
-        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, escrowJournalEntryLineId);
+        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount);
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
         if (undepositedFundsAccountId <= 0)
@@ -162,7 +235,7 @@ public partial class AccountingManager
             if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
                 deposit = await _accountingRepository.UpdateDepositAsync(deposit);
 
-            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, escrowJournalEntryLineId);
+            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount);
         }
 
         var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit, undepositedFundsAccountId);
@@ -269,7 +342,9 @@ public partial class AccountingManager
                 ? RoundCurrency(sourceAmount.Value)
                 : RoundCurrency(group.Sum(split => split.Amount));
 
-            var allocation = await ResolveTransferDepositAllocationAsync(
+            // Escrow deposit lines are often the full deposit total; deposit splits are per UF payment.
+            // Expand/aggregate the same way transfer creation does so multi-split deposits resolve.
+            var allocation = await ResolveTransferDepositAllocationForEscrowLineAsync(
                 organizationId,
                 transfer.OfficeId,
                 depositId,
@@ -300,7 +375,7 @@ public partial class AccountingManager
 
     #region Deposit Split Identification
 
-    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount, Guid? escrowJournalEntryLineId)
+    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount)
     {
         var splits = (deposit.Splits ?? [])
             .Where(split => Math.Abs(split.Amount) > 0.005m)
@@ -309,13 +384,7 @@ public partial class AccountingManager
         if (splits.Count == 0)
             throw new InvalidOperationException($"Deposit {deposit.DepositCode} has no non-zero splits.");
 
-        if (escrowJournalEntryLineId is { } escrowLineId && escrowLineId != Guid.Empty)
-        {
-            var splitByPaymentLine = splits.FirstOrDefault(split => split.JournalEntryLineId == escrowLineId);
-            if (splitByPaymentLine != null)
-                return splitByPaymentLine;
-        }
-
+        // Deposit splits link to UF payment lines by amount — not to the escrow deposit JE line id.
         var normalizedEscrowAmount = RoundCurrency(Math.Abs(escrowAmount));
         if (normalizedEscrowAmount != 0)
         {
