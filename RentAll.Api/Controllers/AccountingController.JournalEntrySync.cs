@@ -265,6 +265,32 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/sync/split-links")]
+    public async Task<IActionResult> RepairDepositAndTransferSplitLinks([FromBody] SyncJournalEntriesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var officeIds = ResolveRequestedOfficeIds(dto);
+            if (string.IsNullOrWhiteSpace(officeIds))
+                return Forbid();
+
+            var result = await _accountingManager.RepairDepositAndTransferSplitLinksAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error repairing deposit and transfer split links");
+            return ServerError("An error occurred while repairing deposit and transfer split links");
+        }
+    }
+
     [HttpPost("journal-entry/sync/all/start")]
     public IActionResult StartAllJournalEntriesSync([FromBody] SyncJournalEntriesRequestDto dto)
     {

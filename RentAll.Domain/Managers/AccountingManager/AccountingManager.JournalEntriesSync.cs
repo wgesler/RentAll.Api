@@ -465,7 +465,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task<JournalEntrySyncResult> RepairDepositAndTransferSplitLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> RepairDepositAndTransferSplitLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();
 
