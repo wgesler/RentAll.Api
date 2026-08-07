@@ -23,6 +23,9 @@ public partial class AccountingManager
     private Task<List<JournalEntry>> GetOwnerActualJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
         => GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId, JournalEntryKind.OwnerActual);
 
+    private Task<List<JournalEntry>> GetFeesActualJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
+        => GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId, JournalEntryKind.FeesActual);
+
     private async Task<List<JournalEntry>> GetAllJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
         => await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId);
 

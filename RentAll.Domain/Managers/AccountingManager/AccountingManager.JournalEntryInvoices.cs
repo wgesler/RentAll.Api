@@ -208,15 +208,6 @@ public partial class AccountingManager
                             currentUser,
                             loadCrossPeriodExpectedContext: true,
                             paymentSourceInvoice: invoice);
-                        await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
-                            splitInvoice,
-                            splitPaymentLedgerLine,
-                            splitAllocation.Amount,
-                            ResolveInvoicePaymentJournalEntryDate(splitPaymentLedgerLine),
-                            workingEntries,
-                            retainedEntryIds,
-                            currentUser,
-                            paymentSourceInvoice: invoice);
                     }
                 }
 
@@ -439,15 +430,18 @@ public partial class AccountingManager
                 currentUser,
                 loadCrossPeriodExpectedContext,
                 sourceInvoice);
-            await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
-                invoice,
-                paymentLedgerLine,
-                paymentLedgerLine.Amount,
-                invoice.AccountingPeriod,
-                workingEntries,
-                retainedEntryIds,
-                currentUser,
-                sourceInvoice);
+            if (paymentSourceInvoice == null)
+            {
+                await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
+                    invoice,
+                    paymentLedgerLine,
+                    paymentLedgerLine.Amount,
+                    invoice.AccountingPeriod,
+                    workingEntries,
+                    retainedEntryIds,
+                    currentUser,
+                    sourceInvoice);
+            }
             return AccountingJournalEntryResult.Success(updated);
         }
         catch (Exception ex)

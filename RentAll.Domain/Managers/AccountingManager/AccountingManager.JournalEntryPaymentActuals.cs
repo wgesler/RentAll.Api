@@ -536,18 +536,15 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
         var escrowDepositAccountId = GetDefaultEscrowDepositAccount(chartOfAccounts, invoice.OfficeId, accountingOffice);
 
-        var dbEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = invoice.OrganizationId,
-            OfficeIds = invoice.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            SourceId = invoice.InvoiceId,
-            IncludeUnposted = true
-        })).ToList();
+        // Fees Actual is cash-only; JournalEntry_GetByCriteria excludes those — load by source + kind from DB.
+        var dbEntries = await GetFeesActualJournalEntriesForInvoiceAsync(
+            invoice.OrganizationId,
+            invoice.OfficeId,
+            invoice.InvoiceId);
 
         var entries = (workingEntries ?? [])
             .Where(entry => entry.JournalEntryKindId == JournalEntryKind.FeesActual && entry.SourceId == invoice.InvoiceId)
-            .Concat(dbEntries.Where(entry => entry.JournalEntryKindId == JournalEntryKind.FeesActual))
+            .Concat(dbEntries)
             .GroupBy(entry => entry.JournalEntryId)
             .Select(group => group.First())
             .ToList();
