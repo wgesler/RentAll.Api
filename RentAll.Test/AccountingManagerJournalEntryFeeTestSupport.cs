@@ -301,8 +301,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 .ReturnsAsync((Guid invoiceId, Guid _) =>
                     _invoices.TryGetValue(invoiceId, out var invoice) ? CloneInvoice(invoice) : null);
             accountingRepository
-                .Setup(r => r.UpdateByIdAsync(It.IsAny<Invoice>()))
-                .ReturnsAsync((Invoice invoice) =>
+                .Setup(r => r.UpdateByIdAsync(It.IsAny<Invoice>(), It.IsAny<bool>()))
+                .ReturnsAsync((Invoice invoice, bool _) =>
                 {
                     _invoices[invoice.InvoiceId] = CloneInvoice(invoice);
                     return CloneInvoice(invoice);

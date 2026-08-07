@@ -430,6 +430,7 @@ public partial class AccountingManager
                 currentUser,
                 loadCrossPeriodExpectedContext,
                 sourceInvoice);
+            // Cross-period PrePay apply only moves liability; escrow actuals run once below on the full payment.
             if (paymentSourceInvoice == null)
             {
                 await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
