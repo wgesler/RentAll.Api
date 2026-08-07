@@ -353,6 +353,9 @@ public partial class AccountingManager
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
 
+                foreach (var linkError in await GetUnresolvedPaymentBackedDepositSplitMessagesAsync(deposit))
+                    result.Errors.Add(linkError);
+
                 await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
                 result.JournalEntriesCreated++;
             }

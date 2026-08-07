@@ -29,9 +29,6 @@ public partial class AccountingManager
             return;
 
         var paymentLineCandidates = await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId);
-        if (paymentLineCandidates.Count == 0)
-            return;
-
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherDepositsAsync(deposit);
         var assignedLineIds = new HashSet<Guid>();
 
@@ -45,19 +42,58 @@ public partial class AccountingManager
                 continue;
             }
 
-            var resolvedLineId = ResolveDepositSplitJournalEntryLineId(
-                deposit,
-                split,
-                paymentLineCandidates,
-                claimedLineIds,
-                assignedLineIds);
+            Guid? resolvedLineId = null;
+            if (paymentLineCandidates.Count > 0)
+            {
+                resolvedLineId = ResolveDepositSplitJournalEntryLineId(
+                    deposit,
+                    split,
+                    paymentLineCandidates,
+                    claimedLineIds,
+                    assignedLineIds);
+            }
 
             if (resolvedLineId.HasValue && resolvedLineId != Guid.Empty)
             {
                 split.JournalEntryLineId = resolvedLineId;
                 assignedLineIds.Add(resolvedLineId.Value);
+                continue;
             }
+
+            // Stale after clear/resync (or wrong account line): clear so callers rematch instead of treating as valid.
+            if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
+                split.JournalEntryLineId = null;
         }
+    }
+
+    private async Task<IReadOnlyList<string>> GetUnresolvedPaymentBackedDepositSplitMessagesAsync(Deposit deposit)
+    {
+        if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
+            return [];
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0)
+            return [];
+
+        var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
+            ? deposit.DepositId.ToString()
+            : deposit.DepositCode.Trim();
+        var messages = new List<string>();
+
+        foreach (var split in deposit.Splits.Where(split => Math.Abs(split.Amount) > 0.005m))
+        {
+            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            if (await IsValidDepositSplitJournalEntryLineAsync(split, undepositedFundsAccountId))
+                continue;
+
+            messages.Add(
+                $"Deposit {depositLabel}: payment split amount {split.Amount:0.00} is not linked to a valid undeposited payment line.");
+        }
+
+        return messages;
     }
 
     private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(Deposit deposit, int undepositedFundsAccountId)

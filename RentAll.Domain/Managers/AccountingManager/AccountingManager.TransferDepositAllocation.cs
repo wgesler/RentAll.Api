@@ -151,9 +151,17 @@ public partial class AccountingManager
         if (!IsPaymentBackedDepositSplit(matchedSplit, undepositedFundsAccountId))
             return BuildNonPaymentTransferDepositAllocationResult(depositId, escrowJournalEntryLineId, escrowAmount, deposit, matchedSplit);
 
-        if (matchedSplit.JournalEntryLineId is not { } existingPaymentLineId || existingPaymentLineId == Guid.Empty)
+        if (!await IsValidDepositSplitJournalEntryLineAsync(matchedSplit, undepositedFundsAccountId))
         {
+            var originalSplitLineIds = (deposit.Splits ?? [])
+                .Select(split => split.JournalEntryLineId)
+                .ToList();
+
             await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+
+            if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+                deposit = await _accountingRepository.UpdateDepositAsync(deposit);
+
             matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, escrowJournalEntryLineId);
         }
 
