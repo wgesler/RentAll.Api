@@ -31,9 +31,6 @@ public partial class AccountingManager
             return;
 
         var escrowLineCandidates = await BuildEscrowDepositLineCandidatesAsync(transfer, escrowDepositAccountId);
-        if (escrowLineCandidates.Count == 0)
-            return;
-
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherTransfersAsync(transfer);
         var assignedLineIds = new HashSet<Guid>();
 
@@ -51,12 +48,16 @@ public partial class AccountingManager
                 continue;
             }
 
-            var resolvedLineId = ResolveTransferSplitGroupJournalEntryLineId(
-                transfer,
-                splitGroup,
-                escrowLineCandidates,
-                claimedLineIds,
-                assignedLineIds);
+            Guid? resolvedLineId = null;
+            if (escrowLineCandidates.Count > 0)
+            {
+                resolvedLineId = ResolveTransferSplitGroupJournalEntryLineId(
+                    transfer,
+                    splitGroup,
+                    escrowLineCandidates,
+                    claimedLineIds,
+                    assignedLineIds);
+            }
 
             if (resolvedLineId.HasValue && resolvedLineId != Guid.Empty)
             {
@@ -64,8 +65,57 @@ public partial class AccountingManager
                     split.JournalEntryLineId = resolvedLineId;
 
                 assignedLineIds.Add(resolvedLineId.Value);
+                continue;
+            }
+
+            // Stale after clear/resync: clear so callers rematch instead of treating as valid.
+            foreach (var split in splitGroup)
+            {
+                if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
+                    split.JournalEntryLineId = null;
             }
         }
+    }
+
+    private async Task<IReadOnlyList<string>> GetUnresolvedTransferSplitMessagesAsync(Transfer transfer)
+    {
+        if (transfer.Splits == null || transfer.Splits.Count == 0 || transfer.OfficeId <= 0)
+            return [];
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(transfer.OrganizationId, transfer.OfficeId);
+        var escrowDepositAccountId = transfer.BankAccountId is > 0
+            ? transfer.BankAccountId.Value
+            : GetDefaultEscrowDepositAccount(chartOfAccounts, transfer.OfficeId, accountingOffice);
+        if (escrowDepositAccountId <= 0)
+            return [];
+
+        var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
+            ? transfer.TransferId.ToString()
+            : transfer.TransferCode.Trim();
+        var messages = new List<string>();
+
+        foreach (var splitGroup in GroupTransferSplitsForReconciliation(transfer.Splits))
+        {
+            var groupAmount = RoundCurrency(splitGroup.Sum(split => split.Amount));
+            if (Math.Abs(groupAmount) <= 0.005m)
+                continue;
+
+            var referenceLineId = splitGroup
+                .Select(split => split.JournalEntryLineId)
+                .FirstOrDefault(id => id is { } lineId && lineId != Guid.Empty);
+
+            if (referenceLineId is { } lineId
+                && lineId != Guid.Empty
+                && await IsValidTransferSplitGroupJournalEntryLineAsync(splitGroup, lineId, escrowDepositAccountId))
+            {
+                continue;
+            }
+
+            messages.Add(
+                $"Transfer {transferLabel}: split group amount {groupAmount:0.00} is not linked to a valid escrow deposit journal entry line.");
+        }
+
+        return messages;
     }
 
     private static IEnumerable<List<TransferSplit>> GroupTransferSplitsForReconciliation(IReadOnlyList<TransferSplit> splits)

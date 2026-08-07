@@ -426,6 +426,9 @@ public partial class AccountingManager
                     transfer = await _accountingRepository.UpdateTransferAsync(transfer);
                 }
 
+                foreach (var linkError in await GetUnresolvedTransferSplitMessagesAsync(transfer))
+                    result.Errors.Add(linkError);
+
                 await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
                 result.JournalEntriesCreated++;
             }
