@@ -67,6 +67,10 @@ public partial class AccountingManager
             if (!await IsAccountingFeatureEnabledAsync(deposit.OrganizationId) || !ShouldCreateJournalEntryForDeposit(deposit))
             {
                 await ClearDepositDocumentLinksAsync(deposit.OrganizationId, deposit.DepositId, currentUser);
+                await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
+                    deposit.OrganizationId,
+                    deposit.DepositId,
+                    currentUser);
                 await DeleteJournalEntriesForSourceAsync(
                     deposit.OrganizationId,
                     deposit.OfficeId,
@@ -270,6 +274,7 @@ public partial class AccountingManager
         await ApplyDepositDocumentLinksFromDepositSplitsAsync(deposit, currentUser);
 
         var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
         foreach (var paymentId in paymentIds)
         {
             var paymentJournalEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
@@ -351,6 +356,38 @@ public partial class AccountingManager
         }
 
         return paymentIds;
+    }
+
+    private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, Guid currentUser)
+    {
+        if (deposit.DepositId == Guid.Empty)
+            return;
+
+        var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
+    }
+
+    private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, IReadOnlyCollection<Guid> paymentIds, Guid currentUser)
+    {
+        if (deposit.DepositId == Guid.Empty)
+            return;
+
+        await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
+            deposit.OrganizationId,
+            deposit.DepositId,
+            currentUser);
+
+        foreach (var paymentId in paymentIds)
+        {
+            if (paymentId == Guid.Empty)
+                continue;
+
+            await _accountingRepository.SetPaymentDepositIdAsync(
+                paymentId,
+                deposit.OrganizationId,
+                deposit.DepositId,
+                currentUser);
+        }
     }
 
     private async Task ApplyDepositDocumentLinksFromDepositSplitsAsync(Deposit deposit, Guid currentUser)

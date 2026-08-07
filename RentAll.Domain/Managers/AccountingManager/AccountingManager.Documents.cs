@@ -205,6 +205,7 @@ public partial class AccountingManager
             ?? throw new Exception("Payment record not found");
 
         payment.PaymentCode = existing.PaymentCode;
+        payment.DepositId = existing.DepositId;
 
         var updated = await _accountingRepository.UpdatePaymentAsync(payment);
         return await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
@@ -258,6 +259,7 @@ public partial class AccountingManager
     {
         await PrepareDepositForSaveAsync(deposit);
         var created = await _accountingRepository.CreateDepositAsync(deposit);
+        await SyncPaymentDepositIdsForDepositAsync(created, currentUser);
         await CreateJournalEntryFromDepositAsync(created, currentUser);
         return created;
     }
@@ -276,6 +278,7 @@ public partial class AccountingManager
         var freshDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, deposit.OrganizationId)
             ?? throw new Exception("Deposit not found after update");
 
+        await SyncPaymentDepositIdsForDepositAsync(freshDeposit, currentUser);
         await TryReplaceJournalEntriesFromDepositAsync(freshDeposit, currentUser);
 
         return await _accountingRepository.GetDepositByIdAsync(freshDeposit.DepositId, freshDeposit.OrganizationId)
@@ -292,6 +295,10 @@ public partial class AccountingManager
             throw new Exception("Deposit record not found");
 
         await ClearDepositDocumentLinksAsync(deposit.OrganizationId, deposit.DepositId, currentUser);
+        await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
+            deposit.OrganizationId,
+            deposit.DepositId,
+            currentUser);
         await DeleteJournalEntriesForDepositAsync(deposit);
         await _accountingRepository.DeleteDepositByIdAsync(depositId, organizationId, currentUser);
     }

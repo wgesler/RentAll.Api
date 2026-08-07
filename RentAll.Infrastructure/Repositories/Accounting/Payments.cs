@@ -102,6 +102,32 @@ public partial class AccountingRepository
         await using var db = new SqlConnection(_dbConnectionString);
         await SetLedgerLinePaymentIdCoreAsync(db, null, ledgerLineId, paymentId, modifiedBy);
     }
+
+    public async Task SetPaymentDepositIdAsync(Guid paymentId, Guid organizationId, Guid? depositId, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.Payment_SetDepositId", new
+        {
+            PaymentId = paymentId,
+            OrganizationId = organizationId,
+            DepositId = depositId is { } id && id != Guid.Empty ? (Guid?)id : null,
+            ModifiedBy = modifiedBy
+        });
+    }
+
+    public async Task ClearPaymentDepositIdsByDepositIdAsync(Guid organizationId, Guid depositId, Guid modifiedBy)
+    {
+        if (depositId == Guid.Empty)
+            return;
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.Payment_ClearDepositIdByDepositId", new
+        {
+            OrganizationId = organizationId,
+            DepositId = depositId,
+            ModifiedBy = modifiedBy
+        });
+    }
     #endregion
 
     private async Task<Payment> CreatePaymentCoreAsync(SqlConnection db, IDbTransaction? transaction, Payment payment)
@@ -120,7 +146,6 @@ public partial class AccountingRepository
             CostCodeId = payment.CostCodeId,
             Description = payment.Description,
             PaymentTypeId = payment.PaymentTypeId,
-            DepositId = payment.DepositId,
             PostingStatusId = payment.PostingStatusId ?? 0,
             IsActive = payment.IsActive,
             CreatedBy = payment.CreatedBy
@@ -145,7 +170,6 @@ public partial class AccountingRepository
             CostCodeId = payment.CostCodeId,
             Description = payment.Description,
             PaymentTypeId = payment.PaymentTypeId,
-            DepositId = payment.DepositId,
             PostingStatusId = payment.PostingStatusId ?? 0,
             IsActive = payment.IsActive,
             ModifiedBy = payment.ModifiedBy

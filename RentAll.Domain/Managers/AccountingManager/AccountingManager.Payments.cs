@@ -85,6 +85,7 @@ public partial class AccountingManager
             throw new Exception("Payment record not found");
 
         payment.PaymentCode = existing.PaymentCode;
+        payment.DepositId = existing.DepositId;
 
         await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
         await DeleteJournalEntriesForPaymentAsync(existing);

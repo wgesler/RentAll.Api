@@ -353,6 +353,7 @@ public partial class AccountingManager
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
 
+                await SyncPaymentDepositIdsForDepositAsync(deposit, currentUser);
                 await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
                 result.JournalEntriesCreated++;
             }
@@ -505,6 +506,8 @@ public partial class AccountingManager
                     deposit.ModifiedBy = currentUser;
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
+
+                await SyncPaymentDepositIdsForDepositAsync(deposit, currentUser);
             }
             catch (Exception ex)
             {
