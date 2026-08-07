@@ -225,6 +225,8 @@ public partial class AccountingRepository : IAccountingRepository
             BankAccountId = e.BankAccountId,
             BankAccountDisplayName = e.BankAccountDisplayName,
             Splits = splits,
+            TransferId = e.TransferId == Guid.Empty ? null : e.TransferId,
+            TransferCode = e.TransferCode ?? string.Empty,
             PostingStatusId = e.PostingStatusId,
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,

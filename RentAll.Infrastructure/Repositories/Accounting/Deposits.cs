@@ -147,6 +147,32 @@ public partial class AccountingRepository
         });
     }
 
+    public async Task SetDepositTransferIdAsync(Guid depositId, Guid organizationId, Guid? transferId, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.Deposit_SetTransferId", new
+        {
+            DepositId = depositId,
+            OrganizationId = organizationId,
+            TransferId = transferId is { } id && id != Guid.Empty ? (Guid?)id : null,
+            ModifiedBy = modifiedBy
+        });
+    }
+
+    public async Task ClearDepositTransferIdsByTransferIdAsync(Guid organizationId, Guid transferId, Guid modifiedBy)
+    {
+        if (transferId == Guid.Empty)
+            return;
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Accounting.Deposit_ClearTransferIdByTransferId", new
+        {
+            OrganizationId = organizationId,
+            TransferId = transferId,
+            ModifiedBy = modifiedBy
+        });
+    }
+
     #endregion
 
     #region Helpers

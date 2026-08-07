@@ -76,6 +76,10 @@ public partial class AccountingManager
             if (!await IsAccountingFeatureEnabledAsync(transfer.OrganizationId) || !ShouldCreateJournalEntryForTransfer(transfer))
             {
                 await ClearTransferDocumentLinksAsync(transfer.OrganizationId, transfer.TransferId, currentUser);
+                await _accountingRepository.ClearDepositTransferIdsByTransferIdAsync(
+                    transfer.OrganizationId,
+                    transfer.TransferId,
+                    currentUser);
                 await DeleteJournalEntriesForSourceAsync(
                     transfer.OrganizationId,
                     transfer.OfficeId,
@@ -91,6 +95,7 @@ public partial class AccountingManager
                 OfficeIds = transfer.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.Transfer,
                 SourceId = transfer.TransferId,
+                StartDate = DateOnly.MinValue,
                 IncludeUnposted = true
             })).ToList();
 
@@ -312,6 +317,7 @@ public partial class AccountingManager
         await ClearTransferDocumentLinksAsync(transfer.OrganizationId, transfer.TransferId, currentUser);
 
         var depositIds = await CollectDepositIdsFromTransferSplitsAsync(transfer);
+        await SyncDepositTransferIdsForTransferAsync(transfer, depositIds, currentUser);
         foreach (var depositId in depositIds)
         {
             var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
@@ -334,6 +340,7 @@ public partial class AccountingManager
             OfficeIds = transfer.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Transfer,
             SourceId = transfer.TransferId,
+            StartDate = DateOnly.MinValue,
             IncludeUnposted = true
         })).ToList();
 
@@ -383,13 +390,52 @@ public partial class AccountingManager
             if (depositJournalEntry == null)
                 continue;
 
-            if (depositJournalEntry.DepositId is not { } depositId || depositId == Guid.Empty)
+            var depositId = NormalizeOptionalGuid(depositJournalEntry.DepositId);
+            if (depositId == null
+                && depositJournalEntry.SourceTypeId == (int)SourceType.Deposit)
+            {
+                depositId = NormalizeOptionalGuid(depositJournalEntry.SourceId);
+            }
+
+            if (depositId == null || depositId == Guid.Empty)
                 throw new Exception("Transfer split journal entry line must belong to a journal entry with a deposit link.");
 
-            depositIds.Add(depositId);
+            depositIds.Add(depositId.Value);
         }
 
         return depositIds;
+    }
+
+    private async Task SyncDepositTransferIdsForTransferAsync(Transfer transfer, Guid currentUser)
+    {
+        if (transfer.TransferId == Guid.Empty)
+            return;
+
+        var depositIds = await CollectDepositIdsFromTransferSplitsAsync(transfer);
+        await SyncDepositTransferIdsForTransferAsync(transfer, depositIds, currentUser);
+    }
+
+    private async Task SyncDepositTransferIdsForTransferAsync(Transfer transfer, IReadOnlyCollection<Guid> depositIds, Guid currentUser)
+    {
+        if (transfer.TransferId == Guid.Empty)
+            return;
+
+        await _accountingRepository.ClearDepositTransferIdsByTransferIdAsync(
+            transfer.OrganizationId,
+            transfer.TransferId,
+            currentUser);
+
+        foreach (var depositId in depositIds)
+        {
+            if (depositId == Guid.Empty)
+                continue;
+
+            await _accountingRepository.SetDepositTransferIdAsync(
+                depositId,
+                transfer.OrganizationId,
+                transfer.TransferId,
+                currentUser);
+        }
     }
     #endregion
 }

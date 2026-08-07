@@ -15,6 +15,8 @@ public class DepositEntity
     public int? BankAccountId { get; set; }
     public string BankAccountDisplayName { get; set; } = string.Empty;
     public string Splits { get; set; } = "[]";
+    public Guid? TransferId { get; set; }
+    public string TransferCode { get; set; } = string.Empty;
     public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

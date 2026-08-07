@@ -106,6 +106,8 @@ public partial class AccountingManager
             OrganizationId = deposit.OrganizationId,
             OfficeIds = deposit.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Invoice,
+            // Rematch must see payment JEs before the accounting-office start date.
+            StartDate = DateOnly.MinValue,
             IncludeUnposted = true
         }))
             .Where(entry =>

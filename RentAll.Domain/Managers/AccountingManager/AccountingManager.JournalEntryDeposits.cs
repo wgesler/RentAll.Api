@@ -86,6 +86,7 @@ public partial class AccountingManager
                 OfficeIds = deposit.OfficeId.ToString(),
                 SourceTypeId = (int)SourceType.Deposit,
                 SourceId = deposit.DepositId,
+                StartDate = DateOnly.MinValue,
                 IncludeUnposted = true
             })).ToList();
 
@@ -305,6 +306,7 @@ public partial class AccountingManager
             OfficeIds = deposit.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Deposit,
             SourceId = deposit.DepositId,
+            StartDate = DateOnly.MinValue,
             IncludeUnposted = true
         })).ToList();
 

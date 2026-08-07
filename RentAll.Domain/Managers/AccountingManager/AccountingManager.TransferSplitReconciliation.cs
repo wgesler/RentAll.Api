@@ -397,6 +397,8 @@ public partial class AccountingManager
             OrganizationId = transfer.OrganizationId,
             OfficeIds = transfer.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Deposit,
+            // Rematch must see deposit JEs before the accounting-office start date.
+            StartDate = DateOnly.MinValue,
             IncludeUnposted = true
         })).ToList();
 

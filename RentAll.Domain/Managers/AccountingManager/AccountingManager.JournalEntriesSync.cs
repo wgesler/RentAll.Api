@@ -424,6 +424,7 @@ public partial class AccountingManager
                     transfer = await _accountingRepository.UpdateTransferAsync(transfer);
                 }
 
+                await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
                 await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
                 result.JournalEntriesCreated++;
             }
@@ -550,6 +551,8 @@ public partial class AccountingManager
                     if ((await GetUnresolvedTransferSplitMessagesAsync(transfer)).Count == 0)
                         break;
                 }
+
+                await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
             }
             catch (Exception ex)
             {

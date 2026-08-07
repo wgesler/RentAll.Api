@@ -117,6 +117,8 @@ public interface IAccountingRepository
     Task SetLedgerLinePaymentIdAsync(Guid ledgerLineId, Guid paymentId, Guid modifiedBy);
     Task SetPaymentDepositIdAsync(Guid paymentId, Guid organizationId, Guid? depositId, Guid modifiedBy);
     Task ClearPaymentDepositIdsByDepositIdAsync(Guid organizationId, Guid depositId, Guid modifiedBy);
+    Task SetDepositTransferIdAsync(Guid depositId, Guid organizationId, Guid? transferId, Guid modifiedBy);
+    Task ClearDepositTransferIdsByTransferIdAsync(Guid organizationId, Guid transferId, Guid modifiedBy);
     #endregion
 
     #region Put

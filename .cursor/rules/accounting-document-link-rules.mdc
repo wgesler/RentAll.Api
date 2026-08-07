@@ -1,0 +1,14 @@
+---
+description: Payment / deposit / transfer document and JE link rules
+alwaysApply: true
+---
+
+# Accounting document link rules
+
+**Rule 1:** An invoice’s payment ledger lines are `LedgerLine` rows whose cost code has `TransactionType = Payment`, and each of those lines points to its payment via `PaymentId`.
+
+**Rule 2:** A payment creates a journal entry with an Undeposited Funds debit line; that JE points to the payment via `JournalEntry.PaymentId` (Payment has no `JournalEntryId`).
+
+**Rule 3:** A deposit is one or more payments; when a deposit is created/updated, each included payment gets `Payment.DepositId` and `Payment.DepositCode`. The deposit also gets its own JE (debit bank / credit UF per split). Deposit JE lines do **not** link to payment JE lines; each `DepositSplit.JournalEntryLineId` links to the payment’s UF JE line. Clearing/deleting a deposit clears those payment deposit links.
+
+**Rule 4:** A transfer is one or more deposits; when a transfer is created/updated, each included deposit gets `Deposit.TransferId` and `Deposit.TransferCode`. The transfer also gets its own JE (credit escrow / debit per split). Transfer JE lines do **not** link to deposit JE lines; each `TransferSplit.JournalEntryLineId` links to the deposit JE source line. Sync also stamps `JournalEntry.TransferId` on related deposit JEs. Clearing/deleting a transfer clears those deposit transfer links.
