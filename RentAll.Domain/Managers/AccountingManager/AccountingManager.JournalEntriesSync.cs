@@ -465,6 +465,126 @@ public partial class AccountingManager
         return result;
     }
 
+    private async Task<JournalEntrySyncResult> RepairDepositAndTransferSplitLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var result = new JournalEntrySyncResult();
+
+        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IsActive = true,
+            IncludeInactive = false
+        })).ToList();
+
+        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IsActive = true,
+            IncludeInactive = false
+        })).ToList();
+
+        var total = deposits.Count + transfers.Count;
+        var processed = 0;
+        ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, total == 0 ? "Completed" : "Running");
+
+        foreach (var depositSummary in deposits)
+        {
+            result.DocumentsProcessed++;
+            try
+            {
+                var deposit = await _accountingRepository.GetDepositByIdAsync(depositSummary.DepositId, organizationId);
+                if (deposit == null)
+                {
+                    processed++;
+                    ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
+                    continue;
+                }
+
+                var originalSplitLineIds = (deposit.Splits ?? [])
+                    .Select(split => split.JournalEntryLineId)
+                    .ToList();
+                await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+                if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+                {
+                    deposit.ModifiedBy = currentUser;
+                    deposit = await _accountingRepository.UpdateDepositAsync(deposit);
+                }
+
+                foreach (var linkError in await GetUnresolvedPaymentBackedDepositSplitMessagesAsync(deposit))
+                    result.Errors.Add(linkError);
+            }
+            catch (Exception ex)
+            {
+                var depositLabel = string.IsNullOrWhiteSpace(depositSummary.DepositCode)
+                    ? depositSummary.DepositId.ToString()
+                    : depositSummary.DepositCode.Trim();
+                result.Errors.Add($"Deposit {depositLabel} split-link repair: {ex.Message}");
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        foreach (var transferSummary in transfers)
+        {
+            result.DocumentsProcessed++;
+            try
+            {
+                var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
+                if (transfer == null)
+                {
+                    processed++;
+                    ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
+                    continue;
+                }
+
+                // Pass 1: rematch (or clear stale). Pass 2: after clear, regroup by description and rematch again.
+                for (var pass = 0; pass < 2; pass++)
+                {
+                    var originalSplitLineIds = (transfer.Splits ?? [])
+                        .Select(split => split.JournalEntryLineId)
+                        .ToList();
+                    await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
+                    if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
+                    {
+                        transfer.ModifiedBy = currentUser;
+                        transfer = await _accountingRepository.UpdateTransferAsync(transfer);
+                    }
+
+                    var unresolved = await GetUnresolvedTransferSplitMessagesAsync(transfer);
+                    if (unresolved.Count == 0)
+                        break;
+
+                    if (pass == 1)
+                    {
+                        foreach (var linkError in unresolved)
+                            result.Errors.Add(linkError);
+                    }
+                }
+
+                await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
+                result.JournalEntriesCreated++;
+            }
+            catch (Exception ex)
+            {
+                var transferLabel = string.IsNullOrWhiteSpace(transferSummary.TransferCode)
+                    ? transferSummary.TransferId.ToString()
+                    : transferSummary.TransferCode.Trim();
+                result.Errors.Add($"Transfer {transferLabel} split-link repair: {ex.Message}");
+            }
+
+            processed++;
+            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        if (total == 0)
+            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, "Completed");
+
+        return result;
+    }
+
     public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         var result = new JournalEntrySyncResult();

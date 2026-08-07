@@ -120,13 +120,19 @@ public partial class AccountingManager
 
     private static IEnumerable<List<TransferSplit>> GroupTransferSplitsForReconciliation(IReadOnlyList<TransferSplit> splits)
     {
-        var groups = new Dictionary<string, List<TransferSplit>>();
+        var groups = new Dictionary<string, List<TransferSplit>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var split in splits)
         {
-            var key = split.JournalEntryLineId is { } lineId && lineId != Guid.Empty
-                ? $"line:{lineId}"
-                : $"ctx:{NormalizeOptionalGuid(split.PropertyId)}:{NormalizeOptionalGuid(split.ReservationId)}:{NormalizeOptionalGuid(split.ContactId)}";
+            // Keep Owner/SD/SDW/Business together: same escrow line, else same description, else context.
+            // Description matters after clear/resync clears line ids — context alone can split the group.
+            string key;
+            if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
+                key = $"line:{lineId}";
+            else if (!string.IsNullOrWhiteSpace(split.Description))
+                key = $"desc:{split.Description.Trim()}";
+            else
+                key = $"ctx:{NormalizeOptionalGuid(split.PropertyId)}:{NormalizeOptionalGuid(split.ReservationId)}:{NormalizeOptionalGuid(split.ContactId)}";
 
             if (!groups.TryGetValue(key, out var group))
             {
@@ -212,20 +218,25 @@ public partial class AccountingManager
         if (line.ChartOfAccountId != escrowDepositAccountId)
             return false;
 
+        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
+        var lineAmount = Math.Abs(RoundCurrency(line.Debit - line.Credit));
+        if (groupAmount > 0.005m && Math.Abs(groupAmount - lineAmount) > 0.005m)
+            return false;
+
         return splitGroup.Any(split => TransferSplitContextMatchesLine(split, line));
     }
 
     private static Guid? ResolveTransferSplitGroupJournalEntryLineId(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<EscrowDepositLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
-        var groupAmount = splitGroup.Sum(split => split.Amount);
-        if (Math.Abs(groupAmount) <= 0.005m)
+        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
+        if (groupAmount <= 0.005m)
             return null;
 
         var matches = candidates
             .Where(candidate =>
                 !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
-                && Math.Abs(candidate.NetAmount - groupAmount) <= 0.005m
+                && Math.Abs(Math.Abs(candidate.NetAmount) - groupAmount) <= 0.005m
                 && splitGroup.Any(split => TransferSplitContextMatchesCandidate(split, candidate)))
             .ToList();
 

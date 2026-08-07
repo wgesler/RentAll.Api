@@ -86,6 +86,10 @@ public partial class AccountingManager
             processed++;
             ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, processed >= total ? "Completed" : "Running");
         }
+
+        // After JE rebuild + document links, rematch deposit UF lines and transfer escrow lines
+        // so transfer reports do not fail on stale JournalEntryLineId values.
+        await RepairDepositAndTransferSplitLinksAsync(organizationId, officeIds, currentUser, progress);
     }
 
     private async Task SyncInvoicePaymentDocumentLinksFromLedgerAsync(Guid organizationId, string officeIds, Guid currentUser)

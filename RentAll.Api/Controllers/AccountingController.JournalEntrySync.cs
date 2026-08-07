@@ -447,7 +447,7 @@ public partial class AccountingController
             SetSyncJobMessage(job, "Syncing periodic fees...");
             await RunScopedJournalEntrySyncAsync(manager => manager.SyncPeriodicFeeJournalEntriesAsync(organizationId, officeIds, startDate, endDate, progress));
 
-            SetSyncJobMessage(job, "Syncing document links...");
+            SetSyncJobMessage(job, "Syncing document links and repairing deposit/transfer split links...");
             await RunScopedJournalEntrySyncAsync(manager => manager.SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress));
 
             SetSyncJobMessage(job, "Sync complete.");
@@ -517,7 +517,11 @@ public partial class AccountingController
             ("transfer", "Transfers"),
             ("departureFee", "Departure Fees"),
             ("linenAndTowelFee", "Linen & Towel Fees"),
-            ("retainedEarnings", "Retained Earnings")
+            ("retainedEarnings", "Retained Earnings"),
+            ("documentLinkPayment", "Document Links (Payments)"),
+            ("documentLinkDeposit", "Document Links (Deposits)"),
+            ("documentLinkTransfer", "Document Links (Transfers)"),
+            ("splitLinkRepair", "Deposit/Transfer Split Link Repair")
         ];
     }
 
@@ -542,6 +546,10 @@ public partial class AccountingController
             "departureFee" => 8,
             "linenAndTowelFee" => 9,
             "retainedEarnings" => 10,
+            "documentLinkPayment" => 11,
+            "documentLinkDeposit" => 12,
+            "documentLinkTransfer" => 13,
+            "splitLinkRepair" => 14,
             _ => int.MaxValue
         };
     }
