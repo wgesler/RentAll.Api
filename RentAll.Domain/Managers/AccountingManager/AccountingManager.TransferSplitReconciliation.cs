@@ -16,6 +16,18 @@ public partial class AccountingManager
         public DateOnly TransactionDate { get; init; }
     }
 
+    private sealed class TransferDepositInvoiceEscrowMatch
+    {
+        public Guid DepositId { get; init; }
+        public string DepositCode { get; init; } = string.Empty;
+        public Guid EscrowJournalEntryLineId { get; init; }
+        public decimal EscrowLineAmount { get; init; }
+        public string InvoiceSourceCode { get; init; } = string.Empty;
+        public Guid? PropertyId { get; init; }
+        public decimal DepositSplitAmount { get; init; }
+        public DateOnly DepositDate { get; init; }
+    }
+
     private async Task ReconcileTransferSplitJournalEntryLineIdsAsync(Transfer transfer)
     {
         if (transfer.Splits == null || transfer.Splits.Count == 0 || transfer.OfficeId <= 0)
@@ -31,6 +43,7 @@ public partial class AccountingManager
         if (escrowDepositAccountId <= 0)
             return;
 
+        var invoiceDepositMatches = await BuildTransferDepositInvoiceEscrowMatchesAsync(transfer, escrowDepositAccountId);
         var escrowLineCandidates = await BuildEscrowDepositLineCandidatesAsync(transfer, escrowDepositAccountId);
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherTransfersAsync(transfer);
         var assignedLineIds = new HashSet<Guid>();
@@ -49,8 +62,15 @@ public partial class AccountingManager
                 continue;
             }
 
-            Guid? resolvedLineId = null;
-            if (escrowLineCandidates.Count > 0)
+            // Primary: invoice in transfer description → deposit payment split → deposit escrow JE line.
+            Guid? resolvedLineId = ResolveTransferSplitGroupEscrowLineFromDepositInvoice(
+                transfer,
+                splitGroup,
+                invoiceDepositMatches,
+                claimedLineIds);
+
+            // Fallback: amount match among escrow deposit lines (non-invoice / legacy).
+            if (resolvedLineId is null || resolvedLineId == Guid.Empty)
             {
                 resolvedLineId = ResolveTransferSplitGroupJournalEntryLineId(
                     transfer,
@@ -65,6 +85,7 @@ public partial class AccountingManager
                 foreach (var split in splitGroup)
                     split.JournalEntryLineId = resolvedLineId;
 
+                // Same deposit escrow line may back multiple invoice description groups.
                 assignedLineIds.Add(resolvedLineId.Value);
                 continue;
             }
@@ -76,6 +97,227 @@ public partial class AccountingManager
                     split.JournalEntryLineId = null;
             }
         }
+
+        // Multi-invoice transfers often share one deposit escrow line (full deposit amount) while
+        // destination splits are grouped by description (per invoice). Pack those groups onto escrow lines.
+        PackUnlinkedTransferSplitsOntoEscrowLines(transfer, escrowLineCandidates, claimedLineIds, assignedLineIds);
+    }
+
+    private static Guid? ResolveTransferSplitGroupEscrowLineFromDepositInvoice(
+        Transfer transfer,
+        IReadOnlyList<TransferSplit> splitGroup,
+        IReadOnlyList<TransferDepositInvoiceEscrowMatch> invoiceDepositMatches,
+        IReadOnlySet<Guid> claimedLineIds)
+    {
+        var invoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup);
+        if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+            return null;
+
+        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
+        var splitPropertyId = NormalizeOptionalGuid(
+            splitGroup.Select(split => split.PropertyId).FirstOrDefault(id => id is { } propertyId && propertyId != Guid.Empty));
+
+        var matches = invoiceDepositMatches
+            .Where(match =>
+                !claimedLineIds.Contains(match.EscrowJournalEntryLineId)
+                && string.Equals(match.InvoiceSourceCode, invoiceSourceCode, StringComparison.OrdinalIgnoreCase)
+                && (splitPropertyId == null || TransferSplitGuidEquals(splitPropertyId, match.PropertyId)))
+            .ToList();
+
+        if (matches.Count == 0)
+            return null;
+
+        // Prefer deposit payment split amount == transfer invoice group total when unique.
+        var amountMatches = matches
+            .Where(match => Math.Abs(Math.Abs(match.DepositSplitAmount) - groupAmount) <= 0.005m)
+            .ToList();
+
+        var ranked = (amountMatches.Count > 0 ? amountMatches : matches)
+            .OrderBy(match => Math.Abs(match.DepositDate.DayNumber - transfer.TransferDate.DayNumber))
+            .ThenBy(match => match.EscrowJournalEntryLineId)
+            .ToList();
+
+        return ranked[0].EscrowJournalEntryLineId;
+    }
+
+    private async Task<List<TransferDepositInvoiceEscrowMatch>> BuildTransferDepositInvoiceEscrowMatchesAsync(Transfer transfer, int escrowDepositAccountId)
+    {
+        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        {
+            OrganizationId = transfer.OrganizationId,
+            OfficeIds = transfer.OfficeId.ToString(),
+            IsActive = true,
+            IncludeInactive = false
+        })).ToList();
+
+        var matches = new List<TransferDepositInvoiceEscrowMatch>();
+        foreach (var deposit in deposits)
+        {
+            if (deposit.IsActive == false || deposit.Splits == null || deposit.Splits.Count == 0)
+                continue;
+
+            var escrowLine = await TryGetDepositEscrowJournalEntryLineAsync(deposit, escrowDepositAccountId);
+            if (escrowLine == null)
+                continue;
+
+            var escrowAmount = RoundCurrency(escrowLine.Debit - escrowLine.Credit);
+            if (Math.Abs(escrowAmount) <= 0.005m)
+                continue;
+
+            foreach (var split in deposit.Splits)
+            {
+                if (Math.Abs(split.Amount) <= 0.005m)
+                    continue;
+
+                var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+                if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+                    continue;
+
+                matches.Add(new TransferDepositInvoiceEscrowMatch
+                {
+                    DepositId = deposit.DepositId,
+                    DepositCode = deposit.DepositCode ?? string.Empty,
+                    EscrowJournalEntryLineId = escrowLine.JournalEntryLineId,
+                    EscrowLineAmount = escrowAmount,
+                    InvoiceSourceCode = invoiceSourceCode,
+                    PropertyId = NormalizeOptionalGuid(split.PropertyId),
+                    DepositSplitAmount = RoundCurrency(split.Amount),
+                    DepositDate = deposit.DepositDate
+                });
+            }
+        }
+
+        return matches;
+    }
+
+    private async Task<JournalEntryLine?> TryGetDepositEscrowJournalEntryLineAsync(Deposit deposit, int escrowDepositAccountId)
+    {
+        var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
+        {
+            OrganizationId = deposit.OrganizationId,
+            DepositId = deposit.DepositId
+        })).ToList();
+
+        foreach (var depositEntry in depositJournalEntries)
+        {
+            if (depositEntry.SourceTypeId != (int)SourceType.Deposit)
+                continue;
+
+            var escrowLine = depositEntry.JournalEntryLines?
+                .FirstOrDefault(line => line.ChartOfAccountId == escrowDepositAccountId
+                    && Math.Abs(line.Debit - line.Credit) > 0.005m);
+
+            if (escrowLine != null)
+                return escrowLine;
+        }
+
+        return null;
+    }
+
+    private static void PackUnlinkedTransferSplitsOntoEscrowLines(Transfer transfer, IReadOnlyList<EscrowDepositLineCandidate> escrowLineCandidates, IReadOnlySet<Guid> claimedLineIds, HashSet<Guid> assignedLineIds)
+    {
+        if (transfer.Splits == null || transfer.Splits.Count == 0 || escrowLineCandidates.Count == 0)
+            return;
+
+        var unlinkedSplits = transfer.Splits
+            .Where(split => Math.Abs(split.Amount) > 0.005m
+                && (split.JournalEntryLineId is null || split.JournalEntryLineId == Guid.Empty))
+            .ToList();
+
+        if (unlinkedSplits.Count == 0)
+            return;
+
+        var descriptionGroups = unlinkedSplits
+            .Select((split, index) => (split, index))
+            .GroupBy(item => string.IsNullOrWhiteSpace(item.split.Description) ? $"split:{item.index}" : item.split.Description.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Select(item => item.split).ToList())
+            .Where(group => Math.Abs(group.Sum(split => split.Amount)) > 0.005m)
+            .ToList();
+
+        if (descriptionGroups.Count == 0)
+            return;
+
+        var remainingGroups = descriptionGroups.ToList();
+        var candidates = escrowLineCandidates
+            .Where(candidate =>
+                !claimedLineIds.Contains(candidate.JournalEntryLineId)
+                && !assignedLineIds.Contains(candidate.JournalEntryLineId))
+            .OrderByDescending(candidate => Math.Abs(candidate.NetAmount))
+            .ThenBy(candidate => candidate.JournalEntryLineId)
+            .ToList();
+
+        foreach (var candidate in candidates)
+        {
+            if (remainingGroups.Count == 0)
+                break;
+
+            var targetAmount = Math.Abs(RoundCurrency(candidate.NetAmount));
+            var packed = FindTransferSplitGroupsSummingTo(remainingGroups, targetAmount);
+            if (packed == null || packed.Count == 0)
+                continue;
+
+            foreach (var group in packed)
+            {
+                foreach (var split in group)
+                    split.JournalEntryLineId = candidate.JournalEntryLineId;
+
+                remainingGroups.Remove(group);
+            }
+
+            assignedLineIds.Add(candidate.JournalEntryLineId);
+        }
+    }
+
+    private static List<List<TransferSplit>>? FindTransferSplitGroupsSummingTo(IReadOnlyList<List<TransferSplit>> groups, decimal targetAmount)
+    {
+        if (targetAmount <= 0.005m || groups.Count == 0)
+            return null;
+
+        var amounts = groups
+            .Select(group => Math.Abs(RoundCurrency(group.Sum(split => split.Amount))))
+            .ToList();
+
+        // Exact single-group match first.
+        for (var index = 0; index < groups.Count; index++)
+        {
+            if (Math.Abs(amounts[index] - targetAmount) <= 0.005m)
+                return [groups[index]];
+        }
+
+        // Subset sum for small group counts (typical transfer source packing).
+        if (groups.Count > 16)
+            return null;
+
+        List<List<TransferSplit>>? best = null;
+        void Search(int startIndex, decimal remaining, List<List<TransferSplit>> chosen)
+        {
+            if (best != null)
+                return;
+
+            if (Math.Abs(remaining) <= 0.005m)
+            {
+                best = chosen.ToList();
+                return;
+            }
+
+            if (remaining < -0.005m || startIndex >= groups.Count)
+                return;
+
+            for (var index = startIndex; index < groups.Count; index++)
+            {
+                if (amounts[index] - remaining > 0.005m)
+                    continue;
+
+                chosen.Add(groups[index]);
+                Search(index + 1, RoundCurrency(remaining - amounts[index]), chosen);
+                chosen.RemoveAt(chosen.Count - 1);
+                if (best != null)
+                    return;
+            }
+        }
+
+        Search(0, targetAmount, []);
+        return best;
     }
 
     private async Task<IReadOnlyList<string>> GetUnresolvedTransferSplitMessagesAsync(Transfer transfer)
@@ -112,8 +354,9 @@ public partial class AccountingManager
                 continue;
             }
 
+            var invoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup) ?? "(missing invoice code)";
             messages.Add(
-                $"Transfer {transferLabel}: split group amount {groupAmount:0.00} is not linked to a valid escrow deposit journal entry line.");
+                $"Transfer {transferLabel}: split group {invoiceSourceCode} amount {groupAmount:0.00} is not linked to a valid escrow deposit journal entry line.");
         }
 
         return messages;
@@ -248,6 +491,44 @@ public partial class AccountingManager
             .ThenBy(candidate => candidate.JournalEntryLineId)
             .First()
             .JournalEntryLineId;
+    }
+
+    private static string? ResolveTransferSplitGroupInvoiceSourceCode(IReadOnlyList<TransferSplit> splitGroup)
+    {
+        foreach (var split in splitGroup)
+        {
+            var invoiceSourceCode = ResolveTransferSplitInvoiceSourceCode(split);
+            if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
+                return invoiceSourceCode;
+        }
+
+        return null;
+    }
+
+    private static string? ResolveTransferSplitInvoiceSourceCode(TransferSplit split)
+    {
+        var description = (split.Description ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(description))
+            return null;
+
+        if (TryParseInvoiceSourceCodeFromMemo(description, out var invoiceSourceCode))
+            return invoiceSourceCode;
+
+        var documentSourceCode = TryParseDocumentSourceCodeFromMemo(description);
+        if (!string.IsNullOrWhiteSpace(documentSourceCode)
+            && documentSourceCode.StartsWith("R-", StringComparison.OrdinalIgnoreCase))
+            return documentSourceCode;
+
+        // "Transfer to Escrow Accounts - R-000378-004"
+        var separatorIndex = description.LastIndexOf(" - ", StringComparison.Ordinal);
+        if (separatorIndex >= 0)
+        {
+            var tail = description[(separatorIndex + 3)..].Trim();
+            if (!string.IsNullOrWhiteSpace(tail))
+                return tail;
+        }
+
+        return null;
     }
 
     private static int ScoreTransferSplitContext(TransferSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)

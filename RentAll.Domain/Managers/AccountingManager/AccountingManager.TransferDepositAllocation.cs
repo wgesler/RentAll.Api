@@ -262,7 +262,7 @@ public partial class AccountingManager
         if (!IsPaymentBackedDepositSplit(matchedSplit, undepositedFundsAccountId))
             return BuildNonPaymentTransferDepositAllocationResult(depositId, escrowJournalEntryLineId, escrowAmount, deposit, matchedSplit);
 
-        if (!await IsValidDepositSplitJournalEntryLineAsync(matchedSplit, undepositedFundsAccountId))
+        if (!await IsValidDepositSplitJournalEntryLineAsync(organizationId, matchedSplit, undepositedFundsAccountId))
         {
             var originalSplitLineIds = (deposit.Splits ?? [])
                 .Select(split => split.JournalEntryLineId)
@@ -506,7 +506,7 @@ public partial class AccountingManager
                 $"Deposit split for {deposit.DepositCode} is missing the undeposited payment JournalEntryLineId.");
         }
 
-        if (!await IsValidDepositSplitJournalEntryLineAsync(split, undepositedFundsAccountId))
+        if (!await IsValidDepositSplitJournalEntryLineAsync(organizationId, split, undepositedFundsAccountId))
         {
             throw new InvalidOperationException(
                 $"Deposit split JournalEntryLineId {paymentLineId} is not a valid undeposited payment line for deposit {deposit.DepositCode}.");

@@ -353,9 +353,6 @@ public partial class AccountingManager
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
 
-                foreach (var linkError in await GetUnresolvedPaymentBackedDepositSplitMessagesAsync(deposit))
-                    result.Errors.Add(linkError);
-
                 await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
                 result.JournalEntriesCreated++;
             }
@@ -425,9 +422,6 @@ public partial class AccountingManager
                     transfer.ModifiedBy = currentUser;
                     transfer = await _accountingRepository.UpdateTransferAsync(transfer);
                 }
-
-                foreach (var linkError in await GetUnresolvedTransferSplitMessagesAsync(transfer))
-                    result.Errors.Add(linkError);
 
                 await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
                 result.JournalEntriesCreated++;
@@ -511,9 +505,6 @@ public partial class AccountingManager
                     deposit.ModifiedBy = currentUser;
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
-
-                foreach (var linkError in await GetUnresolvedPaymentBackedDepositSplitMessagesAsync(deposit))
-                    result.Errors.Add(linkError);
             }
             catch (Exception ex)
             {
@@ -540,7 +531,7 @@ public partial class AccountingManager
                     continue;
                 }
 
-                // Pass 1: rematch (or clear stale). Pass 2: after clear, regroup by description and rematch again.
+                // Pass 1: rematch. Pass 2: after clear/regroup, rematch again (incl. escrow amount packing).
                 for (var pass = 0; pass < 2; pass++)
                 {
                     var originalSplitLineIds = (transfer.Splits ?? [])
@@ -553,19 +544,9 @@ public partial class AccountingManager
                         transfer = await _accountingRepository.UpdateTransferAsync(transfer);
                     }
 
-                    var unresolved = await GetUnresolvedTransferSplitMessagesAsync(transfer);
-                    if (unresolved.Count == 0)
+                    if ((await GetUnresolvedTransferSplitMessagesAsync(transfer)).Count == 0)
                         break;
-
-                    if (pass == 1)
-                    {
-                        foreach (var linkError in unresolved)
-                            result.Errors.Add(linkError);
-                    }
                 }
-
-                await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
-                result.JournalEntriesCreated++;
             }
             catch (Exception ex)
             {
