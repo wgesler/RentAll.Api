@@ -550,7 +550,6 @@ public partial class AccountingManager
             .Concat(dbEntries.Where(entry => entry.JournalEntryKindId == JournalEntryKind.FeesActual))
             .GroupBy(entry => entry.JournalEntryId)
             .Select(group => group.First())
-            .Where(entry => !IsInvoiceFeesActualPaymentJournalEntry(entry, invoice, currentPaymentLedgerLine))
             .ToList();
 
         return entries.Sum(entry => entry.JournalEntryLines
