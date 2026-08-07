@@ -93,7 +93,7 @@ public partial class AccountingManager
 
             var sourceCode = ResolveDepositSplitInvoiceSourceCode(split) ?? "(missing invoice code)";
             messages.Add(
-                $"Deposit {depositLabel}: payment split {sourceCode} amount {split.Amount:0.00} is not linked to a valid undeposited payment line.");
+                $"Deposit {depositLabel}: could not rematch {sourceCode} (${split.Amount:0.00}) to a payment undeposited-funds JE line. If journal entries were cleared, run Sync All first, then Repair (R).");
         }
 
         return messages;
@@ -201,8 +201,10 @@ public partial class AccountingManager
         if (!string.Equals(paymentSourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
             return false;
 
+        // Property on the payment line is often blank; only reject when both sides have different properties.
         var splitPropertyId = NormalizeOptionalGuid(split.PropertyId);
-        if (splitPropertyId != null && !GuidEquals(splitPropertyId, NormalizeOptionalGuid(line.PropertyId)))
+        var linePropertyId = NormalizeOptionalGuid(line.PropertyId);
+        if (splitPropertyId != null && linePropertyId != null && splitPropertyId != linePropertyId)
             return false;
 
         return true;
@@ -220,24 +222,35 @@ public partial class AccountingManager
 
         var splitPropertyId = NormalizeOptionalGuid(split.PropertyId);
 
-        // Definitive match: invoice source code + amount + property (when present on the split).
-        var matches = candidates
+        // Hard key: invoice + amount. Property narrows when the payment line also has it.
+        var invoiceAmountMatches = candidates
             .Where(candidate =>
                 !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
                 && Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount) <= 0.005m
-                && string.Equals(candidate.SourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase)
-                && (splitPropertyId == null || GuidEquals(splitPropertyId, candidate.PropertyId)))
+                && string.Equals(candidate.SourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        if (matches.Count == 1)
-            return matches[0].JournalEntryLineId;
-
-        if (matches.Count == 0)
+        if (invoiceAmountMatches.Count == 0)
             return null;
 
-        // Same invoice/amount/property should be unique; if not, prefer deposit-stamped then closest date.
-        return matches
+        if (invoiceAmountMatches.Count == 1)
+            return invoiceAmountMatches[0].JournalEntryLineId;
+
+        if (splitPropertyId != null)
+        {
+            var exactPropertyMatches = invoiceAmountMatches
+                .Where(candidate => GuidEquals(splitPropertyId, candidate.PropertyId))
+                .ToList();
+            if (exactPropertyMatches.Count == 1)
+                return exactPropertyMatches[0].JournalEntryLineId;
+
+            if (exactPropertyMatches.Count > 1)
+                invoiceAmountMatches = exactPropertyMatches;
+        }
+
+        // Same invoice/amount should be rare; prefer deposit-stamped then closest date.
+        return invoiceAmountMatches
             .OrderByDescending(candidate => candidate.DepositId == deposit.DepositId ? 1 : 0)
             .ThenBy(candidate => Math.Abs(candidate.TransactionDate.DayNumber - deposit.DepositDate.DayNumber))
             .ThenBy(candidate => candidate.JournalEntryLineId)
