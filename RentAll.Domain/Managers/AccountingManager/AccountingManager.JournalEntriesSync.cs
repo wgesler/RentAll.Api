@@ -505,6 +505,9 @@ public partial class AccountingManager
                     deposit.ModifiedBy = currentUser;
                     deposit = await _accountingRepository.UpdateDepositAsync(deposit);
                 }
+
+                foreach (var unresolved in await GetUnresolvedPaymentBackedDepositSplitMessagesAsync(deposit))
+                    result.Errors.Add(unresolved);
             }
             catch (Exception ex)
             {
@@ -547,6 +550,9 @@ public partial class AccountingManager
                     if ((await GetUnresolvedTransferSplitMessagesAsync(transfer)).Count == 0)
                         break;
                 }
+
+                foreach (var unresolved in await GetUnresolvedTransferSplitMessagesAsync(transfer))
+                    result.Errors.Add(unresolved);
             }
             catch (Exception ex)
             {

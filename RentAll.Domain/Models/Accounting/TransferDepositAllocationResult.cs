@@ -5,6 +5,7 @@ public class TransferDepositAllocationRequestItem
     public Guid DepositId { get; set; }
     public decimal EscrowAmount { get; set; }
     public Guid? JournalEntryLineId { get; set; }
+    public int? DepositSplitId { get; set; }
 }
 
 public class TransferDepositAllocationResult

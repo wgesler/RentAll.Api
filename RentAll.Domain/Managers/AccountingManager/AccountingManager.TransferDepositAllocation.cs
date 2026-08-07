@@ -65,7 +65,8 @@ public partial class AccountingManager
                 item.DepositId,
                 item.EscrowAmount,
                 recapContext,
-                item.JournalEntryLineId));
+                item.JournalEntryLineId,
+                item.DepositSplitId));
         }
 
         return results;
@@ -95,7 +96,8 @@ public partial class AccountingManager
                     EscrowAmount = Math.Abs(RoundCurrency(item.EscrowAmount)) > 0.005m
                         ? item.EscrowAmount
                         : singleSplit.Amount,
-                    JournalEntryLineId = item.JournalEntryLineId
+                    JournalEntryLineId = item.JournalEntryLineId,
+                    DepositSplitId = singleSplit.DepositSplitId > 0 ? singleSplit.DepositSplitId : item.DepositSplitId
                 });
                 continue;
             }
@@ -114,7 +116,8 @@ public partial class AccountingManager
                 {
                     DepositId = item.DepositId,
                     EscrowAmount = item.EscrowAmount,
-                    JournalEntryLineId = item.JournalEntryLineId
+                    JournalEntryLineId = item.JournalEntryLineId,
+                    DepositSplitId = item.DepositSplitId
                 });
                 continue;
             }
@@ -125,7 +128,8 @@ public partial class AccountingManager
                 {
                     DepositId = item.DepositId,
                     EscrowAmount = split.Amount,
-                    JournalEntryLineId = item.JournalEntryLineId
+                    JournalEntryLineId = item.JournalEntryLineId,
+                    DepositSplitId = split.DepositSplitId > 0 ? split.DepositSplitId : null
                 });
             }
         }
@@ -139,10 +143,11 @@ public partial class AccountingManager
 
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationForEscrowLineAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>> depositJournalEntryCache)
     {
-        var splitAmounts = ExpandEscrowAmountsForDepositSplits(deposit, escrowAmount);
-        if (splitAmounts.Count <= 1)
+        var expandedSplits = ExpandEscrowDepositSplits(deposit, escrowAmount);
+        if (expandedSplits.Count <= 1)
         {
-            var singleAmount = splitAmounts.Count == 1 ? splitAmounts[0] : escrowAmount;
+            var preferredSplit = expandedSplits.Count == 1 ? expandedSplits[0] : null;
+            var singleAmount = preferredSplit != null ? preferredSplit.Amount : escrowAmount;
             return await ResolveTransferDepositAllocationAsync(
                 organizationId,
                 officeId,
@@ -151,7 +156,8 @@ public partial class AccountingManager
                 recapContext,
                 escrowJournalEntryLineId,
                 undepositedFundsAccountId,
-                depositJournalEntryCache);
+                depositJournalEntryCache,
+                preferredSplit?.DepositSplitId > 0 ? preferredSplit.DepositSplitId : null);
         }
 
         var ownerEscrow = 0m;
@@ -162,17 +168,18 @@ public partial class AccountingManager
         Guid? contactId = null;
         var description = string.Empty;
 
-        foreach (var splitAmount in splitAmounts)
+        foreach (var split in expandedSplits)
         {
             var part = await ResolveTransferDepositAllocationAsync(
                 organizationId,
                 officeId,
                 deposit,
-                splitAmount,
+                split.Amount,
                 recapContext,
                 null,
                 undepositedFundsAccountId,
-                depositJournalEntryCache);
+                depositJournalEntryCache,
+                split.DepositSplitId > 0 ? split.DepositSplitId : null);
 
             ownerEscrow = RoundCurrency(ownerEscrow + part.OwnerEscrow);
             secDep = RoundCurrency(secDep + part.SecDep);
@@ -204,21 +211,17 @@ public partial class AccountingManager
         };
     }
 
-    private static List<decimal> ExpandEscrowAmountsForDepositSplits(Deposit deposit, decimal escrowAmount)
+    private static List<DepositSplit> ExpandEscrowDepositSplits(Deposit deposit, decimal escrowAmount)
     {
         var splits = (deposit.Splits ?? [])
             .Where(split => Math.Abs(split.Amount) > 0.005m)
             .ToList();
 
         if (splits.Count == 0)
-            return [escrowAmount];
+            return [];
 
         if (splits.Count == 1)
-        {
-            return Math.Abs(RoundCurrency(escrowAmount)) > 0.005m
-                ? [escrowAmount]
-                : [splits[0].Amount];
-        }
+            return splits;
 
         var normalizedAmount = RoundCurrency(Math.Abs(escrowAmount));
         var depositAmount = RoundCurrency(Math.Abs(deposit.Amount));
@@ -227,13 +230,13 @@ public partial class AccountingManager
             && (Math.Abs(normalizedAmount - depositAmount) <= 0.005m
                 || (splitTotal > 0 && Math.Abs(normalizedAmount - splitTotal) <= 0.005m));
 
-        if (!matchesFullDepositAmount)
-            return [escrowAmount];
+        if (matchesFullDepositAmount)
+            return splits;
 
-        return splits.Select(split => split.Amount).ToList();
+        return [];
     }
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null)
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null, int? depositSplitId = null)
     {
         var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId)
             ?? throw new InvalidOperationException($"Deposit {depositId} was not found.");
@@ -251,13 +254,14 @@ public partial class AccountingManager
             recapContext,
             escrowJournalEntryLineId,
             undepositedFundsAccountId,
-            depositJournalEntryCache: null);
+            depositJournalEntryCache: null,
+            depositSplitId);
     }
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>>? depositJournalEntryCache)
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>>? depositJournalEntryCache, int? depositSplitId = null)
     {
         var depositId = deposit.DepositId;
-        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount);
+        var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId);
 
         if (!IsPaymentBackedDepositSplit(matchedSplit, undepositedFundsAccountId))
             return BuildNonPaymentTransferDepositAllocationResult(depositId, escrowJournalEntryLineId, escrowAmount, deposit, matchedSplit);
@@ -273,7 +277,7 @@ public partial class AccountingManager
             if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
                 deposit = await _accountingRepository.UpdateDepositAsync(deposit);
 
-            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount);
+            matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId ?? matchedSplit.DepositSplitId);
         }
 
         var allocationScope = await RequireTransferDepositAllocationScopeAsync(organizationId, deposit, matchedSplit, undepositedFundsAccountId);
@@ -366,13 +370,16 @@ public partial class AccountingManager
             ? transfer.TransferId.ToString()
             : transfer.TransferCode.Trim();
 
-        // Rematch escrow JE line ids before report resolve (stale after clear/resync).
-        var originalSplitLineIds = (transfer.Splits ?? [])
-            .Select(split => split.JournalEntryLineId)
+        // Report is read-only: use split links as repaired by R / sync. Do not rematch here.
+        var unlinkedSplits = (transfer.Splits ?? [])
+            .Where(split => Math.Abs(split.Amount) > 0.005m
+                && (split.JournalEntryLineId is null || split.JournalEntryLineId == Guid.Empty))
             .ToList();
-        await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
-        if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
-            transfer = await _accountingRepository.UpdateTransferAsync(transfer);
+        if (unlinkedSplits.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Transfer {transferLabel} has {unlinkedSplits.Count} split(s) not linked to a deposit escrow line. Run Repair (R) first.");
+        }
 
         await EnrichTransferSplitsFromJournalEntryLinesAsync(transfer);
 
@@ -397,7 +404,7 @@ public partial class AccountingManager
             if (sourceLine == null)
             {
                 throw new InvalidOperationException(
-                    $"Transfer {transferLabel}: escrow journal entry line {journalEntryLineId} was not found after rematch.");
+                    $"Transfer {transferLabel}: escrow journal entry line {journalEntryLineId} was not found. Run Repair (R) first.");
             }
 
             var depositJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId)
@@ -457,7 +464,7 @@ public partial class AccountingManager
 
     #region Deposit Split Identification
 
-    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount)
+    private static DepositSplit RequireTransferDepositSplit(Deposit deposit, decimal escrowAmount, int? depositSplitId = null)
     {
         var splits = (deposit.Splits ?? [])
             .Where(split => Math.Abs(split.Amount) > 0.005m)
@@ -466,7 +473,15 @@ public partial class AccountingManager
         if (splits.Count == 0)
             throw new InvalidOperationException($"Deposit {deposit.DepositCode} has no non-zero splits.");
 
-        // Deposit splits link to UF payment lines by amount — not to the escrow deposit JE line id.
+        // Prefer the explicit deposit split (full-deposit expand / repaired identity).
+        if (depositSplitId is > 0)
+        {
+            var byId = splits.FirstOrDefault(split => split.DepositSplitId == depositSplitId.Value);
+            if (byId != null)
+                return byId;
+        }
+
+        // Deposit splits link to UF payment lines — disambiguate by invoice + property + amount.
         var normalizedEscrowAmount = RoundCurrency(Math.Abs(escrowAmount));
         if (normalizedEscrowAmount != 0)
         {
