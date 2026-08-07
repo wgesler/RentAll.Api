@@ -12,6 +12,7 @@ public partial class AccountingManager
         public Guid? PropertyId { get; init; }
         public Guid? ReservationId { get; init; }
         public Guid? ContactId { get; init; }
+        public Guid? DepositId { get; init; }
         public DateOnly TransactionDate { get; init; }
     }
 
@@ -175,6 +176,7 @@ public partial class AccountingManager
                     PropertyId = NormalizeOptionalGuid(line.PropertyId),
                     ReservationId = NormalizeOptionalGuid(line.ReservationId),
                     ContactId = NormalizeOptionalGuid(line.ContactId),
+                    DepositId = NormalizeOptionalGuid(depositEntry.DepositId),
                     TransactionDate = depositEntry.TransactionDate
                 });
             }
@@ -220,10 +222,7 @@ public partial class AccountingManager
 
         var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
         var lineAmount = Math.Abs(RoundCurrency(line.Debit - line.Credit));
-        if (groupAmount > 0.005m && Math.Abs(groupAmount - lineAmount) > 0.005m)
-            return false;
-
-        return splitGroup.Any(split => TransferSplitContextMatchesLine(split, line));
+        return groupAmount <= 0.005m || Math.Abs(groupAmount - lineAmount) <= 0.005m;
     }
 
     private static Guid? ResolveTransferSplitGroupJournalEntryLineId(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<EscrowDepositLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
@@ -232,32 +231,42 @@ public partial class AccountingManager
         if (groupAmount <= 0.005m)
             return null;
 
-        var matches = candidates
+        // Amount match among unclaimed lines — always pick the best candidate (never leave ties unresolved).
+        var amountMatches = candidates
             .Where(candidate =>
                 !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
-                && Math.Abs(Math.Abs(candidate.NetAmount) - groupAmount) <= 0.005m
-                && splitGroup.Any(split => TransferSplitContextMatchesCandidate(split, candidate)))
+                && Math.Abs(Math.Abs(candidate.NetAmount) - groupAmount) <= 0.005m)
             .ToList();
 
-        if (matches.Count == 0)
+        if (amountMatches.Count == 0)
             return null;
 
-        if (matches.Count == 1)
-            return matches[0].JournalEntryLineId;
-
-        var transferDate = transfer.TransferDate;
-        var closestMatches = matches
-            .OrderBy(candidate => Math.Abs(candidate.TransactionDate.DayNumber - transferDate.DayNumber))
+        return amountMatches
+            .OrderByDescending(candidate => splitGroup.Max(split => ScoreTransferSplitContext(split, candidate.PropertyId, candidate.ReservationId, candidate.ContactId)))
+            .ThenBy(candidate => Math.Abs(candidate.TransactionDate.DayNumber - transfer.TransferDate.DayNumber))
             .ThenBy(candidate => candidate.JournalEntryLineId)
-            .ToList();
+            .First()
+            .JournalEntryLineId;
+    }
 
-        var bestDistance = Math.Abs(closestMatches[0].TransactionDate.DayNumber - transferDate.DayNumber);
-        var tiedMatches = closestMatches
-            .Where(candidate => Math.Abs(candidate.TransactionDate.DayNumber - transferDate.DayNumber) == bestDistance)
-            .ToList();
+    private static int ScoreTransferSplitContext(TransferSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)
+    {
+        var score = 0;
+        if (TransferSplitGuidEquals(split.PropertyId, propertyId))
+            score += 4;
+        if (TransferSplitGuidEquals(split.ReservationId, reservationId))
+            score += 2;
+        if (TransferSplitGuidEquals(split.ContactId, contactId))
+            score += 1;
+        return score;
+    }
 
-        return tiedMatches.Count == 1 ? tiedMatches[0].JournalEntryLineId : null;
+    private static bool TransferSplitGuidEquals(Guid? left, Guid? right)
+    {
+        var normalizedLeft = NormalizeOptionalGuid(left);
+        var normalizedRight = NormalizeOptionalGuid(right);
+        return normalizedLeft != null && normalizedRight != null && normalizedLeft == normalizedRight;
     }
 
     private static bool TransferSplitContextMatchesLine(TransferSplit split, JournalEntryLine line)

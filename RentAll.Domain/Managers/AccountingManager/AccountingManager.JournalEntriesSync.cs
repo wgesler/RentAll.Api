@@ -604,6 +604,8 @@ public partial class AccountingManager
 
         try
         {
+            // JE line GUIDs on deposits/transfers are about to become invalid — wipe them before deleting JEs.
+            await ClearDepositAndTransferSplitJournalEntryLineIdsAsync(organizationId, officeIds);
             result.JournalEntriesDeleted = await _journalEntryRepository.DeleteJournalEntriesByOfficeIdsAsync(organizationId, officeIds);
         }
         catch (Exception ex)
@@ -612,6 +614,63 @@ public partial class AccountingManager
         }
 
         return result;
+    }
+
+    private async Task ClearDepositAndTransferSplitJournalEntryLineIdsAsync(Guid organizationId, string officeIds)
+    {
+        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IncludeInactive = true
+        })).ToList();
+
+        foreach (var depositSummary in deposits)
+        {
+            var deposit = await _accountingRepository.GetDepositByIdAsync(depositSummary.DepositId, organizationId);
+            if (deposit?.Splits == null || deposit.Splits.Count == 0)
+                continue;
+
+            var changed = false;
+            foreach (var split in deposit.Splits)
+            {
+                if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                    continue;
+
+                split.JournalEntryLineId = null;
+                changed = true;
+            }
+
+            if (changed)
+                await _accountingRepository.UpdateDepositAsync(deposit);
+        }
+
+        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IncludeInactive = true
+        })).ToList();
+
+        foreach (var transferSummary in transfers)
+        {
+            var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
+            if (transfer?.Splits == null || transfer.Splits.Count == 0)
+                continue;
+
+            var changed = false;
+            foreach (var split in transfer.Splits)
+            {
+                if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                    continue;
+
+                split.JournalEntryLineId = null;
+                changed = true;
+            }
+
+            if (changed)
+                await _accountingRepository.UpdateTransferAsync(transfer);
+        }
     }
 
     private async Task SyncDepartureFeesAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, JournalEntrySyncResult result, IProgress<JournalEntrySyncProgress>? progress = null)

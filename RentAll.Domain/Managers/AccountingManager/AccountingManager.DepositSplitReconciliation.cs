@@ -12,6 +12,7 @@ public partial class AccountingManager
         public Guid? PropertyId { get; init; }
         public Guid? ReservationId { get; init; }
         public Guid? ContactId { get; init; }
+        public Guid? DepositId { get; init; }
         public DateOnly TransactionDate { get; init; }
     }
 
@@ -127,6 +128,7 @@ public partial class AccountingManager
                     PropertyId = NormalizeOptionalGuid(line.PropertyId),
                     ReservationId = NormalizeOptionalGuid(line.ReservationId),
                     ContactId = NormalizeOptionalGuid(line.ContactId),
+                    DepositId = NormalizeOptionalGuid(paymentEntry.DepositId),
                     TransactionDate = paymentEntry.TransactionDate
                 });
             }
@@ -174,65 +176,55 @@ public partial class AccountingManager
         if (line.ChartOfAccountId != accountId)
             return false;
 
-        return DepositSplitMatchesUndepositedLine(split, line);
+        return DepositSplitMatchesUndepositedLineAmount(split, line.Debit - line.Credit);
     }
 
     private static Guid? ResolveDepositSplitJournalEntryLineId(Deposit deposit, DepositSplit split, IReadOnlyList<UndepositedPaymentLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
-        var matches = candidates
+        var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+        if (splitAmount <= 0.005m)
+            return null;
+
+        // Amount match among unclaimed lines — always pick the best candidate (never leave ties unresolved).
+        var amountMatches = candidates
             .Where(candidate =>
                 !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
-                && DepositSplitMatchesUndepositedCandidate(split, candidate))
+                && Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount) <= 0.005m)
             .ToList();
 
-        if (matches.Count == 0)
+        if (amountMatches.Count == 0)
             return null;
 
-        if (matches.Count == 1)
-            return matches[0].JournalEntryLineId;
-
-        var depositDate = deposit.DepositDate;
-        var closestMatches = matches
-            .OrderBy(candidate => Math.Abs((candidate.TransactionDate.DayNumber - depositDate.DayNumber)))
+        return amountMatches
+            .OrderByDescending(candidate => candidate.DepositId == deposit.DepositId ? 1 : 0)
+            .ThenByDescending(candidate => ScoreDepositSplitContext(split, candidate.PropertyId, candidate.ReservationId, candidate.ContactId))
+            .ThenBy(candidate => Math.Abs(candidate.TransactionDate.DayNumber - deposit.DepositDate.DayNumber))
             .ThenBy(candidate => candidate.JournalEntryLineId)
-            .ToList();
-
-        var bestDistance = Math.Abs(closestMatches[0].TransactionDate.DayNumber - depositDate.DayNumber);
-        var tiedMatches = closestMatches
-            .Where(candidate => Math.Abs(candidate.TransactionDate.DayNumber - depositDate.DayNumber) == bestDistance)
-            .ToList();
-
-        return tiedMatches.Count == 1 ? tiedMatches[0].JournalEntryLineId : null;
+            .First()
+            .JournalEntryLineId;
     }
 
-    private static bool DepositSplitMatchesUndepositedLine(DepositSplit split, JournalEntryLine line)
-        => Math.Abs((line.Debit - line.Credit) - split.Amount) <= 0.005m
-            && DepositSplitContextMatches(split, line.PropertyId, line.ReservationId, line.ContactId);
+    private static bool DepositSplitMatchesUndepositedLineAmount(DepositSplit split, decimal lineNetAmount)
+        => Math.Abs(Math.Abs(lineNetAmount) - Math.Abs(RoundCurrency(split.Amount))) <= 0.005m;
 
-    private static bool DepositSplitMatchesUndepositedCandidate(DepositSplit split, UndepositedPaymentLineCandidate candidate)
-        => Math.Abs(candidate.NetAmount - split.Amount) <= 0.005m
-            && DepositSplitContextMatches(split, candidate.PropertyId, candidate.ReservationId, candidate.ContactId);
-
-    private static bool DepositSplitContextMatches(DepositSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)
+    private static int ScoreDepositSplitContext(DepositSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)
     {
-        if (!GuidMatches(split.PropertyId, propertyId))
-            return false;
-
-        if (!GuidMatches(split.ReservationId, reservationId))
-            return false;
-
-        return GuidMatches(split.ContactId, contactId);
+        var score = 0;
+        if (GuidEquals(split.PropertyId, propertyId))
+            score += 4;
+        if (GuidEquals(split.ReservationId, reservationId))
+            score += 2;
+        if (GuidEquals(split.ContactId, contactId))
+            score += 1;
+        return score;
     }
 
-    private static bool GuidMatches(Guid? expected, Guid? actual)
+    private static bool GuidEquals(Guid? left, Guid? right)
     {
-        var normalizedExpected = NormalizeOptionalGuid(expected);
-        var normalizedActual = NormalizeOptionalGuid(actual);
-        if (normalizedExpected == null || normalizedActual == null)
-            return true;
-
-        return normalizedExpected == normalizedActual;
+        var normalizedLeft = NormalizeOptionalGuid(left);
+        var normalizedRight = NormalizeOptionalGuid(right);
+        return normalizedLeft != null && normalizedRight != null && normalizedLeft == normalizedRight;
     }
 
     private static bool DepositSplitJournalEntryLineIdsChanged(IReadOnlyList<Guid?> originalLineIds, IReadOnlyList<DepositSplit>? reconciledSplits)
