@@ -535,8 +535,16 @@ public partial class AccountingManager
         if (paymentLedgerLine.PaymentId is not { } paymentId || paymentId == Guid.Empty)
             return;
 
-        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId)
-            ?? throw new Exception($"Payment record not found for PaymentId {paymentId}.");
+        // Prefer office sync cache — GetPaymentById used to INNER JOIN CostCode/User and return null
+        // for real payments, which aborted Payment JE create with "Payment record not found".
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
+        if (payment == null)
+            throw new Exception($"Payment record not found for PaymentId {paymentId}.");
 
         ApplyPaymentDocumentLink(journalEntry, payment);
     }
