@@ -439,6 +439,9 @@ public partial class AccountingManager
             IncludeInactive = true
         })).ToList();
 
+        var preloadResult = new JournalEntrySyncResult();
+        ReportSyncProgress(progress, "transfer", transfers.Count, 0, preloadResult, "Loading office cache…");
+
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
             var result = new JournalEntrySyncResult();

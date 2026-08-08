@@ -239,6 +239,29 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/sync/transfers/start")]
+    public IActionResult StartTransferJournalEntriesSync([FromBody] SyncJournalEntriesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var officeIds = ResolveRequestedOfficeIds(dto);
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Forbid();
+
+        var jobId = Guid.NewGuid().ToString("N");
+        var job = CreateTransferSyncJob(jobId);
+        SyncJobs[jobId] = job;
+
+        _ = Task.Run(() => RunTransferJournalEntriesSyncJobAsync(job, CurrentOrganizationId, officeIds, CurrentUser));
+
+        return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
+    }
+
     [HttpPost("journal-entry/sync/document-links")]
     public async Task<IActionResult> SyncDocumentLinks([FromBody] SyncJournalEntriesRequestDto dto)
     {
@@ -440,6 +463,59 @@ public partial class AccountingController
         }
 
         return job;
+    }
+
+    private JournalEntrySyncJobState CreateTransferSyncJob(string jobId)
+    {
+        var job = new JournalEntrySyncJobState
+        {
+            JobId = jobId,
+            IsRunning = true,
+            IsCompleted = false,
+            Message = "Transfer rebuild started."
+        };
+        job.Types["transfer"] = new JournalEntrySyncJobTypeStatusDto
+        {
+            Type = "transfer",
+            Label = "Transfers",
+            Status = "Pending"
+        };
+        return job;
+    }
+
+    private async Task RunTransferJournalEntriesSyncJobAsync(
+        JournalEntrySyncJobState job,
+        Guid organizationId,
+        string officeIds,
+        Guid currentUser)
+    {
+        var progress = new Progress<JournalEntrySyncProgress>(update => ApplySyncProgress(job, update));
+
+        try
+        {
+            SetSyncJobMessage(job, "Rebuilding transfer journal entries...");
+            await RunScopedJournalEntrySyncAsync(manager =>
+                manager.SyncTransferJournalEntriesAsync(
+                    organizationId,
+                    officeIds,
+                    currentUser,
+                    progress,
+                    syncDocumentLinksAtEnd: false));
+            SetSyncJobMessage(job, "Transfer rebuild complete.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running transfer journal-entry sync job {JobId}", job.JobId);
+            SetSyncJobMessage(job, $"Transfer rebuild failed: {ex.Message}");
+        }
+        finally
+        {
+            lock (job.SyncRoot)
+            {
+                job.IsRunning = false;
+                job.IsCompleted = true;
+            }
+        }
     }
 
     private async Task RunAllJournalEntriesSyncJobAsync(
