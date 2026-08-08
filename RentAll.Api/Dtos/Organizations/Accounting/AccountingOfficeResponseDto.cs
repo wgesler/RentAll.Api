@@ -76,7 +76,7 @@ public class AccountingOfficeResponseDto
         Phone = accountingOffice.Phone;
         Fax = accountingOffice.Fax;
         Email = accountingOffice.Email;
-        Website = accountingOffice.Website;
+        Website = accountingOffice.Website ?? string.Empty;
         BankName = accountingOffice.BankName;
         BankRouting = accountingOffice.BankRouting;
         BankAccount = accountingOffice.BankAccount;

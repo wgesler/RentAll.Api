@@ -29,8 +29,10 @@ public partial class AccountingManager
             var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(line.JournalEntryId, organizationId);
             if (journalEntry?.SourceId is not { } sourceId || sourceId == Guid.Empty)
                 continue;
+            if (journalEntry.SourceTypeId is not int sourceTypeId || sourceTypeId <= 0)
+                continue;
 
-            sourceKeys.Add(((SourceType)journalEntry.SourceTypeId, sourceId));
+            sourceKeys.Add(((SourceType)sourceTypeId, sourceId));
         }
 
         foreach (var (sourceType, sourceId) in sourceKeys)
