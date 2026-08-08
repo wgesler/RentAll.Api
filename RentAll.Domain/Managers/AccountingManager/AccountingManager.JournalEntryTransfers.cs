@@ -326,37 +326,64 @@ public partial class AccountingManager
         {
             PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)
         };
-        var bankLine = new JournalEntryLine
-        {
-            ChartOfAccountId = bankAccountId,
-            Debit = transfer.Amount < 0 ? Math.Abs(transfer.Amount) : 0,
-            Credit = transfer.Amount > 0 ? transfer.Amount : 0,
-            Memo = memo,
-            CreatedBy = currentUser
-        };
-        ApplyJournalEntryLineContext(bankLine, headerLineContext);
-        var journalEntryLines = new List<JournalEntryLine> { bankLine };
+        var journalEntryLines = new List<JournalEntryLine>();
 
-        var destinationSplits = (transfer.Splits ?? [])
+        // One debit + matching bank/escrow credit per destination account total (credits sum to transfer amount).
+        var destinationAccountTotals = (transfer.Splits ?? [])
             .Where(split => split.ChartOfAccountId is > 0 && split.Amount != 0)
-            .OrderBy(split => GetTransferCreditAccountSortOrder(split.ChartOfAccountId!.Value, accounts))
-            .ThenBy(split => split.JournalEntryLineId ?? Guid.Empty)
-            .ThenBy(split => split.ChartOfAccountId!.Value)
+            .GroupBy(split => split.ChartOfAccountId!.Value)
+            .Select(group =>
+            {
+                var amount = Math.Round(group.Sum(split => split.Amount), 2, MidpointRounding.AwayFromZero);
+                var orderedSplits = group
+                    .OrderBy(split => split.JournalEntryLineId ?? Guid.Empty)
+                    .ToList();
+                return new
+                {
+                    ChartOfAccountId = group.Key,
+                    Amount = amount,
+                    Splits = orderedSplits
+                };
+            })
+            .Where(total => total.Amount != 0)
+            .OrderBy(total => GetTransferCreditAccountSortOrder(total.ChartOfAccountId, accounts))
+            .ThenBy(total => total.ChartOfAccountId)
             .ToList();
 
-        foreach (var split in destinationSplits)
+        foreach (var accountTotal in destinationAccountTotals)
         {
-            var splitMemo = string.IsNullOrWhiteSpace(split.Description) ? memo : split.Description.Trim();
-            var splitLine = new JournalEntryLine
+            var amount = Math.Abs(accountTotal.Amount);
+            var sampleSplit = accountTotal.Splits[0];
+            var destinationMemo = accountTotal.Splits
+                .Select(split => (split.Description ?? string.Empty).Trim())
+                .FirstOrDefault(description => description.Length > 0);
+            if (string.IsNullOrWhiteSpace(destinationMemo))
+                destinationMemo = memo;
+
+            var destinationContext = ResolveAggregatedTransferSplitLineContext(accountTotal.Splits, sampleSplit);
+            var destinationIsDebit = accountTotal.Amount > 0;
+
+            var destinationLine = new JournalEntryLine
             {
-                ChartOfAccountId = split.ChartOfAccountId!.Value,
-                Debit = split.Amount > 0 ? split.Amount : 0,
-                Credit = split.Amount < 0 ? Math.Abs(split.Amount) : 0,
-                Memo = splitMemo,
+                ChartOfAccountId = accountTotal.ChartOfAccountId,
+                Debit = destinationIsDebit ? amount : 0,
+                Credit = destinationIsDebit ? 0 : amount,
+                Memo = destinationMemo,
                 CreatedBy = currentUser
             };
-            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromTransferSplit(split));
-            journalEntryLines.Add(splitLine);
+            ApplyJournalEntryLineContext(destinationLine, destinationContext);
+            journalEntryLines.Add(destinationLine);
+
+            var bankLine = new JournalEntryLine
+            {
+                ChartOfAccountId = bankAccountId,
+                Debit = destinationIsDebit ? 0 : amount,
+                Credit = destinationIsDebit ? amount : 0,
+                Memo = memo,
+                CreatedBy = currentUser
+            };
+            ApplyJournalEntryLineContext(bankLine, headerLineContext);
+            journalEntryLines.Add(bankLine);
         }
 
         return ClassifyJournalEntry(new JournalEntry
@@ -397,6 +424,27 @@ public partial class AccountingManager
         if (chartOfAccountId == accounts.BankAccountId)
             return 3;
         return 99;
+    }
+
+    private static JournalEntryLineContext ResolveAggregatedTransferSplitLineContext(
+        IReadOnlyList<TransferSplit> splits,
+        TransferSplit fallbackSplit)
+    {
+        if (splits.Count == 0)
+            return CreateJournalEntryLineContextFromTransferSplit(fallbackSplit);
+
+        if (splits.Count == 1)
+            return CreateJournalEntryLineContextFromTransferSplit(splits[0]);
+
+        var propertyIds = splits.Select(split => NormalizeOptionalGuid(split.PropertyId)).Distinct().ToList();
+        var reservationIds = splits.Select(split => NormalizeOptionalGuid(split.ReservationId)).Distinct().ToList();
+        var contactIds = splits.Select(split => NormalizeOptionalGuid(split.ContactId)).Distinct().ToList();
+
+        // Shared context only when every split in the account total agrees; otherwise leave blank.
+        if (propertyIds.Count == 1 && reservationIds.Count == 1 && contactIds.Count == 1)
+            return CreateJournalEntryLineContextFromTransferSplit(splits[0]);
+
+        return new JournalEntryLineContext(null, null, null, null, null, null);
     }
     #endregion
 
