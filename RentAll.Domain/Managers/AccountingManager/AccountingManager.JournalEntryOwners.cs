@@ -374,7 +374,11 @@ public partial class AccountingManager
         if (!targetOwnerShare.HasValue || targetOwnerShare.Value == 0)
             return null;
 
-        var priorOwnerActual = await SumPriorOwnerActualAmountAsync(ownerShareInvoice, paymentLedgerLine, workingEntries);
+        var priorOwnerActual = await SumPriorOwnerActualAmountAsync(
+            ownerShareInvoice,
+            paymentSourceInvoice,
+            paymentLedgerLine,
+            workingEntries);
         var incrementalOwnerActual = Math.Round(targetOwnerShare.Value - priorOwnerActual, 2, MidpointRounding.AwayFromZero);
         return incrementalOwnerActual > 0 ? incrementalOwnerActual : null;
     }
@@ -453,28 +457,48 @@ public partial class AccountingManager
         return await CalculateOwnerShareAmountForInvoiceAsync(ownerShareInvoice, cumulativeRentPaid);
     }
 
-    private async Task<decimal> SumPriorOwnerActualAmountAsync(Invoice invoice, LedgerLine currentPaymentLedgerLine, IReadOnlyList<JournalEntry>? workingEntries)
+    private async Task<decimal> SumPriorOwnerActualAmountAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine currentPaymentLedgerLine, IReadOnlyList<JournalEntry>? workingEntries)
     {
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
-        var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(ownerShareInvoice.OrganizationId, ownerShareInvoice.OfficeId);
+        var ownerAccountsPayableAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, ownerShareInvoice.OfficeId, accountingOffice);
 
         // Owner Actual is cash-only; JournalEntry_GetByCriteria excludes those — load by source + kind from DB.
         var dbEntries = await GetOwnerActualJournalEntriesForInvoiceAsync(
-            invoice.OrganizationId,
-            invoice.OfficeId,
-            invoice.InvoiceId);
+            ownerShareInvoice.OrganizationId,
+            ownerShareInvoice.OfficeId,
+            ownerShareInvoice.InvoiceId);
+
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(paymentSourceInvoice.OrganizationId, paymentSourceInvoice.OfficeId);
+        var orderedPayments = GetOrderedInvoicePaymentLines(paymentSourceInvoice, costCodeById);
+        if (orderedPayments.Count == 0)
+            orderedPayments = [currentPaymentLedgerLine];
+
+        var earlierPayments = orderedPayments
+            .TakeWhile(line => line.LedgerLineId != currentPaymentLedgerLine.LedgerLineId)
+            .ToList();
 
         var entries = (workingEntries ?? [])
-            .Where(entry => IsOwnerActualJournalEntryForInvoice(entry, invoice))
-            .Concat(dbEntries.Where(entry => MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod)))
+            .Where(entry => IsOwnerActualJournalEntryForInvoice(entry, ownerShareInvoice))
+            .Concat(dbEntries.Where(entry => MatchesJournalEntryAccountingPeriod(entry, ownerShareInvoice.AccountingPeriod)))
             .GroupBy(entry => entry.JournalEntryId)
             .Select(group => group.First())
-            .Where(entry => !IsOwnerActualJournalEntryForPaymentLedgerLine(entry, invoice, currentPaymentLedgerLine))
+            .Where(entry => IsOwnerActualJournalEntryForEarlierPayment(entry, ownerShareInvoice, earlierPayments))
             .ToList();
 
         return entries.Sum(entry => entry.JournalEntryLines
             .Where(line => line.ChartOfAccountId == ownerAccountsPayableAccountId)
             .Sum(line => line.Credit - line.Debit));
+    }
+
+    private static bool IsOwnerActualJournalEntryForEarlierPayment(JournalEntry entry, Invoice invoice, IReadOnlyList<LedgerLine> earlierPayments)
+    {
+        if (earlierPayments.Count == 0)
+            return false;
+
+        if (entry.PaymentId is { } paymentId && paymentId != Guid.Empty)
+            return earlierPayments.Any(line => line.PaymentId == paymentId);
+
+        return earlierPayments.Any(line => MatchesOwnerActualPaymentJournalEntryMemo(entry, invoice, line));
     }
 
     private Task<decimal?> TryGetOwnerExpectedAmountForInvoicePeriodAsync(Invoice invoice, IReadOnlyList<JournalEntry>? workingEntries = null)

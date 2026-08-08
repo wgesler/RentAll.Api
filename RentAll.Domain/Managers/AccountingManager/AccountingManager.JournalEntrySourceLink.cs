@@ -173,6 +173,13 @@ public partial class AccountingManager
             return false;
         }
 
+        // Prefer PaymentId when both sides are stamped — same ACH/check text must not collapse two payments.
+        if (paymentLedgerLine.PaymentId is { } paymentId && paymentId != Guid.Empty
+            && entry.PaymentId is { } entryPaymentId && entryPaymentId != Guid.Empty)
+        {
+            return entryPaymentId == paymentId;
+        }
+
         if (string.Equals(entry.Memo, BuildOwnerActualRentMemo(invoice, paymentLedgerLine), StringComparison.Ordinal))
             return true;
 
@@ -314,10 +321,19 @@ public partial class AccountingManager
         }
     }
 
-    private async Task DeleteClaimedOrphanJournalEntriesAsync(IEnumerable<JournalEntry> orphanEntries, Guid organizationId)
+    private async Task DeleteClaimedOrphanJournalEntriesAsync(IEnumerable<JournalEntry> orphanEntries, Guid organizationId, Guid? currentPaymentId = null)
     {
         foreach (var entry in orphanEntries.Where(IsInvoicePaymentFlowOrphanCandidate))
+        {
+            if (currentPaymentId is { } paymentId && paymentId != Guid.Empty
+                && entry.PaymentId is { } entryPaymentId && entryPaymentId != Guid.Empty
+                && entryPaymentId != paymentId)
+            {
+                continue;
+            }
+
             await DeleteOpenJournalEntryAsync(entry.JournalEntryId, organizationId);
+        }
     }
 
     private static bool IsInvoicePaymentFlowOrphanCandidate(JournalEntry entry)
