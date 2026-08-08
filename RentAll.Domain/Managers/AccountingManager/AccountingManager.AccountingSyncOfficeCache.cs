@@ -253,8 +253,9 @@ public partial class AccountingManager
             if (!BySource.TryGetValue((sourceTypeId, sourceId), out var entries))
                 return [];
 
+            // Always copy — callers update JEs (TouchOfficeSyncCache) which mutates these indexes.
             if (journalEntryKind == null)
-                return entries;
+                return entries.ToList();
 
             return entries.Where(entry => entry.JournalEntryKindId == journalEntryKind.Value).ToList();
         }
@@ -263,13 +264,13 @@ public partial class AccountingManager
             => FullyLoadedSources.Contains((sourceTypeId, sourceId));
 
         public IReadOnlyList<JournalEntry> GetByPaymentId(Guid paymentId)
-            => ByPaymentId.TryGetValue(paymentId, out var entries) ? entries : [];
+            => ByPaymentId.TryGetValue(paymentId, out var entries) ? entries.ToList() : [];
 
         public IReadOnlyList<JournalEntry> GetByDepositId(Guid depositId)
-            => ByDepositId.TryGetValue(depositId, out var entries) ? entries : [];
+            => ByDepositId.TryGetValue(depositId, out var entries) ? entries.ToList() : [];
 
         public IReadOnlyList<JournalEntry> GetByTransferId(Guid transferId)
-            => ByTransferId.TryGetValue(transferId, out var entries) ? entries : [];
+            => ByTransferId.TryGetValue(transferId, out var entries) ? entries.ToList() : [];
 
         public IReadOnlyList<JournalEntry> GetBySourceType(int sourceTypeId, int? officeId = null)
         {
