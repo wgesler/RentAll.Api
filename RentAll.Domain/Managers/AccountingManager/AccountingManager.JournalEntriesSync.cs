@@ -344,35 +344,63 @@ public partial class AccountingManager
             foreach (var deposit in deposits)
             {
                 result.DocumentsProcessed++;
+                var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
+                    ? deposit.DepositId.ToString()
+                    : deposit.DepositCode.Trim();
+                var trail = new AccountingSyncBailTrail();
 
                 try
                 {
+                    trail.Note($"Sync deposit {depositLabel}");
                     var originalSplitLineIds = (deposit.Splits ?? [])
                         .Select(split => split.JournalEntryLineId)
                         .ToList();
-                    await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+                    await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail);
                     if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
                     {
                         deposit.ModifiedBy = currentUser;
                         var updated = await _accountingRepository.UpdateDepositAsync(deposit);
                         deposit.Splits = updated.Splits;
                         _officeSyncCache?.ReplaceDeposit(deposit);
+                        trail.Note("Deposit split JournalEntryLineIds changed — deposit saved.");
                     }
                     else
                     {
                         _officeSyncCache?.ReplaceDeposit(deposit);
+                        trail.Note("Deposit split JournalEntryLineIds unchanged.");
                     }
 
                     // Payment DepositId stamp runs inside SyncDepositDocumentLinksAsync (via TryReplace).
-                    await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
-                    result.JournalEntriesCreated++;
+                    await TryReplaceJournalEntriesFromDepositWithDiagnosticsAsync(deposit, currentUser, trail);
+
+                    if (await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId))
+                    {
+                        result.JournalEntriesCreated++;
+                    }
+                    else
+                    {
+                        result.JournalEntriesSkipped++;
+                        trail.Bail("Health check: no SourceType.Deposit / Deposit-kind JE after sync.");
+                        var message = $"Deposit {depositLabel}: no deposit JE after sync."
+                            + Environment.NewLine + "Bail trail:" + Environment.NewLine + trail.FormatBailTrail();
+                        result.Errors.Add($"{depositLabel}: no deposit JE. See DepositSkip log.");
+                        await LogAccountingErrorAsync(
+                            trigger: "DepositSkip",
+                            organizationId: organizationId,
+                            officeId: deposit.OfficeId,
+                            sourceTypeId: (int)SourceType.Deposit,
+                            sourceId: deposit.DepositId,
+                            documentCode: depositLabel,
+                            accountingPeriod: deposit.AccountingPeriod == default ? null : deposit.AccountingPeriod,
+                            amount: deposit.Amount,
+                            message: message,
+                            currentUser: currentUser);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
-                        ? deposit.DepositId.ToString()
-                        : deposit.DepositCode.Trim();
-                    var message = $"Deposit {depositLabel}: {ex.Message}";
+                    var message = $"Deposit {depositLabel}: {ex.Message}"
+                        + Environment.NewLine + "Bail trail:" + Environment.NewLine + trail.FormatBailTrail();
                     result.Errors.Add(message);
                     await LogAccountingErrorAsync(
                         trigger: "Deposit",
@@ -421,35 +449,63 @@ public partial class AccountingManager
             foreach (var transfer in transfers)
             {
                 result.DocumentsProcessed++;
+                var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
+                    ? transfer.TransferId.ToString()
+                    : transfer.TransferCode.Trim();
+                var trail = new AccountingSyncBailTrail();
 
                 try
                 {
+                    trail.Note($"Sync transfer {transferLabel}");
                     var originalSplitLineIds = (transfer.Splits ?? [])
                         .Select(split => split.JournalEntryLineId)
                         .ToList();
-                    await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
+                    await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer, trail);
                     if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
                     {
                         transfer.ModifiedBy = currentUser;
                         var updated = await _accountingRepository.UpdateTransferAsync(transfer);
                         transfer.Splits = updated.Splits;
                         _officeSyncCache?.ReplaceTransfer(transfer);
+                        trail.Note("Transfer split JournalEntryLineIds changed — transfer saved.");
                     }
                     else
                     {
                         _officeSyncCache?.ReplaceTransfer(transfer);
+                        trail.Note("Transfer split JournalEntryLineIds unchanged.");
                     }
 
                     // Deposit TransferId stamp runs inside SyncTransferDocumentLinksAsync (via TryReplace).
-                    await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
-                    result.JournalEntriesCreated++;
+                    await TryReplaceJournalEntriesFromTransferWithDiagnosticsAsync(transfer, currentUser, trail);
+
+                    if (await TransferHasHealthJournalEntryAsync(organizationId, transfer.OfficeId, transfer.TransferId))
+                    {
+                        result.JournalEntriesCreated++;
+                    }
+                    else
+                    {
+                        result.JournalEntriesSkipped++;
+                        trail.Bail("Health check: no SourceType.Transfer / Transfer-kind JE after sync.");
+                        var message = $"Transfer {transferLabel}: no transfer JE after sync."
+                            + Environment.NewLine + "Bail trail:" + Environment.NewLine + trail.FormatBailTrail();
+                        result.Errors.Add($"{transferLabel}: no transfer JE. See TransferSkip log.");
+                        await LogAccountingErrorAsync(
+                            trigger: "TransferSkip",
+                            organizationId: organizationId,
+                            officeId: transfer.OfficeId,
+                            sourceTypeId: (int)SourceType.Transfer,
+                            sourceId: transfer.TransferId,
+                            documentCode: transferLabel,
+                            accountingPeriod: transfer.AccountingPeriod == default ? null : transfer.AccountingPeriod,
+                            amount: transfer.Amount,
+                            message: message,
+                            currentUser: currentUser);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
-                        ? transfer.TransferId.ToString()
-                        : transfer.TransferCode.Trim();
-                    var message = $"Transfer {transferLabel}: {ex.Message}";
+                    var message = $"Transfer {transferLabel}: {ex.Message}"
+                        + Environment.NewLine + "Bail trail:" + Environment.NewLine + trail.FormatBailTrail();
                     result.Errors.Add(message);
                     await LogAccountingErrorAsync(
                         trigger: "Transfer",

@@ -17,30 +17,45 @@ public partial class AccountingManager
         public DateOnly TransactionDate { get; init; }
     }
 
-    private async Task ReconcileDepositSplitJournalEntryLineIdsAsync(Deposit deposit)
+    private Task ReconcileDepositSplitJournalEntryLineIdsAsync(Deposit deposit)
+        => ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail: null);
+
+    private async Task ReconcileDepositSplitJournalEntryLineIdsAsync(Deposit deposit, AccountingSyncBailTrail? trail)
     {
         if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
+        {
+            trail?.Bail("Rematch exit: no splits or OfficeId missing.");
             return;
+        }
 
         if (!await IsAccountingFeatureEnabledAsync(deposit.OrganizationId))
+        {
+            trail?.Bail("Rematch exit: accounting feature disabled.");
             return;
+        }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
         if (undepositedFundsAccountId <= 0)
+        {
+            trail?.Bail("Rematch exit: DefaultUndepFundsAccountId missing.");
             return;
+        }
 
         var paymentLineCandidates = await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId);
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherDepositsAsync(deposit);
         var assignedLineIds = new HashSet<Guid>();
+        trail?.Note($"Rematch: UF account={undepositedFundsAccountId} candidates={paymentLineCandidates.Count} claimedByOthers={claimedLineIds.Count}");
 
         foreach (var split in deposit.Splits)
         {
+            var splitLabel = ResolveDepositSplitInvoiceSourceCode(split) ?? split.DepositSplitId.ToString();
             if (await IsValidDepositSplitJournalEntryLineAsync(deposit.OrganizationId, split, undepositedFundsAccountId))
             {
                 if (split.JournalEntryLineId.HasValue && split.JournalEntryLineId != Guid.Empty)
                     assignedLineIds.Add(split.JournalEntryLineId.Value);
 
+                trail?.Note($"Rematch keep: {splitLabel} amount={split.Amount:0.00} line={split.JournalEntryLineId}");
                 continue;
             }
 
@@ -59,12 +74,20 @@ public partial class AccountingManager
             {
                 split.JournalEntryLineId = resolvedLineId;
                 assignedLineIds.Add(resolvedLineId.Value);
+                trail?.Note($"Rematch linked: {splitLabel} amount={split.Amount:0.00} -> line={resolvedLineId}");
                 continue;
             }
 
             // Stale after clear/resync (or wrong account line): clear so callers rematch instead of treating as valid.
             if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
+            {
+                trail?.Bail($"Rematch cleared stale line on {splitLabel} amount={split.Amount:0.00} was={staleLineId}");
                 split.JournalEntryLineId = null;
+            }
+            else
+            {
+                trail?.Bail($"Rematch failed: {splitLabel} amount={split.Amount:0.00} (no UF payment line).");
+            }
         }
     }
 

@@ -152,7 +152,7 @@ public partial class AccountingManager
     private async Task<AccountingJournalEntryResult> UpsertInvoicePaymentSideEffectsAsync(Invoice invoice, LedgerLine paymentLedgerLine, IReadOnlyList<JournalEntry> existingPaymentEntries, Guid currentUser, bool createMainCashJournalEntry)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
-            return AccountingJournalEntryResult.Success();
+            return AccountingJournalEntryResult.WarningResult("Accounting feature is disabled for organization.");
 
         var retainedEntryIds = new HashSet<Guid>();
         var workingEntries = existingPaymentEntries.ToList();
@@ -163,6 +163,15 @@ public partial class AccountingManager
                 return AccountingJournalEntryResult.WarningResult("LedgerLineId is required to create a payment journal entry");
 
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(invoice.OrganizationId, invoice.OfficeId);
+            var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, invoice.OfficeId, accountingOffice);
+            var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+            if (createMainCashJournalEntry
+                && (undepositedFundsAccountId <= 0 || accountsReceivableAccountId <= 0))
+            {
+                return AccountingJournalEntryResult.WarningResult(
+                    $"Cannot create Payment JE: DefaultUndepFundsAccountId={undepositedFundsAccountId}, DefaultActRcvableAccountId={accountsReceivableAccountId}.");
+            }
+
             var prePaymentAccountId = GetDefaultPrePayment(chartOfAccounts, invoice.OfficeId, accountingOffice);
             var splitAllocations = await GetInvoicePaymentSplitAllocationsAsync(invoice, paymentLedgerLine);
 
@@ -274,6 +283,13 @@ public partial class AccountingManager
                     paymentSourceInvoice: invoice);
 
                 await DeleteClaimedOrphanJournalEntriesAsync(workingEntries, invoice.OrganizationId);
+                if (createMainCashJournalEntry && updatedPayment == null)
+                {
+                    return AccountingJournalEntryResult.WarningResult(
+                        "Cross-period path: main Payment JE upsert returned null.",
+                        updatedPayment);
+                }
+
                 return AccountingJournalEntryResult.Success(updatedPayment);
             }
 
@@ -288,6 +304,13 @@ public partial class AccountingManager
                     retainedEntryIds,
                     currentUser,
                     invoice.OrganizationId);
+                if (updatedJournalEntry == null)
+                {
+                    return AccountingJournalEntryResult.WarningResult(
+                        "Standard path: CreateJournalEntryFromPayment + upsert returned null "
+                        + $"(UF={undepositedFundsAccountId}, AR={accountsReceivableAccountId}, "
+                        + $"invoice IsActive={invoice.IsActive}).");
+                }
             }
 
             if (IsInvoicePrePayment(invoice, paymentLedgerLine))
@@ -326,6 +349,13 @@ public partial class AccountingManager
                 currentUser);
 
             await DeleteClaimedOrphanJournalEntriesAsync(workingEntries, invoice.OrganizationId);
+            if (createMainCashJournalEntry && updatedJournalEntry == null)
+            {
+                return AccountingJournalEntryResult.WarningResult(
+                    "Standard path finished without a main Payment JE.",
+                    updatedJournalEntry);
+            }
+
             return AccountingJournalEntryResult.Success(updatedJournalEntry);
         }
         catch (Exception ex)

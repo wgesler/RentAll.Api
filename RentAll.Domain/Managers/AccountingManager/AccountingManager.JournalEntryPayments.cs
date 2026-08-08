@@ -8,34 +8,79 @@ public partial class AccountingManager
 {
     #region Journal Entry
     public async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
+        => (await CreateJournalEntriesFromPaymentDocumentWithDiagnosticsAsync(
+            paymentId,
+            organizationId,
+            currentUser,
+            allowPartialAllocationsOnMismatch)).JournalEntries;
+
+    private async Task<PaymentJournalEntryCreateResult> CreateJournalEntriesFromPaymentDocumentWithDiagnosticsAsync(
+        Guid paymentId,
+        Guid organizationId,
+        Guid currentUser,
+        bool allowPartialAllocationsOnMismatch = false)
     {
-        var journalEntries = new List<JournalEntry>();
+        var result = new PaymentJournalEntryCreateResult();
 
         if (paymentId == Guid.Empty)
-            return journalEntries;
+        {
+            result.Bail("Exit: PaymentId is empty.");
+            return result;
+        }
 
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
-            return journalEntries;
+        {
+            result.Bail("Exit: accounting feature is disabled for organization.");
+            return result;
+        }
 
         Payment? payment = null;
         if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
             payment = cachedPayment;
         else
             payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
-        if (payment == null || payment.LedgerLines.Count == 0)
-            return journalEntries;
+
+        if (payment == null)
+        {
+            result.Bail("Exit: payment record not found.");
+            return result;
+        }
+
+        result.Note($"Payment {payment.PaymentCode} IsActive={payment.IsActive} Amount={payment.Amount:0.00} Lines={payment.LedgerLines.Count}");
+
+        if (payment.LedgerLines.Count == 0)
+        {
+            result.Bail("Exit: payment has no linked invoice ledger lines.");
+            return result;
+        }
 
         // AGENT-NOTE: Payment JE create must not skip inactive invoices. LoadPaymentApplications
         // uses Invoice_GetById (IsDeleted=0 only). Invoice.IsActive is ignored here on purpose —
         // Sync and payment save both process payment lines on inactive invoices.
         var loadResult = await LoadPaymentApplicationsAsync(payment, organizationId, strict: !allowPartialAllocationsOnMismatch);
+        result.Note($"LoadPaymentApplications: apps={loadResult.Applications.Count} skipped={loadResult.SkippedLines.Count} failed={loadResult.FailedLines.Count}");
+        AppendPaymentLedgerLineIssuesToBail(result, "Skipped linked lines", loadResult.SkippedLines);
+        AppendPaymentLedgerLineIssuesToBail(result, "Failed linked lines", loadResult.FailedLines);
+
         if (loadResult.Applications.Count == 0)
-            return journalEntries;
+        {
+            result.Bail("Exit: no payment applications resolved from linked ledger lines.");
+            return result;
+        }
+
+        foreach (var application in loadResult.Applications)
+        {
+            result.Note(
+                $"Application: invoice {application.Invoice.InvoiceCode} IsActive={application.Invoice.IsActive} "
+                + $"line {application.PaymentLedgerLine.LineNumber} amount={application.PaymentLedgerLine.Amount:0.00} "
+                + $"LedgerLineId={application.PaymentLedgerLine.LedgerLineId}");
+        }
 
         var allocationTotal = loadResult.Applications.Sum(application => application.PaymentLedgerLine.Amount);
         if (allocationTotal != payment.Amount)
         {
             var diagnostic = BuildPaymentAllocationDiagnosticMessage(payment, loadResult, allocationTotal);
+            result.Note($"Allocation mismatch: header={payment.Amount:0.00} applications={allocationTotal:0.00}");
             if (!allowPartialAllocationsOnMismatch)
                 throw new Exception(diagnostic);
 
@@ -50,9 +95,19 @@ public partial class AccountingManager
                 amount: payment.Amount,
                 message: diagnostic,
                 currentUser: currentUser);
+            result.Note("Continuing with partial allocations (Sync allowPartialAllocationsOnMismatch).");
         }
 
-        return await CreateJournalEntriesFromPaymentApplicationsAsync(payment, loadResult.Applications, currentUser);
+        await CreateJournalEntriesFromPaymentApplicationsAsync(payment, loadResult.Applications, currentUser, result);
+
+        if (result.JournalEntries.Count == 0)
+            result.Bail("Exit: create/upsert finished with zero Payment/PrePaymentReceive journal entries returned.");
+        else
+            result.Note($"Create returned {result.JournalEntries.Count} journal entry(ies): "
+                + string.Join(", ", result.JournalEntries.Select(entry =>
+                    $"{entry.JournalEntryCode} kind={(int)entry.JournalEntryKindId} PaymentId={entry.PaymentId}")));
+
+        return result;
     }
 
     public async Task<JournalEntrySyncResult> SyncPaymentJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
@@ -61,6 +116,7 @@ public partial class AccountingManager
         await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
 
         var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
+            .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
@@ -77,8 +133,15 @@ public partial class AccountingManager
 
                 try
                 {
-                    var createdEntries = await CreateJournalEntriesFromPaymentDocumentAsync(paymentSummary.PaymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch: true);
-                    if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
+                    var createResult = await CreateJournalEntriesFromPaymentDocumentWithDiagnosticsAsync(
+                        paymentSummary.PaymentId,
+                        organizationId,
+                        currentUser,
+                        allowPartialAllocationsOnMismatch: true);
+
+                    // Health_01 bar — kind 13/14 with PaymentId. Loose memo matches do not count as success.
+                    var hasHealthPaymentJe = await PaymentHasHealthPaymentJournalEntryAsync(paymentSummary.PaymentId, organizationId);
+                    if (hasHealthPaymentJe)
                     {
                         result.JournalEntriesCreated++;
                     }
@@ -95,7 +158,18 @@ public partial class AccountingManager
                         {
                             payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
                         }
+
+                        var looseHasAny = await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId);
                         var skipMessage = await BuildPaymentSkipDiagnosticMessageAsync(payment, paymentSummary, organizationId);
+                        var bailTrail = createResult.FormatBailTrail();
+                        var message = skipMessage
+                            + Environment.NewLine
+                            + $"Health_01 Payment JE present: false. Loose PaymentHas (any memo/link match): {looseHasAny}."
+                            + Environment.NewLine
+                            + "Bail trail:"
+                            + Environment.NewLine
+                            + bailTrail;
+
                         await LogAccountingErrorAsync(
                             trigger: "PaymentSkip",
                             organizationId: organizationId,
@@ -105,8 +179,9 @@ public partial class AccountingManager
                             documentCode: ResolvePaymentDocumentCode(payment, paymentSummary),
                             accountingPeriod: null,
                             amount: paymentSummary.Amount,
-                            message: skipMessage,
+                            message: message,
                             currentUser: currentUser);
+                        result.Errors.Add($"{ResolvePaymentDocumentCode(payment, paymentSummary)}: no Health Payment JE. See PaymentSkip log.");
                     }
                 }
                 catch (Exception ex)
@@ -119,7 +194,7 @@ public partial class AccountingManager
                         officeId: paymentSummary.OfficeId,
                         sourceTypeId: (int)SourceType.InvoicePayment,
                         sourceId: paymentSummary.PaymentId,
-                        documentCode: paymentSummary.Description,
+                        documentCode: paymentSummary.PaymentCode ?? paymentSummary.Description,
                         accountingPeriod: null,
                         amount: paymentSummary.Amount,
                         message: message,
@@ -142,42 +217,62 @@ public partial class AccountingManager
     #endregion
 
     #region Helpers
-    private async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentApplicationsAsync(Payment payment, IReadOnlyList<PaymentApplicationContext> applications, Guid currentUser)
+    private async Task CreateJournalEntriesFromPaymentApplicationsAsync(
+        Payment payment,
+        IReadOnlyList<PaymentApplicationContext> applications,
+        Guid currentUser,
+        PaymentJournalEntryCreateResult result)
     {
-        var journalEntries = new List<JournalEntry>();
-
         var existingPaymentDocumentEntries = await GetJournalEntriesForSourceAsync(
             payment.OrganizationId,
             payment.OfficeId,
             SourceType.InvoicePayment,
             payment.PaymentId);
+        result.Note($"Existing SourceType.InvoicePayment JEs for payment: {existingPaymentDocumentEntries.Count}");
 
         foreach (var consolidatedEntry in existingPaymentDocumentEntries)
             await DeleteOpenJournalEntryAsync(consolidatedEntry.JournalEntryId, payment.OrganizationId);
 
         foreach (var application in applications)
         {
+            var invoiceLabel = application.Invoice.InvoiceCode;
             var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
                 application.Invoice.OrganizationId,
                 application.Invoice.OfficeId,
                 application.Invoice,
                 application.PaymentLedgerLine);
+            result.Note(
+                $"Invoice {invoiceLabel}: memo-matched existing payment-flow JEs={existingPaymentEntries.Count} "
+                + $"[{string.Join(", ", existingPaymentEntries.Select(entry => $"{entry.JournalEntryCode}/k{(int)entry.JournalEntryKindId}/PayId={entry.PaymentId}"))}]");
+
             var paymentResult = await UpsertInvoicePaymentSideEffectsAsync(
                 application.Invoice,
                 application.PaymentLedgerLine,
                 existingPaymentEntries,
                 currentUser,
                 createMainCashJournalEntry: true);
-            if (paymentResult.JournalEntry != null
-                && !journalEntries.Any(entry => entry.JournalEntryId == paymentResult.JournalEntry.JournalEntryId))
+
+            if (paymentResult.HasWarning)
+                result.Bail($"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects warning: {paymentResult.Warning}");
+
+            if (paymentResult.JournalEntry == null)
             {
-                journalEntries.Add(paymentResult.JournalEntry);
+                result.Bail(
+                    $"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects returned no main Payment JE "
+                    + $"(HasWarning={paymentResult.HasWarning}).");
+                continue;
             }
+
+            result.Note(
+                $"Invoice {invoiceLabel}: upserted {paymentResult.JournalEntry.JournalEntryCode} "
+                + $"kind={(int)paymentResult.JournalEntry.JournalEntryKindId} PaymentId={paymentResult.JournalEntry.PaymentId}");
+
+            if (!result.JournalEntries.Any(entry => entry.JournalEntryId == paymentResult.JournalEntry.JournalEntryId))
+                result.JournalEntries.Add(paymentResult.JournalEntry);
         }
 
         await SyncPaymentDocumentLinksAsync(payment, currentUser);
-
-        return journalEntries;
+        result.Note("SyncPaymentDocumentLinksAsync completed.");
     }
 
     private async Task<PaymentApplicationLoadResult> LoadPaymentApplicationsAsync(Payment payment, Guid organizationId, bool strict)
@@ -346,6 +441,48 @@ public partial class AccountingManager
     private sealed record PaymentLedgerLineLoadIssue(PaymentLedgerLine Line, string Reason);
 
     private sealed record PaymentApplicationLoadResult(IReadOnlyList<PaymentApplicationContext> Applications, IReadOnlyList<PaymentLedgerLineLoadIssue> SkippedLines, IReadOnlyList<PaymentLedgerLineLoadIssue> FailedLines);
+
+    private sealed class PaymentJournalEntryCreateResult
+    {
+        public List<JournalEntry> JournalEntries { get; } = [];
+        private readonly AccountingSyncBailTrail _trail = new();
+
+        public void Note(string message) => _trail.Note(message);
+
+        public void Bail(string message) => _trail.Bail(message);
+
+        public string FormatBailTrail() => _trail.FormatBailTrail();
+    }
+
+    private static void AppendPaymentLedgerLineIssuesToBail(
+        PaymentJournalEntryCreateResult result,
+        string heading,
+        IReadOnlyList<PaymentLedgerLineLoadIssue> issues)
+    {
+        if (issues.Count == 0)
+            return;
+
+        result.Note($"{heading}:");
+        foreach (var issue in issues)
+        {
+            result.Note(
+                $"  - {issue.Line.InvoiceCode} line {issue.Line.LineNumber}: {issue.Line.Amount:0.00} ({issue.Line.Description}) "
+                + $"[LedgerLineId={issue.Line.LedgerLineId}] — {issue.Reason}");
+        }
+    }
+
+    /// <summary>Health_01: kind Payment/PrePaymentReceive with PaymentId stamped.</summary>
+    private async Task<bool> PaymentHasHealthPaymentJournalEntryAsync(Guid paymentId, Guid organizationId)
+    {
+        if (paymentId == Guid.Empty)
+            return false;
+
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(organizationId, paymentId);
+        return linkedEntries.Any(entry =>
+            entry.JournalEntryKindId is JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive
+            && entry.PaymentId is { } linkedPaymentId
+            && linkedPaymentId != Guid.Empty);
+    }
 
     private async Task<bool> PaymentHasJournalEntriesAsync(Guid paymentId, Guid organizationId)
     {
