@@ -140,8 +140,18 @@ public partial class AccountingManager
         return ranked[0].EscrowJournalEntryLineId;
     }
 
-    private async Task<List<TransferDepositInvoiceEscrowMatch>> BuildTransferDepositInvoiceEscrowMatchesAsync(Transfer transfer, int escrowDepositAccountId)
+    private async Task<List<TransferDepositInvoiceEscrowMatch>> BuildTransferDepositInvoiceEscrowMatchesAsync(
+        Transfer transfer,
+        int escrowDepositAccountId)
     {
+        if (_officeSyncCache != null)
+        {
+            return _officeSyncCache.GetOrBuildTransferInvoiceMatches(
+                transfer,
+                escrowDepositAccountId,
+                TryGetDepositEscrowJournalEntryLineFromCache);
+        }
+
         var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
         {
             OrganizationId = transfer.OrganizationId,
@@ -390,8 +400,13 @@ public partial class AccountingManager
         return groups.Values;
     }
 
-    private async Task<List<EscrowDepositLineCandidate>> BuildEscrowDepositLineCandidatesAsync(Transfer transfer, int escrowDepositAccountId)
+    private async Task<List<EscrowDepositLineCandidate>> BuildEscrowDepositLineCandidatesAsync(
+        Transfer transfer,
+        int escrowDepositAccountId)
     {
+        if (_officeSyncCache != null)
+            return _officeSyncCache.GetOrBuildEscrowCandidates(transfer, escrowDepositAccountId);
+
         var depositEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
             OrganizationId = transfer.OrganizationId,
@@ -432,6 +447,9 @@ public partial class AccountingManager
 
     private async Task<HashSet<Guid>> GetJournalEntryLineIdsClaimedByOtherTransfersAsync(Transfer transfer)
     {
+        if (_officeSyncCache != null)
+            return _officeSyncCache.GetClaimedTransferLineIdsExcluding(transfer.TransferId);
+
         var claimedLineIds = new HashSet<Guid>();
         var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
         {
@@ -456,9 +474,13 @@ public partial class AccountingManager
         return claimedLineIds;
     }
 
-    private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(IReadOnlyList<TransferSplit> splitGroup, Guid journalEntryLineId, int escrowDepositAccountId)
+    private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(
+        IReadOnlyList<TransferSplit> splitGroup,
+        Guid journalEntryLineId,
+        int escrowDepositAccountId)
     {
-        var line = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+        var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+
         if (line == null)
             return false;
 

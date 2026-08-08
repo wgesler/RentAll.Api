@@ -80,7 +80,7 @@ public partial class AccountingManager
                 return;
             }
 
-            var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+            var existingEntries = (await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
             {
                 OrganizationId = deposit.OrganizationId,
                 OfficeIds = deposit.OfficeId.ToString(),
@@ -278,11 +278,7 @@ public partial class AccountingManager
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
         foreach (var paymentId in paymentIds)
         {
-            var paymentJournalEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
-            {
-                OrganizationId = deposit.OrganizationId,
-                PaymentId = paymentId
-            })).ToList();
+            var paymentJournalEntries = await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId);
 
             foreach (var journalEntry in paymentJournalEntries)
             {
@@ -300,7 +296,7 @@ public partial class AccountingManager
             }
         }
 
-        var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        var depositJournalEntries = (await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
         {
             OrganizationId = deposit.OrganizationId,
             OfficeIds = deposit.OfficeId.ToString(),
@@ -323,11 +319,7 @@ public partial class AccountingManager
         if (depositId == Guid.Empty)
             return;
 
-        var linkedEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
-        {
-            OrganizationId = organizationId,
-            DepositId = depositId
-        })).ToList();
+        var linkedEntries = await GetJournalEntriesByDepositIdCachedAsync(organizationId, depositId);
 
         foreach (var journalEntry in linkedEntries)
         {
@@ -346,11 +338,17 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
                 continue;
 
-            var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+            if (_officeSyncCache != null && _officeSyncCache.TryGetPaymentIdForLine(journalEntryLineId, out var cachedPaymentId))
+            {
+                paymentIds.Add(cachedPaymentId);
+                continue;
+            }
+
+            var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
             if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
                 continue;
 
-            var undepositedFundsJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(
+            var undepositedFundsJournalEntry = await GetJournalEntryByIdCachedAsync(
                 sourceLine.JournalEntryId,
                 deposit.OrganizationId);
             if (undepositedFundsJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty)
@@ -401,14 +399,14 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
                 continue;
 
-            var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+            var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
             if (sourceLine?.JournalEntryId is not { } journalEntryId || journalEntryId == Guid.Empty)
                 continue;
 
             if (!processedJournalEntryIds.Add(journalEntryId))
                 continue;
 
-            var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, deposit.OrganizationId);
+            var journalEntry = await GetJournalEntryByIdCachedAsync(journalEntryId, deposit.OrganizationId);
             if (journalEntry == null)
                 continue;
 

@@ -498,6 +498,7 @@ public partial class AccountingManager
             OfficeIds = invoice.OfficeId.ToString(),
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
+            StartDate = DateOnly.MinValue,
             IncludeUnposted = true
         })).ToList();
 

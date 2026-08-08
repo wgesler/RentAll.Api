@@ -17,12 +17,17 @@ public partial class AccountingManager
     public async Task<JournalEntry?> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser)
         => (await CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser)).JournalEntry;
 
-    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromInvoiceWithResultAsync(Invoice invoice, Guid currentUser)
+    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromInvoiceWithResultAsync(
+        Invoice invoice,
+        Guid currentUser,
+        bool processInactiveInvoice = false)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
             return AccountingJournalEntryResult.Success();
 
-        if (!invoice.IsActive)
+        // Day-to-day invoice save/refresh skips inactive. Sync (and similar backfills) pass
+        // processInactiveInvoice when the inactive invoice is intentionally in the work list.
+        if (!processInactiveInvoice && !invoice.IsActive)
             return AccountingJournalEntryResult.Success();
 
         try
@@ -479,6 +484,7 @@ public partial class AccountingManager
                     OfficeIds = invoice.OfficeId.ToString(),
                     SourceTypeId = (int)SourceType.Invoice,
                     SourceId = invoice.InvoiceId,
+                    StartDate = DateOnly.MinValue,
                     IncludeUnposted = true
                 })).ToList();
                 amountContextEntries = invoiceEntries

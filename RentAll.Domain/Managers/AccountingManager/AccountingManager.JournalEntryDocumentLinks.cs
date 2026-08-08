@@ -20,93 +20,83 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return;
 
-        var linkResult = new JournalEntrySyncResult();
-        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds))
-            .Where(payment => payment.IsActive)
-            .OrderBy(payment => payment.PaymentDate)
-            .ThenBy(payment => payment.PaymentId)
-            .ToList();
-
-        var processed = 0;
-        var total = payments.Count;
-        ReportSyncProgress(progress, "documentLinkPayment", total, processed, linkResult, total == 0 ? "Completed" : "Running");
-
-        foreach (var paymentSummary in payments)
+        await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-            var payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
-            if (payment != null && payment.IsActive)
+            var linkResult = new JournalEntrySyncResult();
+            var payments = _officeSyncCache!.Payments
+                .Where(payment => payment.IsActive)
+                .OrderBy(payment => payment.PaymentDate)
+                .ThenBy(payment => payment.PaymentId)
+                .ToList();
+
+            var processed = 0;
+            var total = payments.Count;
+            ReportSyncProgress(progress, "documentLinkPayment", total, processed, linkResult, total == 0 ? "Completed" : "Running");
+
+            foreach (var payment in payments)
+            {
                 await SyncPaymentDocumentLinksAsync(payment, currentUser);
 
-            processed++;
-            ReportSyncProgress(progress, "documentLinkPayment", total, processed, linkResult, processed >= total ? "Completed" : "Running");
-        }
+                processed++;
+                ReportSyncProgress(progress, "documentLinkPayment", total, processed, linkResult, processed >= total ? "Completed" : "Running");
+            }
 
-        await SyncInvoicePaymentDocumentLinksFromLedgerAsync(organizationId, officeIds, currentUser);
+            await SyncInvoicePaymentDocumentLinksFromLedgerAsync(organizationId, officeIds, currentUser);
 
-        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IsActive = true,
-            IncludeInactive = false
-        })).ToList();
+            var deposits = _officeSyncCache.Deposits
+                .Where(deposit => deposit.IsActive)
+                .ToList();
 
-        processed = 0;
-        total = deposits.Count;
-        ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, total == 0 ? "Completed" : "Running");
+            processed = 0;
+            total = deposits.Count;
+            ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, total == 0 ? "Completed" : "Running");
 
-        foreach (var depositSummary in deposits)
-        {
-            var deposit = await _accountingRepository.GetDepositByIdAsync(depositSummary.DepositId, organizationId);
-            if (deposit != null && deposit.IsActive)
+            foreach (var deposit in deposits)
+            {
                 await SyncDepositDocumentLinksAsync(deposit, currentUser);
 
-            processed++;
-            ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, processed >= total ? "Completed" : "Running");
-        }
+                processed++;
+                ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, processed >= total ? "Completed" : "Running");
+            }
 
-        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IsActive = true,
-            IncludeInactive = false
-        })).ToList();
+            var transfers = _officeSyncCache.Transfers
+                .Where(transfer => transfer.IsActive)
+                .ToList();
 
-        processed = 0;
-        total = transfers.Count;
-        ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, total == 0 ? "Completed" : "Running");
+            processed = 0;
+            total = transfers.Count;
+            ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, total == 0 ? "Completed" : "Running");
 
-        foreach (var transferSummary in transfers)
-        {
-            var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
-            if (transfer != null && transfer.IsActive)
+            foreach (var transfer in transfers)
+            {
                 await SyncTransferDocumentLinksAsync(transfer, currentUser);
 
-            processed++;
-            ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, processed >= total ? "Completed" : "Running");
-        }
+                processed++;
+                ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, processed >= total ? "Completed" : "Running");
+            }
 
-        // After JE rebuild + document links, rematch deposit UF lines and transfer escrow lines
-        // so transfer reports do not fail on stale JournalEntryLineId values.
-        await RepairDepositAndTransferSplitLinksAsync(organizationId, officeIds, currentUser, progress);
+            // After JE rebuild + document links, rematch deposit UF lines and transfer escrow lines
+            // so transfer reports do not fail on stale JournalEntryLineId values.
+            await RepairDepositAndTransferSplitLinksAsync(organizationId, officeIds, currentUser, progress);
+        });
     }
 
     private async Task SyncInvoicePaymentDocumentLinksFromLedgerAsync(Guid organizationId, string officeIds, Guid currentUser)
     {
-        var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IncludeInactive = true,
-            IncludePaid = true
-        })).ToList();
+        var invoices = _officeSyncCache != null
+            ? _officeSyncCache.InvoicesById.Values.ToList()
+            : (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+            {
+                OrganizationId = organizationId,
+                OfficeIds = officeIds,
+                IncludeInactive = true,
+                IncludePaid = true
+            })).ToList();
 
         foreach (var invoiceSummary in invoices)
         {
-            var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceSummary.InvoiceId, organizationId);
-            if (invoice == null)
-                continue;
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceSummary.InvoiceId, organizationId)
+                ?? invoiceSummary;
 
             var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
             foreach (var ledgerLine in invoice.LedgerLines.Where(line => line.Amount != 0))
@@ -117,7 +107,12 @@ public partial class AccountingManager
                 if (ledgerLine.PaymentId is not { } paymentId || paymentId == Guid.Empty)
                     continue;
 
-                var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+                Payment? payment = null;
+                if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                    payment = cachedPayment;
+                else
+                    payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
                 if (payment == null || !payment.IsActive)
                     continue;
 

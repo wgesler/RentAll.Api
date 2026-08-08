@@ -7,66 +7,63 @@ public partial class AccountingManager
 {
     public async Task<JournalEntrySyncResult> SyncInvoiceJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
-        var result = new JournalEntrySyncResult();
-        var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IncludeInactive = true,
-            IncludePaid = true
-        })).ToList();
+            var result = new JournalEntrySyncResult();
+            // Include inactive invoices in the work list and process them (UI Total matches).
+            var invoices = _officeSyncCache!.InvoicesById.Values.ToList();
 
-        var total = invoices.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "invoice", total, processed, result, "Running");
+            var total = invoices.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "invoice", total, processed, result, "Running");
 
-        foreach (var invoiceSummary in invoices)
-        {
-            result.DocumentsProcessed++;
-
-            try
+            foreach (var invoiceSummary in invoices)
             {
-                var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceSummary.InvoiceId, organizationId);
-                if (invoice == null)
-                    continue;
+                result.DocumentsProcessed++;
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = invoice.OrganizationId,
-                        OfficeIds = invoice.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.Invoice,
-                        SourceId = invoice.InvoiceId,
-                        IncludeUnposted = true
-                    },
-                    result);
+                try
+                {
+                    var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceSummary.InvoiceId, organizationId)
+                        ?? invoiceSummary;
+
+                    await TrackJournalEntryCreateAsync(
+                        () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser, processInactiveInvoice: true),
+                        new JournalEntryGetCriteria
+                        {
+                            OrganizationId = invoice.OrganizationId,
+                            OfficeIds = invoice.OfficeId.ToString(),
+                            SourceTypeId = (int)SourceType.Invoice,
+                            SourceId = invoice.InvoiceId,
+                            IncludeUnposted = true
+                        },
+                        result);
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Invoice {invoiceSummary.InvoiceCode}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "Invoice",
+                        organizationId: organizationId,
+                        officeId: invoiceSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.Invoice,
+                        sourceId: invoiceSummary.InvoiceId,
+                        documentCode: invoiceSummary.InvoiceCode,
+                        accountingPeriod: null,
+                        amount: invoiceSummary.TotalAmount,
+                        message: message,
+                        currentUser: currentUser);
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "invoice", total, processed, result, processed >= total ? "Completed" : "Running");
             }
-            catch (Exception ex)
-            {
-                var message = $"Invoice {invoiceSummary.InvoiceCode}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Invoice",
-                    organizationId: organizationId,
-                    officeId: invoiceSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.Invoice,
-                    sourceId: invoiceSummary.InvoiceId,
-                    documentCode: invoiceSummary.InvoiceCode,
-                    accountingPeriod: null,
-                    amount: invoiceSummary.TotalAmount,
-                    message: message,
-                    currentUser: currentUser);
-            }
 
-            processed++;
-            ReportSyncProgress(progress, "invoice", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            if (total == 0)
+                ReportSyncProgress(progress, "invoice", total, processed, result, "Completed");
 
-        if (total == 0)
-            ReportSyncProgress(progress, "invoice", total, processed, result, "Completed");
-
-        return result;
+            return result;
+        });
     }
 
     public async Task<JournalEntrySyncResult> ClearInvoiceJournalEntriesAsync(Guid organizationId, string officeIds)
@@ -80,6 +77,8 @@ public partial class AccountingManager
 
     public async Task<JournalEntrySyncResult> SyncBillJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
+        {
         var result = new JournalEntrySyncResult();
         var bills = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
         {
@@ -172,6 +171,7 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "bill", total, processed, result, "Completed");
 
         return result;
+        });
     }
 
     public async Task<JournalEntrySyncResult> ClearBillJournalEntriesAsync(Guid organizationId, string officeIds)
@@ -185,6 +185,8 @@ public partial class AccountingManager
 
     public async Task<JournalEntrySyncResult> SyncReceiptJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
+        {
         var result = new JournalEntrySyncResult();
         var receipts = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
         {
@@ -247,6 +249,7 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "receipt", total, processed, result, "Completed");
 
         return result;
+        });
     }
 
     public async Task<JournalEntrySyncResult> ClearReceiptJournalEntriesAsync(Guid organizationId, string officeIds)
@@ -259,6 +262,8 @@ public partial class AccountingManager
 
     public async Task<JournalEntrySyncResult> SyncWorkOrderJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
+        {
         var result = new JournalEntrySyncResult();
         var workOrders = (await _maintenanceRepository.GetWorkOrdersByCriteriaAsync(new WorkOrderGetCriteria
         {
@@ -317,11 +322,11 @@ public partial class AccountingManager
             ReportSyncProgress(progress, "workOrder", total, processed, result, "Completed");
 
         return result;
+        });
     }
 
     public async Task<JournalEntrySyncResult> SyncDepositJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
     {
-        var result = new JournalEntrySyncResult();
         var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
         {
             OrganizationId = organizationId,
@@ -329,70 +334,76 @@ public partial class AccountingManager
             IncludeInactive = true
         })).ToList();
 
-        var total = deposits.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "deposit", total, processed, result, "Running");
-
-        foreach (var depositSummary in deposits)
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-            result.DocumentsProcessed++;
+            var result = new JournalEntrySyncResult();
+            var total = deposits.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "deposit", total, processed, result, "Running");
 
-            try
+            foreach (var deposit in deposits)
             {
-                var deposit = await _accountingRepository.GetDepositByIdAsync(depositSummary.DepositId, organizationId);
-                if (deposit == null)
-                    continue;
+                result.DocumentsProcessed++;
 
-                var originalSplitLineIds = (deposit.Splits ?? [])
-                    .Select(split => split.JournalEntryLineId)
-                    .ToList();
-                await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
-                if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+                try
                 {
-                    deposit.ModifiedBy = currentUser;
-                    deposit = await _accountingRepository.UpdateDepositAsync(deposit);
+                    var originalSplitLineIds = (deposit.Splits ?? [])
+                        .Select(split => split.JournalEntryLineId)
+                        .ToList();
+                    await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+                    if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+                    {
+                        deposit.ModifiedBy = currentUser;
+                        var updated = await _accountingRepository.UpdateDepositAsync(deposit);
+                        deposit.Splits = updated.Splits;
+                        _officeSyncCache?.ReplaceDeposit(deposit);
+                    }
+                    else
+                    {
+                        _officeSyncCache?.ReplaceDeposit(deposit);
+                    }
+
+                    // Payment DepositId stamp runs inside SyncDepositDocumentLinksAsync (via TryReplace).
+                    await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
+                    result.JournalEntriesCreated++;
+                }
+                catch (Exception ex)
+                {
+                    var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
+                        ? deposit.DepositId.ToString()
+                        : deposit.DepositCode.Trim();
+                    var message = $"Deposit {depositLabel}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "Deposit",
+                        organizationId: organizationId,
+                        officeId: deposit.OfficeId,
+                        sourceTypeId: (int)SourceType.Deposit,
+                        sourceId: deposit.DepositId,
+                        documentCode: depositLabel,
+                        accountingPeriod: deposit.AccountingPeriod == default ? null : deposit.AccountingPeriod,
+                        amount: deposit.Amount,
+                        message: message,
+                        currentUser: currentUser);
                 }
 
-                await SyncPaymentDepositIdsForDepositAsync(deposit, currentUser);
-                await TryReplaceJournalEntriesFromDepositAsync(deposit, currentUser);
-                result.JournalEntriesCreated++;
-            }
-            catch (Exception ex)
-            {
-                var depositLabel = string.IsNullOrWhiteSpace(depositSummary.DepositCode)
-                    ? depositSummary.DepositId.ToString()
-                    : depositSummary.DepositCode.Trim();
-                var message = $"Deposit {depositLabel}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Deposit",
-                    organizationId: organizationId,
-                    officeId: depositSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.Deposit,
-                    sourceId: depositSummary.DepositId,
-                    documentCode: depositLabel,
-                    accountingPeriod: depositSummary.AccountingPeriod == default ? null : depositSummary.AccountingPeriod,
-                    amount: depositSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
+                processed++;
+                ReportSyncProgress(progress, "deposit", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
-            processed++;
-            ReportSyncProgress(progress, "deposit", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            if (total == 0)
+                ReportSyncProgress(progress, "deposit", total, processed, result, "Completed");
 
-        if (total == 0)
-            ReportSyncProgress(progress, "deposit", total, processed, result, "Completed");
+            if (syncDocumentLinksAtEnd)
+                await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
-        if (syncDocumentLinksAtEnd)
-            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
-
-        return result;
+            return result;
+        }, depositsAlreadyLoaded: deposits);
     }
 
     public async Task<JournalEntrySyncResult> SyncTransferJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null, bool syncDocumentLinksAtEnd = true)
     {
-        var result = new JournalEntrySyncResult();
+        // Criteria already returns splits — avoid GetTransferById per row.
         var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
         {
             OrganizationId = organizationId,
@@ -400,143 +411,18 @@ public partial class AccountingManager
             IncludeInactive = true
         })).ToList();
 
-        var total = transfers.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "transfer", total, processed, result, "Running");
-
-        foreach (var transferSummary in transfers)
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-            result.DocumentsProcessed++;
+            var result = new JournalEntrySyncResult();
+            var total = transfers.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "transfer", total, processed, result, "Running");
 
-            try
+            foreach (var transfer in transfers)
             {
-                var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
-                if (transfer == null)
-                    continue;
+                result.DocumentsProcessed++;
 
-                var originalSplitLineIds = (transfer.Splits ?? [])
-                    .Select(split => split.JournalEntryLineId)
-                    .ToList();
-                await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
-                if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
-                {
-                    transfer.ModifiedBy = currentUser;
-                    transfer = await _accountingRepository.UpdateTransferAsync(transfer);
-                }
-
-                await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
-                await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
-                result.JournalEntriesCreated++;
-            }
-            catch (Exception ex)
-            {
-                var transferLabel = string.IsNullOrWhiteSpace(transferSummary.TransferCode)
-                    ? transferSummary.TransferId.ToString()
-                    : transferSummary.TransferCode.Trim();
-                var message = $"Transfer {transferLabel}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Transfer",
-                    organizationId: organizationId,
-                    officeId: transferSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.Transfer,
-                    sourceId: transferSummary.TransferId,
-                    documentCode: transferLabel,
-                    accountingPeriod: transferSummary.AccountingPeriod == default ? null : transferSummary.AccountingPeriod,
-                    amount: transferSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
-            }
-
-            processed++;
-            ReportSyncProgress(progress, "transfer", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
-
-        if (total == 0)
-            ReportSyncProgress(progress, "transfer", total, processed, result, "Completed");
-
-        if (syncDocumentLinksAtEnd)
-            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
-
-        return result;
-    }
-
-    public async Task<JournalEntrySyncResult> RepairDepositAndTransferSplitLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
-    {
-        var result = new JournalEntrySyncResult();
-
-        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IsActive = true,
-            IncludeInactive = false
-        })).ToList();
-
-        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IsActive = true,
-            IncludeInactive = false
-        })).ToList();
-
-        var total = deposits.Count + transfers.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, total == 0 ? "Completed" : "Running");
-
-        foreach (var depositSummary in deposits)
-        {
-            result.DocumentsProcessed++;
-            try
-            {
-                var deposit = await _accountingRepository.GetDepositByIdAsync(depositSummary.DepositId, organizationId);
-                if (deposit == null)
-                {
-                    processed++;
-                    ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
-                    continue;
-                }
-
-                var originalSplitLineIds = (deposit.Splits ?? [])
-                    .Select(split => split.JournalEntryLineId)
-                    .ToList();
-                await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
-                if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
-                {
-                    deposit.ModifiedBy = currentUser;
-                    deposit = await _accountingRepository.UpdateDepositAsync(deposit);
-                }
-
-                await SyncPaymentDepositIdsForDepositAsync(deposit, currentUser);
-            }
-            catch (Exception ex)
-            {
-                var depositLabel = string.IsNullOrWhiteSpace(depositSummary.DepositCode)
-                    ? depositSummary.DepositId.ToString()
-                    : depositSummary.DepositCode.Trim();
-                result.Errors.Add($"Deposit {depositLabel} split-link repair: {ex.Message}");
-            }
-
-            processed++;
-            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
-
-        foreach (var transferSummary in transfers)
-        {
-            result.DocumentsProcessed++;
-            try
-            {
-                var transfer = await _accountingRepository.GetTransferByIdAsync(transferSummary.TransferId, organizationId);
-                if (transfer == null)
-                {
-                    processed++;
-                    ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
-                    continue;
-                }
-
-                // Pass 1: rematch. Pass 2: after clear/regroup, rematch again (incl. escrow amount packing).
-                for (var pass = 0; pass < 2; pass++)
+                try
                 {
                     var originalSplitLineIds = (transfer.Splits ?? [])
                         .Select(split => split.JournalEntryLineId)
@@ -545,31 +431,160 @@ public partial class AccountingManager
                     if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
                     {
                         transfer.ModifiedBy = currentUser;
-                        transfer = await _accountingRepository.UpdateTransferAsync(transfer);
+                        var updated = await _accountingRepository.UpdateTransferAsync(transfer);
+                        transfer.Splits = updated.Splits;
+                        _officeSyncCache?.ReplaceTransfer(transfer);
+                    }
+                    else
+                    {
+                        _officeSyncCache?.ReplaceTransfer(transfer);
                     }
 
-                    if ((await GetUnresolvedTransferSplitMessagesAsync(transfer)).Count == 0)
-                        break;
+                    // Deposit TransferId stamp runs inside SyncTransferDocumentLinksAsync (via TryReplace).
+                    await TryReplaceJournalEntriesFromTransferAsync(transfer, currentUser);
+                    result.JournalEntriesCreated++;
+                }
+                catch (Exception ex)
+                {
+                    var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
+                        ? transfer.TransferId.ToString()
+                        : transfer.TransferCode.Trim();
+                    var message = $"Transfer {transferLabel}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "Transfer",
+                        organizationId: organizationId,
+                        officeId: transfer.OfficeId,
+                        sourceTypeId: (int)SourceType.Transfer,
+                        sourceId: transfer.TransferId,
+                        documentCode: transferLabel,
+                        accountingPeriod: transfer.AccountingPeriod == default ? null : transfer.AccountingPeriod,
+                        amount: transfer.Amount,
+                        message: message,
+                        currentUser: currentUser);
                 }
 
-                await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
+                processed++;
+                ReportSyncProgress(progress, "transfer", total, processed, result, processed >= total ? "Completed" : "Running");
             }
-            catch (Exception ex)
+
+            if (total == 0)
+                ReportSyncProgress(progress, "transfer", total, processed, result, "Completed");
+
+            if (syncDocumentLinksAtEnd)
+                await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+
+            return result;
+        }, transfersAlreadyLoaded: transfers);
+    }
+
+    public async Task<JournalEntrySyncResult> RepairDepositAndTransferSplitLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IsActive = true,
+            IncludeInactive = false
+        })).ToList();
+
+        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IsActive = true,
+            IncludeInactive = false
+        })).ToList();
+
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
+        {
+            var result = new JournalEntrySyncResult();
+            var total = deposits.Count + transfers.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, total == 0 ? "Completed" : "Running");
+
+            foreach (var deposit in deposits)
             {
-                var transferLabel = string.IsNullOrWhiteSpace(transferSummary.TransferCode)
-                    ? transferSummary.TransferId.ToString()
-                    : transferSummary.TransferCode.Trim();
-                result.Errors.Add($"Transfer {transferLabel} split-link repair: {ex.Message}");
+                result.DocumentsProcessed++;
+                try
+                {
+                    var originalSplitLineIds = (deposit.Splits ?? [])
+                        .Select(split => split.JournalEntryLineId)
+                        .ToList();
+                    await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
+                    if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+                    {
+                        deposit.ModifiedBy = currentUser;
+                        var updated = await _accountingRepository.UpdateDepositAsync(deposit);
+                        deposit.Splits = updated.Splits;
+                        _officeSyncCache?.ReplaceDeposit(deposit);
+                    }
+                    else
+                    {
+                        _officeSyncCache?.ReplaceDeposit(deposit);
+                    }
+
+                    await SyncPaymentDepositIdsForDepositAsync(deposit, currentUser);
+                }
+                catch (Exception ex)
+                {
+                    var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
+                        ? deposit.DepositId.ToString()
+                        : deposit.DepositCode.Trim();
+                    result.Errors.Add($"Deposit {depositLabel} split-link repair: {ex.Message}");
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
-            processed++;
-            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            foreach (var transfer in transfers)
+            {
+                result.DocumentsProcessed++;
+                try
+                {
+                    // Pass 1: rematch. Pass 2: after clear/regroup, rematch again (incl. escrow amount packing).
+                    for (var pass = 0; pass < 2; pass++)
+                    {
+                        var originalSplitLineIds = (transfer.Splits ?? [])
+                            .Select(split => split.JournalEntryLineId)
+                            .ToList();
+                        await ReconcileTransferSplitJournalEntryLineIdsAsync(transfer);
+                        if (TransferSplitJournalEntryLineIdsChanged(originalSplitLineIds, transfer.Splits))
+                        {
+                            transfer.ModifiedBy = currentUser;
+                            var updated = await _accountingRepository.UpdateTransferAsync(transfer);
+                            transfer.Splits = updated.Splits;
+                            _officeSyncCache?.ReplaceTransfer(transfer);
+                        }
+                        else
+                        {
+                            _officeSyncCache?.ReplaceTransfer(transfer);
+                        }
 
-        if (total == 0)
-            ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, "Completed");
+                        if ((await GetUnresolvedTransferSplitMessagesAsync(transfer)).Count == 0)
+                            break;
+                    }
 
-        return result;
+                    await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
+                }
+                catch (Exception ex)
+                {
+                    var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
+                        ? transfer.TransferId.ToString()
+                        : transfer.TransferCode.Trim();
+                    result.Errors.Add($"Transfer {transferLabel} split-link repair: {ex.Message}");
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, processed >= total ? "Completed" : "Running");
+            }
+
+            if (total == 0)
+                ReportSyncProgress(progress, "splitLinkRepair", total, processed, result, "Completed");
+
+            return result;
+        }, depositsAlreadyLoaded: deposits, transfersAlreadyLoaded: transfers);
     }
 
     public async Task<JournalEntrySyncResult> SyncPeriodicFeeJournalEntriesAsync(Guid organizationId, string officeIds, DateOnly? startDate = null, DateOnly? endDate = null, IProgress<JournalEntrySyncProgress>? progress = null)
@@ -761,6 +776,8 @@ public partial class AccountingManager
                 OrganizationId = organizationId,
                 OfficeIds = officeIds,
                 SourceTypeId = sourceTypeId,
+                // Clear must delete JEs before the accounting-office start date.
+                StartDate = DateOnly.MinValue,
                 IncludeUnposted = true
             })).ToList();
 
@@ -785,7 +802,10 @@ public partial class AccountingManager
 
     private async Task TrackJournalEntryCreateAsync(Func<Task<AccountingJournalEntryResult>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
     {
-        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(existingCriteria);
+        // Skip check must see JEs before the accounting-office start date; otherwise Sync recreates duplicates.
+        existingCriteria.StartDate = DateOnly.MinValue;
+
+        var existingEntries = await GetJournalEntriesByCriteriaCachedAsync(existingCriteria);
         if (existingEntries.Any())
         {
             result.JournalEntriesSkipped++;

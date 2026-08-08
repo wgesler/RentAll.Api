@@ -17,10 +17,17 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return journalEntries;
 
-        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
         if (payment == null || payment.LedgerLines.Count == 0)
             return journalEntries;
 
+        // AGENT-NOTE: Payment JE create must not skip inactive invoices. LoadPaymentApplications
+        // uses Invoice_GetById (IsDeleted=0 only). Invoice.IsActive is ignored here on purpose —
+        // Sync and payment save both process payment lines on inactive invoices.
         var loadResult = await LoadPaymentApplicationsAsync(payment, organizationId, strict: !allowPartialAllocationsOnMismatch);
         if (loadResult.Applications.Count == 0)
             return journalEntries;
@@ -57,67 +64,80 @@ public partial class AccountingManager
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
-        var total = payments.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "payment", total, processed, result, "Running");
 
-        foreach (var paymentSummary in payments)
+        return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-            result.DocumentsProcessed++;
+            var total = payments.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "payment", total, processed, result, "Running");
 
-            try
+            foreach (var paymentSummary in payments)
             {
-                var createdEntries = await CreateJournalEntriesFromPaymentDocumentAsync(paymentSummary.PaymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch: true);
-                if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
+                result.DocumentsProcessed++;
+
+                try
                 {
-                    result.JournalEntriesCreated++;
+                    var createdEntries = await CreateJournalEntriesFromPaymentDocumentAsync(paymentSummary.PaymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch: true);
+                    if (createdEntries.Count > 0 || await PaymentHasJournalEntriesAsync(paymentSummary.PaymentId, organizationId))
+                    {
+                        result.JournalEntriesCreated++;
+                    }
+                    else
+                    {
+                        result.JournalEntriesSkipped++;
+                        Payment? payment = null;
+                        if (_officeSyncCache != null
+                            && _officeSyncCache.PaymentsById.TryGetValue(paymentSummary.PaymentId, out var cachedPayment))
+                        {
+                            payment = cachedPayment;
+                        }
+                        else
+                        {
+                            payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
+                        }
+                        var skipMessage = await BuildPaymentSkipDiagnosticMessageAsync(payment, paymentSummary, organizationId);
+                        await LogAccountingErrorAsync(
+                            trigger: "PaymentSkip",
+                            organizationId: organizationId,
+                            officeId: paymentSummary.OfficeId,
+                            sourceTypeId: (int)SourceType.InvoicePayment,
+                            sourceId: paymentSummary.PaymentId,
+                            documentCode: ResolvePaymentDocumentCode(payment, paymentSummary),
+                            accountingPeriod: null,
+                            amount: paymentSummary.Amount,
+                            message: skipMessage,
+                            currentUser: currentUser);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    result.JournalEntriesSkipped++;
-                    var payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
-                    var skipMessage = await BuildPaymentSkipDiagnosticMessageAsync(payment, paymentSummary, organizationId);
+                    var message = $"Payment {paymentSummary.Description}: {ex.Message}";
+                    result.Errors.Add(message);
                     await LogAccountingErrorAsync(
-                        trigger: "PaymentSkip",
+                        trigger: "Payment",
                         organizationId: organizationId,
                         officeId: paymentSummary.OfficeId,
                         sourceTypeId: (int)SourceType.InvoicePayment,
                         sourceId: paymentSummary.PaymentId,
-                        documentCode: ResolvePaymentDocumentCode(payment, paymentSummary),
+                        documentCode: paymentSummary.Description,
                         accountingPeriod: null,
                         amount: paymentSummary.Amount,
-                        message: skipMessage,
+                        message: message,
                         currentUser: currentUser);
                 }
-            }
-            catch (Exception ex)
-            {
-                var message = $"Payment {paymentSummary.Description}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Payment",
-                    organizationId: organizationId,
-                    officeId: paymentSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.InvoicePayment,
-                    sourceId: paymentSummary.PaymentId,
-                    documentCode: paymentSummary.Description,
-                    accountingPeriod: null,
-                    amount: paymentSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
+
+                processed++;
+                ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
-            processed++;
-            ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            if (total == 0)
+                ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
 
-        if (total == 0)
-            ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
+            if (syncDocumentLinksAtEnd)
+                await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
-        if (syncDocumentLinksAtEnd)
-            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
-
-        return result;
+            return result;
+        }, paymentsAlreadyLoaded: payments);
     }
     #endregion
 
@@ -332,11 +352,15 @@ public partial class AccountingManager
         if (paymentId == Guid.Empty)
             return false;
 
-        var linkedEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria {OrganizationId = organizationId, PaymentId = paymentId});
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(organizationId, paymentId);
         if (linkedEntries.Any())
             return true;
 
-        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
         if (payment == null)
             return false;
 
@@ -345,7 +369,11 @@ public partial class AccountingManager
             if (paymentLine.InvoiceId == Guid.Empty)
                 continue;
 
-            var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, organizationId);
+            Invoice? invoice = null;
+            if (_officeSyncCache != null && _officeSyncCache.InvoicesById.TryGetValue(paymentLine.InvoiceId, out var cachedInvoice))
+                invoice = cachedInvoice;
+            else
+                invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, organizationId);
             if (invoice == null)
                 continue;
 
@@ -401,11 +429,7 @@ public partial class AccountingManager
 
         await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
 
-        var linkedEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
-        {
-            OrganizationId = payment.OrganizationId,
-            PaymentId = payment.PaymentId
-        })).ToList();
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId);
 
         foreach (var journalEntry in linkedEntries)
         {
@@ -419,7 +443,11 @@ public partial class AccountingManager
             if (paymentLine.InvoiceId == Guid.Empty)
                 continue;
 
-            var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, payment.OrganizationId);
+            Invoice? invoice = null;
+            if (_officeSyncCache != null && _officeSyncCache.InvoicesById.TryGetValue(paymentLine.InvoiceId, out var cachedInvoice))
+                invoice = cachedInvoice;
+            else
+                invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, payment.OrganizationId);
             if (invoice == null)
                 continue;
 
@@ -444,11 +472,7 @@ public partial class AccountingManager
         if (paymentId == Guid.Empty)
             return;
 
-        var linkedEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
-        {
-            OrganizationId = organizationId,
-            PaymentId = paymentId
-        })).ToList();
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(organizationId, paymentId);
 
         foreach (var journalEntry in linkedEntries)
         {

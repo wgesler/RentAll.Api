@@ -89,7 +89,7 @@ public partial class AccountingManager
                 return;
             }
 
-            var existingEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+            var existingEntries = (await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
             {
                 OrganizationId = transfer.OrganizationId,
                 OfficeIds = transfer.OfficeId.ToString(),
@@ -320,11 +320,7 @@ public partial class AccountingManager
         await SyncDepositTransferIdsForTransferAsync(transfer, depositIds, currentUser);
         foreach (var depositId in depositIds)
         {
-            var depositJournalEntries = (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
-            {
-                OrganizationId = transfer.OrganizationId,
-                DepositId = depositId
-            })).ToList();
+            var depositJournalEntries = await GetJournalEntriesByDepositIdCachedAsync(transfer.OrganizationId, depositId);
 
             foreach (var journalEntry in depositJournalEntries)
             {
@@ -334,7 +330,7 @@ public partial class AccountingManager
             }
         }
 
-        var transferJournalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        var transferJournalEntries = (await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
         {
             OrganizationId = transfer.OrganizationId,
             OfficeIds = transfer.OfficeId.ToString(),
@@ -357,11 +353,7 @@ public partial class AccountingManager
         if (transferId == Guid.Empty)
             return;
 
-        var linkedEntries = (await _journalEntryRepository.GetJournalEntriesByTransferIdAsync(new JournalEntryGetByTransferIdCriteria
-        {
-            OrganizationId = organizationId,
-            TransferId = transferId
-        })).ToList();
+        var linkedEntries = await GetJournalEntriesByTransferIdCachedAsync(organizationId, transferId);
 
         foreach (var journalEntry in linkedEntries)
         {
@@ -380,11 +372,17 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
                 continue;
 
-            var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+            if (_officeSyncCache != null && _officeSyncCache.TryGetDepositIdForLine(journalEntryLineId, out var cachedDepositId))
+            {
+                depositIds.Add(cachedDepositId);
+                continue;
+            }
+
+            var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
             if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
                 continue;
 
-            var depositJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(
+            var depositJournalEntry = await GetJournalEntryByIdCachedAsync(
                 sourceLine.JournalEntryId,
                 transfer.OrganizationId);
             if (depositJournalEntry == null)

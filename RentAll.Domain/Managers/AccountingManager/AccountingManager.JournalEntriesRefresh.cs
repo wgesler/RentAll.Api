@@ -406,6 +406,8 @@ public partial class AccountingManager
             OfficeIds = officeId.ToString(),
             SourceTypeId = sourceTypeId,
             SourceId = sourceId,
+            // Must include JEs before the accounting-office start date.
+            StartDate = DateOnly.MinValue,
             IncludeUnposted = true
         })).ToList();
 

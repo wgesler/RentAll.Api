@@ -8,7 +8,16 @@ public partial class AccountingManager
     #region Helpers
     private async Task<List<JournalEntry>> GetJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, JournalEntryKind? journalEntryKind = null)
     {
-        return (await _journalEntryRepository.GetJournalEntriesBySourceIdAsync(new JournalEntryGetBySourceIdCriteria
+        // Invoice JEs include cash-only rows excluded from GetByCriteria — only trust FullyLoaded.
+        // Other source types are complete in the office bulk load.
+        if (_officeSyncCache != null
+            && (_officeSyncCache.HasFullyLoadedSource((int)sourceType, sourceId)
+                || IsOfficeBulkCompleteSourceType(sourceType)))
+        {
+            return _officeSyncCache.GetBySource((int)sourceType, sourceId, journalEntryKind).ToList();
+        }
+
+        var entries = (await _journalEntryRepository.GetJournalEntriesBySourceIdAsync(new JournalEntryGetBySourceIdCriteria
         {
             OrganizationId = organizationId,
             SourceTypeId = (int)sourceType,
@@ -18,6 +27,94 @@ public partial class AccountingManager
             IncludeUnposted = true,
             IncludeCashOnly = true
         })).ToList();
+
+        if (_officeSyncCache != null)
+            _officeSyncCache.IndexJournalEntries(entries, markSourceFullyLoaded: journalEntryKind == null);
+
+        return entries;
+    }
+
+    private static bool IsOfficeBulkCompleteSourceType(SourceType sourceType)
+        => sourceType is SourceType.Deposit
+            or SourceType.Transfer
+            or SourceType.Bill
+            or SourceType.BillPayment
+            or SourceType.Receipt
+            or SourceType.WorkOrder
+            or SourceType.InvoicePayment;
+
+    private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByPaymentIdCachedAsync(Guid organizationId, Guid paymentId)
+    {
+        if (_officeSyncCache != null)
+            return _officeSyncCache.GetByPaymentId(paymentId);
+
+        return (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
+        {
+            OrganizationId = organizationId,
+            PaymentId = paymentId
+        })).ToList();
+    }
+
+    private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByDepositIdCachedAsync(Guid organizationId, Guid depositId)
+    {
+        if (_officeSyncCache != null)
+            return _officeSyncCache.GetByDepositId(depositId);
+
+        return (await _journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
+        {
+            OrganizationId = organizationId,
+            DepositId = depositId
+        })).ToList();
+    }
+
+    private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByTransferIdCachedAsync(Guid organizationId, Guid transferId)
+    {
+        if (_officeSyncCache != null)
+            return _officeSyncCache.GetByTransferId(transferId);
+
+        return (await _journalEntryRepository.GetJournalEntriesByTransferIdAsync(new JournalEntryGetByTransferIdCriteria
+        {
+            OrganizationId = organizationId,
+            TransferId = transferId
+        })).ToList();
+    }
+
+    private async Task<JournalEntry?> GetJournalEntryByIdCachedAsync(Guid journalEntryId, Guid organizationId)
+    {
+        if (_officeSyncCache != null && _officeSyncCache.TryGetJournalEntry(journalEntryId, out var cached))
+            return cached;
+
+        return await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+    }
+
+    private async Task<JournalEntryLine?> GetJournalEntryLineByIdCachedAsync(Guid journalEntryLineId)
+    {
+        if (_officeSyncCache != null && _officeSyncCache.TryGetJournalEntryLine(journalEntryLineId, out var cached))
+            return cached;
+
+        return await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+    }
+
+    private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByCriteriaCachedAsync(JournalEntryGetCriteria criteria)
+    {
+        if (_officeSyncCache != null
+            && criteria.SourceTypeId is int sourceTypeId
+            && criteria.SourceId is { } sourceId
+            && sourceId != Guid.Empty)
+        {
+            var officeIdFilter = int.TryParse(criteria.OfficeIds?.Split(',')[0], out var officeId) ? officeId : (int?)null;
+            return _officeSyncCache.GetBySource(sourceTypeId, sourceId)
+                .Where(entry => officeIdFilter is null or <= 0 || entry.OfficeId == officeIdFilter.Value)
+                .ToList();
+        }
+
+        if (_officeSyncCache != null && criteria.SourceTypeId is int sourceTypeOnly)
+        {
+            var officeIdFilter = int.TryParse(criteria.OfficeIds?.Split(',')[0], out var officeId) ? officeId : (int?)null;
+            return _officeSyncCache.GetBySourceType(sourceTypeOnly, officeIdFilter is > 0 ? officeIdFilter : null);
+        }
+
+        return (await _journalEntryRepository.GetJournalEntriesAsync(criteria)).ToList();
     }
 
     private Task<List<JournalEntry>> GetOwnerActualJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)

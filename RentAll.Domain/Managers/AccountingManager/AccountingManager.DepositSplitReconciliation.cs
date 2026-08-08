@@ -101,6 +101,16 @@ public partial class AccountingManager
 
     private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(Deposit deposit, int undepositedFundsAccountId)
     {
+        if (_officeSyncCache != null)
+        {
+            return _officeSyncCache.GetOrBuildUndepositedCandidates(
+                deposit,
+                undepositedFundsAccountId,
+                entry => IsStandardInvoicePaymentJournalEntry(entry)
+                    || entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive,
+                ResolvePaymentJournalEntrySourceCode);
+        }
+
         var paymentEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
         {
             OrganizationId = deposit.OrganizationId,
@@ -150,6 +160,9 @@ public partial class AccountingManager
 
     private async Task<HashSet<Guid>> GetJournalEntryLineIdsClaimedByOtherDepositsAsync(Deposit deposit)
     {
+        if (_officeSyncCache != null)
+            return _officeSyncCache.GetClaimedDepositLineIdsExcluding(deposit.DepositId);
+
         var claimedLineIds = new HashSet<Guid>();
         var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
         {
@@ -179,7 +192,7 @@ public partial class AccountingManager
         if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
             return false;
 
-        var line = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+        var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
         if (line == null)
             return false;
 
@@ -195,7 +208,7 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(splitSourceCode))
             return true;
 
-        var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(line.JournalEntryId, organizationId);
+        var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, organizationId);
         if (paymentJournalEntry == null)
             return false;
 

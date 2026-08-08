@@ -58,6 +58,7 @@ public partial class AccountingManager
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         var created = await _journalEntryRepository.CreateJournalEntryAsync(journalEntry);
+        TouchOfficeSyncCache(created);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(created, logDecisions: false);
         return created;
     }
@@ -115,6 +116,7 @@ public partial class AccountingManager
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         var updated = await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+        TouchOfficeSyncCache(updated);
         if (!IsRetainedEarningsCloseJournalEntry(existing) && !IsRetainedEarningsCloseJournalEntry(updated))
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(updated, existing, logDecisions: false);
 
@@ -136,7 +138,9 @@ public partial class AccountingManager
             journalEntry.AccountingPeriod = existing.AccountingPeriod;
 
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
-        return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+        var updated = await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
+        TouchOfficeSyncCache(updated);
+        return updated;
     }
 
     public async Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, DateOnly? accountingPeriod = null)
@@ -258,6 +262,7 @@ public partial class AccountingManager
             throw new Exception("Only open journal entries can be deleted.");
 
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
+        RemoveFromOfficeSyncCache(journalEntryId);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
     }
 
@@ -265,6 +270,7 @@ public partial class AccountingManager
     {
         var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
         await _journalEntryRepository.DeleteOpenJournalEntryByIdAsync(journalEntryId, organizationId);
+        RemoveFromOfficeSyncCache(journalEntryId);
         if (journalEntry != null)
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
     }
