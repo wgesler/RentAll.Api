@@ -366,21 +366,7 @@ public partial class AccountingManager
         var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
             ?? throw new InvalidOperationException("Transfer not found");
 
-        var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
-            ? transfer.TransferId.ToString()
-            : transfer.TransferCode.Trim();
-
         // Report is read-only: use split links as repaired by R / sync. Do not rematch here.
-        var unlinkedSplits = (transfer.Splits ?? [])
-            .Where(split => Math.Abs(split.Amount) > 0.005m
-                && (split.JournalEntryLineId is null || split.JournalEntryLineId == Guid.Empty))
-            .ToList();
-        if (unlinkedSplits.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Transfer {transferLabel} has {unlinkedSplits.Count} split(s) not linked to a deposit escrow line. Run Repair (R) first.");
-        }
-
         await EnrichTransferSplitsFromJournalEntryLinesAsync(transfer);
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, transfer.OfficeId);
@@ -400,64 +386,130 @@ public partial class AccountingManager
         foreach (var group in groups)
         {
             var journalEntryLineId = group.Key;
-            var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
-            if (sourceLine == null)
-            {
-                throw new InvalidOperationException(
-                    $"Transfer {transferLabel}: escrow journal entry line {journalEntryLineId} was not found. Run Repair (R) first.");
-            }
-
-            var depositJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId)
-                ?? throw new InvalidOperationException($"Transfer {transferLabel}: journal entry not found for escrow line {journalEntryLineId}.");
-
-            if (depositJournalEntry.DepositId is not { } depositId || depositId == Guid.Empty)
-            {
-                throw new InvalidOperationException(
-                    $"Transfer {transferLabel}: escrow line {journalEntryLineId} is missing DepositId.");
-            }
-
-            if (!depositCache.TryGetValue(depositId, out var deposit))
-            {
-                deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId)
-                    ?? throw new InvalidOperationException($"Deposit {depositId} was not found.");
-                depositCache[depositId] = deposit;
-            }
-
             var contextSplit = group.First();
             var sourceAmount = contextSplit.SourceJournalEntryLineAmount;
             var escrowAmount = sourceAmount.HasValue && sourceAmount.Value != 0
                 ? RoundCurrency(sourceAmount.Value)
                 : RoundCurrency(group.Sum(split => split.Amount));
 
-            // Escrow deposit lines are often the full deposit total; deposit splits are per UF payment.
-            // Expand/aggregate the same way transfer creation does so multi-split deposits resolve.
-            var allocation = await ResolveTransferDepositAllocationForEscrowLineAsync(
-                organizationId,
-                transfer.OfficeId,
-                deposit,
-                escrowAmount,
-                recapContext,
-                journalEntryLineId,
-                undepositedFundsAccountId,
-                depositJournalEntryCache);
-
-            results.Add(new TransferReportLineAllocationResult
+            try
             {
-                JournalEntryLineId = journalEntryLineId,
-                DepositId = depositId,
-                EscrowAmount = escrowAmount,
-                OwnerEscrow = allocation.OwnerEscrow,
-                SecDep = allocation.SecDep,
-                Sdw = allocation.Sdw,
-                Business = allocation.Business,
-                PropertyId = allocation.PropertyId ?? contextSplit.PropertyId,
-                ReservationId = allocation.ReservationId ?? contextSplit.ReservationId,
-                ContactId = allocation.ContactId ?? contextSplit.ContactId,
-                Description = allocation.Description
-            });
+                var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+                if (sourceLine == null)
+                {
+                    results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                    continue;
+                }
+
+                var depositJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
+                if (depositJournalEntry == null
+                    || depositJournalEntry.DepositId is not { } depositId
+                    || depositId == Guid.Empty)
+                {
+                    results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                    continue;
+                }
+
+                if (!depositCache.TryGetValue(depositId, out var deposit))
+                {
+                    deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+                    if (deposit == null)
+                    {
+                        results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                        continue;
+                    }
+
+                    depositCache[depositId] = deposit;
+                }
+
+                // Escrow deposit lines are often the full deposit total; deposit splits are per UF payment.
+                // Expand/aggregate the same way transfer creation does so multi-split deposits resolve.
+                var allocation = await ResolveTransferDepositAllocationForEscrowLineAsync(
+                    organizationId,
+                    transfer.OfficeId,
+                    deposit,
+                    escrowAmount,
+                    recapContext,
+                    journalEntryLineId,
+                    undepositedFundsAccountId,
+                    depositJournalEntryCache);
+
+                results.Add(new TransferReportLineAllocationResult
+                {
+                    JournalEntryLineId = journalEntryLineId,
+                    DepositId = depositId,
+                    EscrowAmount = escrowAmount,
+                    OwnerEscrow = allocation.OwnerEscrow,
+                    SecDep = allocation.SecDep,
+                    Sdw = allocation.Sdw,
+                    Business = allocation.Business,
+                    PropertyId = allocation.PropertyId ?? contextSplit.PropertyId,
+                    ReservationId = allocation.ReservationId ?? contextSplit.ReservationId,
+                    ContactId = allocation.ContactId ?? contextSplit.ContactId,
+                    Description = allocation.Description
+                });
+            }
+            catch (InvalidOperationException)
+            {
+                // Deposit UF / payment scope incomplete — still show the transfer amount as Business.
+                results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+            }
+        }
+
+        foreach (var manualGroup in GroupUnlinkedTransferSplitsForReport(transfer.Splits))
+        {
+            var escrowAmount = RoundCurrency(manualGroup.Sum(split => split.Amount));
+            if (Math.Abs(escrowAmount) <= 0.005m)
+                continue;
+
+            results.Add(BuildManualTransferReportLineAllocation(manualGroup, Guid.Empty, escrowAmount));
         }
 
         return results;
+    }
+
+    private static IEnumerable<List<TransferSplit>> GroupUnlinkedTransferSplitsForReport(IReadOnlyList<TransferSplit>? splits)
+    {
+        if (splits == null || splits.Count == 0)
+            return [];
+
+        return splits
+            .Select((split, index) => (split, index))
+            .Where(item => Math.Abs(item.split.Amount) > 0.005m
+                && (item.split.JournalEntryLineId is null || item.split.JournalEntryLineId == Guid.Empty))
+            .GroupBy(
+                item => string.IsNullOrWhiteSpace(item.split.Description)
+                    ? $"split:{item.index}"
+                    : item.split.Description.Trim(),
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Select(item => item.split).ToList());
+    }
+
+    private static TransferReportLineAllocationResult BuildManualTransferReportLineAllocation(
+        IReadOnlyList<TransferSplit> splits,
+        Guid journalEntryLineId,
+        decimal escrowAmount)
+    {
+        var contextSplit = splits[0];
+        var description = splits
+            .Select(split => (split.Description ?? string.Empty).Trim())
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+            ?? string.Empty;
+
+        return new TransferReportLineAllocationResult
+        {
+            JournalEntryLineId = journalEntryLineId,
+            DepositId = Guid.Empty,
+            EscrowAmount = RoundCurrency(escrowAmount),
+            OwnerEscrow = 0m,
+            SecDep = 0m,
+            Sdw = 0m,
+            Business = RoundCurrency(escrowAmount),
+            PropertyId = contextSplit.PropertyId,
+            ReservationId = contextSplit.ReservationId,
+            ContactId = contextSplit.ContactId,
+            Description = description
+        };
     }
 
     #endregion
