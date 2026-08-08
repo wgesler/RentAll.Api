@@ -397,7 +397,7 @@ public partial class AccountingManager
                 var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
                 if (sourceLine == null)
                 {
-                    results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                    results.Add(BuildManualTransferReportLineAllocation(group.ToList(), journalEntryLineId, escrowAmount));
                     continue;
                 }
 
@@ -406,7 +406,7 @@ public partial class AccountingManager
                     || depositJournalEntry.DepositId is not { } depositId
                     || depositId == Guid.Empty)
                 {
-                    results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                    results.Add(BuildManualTransferReportLineAllocation(group.ToList(), journalEntryLineId, escrowAmount));
                     continue;
                 }
 
@@ -415,7 +415,7 @@ public partial class AccountingManager
                     deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
                     if (deposit == null)
                     {
-                        results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                        results.Add(BuildManualTransferReportLineAllocation(group.ToList(), journalEntryLineId, escrowAmount));
                         continue;
                     }
 
@@ -452,7 +452,7 @@ public partial class AccountingManager
             catch (InvalidOperationException)
             {
                 // Deposit UF / payment scope incomplete — still show the transfer amount as Business.
-                results.Add(BuildManualTransferReportLineAllocation(group, journalEntryLineId, escrowAmount));
+                results.Add(BuildManualTransferReportLineAllocation(group.ToList(), journalEntryLineId, escrowAmount));
             }
         }
 
