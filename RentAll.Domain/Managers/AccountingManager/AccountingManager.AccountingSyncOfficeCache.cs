@@ -53,6 +53,7 @@ public partial class AccountingManager
             PaymentsById.Clear();
             DepositsById.Clear();
             TransfersById.Clear();
+            InvoicesById.Clear();
 
             foreach (var payment in payments)
             {
@@ -96,9 +97,9 @@ public partial class AccountingManager
             if (entry.JournalEntryId == Guid.Empty)
                 return;
 
+            // RemoveJournalEntry invalidates when the JE already existed; always invalidate
+            // after upsert so same-pass creates also refresh rematch candidate lists.
             RemoveJournalEntry(entry.JournalEntryId, keepLineIndexCleanupOnly: false);
-            // Rematch candidate lists are derived snapshots — drop them so the next rematch
-            // rebuilds from the updated JE indexes (same-pass create/update visibility).
             InvalidateDerivedRematchIndexes();
 
             JournalEntriesById[entry.JournalEntryId] = entry;
@@ -274,8 +275,9 @@ public partial class AccountingManager
 
         public IReadOnlyList<JournalEntry> GetBySourceType(int sourceTypeId, int? officeId = null)
         {
+            // Snapshot Values — TouchOfficeSyncCache mutates JournalEntriesById during sync loops.
             var matches = new List<JournalEntry>();
-            foreach (var entry in JournalEntriesById.Values)
+            foreach (var entry in JournalEntriesById.Values.ToList())
             {
                 if (entry.SourceTypeId != sourceTypeId)
                     continue;
@@ -290,7 +292,7 @@ public partial class AccountingManager
         public HashSet<Guid> GetClaimedTransferLineIdsExcluding(Guid transferId)
         {
             var claimedLineIds = new HashSet<Guid>();
-            foreach (var otherTransfer in Transfers)
+            foreach (var otherTransfer in Transfers.ToList())
             {
                 if (otherTransfer.TransferId == transferId || otherTransfer.IsActive == false)
                     continue;
@@ -308,7 +310,7 @@ public partial class AccountingManager
         public HashSet<Guid> GetClaimedDepositLineIdsExcluding(Guid depositId)
         {
             var claimedLineIds = new HashSet<Guid>();
-            foreach (var otherDeposit in Deposits)
+            foreach (var otherDeposit in Deposits.ToList())
             {
                 if (otherDeposit.DepositId == depositId || otherDeposit.IsActive == false)
                     continue;
@@ -330,10 +332,10 @@ public partial class AccountingManager
         {
             var key = (transfer.OfficeId, escrowDepositAccountId);
             if (_transferInvoiceMatches.TryGetValue(key, out var cached))
-                return cached;
+                return cached.ToList();
 
             var matches = new List<TransferDepositInvoiceEscrowMatch>();
-            foreach (var deposit in Deposits)
+            foreach (var deposit in Deposits.ToList())
             {
                 if (deposit.OfficeId != transfer.OfficeId
                     || deposit.IsActive == false
@@ -375,14 +377,14 @@ public partial class AccountingManager
             }
 
             _transferInvoiceMatches[key] = matches;
-            return matches;
+            return matches.ToList();
         }
 
         public List<EscrowDepositLineCandidate> GetOrBuildEscrowCandidates(Transfer transfer, int escrowDepositAccountId)
         {
             var key = (transfer.OfficeId, escrowDepositAccountId);
             if (_escrowCandidates.TryGetValue(key, out var cached))
-                return cached;
+                return cached.ToList();
 
             var candidates = new List<EscrowDepositLineCandidate>();
             foreach (var depositEntry in GetBySourceType((int)SourceType.Deposit, transfer.OfficeId))
@@ -411,7 +413,7 @@ public partial class AccountingManager
             }
 
             _escrowCandidates[key] = candidates;
-            return candidates;
+            return candidates.ToList();
         }
 
         public List<UndepositedPaymentLineCandidate> GetOrBuildUndepositedCandidates(
@@ -422,7 +424,7 @@ public partial class AccountingManager
         {
             var key = (deposit.OfficeId, undepositedFundsAccountId);
             if (_undepositedCandidates.TryGetValue(key, out var cached))
-                return cached;
+                return cached.ToList();
 
             var candidates = new List<UndepositedPaymentLineCandidate>();
             foreach (var paymentEntry in GetBySourceType((int)SourceType.Invoice, deposit.OfficeId))
@@ -458,7 +460,23 @@ public partial class AccountingManager
             }
 
             _undepositedCandidates[key] = candidates;
-            return candidates;
+            return candidates.ToList();
+        }
+
+        /// <summary>
+        /// Criteria invoice lists often omit ledger lines — only use cache when lines are present.
+        /// </summary>
+        public bool TryGetInvoiceWithLedgerLines(Guid invoiceId, out Invoice? invoice)
+        {
+            invoice = null;
+            if (!InvoicesById.TryGetValue(invoiceId, out var cached))
+                return false;
+
+            if (cached.LedgerLines == null || cached.LedgerLines.Count == 0)
+                return false;
+
+            invoice = cached;
+            return true;
         }
 
         private static void AddToIndex(Dictionary<Guid, List<JournalEntry>> index, Guid key, JournalEntry entry)

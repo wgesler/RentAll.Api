@@ -370,10 +370,12 @@ public partial class AccountingManager
                 continue;
 
             Invoice? invoice = null;
-            if (_officeSyncCache != null && _officeSyncCache.InvoicesById.TryGetValue(paymentLine.InvoiceId, out var cachedInvoice))
-                invoice = cachedInvoice;
-            else
+            if (_officeSyncCache == null
+                || !_officeSyncCache.TryGetInvoiceWithLedgerLines(paymentLine.InvoiceId, out invoice))
+            {
                 invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, organizationId);
+            }
+
             if (invoice == null)
                 continue;
 
@@ -444,10 +446,12 @@ public partial class AccountingManager
                 continue;
 
             Invoice? invoice = null;
-            if (_officeSyncCache != null && _officeSyncCache.InvoicesById.TryGetValue(paymentLine.InvoiceId, out var cachedInvoice))
-                invoice = cachedInvoice;
-            else
+            if (_officeSyncCache == null
+                || !_officeSyncCache.TryGetInvoiceWithLedgerLines(paymentLine.InvoiceId, out invoice))
+            {
                 invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, payment.OrganizationId);
+            }
+
             if (invoice == null)
                 continue;
 
