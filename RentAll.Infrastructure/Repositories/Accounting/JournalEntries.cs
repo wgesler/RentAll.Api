@@ -254,8 +254,14 @@ public partial class JournalEntryRepository
                     throw new Exception("Journal entry not created");
 
                 var entry = ConvertEntityToModel(response.FirstOrDefault()!);
+                var lineCreatedOnBase = DateTimeOffset.UtcNow;
+                var lineOrdinal = 0;
                 foreach (var line in journalEntry.JournalEntryLines)
                 {
+                    var lineCreatedOn = line.CreatedOn != default
+                        ? line.CreatedOn
+                        : lineCreatedOnBase.AddMilliseconds(lineOrdinal);
+                    lineOrdinal++;
                     await db.DapperProcQueryAsync<JournalEntryLineEntity>("Accounting.JournalEntryLine_Add", new
                     {
                         JournalEntryId = entry.JournalEntryId,
@@ -268,7 +274,8 @@ public partial class JournalEntryRepository
                         Credit = line.Credit,
                         Memo = line.Memo,
                         PerspectiveId = (int)line.PerspectiveId,
-                        CreatedBy = journalEntry.CreatedBy
+                        CreatedBy = journalEntry.CreatedBy,
+                        CreatedOn = lineCreatedOn
                     }, transaction: transaction);
                 }
 
@@ -347,10 +354,16 @@ public partial class JournalEntryRepository
                 }, transaction: transaction);
             }
 
+            var lineCreatedOnBase = DateTimeOffset.UtcNow;
+            var lineOrdinal = 0;
             foreach (var line in incomingActiveLines)
             {
                 if (line.JournalEntryLineId == Guid.Empty)
                 {
+                    var lineCreatedOn = line.CreatedOn != default
+                        ? line.CreatedOn
+                        : lineCreatedOnBase.AddMilliseconds(lineOrdinal);
+                    lineOrdinal++;
                     await db.DapperProcQueryAsync<JournalEntryLineEntity>("Accounting.JournalEntryLine_Add", new
                     {
                         JournalEntryId = journalEntry.JournalEntryId,
@@ -363,7 +376,8 @@ public partial class JournalEntryRepository
                         Credit = line.Credit,
                         Memo = line.Memo,
                         PerspectiveId = (int)line.PerspectiveId,
-                        CreatedBy = journalEntry.CreatedBy
+                        CreatedBy = journalEntry.CreatedBy,
+                        CreatedOn = lineCreatedOn
                     }, transaction: transaction);
                 }
                 else if (currentLineIds.Contains(line.JournalEntryLineId))

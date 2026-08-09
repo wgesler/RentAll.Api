@@ -370,7 +370,6 @@ public partial class AccountingManager
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(destinationLine, destinationContext);
-            journalEntryLines.Add(destinationLine);
 
             var bankLine = new JournalEntryLine
             {
@@ -381,7 +380,10 @@ public partial class AccountingManager
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(bankLine, headerLineContext);
+
+            // Pair: escrow/bank side first, then matching destination (display ORDER BY CreatedOn).
             journalEntryLines.Add(bankLine);
+            journalEntryLines.Add(destinationLine);
         }
 
         return ClassifyJournalEntry(new JournalEntry
