@@ -354,11 +354,9 @@ public partial class AccountingManager
         {
             var amount = Math.Abs(accountTotal.Amount);
             var sampleSplit = accountTotal.Splits[0];
-            var destinationMemo = accountTotal.Splits
-                .Select(split => (split.Description ?? string.Empty).Trim())
-                .FirstOrDefault(description => description.Length > 0);
-            if (string.IsNullOrWhiteSpace(destinationMemo))
-                destinationMemo = memo;
+            // Line Memo is VARCHAR(250). Aggregated transfers must not use long per-split descriptions
+            // or JournalEntryLine_Add fails and the whole update rolls back (Posted JE stays old).
+            var lineMemo = TruncateJournalEntryLineMemo(memo);
 
             var destinationContext = ResolveAggregatedTransferSplitLineContext(accountTotal.Splits, sampleSplit);
             var destinationIsDebit = accountTotal.Amount > 0;
@@ -368,7 +366,7 @@ public partial class AccountingManager
                 ChartOfAccountId = accountTotal.ChartOfAccountId,
                 Debit = destinationIsDebit ? amount : 0,
                 Credit = destinationIsDebit ? 0 : amount,
-                Memo = destinationMemo,
+                Memo = lineMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(destinationLine, destinationContext);
@@ -379,7 +377,7 @@ public partial class AccountingManager
                 ChartOfAccountId = bankAccountId,
                 Debit = destinationIsDebit ? 0 : amount,
                 Credit = destinationIsDebit ? amount : 0,
-                Memo = memo,
+                Memo = lineMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(bankLine, headerLineContext);
@@ -445,6 +443,14 @@ public partial class AccountingManager
             return CreateJournalEntryLineContextFromTransferSplit(splits[0]);
 
         return new JournalEntryLineContext(null, null, null, null, null, null);
+    }
+
+    private static string TruncateJournalEntryLineMemo(string? memo, int maxLength = 250)
+    {
+        var value = (memo ?? string.Empty).Trim();
+        if (value.Length <= maxLength)
+            return value;
+        return value[..maxLength];
     }
     #endregion
 

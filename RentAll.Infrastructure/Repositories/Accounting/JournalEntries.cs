@@ -96,7 +96,7 @@ public partial class JournalEntryRepository
             ShowAll = criteria.ShowAll,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
-        });
+        }, commandTimeout: 120);
 
         if (res == null || !res.Any())
             return Enumerable.Empty<JournalEntryLineSearchResult>();
