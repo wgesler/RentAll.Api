@@ -798,16 +798,13 @@ public partial class AccountingManager
     private async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
     {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
-        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
-            ? bill.BillNumber.Trim()
-            : bill.ReceiptCode.Trim();
         var paymentApplication = new BillPaymentApplication
         {
             Bill = bill,
             AmountApplied = bill.PaidAmount,
             PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
             ChartOfAccountId = GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice),
-            Description = $"Bill Payment - {billLabel}",
+            Description = bill.PaymentDescription?.Trim() ?? string.Empty,
             PaymentSequence = 0
         };
 

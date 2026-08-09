@@ -341,16 +341,13 @@ public partial class AccountingManager
                 .Select(entry => ResolveBillPaymentOffsetAccountId(entry, liabilityAccountId))
                 .FirstOrDefault(accountId => accountId is > 0);
 
-            var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
-                ? bill.BillNumber.Trim()
-                : bill.ReceiptCode.Trim();
             var paymentApplication = new BillPaymentApplication
             {
                 Bill = bill,
                 AmountApplied = bill.PaidAmount,
                 PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
                 ChartOfAccountId = paymentOffsetAccountId ?? GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice),
-                Description = $"Bill Payment - {billLabel}",
+                Description = bill.PaymentDescription?.Trim() ?? string.Empty,
                 PaymentSequence = 0
             };
 

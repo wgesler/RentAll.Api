@@ -296,7 +296,7 @@ public partial class AccountingManager
 
         var amount = paymentApplication.AmountApplied;
         var transactionDate = paymentApplication.PaymentDate;
-        var billMemo = BuildBillJournalMemo(bill, bill.Splits);
+        var paymentMemo = paymentApplication.Description?.Trim() ?? string.Empty;
         var lineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
         var payableLine = new JournalEntryLine
         {
@@ -304,7 +304,7 @@ public partial class AccountingManager
             ChartOfAccountId = payableOrCardAccountId,
             Debit = amount > 0 ? amount : 0,
             Credit = amount < 0 ? Math.Abs(amount) : 0,
-            Memo = billMemo,
+            Memo = paymentMemo,
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(payableLine, lineContext);
@@ -314,7 +314,7 @@ public partial class AccountingManager
             ChartOfAccountId = paymentBankAccountId,
             Debit = amount < 0 ? Math.Abs(amount) : 0,
             Credit = amount > 0 ? amount : 0,
-            Memo = billMemo,
+            Memo = paymentMemo,
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(paymentLine, lineContext);
@@ -328,7 +328,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = bill.ReceiptId,
             SourceCode = ResolveJournalEntrySourceCodeFromReceipt(bill),
-            Memo = billMemo,
+            Memo = paymentMemo,
             JournalEntryLines = journalEntryLines,
             CreatedBy = currentUser
         }, JournalEntryKind.BillPayment, Perspective.Company);
