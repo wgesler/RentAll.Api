@@ -847,19 +847,34 @@ public partial class AccountingManager : IAccountingManager
     #region Accounting Error Logging
     private async Task LogAccountingErrorAsync(string trigger, Guid organizationId, int? officeId, int? sourceTypeId, Guid? sourceId, string? documentCode, DateOnly? accountingPeriod, decimal? amount, string message, Guid currentUser)
     {
-        await _accountingRepository.LogAccountingErrorAsync(new AccountingError
+        try
         {
-            OrganizationId = organizationId,
-            OfficeId = officeId,
-            Trigger = trigger,
-            SourceTypeId = sourceTypeId,
-            SourceId = sourceId,
-            DocumentCode = documentCode,
-            AccountingPeriod = accountingPeriod,
-            Amount = amount,
-            Message = message,
-            CreatedBy = currentUser
-        });
+            // Logging.AccountingErrorLog column limits — overflow here used to abort T/sync batches mid-loop.
+            await _accountingRepository.LogAccountingErrorAsync(new AccountingError
+            {
+                OrganizationId = organizationId,
+                OfficeId = officeId,
+                Trigger = TruncateForAccountingErrorLog(trigger, 50),
+                SourceTypeId = sourceTypeId,
+                SourceId = sourceId,
+                DocumentCode = TruncateForAccountingErrorLog(documentCode, 100),
+                AccountingPeriod = accountingPeriod,
+                Amount = amount,
+                Message = TruncateForAccountingErrorLog(message, 2500) ?? string.Empty,
+                CreatedBy = currentUser
+            });
+        }
+        catch
+        {
+            // Never let error logging kill a rebuild/sync batch.
+        }
+    }
+
+    private static string? TruncateForAccountingErrorLog(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+            return value;
+        return value[..maxLength];
     }
     #endregion
 

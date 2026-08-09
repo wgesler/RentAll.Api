@@ -164,6 +164,18 @@ public partial class AccountingManager
             var rebuiltJournalEntry = await BuildJournalEntryFromTransferRecordAsync(transfer, currentUser);
             trail.Note($"Rebuilt JE lines={rebuiltJournalEntry.JournalEntryLines?.Count ?? 0}");
 
+            if (!HasActiveJournalEntryLines(rebuiltJournalEntry))
+            {
+                var splitSummary = string.Join(
+                    "; ",
+                    (transfer.Splits ?? []).Select(split =>
+                        $"#{split.TransferSplitId} coa={split.ChartOfAccountId?.ToString() ?? "null"} amt={split.Amount:0.00}"));
+                trail.Bail(
+                    $"Exit: rebuilt transfer JE has no active lines (keeping existing JE). "
+                    + $"BankAccountId={transfer.BankAccountId?.ToString() ?? "null"}. Splits: {splitSummary}");
+                return;
+            }
+
             while (existingEntries.Count > 1)
             {
                 var duplicate = existingEntries[^1];
@@ -488,11 +500,13 @@ public partial class AccountingManager
         {
             var depositJournalEntries = await GetJournalEntriesByDepositIdCachedAsync(transfer.OrganizationId, depositId);
 
-            foreach (var journalEntry in depositJournalEntries)
+            foreach (var cachedEntry in depositJournalEntries)
             {
-                ApplyTransferDocumentLink(journalEntry, transfer);
-                journalEntry.ModifiedBy = currentUser;
-                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+                await UpdateJournalEntryTransferDocumentLinkAsync(
+                    cachedEntry.JournalEntryId,
+                    transfer.OrganizationId,
+                    currentUser,
+                    applyLink: entry => ApplyTransferDocumentLink(entry, transfer));
             }
         }
 
@@ -508,9 +522,11 @@ public partial class AccountingManager
 
         foreach (var transferJournalEntry in transferJournalEntries)
         {
-            ApplyTransferDocumentLink(transferJournalEntry, transfer);
-            transferJournalEntry.ModifiedBy = currentUser;
-            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(transferJournalEntry, requireActiveLines: true);
+            await UpdateJournalEntryTransferDocumentLinkAsync(
+                transferJournalEntry.JournalEntryId,
+                transfer.OrganizationId,
+                currentUser,
+                applyLink: entry => ApplyTransferDocumentLink(entry, transfer));
         }
     }
 
@@ -521,12 +537,38 @@ public partial class AccountingManager
 
         var linkedEntries = await GetJournalEntriesByTransferIdCachedAsync(organizationId, transferId);
 
-        foreach (var journalEntry in linkedEntries)
+        foreach (var linkedEntry in linkedEntries)
         {
-            ClearTransferDocumentLink(journalEntry);
-            journalEntry.ModifiedBy = currentUser;
-            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+            await UpdateJournalEntryTransferDocumentLinkAsync(
+                linkedEntry.JournalEntryId,
+                organizationId,
+                currentUser,
+                applyLink: ClearTransferDocumentLink);
         }
+    }
+
+    /// <summary>
+    /// Document-link updates must reload lines from SQL. Cache stubs with empty JournalEntryLines
+    /// would fail requireActiveLines or wipe lines on update.
+    /// </summary>
+    private async Task UpdateJournalEntryTransferDocumentLinkAsync(
+        Guid journalEntryId,
+        Guid organizationId,
+        Guid currentUser,
+        Action<JournalEntry> applyLink)
+    {
+        if (journalEntryId == Guid.Empty)
+            return;
+
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry == null)
+            return;
+
+        applyLink(journalEntry);
+        journalEntry.ModifiedBy = currentUser;
+        await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(
+            journalEntry,
+            requireActiveLines: HasActiveJournalEntryLines(journalEntry));
     }
 
     private async Task<HashSet<Guid>> CollectDepositIdsFromTransferSplitsAsync(Transfer transfer)
