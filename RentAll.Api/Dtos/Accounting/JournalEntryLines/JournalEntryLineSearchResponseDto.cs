@@ -17,6 +17,7 @@ public class JournalEntryLineSearchResponseDto
     public string? Memo { get; set; }
     public bool IsCleared { get; set; }
     public DateOnly? ClearedOn { get; set; }
+    public int? ReconcileId { get; set; }
     public int OfficeId { get; set; }
     public string JournalEntryCode { get; set; } = string.Empty;
     public DateOnly TransactionDate { get; set; }
@@ -58,6 +59,7 @@ public class JournalEntryLineSearchResponseDto
         Memo = result.Memo;
         IsCleared = result.IsCleared;
         ClearedOn = result.ClearedOn;
+        ReconcileId = result.ReconcileId;
         OfficeId = result.OfficeId;
         JournalEntryCode = result.JournalEntryCode;
         TransactionDate = result.TransactionDate;

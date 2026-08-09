@@ -88,11 +88,11 @@ public partial class AccountingRepository
     public async Task DeleteReconcileByIdAsync(int reconcileId, Guid organizationId, int officeId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        await db.DapperProcExecuteAsync("Accounting.Reconcile_DeleteById", new
+        await db.DapperProcExecuteAsync("Accounting.Reconcile_Remove", new
         {
-            ReconcileId = reconcileId,
             OrganizationId = organizationId,
-            OfficeId = officeId
+            OfficeId = officeId,
+            ReconcileId = reconcileId
         });
     }
 

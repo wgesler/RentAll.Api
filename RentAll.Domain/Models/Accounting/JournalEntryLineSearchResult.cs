@@ -18,6 +18,7 @@ public class JournalEntryLineSearchResult
     public int PerspectiveId { get; set; }
     public bool IsCleared { get; set; }
     public DateOnly? ClearedOn { get; set; }
+    public int? ReconcileId { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

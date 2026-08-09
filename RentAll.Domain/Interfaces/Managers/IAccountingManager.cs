@@ -102,6 +102,8 @@ public interface IAccountingManager
     #endregion
 
     Task ApplyDocumentPostingStatusFromReconcileAsync(CompleteReconcileRequest request, Guid organizationId, Guid currentUser);
+    Task<Reconcile?> RemoveLastReconcileAsync(Guid organizationId, int officeId, int accountId);
+    Task<Reconcile?> GetLatestReconciliationAsync(Guid organizationId, int officeId, int accountId);
     #endregion
 
     #region Default Chart Of Accounts

@@ -29,5 +29,5 @@ public interface IJournalEntryRepository
     Task<int> DeleteOpenJournalEntriesBySourceCodesAsync(Guid organizationId, int officeId, IEnumerable<int> sourceTypeIds, IEnumerable<string> sourceCodes);
     Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<int> DeleteAllJournalEntriesByOrganizationIdAsync(Guid organizationId);
-    Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, Guid modifiedBy);
+    Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, int? reconcileId, Guid modifiedBy);
 }

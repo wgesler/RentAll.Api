@@ -154,6 +154,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             Memo = e.Memo,
             IsCleared = e.IsCleared,
             ClearedOn = e.ClearedOn,
+            ReconcileId = e.ReconcileId,
             PerspectiveId = e.PerspectiveId,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,

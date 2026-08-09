@@ -125,6 +125,34 @@ public partial class AccountingController
 
     #region Delete
 
+    [HttpDelete("reconcile/office/{officeId:int}/account/{accountId:int}/last")]
+    public async Task<IActionResult> RemoveLastReconcile(int officeId, int accountId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        if (accountId <= 0)
+            return BadRequest("AccountId is required");
+
+        if (!CurrentOfficeAccess.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(id => int.Parse(id) == officeId))
+            return BadRequest("Unauthorized");
+
+        try
+        {
+            var latestReconcile = await _accountingManager.RemoveLastReconcileAsync(CurrentOrganizationId, officeId, accountId);
+            return Ok(latestReconcile == null ? null : new ReconcileResponseDto(latestReconcile));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing last reconcile for account {AccountId}", accountId);
+            return ServerError("An error occurred while removing the last reconcile");
+        }
+    }
+
     [HttpDelete("reconcile/office/{officeId:int}/reconcileId/{reconcileId:int}")]
     public async Task<IActionResult> DeleteReconcileById(int officeId, int reconcileId)
     {

@@ -508,7 +508,7 @@ public partial class JournalEntryRepository
         public int JournalEntriesDeleted { get; set; }
     }
 
-    public async Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, Guid modifiedBy)
+    public async Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, int? reconcileId, Guid modifiedBy)
     {
         var lineList = lines?.ToList() ?? new List<ReconcileJournalEntryLineMark>();
         if (lineList.Count == 0)
@@ -529,6 +529,7 @@ public partial class JournalEntryRepository
             LinesJson = linesJson,
             SetClearedOn = setClearedOn,
             ClearedOn = clearedOn,
+            ReconcileId = reconcileId,
             ModifiedBy = modifiedBy
         });
     }
