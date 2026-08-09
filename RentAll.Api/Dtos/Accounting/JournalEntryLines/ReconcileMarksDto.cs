@@ -25,8 +25,7 @@ public class SaveReconcileMarksDto
         if (ChartOfAccountId <= 0)
             return (false, "ChartOfAccountId is required");
 
-        if (Lines == null || Lines.Count == 0)
-            return (false, "At least one journal entry line is required");
+        Lines ??= [];
 
         if (Lines.Any(line => line.JournalEntryLineId == Guid.Empty))
             return (false, "JournalEntryLineId is required for each line");

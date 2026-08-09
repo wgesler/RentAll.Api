@@ -7,6 +7,7 @@ public partial class AccountingManager
 {
     /// <summary>
     /// Owner AP Aging: load owner A/P lines via database proc (opening balance sheet cutoff), then API double-check.
+    /// Cash-only journal entries are excluded by the proc.
     /// </summary>
     public async Task<IReadOnlyList<JournalEntryLineSearchResult>> SearchOwnerApAgingJournalEntryLinesAsync(Guid organizationId, IReadOnlyList<int> officeIds, DateOnly? endDate, bool includeUnposted = true)
     {
