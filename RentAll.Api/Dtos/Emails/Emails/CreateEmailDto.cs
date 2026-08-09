@@ -19,12 +19,14 @@ public class CreateEmailDto
     public string HtmlContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public FileDetails? FileDetails { get; set; }
+    public List<FileDetails> AdditionalFileDetails { get; set; } = [];
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organization, string officeAccess)
     {
         ToRecipients ??= [];
         CcRecipients ??= [];
         BccRecipients ??= [];
+        AdditionalFileDetails ??= [];
         FromRecipient ??= new EmailAddress();
 
         if (OrganizationId == Guid.Empty || OrganizationId != organization)
@@ -64,6 +66,18 @@ public class CreateEmailDto
 
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
+
+        if (AdditionalFileDetails.Count > 5)
+            return (false, "A maximum of 5 additional attachments is allowed");
+
+        foreach (var additionalFile in AdditionalFileDetails)
+        {
+            if (additionalFile == null || string.IsNullOrWhiteSpace(additionalFile.FileName))
+                return (false, "Each additional attachment requires a file name");
+
+            if (string.IsNullOrWhiteSpace(additionalFile.File) && string.IsNullOrWhiteSpace(additionalFile.DataUrl))
+                return (false, $"Additional attachment '{additionalFile.FileName}' is missing file content");
+        }
 
         return (true, null);
     }
@@ -107,6 +121,7 @@ public class CreateEmailDto
             HtmlContent = HtmlContent,
             EmailType = (EmailType)EmailTypeId,
             FileDetails = FileDetails,
+            AdditionalFileDetails = AdditionalFileDetails ?? [],
             EmailStatus = EmailStatus.Attempting,
             CreatedBy = currentUser
         };

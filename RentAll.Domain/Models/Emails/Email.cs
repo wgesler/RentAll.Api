@@ -24,6 +24,7 @@ public class Email
     public string AttachmentName { get; set; } = string.Empty;
     public string AttachmentPath { get; set; } = string.Empty;
     public FileDetails? FileDetails { get; set; }
+    public List<FileDetails> AdditionalFileDetails { get; set; } = [];
     public EmailType EmailType { get; set; } = EmailType.Other;
     public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;
     public int AttemptCount { get; set; }
@@ -52,7 +53,10 @@ public class Email
             Subject = Subject,
             PlainTextContent = PlainTextContent,
             HtmlContent = HtmlContent,
-            FileDetails = FileDetails
+            FileDetails = FileDetails,
+            AdditionalFileDetails = AdditionalFileDetails?
+                .Where(file => file != null)
+                .ToList() ?? []
         };
     }
 }

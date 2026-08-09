@@ -3,6 +3,7 @@ using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Domain.Managers;
 
@@ -39,39 +40,27 @@ public class EmailManager : IEmailManager
         var office = await _organizationRepository.GetOfficeByIdAsync(email.OfficeId, email.OrganizationId);
         var officeName = email.OfficeName ?? office?.Name;
 
-        // If there's an attachment, store it in blob storage
+        // Persist primary + additional attachments in blob storage / Documents, and send all of them.
+        var attachmentNames = new List<string>();
         if (email.FileDetails != null)
         {
-            var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, officeName, email.FileDetails.File,
-                email.FileDetails.FileName, email.FileDetails.ContentType, DocumentType.Attachments);
-
-            try
-            {
-                var createdDocument = await _documentRepository.CreateAsync(new Document
-                {
-                    OrganizationId = email.OrganizationId,
-                    OfficeId = email.OfficeId,
-                    PropertyId = email.PropertyId,
-                    ReservationId = email.ReservationId,
-                    DocumentType = DocumentType.Attachments,
-                    FileName = Path.GetFileNameWithoutExtension(email.FileDetails.FileName),
-                    FileExtension = Path.GetExtension(email.FileDetails.FileName),
-                    ContentType = email.FileDetails.ContentType,
-                    DocumentPath = documentPath,
-                    CreatedBy = email.CreatedBy
-                });
-
-                email.DocumentId = createdDocument.DocumentId;
-                email.AttachmentPath = createdDocument.DocumentPath;
-                email.AttachmentName = email.FileDetails.FileName;
-            }
-            catch
-            {
-                // Best effort cleanup so we don't leave orphaned blobs when metadata create fails.
-                await _fileService.DeleteDocumentAsync(email.OrganizationId, email.OfficeName, documentPath);
-                throw;
-            }
+            var createdDocument = await SaveEmailAttachmentDocumentAsync(email, officeName, email.FileDetails);
+            email.DocumentId = createdDocument.DocumentId;
+            email.AttachmentPath = createdDocument.DocumentPath;
+            attachmentNames.Add(email.FileDetails.FileName);
         }
+
+        foreach (var additionalFile in email.AdditionalFileDetails ?? [])
+        {
+            if (additionalFile == null || string.IsNullOrWhiteSpace(additionalFile.FileName))
+                continue;
+
+            await SaveEmailAttachmentDocumentAsync(email, officeName, additionalFile);
+            attachmentNames.Add(additionalFile.FileName);
+        }
+
+        if (attachmentNames.Count > 0)
+            email.AttachmentName = string.Join("; ", attachmentNames);
 
         // Save this email in our database
         var createdEmail = await _emailRepository.CreateEmailAsync(email);
@@ -188,6 +177,54 @@ public class EmailManager : IEmailManager
             if (ticket.TicketStateType == TicketStateType.Closed)
                 await _emailRepository.DeleteAlertByIdAsync(alert.AlertId, alert.OrganizationId);
         }
+    }
+
+    private async Task<Document> SaveEmailAttachmentDocumentAsync(Email email, string? officeName, FileDetails fileDetails)
+    {
+        var fileContent = ResolveAttachmentBase64(fileDetails);
+        var contentType = string.IsNullOrWhiteSpace(fileDetails.ContentType) ? "application/octet-stream" : fileDetails.ContentType;
+        var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, officeName, fileContent, fileDetails.FileName, contentType, DocumentType.Attachments);
+
+        try
+        {
+            return await _documentRepository.CreateAsync(new Document
+            {
+                OrganizationId = email.OrganizationId,
+                OfficeId = email.OfficeId,
+                PropertyId = email.PropertyId,
+                ReservationId = email.ReservationId,
+                DocumentType = DocumentType.Attachments,
+                FileName = Path.GetFileNameWithoutExtension(fileDetails.FileName),
+                FileExtension = Path.GetExtension(fileDetails.FileName),
+                ContentType = contentType,
+                DocumentPath = documentPath,
+                CreatedBy = email.CreatedBy
+            });
+        }
+        catch
+        {
+            // Best effort cleanup so we don't leave orphaned blobs when metadata create fails.
+            await _fileService.DeleteDocumentAsync(email.OrganizationId, officeName, documentPath);
+            throw;
+        }
+    }
+
+    private static string ResolveAttachmentBase64(FileDetails fileDetails)
+    {
+        var base64File = fileDetails.File;
+        if (string.IsNullOrWhiteSpace(base64File) && !string.IsNullOrWhiteSpace(fileDetails.DataUrl))
+            base64File = fileDetails.DataUrl;
+
+        if (!string.IsNullOrWhiteSpace(base64File) && base64File.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var commaIndex = base64File.IndexOf(',');
+            base64File = commaIndex >= 0 ? base64File[(commaIndex + 1)..] : string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(base64File))
+            throw new InvalidOperationException($"Attachment '{fileDetails.FileName}' is missing file content.");
+
+        return base64File;
     }
 
     private static bool IsUnreachable(Exception ex)

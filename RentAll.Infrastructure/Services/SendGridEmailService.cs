@@ -69,30 +69,9 @@ public class SendGridEmailService : IEmailService
             mail.AddBcc(ToSendGridAddress(recipient.Email, recipient.Name));
         }
 
-        if (message.FileDetails != null)
-        {
-            var fileName = string.IsNullOrWhiteSpace(message.FileDetails.FileName) ? "attachment" : message.FileDetails.FileName;
-            var contentType = string.IsNullOrWhiteSpace(message.FileDetails.ContentType)
-                ? "application/octet-stream"
-                : message.FileDetails.ContentType;
-
-            var base64File = message.FileDetails.File;
-            if (string.IsNullOrWhiteSpace(base64File) && !string.IsNullOrWhiteSpace(message.FileDetails.DataUrl))
-            {
-                base64File = message.FileDetails.DataUrl;
-            }
-
-            if (base64File.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-            {
-                var commaIndex = base64File.IndexOf(',');
-                base64File = commaIndex >= 0 ? base64File[(commaIndex + 1)..] : string.Empty;
-            }
-
-            if (!string.IsNullOrWhiteSpace(base64File))
-            {
-                mail.AddAttachment(fileName, base64File, contentType);
-            }
-        }
+        AddMailAttachment(mail, message.FileDetails);
+        foreach (var additionalFile in message.AdditionalFileDetails ?? [])
+            AddMailAttachment(mail, additionalFile);
 
         var response = await client.SendEmailAsync(mail, cancellationToken);
         if (response.IsSuccessStatusCode)
@@ -104,6 +83,30 @@ public class SendGridEmailService : IEmailService
         throw new InvalidOperationException(
             $"SendGrid email send failed with status code {(int)response.StatusCode}. " +
             $"Response body: {errorBody}");
+    }
+
+    private static void AddMailAttachment(SendGridMessage mail, FileDetails? fileDetails)
+    {
+        if (fileDetails == null)
+            return;
+
+        var fileName = string.IsNullOrWhiteSpace(fileDetails.FileName) ? "attachment" : fileDetails.FileName;
+        var contentType = string.IsNullOrWhiteSpace(fileDetails.ContentType)
+            ? "application/octet-stream"
+            : fileDetails.ContentType;
+
+        var base64File = fileDetails.File;
+        if (string.IsNullOrWhiteSpace(base64File) && !string.IsNullOrWhiteSpace(fileDetails.DataUrl))
+            base64File = fileDetails.DataUrl;
+
+        if (!string.IsNullOrWhiteSpace(base64File) && base64File.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var commaIndex = base64File.IndexOf(',');
+            base64File = commaIndex >= 0 ? base64File[(commaIndex + 1)..] : string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(base64File))
+            mail.AddAttachment(fileName, base64File, contentType);
     }
 
     private static SendGridEmailAddress ToSendGridAddress(string email, string? name)
