@@ -20,7 +20,8 @@ public partial class MaintenanceRepository
             IncludeInactive = criteria.IncludeInactive,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate,
-            ReceiptKind = criteria.ReceiptKind.HasValue ? (byte?)criteria.ReceiptKind.Value : null
+            ReceiptKind = criteria.ReceiptKind.HasValue ? (byte?)criteria.ReceiptKind.Value : null,
+            VendorId = criteria.VendorId
         });
 
         return MapReceiptsWithSplitEntities(headers, splits);

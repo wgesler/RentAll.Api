@@ -19,7 +19,8 @@ public static class GetReceiptsDtoExtensions
             IncludeInactive = dto.IncludeInactive,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            ReceiptKind = dto.ReceiptKind
+            ReceiptKind = dto.ReceiptKind,
+            VendorId = dto.VendorId
         };
     }
 }

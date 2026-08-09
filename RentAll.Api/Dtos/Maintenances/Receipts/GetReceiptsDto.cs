@@ -9,6 +9,7 @@ public class GetReceiptsDto
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public ReceiptKind? ReceiptKind { get; set; }
+    public Guid? VendorId { get; set; }
 
     public string ResolvedOfficeIds => string.Join(",", OfficeIds);
 

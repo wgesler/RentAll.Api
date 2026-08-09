@@ -12,4 +12,5 @@ public class ReceiptGetCriteria
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public ReceiptKind? ReceiptKind { get; set; }
+    public Guid? VendorId { get; set; }
 }
