@@ -381,9 +381,9 @@ public partial class AccountingManager
             };
             ApplyJournalEntryLineContext(bankLine, headerLineContext);
 
-            // Pair: escrow/bank side first, then matching destination (display ORDER BY CreatedOn).
-            journalEntryLines.Add(bankLine);
+            // Pair: destination first, then matching escrow/bank credit (display ORDER BY CreatedOn).
             journalEntryLines.Add(destinationLine);
+            journalEntryLines.Add(bankLine);
         }
 
         return ClassifyJournalEntry(new JournalEntry
