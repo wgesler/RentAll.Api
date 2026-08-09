@@ -13,13 +13,14 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public DateOnly AccountingPeriod { get; set; }
         public string? BillNumber { get; set; }
         public decimal Amount { get; set; }
-        public decimal PaidAmount { get; set; }
-        public DateOnly? PaidDate { get; set; }
         public string Description { get; set; } = string.Empty;
         public int? BankCardId { get; set; }
         public string BankCardDisplayName { get; set; } = string.Empty;
         public Guid? VendorId { get; set; }
         public string? VendorName { get; set; }
+        public decimal PaidAmount { get; set; }
+        public DateOnly? PaidDate { get; set; }
+        public string? PaymentDescription { get; set; }
         public string Splits { get; set; } = "[]";
         public int? AgreementLineId { get; set; }
         public string? AgreementLineNotes { get; set; }

@@ -13,11 +13,12 @@ public class CreateReceiptDto
     public DateOnly AccountingPeriod { get; set; }
     public string BillNumber { get; set; } = string.Empty;
     public decimal Amount { get; set; }
-    public DateOnly? PaidDate { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
+    public DateOnly? PaidDate { get; set; }
+    public string? PaymentDescription { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public int? AgreementLineId { get; set; }
     public string? ReceiptPath { get; set; }
@@ -78,12 +79,13 @@ public class CreateReceiptDto
             AccountingPeriod = AccountingPeriod,
             BillNumber = BillNumber,
             Amount = Amount,
-            PaidAmount = initialPaidAmount,
-            PaidDate = PaidDate,
             Description = Description,
             BankCardId = normalizedBankCardId,
             VendorId = VendorId,
             VendorName = VendorName,
+            PaidAmount = initialPaidAmount,
+            PaidDate = PaidDate,
+            PaymentDescription = PaymentDescription,
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             AgreementLineId = AgreementLineId,
             ReceiptPath = null,

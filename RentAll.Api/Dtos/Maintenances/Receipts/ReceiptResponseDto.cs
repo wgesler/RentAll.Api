@@ -15,13 +15,14 @@ public class ReceiptResponseDto
     public DateOnly AccountingPeriod { get; set; }
     public string? BillNumber { get; set; }
     public decimal Amount { get; set; }
-    public decimal PaidAmount { get; set; }
-    public DateOnly? PaidDate { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? BankCardId { get; set; }
     public string BankCardDisplayName { get; set; } = string.Empty;
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
+    public decimal PaidAmount { get; set; }
+    public DateOnly? PaidDate { get; set; }
+    public string? PaymentDescription { get; set; }
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public int? AgreementLineId { get; set; }
     public string? AgreementLineNotes { get; set; }
@@ -51,13 +52,14 @@ public class ReceiptResponseDto
         AccountingPeriod = receipt.AccountingPeriod;
         BillNumber = receipt.BillNumber;
         Amount = receipt.Amount;
-        PaidAmount = receipt.PaidAmount;
-        PaidDate = receipt.PaidDate;
         Description = receipt.Description;
         BankCardId = receipt.BankCardId;
         BankCardDisplayName = receipt.BankCardDisplayName;
         VendorId = receipt.VendorId;
         VendorName = receipt.VendorName;
+        PaidAmount = receipt.PaidAmount;
+        PaidDate = receipt.PaidDate;
+        PaymentDescription = receipt.PaymentDescription;
         Splits = (receipt.Splits ?? new List<ReceiptSplit>()).Select(split => new ReceiptSplitDto(split)).ToList();
         AgreementLineId = receipt.AgreementLineId;
         AgreementLineNotes = receipt.AgreementLineNotes;
