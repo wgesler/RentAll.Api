@@ -16,6 +16,12 @@ public partial class AccountingManager
 
         await EnrichSecurityDepositJournalEntryDataAsync(organizationId, rows);
 
+        // Drop reservations marked DepositType=SecurityDeposit that never got a deposit charge/collection.
+        rows = rows
+            .Where(row => RoundSecurityDepositAmount(row.Deposit) > 0m
+                || RoundSecurityDepositAmount(row.CollectedAmount) > 0m)
+            .ToList();
+
         var officeIds = ResolveSecurityDepositSummaryOfficeIds(officeAccess, officeId, rows);
         var totalDepositsOwed = RoundSecurityDepositAmount(rows.Sum(row => row.Deposit));
 
