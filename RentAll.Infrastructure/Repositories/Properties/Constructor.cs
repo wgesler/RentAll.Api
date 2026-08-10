@@ -294,6 +294,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyId = e.PropertyId,
                 OrganizationId = e.OrganizationId,
                 WelcomeLetter = e.WelcomeLetter,
+                DepartureLetter = e.DepartureLetter ?? string.Empty,
                 Lease = e.Lease,
                 Invoice = e.Invoice,
                 WorkOrder = e.WorkOrder,

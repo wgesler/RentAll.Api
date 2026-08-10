@@ -5,6 +5,7 @@ public class CreatePropertyHtmlDto
     public Guid PropertyId { get; set; }
     public Guid OrganizationId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
+    public string DepartureLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
     public string Invoice { get; set; } = string.Empty;
     public string WorkOrder { get; set; } = string.Empty;
@@ -40,6 +41,7 @@ public class CreatePropertyHtmlDto
             PropertyId = PropertyId,
             OrganizationId = OrganizationId,
             WelcomeLetter = WelcomeLetter,
+            DepartureLetter = DepartureLetter,
             Lease = Lease,
             Invoice = Invoice,
             WorkOrder = WorkOrder,
