@@ -15,6 +15,10 @@ public class CreatePropertyInformationDto
     public string? TelevisionSource { get; set; }
     public string? InternetService { get; set; }
     public string? KeyReturn { get; set; }
+    public string? DepartureInstructions { get; set; }
+    public string? DepartureCleaning { get; set; }
+    public string? DepartureMail { get; set; }
+    public string? DepartureFees { get; set; }
     public string? Concierge { get; set; }
     public string? MaintenanceEmail { get; set; }
     public string? EmergencyPhone { get; set; }
@@ -48,6 +52,10 @@ public class CreatePropertyInformationDto
             TelevisionSource = TelevisionSource,
             InternetService = InternetService,
             KeyReturn = KeyReturn,
+            DepartureInstructions = DepartureInstructions,
+            DepartureCleaning = DepartureCleaning,
+            DepartureMail = DepartureMail,
+            DepartureFees = DepartureFees,
             Concierge = Concierge,
             MaintenanceEmail = MaintenanceEmail,
             EmergencyPhone = EmergencyPhone,

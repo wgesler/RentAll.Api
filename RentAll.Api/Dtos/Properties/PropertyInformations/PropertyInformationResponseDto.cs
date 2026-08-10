@@ -15,6 +15,10 @@ public class PropertyInformationResponseDto
     public string? TelevisionSource { get; set; }
     public string? InternetService { get; set; }
     public string? KeyReturn { get; set; }
+    public string? DepartureInstructions { get; set; }
+    public string? DepartureCleaning { get; set; }
+    public string? DepartureMail { get; set; }
+    public string? DepartureFees { get; set; }
     public string? Concierge { get; set; }
     public string? MaintenanceEmail { get; set; }
     public string? EmergencyPhone { get; set; }
@@ -35,6 +39,10 @@ public class PropertyInformationResponseDto
         TelevisionSource = propertyInformation.TelevisionSource;
         InternetService = propertyInformation.InternetService;
         KeyReturn = propertyInformation.KeyReturn;
+        DepartureInstructions = propertyInformation.DepartureInstructions;
+        DepartureCleaning = propertyInformation.DepartureCleaning;
+        DepartureMail = propertyInformation.DepartureMail;
+        DepartureFees = propertyInformation.DepartureFees;
         Concierge = propertyInformation.Concierge;
         MaintenanceEmail = propertyInformation.MaintenanceEmail;
         EmergencyPhone = propertyInformation.EmergencyPhone;
