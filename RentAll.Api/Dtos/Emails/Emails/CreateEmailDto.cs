@@ -1,3 +1,5 @@
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 using System.Text.RegularExpressions;
 
@@ -18,6 +20,7 @@ public class CreateEmailDto
     public string PlainTextContent { get; set; } = string.Empty;
     public string HtmlContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
+    public int? DocumentTypeId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public List<FileDetails> AdditionalFileDetails { get; set; } = [];
 
@@ -66,6 +69,9 @@ public class CreateEmailDto
 
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
+
+        if (DocumentTypeId.HasValue && !Enum.IsDefined(typeof(DocumentType), DocumentTypeId.Value))
+            return (false, $"Invalid DocumentType value: {DocumentTypeId.Value}");
 
         if (AdditionalFileDetails.Count > 5)
             return (false, "A maximum of 5 additional attachments is allowed");
@@ -120,10 +126,23 @@ public class CreateEmailDto
             PlainTextContent = PlainTextContent,
             HtmlContent = HtmlContent,
             EmailType = (EmailType)EmailTypeId,
+            DocumentType = ResolveDocumentType(),
             FileDetails = FileDetails,
             AdditionalFileDetails = AdditionalFileDetails ?? [],
             EmailStatus = EmailStatus.Attempting,
             CreatedBy = currentUser
         };
+    }
+
+    private DocumentType ResolveDocumentType()
+    {
+        if (DocumentTypeId.HasValue && Enum.IsDefined(typeof(DocumentType), DocumentTypeId.Value))
+        {
+            var documentType = (DocumentType)DocumentTypeId.Value;
+            if (documentType != DocumentType.Other)
+                return documentType;
+        }
+
+        return DocumentType.Attachments;
     }
 }

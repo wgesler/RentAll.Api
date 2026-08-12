@@ -25,6 +25,10 @@ public class Email
     public string AttachmentPath { get; set; } = string.Empty;
     public FileDetails? FileDetails { get; set; }
     public List<FileDetails> AdditionalFileDetails { get; set; } = [];
+    /// <summary>
+    /// Document type for the primary emailed file. Additional manual attachments stay Attachments.
+    /// </summary>
+    public DocumentType DocumentType { get; set; } = DocumentType.Attachments;
     public EmailType EmailType { get; set; } = EmailType.Other;
     public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;
     public int AttemptCount { get; set; }

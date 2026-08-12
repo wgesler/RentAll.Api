@@ -44,7 +44,8 @@ public class EmailManager : IEmailManager
         var attachmentNames = new List<string>();
         if (email.FileDetails != null)
         {
-            var createdDocument = await SaveEmailAttachmentDocumentAsync(email, officeName, email.FileDetails);
+            var primaryDocumentType = email.DocumentType == DocumentType.Other ? DocumentType.Attachments : email.DocumentType;
+            var createdDocument = await SaveEmailAttachmentDocumentAsync(email, officeName, email.FileDetails, primaryDocumentType);
             email.DocumentId = createdDocument.DocumentId;
             email.AttachmentPath = createdDocument.DocumentPath;
             attachmentNames.Add(email.FileDetails.FileName);
@@ -55,7 +56,8 @@ public class EmailManager : IEmailManager
             if (additionalFile == null || string.IsNullOrWhiteSpace(additionalFile.FileName))
                 continue;
 
-            await SaveEmailAttachmentDocumentAsync(email, officeName, additionalFile);
+            // Extra user-picked files stay generic attachments.
+            await SaveEmailAttachmentDocumentAsync(email, officeName, additionalFile, DocumentType.Attachments);
             attachmentNames.Add(additionalFile.FileName);
         }
 
@@ -179,11 +181,15 @@ public class EmailManager : IEmailManager
         }
     }
 
-    private async Task<Document> SaveEmailAttachmentDocumentAsync(Email email, string? officeName, FileDetails fileDetails)
+    private async Task<Document> SaveEmailAttachmentDocumentAsync(
+        Email email,
+        string? officeName,
+        FileDetails fileDetails,
+        DocumentType documentType)
     {
         var fileContent = ResolveAttachmentBase64(fileDetails);
         var contentType = string.IsNullOrWhiteSpace(fileDetails.ContentType) ? "application/octet-stream" : fileDetails.ContentType;
-        var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, officeName, fileContent, fileDetails.FileName, contentType, DocumentType.Attachments);
+        var documentPath = await _fileService.SaveDocumentAsync(email.OrganizationId, officeName, fileContent, fileDetails.FileName, contentType, documentType);
 
         try
         {
@@ -193,7 +199,7 @@ public class EmailManager : IEmailManager
                 OfficeId = email.OfficeId,
                 PropertyId = email.PropertyId,
                 ReservationId = email.ReservationId,
-                DocumentType = DocumentType.Attachments,
+                DocumentType = documentType,
                 FileName = Path.GetFileNameWithoutExtension(fileDetails.FileName),
                 FileExtension = Path.GetExtension(fileDetails.FileName),
                 ContentType = contentType,
