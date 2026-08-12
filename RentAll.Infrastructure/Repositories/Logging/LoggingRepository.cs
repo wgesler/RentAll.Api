@@ -330,4 +330,60 @@ public class LoggingRepository : ILoggingRepository
         });
     }
     #endregion
+
+    #region Scheduler Job Run
+    public async Task<SchedulerJobRun?> GetSchedulerJobRunByJobNameAsync(string jobName)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<SchedulerJobRunEntity>("Logging.SchedulerJobRun_GetByJobName", new
+        {
+            JobName = jobName
+        });
+        var row = rows?.FirstOrDefault();
+        return row == null ? null : ConvertEntityToSchedulerJobRunModel(row);
+    }
+
+    public async Task<(bool Claimed, SchedulerJobRun? Run)> TryClaimSchedulerJobDayAsync(string jobName, DateOnly runDate, DateTimeOffset claimedAt, string? message)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<SchedulerJobRunClaimEntity>("Logging.SchedulerJobRun_TryClaimDay", new
+        {
+            JobName = jobName,
+            RunDate = runDate,
+            ClaimedAt = claimedAt,
+            Message = message
+        });
+        var row = rows?.FirstOrDefault();
+        if (row == null)
+            return (false, null);
+
+        return (row.Claimed, ConvertEntityToSchedulerJobRunModel(row));
+    }
+
+    public async Task<SchedulerJobRun?> CompleteSchedulerJobRunAsync(string jobName, DateTimeOffset completedAt, string? message)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<SchedulerJobRunEntity>("Logging.SchedulerJobRun_Complete", new
+        {
+            JobName = jobName,
+            CompletedAt = completedAt,
+            Message = message
+        });
+        var row = rows?.FirstOrDefault();
+        return row == null ? null : ConvertEntityToSchedulerJobRunModel(row);
+    }
+
+    private static SchedulerJobRun ConvertEntityToSchedulerJobRunModel(SchedulerJobRunEntity entity)
+    {
+        return new SchedulerJobRun
+        {
+            JobName = entity.JobName,
+            LastRanOn = entity.LastRanOn,
+            LastRanAt = entity.LastRanAt,
+            Message = entity.Message,
+            CreatedOn = entity.CreatedOn,
+            ModifiedOn = entity.ModifiedOn
+        };
+    }
+    #endregion
 }

@@ -68,7 +68,7 @@ public class SchedulingHostedService : BackgroundService
 
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
-        await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, cancellationToken);
+        await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, loggingRepository, cancellationToken);
         await ProcessDepartureFeesAsync(organizationRepository, accountingManager, cancellationToken);
         await ProcessLinenAndTowelFeesAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
         await ProcessRetainedEarningsAsync(organizationRepository, accountingManager, cancellationToken);
@@ -81,57 +81,116 @@ public class SchedulingHostedService : BackgroundService
         IEmailRepository emailRepository,
         IReservationRepository reservationRepository,
         IEmailManager emailManager,
+        ILoggingRepository loggingRepository,
         CancellationToken cancellationToken)
     {
         var utcNow = DateTimeOffset.UtcNow;
-        var alerts = await LoadAllAlertsAsync(organizationRepository, emailRepository, cancellationToken);
+        var todayLocal = DateOnly.FromDateTime(utcNow.LocalDateTime);
 
-        foreach (var alert in alerts)
+        // DB heartbeat: claim today once across restarts/instances. JobName = 'Alerts'.
+        var (claimed, _) = await loggingRepository.TryClaimSchedulerJobDayAsync(
+            SchedulerJobNames.Alerts,
+            todayLocal,
+            utcNow,
+            "Scheduled alerts job claimed for today.");
+        if (!claimed)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            _logger.LogInformation(
+                "Scheduled alerts job already ran for {RunDate}; skipping. Check Logging.SchedulerJobRun JobName={JobName}.",
+                todayLocal,
+                SchedulerJobNames.Alerts);
+            return;
+        }
 
-            if (!alert.IsActive)
-                continue;
+        var evaluatedCount = 0;
+        var dueCount = 0;
+        var sentCount = 0;
+        var failedCount = 0;
+        string? completionMessage = null;
 
-            await HydrateDepartureDateIfNeededAsync(alert, reservationRepository);
+        try
+        {
+            var alerts = await LoadAllAlertsAsync(organizationRepository, emailRepository, cancellationToken);
+            evaluatedCount = alerts.Count;
 
-            if (!AlertScheduleEvaluator.IsDue(alert, utcNow))
-                continue;
-
-            try
+            foreach (var alert in alerts)
             {
-                var organization = await organizationRepository.GetOrganizationByIdAsync(alert.OrganizationId);
-                if (organization == null || !organization.IsActive)
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                if (!alert.IsActive)
                     continue;
 
-                var email = MapAlertToEmail(alert);
-                var result = await emailManager.SendEmail(organization.SendGridName, email);
+                await HydrateDepartureDateIfNeededAsync(alert, reservationRepository);
 
-                ApplySendResultToAlert(alert, result);
+                if (!AlertScheduleEvaluator.IsDue(alert, utcNow))
+                    continue;
 
-                var shouldDeactivateAlert = alert.Frequency == FrequencyType.OneTime
-                    && (result.EmailStatus == EmailStatus.Succeeded || result.SentOn.HasValue);
-                if (shouldDeactivateAlert)
-                    alert.IsActive = false;
+                dueCount++;
 
-                await emailRepository.UpdateAlertEmailStatusAsync(alert);
+                try
+                {
+                    var organization = await organizationRepository.GetOrganizationByIdAsync(alert.OrganizationId);
+                    if (organization == null || !organization.IsActive)
+                        continue;
 
-                if (result.EmailStatus == EmailStatus.Succeeded)
-                    _logger.LogInformation(
-                        "Scheduled alert email sent. AlertId={AlertId}, OrganizationId={OrganizationId}",
-                        alert.AlertId,
-                        alert.OrganizationId);
-                else
-                    _logger.LogWarning(
-                        "Scheduled alert email did not succeed. AlertId={AlertId}, Status={Status}, LastError={LastError}",
-                        alert.AlertId,
-                        result.EmailStatus,
-                        result.LastError);
+                    var email = MapAlertToEmail(alert);
+                    var result = await emailManager.SendEmail(organization.SendGridName, email);
+
+                    ApplySendResultToAlert(alert, result);
+
+                    var shouldDeactivateAlert = alert.Frequency == FrequencyType.OneTime
+                        && (result.EmailStatus == EmailStatus.Succeeded || result.SentOn.HasValue);
+                    if (shouldDeactivateAlert)
+                        alert.IsActive = false;
+
+                    await emailRepository.UpdateAlertEmailStatusAsync(alert);
+
+                    if (result.EmailStatus == EmailStatus.Succeeded)
+                    {
+                        sentCount++;
+                        _logger.LogInformation(
+                            "Scheduled alert email sent. AlertId={AlertId}, OrganizationId={OrganizationId}",
+                            alert.AlertId,
+                            alert.OrganizationId);
+                    }
+                    else
+                    {
+                        failedCount++;
+                        _logger.LogWarning(
+                            "Scheduled alert email did not succeed. AlertId={AlertId}, Status={Status}, LastError={LastError}",
+                            alert.AlertId,
+                            result.EmailStatus,
+                            result.LastError);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedCount++;
+                    _logger.LogError(ex, "Error processing alert {AlertId}", alert.AlertId);
+                }
+            }
+
+            completionMessage = $"Scheduled alerts job completed. Evaluated={evaluatedCount}, Due={dueCount}, Sent={sentCount}, Failed={failedCount}.";
+        }
+        catch (Exception ex)
+        {
+            completionMessage = $"Scheduled alerts job failed after claim. Evaluated={evaluatedCount}, Due={dueCount}, Sent={sentCount}, Failed={failedCount}. Error={ex.Message}";
+            _logger.LogError(ex, "Scheduled alerts job failed after claiming {RunDate}", todayLocal);
+            throw;
+        }
+        finally
+        {
+            var completedAt = DateTimeOffset.UtcNow;
+            completionMessage ??= $"Scheduled alerts job ended. Evaluated={evaluatedCount}, Due={dueCount}, Sent={sentCount}, Failed={failedCount}.";
+            try
+            {
+                await loggingRepository.CompleteSchedulerJobRunAsync(SchedulerJobNames.Alerts, completedAt, completionMessage);
+                _logger.LogInformation("{Message} JobName={JobName}, LastRanOn={LastRanOn}", completionMessage, SchedulerJobNames.Alerts, todayLocal);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing alert {AlertId}", alert.AlertId);
+                _logger.LogError(ex, "Failed to complete Logging.SchedulerJobRun for JobName={JobName}", SchedulerJobNames.Alerts);
             }
         }
     }

@@ -28,4 +28,8 @@ public interface ILoggingRepository
     Task<LoggingErrorLog?> GetGeneralErrorLogByIdAsync(int id, Guid organizationId);
 
     Task ApplyLogRetentionAsync(int retainDays);
+
+    Task<SchedulerJobRun?> GetSchedulerJobRunByJobNameAsync(string jobName);
+    Task<(bool Claimed, SchedulerJobRun? Run)> TryClaimSchedulerJobDayAsync(string jobName, DateOnly runDate, DateTimeOffset claimedAt, string? message);
+    Task<SchedulerJobRun?> CompleteSchedulerJobRunAsync(string jobName, DateTimeOffset completedAt, string? message);
 }

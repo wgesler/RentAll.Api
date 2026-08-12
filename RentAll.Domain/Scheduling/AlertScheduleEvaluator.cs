@@ -38,8 +38,12 @@ public static class AlertScheduleEvaluator
         var periodIndex = elapsedDays / periodLengthDays.Value;
         var periodStartDate = anchor.AddDays(periodIndex * periodLengthDays.Value);
 
-        if (alert.SentOn.HasValue && CalendarDateFromOffset(alert.SentOn.Value) >= periodStartDate)
+        // Already sent for this period, or we missed the exact send day — advance to the next period.
+        if ((alert.SentOn.HasValue && CalendarDateFromOffset(alert.SentOn.Value) >= periodStartDate)
+            || today > periodStartDate)
+        {
             return periodStartDate.AddDays(periodLengthDays.Value);
+        }
 
         return periodStartDate;
     }
@@ -88,7 +92,8 @@ public static class AlertScheduleEvaluator
         if (!TryGetOneTimeTriggerDate(alert, out var triggerDate))
             return false;
 
-        if (today < triggerDate)
+        // Exact calendar day only — do not catch up on later days after a missed run/restart.
+        if (today != triggerDate)
             return false;
 
         return alert.EmailStatus is EmailStatus.Unsent or EmailStatus.Failed;
@@ -138,8 +143,8 @@ public static class AlertScheduleEvaluator
     }
 
     /// <summary>
-    /// Due if we are on or after the start of the current period and <see cref="Alert.SentOn"/> is before that period start.
-    /// Uses fixed day counts (approximate calendar months/years).
+    /// Due only on the exact period-start calendar day, and only if <see cref="Alert.SentOn"/> is before that day.
+    /// Restarts on other days in the period must not send. Uses fixed day counts (approximate months/years).
     /// </summary>
     private static bool IsRecurringPeriodDue(DateOnly anchorDate, DateOnly today, DateTimeOffset? sentOn, int periodLengthDays)
     {
@@ -153,7 +158,8 @@ public static class AlertScheduleEvaluator
         var periodIndex = elapsedDays / periodLengthDays;
         var periodStartDate = anchorDate.AddDays(periodIndex * periodLengthDays);
 
-        if (today < periodStartDate)
+        // Exact day only (e.g. weekly fires on 8/14, not 8/12–8/13).
+        if (today != periodStartDate)
             return false;
 
         return !sentOn.HasValue || CalendarDateFromOffset(sentOn.Value) < periodStartDate;
