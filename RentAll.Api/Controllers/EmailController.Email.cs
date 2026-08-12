@@ -49,7 +49,7 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        [HttpGet("{emailId}")]
+        [HttpGet("{emailId:guid}")]
         public async Task<IActionResult> GetEmailByIdAsync(Guid emailId)
         {
             if (emailId == Guid.Empty)
@@ -62,7 +62,20 @@ namespace RentAll.Api.Controllers
                     return NotFound("Email not found");
 
                 var response = new EmailResponseDto(email);
-                response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(email.OrganizationId, email.OfficeName, email.AttachmentPath);
+                try
+                {
+                    response.FileDetails = await _fileAttachmentHelper.GetDocumentDetailsForResponseAsync(
+                        email.OrganizationId,
+                        email.OfficeName,
+                        email.AttachmentPath);
+                }
+                catch (Exception attachmentEx)
+                {
+                    _logger.LogWarning(
+                        attachmentEx,
+                        "Unable to load attachment details for email {EmailId}",
+                        emailId);
+                }
 
                 return Ok(response);
             }
