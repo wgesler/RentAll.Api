@@ -4,6 +4,7 @@ public class EmailHtmlResponseDto
 {
     public Guid OrganizationId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
+    public string DepartureLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
     public string CorporateLease { get; set; } = string.Empty;
@@ -11,6 +12,7 @@ public class EmailHtmlResponseDto
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
+    public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;
@@ -23,6 +25,7 @@ public class EmailHtmlResponseDto
     {
         OrganizationId = emailHtml.OrganizationId;
         WelcomeLetter = emailHtml.WelcomeLetter;
+        DepartureLetter = emailHtml.DepartureLetter;
         CorporateLetter = emailHtml.CorporateLetter;
         Lease = emailHtml.Lease;
         CorporateLease = emailHtml.CorporateLease;
@@ -30,6 +33,7 @@ public class EmailHtmlResponseDto
         CorporateInvoice = emailHtml.CorporateInvoice;
         OwnerStatement = emailHtml.OwnerStatement;
         LetterSubject = emailHtml.LetterSubject;
+        DepartureSubject = emailHtml.DepartureSubject;
         LeaseSubject = emailHtml.LeaseSubject;
         InvoiceSubject = emailHtml.InvoiceSubject;
         OwnerStatementSubject = emailHtml.OwnerStatementSubject;

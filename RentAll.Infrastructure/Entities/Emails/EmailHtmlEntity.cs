@@ -4,6 +4,7 @@ public class EmailHtmlEntity
 {
     public Guid OrganizationId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
+    public string DepartureLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
     public string CorporateLease { get; set; } = string.Empty;
@@ -11,6 +12,7 @@ public class EmailHtmlEntity
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
+    public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;

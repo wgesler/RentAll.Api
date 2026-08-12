@@ -4,6 +4,7 @@ public class UpdateEmailHtmlDto
 {
     public Guid OrganizationId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
+    public string DepartureLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
     public string Lease { get; set; } = string.Empty;
     public string CorporateLease { get; set; } = string.Empty;
@@ -11,6 +12,7 @@ public class UpdateEmailHtmlDto
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
+    public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;
@@ -22,6 +24,9 @@ public class UpdateEmailHtmlDto
 
         if (string.IsNullOrWhiteSpace(WelcomeLetter))
             return (false, "WelcomeLetter is required");
+
+        if (string.IsNullOrWhiteSpace(DepartureLetter))
+            return (false, "DepartureLetter is required");
 
         if (string.IsNullOrWhiteSpace(CorporateLetter))
             return (false, "CorporateLetter is required");
@@ -44,6 +49,9 @@ public class UpdateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(LetterSubject))
             return (false, "LetterSubject is required");
 
+        if (string.IsNullOrWhiteSpace(DepartureSubject))
+            return (false, "DepartureSubject is required");
+
         if (string.IsNullOrWhiteSpace(LeaseSubject))
             return (false, "LeaseSubject is required");
 
@@ -62,6 +70,7 @@ public class UpdateEmailHtmlDto
         {
             OrganizationId = OrganizationId,
             WelcomeLetter = WelcomeLetter,
+            DepartureLetter = DepartureLetter,
             CorporateLetter = CorporateLetter,
             Lease = Lease,
             CorporateLease = CorporateLease,
@@ -69,6 +78,7 @@ public class UpdateEmailHtmlDto
             CorporateInvoice = CorporateInvoice,
             OwnerStatement = OwnerStatement,
             LetterSubject = LetterSubject,
+            DepartureSubject = DepartureSubject,
             LeaseSubject = LeaseSubject,
             InvoiceSubject = InvoiceSubject,
             OwnerStatementSubject = OwnerStatementSubject,

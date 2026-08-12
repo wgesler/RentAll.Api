@@ -61,6 +61,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             {
                 OrganizationId = e.OrganizationId,
                 WelcomeLetter = e.WelcomeLetter,
+                DepartureLetter = e.DepartureLetter ?? string.Empty,
                 CorporateLetter = e.CorporateLetter,
                 Lease = e.Lease,
                 CorporateLease = e.CorporateLease,
@@ -68,6 +69,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 CorporateInvoice = e.CorporateInvoice,
                 OwnerStatement = e.OwnerStatement ?? string.Empty,
                 LetterSubject = e.LetterSubject,
+                DepartureSubject = e.DepartureSubject ?? string.Empty,
                 LeaseSubject = e.LeaseSubject,
                 InvoiceSubject = e.InvoiceSubject,
                 OwnerStatementSubject = e.OwnerStatementSubject ?? string.Empty,

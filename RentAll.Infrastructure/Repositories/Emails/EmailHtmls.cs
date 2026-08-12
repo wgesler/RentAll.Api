@@ -30,6 +30,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             {
                 OrganizationId = emailHtml.OrganizationId,
                 WelcomeLetter = emailHtml.WelcomeLetter,
+                DepartureLetter = emailHtml.DepartureLetter,
                 CorporateLetter = emailHtml.CorporateLetter,
                 Lease = emailHtml.Lease,
                 CorporateLease = emailHtml.CorporateLease,
@@ -37,6 +38,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 CorporateInvoice = emailHtml.CorporateInvoice,
                 OwnerStatement = emailHtml.OwnerStatement,
                 LetterSubject = emailHtml.LetterSubject,
+                DepartureSubject = emailHtml.DepartureSubject,
                 LeaseSubject = emailHtml.LeaseSubject,
                 InvoiceSubject = emailHtml.InvoiceSubject,
                 OwnerStatementSubject = emailHtml.OwnerStatementSubject,
@@ -58,6 +60,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             {
                 OrganizationId = emailHtml.OrganizationId,
                 WelcomeLetter = emailHtml.WelcomeLetter,
+                DepartureLetter = emailHtml.DepartureLetter,
                 CorporateLetter = emailHtml.CorporateLetter,
                 Lease = emailHtml.Lease,
                 CorporateLease = emailHtml.CorporateLease,
@@ -65,6 +68,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 CorporateInvoice = emailHtml.CorporateInvoice,
                 OwnerStatement = emailHtml.OwnerStatement,
                 LetterSubject = emailHtml.LetterSubject,
+                DepartureSubject = emailHtml.DepartureSubject,
                 LeaseSubject = emailHtml.LeaseSubject,
                 InvoiceSubject = emailHtml.InvoiceSubject,
                 OwnerStatementSubject = emailHtml.OwnerStatementSubject,
