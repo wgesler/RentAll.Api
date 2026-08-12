@@ -45,7 +45,7 @@ public class SchedulingHostedService : BackgroundService
 
             try
             {
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
