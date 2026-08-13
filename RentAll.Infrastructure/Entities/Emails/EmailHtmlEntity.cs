@@ -11,11 +11,13 @@ public class EmailHtmlEntity
     public string Invoice { get; set; } = string.Empty;
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
+    public string Schedules { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;
+    public string ScheduleSubject { get; set; } = string.Empty;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

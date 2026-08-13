@@ -14,5 +14,6 @@ public enum EmailType
     Proposal = 9,
     OwnerAgreement = 10,
     OwnerStatement = 11,
-    SecurityDeposit = 12
+    SecurityDeposit = 12,
+    Schedules = 13
 }

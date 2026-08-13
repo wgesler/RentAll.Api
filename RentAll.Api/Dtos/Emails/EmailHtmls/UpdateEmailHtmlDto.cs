@@ -11,11 +11,13 @@ public class UpdateEmailHtmlDto
     public string Invoice { get; set; } = string.Empty;
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
+    public string Schedules { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;
+    public string ScheduleSubject { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId)
     {
@@ -46,6 +48,9 @@ public class UpdateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(OwnerStatement))
             return (false, "OwnerStatement is required");
 
+        if (string.IsNullOrWhiteSpace(Schedules))
+            return (false, "Schedules is required");
+
         if (string.IsNullOrWhiteSpace(LetterSubject))
             return (false, "LetterSubject is required");
 
@@ -60,6 +65,9 @@ public class UpdateEmailHtmlDto
 
         if (string.IsNullOrWhiteSpace(OwnerStatementSubject))
             return (false, "OwnerStatementSubject is required");
+
+        if (string.IsNullOrWhiteSpace(ScheduleSubject))
+            return (false, "ScheduleSubject is required");
 
         return (true, null);
     }
@@ -77,11 +85,13 @@ public class UpdateEmailHtmlDto
             Invoice = Invoice,
             CorporateInvoice = CorporateInvoice,
             OwnerStatement = OwnerStatement,
+            Schedules = Schedules,
             LetterSubject = LetterSubject,
             DepartureSubject = DepartureSubject,
             LeaseSubject = LeaseSubject,
             InvoiceSubject = InvoiceSubject,
             OwnerStatementSubject = OwnerStatementSubject,
+            ScheduleSubject = ScheduleSubject,
             ModifiedBy = currentUser
         };
     }
