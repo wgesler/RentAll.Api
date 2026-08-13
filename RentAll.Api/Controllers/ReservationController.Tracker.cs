@@ -48,6 +48,38 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while retrieving tracker response options");
             }
         }
+
+        [HttpPost("tracker-response/reservations")]
+        public async Task<IActionResult> GetTrackerResponsesByReservationIds([FromBody] ReservationTrackerResponseGetByIdsDto dto)
+        {
+            if (dto == null)
+                return BadRequest("ReservationIds are required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var reservationIds = (dto.ReservationIds ?? new List<Guid>()).Distinct().ToList();
+                if (reservationIds.Count == 0)
+                    return Ok(new ReservationTrackerResponseGetByIdsResponseDto());
+
+                var joinedIds = string.Join(",", reservationIds);
+                var responses = await _reservationRepository.GetTrackerResponsesByReservationIdsAsync(CurrentOrganizationId, joinedIds);
+                var options = await _reservationRepository.GetTrackerResponseOptionsByReservationIdsAsync(CurrentOrganizationId, joinedIds);
+                return Ok(new ReservationTrackerResponseGetByIdsResponseDto
+                {
+                    Responses = responses.Select(r => new ReservationTrackerResponseResponseDto(r)).ToList(),
+                    Options = options.Select(o => new ReservationTrackerResponseOptionResponseDto(o)).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting tracker responses by reservation ids");
+                return ServerError("An error occurred while retrieving tracker responses");
+            }
+        }
         #endregion
 
         #region Post

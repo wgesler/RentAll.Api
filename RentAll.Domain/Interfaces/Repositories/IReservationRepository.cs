@@ -37,7 +37,9 @@ public interface IReservationRepository
 
     #region Tracker Responses
     Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByReservationIdAsync(Guid reservationId);
+    Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByReservationIdsAsync(Guid organizationId, string reservationIds);
     Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByReservationIdAsync(Guid reservationId);
+    Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByReservationIdsAsync(Guid organizationId, string reservationIds);
     Task<TrackerResponse?> GetTrackerResponseByIdAsync(Guid trackerResponseId);
     Task<TrackerResponse> CreateTrackerResponseAsync(TrackerResponse trackerResponse);
     Task<TrackerResponse> UpdateTrackerResponseByIdAsync(TrackerResponse trackerResponse);

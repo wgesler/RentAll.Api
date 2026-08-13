@@ -21,12 +21,48 @@ public partial class ReservationRepository
         return res.Select(ConvertEntityToModel);
     }
 
+    public async Task<IEnumerable<TrackerResponse>> GetTrackerResponsesByReservationIdsAsync(Guid organizationId, string reservationIds)
+    {
+        if (string.IsNullOrWhiteSpace(reservationIds))
+            return Enumerable.Empty<TrackerResponse>();
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<TrackerResponseEntity>("Property.TrackerResponse_GetByReservationIds", new
+        {
+            OrganizationId = organizationId,
+            ReservationIds = reservationIds
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<TrackerResponse>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
     public async Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByReservationIdAsync(Guid reservationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<TrackerResponseOptionEntity>("Property.TrackerResponseOption_GetByReservationId", new
         {
             ReservationId = reservationId
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<TrackerResponseOption>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<IEnumerable<TrackerResponseOption>> GetTrackerResponseOptionsByReservationIdsAsync(Guid organizationId, string reservationIds)
+    {
+        if (string.IsNullOrWhiteSpace(reservationIds))
+            return Enumerable.Empty<TrackerResponseOption>();
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<TrackerResponseOptionEntity>("Property.TrackerResponseOption_GetByReservationIds", new
+        {
+            OrganizationId = organizationId,
+            ReservationIds = reservationIds
         });
 
         if (res == null || !res.Any())
