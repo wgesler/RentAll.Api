@@ -4,6 +4,41 @@ namespace RentAll.Api.Controllers
 {
     public partial class OrganizationController
     {
+        #region Bank Card Get
+        [HttpGet("accounting-office/{officeId:int}/bank-card/{bankCardId:int}/pan")]
+        public async Task<IActionResult> GetBankCardPanAsync(int officeId, int bankCardId)
+        {
+            if (officeId <= 0)
+                return BadRequest("Office ID is required");
+
+            if (bankCardId <= 0)
+                return BadRequest("Bank card ID is required");
+
+            try
+            {
+                var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+                if (accountingOffice == null)
+                    return NotFound("Accounting office not found");
+
+                var existing = await _accountingRepository.GetBankCardByIdAsync(bankCardId, CurrentOrganizationId, officeId);
+                if (existing == null)
+                    return NotFound("Bank card not found");
+
+                if (string.IsNullOrWhiteSpace(existing.CardNumber))
+                    return Ok(new BankCardPanResponseDto(string.Empty));
+
+                var cipherBytes = Convert.FromBase64String(existing.CardNumber);
+                var cardNumber = await _encryptionService.DecryptAsync(cipherBytes);
+                return Ok(new BankCardPanResponseDto(cardNumber));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting bank card PAN {BankCardId} for office: {OfficeId}", bankCardId, officeId);
+                return ServerError("An error occurred while retrieving the bank card number");
+            }
+        }
+        #endregion
+
         #region Bank Card Post
         [HttpPost("accounting-office/{officeId:int}/bank-card")]
         public async Task<IActionResult> CreateBankCardAsync(int officeId, [FromBody] CreateBankCardDto dto)
