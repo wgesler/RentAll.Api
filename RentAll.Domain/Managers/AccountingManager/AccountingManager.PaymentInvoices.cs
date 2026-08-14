@@ -350,7 +350,7 @@ public partial class AccountingManager
 
     private void AddDepartureFeeIfApplicable(Reservation reservation, DateOnly invoicePeriodStart, List<LedgerLine> lines, ref int lineNumber)
     {
-        if (reservation.DepartureFee < 0)
+        if (reservation.DepartureFee <= 0)
             return;
 
         var billingArrivalDate = ResolveBillingArrivalDate(reservation);
