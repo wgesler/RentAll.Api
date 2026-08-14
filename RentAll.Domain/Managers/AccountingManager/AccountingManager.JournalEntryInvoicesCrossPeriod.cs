@@ -1074,7 +1074,8 @@ public partial class AccountingManager
     private static (DateOnly Start, DateOnly End) GetMaidServicePeriodBounds(Reservation reservation, DateOnly periodStart, DateOnly periodEnd)
     {
         var startDate = reservation.MaidStartDate > periodStart ? reservation.MaidStartDate : periodStart;
-        var endDate = periodEnd > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : periodEnd;
+        var billingDepartureDate = ResolveBillingDepartureDate(reservation);
+        var endDate = periodEnd > billingDepartureDate.AddDays(-7) ? billingDepartureDate : periodEnd;
         return (startDate, endDate);
     }
 

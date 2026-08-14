@@ -878,6 +878,14 @@ public partial class AccountingManager : IAccountingManager
     }
     #endregion
 
+    #region Reservation Billing Date Helpers
+    private static DateOnly ResolveBillingArrivalDate(Reservation reservation)
+        => reservation.BillingStartDate ?? reservation.ArrivalDate;
+
+    private static DateOnly ResolveBillingDepartureDate(Reservation reservation)
+        => reservation.BillingEndDate ?? reservation.DepartureDate;
+    #endregion
+
     #region Journal Entry Date Helpers
     private static DateOnly ResolveBillOrReceiptJournalEntryDate(Receipt billOrReceipt)
     {

@@ -822,7 +822,9 @@ public partial class AccountingManager
             ? await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId)
             : null;
         var billingType = reservation?.BillingType ?? BillingType.Monthly;
-        var departureDate = reservation?.DepartureDate ?? rentalEnd;
+        var departureDate = reservation == null
+            ? rentalEnd
+            : ResolveBillingDepartureDate(reservation);
 
         return CalculateNumberOfDays(
             rentalStart,

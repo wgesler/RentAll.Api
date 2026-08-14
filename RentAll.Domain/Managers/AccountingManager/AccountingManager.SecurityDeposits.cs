@@ -960,6 +960,9 @@ public partial class AccountingManager
 
     private static ReservationDeparture BuildSecurityDepositDeparture(Reservation reservation, Property property, Office? office = null)
     {
+        var billingArrivalDate = ResolveBillingArrivalDate(reservation);
+        var billingDepartureDate = ResolveBillingDepartureDate(reservation);
+
         return new ReservationDeparture
         {
             ReservationId = reservation.ReservationId,
@@ -976,12 +979,12 @@ public partial class AccountingManager
             Deposit = reservation.Deposit,
             DepositType = reservation.DepositType,
             DepositReturned = reservation.DepositReturned,
-            ArrivalDate = reservation.ArrivalDate,
-            DepartureDate = reservation.DepartureDate,
+            ArrivalDate = billingArrivalDate,
+            DepartureDate = billingDepartureDate,
             BillingRate = reservation.BillingRate,
             BillingTypeId = (int)reservation.BillingType,
-            SecurityDepositReturnDate = office != null && reservation.DepartureDate != default
-                ? reservation.DepartureDate.AddDays(office.DaysToRefundDeposit)
+            SecurityDepositReturnDate = office != null && billingDepartureDate != default
+                ? billingDepartureDate.AddDays(office.DaysToRefundDeposit)
                 : default
         };
     }

@@ -224,15 +224,15 @@ public partial class AccountingManager
 
         var daysInMonth = DateTime.DaysInMonth(startDateYear, startDateMonth);
 
-        var arrivalDate = reservation.ArrivalDate;
-        var arrivalDay = reservation.ArrivalDate.Day;
-        var arrivalMonth = reservation.ArrivalDate.Month;
-        var arrivalYear = reservation.ArrivalDate.Year;
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+        var arrivalDay = arrivalDate.Day;
+        var arrivalMonth = arrivalDate.Month;
+        var arrivalYear = arrivalDate.Year;
 
-        var departureDate = reservation.DepartureDate;
-        var departureDay = reservation.DepartureDate.Day;
-        var departureMonth = reservation.DepartureDate.Month;
-        var departureYear = reservation.DepartureDate.Year;
+        var departureDate = ResolveBillingDepartureDate(reservation);
+        var departureDay = departureDate.Day;
+        var departureMonth = departureDate.Month;
+        var departureYear = departureDate.Year;
 
         var firstDayOfMonth = new DateOnly(startDateYear, startDateMonth, 1);
         var lastDayOfMonth = new DateOnly(startDateYear, startDateMonth, DateTime.DaysInMonth(startDateYear, startDateMonth));
@@ -264,7 +264,7 @@ public partial class AccountingManager
 
         // Use end date to hold payments to certain timeframe
         var firstDayOfLastMonth = lastBillableMonth;
-        var lastDayOfLastMonth = endDate <= reservation.DepartureDate ? endDate : reservation.DepartureDate;
+        var lastDayOfLastMonth = endDate <= departureDate ? endDate : departureDate;
 
         // If you're in and out in the same month OR less than 30 days
         if (arrivalMonth == startDateMonth && arrivalYear == startDateYear && departureMonth == startDateMonth && departureYear == startDateYear)
@@ -353,8 +353,9 @@ public partial class AccountingManager
         if (reservation.DepartureFee < 0)
             return;
 
-        var isFirstMonth = invoicePeriodStart.Month == reservation.ArrivalDate.Month
-            && invoicePeriodStart.Year == reservation.ArrivalDate.Year;
+        var billingArrivalDate = ResolveBillingArrivalDate(reservation);
+        var isFirstMonth = invoicePeriodStart.Month == billingArrivalDate.Month
+            && invoicePeriodStart.Year == billingArrivalDate.Year;
         var lastBillableMonth = ResolveLastBillableMonth(reservation);
         var isLastMonth = invoicePeriodStart.Month == lastBillableMonth.Month
             && invoicePeriodStart.Year == lastBillableMonth.Year;
@@ -404,7 +405,8 @@ public partial class AccountingManager
     private void AddMaidServiceLines(Reservation reservation, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, List<LedgerLine> lines, ref int lineNumber)
     {
         var sDate = reservation.MaidStartDate > startDate ? reservation.MaidStartDate : startDate;
-        var dDate = endDate > reservation.DepartureDate.AddDays(-7) ? reservation.DepartureDate : endDate;
+        var billingDepartureDate = ResolveBillingDepartureDate(reservation);
+        var dDate = endDate > billingDepartureDate.AddDays(-7) ? billingDepartureDate : endDate;
         var maidServices = CountMaidServicesInPeriod(reservation, sDate, dDate);
 
         if (maidServices > 0)
@@ -538,7 +540,11 @@ public partial class AccountingManager
 
         // Get active reservations for the selected offices that overlap the billing month.
         var activeReservations = (await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(organizationId, officeIds))
-            .Where(reservation => ReservationOverlapsBillingMonth(reservation.ArrivalDate, reservation.DepartureDate, monthStart, monthEnd))
+            .Where(reservation => ReservationOverlapsBillingMonth(
+                ResolveBillingArrivalDate(reservation),
+                ResolveBillingDepartureDate(reservation),
+                monthStart,
+                monthEnd))
             .OrderBy(reservation => reservation.OfficeName)
             .ThenBy(reservation => reservation.ReservationCode)
             .ToList();
@@ -754,12 +760,6 @@ public partial class AccountingManager
             nextSequence++;
         }
     }
-
-    private static DateOnly ResolveBillingArrivalDate(Reservation reservation)
-        => reservation.BillingStartDate ?? reservation.ArrivalDate;
-
-    private static DateOnly ResolveBillingDepartureDate(Reservation reservation)
-        => reservation.BillingEndDate ?? reservation.DepartureDate;
 
     private static DateOnly ResolveLastBillableMonth(Reservation reservation)
     {
