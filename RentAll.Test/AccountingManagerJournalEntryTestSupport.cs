@@ -275,7 +275,7 @@ internal static class AccountingManagerJournalEntryTestSupport
                     OfficeId = OfficeId,
                     Code = "4000",
                     Description = "Rent",
-                    TransactionType = TransactionType.Charge,
+                    TransactionType = TransactionType.ChargeProrate,
                     IsActive = true
                 }
             };

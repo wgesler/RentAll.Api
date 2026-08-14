@@ -2,7 +2,7 @@ namespace RentAll.Domain.Enums;
 
 public enum TransactionType
 {
-    Charge = 0,
+    ChargeProrate = 0,
     Payment = 1,
     SecurityDeposit = 2,
     SecurityDepositWaiver = 3,
@@ -11,5 +11,6 @@ public enum TransactionType
     Asset = 6,
     Liability = 7,
     Equity = 8,
-    Income = 9
+    Income = 9,
+    ChargeOneTime = 10
 }

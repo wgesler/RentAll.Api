@@ -505,7 +505,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             int costCodeId,
             string accountCode,
             string description,
-            TransactionType transactionType = TransactionType.Charge)
+            TransactionType transactionType = TransactionType.ChargeProrate)
             => new()
             {
                 CostCodeId = costCodeId,
