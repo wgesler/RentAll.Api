@@ -7,6 +7,7 @@ public class LedgerLineEntity
     public int LineNumber { get; set; }
     public Guid? ReservationId { get; set; }
     public int CostCodeId { get; set; }
+    public int TransactionTypeId { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateOnly LedgerLineDate { get; set; }

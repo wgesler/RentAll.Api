@@ -1,3 +1,5 @@
+using RentAll.Domain.Enums;
+
 namespace RentAll.Domain.Models;
 
 public class LedgerLine
@@ -7,6 +9,8 @@ public class LedgerLine
     public int LineNumber { get; set; }
     public Guid? ReservationId { get; set; }
     public int CostCodeId { get; set; }
+    /// <summary>Read-only: from CostCode via join on load. Not persisted on LedgerLine.</summary>
+    public TransactionType TransactionType { get; set; }
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateOnly LedgerLineDate { get; set; }
