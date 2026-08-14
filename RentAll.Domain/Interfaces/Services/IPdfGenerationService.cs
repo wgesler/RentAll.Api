@@ -4,6 +4,8 @@ public interface IPdfGenerationService
 {
     Task<byte[]> ConvertHtmlToPdfAsync(string htmlContent);
 
+    Task<byte[]> ConvertHtmlToPdfAsync(string htmlContent, PdfOptions? options);
+
     Task<string> ConvertHtmlToPdfBase64Async(string htmlContent);
 }
 

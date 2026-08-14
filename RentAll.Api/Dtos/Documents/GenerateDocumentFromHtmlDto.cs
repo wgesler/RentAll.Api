@@ -9,6 +9,7 @@ public class GenerateDocumentFromHtmlDto
     public int DocumentTypeId { get; set; }
     public string HtmlContent { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
+    public bool Landscape { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {

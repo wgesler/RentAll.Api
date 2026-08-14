@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Documents;
+using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
@@ -18,7 +19,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Generate PDF from HTML
-                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
+                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent, new PdfOptions {Landscape = dto.Landscape});
                 var fileName = dto.FileName ?? $"document-{Guid.NewGuid()}.pdf";
 
                 // Return as file download
@@ -44,7 +45,10 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Generate PDF from HTML
-                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
+                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent, new PdfOptions
+                {
+                    Landscape = dto.Landscape
+                });
                 var pdfBase64 = Convert.ToBase64String(pdfBytes);
 
                 var fileName = dto.FileName ?? $"document-{Guid.NewGuid()}.pdf";
