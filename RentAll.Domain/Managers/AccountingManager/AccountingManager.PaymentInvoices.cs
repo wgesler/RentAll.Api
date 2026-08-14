@@ -194,15 +194,88 @@ public partial class AccountingManager
     {
         await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
 
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(reservation.OrganizationId, reservation.OfficeId);
+        ApplyMissingDefaultCostCodesFromOfficeCostCodes(costCodeById);
+
         var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
         var isFurnished = property == null || !property.Unfurnished;
         var rentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
 
         var ledgerLines = GetLedgerLinesByReservationIdAsync(reservation, startDate, endDate, rentalCostCodeId);
         foreach (var ledgerLine in ledgerLines)
+        {
             ledgerLine.LedgerLineDate = invoiceDate;
+            ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
+        }
 
         return ledgerLines;
+    }
+
+    private void ApplyMissingDefaultCostCodesFromOfficeCostCodes(IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        // Same pattern as ApplyBillingCostCodesAsync / escrow COA resolvers:
+        // office default first, then match an active office cost code by description.
+        SECURITY_DEPOSIT_WAIVER_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            SECURITY_DEPOSIT_WAIVER_COST_CODE,
+            descriptionContains: "Security Deposit Waiver");
+        if (SECURITY_DEPOSIT_WAIVER_COST_CODE <= 0)
+            SECURITY_DEPOSIT_WAIVER_COST_CODE = ResolveDefaultCostCodeId(
+                costCodeById,
+                0,
+                descriptionContains: "Deposit Waiver");
+
+        SECURITY_DEPOSIT_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            SECURITY_DEPOSIT_COST_CODE,
+            descriptionContains: "Security Deposit",
+            descriptionExcludes: "Waiver");
+
+        DEPARTURE_EXPENSE_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            DEPARTURE_EXPENSE_COST_CODE,
+            descriptionContains: "Departure Fee");
+
+        PET_FEE_EXPENSE_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            PET_FEE_EXPENSE_COST_CODE,
+            descriptionContains: "Pet Fee");
+
+        MAID_SERVICE_EXPENSE_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            MAID_SERVICE_EXPENSE_COST_CODE,
+            descriptionContains: "Maid Service");
+
+        PARKING_EXPENSE_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            PARKING_EXPENSE_COST_CODE,
+            descriptionContains: "Parking");
+    }
+
+    private static int ResolveDefaultCostCodeId(
+        IReadOnlyDictionary<int, CostCode> costCodeById,
+        int configuredCostCodeId,
+        string descriptionContains,
+        string? descriptionExcludes = null)
+    {
+        if (configuredCostCodeId > 0 && costCodeById.ContainsKey(configuredCostCodeId))
+            return configuredCostCodeId;
+
+        var match = costCodeById.Values
+            .Where(c => c.IsActive
+                && c.Description.Contains(descriptionContains, StringComparison.OrdinalIgnoreCase)
+                && (descriptionExcludes == null
+                    || !c.Description.Contains(descriptionExcludes, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(c => c.CostCodeId)
+            .FirstOrDefault();
+
+        return match?.CostCodeId ?? 0;
+    }
+
+    private static void ApplyTransactionTypeFromCostCode(LedgerLine ledgerLine, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        if (ledgerLine.CostCodeId > 0 && costCodeById.TryGetValue(ledgerLine.CostCodeId, out var costCode))
+            ledgerLine.TransactionType = costCode.TransactionType;
     }
 
     public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId)

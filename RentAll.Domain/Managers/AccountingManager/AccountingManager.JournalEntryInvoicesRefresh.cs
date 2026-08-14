@@ -64,7 +64,8 @@ public partial class AccountingManager
                 secondPeriodInvoice,
                 reservation,
                 apportionableIncomeLines,
-                accountingContext.CostCodeById))
+                accountingContext.CostCodeById,
+                accountingContext.Office?.DepartureFeeCcId))
         {
             return false;
         }

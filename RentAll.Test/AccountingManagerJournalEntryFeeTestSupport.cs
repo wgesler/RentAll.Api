@@ -267,10 +267,10 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             {
                 ChargeCostCode(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, "4000", "Rent"),
                 ChargeCostCode(SecurityDepositCostCodeId, "2200", "Security Deposit", TransactionType.SecurityDeposit),
-                ChargeCostCode(PetFeeCostCodeId, _petFeeAccountCode, "Pet Fee"),
+                ChargeCostCode(PetFeeCostCodeId, _petFeeAccountCode, "Pet Fee", TransactionType.ChargeOneTime),
                 ChargeCostCode(MaidServiceCostCodeId, "4000", "Maid Service"),
                 ChargeCostCode(SdwCostCodeId, "2067", "Security Deposit Waiver", TransactionType.SecurityDepositWaiver),
-                ChargeCostCode(DepartureFeeCostCodeId, "2075", "Departure Fee"),
+                ChargeCostCode(DepartureFeeCostCodeId, "2075", "Departure Fee", TransactionType.ChargeOneTime),
                 ChargeCostCode(ExtraFeeCostCodeId, "4000", "Extra Fee"),
                 new()
                 {
@@ -530,6 +530,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 InvoiceDate = invoice.InvoiceDate,
                 InvoicePeriod = invoice.InvoicePeriod,
                 TotalAmount = invoice.TotalAmount,
+                IsActive = invoice.IsActive,
                 ModifiedBy = invoice.ModifiedBy,
                 LedgerLines = invoice.LedgerLines.Select(line => new LedgerLine
                 {

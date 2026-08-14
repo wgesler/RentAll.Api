@@ -278,7 +278,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             InvoiceId = invoice.InvoiceId,
             LineNumber = invoice.LedgerLines.Max(l => l.LineNumber) + 1,
             ReservationId = invoice.ReservationId,
-            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId,
+            CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
             Description = "Manual Utility (02/04-03/05)",
             Amount = 300m,
             LedgerLineDate = new DateOnly(2026, 2, 10)
@@ -313,7 +313,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             InvoiceId = invoice.InvoiceId,
             LineNumber = invoice.LedgerLines.Max(l => l.LineNumber) + 1,
             ReservationId = invoice.ReservationId,
-            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.DepartureFeeCostCodeId,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.PetFeeCostCodeId,
             Description = "Manual Utility One Time",
             Amount = 120m,
             LedgerLineDate = new DateOnly(2026, 3, 3)
@@ -392,7 +392,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             InvoiceId = invoice.InvoiceId,
             LineNumber = nextLineNumber,
             ReservationId = invoice.ReservationId,
-            CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+            CostCodeId = AccountingManagerJournalEntryFeeTestSupport.PetFeeCostCodeId,
             Description = "Airport Pick UP",
             Amount = 100m,
             LedgerLineDate = new DateOnly(2026, 2, 20)
@@ -518,8 +518,8 @@ public class CrossPeriodInvoiceJournalEntryTests
             .Where(l => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(l.Memo))
             .Sum(l => l.Debit);
 
-        Assert.Equal(3560m, firstMonthTotal);
-        Assert.Equal(6000m, secondMonthTotal);
+        Assert.Equal(3520m, firstMonthTotal);
+        Assert.Equal(6040m, secondMonthTotal);
 
         var firstMonthIncome = chargeEntries[0].JournalEntryLines
             .Where(l => l.Credit > 0)
@@ -527,9 +527,8 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToDictionary(group => group.Key, group => group.Sum(line => line.Credit), StringComparer.Ordinal);
 
         Assert.Equal(3000m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Rental Fee (06/21-06/30)")).Value);
-        // Security Deposit Waiver is a deposit-type charge, so the full amount stays on the first
-        // accounting period (like the Security Deposit) instead of being split across periods.
-        Assert.Equal(60m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Security Deposit Waiver")).Value);
+        // SDW follows SecurityDepositWaiver transaction type: prorate with rent (10/30 of 60 = 20).
+        Assert.Equal(20m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Security Deposit Waiver")).Value);
         Assert.Equal(500m, firstMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Departure Fee")).Value);
 
         var secondMonthIncome = chargeEntries[1].JournalEntryLines
@@ -538,7 +537,7 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToDictionary(group => group.Key, group => group.Sum(line => line.Credit), StringComparer.Ordinal);
 
         Assert.Equal(6000m, secondMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Rental Fee (07/01-07/20)")).Value);
-        Assert.DoesNotContain(secondMonthIncome, kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Security Deposit Waiver"));
+        Assert.Equal(40m, secondMonthIncome.Single(kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Security Deposit Waiver")).Value);
         Assert.DoesNotContain(secondMonthIncome, kvp => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(kvp.Key, "Departure Fee"));
     }
 

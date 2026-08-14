@@ -93,6 +93,7 @@ internal static class AccountingManagerJournalEntryTestSupport
             InvoiceDate = periodStart,
             InvoicePeriod = $"{periodStart:MM/dd/yyyy} - {periodEnd:MM/dd/yyyy}",
             TotalAmount = ledgerLines.Sum(l => l.Amount),
+            IsActive = true,
             LedgerLines = ledgerLines
         };
     }

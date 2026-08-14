@@ -36,7 +36,7 @@ public partial class AccountingManager
         var accountingContext = await LoadCrossPeriodInvoiceAccountingContextAsync(invoice);
 
         var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation, accountingContext);
-        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, apportionableIncomeLines, accountingContext.CostCodeById))
+        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(invoice, firstPeriodInvoice, secondPeriodInvoice, reservation, apportionableIncomeLines, accountingContext.CostCodeById, accountingContext.Office?.DepartureFeeCcId))
             return (null, "Could not apportion the invoice charges across the two accounting periods.", false);
 
         var originalChargeTotal = SumInvoiceChargeLines(invoice, accountingContext.CostCodeById);
@@ -203,7 +203,8 @@ public partial class AccountingManager
                 secondPeriodInvoice,
                 reservation,
                 apportionableIncomeLines,
-                accountingContext.CostCodeById))
+                accountingContext.CostCodeById,
+                accountingContext.Office?.DepartureFeeCcId))
         {
             return null;
         }
@@ -262,7 +263,15 @@ public partial class AccountingManager
         return map;
     }
 
-    private static IEnumerable<LedgerLine> GetSplitPoolExtraFeeLines(Invoice invoice, Reservation reservation)
+    private static bool IsProrateChargeByTransactionType(CostCode? costCode)
+        => costCode != null
+            && costCode.TransactionType is TransactionType.ChargeProrate or TransactionType.SecurityDepositWaiver;
+
+    private static bool IsOneTimeChargeByTransactionType(CostCode? costCode)
+        => costCode != null
+            && costCode.TransactionType is TransactionType.ChargeOneTime or TransactionType.SecurityDeposit;
+
+    private static IEnumerable<LedgerLine> GetSplitPoolExtraFeeLines(Invoice invoice, Reservation reservation, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         // Daily and Monthly extra fees follow the tenant's days in each accounting period, exactly like
         // rent: Daily prorates naturally by day, Monthly splits by the day ratio. They join the rent
@@ -270,11 +279,42 @@ public partial class AccountingManager
         var frequencyByDescription = BuildExtraFeeFrequencyByDescription(reservation);
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            if (frequencyByDescription.TryGetValue(line.Description, out var frequency)
-                && frequency is FrequencyType.Daily or FrequencyType.Monthly)
-            {
+            if (!frequencyByDescription.TryGetValue(line.Description, out var frequency))
+                continue;
+
+            if (IsOccurrenceFrequency(frequency) || frequency == FrequencyType.NA)
+                continue;
+
+            costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+            if (IsProrateChargeByTransactionType(costCode))
                 yield return line;
-            }
+        }
+    }
+
+    private static IEnumerable<LedgerLine> GetProrateChargeLinesByTransactionType(Invoice invoice, Reservation reservation, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var occurrenceExtraDescriptions = reservation.ExtraFeeLines
+            .Where(f => IsOccurrenceFrequency(f.FeeFrequency) || f.FeeFrequency == FrequencyType.NA)
+            .Select(f => f.FeeDescription)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
+        {
+            if (RentalFeePeriodRegex.IsMatch(line.Description.Trim()))
+                continue;
+
+            if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
+                continue;
+
+            if (occurrenceExtraDescriptions.Contains(line.Description))
+                continue;
+
+            costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+            if (IsPaymentLedgerLine(costCode))
+                continue;
+
+            if (IsProrateChargeByTransactionType(costCode))
+                yield return line;
         }
     }
 
@@ -329,30 +369,7 @@ public partial class AccountingManager
         // code mapped under the 4000 parent account splits across both accounting periods like rent, everything else is a one-time
         // up-front charge. Extra-fee lines are excluded here because they are now routed by their frequency
         // instead. Rentals, maid service, and payments have their own dedicated handling.
-        var extraFeeDescriptions = reservation.ExtraFeeLines
-            .Select(f => f.FeeDescription)
-            .ToHashSet(StringComparer.Ordinal);
-
-        var matchedLines = new List<LedgerLine>();
-        foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
-        {
-            if (RentalFeePeriodRegex.IsMatch(line.Description.Trim()))
-                continue;
-
-            if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
-                continue;
-
-            if (extraFeeDescriptions.Contains(line.Description))
-                continue;
-
-            accountingContext.CostCodeById.TryGetValue(line.CostCodeId, out var costCode);
-            if (IsPaymentLedgerLine(costCode))
-                continue;
-
-            if (costCode != null && IsCostCodeInRentalIncomeTree(costCode, accountingContext.ChartOfAccounts.ToList(), invoice.OfficeId, accountingContext.Office, accountingContext.CostCodeById, accountingContext.AccountingOffice))
-                matchedLines.Add(line);
-        }
-
+        var matchedLines = GetProrateChargeLinesByTransactionType(invoice, reservation, accountingContext.CostCodeById).ToList();
         return Task.FromResult(matchedLines);
     }
 
@@ -684,7 +701,7 @@ public partial class AccountingManager
         }
     }
 
-    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, IReadOnlyList<LedgerLine> apportionableIncomeLines, IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static bool TryApplyApportionedCrossPeriodLinesFromOriginal(Invoice originalInvoice, Invoice firstSlice, Invoice secondSlice, Reservation reservation, IReadOnlyList<LedgerLine> apportionableIncomeLines, IReadOnlyDictionary<int, CostCode> costCodeById, int? departureFeeCostCodeId = null)
     {
         var referenceYear = originalInvoice.AccountingPeriod != default
             ? originalInvoice.AccountingPeriod.Year
@@ -733,14 +750,19 @@ public partial class AccountingManager
                 && lineStart == rentalStart
                 && lineEnd == rentalEnd)
             .ToList();
+        var undatedProrateChargeLines = apportionableIncomeLines
+            .Where(line => !TryParseDescriptionDateRange(line.Description, referenceYear, out _, out _))
+            .ToList();
         var rentalPeriodMatchedLineKeys = rentalPeriodMatchedAdHocLines
             .Concat(rentalRangeMatchedIncomeLines)
+            .Concat(undatedProrateChargeLines)
             .Select(GetInvoiceLineKey)
             .ToHashSet(StringComparer.Ordinal);
         var pooledLines = crossingRentals
             .Cast<LedgerLine>()
             .Concat(rentalRangeMatchedIncomeLines)
-            .Concat(GetSplitPoolExtraFeeLines(originalInvoice, reservation))
+            .Concat(undatedProrateChargeLines)
+            .Concat(GetSplitPoolExtraFeeLines(originalInvoice, reservation, costCodeById))
             .Concat(rentalPeriodMatchedAdHocLines)
             .GroupBy(GetInvoiceLineKey)
             .Select(g => g.First())
@@ -765,12 +787,12 @@ public partial class AccountingManager
 
         // One-time / up-front charges (deposits, pet, and OneTime extra fees) stay entirely on
         // the first accounting period. Platform departure fees bill on the last stay month instead.
-        var oneTimeLines = GetOneTimeFeeLines(originalInvoice, reservation)
+        var oneTimeLines = GetOneTimeFeeLines(originalInvoice, reservation, costCodeById, departureFeeCostCodeId ?? 0)
             .Where(line => !rentalPeriodMatchedLineKeys.Contains(GetInvoiceLineKey(line)))
             .ToList();
         foreach (var oneTimeLine in oneTimeLines)
         {
-            var targetSlice = ShouldAssignDepartureFeeToSecondPeriod(oneTimeLine, reservation) ? secondSlice : firstSlice;
+            var targetSlice = ShouldAssignDepartureFeeToSecondPeriod(oneTimeLine, reservation, departureFeeCostCodeId ?? 0) ? secondSlice : firstSlice;
             targetSlice.LedgerLines.Add(CreateApportionedFeeLine(oneTimeLine, oneTimeLine.Amount));
         }
 
@@ -833,6 +855,9 @@ public partial class AccountingManager
 
             costCodeById.TryGetValue(line.CostCodeId, out var costCode);
             if (IsPaymentLedgerLine(costCode))
+                continue;
+
+            if (!IsProrateChargeByTransactionType(costCode))
                 continue;
 
             if (!TryParseDescriptionDateRange(line.Description, referenceYear, out var lineStart, out var lineEnd))
@@ -1004,7 +1029,8 @@ public partial class AccountingManager
 
             if (TryParseDescriptionDateRange(line.Description, referenceYear, out var lineStart, out var lineEnd)
                 && lineStart == rentalStart
-                && lineEnd == rentalEnd)
+                && lineEnd == rentalEnd
+                && IsProrateChargeByTransactionType(costCode))
             {
                 if (!TryApportionAmountByDayRatio(line.Amount, firstDays, totalDays, out var firstAmount, out var secondAmount))
                     return false;
@@ -1025,6 +1051,20 @@ public partial class AccountingManager
             }
 
             if (effectiveLineDate >= slice2Start && effectiveLineDate <= slice2End)
+            {
+                secondSlice.LedgerLines.Add(CreateApportionedFeeLine(line, line.Amount));
+                continue;
+            }
+
+            // Up-front Charge (One-Time) lines are often dated on the invoice/accounting-period
+            // start, which can fall before the rental window used for slice bounds.
+            if (IsOneTimeChargeByTransactionType(costCode) && effectiveLineDate < slice1Start)
+            {
+                firstSlice.LedgerLines.Add(CreateApportionedFeeLine(line, line.Amount));
+                continue;
+            }
+
+            if (IsOneTimeChargeByTransactionType(costCode) && effectiveLineDate > slice2End)
             {
                 secondSlice.LedgerLines.Add(CreateApportionedFeeLine(line, line.Amount));
                 continue;
@@ -1079,14 +1119,15 @@ public partial class AccountingManager
         return (startDate, endDate);
     }
 
-    private static bool ShouldAssignDepartureFeeToSecondPeriod(LedgerLine line, Reservation reservation)
+    private static bool ShouldAssignDepartureFeeToSecondPeriod(LedgerLine line, Reservation reservation, int departureFeeCostCodeId)
         => reservation.ReservationType == ReservationType.Platform
-            && string.Equals(line.Description, "Departure Fee", StringComparison.Ordinal);
+            && departureFeeCostCodeId > 0
+            && line.CostCodeId == departureFeeCostCodeId;
 
-    private static IEnumerable<LedgerLine> GetOneTimeFeeLines(Invoice originalInvoice, Reservation reservation)
+    private static IEnumerable<LedgerLine> GetOneTimeFeeLines(Invoice originalInvoice, Reservation reservation, IReadOnlyDictionary<int, CostCode> costCodeById, int departureFeeCostCodeId)
     {
-        var oneTimeExtraDescriptions = reservation.ExtraFeeLines
-            .Where(f => f.FeeFrequency == FrequencyType.OneTime)
+        var occurrenceExtraDescriptions = reservation.ExtraFeeLines
+            .Where(f => IsOccurrenceFrequency(f.FeeFrequency) || f.FeeFrequency == FrequencyType.NA)
             .Select(f => f.FeeDescription)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -1094,13 +1135,23 @@ public partial class AccountingManager
         {
             // Security Deposit Waiver is a deposit-type charge, not rental income, so it stays on the
             // first accounting period exactly like the Security Deposit instead of being apportioned.
-            if (line.Description is "Departure Fee" or "Security Deposit" or "Security Deposit Waiver" or "Pet Fee")
-            {
-                yield return line;
+            if (RentalFeePeriodRegex.IsMatch(line.Description.Trim()))
                 continue;
-            }
 
-            if (oneTimeExtraDescriptions.Contains(line.Description))
+            if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
+                continue;
+
+            if (occurrenceExtraDescriptions.Contains(line.Description))
+                continue;
+
+            costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+            // Security Deposit is always first-period. Departure Fee stays in this path so Platform
+            // reservations can target the last stay month. Other Charge (One-Time) lines use ledger date.
+            if (costCode?.TransactionType == TransactionType.SecurityDeposit)
+                yield return line;
+            else if (IsOneTimeChargeByTransactionType(costCode)
+                && departureFeeCostCodeId > 0
+                && line.CostCodeId == departureFeeCostCodeId)
                 yield return line;
         }
     }
