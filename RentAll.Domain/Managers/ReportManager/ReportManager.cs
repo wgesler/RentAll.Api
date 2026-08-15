@@ -26,6 +26,7 @@ public partial class ReportManager : IReportManager
     #region Load
     private async Task<RecapLineSet> LoadRecapLinesAsync(JournalEntryRecapGetCriteria criteria, bool includePaymentInvoiceContext)
     {
+        await EnsureRentalIncomeParentAccountIdsAsync(criteria);
         criteria.IncludePaymentInvoiceContext = includePaymentInvoiceContext;
         var allLines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
         return new RecapLineSet
@@ -33,6 +34,30 @@ public partial class ReportManager : IReportManager
             AllLines = allLines,
             ActivityLines = allLines.Where(line => line.IsInDateRange).ToList()
         };
+    }
+
+    private async Task EnsureRentalIncomeParentAccountIdsAsync(JournalEntryRecapGetCriteria criteria)
+    {
+        if (!string.IsNullOrWhiteSpace(criteria.RentalIncomeParentAccountIds)
+            && !string.IsNullOrWhiteSpace(criteria.RentalIncomeParentAccountNos))
+            return;
+
+        var parents = await _accountingManager.GetRentalIncomeParentAccountsAsync(
+            criteria.OrganizationId,
+            criteria.OfficeIds);
+        criteria.RentalIncomeParentAccountIds = parents.AccountIds;
+        criteria.RentalIncomeParentAccountNos = parents.AccountNos;
+    }
+
+    private static string ResolveRentalIncomeParentAccountNoLabel(JournalEntryRecapGetCriteria criteria)
+    {
+        var accountNos = (criteria.RentalIncomeParentAccountNos ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(accountNo => !string.IsNullOrWhiteSpace(accountNo))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return accountNos.Count == 0 ? string.Empty : accountNos[0];
     }
 
     private async Task<List<PropertyReportData>> LoadOwnerPropertyReportDataAsync(JournalEntryRecapGetCriteria criteria)
@@ -891,6 +916,7 @@ public partial class ReportManager : IReportManager
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
         };
+        await EnsureRentalIncomeParentAccountIdsAsync(recapCriteria);
 
         var properties = await LoadOwnerPropertyReportDataAsync(recapCriteria);
         var propertyIdsForOwner = properties

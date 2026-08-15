@@ -13,4 +13,6 @@ public class JournalEntryRecapGetCriteria
     public bool IncludePaymentInvoiceContext { get; set; }
     public bool IncludeOwnerReportSupplemental { get; set; }
     public bool IncludeEscrowSupplemental { get; set; }
+    public string RentalIncomeParentAccountIds { get; set; } = string.Empty;
+    public string RentalIncomeParentAccountNos { get; set; } = string.Empty;
 }

@@ -52,6 +52,7 @@ public partial class ReportManager
 
     private async Task<List<JournalEntryRecapLine>> LoadEscrowDrillDownRecapLinesAsync(JournalEntryRecapGetCriteria criteria)
     {
+        await EnsureRentalIncomeParentAccountIdsAsync(criteria);
         var lines = (await _journalEntryRepository.GetJournalEntryRecapLinesAsync(criteria)).ToList();
         return FilterEscrowDrillDownRecapLines(lines, criteria.PropertyId);
     }

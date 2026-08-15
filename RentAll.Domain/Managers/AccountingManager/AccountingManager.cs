@@ -124,6 +124,33 @@ public partial class AccountingManager : IAccountingManager
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.FurnishedRentExpenseCcId, costCodeById, accountingOffice);
     }
 
+    private int GetDefaultFurnishedRentCharge(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        CostCode? costCode = null;
+        if (office?.FurnishedRentChargeCcId is > 0)
+            costCodeById.TryGetValue(office.FurnishedRentChargeCcId.Value, out costCode);
+
+        return GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice, costCode);
+    }
+
+    public int GetDefaultParentRentalIncomeAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        var furnishedRentAccountId = GetDefaultFurnishedRentCharge(chartOfAccounts, officeId, office, costCodeById, accountingOffice);
+        var furnishedRentAccount = chartOfAccounts.FirstOrDefault(a => a.OfficeId == officeId && a.AccountId == furnishedRentAccountId)
+            ?? throw new Exception($"No furnished rent charge chart of account is configured for office {officeId}");
+
+        return ResolveRentalIncomeRootAccount(furnishedRentAccount, chartOfAccounts, officeId).AccountId;
+    }
+
+    public int GetDefaultParentRentalExpenseAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        var furnishedRentExpenseAccountId = GetDefaultFurnishedRentExpense(chartOfAccounts, officeId, office, costCodeById, accountingOffice);
+        var furnishedRentExpenseAccount = chartOfAccounts.FirstOrDefault(a => a.OfficeId == officeId && a.AccountId == furnishedRentExpenseAccountId)
+            ?? throw new Exception($"No furnished rent expense chart of account is configured for office {officeId}");
+
+        return ResolveRentalIncomeRootAccount(furnishedRentExpenseAccount, chartOfAccounts, officeId).AccountId;
+    }
+
     private int GetDefaultUnfurnishedRentExpense(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         return GetDefaultOfficeExpenseAccount(chartOfAccounts, officeId, office?.UnfurnishedRentExpenseCcId, costCodeById, accountingOffice);

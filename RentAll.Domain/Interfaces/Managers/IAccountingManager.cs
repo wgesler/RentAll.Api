@@ -110,6 +110,10 @@ public interface IAccountingManager
     int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     int GetDefaultEscrowOwnersAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
     int GetDefaultRetainedEarningsAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice);
+    int GetDefaultParentRentalIncomeAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice);
+    int GetDefaultParentRentalExpenseAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice);
+    Task<string> GetRentalIncomeParentAccountIdsAsync(Guid organizationId, string officeIds);
+    Task<(string AccountIds, string AccountNos)> GetRentalIncomeParentAccountsAsync(Guid organizationId, string officeIds);
     #endregion
 
     #region Owner AP Aging

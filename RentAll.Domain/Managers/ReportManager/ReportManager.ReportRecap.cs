@@ -13,7 +13,8 @@ public partial class ReportManager
         var recapLineSet = await LoadRecapLinesAsync(criteria, includePaymentInvoiceContext: true);
         return new RecapReport
         {
-            Rows = BuildRecapReportRows(recapLineSet.AllLines)
+            Rows = BuildRecapReportRows(recapLineSet.AllLines),
+            RentalIncomeParentAccountNo = ResolveRentalIncomeParentAccountNoLabel(criteria)
         };
     }
 

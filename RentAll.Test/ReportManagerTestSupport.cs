@@ -212,6 +212,12 @@ internal static class ReportManagerTestSupport
             accountingManager
                 .Setup(manager => manager.GetDefaultOwnerAccountsPayable(It.IsAny<List<ChartOfAccount>>(), OfficeId, It.IsAny<AccountingOffice?>()))
                 .Returns(OwnerAccountsPayableAccountId);
+            accountingManager
+                .Setup(manager => manager.GetRentalIncomeParentAccountIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                .ReturnsAsync("1");
+            accountingManager
+                .Setup(manager => manager.GetRentalIncomeParentAccountsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                .ReturnsAsync(("1", "4000"));
 
             _manager = new ReportManager(
                 journalEntryRepository.Object,

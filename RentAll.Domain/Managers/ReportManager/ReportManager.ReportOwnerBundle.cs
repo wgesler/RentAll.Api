@@ -25,7 +25,8 @@ public partial class ReportManager
             Accrual = accrual,
             Recap = new RecapReport
             {
-                Rows = recapRows
+                Rows = recapRows,
+                RentalIncomeParentAccountNo = ResolveRentalIncomeParentAccountNoLabel(criteria)
             }
         };
     }
@@ -47,6 +48,7 @@ public partial class ReportManager
         var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
         var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
         criteria.IncludePaymentInvoiceContext = true;
+        await EnsureRentalIncomeParentAccountIdsAsync(criteria);
 
         var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(criteria, priorMonthClose, periodStart);
         var recapLineSet = new RecapLineSet

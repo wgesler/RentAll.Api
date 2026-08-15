@@ -81,7 +81,8 @@ public partial class JournalEntryRepository
             IncludeOwnerReportSupplemental = includeOwnerReportSupplemental,
             IncludeEscrowSupplemental = includeEscrowSupplemental,
             PriorMonthCloseDate = priorMonthCloseDate,
-            PeriodStartDate = periodStartDate
+            PeriodStartDate = periodStartDate,
+            RentalIncomeParentAccountIds = criteria.RentalIncomeParentAccountIds
         };
     }
 
