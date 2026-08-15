@@ -892,10 +892,10 @@ public partial class AccountingManager
                 distributedFirst += firstAmount;
             }
 
-            if (IsCrossMonthRentalLine(line, referenceYear))
+            if (TryParseDescriptionDateRange(line.Description, referenceYear, out _, out _))
             {
-                firstSlice.LedgerLines.Add(CreateApportionedRentalLine(line, firstAmount, rentalStart, firstPeriodEnd));
-                secondSlice.LedgerLines.Add(CreateApportionedRentalLine(line, secondAmount, secondPeriodStart, rentalEnd));
+                firstSlice.LedgerLines.Add(CreateApportionedDatedChargeLine(line, firstAmount, rentalStart, firstPeriodEnd));
+                secondSlice.LedgerLines.Add(CreateApportionedDatedChargeLine(line, secondAmount, secondPeriodStart, rentalEnd));
             }
             else
             {
@@ -1035,8 +1035,13 @@ public partial class AccountingManager
                 if (!TryApportionAmountByDayRatio(line.Amount, firstDays, totalDays, out var firstAmount, out var secondAmount))
                     return false;
 
-                firstSlice.LedgerLines.Add(CreateApportionedFeeLine(line, firstAmount));
-                secondSlice.LedgerLines.Add(CreateApportionedFeeLine(line, secondAmount));
+                var firstMonthEnd = LastDayOfMonth(rentalStart);
+                var secondMonthStart = FirstDayOfMonth(rentalEnd);
+                var firstPeriodEnd = rentalEnd < firstMonthEnd ? rentalEnd : firstMonthEnd;
+                var secondPeriodStart = rentalStart > secondMonthStart ? rentalStart : secondMonthStart;
+
+                firstSlice.LedgerLines.Add(CreateApportionedDatedChargeLine(line, firstAmount, rentalStart, firstPeriodEnd));
+                secondSlice.LedgerLines.Add(CreateApportionedDatedChargeLine(line, secondAmount, secondPeriodStart, rentalEnd));
                 continue;
             }
 
@@ -1221,6 +1226,9 @@ public partial class AccountingManager
     }
 
     private static LedgerLine CreateApportionedRentalLine(LedgerLine template, decimal amount, DateOnly start, DateOnly end)
+        => CreateApportionedDatedChargeLine(template, amount, start, end);
+
+    private static LedgerLine CreateApportionedDatedChargeLine(LedgerLine template, decimal amount, DateOnly start, DateOnly end)
         => new()
         {
             LedgerLineId = template.LedgerLineId,
@@ -1229,13 +1237,26 @@ public partial class AccountingManager
             ReservationId = template.ReservationId,
             CostCodeId = template.CostCodeId,
             Amount = amount,
-            Description = $"Rental Fee ({start:MM/dd}-{end:MM/dd})",
+            Description = ReplaceDescriptionDateRange(template.Description, start, end),
             LedgerLineDate = template.LedgerLineDate,
             CreatedOn = template.CreatedOn,
             CreatedBy = template.CreatedBy,
             ModifiedOn = template.ModifiedOn,
             ModifiedBy = template.ModifiedBy
         };
+
+    private static string ReplaceDescriptionDateRange(string? description, DateOnly start, DateOnly end)
+    {
+        var replacement = $"({start:MM/dd}-{end:MM/dd})";
+        if (string.IsNullOrWhiteSpace(description))
+            return replacement;
+
+        var match = DescriptionPeriodRegex.Match(description);
+        if (!match.Success)
+            return description;
+
+        return string.Concat(description.AsSpan(0, match.Index), replacement, description.AsSpan(match.Index + match.Length));
+    }
 
     private static LedgerLine CreateApportionedFeeLine(LedgerLine template, decimal amount)
         => new()
