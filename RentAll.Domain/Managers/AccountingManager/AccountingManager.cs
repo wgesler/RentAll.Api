@@ -400,6 +400,26 @@ public partial class AccountingManager : IAccountingManager
         return GetChartOfAccountIdByCostCode(chartOfAccounts, officeId, costCode, defaultAccountId);
     }
 
+    // Periodic departure/pet: Office CC only. No CC / no matching CoA → null (caller skips).
+    private int? GetDefaultDepartureExpense(List<ChartOfAccount> chartOfAccounts, int officeId, CostCode? costCode)
+        => ResolveExpenseAccountIdByCostCode(chartOfAccounts, officeId, costCode);
+
+    private int? GetDefaultPetExpense(List<ChartOfAccount> chartOfAccounts, int officeId, CostCode? costCode)
+        => ResolveExpenseAccountIdByCostCode(chartOfAccounts, officeId, costCode);
+
+    private static int? ResolveExpenseAccountIdByCostCode(List<ChartOfAccount> chartOfAccounts, int officeId, CostCode? costCode)
+    {
+        if (costCode == null || string.IsNullOrWhiteSpace(costCode.Code))
+            return null;
+
+        var accountCode = NormalizeAccountCode(costCode.Code);
+        if (string.IsNullOrWhiteSpace(accountCode))
+            return null;
+
+        return chartOfAccounts.FirstOrDefault(a => a.OfficeId == officeId &&
+            NormalizeAccountCode(a.AccountNo).Equals(accountCode, StringComparison.OrdinalIgnoreCase))?.AccountId;
+    }
+
     // Bank & Balance Sheet Accounts
     private int GetDefaultBankAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
