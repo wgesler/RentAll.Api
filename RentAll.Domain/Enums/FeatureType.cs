@@ -8,5 +8,6 @@ public enum FeatureType
     QuickBooks = 3,
     Accounting = 4,
     Leads = 5,
-    Owners = 6
+    Owners = 6,
+    PropertyManagement = 7
 }
