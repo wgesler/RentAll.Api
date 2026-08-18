@@ -17,6 +17,7 @@ public class CreateOrganizationDto
     public string? ContactName { get; set; }
     public string? ContactEmail { get; set; }
     public string? Website { get; set; }
+    public string Domain { get; set; } = string.Empty;
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
     public int CurrentInvoiceNo { get; set; }
@@ -36,6 +37,9 @@ public class CreateOrganizationDto
 
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
+
+        if (string.IsNullOrWhiteSpace(Domain))
+            return (false, "Domain is required");
 
         return (true, null);
     }
@@ -58,6 +62,7 @@ public class CreateOrganizationDto
             ContactName = ContactName,
             ContactEmail = ContactEmail,
             Website = Website,
+            Domain = Domain.Trim(),
             LogoPath = null, // Will be set by controller after file save
             IsInternational = IsInternational,
             CurrentInvoiceNo = CurrentInvoiceNo,

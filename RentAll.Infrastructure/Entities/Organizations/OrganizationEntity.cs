@@ -17,6 +17,7 @@ public class OrganizationEntity
     public string? ContactName { get; set; }
     public string? ContactEmail { get; set; }
     public string? Website { get; set; }
+    public string Domain { get; set; } = string.Empty;
     public string? LogoPath { get; set; }
     public bool IsInternational { get; set; }
     public int CurrentInvoiceNo { get; set; }

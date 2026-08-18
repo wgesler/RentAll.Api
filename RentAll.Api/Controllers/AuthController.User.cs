@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Users;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 
@@ -132,6 +133,8 @@ public partial class AuthController
             var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
             if (existingUser == null)
                 return NotFound("User not found");
+            if (!CanEditDefaultOrgAdmin(existingUser))
+                return Unauthorized("Only SuperAdmin can edit the default organization admin.");
 
             if (existingUser.Email != dto.Email && await _userRepository.ExistsByEmailAsync(dto.Email))
                 return Conflict("Email already exists");
@@ -173,6 +176,8 @@ public partial class AuthController
         {
             // Check if user exists then check/delete logo
             var existingUser = await _userRepository.GetUserByIdAsync(userId);
+            if (existingUser != null && !CanEditDefaultOrgAdmin(existingUser))
+                return Unauthorized("Only SuperAdmin can delete the default organization admin.");
             if (existingUser != null && !string.IsNullOrWhiteSpace(existingUser.ProfilePath))
                 await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
 
@@ -187,4 +192,8 @@ public partial class AuthController
     }
 
     #endregion
+
+    private bool CanEditDefaultOrgAdmin(User user) => IsSuperAdmin() || !IsDefaultOrgAdmin(user);
+
+    private static bool IsDefaultOrgAdmin(User user) => !string.IsNullOrWhiteSpace(user.Email) && user.Email.StartsWith("admin@", StringComparison.OrdinalIgnoreCase);
 }

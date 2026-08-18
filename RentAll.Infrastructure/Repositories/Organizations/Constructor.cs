@@ -35,6 +35,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             ContactName = e.ContactName,
             ContactEmail = e.ContactEmail,
             Website = e.Website,
+            Domain = e.Domain,
             LogoPath = e.LogoPath,
             IsInternational = e.IsInternational,
             CurrentInvoiceNo = e.CurrentInvoiceNo,

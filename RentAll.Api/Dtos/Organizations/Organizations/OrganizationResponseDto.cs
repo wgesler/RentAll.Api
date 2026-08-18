@@ -19,6 +19,7 @@ public class OrganizationResponseDto
     public string? ContactName { get; set; }
     public string? ContactEmail { get; set; }
     public string? Website { get; set; }
+    public string Domain { get; set; } = string.Empty;
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
@@ -43,6 +44,7 @@ public class OrganizationResponseDto
         ContactName = org.ContactName;
         ContactEmail = org.ContactEmail;
         Website = org.Website;
+        Domain = org.Domain;
         LogoPath = org.LogoPath;
         FileDetails = org.FileDetails;
         IsInternational = org.IsInternational;

@@ -20,6 +20,7 @@ public class Organization
     public string? ContactName { get; set; }
     public string? ContactEmail { get; set; }
     public string? Website { get; set; }
+    public string Domain { get; set; } = string.Empty;
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
