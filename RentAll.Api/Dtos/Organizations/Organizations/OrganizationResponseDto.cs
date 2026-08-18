@@ -7,6 +7,7 @@ public class OrganizationResponseDto
     public Guid OrganizationId { get; set; }
     public string OrganizationCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public int OrganizationTypeId { get; set; }
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
     public string? Suite { get; set; }
@@ -30,6 +31,7 @@ public class OrganizationResponseDto
         OrganizationId = org.OrganizationId;
         OrganizationCode = org.OrganizationCode;
         Name = org.Name;
+        OrganizationTypeId = (int)org.OrganizationType;
         Address1 = org.Address1;
         Address2 = org.Address2;
         Suite = org.Suite;

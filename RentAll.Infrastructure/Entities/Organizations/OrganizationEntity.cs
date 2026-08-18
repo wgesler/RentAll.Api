@@ -5,6 +5,7 @@ public class OrganizationEntity
     public Guid OrganizationId { get; set; }
     public string OrganizationCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public int OrganizationTypeId { get; set; }
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
     public string? Suite { get; set; }

@@ -7,6 +7,7 @@ public class UpdateOrganizationDto
     public Guid OrganizationId { get; set; }
     public string OrganizationCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public int OrganizationTypeId { get; set; }
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
     public string? Suite { get; set; }
@@ -36,6 +37,12 @@ public class UpdateOrganizationDto
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 
+        if (OrganizationTypeId <= 0)
+            return (false, "OrganizationTypeId is required");
+
+        if (!Enum.IsDefined(typeof(OrganizationType), OrganizationTypeId))
+            return (false, $"Invalid OrganizationTypeId value: {OrganizationTypeId}");
+
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
 
@@ -52,6 +59,7 @@ public class UpdateOrganizationDto
             OrganizationId = OrganizationId,
             OrganizationCode = OrganizationCode,
             Name = Name,
+            OrganizationType = (OrganizationType)OrganizationTypeId,
             Address1 = Address1,
             Address2 = Address2,
             Suite = Suite,

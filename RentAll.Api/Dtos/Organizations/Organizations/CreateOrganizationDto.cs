@@ -5,6 +5,7 @@ namespace RentAll.Api.Dtos.Organizations.Organizations;
 public class CreateOrganizationDto
 {
     public string Name { get; set; } = string.Empty;
+    public int OrganizationTypeId { get; set; }
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
     public string? Suite { get; set; }
@@ -27,6 +28,9 @@ public class CreateOrganizationDto
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 
+        if (!Enum.IsDefined(typeof(OrganizationType), OrganizationTypeId))
+            return (false, $"Invalid OrganizationTypeId value: {OrganizationTypeId}");
+
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
 
@@ -42,6 +46,7 @@ public class CreateOrganizationDto
         {
             OrganizationCode = code,
             Name = Name,
+            OrganizationType = (OrganizationType)OrganizationTypeId,
             Address1 = Address1,
             Address2 = Address2,
             Suite = Suite,
