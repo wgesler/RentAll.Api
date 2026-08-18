@@ -130,6 +130,23 @@ namespace RentAll.Infrastructure.Repositories.Users
             return new User();
 
         }
+
+        public async Task<User> AddDefaultAdminAsync(Guid organizationId, int officeId, string phone, Guid createdBy)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<UserEntity>("User.User_AddDefaultAdmin", new
+            {
+                OrganizationId = organizationId,
+                OfficeId = officeId,
+                Phone = phone,
+                CreatedBy = createdBy
+            });
+
+            if (res == null || !res.Any())
+                throw new Exception("Default admin user was not created");
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
         #endregion
 
         #region Updates

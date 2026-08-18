@@ -12,6 +12,7 @@ namespace RentAll.Domain.Interfaces.Repositories
         Task<bool> ExistsByEmailAsync(string email);
 
         Task<User> CreateAsync(User user);
+        Task<User> AddDefaultAdminAsync(Guid organizationId, int officeId, string phone, Guid createdBy);
         Task<User> UpdateByIdAsync(User user);
         Task UpdateAuthActivityByIdAsync(Guid userId, DateTimeOffset? lastLoginOn = null, DateTimeOffset? lastSeenOn = null, DateTimeOffset? lastLogoutOn = null);
         Task DeleteUserByIdAsync(Guid userId);

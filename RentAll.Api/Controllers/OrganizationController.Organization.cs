@@ -217,6 +217,7 @@ namespace RentAll.Api.Controllers
             office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organization.OrganizationId, null, fileDetails, ImageType.Logos);
             var createdOffice = await _organizationRepository.CreateAsync(office);
             await _accountingManager.CreateDefaultCostCodeAsync(createdOffice.OrganizationId, createdOffice.OfficeId);
+            await _userRepository.AddDefaultAdminAsync(createdOffice.OrganizationId, createdOffice.OfficeId, organization.Phone, CurrentUser);
         }
 
     }
