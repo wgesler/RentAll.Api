@@ -55,6 +55,9 @@ namespace RentAll.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOrganization([FromBody] CreateOrganizationDto dto)
         {
+            if (!IsSuperAdmin())
+                return Unauthorized("NoAccess");
+
             if (dto == null)
                 return BadRequest("Organization data is required");
 
@@ -62,26 +65,52 @@ namespace RentAll.Api.Controllers
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
+            var organizationId = Guid.NewGuid();
+            string? savedLogoPath = null;
+
             try
             {
-                // Generate OrganizationId first so we can use it for file storage
-                var organizationId = Guid.NewGuid();
-
-                // Get a new organization code
                 var code = await _organizationManager.GenerateEntityCodeAsync();
                 var model = dto.ToModel(code, CurrentUser);
                 model.OrganizationId = organizationId;
 
-                model.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, null, dto.FileDetails, ImageType.Logos);
+                if (dto.FileDetails != null && !string.IsNullOrWhiteSpace(dto.FileDetails.File))
+                {
+                    try
+                    {
+                        savedLogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(
+                            organizationId, null, dto.FileDetails, ImageType.Logos);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error saving organization logo during create for organization {OrganizationId}", organizationId);
+                        return ServerError("The organization logo could not be saved. Try again without a logo or verify blob storage access.");
+                    }
+                }
+
+                model.LogoPath = savedLogoPath;
 
                 var created = await _organizationRepository.CreateAsync(model);
                 var response = new OrganizationResponseDto(created);
-                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, null, created.LogoPath, ImageType.Logos);
+                response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                    created.OrganizationId, null, created.LogoPath, ImageType.Logos);
 
                 return Ok(response);
             }
             catch (Exception ex)
             {
+                if (!string.IsNullOrWhiteSpace(savedLogoPath))
+                {
+                    try
+                    {
+                        await _fileService.DeleteImageAsync(organizationId, null, savedLogoPath, ImageType.Logos);
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        _logger.LogWarning(cleanupEx, "Failed to clean up logo after organization create failure: {LogoPath}", savedLogoPath);
+                    }
+                }
+
                 _logger.LogError(ex, "Error creating organization");
                 return ServerError("An error occurred while creating the organization");
             }

@@ -16,6 +16,7 @@ global using RentAll.Api.Dtos.Organizations.Offices;
 global using RentAll.Api.Dtos.Organizations.Organizations;
 global using RentAll.Api.Dtos.Organizations.Regions;
 global using RentAll.Api.Dtos.Organizations.Trackers;
+global using RentAll.Api.Dtos.Organizations.UserGuides;
 global using RentAll.Api.Dtos.Properties.Properties;
 global using RentAll.Api.Dtos.Properties.PropertyHtmls;
 global using RentAll.Api.Dtos.Properties.PropertyInformations;

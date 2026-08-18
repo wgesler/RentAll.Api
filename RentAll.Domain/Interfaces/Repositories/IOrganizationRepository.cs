@@ -93,6 +93,11 @@ public interface IOrganizationRepository
     Task<Branding> UpsertBrandingByOrganizationIdAsync(Branding branding, Guid modifiedBy);
     #endregion
 
+    #region UserGuide
+    Task<UserGuide?> GetUserGuideAsync();
+    Task<UserGuide> UpsertUserGuideAsync(UserGuide userGuide, Guid modifiedBy);
+    #endregion
+
     #region Regions
     Task<IEnumerable<Region>> GetRegionsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<Region?> GetRegionByIdAsync(int regionId, Guid organizationId);

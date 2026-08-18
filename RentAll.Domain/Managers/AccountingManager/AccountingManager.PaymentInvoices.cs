@@ -19,48 +19,8 @@ public partial class AccountingManager
     #region Setup
     public async Task<List<LedgerLine>> CreateLedgerLinesForOrganizationIdAsync(Organization organization, DateOnly startDate, DateOnly endDate)
     {
-        var lineItems = new List<LedgerLine>();
-        var lineNumber = 1;
-
-        var requestedDate = startDate;
-        var startDateMonth = startDate.Month;
-        var startDateYear = startDate.Year;
-
-        // Partial month = NO if: check-in is 1st, OR (month has 31 days AND check-in is 1st or 2nd)
-        var daysInMonth = DateTime.DaysInMonth(startDateYear, requestedDate.Month);
-        var isMonthPartial = (requestedDate.Day != 1);
-        var days = CalculateNumberOfBillingDays(startDate, endDate);
-
-        // Get the Offices for the Organization
-        IEnumerable<Office> offices = await _organizationRepository.GetOfficesByOrganizationIdAsync(organization.OrganizationId);
-
-        foreach (var office in offices)
-        {
-            var officeLine = $"Office Base Fee ({office.Name}): ({startDate:MM/dd}-{endDate:MM/dd})";
-            lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = officeLine, Amount = organization.OfficeFee });
-
-            var properties = await _propertyRepository.GetPropertyListByOfficeIdsAsync(office.OrganizationId, Convert.ToString(office.OfficeId));
-            var units = properties.Count() - 50;
-            switch (properties.Count())
-            {
-                case <= 2:
-                    break;
-                case <= 4:
-                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit50Fee });
-                    break;
-                case <= 6:
-                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit100Fee });
-                    break;
-                case <= 8:
-                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit200Fee });
-                    break;
-                default:
-                    lineItems.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"Unit Fee ({units} Units) for {office.Name}", Amount = units * organization.Unit500Fee });
-                    break;
-            }
-        }
-        await ApplyBillingCostCodesAsync(SystemOrganization, lineItems);
-        return lineItems;
+        await Task.CompletedTask;
+        return [];
     }
 
     public async Task ApplyBillingCostCodesAsync(Guid organizationId, List<LedgerLine> ledgerLines)
@@ -576,13 +536,6 @@ public partial class AccountingManager
     #endregion
 
     #region Day Calculation Methods
-    private static int CalculateNumberOfBillingDays(DateOnly startDate, DateOnly endDate)
-    {
-        if (endDate < startDate) return 0;
-
-        return endDate.DayNumber - startDate.DayNumber;
-    }
-
     private static int CalculateNumberOfDays(DateOnly startDate, DateOnly endDate, BillingType billingType, bool isDepartureMonthYear, bool isLastDayOfMonth)
     {
         if (endDate < startDate) return 0;

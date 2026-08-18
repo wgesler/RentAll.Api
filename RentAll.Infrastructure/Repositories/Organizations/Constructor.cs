@@ -37,12 +37,6 @@ public partial class OrganizationRepository : IOrganizationRepository
             LogoPath = e.LogoPath,
             IsInternational = e.IsInternational,
             CurrentInvoiceNo = e.CurrentInvoiceNo,
-            OfficeFee = e.OfficeFee,
-            UserFee = e.UserFee,
-            Unit50Fee = e.Unit50Fee,
-            Unit100Fee = e.Unit100Fee,
-            Unit200Fee = e.Unit200Fee,
-            Unit500Fee = e.Unit500Fee,
             SendGridName = e.SendGridName,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
@@ -335,6 +329,36 @@ public partial class OrganizationRepository : IOrganizationRepository
             HeaderTextColor = e.HeaderTextColor,
             LogoPath = e.LogoPath,
             CollapsedLogoPath = e.CollapsedLogoPath
+        };
+    }
+    #endregion
+
+    #region UserGuide
+    private UserGuide ConvertEntityToModel(UserGuideEntity e)
+    {
+        return new UserGuide
+        {
+            UserGuideId = e.UserGuideId,
+            Welcome = e.Welcome,
+            Dashboard = e.Dashboard,
+            DashboardStaff = e.DashboardStaff,
+            DashboardOwner = e.DashboardOwner,
+            Leads = e.Leads,
+            Boards = e.Boards,
+            Reservations = e.Reservations,
+            Properties = e.Properties,
+            Tickets = e.Tickets,
+            Maintenance = e.Maintenance,
+            Accounting = e.Accounting,
+            Owner = e.Owner,
+            Emails = e.Emails,
+            Documents = e.Documents,
+            Contacts = e.Contacts,
+            Users = e.Users,
+            Settings = e.Settings,
+            Logs = e.Logs,
+            Organizations = e.Organizations,
+            Billing = e.Billing
         };
     }
     #endregion

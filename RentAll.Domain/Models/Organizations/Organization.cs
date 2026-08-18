@@ -22,12 +22,6 @@ public class Organization
     public FileDetails? FileDetails { get; set; }
     public bool IsInternational { get; set; }
     public int CurrentInvoiceNo { get; set; }
-    public decimal OfficeFee { get; set; }
-    public decimal UserFee { get; set; }
-    public decimal Unit50Fee { get; set; }
-    public decimal Unit100Fee { get; set; }
-    public decimal Unit200Fee { get; set; }
-    public decimal Unit500Fee { get; set; }
     public string? SendGridName { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

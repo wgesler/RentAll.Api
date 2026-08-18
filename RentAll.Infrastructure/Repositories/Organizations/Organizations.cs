@@ -64,6 +64,7 @@ public partial class OrganizationRepository
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<OrganizationEntity>("Organization.Organization_Add", new
         {
+            OrganizationId = organization.OrganizationId,
             OrganizationCode = organization.OrganizationCode,
             Name = organization.Name,
             Address1 = organization.Address1,
@@ -80,12 +81,6 @@ public partial class OrganizationRepository
             LogoPath = organization.LogoPath,
             IsInternational = organization.IsInternational,
             CurrentInvoiceNo = organization.CurrentInvoiceNo,
-            OfficeFee = organization.OfficeFee,
-            UserFee = organization.UserFee,
-            Unit50Fee = organization.Unit50Fee,
-            Unit100Fee = organization.Unit100Fee,
-            Unit200Fee = organization.Unit200Fee,
-            Unit500Fee = organization.Unit500Fee,
             SendGridName = organization.SendGridName,
             IsActive = organization.IsActive,
             CreatedBy = organization.CreatedBy
@@ -121,12 +116,6 @@ public partial class OrganizationRepository
             LogoPath = organization.LogoPath,
             IsInternational = organization.IsInternational,
             CurrentInvoiceNo = organization.CurrentInvoiceNo,
-            OfficeFee = organization.OfficeFee,
-            UserFee = organization.UserFee,
-            Unit50Fee = organization.Unit50Fee,
-            Unit100Fee = organization.Unit100Fee,
-            Unit200Fee = organization.Unit200Fee,
-            Unit500Fee = organization.Unit500Fee,
             SendGridName = organization.SendGridName,
             IsActive = organization.IsActive,
             ModifiedBy = organization.ModifiedBy
