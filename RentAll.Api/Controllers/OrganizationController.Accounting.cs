@@ -1,3 +1,4 @@
+using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
@@ -7,11 +8,15 @@ namespace RentAll.Api.Controllers
         #region Get
 
         [HttpGet("accounting-office")]
-        public async Task<IActionResult> GetAccountingOfficesByOfficeIdAsync()
+        public async Task<IActionResult> GetAccountingOfficesByOfficeIdAsync([FromQuery] Guid? organizationId)
         {
             try
             {
-                var accountingOffices = await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+                IEnumerable<AccountingOffice> accountingOffices;
+                if (IsSuperAdmin() && organizationId.HasValue && organizationId.Value != Guid.Empty)
+                    accountingOffices = await _organizationRepository.GetAccountingOfficesByOrganizationIdAsync(organizationId.Value);
+                else
+                    accountingOffices = await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var accountingOfficeList = accountingOffices.ToList();
                 foreach (var accountingOffice in accountingOfficeList)
                     accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(accountingOffice.OfficeId);
@@ -68,25 +73,26 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Accounting office data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
+            var organizationId = ResolveAccountingOrganizationId(dto.OrganizationId);
+            var (isValid, errorMessage) = dto.IsValid(await RequiresAccountingBankInformationAsync(organizationId));
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid accounting office data");
 
             try
             {
                 // Check if accounting office already exists
-                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(dto.OrganizationId, dto.OfficeId);
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, dto.OfficeId);
                 if (existing != null)
                     return Conflict("Accounting office code already exists");
 
                 var accountingOffice = dto.ToModel(CurrentUser);
-                accountingOffice.OrganizationId = CurrentOrganizationId;
+                accountingOffice.OrganizationId = organizationId;
 
-                accountingOffice.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, ImageType.Logos);
+                accountingOffice.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, ImageType.Logos);
 
                 var created = await _organizationRepository.CreateAccountingAsync(accountingOffice);
 
-                var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(created.OfficeId);
+                var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(created.OfficeId, organizationId);
                 if (refreshedAccountingOffice == null)
                     return NotFound("Accounting office not found");
 
@@ -229,25 +235,26 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Accounting office data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
+            var organizationId = ResolveAccountingOrganizationId(dto.OrganizationId);
+            var (isValid, errorMessage) = dto.IsValid(await RequiresAccountingBankInformationAsync(organizationId));
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid accounting office data");
 
             try
             {
                 // Check if accounting office exists
-                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, dto.OfficeId);
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, dto.OfficeId);
                 if (existing == null)
                     return NotFound("Accounting office not found");
 
                 var accountingOffice = dto.ToModel(CurrentUser);
+                accountingOffice.OrganizationId = organizationId;
                 var officeName = await GetOfficeNameAsync(dto.OfficeId);
-                accountingOffice.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.FileDetails,
-                    ImageType.Logos, existing.LogoPath, dto.LogoPath);
+                accountingOffice.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(organizationId, officeName, dto.FileDetails, ImageType.Logos, existing.LogoPath, dto.LogoPath);
 
                 var updated = await _organizationRepository.UpdateAccountingAsync(accountingOffice);
 
-                var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(updated.OfficeId);
+                var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(updated.OfficeId, organizationId);
                 if (refreshedAccountingOffice == null)
                     return NotFound("Accounting office not found");
 
@@ -306,9 +313,20 @@ namespace RentAll.Api.Controllers
             return bankCards;
         }
 
-        private async Task<AccountingOffice?> LoadAccountingOfficeWithBankCardsAsync(int officeId)
+        private Guid ResolveAccountingOrganizationId(Guid requestedOrganizationId)
         {
-            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
+            return IsSuperAdmin() && requestedOrganizationId != Guid.Empty ? requestedOrganizationId : CurrentOrganizationId;
+        }
+
+        private async Task<bool> RequiresAccountingBankInformationAsync(Guid organizationId)
+        {
+            return !await IsPropertyBrokerOrganizationAsync(organizationId);
+        }
+
+        private async Task<AccountingOffice?> LoadAccountingOfficeWithBankCardsAsync(int officeId, Guid? organizationId = null)
+        {
+            var resolvedOrganizationId = organizationId.HasValue ? ResolveAccountingOrganizationId(organizationId.Value) : CurrentOrganizationId;
+            var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(resolvedOrganizationId, officeId);
             if (accountingOffice == null)
                 return null;
 

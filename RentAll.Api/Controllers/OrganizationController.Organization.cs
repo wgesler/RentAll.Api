@@ -1,3 +1,4 @@
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
 {
@@ -91,6 +92,7 @@ namespace RentAll.Api.Controllers
                 model.LogoPath = savedLogoPath;
 
                 var created = await _organizationRepository.CreateAsync(model);
+                await CreateDefaultMainOfficeAsync(created, dto.FileDetails);
                 var response = new OrganizationResponseDto(created);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
                     created.OrganizationId, null, created.LogoPath, ImageType.Logos);
@@ -191,6 +193,31 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
+
+        private async Task CreateDefaultMainOfficeAsync(Organization organization, FileDetails? fileDetails)
+        {
+            var office = new Office
+            {
+                OrganizationId = organization.OrganizationId,
+                OfficeCode = "MAIN",
+                Name = "Main",
+                Address1 = organization.Address1,
+                Address2 = organization.Address2,
+                Suite = organization.Suite,
+                City = organization.City,
+                State = organization.State,
+                Zip = organization.Zip,
+                Phone = organization.Phone,
+                Fax = organization.Fax,
+                Website = organization.Website,
+                IsInternational = organization.IsInternational,
+                IsActive = organization.IsActive
+            };
+
+            office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organization.OrganizationId, null, fileDetails, ImageType.Logos);
+            var createdOffice = await _organizationRepository.CreateAsync(office);
+            await _accountingManager.CreateDefaultCostCodeAsync(createdOffice.OrganizationId, createdOffice.OfficeId);
+        }
 
     }
 }

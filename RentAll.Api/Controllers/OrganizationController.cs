@@ -49,5 +49,11 @@ namespace RentAll.Api.Controllers
             var office = await _organizationRepository.GetOfficeByIdAsync(officeId.Value, CurrentOrganizationId);
             return office?.Name;
         }
+
+        private async Task<bool> IsPropertyBrokerOrganizationAsync(Guid organizationId)
+        {
+            var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
+            return organization != null && organization.OrganizationType == OrganizationType.PropertyBroker;
+        }
     }
 }

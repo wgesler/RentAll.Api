@@ -15,12 +15,12 @@ public class AccountingOffice
     public string? Fax { get; set; }
     public string Email { get; set; } = string.Empty;
     public string? Website { get; set; }
-    public string BankName { get; set; } = string.Empty;
-    public string BankRouting { get; set; } = string.Empty;
-    public string BankAccount { get; set; } = string.Empty;
-    public string BankSwiftCode { get; set; } = string.Empty;
-    public string BankAddress { get; set; } = string.Empty;
-    public string BankPhone { get; set; } = string.Empty;
+    public string? BankName { get; set; }
+    public string? BankRouting { get; set; }
+    public string? BankAccount { get; set; }
+    public string? BankSwiftCode { get; set; }
+    public string? BankAddress { get; set; }
+    public string? BankPhone { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;

@@ -17,12 +17,12 @@ public class UpdateAccountingOfficeDto
     public string? Fax { get; set; }
     public string Email { get; set; } = string.Empty;
     public string Website { get; set; } = string.Empty;
-    public string BankName { get; set; } = string.Empty;
-    public string BankRouting { get; set; } = string.Empty;
-    public string BankAccount { get; set; } = string.Empty;
-    public string BankSwiftCode { get; set; } = string.Empty;
-    public string BankAddress { get; set; } = string.Empty;
-    public string BankPhone { get; set; } = string.Empty;
+    public string? BankName { get; set; }
+    public string? BankRouting { get; set; }
+    public string? BankAccount { get; set; }
+    public string? BankSwiftCode { get; set; }
+    public string? BankAddress { get; set; }
+    public string? BankPhone { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;
@@ -54,7 +54,7 @@ public class UpdateAccountingOfficeDto
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid(bool requireBankInformation = true)
     {
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
@@ -80,22 +80,22 @@ public class UpdateAccountingOfficeDto
         if (string.IsNullOrWhiteSpace(Phone))
             return (false, "Phone is required");
 
-        if (string.IsNullOrWhiteSpace(BankName))
+        if (requireBankInformation && string.IsNullOrWhiteSpace(BankName))
             return (false, "BankName is required");
 
-        if (string.IsNullOrWhiteSpace(BankRouting))
+        if (requireBankInformation && string.IsNullOrWhiteSpace(BankRouting))
             return (false, "BankRouting is required");
 
-        if (string.IsNullOrWhiteSpace(BankAccount))
+        if (requireBankInformation && string.IsNullOrWhiteSpace(BankAccount))
             return (false, "BankAccount is required");
 
-        if (string.IsNullOrWhiteSpace(BankSwiftCode))
+        if (requireBankInformation && string.IsNullOrWhiteSpace(BankSwiftCode))
             return (false, "BankSwiftCode is required");
 
-        if (string.IsNullOrWhiteSpace(BankAddress))
+        if (requireBankInformation && string.IsNullOrWhiteSpace(BankAddress))
             return (false, "BankAddress is required");
 
-        if (string.IsNullOrWhiteSpace(BankPhone))
+        if (requireBankInformation && string.IsNullOrWhiteSpace(BankPhone))
             return (false, "BankPhone is required");
 
         if (string.IsNullOrWhiteSpace(Email))
@@ -137,12 +137,12 @@ public class UpdateAccountingOfficeDto
             Fax = Fax,
             Email = Email,
             Website = Website,
-            BankName = BankName,
-            BankRouting = BankRouting,
-            BankAccount = BankAccount,
-            BankSwiftCode = BankSwiftCode,
-            BankAddress = BankAddress,
-            BankPhone = BankPhone,
+            BankName = string.IsNullOrWhiteSpace(BankName) ? null : BankName,
+            BankRouting = string.IsNullOrWhiteSpace(BankRouting) ? null : BankRouting,
+            BankAccount = string.IsNullOrWhiteSpace(BankAccount) ? null : BankAccount,
+            BankSwiftCode = string.IsNullOrWhiteSpace(BankSwiftCode) ? null : BankSwiftCode,
+            BankAddress = string.IsNullOrWhiteSpace(BankAddress) ? null : BankAddress,
+            BankPhone = string.IsNullOrWhiteSpace(BankPhone) ? null : BankPhone,
             StartMonth = StartMonth,
             StartYear = StartYear,
             YearEndMonth = YearEndMonth,

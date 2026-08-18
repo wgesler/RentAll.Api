@@ -66,18 +66,20 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Office data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
+            var organizationId = IsSuperAdmin() ? dto.OrganizationId : CurrentOrganizationId;
+            var (isValid, errorMessage) = dto.IsValid(!await IsPropertyBrokerOrganizationAsync(organizationId));
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
-                if (await _organizationRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
+                if (await _organizationRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, organizationId))
                     return Conflict("Office Code already exists");
 
                 // Create requested office
                 var office = dto.ToModel();
-                office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, null, dto.FileDetails, ImageType.Logos);
+                office.OrganizationId = organizationId;
+                office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, null, dto.FileDetails, ImageType.Logos);
                 var createdOffice = await _organizationRepository.CreateAsync(office);
 
                 // Create default cost codes for the office
@@ -103,23 +105,25 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Office data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
+            var organizationId = IsSuperAdmin() ? dto.OrganizationId : CurrentOrganizationId;
+            var (isValid, errorMessage) = dto.IsValid(!await IsPropertyBrokerOrganizationAsync(organizationId));
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
-                var existingOffice = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
+                var existingOffice = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, organizationId);
                 if (existingOffice == null)
                     return NotFound("Office not found");
 
                 if (existingOffice.OfficeCode != dto.OfficeCode)
                 {
-                    if (await _organizationRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, CurrentOrganizationId))
+                    if (await _organizationRepository.ExistsByOfficeCodeAsync(dto.OfficeCode, organizationId))
                         return Conflict("Office Code already exists");
                 }
 
                 var office = dto.ToModel();
+                office.OrganizationId = organizationId;
 
                 office.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                     existingOffice.OrganizationId, existingOffice.Name, dto.FileDetails, ImageType.Logos, existingOffice.LogoPath, dto.LogoPath);
