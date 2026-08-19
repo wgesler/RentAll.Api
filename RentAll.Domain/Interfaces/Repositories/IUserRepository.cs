@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Interfaces.Repositories
@@ -12,7 +13,7 @@ namespace RentAll.Domain.Interfaces.Repositories
         Task<bool> ExistsByEmailAsync(string email);
 
         Task<User> CreateAsync(User user);
-        Task<User> AddDefaultAdminAsync(Guid organizationId, int officeId, string phone, Guid createdBy);
+        Task<User> AddDefaultAdminAsync(Guid organizationId, int officeId, string phone, RoleType userGroup, Guid createdBy);
         Task<User> UpdateByIdAsync(User user);
         Task UpdateAuthActivityByIdAsync(Guid userId, DateTimeOffset? lastLoginOn = null, DateTimeOffset? lastSeenOn = null, DateTimeOffset? lastLogoutOn = null);
         Task DeleteUserByIdAsync(Guid userId);

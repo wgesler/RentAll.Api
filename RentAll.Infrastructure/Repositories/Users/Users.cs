@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using System.Text.Json;
@@ -131,7 +132,7 @@ namespace RentAll.Infrastructure.Repositories.Users
 
         }
 
-        public async Task<User> AddDefaultAdminAsync(Guid organizationId, int officeId, string phone, Guid createdBy)
+        public async Task<User> AddDefaultAdminAsync(Guid organizationId, int officeId, string phone, RoleType userGroup, Guid createdBy)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<UserEntity>("User.User_AddDefaultAdmin", new
@@ -139,6 +140,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 OrganizationId = organizationId,
                 OfficeId = officeId,
                 Phone = phone,
+                UserGroup = (int)userGroup,
                 CreatedBy = createdBy
             });
 

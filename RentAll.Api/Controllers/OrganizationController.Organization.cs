@@ -194,13 +194,15 @@ namespace RentAll.Api.Controllers
 
         #endregion
 
+        #region Auto Create Methods
         private async Task CreateDefaultMainOfficeAsync(Organization organization, FileDetails? fileDetails)
         {
+            var cityName = string.IsNullOrWhiteSpace(organization.City) ? "Main" : organization.City.Trim();
             var office = new Office
             {
                 OrganizationId = organization.OrganizationId,
-                OfficeCode = "MAIN",
-                Name = "Main",
+                OfficeCode = cityName.ToUpperInvariant(),
+                Name = cityName,
                 Address1 = organization.Address1,
                 Address2 = organization.Address2,
                 Suite = organization.Suite,
@@ -215,10 +217,53 @@ namespace RentAll.Api.Controllers
             };
 
             office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organization.OrganizationId, null, fileDetails, ImageType.Logos);
+
+            // For every new organization, create a default office
             var createdOffice = await _organizationRepository.CreateAsync(office);
+
+            // If this is a Partner organization, create a default vendor
+            if(organization.OrganizationType == OrganizationType.Partner)
+                await CreateDefaultVendorContactAsync(organization, createdOffice);
+
+            // Create cost codes for this fofice
             await _accountingManager.CreateDefaultCostCodeAsync(createdOffice.OrganizationId, createdOffice.OfficeId);
-            await _userRepository.AddDefaultAdminAsync(createdOffice.OrganizationId, createdOffice.OfficeId, organization.Phone, CurrentUser);
+
+            // Create a new admin/user for this organizaiton
+            var adminType = organization.OrganizationType == OrganizationType.Partner ? RoleType.PartnerAdmin : RoleType.Admin;
+            await _userRepository.AddDefaultAdminAsync(createdOffice.OrganizationId, createdOffice.OfficeId, organization.Phone, adminType, CurrentUser);
         }
 
+        private async Task CreateDefaultVendorContactAsync(Organization organization, Office office)
+        {
+            var companyName = string.IsNullOrWhiteSpace(organization.Name) ? "Main" : organization.Name.Trim();
+            var displayName = companyName.Length <= 10 ? companyName : companyName[..10];
+            var email = !string.IsNullOrWhiteSpace(organization.ContactEmail) ? organization.ContactEmail.Trim() : $"admin@{(organization.Domain ?? string.Empty).Trim()}";
+            var address2 = string.Join(" ", new[] { organization.Address2, organization.Suite }.Where(value => !string.IsNullOrWhiteSpace(value))).Trim();
+            var code = await _contactManager.GenerateContactCodeAsync(organization.OrganizationId, (int)EntityType.Vendor);
+            await _contactRepository.CreateAsync(new Contact
+            {
+                OrganizationId = organization.OrganizationId,
+                OfficeId = office.OfficeId,
+                OfficeAccess = new List<int> { office.OfficeId },
+                ContactCode = code,
+                EntityType = EntityType.Vendor,
+                VendorType = VendorType.Company,
+                CompanyName = companyName,
+                CompanyEmail = email,
+                DisplayName = displayName,
+                FirstName = organization.ContactName,
+                Address1 = organization.Address1,
+                Address2 = string.IsNullOrWhiteSpace(address2) ? null : address2,
+                City = organization.City,
+                State = organization.State,
+                Zip = organization.Zip,
+                Phone = organization.Phone,
+                Email = email,
+                IsInternational = organization.IsInternational,
+                IsActive = true,
+                CreatedBy = CurrentUser
+            });
+        }
+        #endregion
     }
 }
