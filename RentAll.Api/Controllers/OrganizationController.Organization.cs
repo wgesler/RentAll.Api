@@ -92,6 +92,7 @@ namespace RentAll.Api.Controllers
                 model.LogoPath = savedLogoPath;
 
                 var created = await _organizationRepository.CreateAsync(model);
+                await _organizationRepository.CreateFeatureAsync(new Feature {OrganizationId = created.OrganizationId, FeatureTypeId = FeatureType.MainProgram, HasAccess = true});
                 await CreateDefaultMainOfficeAsync(created, dto.FileDetails);
                 var response = new OrganizationResponseDto(created);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
@@ -239,6 +240,7 @@ namespace RentAll.Api.Controllers
             var displayName = companyName.Length <= 10 ? companyName : companyName[..10];
             var email = !string.IsNullOrWhiteSpace(organization.ContactEmail) ? organization.ContactEmail.Trim() : $"admin@{(organization.Domain ?? string.Empty).Trim()}";
             var address2 = string.Join(" ", new[] { organization.Address2, organization.Suite }.Where(value => !string.IsNullOrWhiteSpace(value))).Trim();
+            var firstName = (organization.ContactName ?? string.Empty).Trim();
             var code = await _contactManager.GenerateContactCodeAsync(organization.OrganizationId, (int)EntityType.Vendor);
             await _contactRepository.CreateAsync(new Contact
             {
@@ -251,14 +253,19 @@ namespace RentAll.Api.Controllers
                 CompanyName = companyName,
                 CompanyEmail = email,
                 DisplayName = displayName,
-                FirstName = organization.ContactName,
+                FirstName = firstName.Length <= 100 ? firstName : firstName[..100],
                 Address1 = organization.Address1,
-                Address2 = string.IsNullOrWhiteSpace(address2) ? null : address2,
+                Address2 = string.IsNullOrWhiteSpace(address2) ? null : (address2.Length <= 100 ? address2 : address2[..100]),
                 City = organization.City,
                 State = organization.State,
                 Zip = organization.Zip,
                 Phone = organization.Phone,
                 Email = email,
+                Markup = 25,
+                RevenueSplitOwner = 75,
+                RevenueSplitOffice = 25,
+                WorkingCapitalBalance = 0,
+                LinenAndTowelFee = 0,
                 IsInternational = organization.IsInternational,
                 IsActive = true,
                 CreatedBy = CurrentUser
