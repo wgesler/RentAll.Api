@@ -32,6 +32,20 @@ public class PartnerRepository : IPartnerRepository
         return res.Select(ConvertEntityToModel);
     }
 
+    public async Task<IEnumerable<PropertyList>> GetActivePropertyListBySelectionCriteriaAsync(Guid userId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<PropertyListEntity>("Partner.Partner_GetActiveListBySelection", new
+        {
+            UserId = userId
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<PropertyList>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
     public async Task<IEnumerable<PartnerCityState>> GetListOfCitiesAsync()
     {
         await using var db = new SqlConnection(_dbConnectionString);

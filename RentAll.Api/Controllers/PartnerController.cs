@@ -36,6 +36,24 @@ public class PartnerController : BaseController
         }
     }
 
+    [HttpGet("properties/user/{userId:guid}/active")]
+    public async Task<IActionResult> GetActivePropertiesByUserSelection(Guid userId)
+    {
+        if (CurrentUser == Guid.Empty || CurrentUser != userId)
+            return Unauthorized();
+
+        try
+        {
+            var properties = await _partnerRepository.GetActivePropertyListBySelectionCriteriaAsync(CurrentUser);
+            return Ok(properties.Select(p => new PropertyListResponseDto(p)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting partner properties by selection for user: {UserId}", CurrentUser);
+            return ServerError("An error occurred while retrieving partner properties");
+        }
+    }
+
     [HttpGet("cities")]
     public async Task<IActionResult> GetListOfCities()
     {
