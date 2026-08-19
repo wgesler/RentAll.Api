@@ -47,6 +47,27 @@ public class PartnerRepository : IPartnerRepository
         });
     }
 
+    public async Task<PartnerContact?> GetPartnerContactAsync(Guid propertyId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<PartnerContactEntity>("Partner.Partner_GetPartnerContact", new
+        {
+            PropertyId = propertyId
+        });
+
+        var contact = res?.FirstOrDefault();
+        if (contact == null)
+            return null;
+
+        return new PartnerContact
+        {
+            CompanyName = contact.CompanyName,
+            Name = contact.Name,
+            Phone = contact.Phone,
+            Email = contact.Email
+        };
+    }
+
     private static PropertyList ConvertEntityToModel(PropertyListEntity e) =>
         new()
         {

@@ -7,4 +7,5 @@ public interface IPartnerRepository
 {
     Task<IEnumerable<PropertyList>> GetAllPropertiesAsync();
     Task<IEnumerable<PartnerCityState>> GetListOfCitiesAsync();
+    Task<PartnerContact?> GetPartnerContactAsync(Guid propertyId);
 }

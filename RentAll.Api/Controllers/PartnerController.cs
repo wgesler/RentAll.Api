@@ -50,4 +50,25 @@ public class PartnerController : BaseController
             return ServerError("An error occurred while retrieving partner property cities");
         }
     }
+
+    [HttpGet("contact/{propertyId:guid}")]
+    public async Task<IActionResult> GetPartnerContact(Guid propertyId)
+    {
+        if (propertyId == Guid.Empty)
+            return BadRequest("PropertyId is required");
+
+        try
+        {
+            var contact = await _partnerRepository.GetPartnerContactAsync(propertyId);
+            if (contact == null)
+                return NotFound("Partner property contact not found");
+
+            return Ok(new PartnerContactResponseDto(contact));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting partner contact for property {PropertyId}", propertyId);
+            return ServerError("An error occurred while retrieving partner property contact");
+        }
+    }
 }
