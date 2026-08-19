@@ -9,5 +9,5 @@ public enum FeatureType
     Accounting = 4,
     Leads = 5,
     Owners = 6,
-    PropertyManagement = 7
+    Management = 7
 }
