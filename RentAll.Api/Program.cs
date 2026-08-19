@@ -25,6 +25,7 @@ using RentAll.Infrastructure.Repositories.Leads;
 using RentAll.Infrastructure.Repositories.Logging;
 using RentAll.Infrastructure.Repositories.Maintenances;
 using RentAll.Infrastructure.Repositories.Organizations;
+using RentAll.Infrastructure.Repositories.Partners;
 using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
 using RentAll.Infrastructure.Repositories.Tickets;
@@ -206,6 +207,7 @@ builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<ICommonRepository, CommonRepository>();
 builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 builder.Services.AddScoped<ILeadRepository, LeadRepository>();
+builder.Services.AddScoped<IPartnerRepository, PartnerRepository>();
 
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
