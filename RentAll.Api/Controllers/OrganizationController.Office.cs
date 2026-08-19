@@ -67,7 +67,7 @@ namespace RentAll.Api.Controllers
                 return BadRequest("Office data is required");
 
             var organizationId = IsSuperAdmin() ? dto.OrganizationId : CurrentOrganizationId;
-            var (isValid, errorMessage) = dto.IsValid(!await IsPropertyBrokerOrganizationAsync(organizationId));
+            var (isValid, errorMessage) = dto.IsValid(!await IsPartnerOrganizationAsync(organizationId));
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
@@ -106,7 +106,7 @@ namespace RentAll.Api.Controllers
                 return BadRequest("Office data is required");
 
             var organizationId = IsSuperAdmin() ? dto.OrganizationId : CurrentOrganizationId;
-            var (isValid, errorMessage) = dto.IsValid(!await IsPropertyBrokerOrganizationAsync(organizationId));
+            var (isValid, errorMessage) = dto.IsValid(!await IsPartnerOrganizationAsync(organizationId));
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 

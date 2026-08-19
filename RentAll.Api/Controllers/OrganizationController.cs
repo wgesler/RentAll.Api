@@ -50,10 +50,10 @@ namespace RentAll.Api.Controllers
             return office?.Name;
         }
 
-        private async Task<bool> IsPropertyBrokerOrganizationAsync(Guid organizationId)
+        private async Task<bool> IsPartnerOrganizationAsync(Guid organizationId)
         {
             var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
-            return organization != null && organization.OrganizationType == OrganizationType.PropertyBroker;
+            return organization != null && organization.OrganizationType == OrganizationType.Partner;
         }
     }
 }

@@ -320,7 +320,7 @@ namespace RentAll.Api.Controllers
 
         private async Task<bool> RequiresAccountingBankInformationAsync(Guid organizationId)
         {
-            return !await IsPropertyBrokerOrganizationAsync(organizationId);
+            return !await IsPartnerOrganizationAsync(organizationId);
         }
 
         private async Task<AccountingOffice?> LoadAccountingOfficeWithBankCardsAsync(int officeId, Guid? organizationId = null)
