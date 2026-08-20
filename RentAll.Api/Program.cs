@@ -59,6 +59,7 @@ builder.Services.Configure<DocuSignSettings>(docuSignSettings);
 builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
 builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.GetSection("ExternalTicketIntakeSettings"));
 builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
+builder.Services.Configure<ExternalPropertyIntakeSettings>(builder.Configuration.GetSection("ExternalPropertyIntakeSettings"));
 builder.Services.Configure<EncryptionSettings>(builder.Configuration.GetSection("EncryptionSettings"));
 builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
 builder.Services.Configure<ApplicationLoggingSettings>(builder.Configuration.GetSection("ApplicationLogging"));

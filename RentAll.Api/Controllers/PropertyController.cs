@@ -17,6 +17,7 @@ namespace RentAll.Api.Controllers
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
         private readonly IOrganizationRepository _organizationRepository;
+        private readonly IOrganizationManager _organizationManager;
         private readonly IUserRepository _userRepository;
         private readonly ICalendarManager _calendarManager;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -29,6 +30,7 @@ namespace RentAll.Api.Controllers
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
             IOrganizationRepository organizationRepository,
+            IOrganizationManager organizationManager,
             IUserRepository userRepository,
             ICalendarManager calendarManager,
             IFileAttachmentHelper fileAttachmentHelper,
@@ -40,6 +42,7 @@ namespace RentAll.Api.Controllers
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;
             _organizationRepository = organizationRepository;
+            _organizationManager = organizationManager;
             _userRepository = userRepository;
             _calendarManager = calendarManager;
             _fileAttachmentHelper = fileAttachmentHelper;
