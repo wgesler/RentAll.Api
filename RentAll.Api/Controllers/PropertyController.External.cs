@@ -6,7 +6,7 @@ namespace RentAll.Api.Controllers;
 
 public partial class PropertyController
 {
-    private static readonly Guid ExternalPropertySystemUserId = new("99999999-9999-9999-9999-999999999998");
+    private static readonly Guid ExternalPropertySystemUserId = new("99999999-9999-9999-9999-999999999999");
 
     [AllowAnonymous]
     [HttpPost("external")]
