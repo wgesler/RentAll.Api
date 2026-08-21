@@ -335,36 +335,6 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 
-    #region UserGuide
-    private UserGuide ConvertEntityToModel(UserGuideEntity e)
-    {
-        return new UserGuide
-        {
-            UserGuideId = e.UserGuideId,
-            Welcome = e.Welcome,
-            Dashboard = e.Dashboard,
-            DashboardStaff = e.DashboardStaff,
-            DashboardOwner = e.DashboardOwner,
-            Leads = e.Leads,
-            Boards = e.Boards,
-            Reservations = e.Reservations,
-            Properties = e.Properties,
-            Tickets = e.Tickets,
-            Maintenance = e.Maintenance,
-            Accounting = e.Accounting,
-            Owner = e.Owner,
-            Emails = e.Emails,
-            Documents = e.Documents,
-            Contacts = e.Contacts,
-            Users = e.Users,
-            Settings = e.Settings,
-            Logs = e.Logs,
-            Organizations = e.Organizations,
-            Billing = e.Billing
-        };
-    }
-    #endregion
-
     #region Regions
     private Region ConvertEntityToModel(RegionEntity e)
     {
