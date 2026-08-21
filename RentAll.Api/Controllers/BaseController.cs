@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.ClosedDate;
+using RentAll.Api.Logging;
 using RentAll.Domain.Interfaces.Repositories;
 using System.Text;
 using System.Text.Json;
@@ -80,6 +81,11 @@ namespace RentAll.Api.Controllers
         protected IActionResult ServerError(string message)
         {
             return StatusCode(500, ErrorResponse(message));
+        }
+
+        protected void SetApplicationLogContext(Guid organizationId, int? officeId = null)
+        {
+            ApplicationLogContext.Set(HttpContext, organizationId, officeId);
         }
 
         private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups, string Properties) GetUserInfoFromJwt()

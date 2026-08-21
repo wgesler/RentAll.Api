@@ -24,6 +24,8 @@ public partial class PropertyController
         if (!IsExternalPropertyApiKeyValid(settings.Value.ApiKey))
             return Unauthorized("Invalid API key");
 
+        SetApplicationLogContext(dto.OrganizationId, dto.OfficeId);
+
         try
         {
             var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
@@ -55,7 +57,13 @@ public partial class PropertyController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error upserting external property intake request");
+            _logger.LogError(
+                ex,
+                "Error upserting external property intake request. OrganizationId={OrganizationId}, OfficeId={OfficeId}, PropertyCode={PropertyCode}, VendorId={VendorId}",
+                dto.OrganizationId,
+                dto.OfficeId,
+                dto.PropertyCode,
+                dto.VendorId);
             return ServerError("An error occurred while saving the property");
         }
     }

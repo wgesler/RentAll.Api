@@ -101,6 +101,9 @@ public class ApplicationLogLogger : ILogger
 
     private static Guid? ResolveOrganizationId(HttpContext? context)
     {
+        if (TryGetGuidFromItems(context, ApplicationLogContext.OrganizationIdKey, out var organizationIdFromItems))
+            return organizationIdFromItems;
+
         var organizationId = ResolveGuid(context, "organizationId");
         if (organizationId.HasValue)
             return organizationId.Value;
@@ -144,10 +147,34 @@ public class ApplicationLogLogger : ILogger
 
     private static int? ResolveInt(HttpContext? context, string key)
     {
+        if (string.Equals(key, "officeId", StringComparison.OrdinalIgnoreCase)
+            && TryGetIntFromItems(context, ApplicationLogContext.OfficeIdKey, out var officeIdFromItems))
+            return officeIdFromItems;
+
         if (TryGetValue(context, key, out var rawValue) && int.TryParse(rawValue, out var value))
             return value;
 
         return null;
+    }
+
+    private static bool TryGetGuidFromItems(HttpContext? context, string key, out Guid value)
+    {
+        value = Guid.Empty;
+        if (context?.Items.TryGetValue(key, out var raw) != true || raw is not Guid guid)
+            return false;
+
+        value = guid;
+        return true;
+    }
+
+    private static bool TryGetIntFromItems(HttpContext? context, string key, out int value)
+    {
+        value = 0;
+        if (context?.Items.TryGetValue(key, out var raw) != true || raw is not int officeId)
+            return false;
+
+        value = officeId;
+        return true;
     }
 
     private static bool TryGetValue(HttpContext? context, string key, out string value)
