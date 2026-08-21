@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Domain.Configuration;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Api.Controllers;
 
@@ -37,31 +34,21 @@ public partial class PropertyController
             if (office == null)
                 return BadRequest("Invalid OfficeId for OrganizationId");
 
-            var callerProvidedPropertyCode = !string.IsNullOrWhiteSpace(dto.PropertyCode);
-            var propertyCode = callerProvidedPropertyCode
-                ? dto.PropertyCode!.Trim()
-                : await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Property);
-
+            var propertyCode = dto.PropertyCode.Trim();
             var propertyDto = dto.ToCreatePropertyDto(propertyCode);
             var (propertyDtoIsValid, propertyDtoErrorMessage) = propertyDto.IsValid();
             if (!propertyDtoIsValid)
                 return BadRequest(propertyDtoErrorMessage ?? "Invalid request data");
 
-            if (callerProvidedPropertyCode)
+            var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, dto.OrganizationId);
+            if (existingProperty != null)
             {
-                var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, dto.OrganizationId);
-                if (existingProperty != null)
-                {
-                    var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, propertyDto);
-                    if (updateResult == null)
-                        return BadRequest(updateError ?? "Invalid request data");
+                var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, propertyDto);
+                if (updateResult == null)
+                    return BadRequest(updateError ?? "Invalid request data");
 
-                    return Ok(new PropertyResponseDto(updateResult));
-                }
+                return Ok(new PropertyResponseDto(updateResult));
             }
-
-            if (await _propertyRepository.ExistsByPropertyCodeAsync(propertyCode, dto.OrganizationId))
-                return Conflict("Property Code already exists");
 
             var createdProperty = await _propertyRepository.CreateAsync(propertyDto.ToModel(ExternalPropertySystemUserId));
             return Ok(new PropertyResponseDto(createdProperty));

@@ -1,4 +1,3 @@
-using System.Globalization;
 using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
@@ -7,49 +6,8 @@ public class CreateExternalPropertyDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
-    public string? PropertyCode { get; set; }
-    public int? PropertyLeaseTypeId { get; set; }
-    public Guid? Owner1Id { get; set; }
-    public Guid? Owner2Id { get; set; }
-    public Guid? Owner3Id { get; set; }
-    public Guid? VendorId { get; set; }
-    public bool? IsActive { get; set; }
-
-    public string? AvailableFrom { get; set; }
-    public string? AvailableUntil { get; set; }
-    public string? ConfirmationNo { get; set; }
-    public int? MinStay { get; set; }
-    public int? MaxStay { get; set; }
-    public int? CheckInTimeId { get; set; }
-    public int? CheckOutTimeId { get; set; }
-    public int? PropertyStyleId { get; set; }
-    public int? PropertyTypeId { get; set; }
-    public int? PropertyStatusId { get; set; }
-    public int? NoticeToVacateId { get; set; }
-    public int? NoticeStatusId { get; set; }
-    public int? BuildingId { get; set; }
-    public int? RegionId { get; set; }
-    public int? AreaId { get; set; }
-    public decimal? Latitude { get; set; }
-    public decimal? Longitude { get; set; }
-    public string? ExternalCalendar { get; set; }
-
-    public decimal? MonthlyRate { get; set; }
-    public decimal? DailyRate { get; set; }
-    public decimal? DepartureFee { get; set; }
-    public decimal? MaidServiceFee { get; set; }
-    public decimal? PetFee { get; set; }
-    public string? BldgNo { get; set; }
-    public int? UnitLevel { get; set; }
-    public int? Bedrooms { get; set; }
-    public decimal? Bathrooms { get; set; }
-    public int? Accomodates { get; set; }
-    public int? SquareFeet { get; set; }
-    public int? BedroomId1 { get; set; }
-    public int? BedroomId2 { get; set; }
-    public int? BedroomId3 { get; set; }
-    public int? BedroomId4 { get; set; }
-    public int? Sofabed { get; set; }
+    public Guid VendorId { get; set; }
+    public string PropertyCode { get; set; } = string.Empty;
 
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -57,8 +15,35 @@ public class CreateExternalPropertyDto
     public string City { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string Zip { get; set; } = string.Empty;
-    public string? Phone { get; set; }
-    public string? CommunityAddress { get; set; }
+
+    public int Bedrooms { get; set; }
+    public decimal Bathrooms { get; set; }
+
+    public int Accommodates { get; set; }
+
+    public int SquareFeet { get; set; }
+    public int PropertyStyleId { get; set; }
+    public int PropertyTypeId { get; set; }
+
+    public decimal MonthlyRate { get; set; }
+    public decimal DailyRate { get; set; }
+    public decimal DepartureFee { get; set; }
+    public decimal MaidServiceFee { get; set; }
+    public decimal PetFee { get; set; }
+
+    public string ExternalCalendar { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+
+    public bool? IsActive { get; set; }
+    public int? MinStay { get; set; }
+    public int? MaxStay { get; set; }
+    public int? CheckInTimeId { get; set; }
+    public int? CheckOutTimeId { get; set; }
+    public int? BedroomId1 { get; set; }
+    public int? BedroomId2 { get; set; }
+    public int? BedroomId3 { get; set; }
+    public int? BedroomId4 { get; set; }
+
     public string? Neighborhood { get; set; }
     public string? CrossStreet { get; set; }
     public string? View { get; set; }
@@ -77,14 +62,6 @@ public class CreateExternalPropertyDto
     public bool? Smoking { get; set; }
     public bool? Parking { get; set; }
     public string? ParkingNotes { get; set; }
-    public string? AlarmCode { get; set; }
-    public string? UnitMstrCode { get; set; }
-    public string? BldgMstrCode { get; set; }
-    public string? BldgTenantCode { get; set; }
-    public string? MailRoomCode { get; set; }
-    public string? GateCode { get; set; }
-    public string? TrashCode { get; set; }
-    public string? StorageCode { get; set; }
 
     public bool? Kitchen { get; set; }
     public bool? Oven { get; set; }
@@ -99,8 +76,6 @@ public class CreateExternalPropertyDto
     public bool? Dvd { get; set; }
     public bool? Streaming { get; set; }
     public bool? FastInternet { get; set; }
-    public string? InternetNetwork { get; set; }
-    public string? InternetPassword { get; set; }
     public bool? Deck { get; set; }
     public bool? Patio { get; set; }
     public bool? Yard { get; set; }
@@ -110,14 +85,7 @@ public class CreateExternalPropertyDto
     public bool? Jacuzzi { get; set; }
     public bool? Sauna { get; set; }
     public bool? Gym { get; set; }
-    public int? TrashPickupId { get; set; }
-    public string? TrashRemoval { get; set; }
     public string? Amenities { get; set; }
-    public string? Description { get; set; }
-    public string? Notes { get; set; }
-
-    public bool? OnlineChecked { get; set; }
-    public bool? OfflineChecked { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -126,6 +94,12 @@ public class CreateExternalPropertyDto
 
         if (OfficeId <= 0)
             return (false, "OfficeId is required");
+
+        if (VendorId == Guid.Empty)
+            return (false, "VendorId is required");
+
+        if (string.IsNullOrWhiteSpace(PropertyCode))
+            return (false, "PropertyCode is required");
 
         if (string.IsNullOrWhiteSpace(Address1))
             return (false, "Address1 is required");
@@ -139,14 +113,66 @@ public class CreateExternalPropertyDto
         if (string.IsNullOrWhiteSpace(Zip))
             return (false, "Zip is required");
 
-        if (PropertyLeaseTypeId.HasValue && !Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId.Value))
-            return (false, $"Invalid PropertyLeaseTypeId value: {PropertyLeaseTypeId.Value}");
+        if (Bedrooms < 0)
+            return (false, "Bedrooms must be >= 0");
 
-        if (PropertyTypeId.HasValue && !Enum.IsDefined(typeof(PropertyType), PropertyTypeId.Value))
-            return (false, $"Invalid PropertyTypeId value: {PropertyTypeId.Value}");
+        if (Bathrooms < 0)
+            return (false, "Bathrooms must be >= 0");
 
-        if (PropertyStatusId.HasValue && !Enum.IsDefined(typeof(PropertyStatus), PropertyStatusId.Value))
-            return (false, $"Invalid PropertyStatusId value: {PropertyStatusId.Value}");
+        if (Accommodates < 0)
+            return (false, "Accommodates must be >= 0");
+
+        if (SquareFeet < 0)
+            return (false, "SquareFeet must be >= 0");
+
+        if (!Enum.IsDefined(typeof(PropertyStyle), PropertyStyleId))
+            return (false, $"Invalid PropertyStyleId value: {PropertyStyleId}");
+
+        if (!Enum.IsDefined(typeof(PropertyType), PropertyTypeId))
+            return (false, $"Invalid PropertyTypeId value: {PropertyTypeId}");
+
+        if (PropertyTypeId == (int)PropertyType.Unspecified)
+            return (false, "PropertyTypeId is required");
+
+        if (MonthlyRate < 0)
+            return (false, "MonthlyRate must be >= 0");
+
+        if (DailyRate < 0)
+            return (false, "DailyRate must be >= 0");
+
+        if (DepartureFee < 0)
+            return (false, "DepartureFee must be >= 0");
+
+        if (MaidServiceFee < 0)
+            return (false, "MaidServiceFee must be >= 0");
+
+        if (PetFee < 0)
+            return (false, "PetFee must be >= 0");
+
+        if (ExternalCalendar == null)
+            return (false, "ExternalCalendar is required");
+
+        if (string.IsNullOrWhiteSpace(Description))
+            return (false, "Description is required");
+
+        if (MinStay is < 0)
+            return (false, "MinStay must be >= 0");
+
+        if (MaxStay is < 0)
+            return (false, "MaxStay must be >= 0");
+
+        if (CheckInTimeId.HasValue && !Enum.IsDefined(typeof(CheckInTime), CheckInTimeId.Value))
+            return (false, $"Invalid CheckInTimeId value: {CheckInTimeId.Value}");
+
+        if (CheckOutTimeId.HasValue && !Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId.Value))
+            return (false, $"Invalid CheckOutTimeId value: {CheckOutTimeId.Value}");
+
+        var bedroomValidation = ValidateBedroomId(BedroomId1, 1)
+            ?? ValidateBedroomId(BedroomId2, 2)
+            ?? ValidateBedroomId(BedroomId3, 3)
+            ?? ValidateBedroomId(BedroomId4, 4);
+        if (bedroomValidation != null)
+            return (false, bedroomValidation);
 
         return (true, null);
     }
@@ -157,55 +183,40 @@ public class CreateExternalPropertyDto
         {
             OrganizationId = OrganizationId,
             PropertyCode = propertyCode,
-            PropertyLeaseTypeId = PropertyLeaseTypeId ?? (int)PropertyLeaseType.Direct,
-            Owner1Id = Owner1Id,
-            Owner2Id = Owner2Id,
-            Owner3Id = Owner3Id,
+            PropertyLeaseTypeId = (int)PropertyLeaseType.Direct,
             VendorId = VendorId,
             IsActive = IsActive ?? true,
-            AvailableFrom = ParseDateOnly(AvailableFrom),
-            AvailableUntil = ParseDateOnly(AvailableUntil),
-            ConfirmationNo = TrimOrNull(ConfirmationNo),
             MinStay = MinStay ?? 0,
             MaxStay = MaxStay ?? 0,
             CheckInTimeId = CheckInTimeId ?? (int)CheckInTime.FourPM,
             CheckOutTimeId = CheckOutTimeId ?? (int)CheckOutTime.ElevenAM,
-            PropertyStyleId = PropertyStyleId ?? (int)PropertyStyle.Standard,
-            PropertyTypeId = PropertyTypeId ?? (int)PropertyType.Unspecified,
-            PropertyStatusId = PropertyStatusId ?? (int)PropertyStatus.Vacant,
-            NoticeToVacateId = NoticeToVacateId ?? (int)ReservationNotice.ThirtyDays,
-            NoticeStatusId = NoticeStatusId is > 0 ? NoticeStatusId.Value : (int)NoticeStatusType.None,
+            PropertyStyleId = PropertyStyleId,
+            PropertyTypeId = PropertyTypeId,
+            PropertyStatusId = (int)PropertyStatus.Vacant,
+            NoticeToVacateId = (int)ReservationNotice.ThirtyDays,
+            NoticeStatusId = (int)NoticeStatusType.None,
             OfficeId = OfficeId,
-            BuildingId = BuildingId,
-            RegionId = RegionId,
-            AreaId = AreaId,
-            Latitude = Latitude,
-            Longitude = Longitude,
             ExternalCalendar = TrimOrNull(ExternalCalendar),
-            MonthlyRate = MonthlyRate ?? 0,
-            DailyRate = DailyRate ?? 0,
-            DepartureFee = DepartureFee ?? 0,
-            MaidServiceFee = MaidServiceFee ?? 0,
-            PetFee = PetFee ?? 0,
-            BldgNo = TrimOrNull(BldgNo),
-            UnitLevel = UnitLevel ?? 1,
-            Bedrooms = Bedrooms ?? 0,
-            Bathrooms = Bathrooms ?? 1,
-            Accomodates = Accomodates ?? 0,
-            SquareFeet = SquareFeet ?? 0,
+            MonthlyRate = MonthlyRate,
+            DailyRate = DailyRate,
+            DepartureFee = DepartureFee,
+            MaidServiceFee = MaidServiceFee,
+            PetFee = PetFee,
+            UnitLevel = 1,
+            Bedrooms = Bedrooms,
+            Bathrooms = Bathrooms,
+            Accommodates = Accommodates,
+            SquareFeet = SquareFeet,
             BedroomId1 = BedroomId1 ?? 0,
             BedroomId2 = BedroomId2 ?? 0,
             BedroomId3 = BedroomId3 ?? 0,
             BedroomId4 = BedroomId4 ?? 0,
-            Sofabed = Sofabed ?? 0,
             Address1 = Address1.Trim(),
             Address2 = TrimOrNull(Address2),
             Suite = TrimOrNull(Suite),
             City = City.Trim(),
             State = State.Trim(),
             Zip = Zip.Trim(),
-            Phone = TrimOrNull(Phone),
-            CommunityAddress = TrimOrNull(CommunityAddress),
             Neighborhood = TrimOrNull(Neighborhood),
             CrossStreet = TrimOrNull(CrossStreet),
             View = TrimOrNull(View),
@@ -223,14 +234,6 @@ public class CreateExternalPropertyDto
             Smoking = Smoking ?? false,
             Parking = Parking ?? false,
             ParkingNotes = TrimOrNull(ParkingNotes),
-            AlarmCode = TrimOrNull(AlarmCode),
-            UnitMstrCode = TrimOrNull(UnitMstrCode),
-            BldgMstrCode = TrimOrNull(BldgMstrCode),
-            BldgTenantCode = TrimOrNull(BldgTenantCode),
-            MailRoomCode = TrimOrNull(MailRoomCode),
-            GateCode = TrimOrNull(GateCode),
-            TrashCode = TrimOrNull(TrashCode),
-            StorageCode = TrimOrNull(StorageCode),
             Kitchen = Kitchen ?? false,
             Oven = Oven ?? false,
             Refrigerator = Refrigerator ?? false,
@@ -244,8 +247,6 @@ public class CreateExternalPropertyDto
             Dvd = Dvd ?? false,
             Streaming = Streaming ?? false,
             FastInternet = FastInternet ?? false,
-            InternetNetwork = TrimOrNull(InternetNetwork),
-            InternetPassword = TrimOrNull(InternetPassword),
             Deck = Deck ?? false,
             Patio = Patio ?? false,
             Yard = Yard ?? false,
@@ -255,27 +256,18 @@ public class CreateExternalPropertyDto
             Jacuzzi = Jacuzzi ?? false,
             Sauna = Sauna ?? false,
             Gym = Gym ?? false,
-            TrashPickupId = TrashPickupId ?? 0,
-            TrashRemoval = TrimOrNull(TrashRemoval),
             Amenities = TrimOrNull(Amenities),
-            Description = TrimOrNull(Description),
-            Notes = TrimOrNull(Notes),
-            OnlineChecked = OnlineChecked ?? false,
-            OfflineChecked = OfflineChecked ?? false
+            Description = Description.Trim()
         };
     }
 
-    private static DateOnly? ParseDateOnly(string? value)
+    private static string? ValidateBedroomId(int? bedroomId, int bedroomNumber)
     {
-        var trimmed = (value ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(trimmed))
+        if (!bedroomId.HasValue)
             return null;
 
-        if (DateOnly.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
-            return parsed;
-
-        if (DateTime.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var asDateTime))
-            return DateOnly.FromDateTime(asDateTime);
+        if (!Enum.IsDefined(typeof(BedSizeType), bedroomId.Value))
+            return $"Invalid BedroomId{bedroomNumber} value: {bedroomId.Value}";
 
         return null;
     }

@@ -210,13 +210,15 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 ## 5) External Property Intake API (v1)
 
 - **URL:** `/api/property/external`
-- **Behavior:** Upsert. If `propertyCode` is provided and already exists for the organization, the property is updated. Otherwise a new property is created.
+- **Behavior:** Upsert by `propertyCode`. If a property with that code already exists for the organization, it is updated. Otherwise a new property is created.
 - **Success response:** `200 OK` with the saved property (create or update).
 
 ### Required fields
 
 - `organizationId` (string, GUID)
 - `officeId` (integer, must be > 0)
+- `propertyCode` (string, non-empty) — user-recognizable code and upsert key
+- `vendorId` (string, GUID) — integration vendor identifier provided to the company
 - `address1` (string, non-empty)
 - `city` (string, non-empty)
 - `state` (string, non-empty)
@@ -224,12 +226,9 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 
 ### Optional fields
 
-- `propertyCode` (string | null) — **upsert key**. If omitted, a code is auto-generated and a new property is always created.
-- `propertyLeaseTypeId` (integer | null; defaults to Direct)
-- `owner1Id`, `owner2Id`, `owner3Id`, `vendorId` (string GUID | null)
+- `owner1Id`, `owner2Id`, `owner3Id` (string GUID | null)
 - `isActive` (boolean | null; defaults to `true`)
 - `availableFrom`, `availableUntil` (string date | null)
-- `confirmationNo` (string | null)
 - `minStay`, `maxStay` (integer | null)
 - `checkInTimeId`, `checkOutTimeId` (integer | null)
 - `propertyStyleId`, `propertyTypeId`, `propertyStatusId` (integer | null)
@@ -239,7 +238,7 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 - `externalCalendar` (string | null)
 - `monthlyRate`, `dailyRate`, `departureFee`, `maidServiceFee`, `petFee` (number | null)
 - `bldgNo` (string | null)
-- `unitLevel`, `bedrooms`, `accomodates`, `squareFeet` (integer | null)
+- `unitLevel`, `bedrooms`, `Accommodates`, `squareFeet` (integer | null)
 - `bathrooms` (number | null)
 - `bedroomId1`, `bedroomId2`, `bedroomId3`, `bedroomId4`, `sofabed` (integer | null)
 - `address2`, `suite`, `phone`, `communityAddress`, `neighborhood`, `crossStreet`, `view`, `mailbox` (string | null)
@@ -249,17 +248,15 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 
 ### Upsert rules
 
-| `propertyCode` in request | Existing property with same code | Result |
-|---|---|---|
-| Provided | Yes | Update existing property |
-| Provided | No | Create new property with that code |
-| Omitted | — | Auto-generate code and create new property |
+| Existing property with same `propertyCode` | Result |
+|---|---|
+| Yes | Update existing property |
+| No | Create new property with that code |
 
 ### Error responses
 
 - `400 Bad Request` — validation failure, invalid `organizationId`, or invalid `officeId`
 - `401 Unauthorized` — missing or invalid `X-Api-Key`
-- `409 Conflict` — property code already exists when code was auto-generated (rare)
 
 ### Example request (create)
 
@@ -268,6 +265,7 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
   "organizationId": "11111111-1111-1111-1111-111111111111",
   "officeId": 1,
   "propertyCode": "EXT-1001",
+  "vendorId": "22222222-2222-2222-2222-222222222222",
   "address1": "123 Main St",
   "city": "Austin",
   "state": "TX",
@@ -288,6 +286,7 @@ Send the same `propertyCode` with changed fields:
   "organizationId": "11111111-1111-1111-1111-111111111111",
   "officeId": 1,
   "propertyCode": "EXT-1001",
+  "vendorId": "22222222-2222-2222-2222-222222222222",
   "address1": "123 Main St",
   "city": "Austin",
   "state": "TX",

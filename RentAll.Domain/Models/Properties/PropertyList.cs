@@ -18,7 +18,7 @@ public class PropertyList
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
-    public int Accomodates { get; set; }
+    public int Accommodates { get; set; }
     public int SquareFeet { get; set; }
     public PropertyType PropertyType { get; set; }
     public bool Unfurnished { get; set; }

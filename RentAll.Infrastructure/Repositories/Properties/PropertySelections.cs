@@ -44,7 +44,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 ToUnitLevel = selection.ToUnitLevel,
                 FromBeds = selection.FromBeds,
                 ToBeds = selection.ToBeds,
-                Accomodates = selection.Accomodates,
+                Accommodates = selection.Accommodates,
                 MaxRent = selection.MaxRent,
                 PropertyCode = selection.PropertyCode,
                 PropertyLeaseTypeId = selection.PropertyLeaseTypeId,

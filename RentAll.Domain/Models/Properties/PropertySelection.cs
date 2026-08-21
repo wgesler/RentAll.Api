@@ -7,7 +7,7 @@ public class PropertySelection
     public int ToUnitLevel { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
-    public int Accomodates { get; set; }
+    public int Accommodates { get; set; }
     public decimal MaxRent { get; set; }
     public string? PropertyCode { get; set; }
     public int PropertyLeaseTypeId { get; set; }

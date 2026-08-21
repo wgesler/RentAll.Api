@@ -7,7 +7,7 @@ public class UpsertPropertySelectionDto
     public int ToUnitLevel { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
-    public int Accomodates { get; set; }
+    public int Accommodates { get; set; }
     public decimal MaxRent { get; set; }
     public string? PropertyCode { get; set; }
     public int PropertyLeaseTypeId { get; set; }
@@ -54,8 +54,8 @@ public class UpsertPropertySelectionDto
         if (ToBeds < FromBeds)
             return (false, "ToBeds must be greater than or equal to FromBeds");
 
-        if (Accomodates < 0)
-            return (false, "Accomodates must be zero or greater");
+        if (Accommodates < 0)
+            return (false, "Accommodates must be zero or greater");
 
         if (MaxRent < 0)
             return (false, "MaxRent must be zero or greater");
@@ -72,7 +72,7 @@ public class UpsertPropertySelectionDto
             ToUnitLevel = ToUnitLevel,
             FromBeds = FromBeds,
             ToBeds = ToBeds,
-            Accomodates = Accomodates,
+            Accommodates = Accommodates,
             MaxRent = MaxRent,
             PropertyCode = PropertyCode,
             PropertyLeaseTypeId = PropertyLeaseTypeId,

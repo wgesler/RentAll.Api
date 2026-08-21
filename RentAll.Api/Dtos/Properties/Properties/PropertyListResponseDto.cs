@@ -16,7 +16,7 @@ public class PropertyListResponseDto
     public int UnitLevel { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
-    public int Accomodates { get; set; }
+    public int Accommodates { get; set; }
     public int SquareFeet { get; set; }
     public int PropertyTypeId { get; set; }
     public bool Unfurnished { get; set; }
@@ -67,7 +67,7 @@ public class PropertyListResponseDto
         UnitLevel = propertyList.UnitLevel;
         Bedrooms = propertyList.Bedrooms;
         Bathrooms = propertyList.Bathrooms;
-        Accomodates = propertyList.Accomodates;
+        Accommodates = propertyList.Accommodates;
         SquareFeet = propertyList.SquareFeet;
         PropertyTypeId = (int)propertyList.PropertyType;
         Unfurnished = propertyList.Unfurnished;

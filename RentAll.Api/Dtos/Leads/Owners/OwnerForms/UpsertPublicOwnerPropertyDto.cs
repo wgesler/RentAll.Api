@@ -43,7 +43,7 @@ public class UpsertPublicOwnerPropertyDto
     public int? UnitLevel { get; set; }
     public int? Bedrooms { get; set; }
     public decimal? Bathrooms { get; set; }
-    public int? Accomodates { get; set; }
+    public int? Accommodates { get; set; }
     public int? SquareFeet { get; set; }
     public int? BedroomId1 { get; set; }
     public int? BedroomId2 { get; set; }
@@ -174,7 +174,7 @@ public class UpsertPublicOwnerPropertyDto
             UnitLevel = UnitLevel ?? 1,
             Bedrooms = Bedrooms ?? 0,
             Bathrooms = Bathrooms ?? 1,
-            Accomodates = Accomodates ?? 0,
+            Accommodates = Accommodates ?? 0,
             SquareFeet = SquareFeet ?? 0,
             BedroomId1 = BedroomId1 ?? 0,
             BedroomId2 = BedroomId2 ?? 0,

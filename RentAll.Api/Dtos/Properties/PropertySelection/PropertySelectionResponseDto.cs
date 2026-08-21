@@ -7,7 +7,7 @@ public class PropertySelectionResponseDto
     public int ToUnitLevel { get; set; }
     public int FromBeds { get; set; }
     public int ToBeds { get; set; }
-    public int Accomodates { get; set; }
+    public int Accommodates { get; set; }
     public decimal MaxRent { get; set; }
     public string? PropertyCode { get; set; }
     public int PropertyLeaseTypeId { get; set; }
@@ -38,7 +38,7 @@ public class PropertySelectionResponseDto
         ToUnitLevel = s.ToUnitLevel;
         FromBeds = s.FromBeds;
         ToBeds = s.ToBeds;
-        Accomodates = s.Accomodates;
+        Accommodates = s.Accommodates;
         MaxRent = s.MaxRent;
         PropertyCode = s.PropertyCode;
         PropertyLeaseTypeId = s.PropertyLeaseTypeId;

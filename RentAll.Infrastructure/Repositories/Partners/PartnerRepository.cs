@@ -99,7 +99,7 @@ public class PartnerRepository : IPartnerRepository
             UnitLevel = e.UnitLevel,
             Bedrooms = e.Bedrooms,
             Bathrooms = e.Bathrooms,
-            Accomodates = e.Accomodates,
+            Accommodates = e.Accommodates,
             SquareFeet = e.SquareFeet,
             PropertyType = (PropertyType)e.PropertyTypeId,
             Unfurnished = e.Unfurnished,

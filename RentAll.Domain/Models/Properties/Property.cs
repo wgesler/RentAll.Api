@@ -47,7 +47,7 @@ public class Property
     public string? BldgNo { get; set; }
     public int Bedrooms { get; set; }
     public decimal Bathrooms { get; set; }
-    public int Accomodates { get; set; }
+    public int Accommodates { get; set; }
     public int SquareFeet { get; set; }
     public int BedroomId1 { get; set; }
     public int BedroomId2 { get; set; }
