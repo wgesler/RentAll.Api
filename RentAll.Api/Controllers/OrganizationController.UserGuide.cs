@@ -15,7 +15,8 @@ namespace RentAll.Api.Controllers
                 if (userGuide == null)
                     return NotFound("UserGuide not found");
 
-                return Ok(new UserGuideResponseDto(userGuide));
+                var hydrated = await _userGuideHtmlImageService.HydrateForResponseAsync(userGuide);
+                return Ok(new UserGuideResponseDto(hydrated));
             }
             catch (Exception ex)
             {
@@ -27,6 +28,36 @@ namespace RentAll.Api.Controllers
         #endregion
 
         #region Post
+
+        [HttpGet("user-guide/image")]
+        public async Task<IActionResult> GetUserGuideImage([FromQuery] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return BadRequest("Image path is required");
+
+            if (!path.Contains("/userguide/", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Invalid user guide image path");
+
+            try
+            {
+                var fileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                    SystemUserGuideOrganizationId,
+                    null,
+                    path,
+                    ImageType.UserGuide);
+
+                if (fileDetails == null || string.IsNullOrWhiteSpace(fileDetails.File))
+                    return NotFound("User guide image not found");
+
+                var bytes = Convert.FromBase64String(fileDetails.File);
+                return File(bytes, string.IsNullOrWhiteSpace(fileDetails.ContentType) ? "image/jpeg" : fileDetails.ContentType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading user guide image");
+                return ServerError("An error occurred while loading the user guide image");
+            }
+        }
 
         [HttpPost("user-guide/image")]
         public async Task<IActionResult> UploadUserGuideImage([FromBody] UploadUserGuideImageDto dto)
@@ -63,6 +94,39 @@ namespace RentAll.Api.Controllers
 
         #endregion
 
+        #region Delete
+
+        [HttpDelete("user-guide/image")]
+        public async Task<IActionResult> DeleteUserGuideImage([FromQuery] string path)
+        {
+            if (!IsSuperAdmin())
+                return Unauthorized("NoAccess");
+
+            if (string.IsNullOrWhiteSpace(path))
+                return BadRequest("Image path is required");
+
+            if (!path.Contains("/userguide/", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Invalid user guide image path");
+
+            try
+            {
+                await _fileService.DeleteImageAsync(
+                    SystemUserGuideOrganizationId,
+                    null,
+                    path,
+                    ImageType.UserGuide);
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting user guide image");
+                return ServerError("An error occurred while deleting the user guide image");
+            }
+        }
+
+        #endregion
+
         #region Put
 
         [HttpPut("user-guide")]
@@ -81,7 +145,8 @@ namespace RentAll.Api.Controllers
             try
             {
                 var updated = await _organizationRepository.UpsertUserGuideAsync(dto.ToModel(), CurrentUser);
-                return Ok(new UserGuideResponseDto(updated));
+                var hydrated = await _userGuideHtmlImageService.HydrateForResponseAsync(updated);
+                return Ok(new UserGuideResponseDto(hydrated));
             }
             catch (Exception ex)
             {

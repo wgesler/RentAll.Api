@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Services;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
@@ -19,10 +20,11 @@ namespace RentAll.Api.Controllers
         private readonly IContactRepository _contactRepository;
         private readonly IFileService _fileService;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
+        private readonly UserGuideHtmlImageService _userGuideHtmlImageService;
         private readonly IEncryptionService _encryptionService;
         private readonly ILogger<OrganizationController> _logger;
 
-        public OrganizationController(IOrganizationManager organizationManager, IAccountingManager accountingManager, IAccountingRepository accountingRepository, IOrganizationRepository organizationRepository, IUserRepository userRepository, IContactManager contactManager, IContactRepository contactRepository, IFileService fileService, IFileAttachmentHelper fileAttachmentHelper, IEncryptionService encryptionService, ILogger<OrganizationController> logger)
+        public OrganizationController(IOrganizationManager organizationManager, IAccountingManager accountingManager, IAccountingRepository accountingRepository, IOrganizationRepository organizationRepository, IUserRepository userRepository, IContactManager contactManager, IContactRepository contactRepository, IFileService fileService, IFileAttachmentHelper fileAttachmentHelper, UserGuideHtmlImageService userGuideHtmlImageService, IEncryptionService encryptionService, ILogger<OrganizationController> logger)
         {
             _organizationManager = organizationManager;
             _accountingManager = accountingManager;
@@ -33,6 +35,7 @@ namespace RentAll.Api.Controllers
             _contactRepository = contactRepository;
             _fileService = fileService;
             _fileAttachmentHelper = fileAttachmentHelper;
+            _userGuideHtmlImageService = userGuideHtmlImageService;
             _encryptionService = encryptionService;
             _logger = logger;
         }

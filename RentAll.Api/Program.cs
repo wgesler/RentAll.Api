@@ -8,6 +8,7 @@ using RentAll.Api.Filters;
 using RentAll.Api.HostedServices;
 using RentAll.Api.Logging;
 using RentAll.Api.Middleware;
+using RentAll.Api.Services;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Managers;
@@ -187,6 +188,7 @@ else
 }
 
 builder.Services.AddScoped<IFileAttachmentHelper, FileAttachmentHelper>();
+builder.Services.AddScoped<UserGuideHtmlImageService>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IPdfGenerationService, PdfGenerationService>();
 
