@@ -7,6 +7,8 @@ public static class ReceiptPropertyConstants
     /// </summary>
     public static readonly Guid CompanyPropertyId = Guid.Empty;
 
+    public const string CompanyPropertyCode = "Company";
+
     public static bool IsCompanyPropertyId(Guid propertyId) =>
         propertyId == CompanyPropertyId;
 }

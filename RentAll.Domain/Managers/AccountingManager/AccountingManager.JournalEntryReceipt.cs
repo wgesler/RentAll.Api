@@ -83,13 +83,13 @@ public partial class AccountingManager
         {
             var bankCardOfficeVendorId = await ResolveInterOfficeVendorContactIdAsync(receipt.OrganizationId, receipt.OfficeId, bankCard.OfficeId);
             var bankCardOfficeName = await GetOfficeNameAsync(receipt.OrganizationId, bankCard.OfficeId);
-            return BuildCrossOfficeBankCardJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, bankCardOfficeVendorId, bankCardOfficeName, defaultLineContext, currentUser);
+            return await BuildCrossOfficeBankCardJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, bankCardOfficeVendorId, bankCardOfficeName, defaultLineContext, currentUser);
         }
 
-        return BuildSameOfficeBankCardJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, bankCard, defaultLineContext, currentUser);
+        return await BuildSameOfficeBankCardJournalEntryFromReceiptAsync(receipt, chartOfAccounts, accountingOffice, bankCard, defaultLineContext, currentUser);
     }
 
-    private JournalEntry BuildSameOfficeBankCardJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, BankCard bankCard, JournalEntryLineContext defaultLineContext, Guid currentUser)
+    private async Task<JournalEntry> BuildSameOfficeBankCardJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, BankCard bankCard, JournalEntryLineContext defaultLineContext, Guid currentUser)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // SAME-OFFICE-RECEIPT-JE-ACCOUNTS
@@ -134,11 +134,8 @@ public partial class AccountingManager
                 Memo = splitMemo,
                 CreatedBy = currentUser
             };
-            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromReceiptSplit(receipt, split) with
-            {
-                PropertyCode = defaultLineContext.PropertyCode,
-                ContactName = defaultLineContext.ContactName
-            });
+            var splitContext = await ResolveReceiptSplitJournalEntryLineContextAsync(receipt, split);
+            ApplyJournalEntryLineContext(splitLine, splitContext with { ContactName = defaultLineContext.ContactName });
             ApplyReceiptSplitLinePerspective(splitLine, split);
             journalEntryLines.Add(splitLine);
         }
@@ -158,7 +155,7 @@ public partial class AccountingManager
         }, JournalEntryKind.Receipt);
     }
 
-    private JournalEntry BuildCrossOfficeBankCardJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> receiptChartOfAccounts, AccountingOffice? receiptAccountingOffice, Guid? bankCardOfficeVendorId, string bankCardOfficeName, JournalEntryLineContext defaultLineContext, Guid currentUser)
+    private async Task<JournalEntry> BuildCrossOfficeBankCardJournalEntryFromReceiptAsync(Receipt receipt, List<ChartOfAccount> receiptChartOfAccounts, AccountingOffice? receiptAccountingOffice, Guid? bankCardOfficeVendorId, string bankCardOfficeName, JournalEntryLineContext defaultLineContext, Guid currentUser)
     {
         // AGENT-NOTE: DO NOT TOUCH.
         // CROSS-OFFICE-RECEIPT-JE-ACCOUNTS (receipt office)
@@ -194,11 +191,8 @@ public partial class AccountingManager
                 Memo = splitMemo,
                 CreatedBy = currentUser
             };
-            ApplyJournalEntryLineContext(splitLine, CreateJournalEntryLineContextFromReceiptSplit(receipt, split) with
-            {
-                PropertyCode = defaultLineContext.PropertyCode,
-                ContactName = defaultLineContext.ContactName
-            });
+            var splitContext = await ResolveReceiptSplitJournalEntryLineContextAsync(receipt, split);
+            ApplyJournalEntryLineContext(splitLine, splitContext with { ContactName = defaultLineContext.ContactName });
             ApplyReceiptSplitLinePerspective(splitLine, split);
             journalEntryLines.Add(splitLine);
         }

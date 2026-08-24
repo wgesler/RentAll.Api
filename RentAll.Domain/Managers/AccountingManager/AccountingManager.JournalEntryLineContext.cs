@@ -49,13 +49,36 @@ public partial class AccountingManager
             NormalizeOptionalString(invoice.ContactName));
 
     private static JournalEntryLineContext CreateJournalEntryLineContextFromReceiptSplit(Receipt receipt, ReceiptSplit split, Guid? contactId = null, string? contactName = null)
-        => new(
+    {
+        if (split.PropertyId is { } splitPropertyId && ReceiptPropertyConstants.IsCompanyPropertyId(splitPropertyId))
+        {
+            return new JournalEntryLineContext(
+                null,
+                ReceiptPropertyConstants.CompanyPropertyCode,
+                null,
+                null,
+                NormalizeOptionalGuid(contactId ?? receipt.VendorId),
+                NormalizeOptionalString(contactName ?? receipt.VendorName));
+        }
+
+        return new JournalEntryLineContext(
             NormalizeOptionalGuid(split.PropertyId) ?? FirstReceiptPropertyId(receipt),
             null,
             null,
             null,
             NormalizeOptionalGuid(contactId ?? receipt.VendorId),
             NormalizeOptionalString(contactName ?? receipt.VendorName));
+    }
+
+    private async Task<JournalEntryLineContext> ResolveReceiptSplitJournalEntryLineContextAsync(Receipt receipt, ReceiptSplit split)
+    {
+        var splitContext = CreateJournalEntryLineContextFromReceiptSplit(receipt, split);
+        if (splitContext.PropertyCode == ReceiptPropertyConstants.CompanyPropertyCode || !splitContext.PropertyId.HasValue)
+            return splitContext;
+
+        var property = await _propertyRepository.GetPropertyByIdAsync(splitContext.PropertyId.Value, receipt.OrganizationId);
+        return splitContext with { PropertyCode = NormalizeOptionalString(property?.PropertyCode) };
+    }
 
     private static JournalEntryLineContext CreateJournalEntryLineContextFromWorkOrder(WorkOrder workOrder, Guid? contactId, string? contactName = null)
         => new(

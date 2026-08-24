@@ -209,11 +209,8 @@ public partial class AccountingManager
                     Memo = splitMemo,
                     CreatedBy = currentUser
                 };
-                ApplyJournalEntryLineContext(expenseLine, CreateJournalEntryLineContextFromReceiptSplit(bill, split) with
-                {
-                    PropertyCode = defaultLineContext.PropertyCode,
-                    ContactName = defaultLineContext.ContactName
-                });
+                var splitContext = await ResolveReceiptSplitJournalEntryLineContextAsync(bill, split);
+                ApplyJournalEntryLineContext(expenseLine, splitContext with { ContactName = defaultLineContext.ContactName });
                 ApplyReceiptSplitLinePerspective(expenseLine, split);
                 journalEntryLines.Add(expenseLine);
             }
@@ -247,11 +244,8 @@ public partial class AccountingManager
                     Memo = splitMemo,
                     CreatedBy = currentUser
                 };
-                ApplyJournalEntryLineContext(expenseLine, CreateJournalEntryLineContextFromReceiptSplit(bill, split) with
-                {
-                    PropertyCode = defaultLineContext.PropertyCode,
-                    ContactName = defaultLineContext.ContactName
-                });
+                var splitContext = await ResolveReceiptSplitJournalEntryLineContextAsync(bill, split);
+                ApplyJournalEntryLineContext(expenseLine, splitContext with { ContactName = defaultLineContext.ContactName });
                 ApplyReceiptSplitLinePerspective(expenseLine, split);
                 journalEntryLines.Add(expenseLine);
             }
