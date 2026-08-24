@@ -62,7 +62,7 @@ public class CreatePropertyAgreementDto
         return (true, null);
     }
 
-    public PropertyAgreement ToModel(Guid propertyId, int officeId)
+    public PropertyAgreement ToModel(Guid propertyId, int officeId, Guid organizationId)
     {
         return new PropertyAgreement
         {
@@ -86,7 +86,7 @@ public class CreatePropertyAgreementDto
             AccountNumber = AccountNumber,
             OwnerPaymentType = (OwnerPaymentType)OwnerPaymentTypeId,
             Notes = Notes,
-            AgreementLines = AgreementLines?.Select(line => line.ToModel(propertyId)).ToList() ?? new List<AgreementLine>()
+            AgreementLines = AgreementLines?.Select(line => line.ToModel(propertyId, organizationId)).ToList() ?? new List<AgreementLine>()
         };
     }
 }

@@ -46,9 +46,13 @@ public interface IPropertyRepository
     Task<IEnumerable<PropertyAgreement>> GetMonthlyLinensAndTowelsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyAgreement>> GetAnnualLinensAndTowelsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyAgreementRentRoll>> GetPropertyAgreementRentRollByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<AgreementLine?> GetAgreementLineByIdAsync(int agreementLineId);
     Task<PropertyAgreement> CreatePropertyAgreementAsync(PropertyAgreement agreement);
+    Task<AgreementLine> CreateRentRollAgreementLineAsync(AgreementLine line);
     Task<PropertyAgreement> UpdatePropertyAgreementByPropertyIdAsync(PropertyAgreement agreement);
+    Task<AgreementLine> UpdateRentRollAgreementLineAsync(AgreementLine line);
     Task DeletePropertyAgreementByPropertyIdAsync(Guid propertyId);
+    Task DeleteRentRollAgreementLineByIdAsync(int agreementLineId, Guid organizationId);
     #endregion
 
     #region Property Photos

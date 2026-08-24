@@ -253,6 +253,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             {
                 AgreementLineId = e.AgreementLineId,
                 AgreementId = e.AgreementId,
+                OrganizationId = e.OrganizationId,
                 Title = e.Title,
                 VendorId = e.VendorId,
                 VendorName = e.VendorName,

@@ -3,6 +3,7 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 public class UpdatePropertyAgreementLineDto
 {
     public int? AgreementLineId { get; set; }
+    public Guid? PropertyId { get; set; }
     public string? Title { get; set; }
     public Guid? VendorId { get; set; }
     public DateOnly? StartDate { get; set; }
@@ -41,12 +42,17 @@ public class UpdatePropertyAgreementLineDto
         return (true, null);
     }
 
-    public AgreementLine ToModel(Guid agreementId)
+    public AgreementLine ToModel(Guid? defaultPropertyId, Guid organizationId, AgreementLine? existingLine = null)
     {
+        var resolvedPropertyId = PropertyId.HasValue
+            ? NormalizePropertyId(PropertyId)
+            : existingLine?.AgreementId ?? NormalizePropertyId(defaultPropertyId);
+
         return new AgreementLine
         {
             AgreementLineId = AgreementLineId ?? 0,
-            AgreementId = agreementId,
+            AgreementId = resolvedPropertyId,
+            OrganizationId = existingLine?.OrganizationId ?? organizationId,
             Title = string.IsNullOrWhiteSpace(Title) ? null : Title.Trim(),
             VendorId = VendorId,
             StartDate = StartDate!.Value,
@@ -59,5 +65,13 @@ public class UpdatePropertyAgreementLineDto
             IsRent = IsRent ?? false,
             Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim()
         };
+    }
+
+    private static Guid? NormalizePropertyId(Guid? propertyId)
+    {
+        if (!propertyId.HasValue || propertyId.Value == Guid.Empty)
+            return null;
+
+        return propertyId.Value;
     }
 }

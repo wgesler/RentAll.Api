@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Domain.Constants;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 
@@ -76,6 +77,7 @@ public partial class PropertyRepository
                 {
                     AgreementLineId = item.AgreementLineId,
                     AgreementId = item.AgreementId,
+                    OrganizationId = item.OrganizationId,
                     Title = item.Title,
                     VendorId = item.VendorId,
                     VendorName = item.VendorName,
@@ -92,7 +94,41 @@ public partial class PropertyRepository
                     Notes = item.Notes
                 }).ToList()
             })
-            .OrderBy(item => item.PropertyCode);
+            .OrderBy(item => item.PropertyCode == ReceiptPropertyConstants.CompanyPropertyCode ? string.Empty : item.PropertyCode);
+    }
+
+    public async Task<AgreementLine?> GetAgreementLineByIdAsync(int agreementLineId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<AgreementLineEntity>("Property.AgreementLine_GetById", new
+        {
+            AgreementLineId = agreementLineId
+        });
+
+        if (result == null || !result.Any())
+            return null;
+
+        var line = result.First();
+        return new AgreementLine
+        {
+            AgreementLineId = line.AgreementLineId,
+            AgreementId = line.AgreementId,
+            OrganizationId = line.OrganizationId,
+            Title = line.Title,
+            VendorId = line.VendorId,
+            VendorName = line.VendorName,
+            TermsId = line.TermsId,
+            Terms = string.IsNullOrWhiteSpace(line.Terms) ? "Due on receipt" : line.Terms,
+            StartDate = line.StartDate,
+            EndDate = line.EndDate,
+            Deposit = line.Deposit,
+            OneTime = line.OneTime,
+            Monthly = line.Monthly,
+            Daily = line.Daily,
+            ChartOfAccountId = line.ChartOfAccountId,
+            IsRent = line.IsRent,
+            Notes = line.Notes
+        };
     }
 
     #endregion
@@ -141,7 +177,8 @@ public partial class PropertyRepository
                 {
                     await db.DapperProcQueryAsync<AgreementLineEntity>("Property.AgreementLine_Add", new
                     {
-                        AgreementId = createdAgreement.PropertyId,
+                        AgreementId = line.AgreementId,
+                        OrganizationId = line.OrganizationId,
                         Title = line.Title,
                         VendorId = line.VendorId,
                         StartDate = line.StartDate,
@@ -175,6 +212,36 @@ public partial class PropertyRepository
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<AgreementLine> CreateRentRollAgreementLineAsync(AgreementLine line)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<AgreementLineEntity>("Property.AgreementLine_Add", new
+        {
+            AgreementId = line.AgreementId,
+            OrganizationId = line.OrganizationId,
+            Title = line.Title,
+            VendorId = line.VendorId,
+            StartDate = line.StartDate,
+            EndDate = line.EndDate,
+            Deposit = line.Deposit,
+            OneTime = line.OneTime,
+            Monthly = line.Monthly,
+            Daily = line.Daily,
+            ChartOfAccountId = line.ChartOfAccountId,
+            IsRent = line.IsRent,
+            Notes = line.Notes
+        });
+
+        if (result == null || !result.Any())
+            throw new InvalidOperationException("Agreement line not created");
+
+        var created = await GetAgreementLineByIdAsync(result.First().AgreementLineId);
+        if (created == null)
+            throw new InvalidOperationException("Agreement line not found");
+
+        return created;
     }
 
     #endregion
@@ -233,7 +300,8 @@ public partial class PropertyRepository
                 {
                     await db.DapperProcQueryAsync<AgreementLineEntity>("Property.AgreementLine_Add", new
                     {
-                        AgreementId = agreement.PropertyId,
+                        AgreementId = line.AgreementId,
+                        OrganizationId = line.OrganizationId,
                         Title = line.Title,
                         VendorId = line.VendorId,
                         StartDate = line.StartDate,
@@ -252,7 +320,8 @@ public partial class PropertyRepository
                     await db.DapperProcQueryAsync<AgreementLineEntity>("Property.AgreementLine_UpdateById", new
                     {
                         AgreementLineId = line.AgreementLineId,
-                        AgreementId = agreement.PropertyId,
+                        AgreementId = line.AgreementId,
+                        OrganizationId = line.OrganizationId,
                         Title = line.Title,
                         VendorId = line.VendorId,
                         StartDate = line.StartDate,
@@ -297,6 +366,37 @@ public partial class PropertyRepository
         }
     }
 
+    public async Task<AgreementLine> UpdateRentRollAgreementLineAsync(AgreementLine line)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<AgreementLineEntity>("Property.AgreementLine_UpdateById", new
+        {
+            AgreementLineId = line.AgreementLineId,
+            AgreementId = line.AgreementId,
+            OrganizationId = line.OrganizationId,
+            Title = line.Title,
+            VendorId = line.VendorId,
+            StartDate = line.StartDate,
+            EndDate = line.EndDate,
+            Deposit = line.Deposit,
+            OneTime = line.OneTime,
+            Monthly = line.Monthly,
+            Daily = line.Daily,
+            ChartOfAccountId = line.ChartOfAccountId,
+            IsRent = line.IsRent,
+            Notes = line.Notes
+        });
+
+        if (result == null || !result.Any())
+            throw new InvalidOperationException("Agreement line not found");
+
+        var updated = await GetAgreementLineByIdAsync(line.AgreementLineId);
+        if (updated == null)
+            throw new InvalidOperationException("Agreement line not found");
+
+        return updated;
+    }
+
     #endregion
 
     #region Deletes
@@ -306,6 +406,22 @@ public partial class PropertyRepository
         await db.DapperProcExecuteAsync("Property.PropertyAgreements_DeleteByPropertyId", new
         {
             PropertyId = propertyId
+        });
+    }
+
+    public async Task DeleteRentRollAgreementLineByIdAsync(int agreementLineId, Guid organizationId)
+    {
+        var existing = await GetAgreementLineByIdAsync(agreementLineId);
+        if (existing == null)
+            return;
+
+        if (existing.OrganizationId != organizationId)
+            throw new InvalidOperationException("Agreement line not found");
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Property.AgreementLine_DeleteById", new
+        {
+            AgreementLineId = agreementLineId
         });
     }
 
@@ -325,6 +441,7 @@ public partial class PropertyRepository
         {
             AgreementLineId = line.AgreementLineId,
             AgreementId = line.AgreementId,
+            OrganizationId = line.OrganizationId,
             Title = line.Title,
             VendorId = line.VendorId,
             VendorName = line.VendorName,

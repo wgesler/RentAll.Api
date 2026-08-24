@@ -3,7 +3,8 @@ namespace RentAll.Domain.Models;
 public class AgreementLine
 {
     public int AgreementLineId { get; set; }
-    public Guid AgreementId { get; set; }
+    public Guid? AgreementId { get; set; }
+    public Guid OrganizationId { get; set; }
     public string? Title { get; set; }
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }

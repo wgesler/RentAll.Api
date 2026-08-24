@@ -68,7 +68,7 @@ public class UpdatePropertyAgreementDto
         return (true, null);
     }
 
-    public PropertyAgreement ToModel(PropertyAgreement existing)
+    public PropertyAgreement ToModel(PropertyAgreement existing, Guid organizationId)
     {
         return new PropertyAgreement
         {
@@ -94,7 +94,11 @@ public class UpdatePropertyAgreementDto
             AccountNumber = AccountNumber,
             OwnerPaymentType = (OwnerPaymentType)OwnerPaymentTypeId,
             Notes = Notes,
-            AgreementLines = AgreementLines?.Select(line => line.ToModel(PropertyId)).ToList() ?? new List<AgreementLine>()
+            AgreementLines = AgreementLines?.Select(line =>
+            {
+                var existingLine = existing.AgreementLines?.FirstOrDefault(item => item.AgreementLineId == line.AgreementLineId);
+                return line.ToModel(PropertyId, organizationId, existingLine);
+            }).ToList() ?? new List<AgreementLine>()
         };
     }
 }

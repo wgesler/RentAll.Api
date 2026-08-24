@@ -3,7 +3,8 @@ namespace RentAll.Api.Dtos.Properties.PropertyAgreements;
 public class PropertyAgreementLineResponseDto
 {
     public int AgreementLineId { get; set; }
-    public Guid AgreementId { get; set; }
+    public Guid? PropertyId { get; set; }
+    public Guid OrganizationId { get; set; }
     public string? Title { get; set; }
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
@@ -22,7 +23,8 @@ public class PropertyAgreementLineResponseDto
     public PropertyAgreementLineResponseDto(AgreementLine model)
     {
         AgreementLineId = model.AgreementLineId;
-        AgreementId = model.AgreementId;
+        PropertyId = model.AgreementId;
+        OrganizationId = model.OrganizationId;
         Title = model.Title;
         VendorId = model.VendorId;
         VendorName = model.VendorName;

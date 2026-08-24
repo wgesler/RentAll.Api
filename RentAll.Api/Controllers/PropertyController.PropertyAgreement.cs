@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Properties.PropertyAgreements;
+using RentAll.Domain.Constants;
 
 namespace RentAll.Api.Controllers;
 
@@ -81,7 +82,7 @@ public partial class PropertyController
             var office = await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, CurrentOrganizationId);
             var officeName = office?.Name;
 
-            var model = dto.ToModel(propertyId, property.OfficeId);
+            var model = dto.ToModel(propertyId, property.OfficeId, property.OrganizationId);
             model.W9Path = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms);
             model.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
             model.AgreementPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, DocumentType.Agreements);
@@ -98,6 +99,37 @@ public partial class PropertyController
         {
             _logger.LogError(ex, "Error creating property agreement: {PropertyId}", propertyId);
             return ServerError("An error occurred while creating the property agreement");
+        }
+    }
+
+    [HttpPost("property-agreement/rent-roll/agreement-line")]
+    public async Task<IActionResult> CreateRentRollAgreementLineAsync([FromBody] CreatePropertyAgreementLineDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Agreement line data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var isCompanyLine = !dto.PropertyId.HasValue || ReceiptPropertyConstants.IsCompanyPropertyId(dto.PropertyId.Value);
+            if (!isCompanyLine)
+            {
+                var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId!.Value, CurrentOrganizationId);
+                if (property == null)
+                    return NotFound("Property not found");
+            }
+
+            var model = dto.ToModel(dto.PropertyId, CurrentOrganizationId);
+            var saved = await _propertyRepository.CreateRentRollAgreementLineAsync(model);
+            return Ok(new PropertyAgreementLineResponseDto(saved));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating rent roll agreement line");
+            return ServerError("An error occurred while creating the agreement line");
         }
     }
     #endregion
@@ -122,7 +154,7 @@ public partial class PropertyController
             var office = await _organizationRepository.GetOfficeByIdAsync(existing.OfficeId, CurrentOrganizationId);
             var officeName = office?.Name;
 
-            var model = dto.ToModel(existing);
+            var model = dto.ToModel(existing, CurrentOrganizationId);
             model.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
             model.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
             model.AgreementPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, DocumentType.Agreements, existing.AgreementPath, dto.AgreementPath);
@@ -140,6 +172,40 @@ public partial class PropertyController
         {
             _logger.LogError(ex, "Error updating property agreement: {PropertyId}", dto.PropertyId);
             return ServerError("An error occurred while updating the property agreement");
+        }
+    }
+
+    [HttpPut("property-agreement/rent-roll/agreement-line")]
+    public async Task<IActionResult> UpdateRentRollAgreementLineAsync([FromBody] UpdatePropertyAgreementLineDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Agreement line data is required");
+
+        if (!dto.AgreementLineId.HasValue || dto.AgreementLineId.Value <= 0)
+            return BadRequest("AgreementLineId is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var existing = await _propertyRepository.GetAgreementLineByIdAsync(dto.AgreementLineId.Value);
+            if (existing == null || existing.OrganizationId != CurrentOrganizationId)
+                return NotFound("Agreement line not found");
+
+            var isCompanyLine = !existing.AgreementId.HasValue;
+            if (!isCompanyLine)
+                return BadRequest("Use property agreement update for property-linked agreement lines");
+
+            var model = dto.ToModel(null, CurrentOrganizationId, existing);
+            var saved = await _propertyRepository.UpdateRentRollAgreementLineAsync(model);
+            return Ok(new PropertyAgreementLineResponseDto(saved));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating rent roll agreement line: {AgreementLineId}", dto.AgreementLineId);
+            return ServerError("An error occurred while updating the agreement line");
         }
     }
     #endregion
@@ -174,6 +240,31 @@ public partial class PropertyController
         {
             _logger.LogError(ex, "Error deleting property agreement: {PropertyId}", propertyId);
             return ServerError("An error occurred while deleting the property agreement");
+        }
+    }
+
+    [HttpDelete("property-agreement/rent-roll/agreement-line/{agreementLineId:int}")]
+    public async Task<IActionResult> DeleteRentRollAgreementLineAsync(int agreementLineId)
+    {
+        if (agreementLineId <= 0)
+            return BadRequest("AgreementLineId is required");
+
+        try
+        {
+            var existing = await _propertyRepository.GetAgreementLineByIdAsync(agreementLineId);
+            if (existing == null || existing.OrganizationId != CurrentOrganizationId)
+                return NoContent();
+
+            if (existing.AgreementId.HasValue)
+                return BadRequest("Use property agreement update for property-linked agreement lines");
+
+            await _propertyRepository.DeleteRentRollAgreementLineByIdAsync(agreementLineId, CurrentOrganizationId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting rent roll agreement line: {AgreementLineId}", agreementLineId);
+            return ServerError("An error occurred while deleting the agreement line");
         }
     }
 
