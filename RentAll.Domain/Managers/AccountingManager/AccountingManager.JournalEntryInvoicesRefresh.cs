@@ -244,9 +244,15 @@ public partial class AccountingManager
 
     public async Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
     {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
+            ?? throw new Exception("Reservation not found");
+        if (reservation.OfficeId <= 0)
+            throw new Exception("Reservation office is required");
+
         var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
+            OfficeIds = reservation.OfficeId.ToString(),
             ReservationId = reservationId,
             IncludeInactive = true,
             IncludePaid = true
@@ -262,9 +268,15 @@ public partial class AccountingManager
 
     public async Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
     {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
+            ?? throw new Exception("Reservation not found");
+        if (reservation.OfficeId <= 0)
+            throw new Exception("Reservation office is required");
+
         var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
+            OfficeIds = reservation.OfficeId.ToString(),
             ReservationId = reservationId,
             IncludeInactive = true,
             IncludePaid = true
