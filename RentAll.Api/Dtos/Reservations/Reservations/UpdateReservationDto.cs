@@ -96,6 +96,9 @@ public class UpdateReservationDto
         if (ArrivalDate >= DepartureDate)
             return (false, "DepartureDate must be after ArrivalDate");
 
+        if (BillingStartDate.HasValue && BillingEndDate.HasValue && BillingStartDate.Value >= BillingEndDate.Value)
+            return (false, "BillingEndDate must be after BillingStartDate");
+
         if (BillingRate < 0)
             return (false, "BillingRate must be zero or greater");
 
