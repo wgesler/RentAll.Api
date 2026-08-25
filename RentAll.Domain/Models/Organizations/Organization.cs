@@ -46,7 +46,7 @@ public class Organization
         return prefix + suffix.Trim();
     }
 
-    public string GetSendGridKeyVaultSecretName() => GetKeyVaultSecretName("sendgrid-api-key--", "default")!;
+    public string? GetSendGridKeyVaultSecretName() => GetKeyVaultSecretName("sendgrid-api-key--");
 
     public string? GetExternalPropertyKeyVaultSecretName() => GetKeyVaultSecretName("external-property-api-key--");
 
