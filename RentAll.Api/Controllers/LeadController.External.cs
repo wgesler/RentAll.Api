@@ -23,7 +23,7 @@ public partial class LeadController
         if (organization == null)
             return BadRequest("Invalid OrganizationId");
 
-        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadGeneralKeyVaultSecretName()))
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try
@@ -61,7 +61,7 @@ public partial class LeadController
         if (organization == null)
             return BadRequest("Invalid OrganizationId");
 
-        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadRentalKeyVaultSecretName()))
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try
@@ -99,7 +99,7 @@ public partial class LeadController
         if (organization == null)
             return BadRequest("Invalid OrganizationId");
 
-        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadOwnerKeyVaultSecretName()))
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try

@@ -50,11 +50,7 @@ public class Organization
 
     public string? GetExternalPropertyKeyVaultSecretName() => GetKeyVaultSecretName("external-property-api-key--");
 
-    public string? GetExternalLeadRentalKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-rental-api-key--");
-
-    public string? GetExternalLeadOwnerKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-owner-api-key--");
-
-    public string? GetExternalLeadGeneralKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-general-api-key--");
+    public string? GetExternalLeadKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-api-key--");
 
     public string? GetExternalTicketKeyVaultSecretName() => GetKeyVaultSecretName("external-ticket-api-key--");
 }
