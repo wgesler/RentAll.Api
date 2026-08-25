@@ -20,6 +20,7 @@ public class OfficeCreateDto
     public string? AfterHoursPhone { get; set; }
     public string? AfterHoursInstructions { get; set; }
     public bool UseDailyOnResBoard { get; set; }
+    public bool UseStrictOnTickets { get; set; }
     public int DaysToRefundDeposit { get; set; }
     public decimal DefaultDeposit { get; set; }
     public decimal DefaultSdw { get; set; }
@@ -175,6 +176,7 @@ public class OfficeCreateDto
             AfterHoursPhone = AfterHoursPhone,
             AfterHoursInstructions = AfterHoursInstructions,
             UseDailyOnResBoard = UseDailyOnResBoard,
+            UseStrictOnTickets = UseStrictOnTickets,
             DaysToRefundDeposit = DaysToRefundDeposit,
             DefaultDeposit = DefaultDeposit,
             DefaultSdw = DefaultSdw,
