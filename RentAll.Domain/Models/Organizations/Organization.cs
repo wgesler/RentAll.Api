@@ -35,13 +35,18 @@ public class Organization
 
     public string? GetKeyVaultSecretName(string prefix)
     {
-        if (string.IsNullOrWhiteSpace(SuffixKeyName))
-            return null;
-
-        return prefix + SuffixKeyName.Trim();
+        return GetKeyVaultSecretName(prefix, SuffixKeyName);
     }
 
-    public string? GetSendGridKeyVaultSecretName() => GetKeyVaultSecretName("sendgrid-api-key--");
+    public string? GetKeyVaultSecretName(string prefix, string? suffix)
+    {
+        if (string.IsNullOrWhiteSpace(suffix))
+            return null;
+
+        return prefix + suffix.Trim();
+    }
+
+    public string GetSendGridKeyVaultSecretName() => GetKeyVaultSecretName("sendgrid-api-key--", "default")!;
 
     public string? GetExternalPropertyKeyVaultSecretName() => GetKeyVaultSecretName("external-property-api-key--");
 

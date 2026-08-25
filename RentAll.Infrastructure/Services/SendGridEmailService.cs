@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -14,8 +13,6 @@ namespace RentAll.Infrastructure.Services;
 
 public class SendGridEmailService : IEmailService
 {
-    private const string DefaultKeyVaultSuffix = "default";
-
     private readonly SendGridSettings _settings;
     private readonly ILogger<SendGridEmailService> _logger;
 
@@ -43,7 +40,7 @@ public class SendGridEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(fromEmail))
             throw new InvalidOperationException("FromRecipient.Email is required either in EmailMessage or SendGridSettings.");
 
-        var apiKey = await GetApiKeyFromKeyVaultAsync(cancellationToken);
+        var apiKey = await GetApiKeyFromKeyVaultAsync(sendGridName, cancellationToken);
         var client = new SendGridClient(apiKey);
 
         var from = ToSendGridAddress(fromEmail, fromName);
@@ -117,15 +114,15 @@ public class SendGridEmailService : IEmailService
             : new SendGridEmailAddress(email, displayName);
     }
 
-    private static string GetKeyVaultSecretName() => Organization.SendGridKeyVaultPrefix + DefaultKeyVaultSuffix;
-
-    private async Task<string> GetApiKeyFromKeyVaultAsync(CancellationToken cancellationToken = default)
+    private async Task<string> GetApiKeyFromKeyVaultAsync(string? keyVaultSecretName, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(keyVaultSecretName))
+            throw new InvalidOperationException("SendGrid Key Vault secret name is not configured.");
+
         var kvUri = _settings.KeyVaultUri;
         if (string.IsNullOrWhiteSpace(kvUri))
             throw new InvalidOperationException("SendGridSettings:KeyVaultUri is not set.");
 
-        var keyVaultSecretName = GetKeyVaultSecretName();
         var client = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
         var secret = await client.GetSecretAsync(keyVaultSecretName, cancellationToken: cancellationToken);
         return secret.Value.Value;
