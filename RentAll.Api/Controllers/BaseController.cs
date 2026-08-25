@@ -11,6 +11,8 @@ namespace RentAll.Api.Controllers
     {
         private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups, string Properties)? _cachedUserInfo;
 
+        protected static readonly Guid SuperAdminOrganizationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+
         protected Guid CurrentUser => GetUserInfoFromJwt().UserId;
         protected Guid CurrentOrganizationId => GetUserInfoFromJwt().OrganizationId;
         protected string CurrentOfficeAccess => GetUserInfoFromJwt().OfficeAccess;

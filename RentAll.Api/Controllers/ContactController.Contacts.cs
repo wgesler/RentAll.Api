@@ -21,6 +21,28 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpGet("organization/{organizationId}")]
+        public async Task<IActionResult> GetContactsByOrganizationIdAsync(Guid organizationId)
+        {
+            if (!IsSuperAdmin())
+                return Unauthorized("Only SuperAdmin can retrieve contacts by organization.");
+
+            if (organizationId == Guid.Empty)
+                return BadRequest("Organization ID is required");
+
+            try
+            {
+                var contacts = await _contactRepository.GetContactsByOrganizationIdAsync(organizationId);
+                var response = contacts.Select(c => new ContactResponseDto(c));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting contacts for organization {OrganizationId}", organizationId);
+                return ServerError("An error occurred while retrieving contacts");
+            }
+        }
+
         [HttpGet("type/{contactTypeId}")]
         public async Task<IActionResult> GetContactsByContactTypeIdAsync(int contactTypeId)
         {
@@ -43,9 +65,11 @@ namespace RentAll.Api.Controllers
             if (id == Guid.Empty)
                 return BadRequest("Contact ID is required");
 
-            try
-            {
-                var contact = await _contactRepository.GetContactByIdAsync(id, CurrentOrganizationId);
+            if (CurrentOrganizationId == SuperAdminOrganizationId && !IsSuperAdmin())
+                return Unauthorized("Only SuperAdmin can retrieve contacts across organizations.");
+
+            try { 
+                var contact = IsSuperAdmin() ? await _contactRepository.GetContactByIdAsync(id) : await _contactRepository.GetContactByIdsAsync(id, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound("Contact not found");
 
@@ -122,8 +146,15 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                // Check if contact exists
-                var existing = await _contactRepository.GetContactByIdAsync(dto.ContactId, CurrentOrganizationId);
+                if (CurrentOrganizationId == SuperAdminOrganizationId && !IsSuperAdmin())
+                    return Unauthorized("Only SuperAdmin can update contacts across organizations.");
+
+                if (!IsSuperAdmin() && dto.OrganizationId != CurrentOrganizationId)
+                    return Unauthorized("You are not authorized to update contacts for this organization.");
+
+                var existing = IsSuperAdmin()
+                    ? await _contactRepository.GetContactByIdAsync(dto.ContactId)
+                    : await _contactRepository.GetContactByIdsAsync(dto.ContactId, dto.OrganizationId);
                 if (existing == null)
                     return NotFound("Contact not found");
 
@@ -139,8 +170,8 @@ namespace RentAll.Api.Controllers
                 var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, dto.OrganizationId);
                 var officeName = office != null ? office.Name : null;
 
-                contact.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(existing.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
-                contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(existing.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
+                contact.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
+                contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
 
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 var response = new ContactResponseDto(updatedContact);
@@ -277,7 +308,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var contact = await _contactRepository.GetContactByIdAsync(contactId, CurrentOrganizationId);
+                var contact = await _contactRepository.GetContactByIdsAsync(contactId, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound("Contact not found");
 
@@ -302,7 +333,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Check if contact exists then check/delete w9 and insurance files
-                var existing = await _contactRepository.GetContactByIdAsync(contactId, CurrentOrganizationId);
+                var existing = await _contactRepository.GetContactByIdsAsync(contactId, CurrentOrganizationId);
                 if (existing != null)
                 {
                     // Get the office name for file storage path

@@ -52,6 +52,21 @@ namespace RentAll.Infrastructure.Repositories.Users
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
+        public async Task<User?> GetUserByIdsAsync(Guid userId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<UserEntity>("User.User_GetByIds", new
+            {
+                UserId = userId,
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             await using var db = new SqlConnection(_dbConnectionString);

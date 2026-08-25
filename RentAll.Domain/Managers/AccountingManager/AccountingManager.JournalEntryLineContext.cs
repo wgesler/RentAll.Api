@@ -213,7 +213,7 @@ public partial class AccountingManager
         var contactName = context.ContactName;
         if (contactName == null)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(contactId, organizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(contactId, organizationId);
             contactName = NormalizeOptionalString(contact?.DisplayName)
                 ?? NormalizeOptionalString(contact?.CompanyName)
                 ?? NormalizeOptionalString(contact?.FullName);
@@ -278,7 +278,7 @@ public partial class AccountingManager
 
         if (contactId is { } resolvedContactIdValue && resolvedContactIdValue != Guid.Empty && contactName == null)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(resolvedContactIdValue, invoice.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(resolvedContactIdValue, invoice.OrganizationId);
             contactName = contact == null
                 ? null
                 : reservation != null
@@ -310,7 +310,7 @@ public partial class AccountingManager
         string? contactName = null;
         if (ownerContactId != Guid.Empty)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(ownerContactId, organizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(ownerContactId, organizationId);
             contactName = NormalizeOptionalString(contact?.DisplayName)
                 ?? NormalizeOptionalString(contact?.CompanyName)
                 ?? NormalizeOptionalString(contact?.FullName);
@@ -349,7 +349,7 @@ public partial class AccountingManager
         var resolvedContactName = NormalizeOptionalString(contactName ?? receipt.VendorName);
         if (resolvedContactId.HasValue && resolvedContactName == null)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(resolvedContactId.Value, receipt.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(resolvedContactId.Value, receipt.OrganizationId);
             resolvedContactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
         }
 

@@ -63,9 +63,17 @@ public partial class AuthController
     [HttpGet("user/{UserId:guid}")]
     public async Task<IActionResult> GetUserByIdAsync(Guid UserId)
     {
+        if (UserId == Guid.Empty)
+            return BadRequest("User ID is required");
+
+        if (CurrentOrganizationId == SuperAdminOrganizationId && !IsSuperAdmin())
+            return Unauthorized("Only SuperAdmin can retrieve users across organizations.");
+
         try
         {
-            var user = await _userRepository.GetUserByIdAsync(UserId);
+            var user = IsSuperAdmin()
+                ? await _userRepository.GetUserByIdAsync(UserId)
+                : await _userRepository.GetUserByIdsAsync(UserId, CurrentOrganizationId);
             if (user == null)
                 return NotFound("User not found");
 
@@ -128,28 +136,31 @@ public partial class AuthController
         if (!isValid || !IsValidEmail(dto.Email))
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        try
-        {
-            var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
-            if (existingUser == null)
-                return NotFound("User not found");
-            if (!CanEditDefaultOrgAdmin(existingUser))
-                return Unauthorized("Only SuperAdmin can edit the default organization admin.");
+            try
+            {
+                var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
+                if (existingUser == null)
+                    return NotFound("User not found");
+                if (!CanEditDefaultOrgAdmin(existingUser))
+                    return Unauthorized("Only SuperAdmin can edit the default organization admin.");
 
-            if (existingUser.Email != dto.Email && await _userRepository.ExistsByEmailAsync(dto.Email))
-                return Conflict("Email already exists");
+                if (!IsSuperAdmin() && dto.OrganizationId != CurrentOrganizationId)
+                    return Unauthorized("You are not authorized to update users for this organization.");
 
-            string? passwordHash;
-            if (CurrentUserGroups.Contains("Admin") && dto.Password != null)
-                passwordHash = _passwordHasher.HashPassword(dto.Password);
-            else
-                passwordHash = existingUser.PasswordHash;
+                if (existingUser.Email != dto.Email && await _userRepository.ExistsByEmailAsync(dto.Email))
+                    return Conflict("Email already exists");
 
-            var user = dto.ToModel(dto, passwordHash, CurrentUser);
-            user.ContactId = dto.ContactId ?? existingUser.ContactId;
+                string? passwordHash;
+                if (CurrentUserGroups.Contains("Admin") && dto.Password != null)
+                    passwordHash = _passwordHasher.HashPassword(dto.Password);
+                else
+                    passwordHash = existingUser.PasswordHash;
 
-            user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                existingUser.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
+                var user = dto.ToModel(dto, passwordHash, CurrentUser);
+                user.ContactId = dto.ContactId ?? existingUser.ContactId;
+
+                user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                    dto.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
 
             var updatedUser = await _userRepository.UpdateByIdAsync(user);
             var response = new UserResponseDto(updatedUser);

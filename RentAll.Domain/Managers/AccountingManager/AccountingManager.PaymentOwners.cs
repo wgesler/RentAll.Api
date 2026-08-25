@@ -26,7 +26,7 @@ public partial class AccountingManager
                 throw new Exception("Owner does not match property for owner payment");
 
             string? ownerName = null;
-            var contact = await _contactRepository.GetContactByIdAsync(payment.OwnerId, organizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(payment.OwnerId, organizationId);
             if (contact != null)
                 ownerName = NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
 

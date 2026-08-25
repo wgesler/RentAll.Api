@@ -21,7 +21,7 @@ public class PropertyManager : IPropertyManager
     {
         if (p.Owner1Id is { } owner1Id && owner1Id != Guid.Empty)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(owner1Id, p.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(owner1Id, p.OrganizationId);
             if (contact == null)
                 return;
 
@@ -32,7 +32,7 @@ public class PropertyManager : IPropertyManager
 
         if (p.Owner2Id is { } owner2Id && owner2Id != Guid.Empty)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(owner2Id, p.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(owner2Id, p.OrganizationId);
             if (contact == null)
                 return;
 
@@ -43,7 +43,7 @@ public class PropertyManager : IPropertyManager
 
         if (p.Owner3Id != null && p.Owner3Id != Guid.Empty)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(p.Owner3Id.Value, p.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(p.Owner3Id.Value, p.OrganizationId);
             if (contact == null)
                 return;
 

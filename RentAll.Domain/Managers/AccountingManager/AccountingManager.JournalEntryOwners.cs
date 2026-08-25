@@ -606,7 +606,7 @@ public partial class AccountingManager
             if (property?.Owner1Id is { } resolvedOwnerId && resolvedOwnerId != Guid.Empty)
             {
                 ownerContactId = resolvedOwnerId;
-                var contact = await _contactRepository.GetContactByIdAsync(resolvedOwnerId, bill.OrganizationId);
+                var contact = await _contactRepository.GetContactByIdsAsync(resolvedOwnerId, bill.OrganizationId);
                 ownerContactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
             }
         }
@@ -694,7 +694,7 @@ public partial class AccountingManager
         string? ownerContactName = null;
         if (ownerContactId is { } resolvedOwnerContactId && resolvedOwnerContactId != Guid.Empty)
         {
-            var contact = await _contactRepository.GetContactByIdAsync(resolvedOwnerContactId, workOrder.OrganizationId);
+            var contact = await _contactRepository.GetContactByIdsAsync(resolvedOwnerContactId, workOrder.OrganizationId);
             ownerContactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
         }
 

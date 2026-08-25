@@ -22,6 +22,20 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<Contact>> GetContactsByOrganizationIdAsync(Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetAll", new
+            {
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Contact>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<IEnumerable<Contact>> GetContactsByContactTypeIdAsync(int contactTypeId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
@@ -37,10 +51,24 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             return res.Select(ConvertEntityToModel);
         }
 
-        public async Task<Contact?> GetContactByIdAsync(Guid contactId, Guid organizationId)
+        public async Task<Contact?> GetContactByIdAsync(Guid contactId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetById", new
+            {
+                ContactId = contactId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
+        public async Task<Contact?> GetContactByIdsAsync(Guid contactId, Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByIds", new
             {
                 ContactId = contactId,
                 OrganizationId = organizationId

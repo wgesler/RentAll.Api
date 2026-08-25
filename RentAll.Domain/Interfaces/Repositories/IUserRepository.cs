@@ -9,6 +9,7 @@ namespace RentAll.Domain.Interfaces.Repositories
         Task<IEnumerable<User>> GetUsersByOrganizationIdAsync(Guid organizationId);
         Task<IEnumerable<User>> GetUsersByRoleTypeAsync(Guid organizationId, string roleType);
         Task<User?> GetUserByIdAsync(Guid userId);
+        Task<User?> GetUserByIdsAsync(Guid userId, Guid organizationId);
         Task<User?> GetUserByEmailAsync(string email);
         Task<bool> ExistsByEmailAsync(string email);
 
