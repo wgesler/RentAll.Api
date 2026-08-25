@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Services;
+using RentAll.Domain.Models;
 using RentAll.Domain.Models.Common;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -13,7 +14,6 @@ namespace RentAll.Infrastructure.Services;
 
 public class SendGridEmailService : IEmailService
 {
-    private const string DefaultKeyVaultPrefix = "sendgrid-api-key--";
     private const string DefaultKeyVaultSuffix = "default";
 
     private readonly SendGridSettings _settings;
@@ -117,7 +117,7 @@ public class SendGridEmailService : IEmailService
             : new SendGridEmailAddress(email, displayName);
     }
 
-    private static string GetKeyVaultSecretName() => DefaultKeyVaultPrefix + DefaultKeyVaultSuffix;
+    private static string GetKeyVaultSecretName() => Organization.SendGridKeyVaultPrefix + DefaultKeyVaultSuffix;
 
     private async Task<string> GetApiKeyFromKeyVaultAsync(CancellationToken cancellationToken = default)
     {
