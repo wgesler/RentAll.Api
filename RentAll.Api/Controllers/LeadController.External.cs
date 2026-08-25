@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
 using RentAll.Api.Dtos.Leads.General;
 using RentAll.Api.Dtos.Leads.Rentals;
-using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers;
 
@@ -12,9 +10,7 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/general")]
-    public async Task<IActionResult> CreateExternalGeneralLeadAsync(
-        [FromBody] CreateExternalLeadGeneralDto dto,
-        [FromServices] IOptions<ExternalLeadIntakeSettings> settings)
+    public async Task<IActionResult> CreateExternalGeneralLeadAsync([FromBody] CreateExternalLeadGeneralDto dto)
     {
         if (dto == null)
             return BadRequest("General lead data is required");
@@ -23,12 +19,16 @@ public partial class LeadController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!IsExternalLeadApiKeyValid(settings.Value.ApiKey))
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
+        if (organization == null)
+            return BadRequest("Invalid OrganizationId");
+
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadGeneralKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try
         {
-            var orgOfficeError = await TryValidateExternalLeadOrgAndOfficeAsync(dto.OrganizationId, dto.OfficeId);
+            var orgOfficeError = await TryValidateExternalLeadOfficeAsync(organization, dto.OfficeId);
             if (orgOfficeError != null)
                 return orgOfficeError;
 
@@ -48,9 +48,7 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/rentals")]
-    public async Task<IActionResult> CreateExternalRentalLeadAsync(
-        [FromBody] CreateExternalLeadRentalDto dto,
-        [FromServices] IOptions<ExternalLeadIntakeSettings> settings)
+    public async Task<IActionResult> CreateExternalRentalLeadAsync([FromBody] CreateExternalLeadRentalDto dto)
     {
         if (dto == null)
             return BadRequest("Rental lead data is required");
@@ -59,12 +57,16 @@ public partial class LeadController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!IsExternalLeadApiKeyValid(settings.Value.ApiKey))
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
+        if (organization == null)
+            return BadRequest("Invalid OrganizationId");
+
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadRentalKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try
         {
-            var orgOfficeError = await TryValidateExternalLeadOrgAndOfficeAsync(dto.OrganizationId, dto.OfficeId);
+            var orgOfficeError = await TryValidateExternalLeadOfficeAsync(organization, dto.OfficeId);
             if (orgOfficeError != null)
                 return orgOfficeError;
 
@@ -84,9 +86,7 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/owners")]
-    public async Task<IActionResult> CreateExternalOwnerLeadAsync(
-        [FromBody] CreateExternalLeadOwnerDto dto,
-        [FromServices] IOptions<ExternalLeadIntakeSettings> settings)
+    public async Task<IActionResult> CreateExternalOwnerLeadAsync([FromBody] CreateExternalLeadOwnerDto dto)
     {
         if (dto == null)
             return BadRequest("Owner lead data is required");
@@ -95,12 +95,16 @@ public partial class LeadController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!IsExternalLeadApiKeyValid(settings.Value.ApiKey))
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
+        if (organization == null)
+            return BadRequest("Invalid OrganizationId");
+
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadOwnerKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try
         {
-            var orgOfficeError = await TryValidateExternalLeadOrgAndOfficeAsync(dto.OrganizationId, dto.OfficeId);
+            var orgOfficeError = await TryValidateExternalLeadOfficeAsync(organization, dto.OfficeId);
             if (orgOfficeError != null)
                 return orgOfficeError;
 
@@ -116,29 +120,13 @@ public partial class LeadController
     #endregion
 
     #region Private Support Methods
-    private async Task<IActionResult?> TryValidateExternalLeadOrgAndOfficeAsync(Guid organizationId, int officeId)
+    private async Task<IActionResult?> TryValidateExternalLeadOfficeAsync(Organization organization, int officeId)
     {
-        var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
-        if (organization == null)
-            return BadRequest("Invalid OrganizationId");
-
-        var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
+        var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organization.OrganizationId);
         if (office == null)
             return BadRequest("Invalid OfficeId for OrganizationId.");
 
         return null;
-    }
-
-    private bool IsExternalLeadApiKeyValid(string configuredApiKey)
-    {
-        if (string.IsNullOrWhiteSpace(configuredApiKey))
-            return false;
-
-        var inboundApiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(inboundApiKey))
-            return false;
-
-        return string.Equals(inboundApiKey.Trim(), configuredApiKey.Trim(), StringComparison.Ordinal);
     }
 
     #endregion

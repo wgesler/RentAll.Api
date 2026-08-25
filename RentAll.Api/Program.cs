@@ -58,9 +58,7 @@ var docuSignSettings = builder.Configuration.GetSection("DocuSignSettings");
 builder.Services.Configure<DocuSignSettings>(docuSignSettings);
 
 builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
-builder.Services.Configure<ExternalTicketIntakeSettings>(builder.Configuration.GetSection("ExternalTicketIntakeSettings"));
-builder.Services.Configure<ExternalLeadIntakeSettings>(builder.Configuration.GetSection("ExternalLeadIntakeSettings"));
-builder.Services.Configure<ExternalPropertyIntakeSettings>(builder.Configuration.GetSection("ExternalPropertyIntakeSettings"));
+builder.Services.Configure<ExternalIntakeSettings>(builder.Configuration.GetSection("ExternalIntakeSettings"));
 builder.Services.Configure<EncryptionSettings>(builder.Configuration.GetSection("EncryptionSettings"));
 builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
 builder.Services.Configure<ApplicationLoggingSettings>(builder.Configuration.GetSection("ApplicationLogging"));
@@ -132,6 +130,7 @@ builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
 builder.Services.AddHttpClient(nameof(DocuSignService));
 builder.Services.AddScoped<IDocuSignService, DocuSignService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();

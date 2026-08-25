@@ -32,4 +32,24 @@ public class Organization
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
+
+    public string? GetKeyVaultSecretName(string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(SuffixKeyName))
+            return null;
+
+        return prefix + SuffixKeyName.Trim();
+    }
+
+    public string? GetSendGridKeyVaultSecretName() => GetKeyVaultSecretName("sendgrid-api-key--");
+
+    public string? GetExternalPropertyKeyVaultSecretName() => GetKeyVaultSecretName("external-property-api-key--");
+
+    public string? GetExternalLeadRentalKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-rental-api-key--");
+
+    public string? GetExternalLeadOwnerKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-owner-api-key--");
+
+    public string? GetExternalLeadGeneralKeyVaultSecretName() => GetKeyVaultSecretName("external-lead-general-api-key--");
+
+    public string? GetExternalTicketKeyVaultSecretName() => GetKeyVaultSecretName("external-ticket-api-key--");
 }

@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
-using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers;
 
@@ -10,9 +8,7 @@ public partial class PropertyController
 
     [AllowAnonymous]
     [HttpPost("external")]
-    public async Task<IActionResult> UpsertExternalProperty(
-        [FromBody] CreateExternalPropertyDto dto,
-        [FromServices] IOptions<ExternalPropertyIntakeSettings> settings)
+    public async Task<IActionResult> UpsertExternalProperty([FromBody] CreateExternalPropertyDto dto)
     {
         if (dto == null)
             return BadRequest("Property data is required");
@@ -21,17 +17,17 @@ public partial class PropertyController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!IsExternalPropertyApiKeyValid(settings.Value.ApiKey))
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
+        if (organization == null)
+            return BadRequest("Invalid OrganizationId");
+
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalPropertyKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         SetApplicationLogContext(dto.OrganizationId, dto.OfficeId);
 
         try
         {
-            var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
-            if (organization == null)
-                return BadRequest("Invalid OrganizationId");
-
             var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, dto.OrganizationId);
             if (office == null)
                 return BadRequest("Invalid OfficeId for OrganizationId");
@@ -83,17 +79,5 @@ public partial class PropertyController
 
         var updatedProperty = await _propertyRepository.UpdateByIdAsync(property);
         return (updatedProperty, null);
-    }
-
-    private bool IsExternalPropertyApiKeyValid(string configuredApiKey)
-    {
-        if (string.IsNullOrWhiteSpace(configuredApiKey))
-            return false;
-
-        var inboundApiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(inboundApiKey))
-            return false;
-
-        return string.Equals(inboundApiKey.Trim(), configuredApiKey.Trim(), StringComparison.Ordinal);
     }
 }

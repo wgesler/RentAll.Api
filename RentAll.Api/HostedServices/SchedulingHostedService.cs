@@ -135,7 +135,7 @@ public class SchedulingHostedService : BackgroundService
                         continue;
 
                     var email = MapAlertToEmail(alert);
-                    var result = await emailManager.SendEmail(organization.SendGridName, email);
+                    var result = await emailManager.SendEmail(organization.GetSendGridKeyVaultSecretName(), email);
 
                     ApplySendResultToAlert(alert, result);
 

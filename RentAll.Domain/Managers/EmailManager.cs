@@ -119,7 +119,7 @@ public class EmailManager : IEmailManager
             return;
 
         var organization = await _organizationRepository.GetOrganizationByIdAsync(ticket.OrganizationId);
-        var sendGridName = organization?.SendGridName;
+        var sendGridName = organization?.GetSendGridKeyVaultSecretName();
         var mostRecentNote = GetMostRecentNote(ticket);
         var assignee = string.IsNullOrWhiteSpace(ticket.Assignee) ? "Unassigned" : ticket.Assignee.Trim();
         var ticketState = FormatTicketState(ticket.TicketStateType);

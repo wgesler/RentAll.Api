@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Options;
 using RentAll.Api.Dtos.Tickets.Tickets;
-using RentAll.Domain.Configuration;
 
 namespace RentAll.Api.Controllers;
 
@@ -12,9 +10,7 @@ public partial class TicketController
     #region Create
     [AllowAnonymous]
     [HttpPost("external")]
-    public async Task<IActionResult> CreateExternalTicket(
-        [FromBody] CreateExternalTicketDto dto,
-        [FromServices] IOptions<ExternalTicketIntakeSettings> settings)
+    public async Task<IActionResult> CreateExternalTicket([FromBody] CreateExternalTicketDto dto)
     {
         if (dto == null)
             return BadRequest("Ticket data is required");
@@ -23,15 +19,15 @@ public partial class TicketController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!IsExternalApiKeyValid(settings.Value.ApiKey))
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
+        if (organization == null)
+            return BadRequest("Invalid OrganizationId");
+
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalTicketKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
         try
         {
-            var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
-            if (organization == null)
-                return BadRequest("Invalid OrganizationId");
-
             var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, dto.OrganizationId);
             if (office == null)
                 return BadRequest("Invalid OfficeId for OrganizationId");
@@ -47,20 +43,6 @@ public partial class TicketController
             _logger.LogError(ex, "Error creating external ticket intake request");
             return ServerError("An error occurred while creating the ticket");
         }
-    }
-    #endregion
-
-    #region Private Support Methods
-    private bool IsExternalApiKeyValid(string configuredApiKey)
-    {
-        if (string.IsNullOrWhiteSpace(configuredApiKey))
-            return false;
-
-        var inboundApiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(inboundApiKey))
-            return false;
-
-        return string.Equals(inboundApiKey.Trim(), configuredApiKey.Trim(), StringComparison.Ordinal);
     }
     #endregion
 }

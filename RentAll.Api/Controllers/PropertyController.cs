@@ -22,6 +22,7 @@ namespace RentAll.Api.Controllers
         private readonly ICalendarManager _calendarManager;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly IFileService _fileService;
+        private readonly IExternalApiKeyService _externalApiKeyService;
         private readonly ILogger<PropertyController> _logger;
 
         public PropertyController(
@@ -35,6 +36,7 @@ namespace RentAll.Api.Controllers
             ICalendarManager calendarManager,
             IFileAttachmentHelper fileAttachmentHelper,
             IFileService fileService,
+            IExternalApiKeyService externalApiKeyService,
             ILogger<PropertyController> logger)
         {
             _appSettings = appSettingsOptions.Value;
@@ -47,6 +49,7 @@ namespace RentAll.Api.Controllers
             _calendarManager = calendarManager;
             _fileAttachmentHelper = fileAttachmentHelper;
             _fileService = fileService;
+            _externalApiKeyService = externalApiKeyService;
             _logger = logger;
         }
     }

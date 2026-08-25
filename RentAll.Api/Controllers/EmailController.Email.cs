@@ -102,7 +102,7 @@ namespace RentAll.Api.Controllers
             {
                 var org = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
                 var email = dto.ToModel(CurrentUser);
-                var result = await _emailManager.SendEmail(org?.SendGridName, email);
+                var result = await _emailManager.SendEmail(org?.GetSendGridKeyVaultSecretName(), email);
 
                 if (result.EmailStatus == EmailStatus.Succeeded)
                     return Ok(new EmailResponseDto(result));
