@@ -3,6 +3,7 @@ namespace RentAll.Infrastructure.Entities.Properties;
 public class PropertyAgreementEntity
 {
     public Guid PropertyId { get; set; }
+    public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string? W9Path { get; set; }
     public string? InsurancePath { get; set; }

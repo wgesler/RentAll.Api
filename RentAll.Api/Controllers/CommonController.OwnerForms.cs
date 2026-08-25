@@ -682,6 +682,7 @@ namespace RentAll.Api.Controllers
                             await _propertyRepository.CreatePropertyAgreementAsync(new PropertyAgreement
                             {
                                 PropertyId = created.PropertyId,
+                                OrganizationId = created.OrganizationId,
                                 OfficeId = created.OfficeId,
                                 ManagementFeeType = ManagementFeeType.FlatRate,
                                 FlatRateAmount = 0m,
@@ -736,6 +737,7 @@ namespace RentAll.Api.Controllers
                         await _propertyRepository.CreatePropertyAgreementAsync(new PropertyAgreement
                         {
                             PropertyId = updated.PropertyId,
+                            OrganizationId = updated.OrganizationId,
                             OfficeId = updated.OfficeId,
                             ManagementFeeType = ManagementFeeType.FlatRate,
                             FlatRateAmount = 0m,

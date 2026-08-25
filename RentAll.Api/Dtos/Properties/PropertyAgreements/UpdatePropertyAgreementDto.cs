@@ -73,6 +73,7 @@ public class UpdatePropertyAgreementDto
         return new PropertyAgreement
         {
             PropertyId = PropertyId,
+            OrganizationId = existing.OrganizationId != Guid.Empty ? existing.OrganizationId : organizationId,
             OfficeId = existing.OfficeId,
             ManagementFeeType = ManagementFeeTypeId.HasValue
                 ? (ManagementFeeType)ManagementFeeTypeId.Value

@@ -67,6 +67,7 @@ public class CreatePropertyAgreementDto
         return new PropertyAgreement
         {
             PropertyId = propertyId,
+            OrganizationId = organizationId,
             OfficeId = officeId,
             ManagementFeeType = ManagementFeeTypeId.HasValue ? (ManagementFeeType)ManagementFeeTypeId.Value : ManagementFeeType.FlatRate,
             FlatRateAmount = FlatRateAmount ?? 0m,

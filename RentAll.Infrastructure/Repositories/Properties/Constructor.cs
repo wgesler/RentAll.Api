@@ -210,6 +210,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
         {
             AgreementLines = DeserializeAgreementLines(e.AgreementLines),
             PropertyId = e.PropertyId,
+            OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             ManagementFeeType = (ManagementFeeType)e.ManagementFeeTypeId,
             FlatRateAmount = e.FlatRateAmount,

@@ -5,6 +5,7 @@ namespace RentAll.Domain.Models;
 public class PropertyAgreement
 {
     public Guid PropertyId { get; set; }
+    public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public ManagementFeeType ManagementFeeType { get; set; }
     public decimal FlatRateAmount { get; set; }

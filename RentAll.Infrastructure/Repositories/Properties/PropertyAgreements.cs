@@ -145,6 +145,7 @@ public partial class PropertyRepository
             var res = await db.DapperProcQueryAsync<PropertyAgreementEntity>("Property.PropertyAgreements_Add", new
             {
                 PropertyId = agreement.PropertyId,
+                OrganizationId = agreement.OrganizationId,
                 OfficeId = agreement.OfficeId,
                 ManagementFeeTypeId = (int)agreement.ManagementFeeType,
                 FlatRateAmount = agreement.FlatRateAmount,
@@ -270,6 +271,7 @@ public partial class PropertyRepository
             var res = await db.DapperProcQueryAsync<PropertyAgreementEntity>("Property.PropertyAgreements_UpdateByPropertyId", new
             {
                 PropertyId = agreement.PropertyId,
+                OrganizationId = agreement.OrganizationId,
                 OfficeId = agreement.OfficeId,
                 ManagementFeeTypeId = (int)agreement.ManagementFeeType,
                 FlatRateAmount = agreement.FlatRateAmount,

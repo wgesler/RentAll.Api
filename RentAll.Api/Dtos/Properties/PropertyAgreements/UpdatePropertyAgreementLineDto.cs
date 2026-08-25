@@ -52,7 +52,9 @@ public class UpdatePropertyAgreementLineDto
         {
             AgreementLineId = AgreementLineId ?? 0,
             AgreementId = resolvedPropertyId,
-            OrganizationId = existingLine?.OrganizationId ?? organizationId,
+            OrganizationId = existingLine is { OrganizationId: var existingOrgId } && existingOrgId != Guid.Empty
+                ? existingOrgId
+                : organizationId,
             Title = string.IsNullOrWhiteSpace(Title) ? null : Title.Trim(),
             VendorId = VendorId,
             StartDate = StartDate!.Value,
