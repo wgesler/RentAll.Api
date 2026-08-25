@@ -84,6 +84,7 @@ public partial class OrganizationRepository
             IsInternational = organization.IsInternational,
             CurrentInvoiceNo = organization.CurrentInvoiceNo,
             SendGridName = organization.SendGridName,
+            SuffixKeyName = organization.SuffixKeyName,
             IsActive = organization.IsActive,
             CreatedBy = organization.CreatedBy
         });
@@ -121,6 +122,7 @@ public partial class OrganizationRepository
             IsInternational = organization.IsInternational,
             CurrentInvoiceNo = organization.CurrentInvoiceNo,
             SendGridName = organization.SendGridName,
+            SuffixKeyName = organization.SuffixKeyName,
             IsActive = organization.IsActive,
             ModifiedBy = organization.ModifiedBy
         });

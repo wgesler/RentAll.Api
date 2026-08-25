@@ -40,6 +40,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             IsInternational = e.IsInternational,
             CurrentInvoiceNo = e.CurrentInvoiceNo,
             SendGridName = e.SendGridName,
+            SuffixKeyName = e.SuffixKeyName,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,

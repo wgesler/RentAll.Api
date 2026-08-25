@@ -22,6 +22,7 @@ public class CreateOrganizationDto
     public bool IsInternational { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public string? SendGridName { get; set; }
+    public string? SuffixKeyName { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -67,6 +68,7 @@ public class CreateOrganizationDto
             IsInternational = IsInternational,
             CurrentInvoiceNo = CurrentInvoiceNo,
             SendGridName = SendGridName,
+            SuffixKeyName = SuffixKeyName,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

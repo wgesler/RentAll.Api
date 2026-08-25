@@ -25,6 +25,7 @@ public class OrganizationResponseDto
     public bool IsInternational { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public string? SendGridName { get; set; }
+    public string? SuffixKeyName { get; set; }
     public bool IsActive { get; set; }
 
     public OrganizationResponseDto(Organization org)
@@ -50,6 +51,7 @@ public class OrganizationResponseDto
         IsInternational = org.IsInternational;
         CurrentInvoiceNo = org.CurrentInvoiceNo;
         SendGridName = org.SendGridName;
+        SuffixKeyName = org.SuffixKeyName;
         IsActive = org.IsActive;
     }
 }

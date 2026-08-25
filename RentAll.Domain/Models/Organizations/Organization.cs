@@ -26,6 +26,7 @@ public class Organization
     public bool IsInternational { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public string? SendGridName { get; set; }
+    public string? SuffixKeyName { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
