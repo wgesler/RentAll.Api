@@ -19,6 +19,7 @@ public class ContactEntity
     public string? DisplayName { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+    public string? PreferredName { get; set; }
     public string? FullName { get; set; }
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }

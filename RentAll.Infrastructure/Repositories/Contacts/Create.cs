@@ -35,6 +35,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 DisplayName = contact.DisplayName,
                 FirstName = contact.FirstName,
                 LastName = contact.LastName,
+                PreferredName = contact.PreferredName,
                 OfficeAccess = officeAccessJson,
                 Address1 = contact.Address1,
                 Address2 = contact.Address2,

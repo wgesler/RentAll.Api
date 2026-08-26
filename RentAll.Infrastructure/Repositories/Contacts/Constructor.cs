@@ -63,6 +63,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 DisplayName = e.DisplayName,
                 FirstName = e.FirstName,
                 LastName = e.LastName,
+                PreferredName = e.PreferredName,
                 FullName = e.FullName,
                 Address1 = e.Address1,
                 Address2 = e.Address2,
