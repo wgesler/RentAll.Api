@@ -57,6 +57,8 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 WorkingCapitalBalance = contact.WorkingCapitalBalance,
                 LinenAndTowelFee = contact.LinenAndTowelFee,
                 PaymentTermsId = (int?)contact.PaymentTerms,
+                ProrateTypeId = (int?)contact.ProrateType,
+                InvoiceMethodTypeId = (int?)contact.InvoiceMethod,
                 BankName = contact.BankName,
                 RoutingNumber = contact.RoutingNumber,
                 AccountNumber = contact.AccountNumber,

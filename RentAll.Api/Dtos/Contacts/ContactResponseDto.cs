@@ -46,6 +46,8 @@ public class ContactResponseDto
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
     public int? PaymentTermsId { get; set; }
+    public int? ProrateTypeId { get; set; }
+    public int? InvoiceMethodTypeId { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
@@ -100,6 +102,8 @@ public class ContactResponseDto
         WorkingCapitalBalance = contact.WorkingCapitalBalance;
         LinenAndTowelFee = contact.LinenAndTowelFee;
         PaymentTermsId = (int?)contact.PaymentTerms;
+        ProrateTypeId = (int?)contact.ProrateType;
+        InvoiceMethodTypeId = (int?)contact.InvoiceMethod;
         BankName = contact.BankName;
         RoutingNumber = contact.RoutingNumber;
         AccountNumber = contact.AccountNumber;

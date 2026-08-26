@@ -42,6 +42,8 @@ public class ContactEntity
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
     public int? PaymentTermsId { get; set; }
+    public int? ProrateTypeId { get; set; }
+    public int? InvoiceMethodTypeId { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }

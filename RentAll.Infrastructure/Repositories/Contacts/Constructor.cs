@@ -86,6 +86,8 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 WorkingCapitalBalance = e.WorkingCapitalBalance,
                 LinenAndTowelFee = e.LinenAndTowelFee,
                 PaymentTerms = e.PaymentTermsId.HasValue ? (TermType)e.PaymentTermsId.Value : null,
+                ProrateType = e.ProrateTypeId.HasValue ? (ProrateType)e.ProrateTypeId.Value : null,
+                InvoiceMethod = e.InvoiceMethodTypeId.HasValue ? (InvoiceMethod)e.InvoiceMethodTypeId.Value : null,
                 BankName = e.BankName,
                 RoutingNumber = e.RoutingNumber,
                 AccountNumber = e.AccountNumber,

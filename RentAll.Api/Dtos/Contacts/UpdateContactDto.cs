@@ -43,6 +43,8 @@ public class UpdateContactDto
     public decimal? WorkingCapitalBalance { get; set; }
     public decimal? LinenAndTowelFee { get; set; }
     public int? PaymentTermsId { get; set; }
+    public int? ProrateTypeId { get; set; }
+    public int? InvoiceMethodTypeId { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
@@ -84,6 +86,12 @@ public class UpdateContactDto
 
         if (PaymentTermsId.HasValue && !Enum.IsDefined(typeof(TermType), PaymentTermsId.Value))
             return (false, $"Invalid PaymentTermsId value: {PaymentTermsId}");
+
+        if (ProrateTypeId.HasValue && !Enum.IsDefined(typeof(ProrateType), ProrateTypeId.Value))
+            return (false, $"Invalid ProrateTypeId value: {ProrateTypeId}");
+
+        if (InvoiceMethodTypeId.HasValue && !Enum.IsDefined(typeof(InvoiceMethod), InvoiceMethodTypeId.Value))
+            return (false, $"Invalid InvoiceMethodTypeId value: {InvoiceMethodTypeId}");
 
         return (true, null);
     }
@@ -129,6 +137,8 @@ public class UpdateContactDto
             WorkingCapitalBalance = WorkingCapitalBalance,
             LinenAndTowelFee = LinenAndTowelFee,
             PaymentTerms = PaymentTermsId.HasValue ? (TermType)PaymentTermsId.Value : null,
+            ProrateType = ProrateTypeId.HasValue ? (ProrateType)ProrateTypeId.Value : null,
+            InvoiceMethod = InvoiceMethodTypeId.HasValue ? (InvoiceMethod)InvoiceMethodTypeId.Value : null,
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
