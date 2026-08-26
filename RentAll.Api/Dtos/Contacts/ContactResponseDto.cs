@@ -23,6 +23,7 @@ public class ContactResponseDto
     public string? LastName { get; set; }
     public string? PreferredName { get; set; }
     public string? FullName { get; set; }
+    public string? LegalName { get; set; }
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }
     public string? City { get; set; }
@@ -76,6 +77,7 @@ public class ContactResponseDto
         LastName = contact.LastName;
         PreferredName = contact.PreferredName;
         FullName = contact.FullName;
+        LegalName = contact.LegalName;
         Address1 = contact.Address1;
         Address2 = contact.Address2;
         City = contact.City;
