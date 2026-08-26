@@ -107,19 +107,27 @@ public partial class AccountingManager
         var result = new JournalEntrySyncResult();
         await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
 
-        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Inbound))
+        var inboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Inbound))
             .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
+        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Outbound))
+            .Where(payment => payment.IsActive)
+            .OrderBy(payment => payment.PaymentDate)
+            .ThenBy(payment => payment.PaymentId)
+            .ToList();
+
+        var allPayments = inboundPayments.Concat(outboundPayments).ToList();
+
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-            var total = payments.Count;
+            var total = allPayments.Count;
             var processed = 0;
             ReportSyncProgress(progress, "payment", total, processed, result, "Running");
 
-            foreach (var paymentSummary in payments)
+            foreach (var paymentSummary in inboundPayments)
             {
                 result.DocumentsProcessed++;
 
@@ -197,6 +205,35 @@ public partial class AccountingManager
                 ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
+            foreach (var paymentSummary in outboundPayments)
+            {
+                result.DocumentsProcessed++;
+
+                try
+                {
+                    await SyncOutboundBillPaymentJournalEntryAsync(paymentSummary, organizationId, currentUser, result);
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Bill payment {paymentSummary.PaymentCode}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "BillPayment",
+                        organizationId: organizationId,
+                        officeId: paymentSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.BillPayment,
+                        sourceId: paymentSummary.PaymentId,
+                        documentCode: paymentSummary.PaymentCode ?? paymentSummary.Description,
+                        accountingPeriod: null,
+                        amount: paymentSummary.Amount,
+                        message: message,
+                        currentUser: currentUser);
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
+            }
+
             if (total == 0)
                 ReportSyncProgress(progress, "payment", total, processed, result, "Completed");
 
@@ -204,7 +241,7 @@ public partial class AccountingManager
                 await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
 
             return result;
-        }, paymentsAlreadyLoaded: payments);
+        }, paymentsAlreadyLoaded: allPayments);
     }
     #endregion
 

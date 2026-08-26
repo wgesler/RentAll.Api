@@ -16,9 +16,18 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return journalEntries;
 
-        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
         if (payment == null)
             throw new Exception("Payment record not found");
+
+        if (payment.BillAllocations.Count == 0)
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId)
+                ?? throw new Exception("Payment record not found");
 
         if (payment.PaymentDirectionId != (int)PaymentDirection.Outbound)
             throw new Exception("Payment is not a bill payment.");
@@ -63,6 +72,121 @@ public partial class AccountingManager
         }
 
         return journalEntries;
+    }
+
+    /// <summary>Bill payment document JE: kind BillPayment with PaymentId stamped.</summary>
+    private async Task<bool> PaymentHasHealthBillPaymentJournalEntryAsync(Guid paymentId, Guid organizationId)
+    {
+        if (paymentId == Guid.Empty)
+            return false;
+
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(organizationId, paymentId);
+        if (linkedEntries.Any(entry =>
+                entry.JournalEntryKindId == JournalEntryKind.BillPayment
+                && entry.PaymentId is { } linkedPaymentId
+                && linkedPaymentId == paymentId))
+            return true;
+
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
+        if (payment == null)
+            return false;
+
+        var documentEntries = await GetJournalEntriesForSourceAsync(
+            payment.OrganizationId,
+            payment.OfficeId,
+            SourceType.BillPayment,
+            paymentId);
+
+        return documentEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.BillPayment);
+    }
+
+    private static HashSet<Guid> GetReceiptIdsCoveredByBillPaymentDocuments(IEnumerable<Payment> outboundPayments)
+    {
+        return outboundPayments
+            .Where(payment => payment.IsActive)
+            .SelectMany(payment => payment.BillAllocations ?? [])
+            .Select(allocation => allocation.ReceiptId)
+            .Where(receiptId => receiptId != Guid.Empty)
+            .ToHashSet();
+    }
+
+    private async Task<bool> IsBillCoveredByBillPaymentDocumentAsync(Guid receiptId, Guid organizationId, int officeId)
+    {
+        if (receiptId == Guid.Empty)
+            return false;
+
+        var outboundPayments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+            organizationId,
+            officeId.ToString(),
+            (int)PaymentDirection.Outbound);
+
+        return GetReceiptIdsCoveredByBillPaymentDocuments(outboundPayments).Contains(receiptId);
+    }
+
+    private async Task DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(Receipt bill)
+    {
+        var legacyPaymentEntries = await GetJournalEntriesForSourceAsync(
+            bill.OrganizationId,
+            bill.OfficeId,
+            SourceType.BillPayment,
+            bill.ReceiptId);
+
+        foreach (var journalEntry in legacyPaymentEntries)
+            await DeleteOpenJournalEntryAsync(journalEntry.JournalEntryId, bill.OrganizationId);
+    }
+
+    private async Task SyncOutboundBillPaymentJournalEntryAsync(
+        Payment paymentSummary,
+        Guid organizationId,
+        Guid currentUser,
+        JournalEntrySyncResult result)
+    {
+        if (!paymentSummary.IsActive)
+        {
+            result.JournalEntriesSkipped++;
+            return;
+        }
+
+        if (paymentSummary.BillAllocations.Count == 0)
+        {
+            result.JournalEntriesSkipped++;
+            return;
+        }
+
+        await CreateJournalEntriesFromBillPaymentDocumentAsync(paymentSummary.PaymentId, organizationId, currentUser);
+
+        if (await PaymentHasHealthBillPaymentJournalEntryAsync(paymentSummary.PaymentId, organizationId))
+        {
+            result.JournalEntriesCreated++;
+            return;
+        }
+
+        result.JournalEntriesSkipped++;
+
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentSummary.PaymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
+
+        var message = $"Bill payment {ResolvePaymentDocumentCode(payment, paymentSummary)}: no BillPayment JE with PaymentId after sync.";
+        await LogAccountingErrorAsync(
+            trigger: "BillPaymentSkip",
+            organizationId: organizationId,
+            officeId: paymentSummary.OfficeId,
+            sourceTypeId: (int)SourceType.BillPayment,
+            sourceId: paymentSummary.PaymentId,
+            documentCode: ResolvePaymentDocumentCode(payment, paymentSummary),
+            accountingPeriod: null,
+            amount: paymentSummary.Amount,
+            message: message,
+            currentUser: currentUser);
+        result.Errors.Add(message);
     }
     #endregion
 

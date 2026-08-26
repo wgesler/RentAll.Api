@@ -80,6 +80,8 @@ public partial class AccountingManager
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
         var result = new JournalEntrySyncResult();
+        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Outbound)).ToList();
+        var receiptIdsCoveredByPaymentDocuments = GetReceiptIdsCoveredByBillPaymentDocuments(outboundPayments);
         var bills = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
         {
             OrganizationId = organizationId,
@@ -118,28 +120,35 @@ public partial class AccountingManager
 
                 if (bill.PaidAmount != 0)
                 {
-                    try
+                    if (receiptIdsCoveredByPaymentDocuments.Contains(bill.ReceiptId))
                     {
-                        await SyncBillPaymentJournalEntryAsync(bill, currentUser, result);
+                        await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
                     }
-                    catch (Exception paymentEx)
+                    else
                     {
-                        var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
-                            ? billSummary.BillNumber
-                            : billSummary.ReceiptCode;
-                        var message = $"Bill {paymentBillLabel} payment: {paymentEx.Message}";
-                        result.Errors.Add(message);
-                        await LogAccountingErrorAsync(
-                            trigger: "BillPayment",
-                            organizationId: organizationId,
-                            officeId: billSummary.OfficeId,
-                            sourceTypeId: (int)SourceType.BillPayment,
-                            sourceId: billSummary.ReceiptId,
-                            documentCode: paymentBillLabel,
-                            accountingPeriod: null,
-                            amount: billSummary.PaidAmount,
-                            message: message,
-                            currentUser: currentUser);
+                        try
+                        {
+                            await SyncBillPaymentJournalEntryAsync(bill, currentUser, result);
+                        }
+                        catch (Exception paymentEx)
+                        {
+                            var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
+                                ? billSummary.BillNumber
+                                : billSummary.ReceiptCode;
+                            var message = $"Bill {paymentBillLabel} payment: {paymentEx.Message}";
+                            result.Errors.Add(message);
+                            await LogAccountingErrorAsync(
+                                trigger: "BillPayment",
+                                organizationId: organizationId,
+                                officeId: billSummary.OfficeId,
+                                sourceTypeId: (int)SourceType.BillPayment,
+                                sourceId: billSummary.ReceiptId,
+                                documentCode: paymentBillLabel,
+                                accountingPeriod: null,
+                                amount: billSummary.PaidAmount,
+                                message: message,
+                                currentUser: currentUser);
+                        }
                     }
                 }
             }

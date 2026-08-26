@@ -112,8 +112,112 @@ public partial class AccountingManager
         if (existingBill?.BankCardId is > 0)
             await DeleteJournalEntriesForReceiptAsync(existingBill);
 
+        await EnsureBillPaymentDocumentForPaidBillAsync(freshBill, currentUser);
         await ReplaceJournalEntriesFromBillAsync(freshBill, currentUser);
         return freshBill;
+    }
+
+    private async Task EnsureBillPaymentDocumentForPaidBillAsync(Receipt bill, Guid currentUser)
+    {
+        if (bill.ReceiptId == Guid.Empty || bill.PaidAmount <= 0)
+            return;
+
+        if (bill.BankCardId is > 0)
+            return;
+
+        if (!await IsAccountingFeatureEnabledAsync(bill.OrganizationId))
+            return;
+
+        var existingAllocations = await _accountingRepository.GetBillAllocationsByReceiptIdAsync(bill.ReceiptId, bill.OrganizationId);
+        if (existingAllocations.Count > 0)
+            return;
+
+        try
+        {
+            bill = await LoadReceiptWithSplitsAsync(bill);
+
+            var chartOfAccountId = await ResolveLegacyBillPaymentBankAccountIdAsync(bill);
+            if (chartOfAccountId <= 0)
+            {
+                await LogAccountingErrorAsync(
+                    trigger: "BillPaymentBackfill",
+                    organizationId: bill.OrganizationId,
+                    officeId: bill.OfficeId,
+                    sourceTypeId: (int)SourceType.BillPayment,
+                    sourceId: bill.ReceiptId,
+                    documentCode: bill.ReceiptCode,
+                    accountingPeriod: bill.AccountingPeriod == default ? null : bill.AccountingPeriod,
+                    amount: bill.PaidAmount,
+                    message: $"Unable to backfill bill payment document for {bill.ReceiptCode}: bank account could not be resolved.",
+                    currentUser: currentUser);
+                return;
+            }
+
+            var description = (bill.PaymentDescription ?? bill.Description ?? string.Empty).Trim();
+            var allocation = new PaymentBillAllocation
+            {
+                ReceiptId = bill.ReceiptId,
+                ReceiptCode = bill.ReceiptCode,
+                LineNumber = 1,
+                Amount = bill.PaidAmount,
+                Description = description
+            };
+
+            var payment = new Payment
+            {
+                OrganizationId = bill.OrganizationId,
+                OfficeId = bill.OfficeId,
+                PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
+                Amount = bill.PaidAmount,
+                Description = description,
+                PaymentDirectionId = (int)PaymentDirection.Outbound,
+                PaymentTypeId = bill.PaymentTypeId > 0 ? bill.PaymentTypeId : null,
+                ChartOfAccountId = chartOfAccountId,
+                IsActive = bill.IsActive,
+                CreatedBy = currentUser,
+                ModifiedBy = currentUser
+            };
+
+            var applications = await PrepareBillPaymentApplicationsAsync(payment, [allocation], currentUser);
+            payment.CostCodeId = await ResolveBillPaymentHeaderCostCodeIdAsync(payment, applications);
+
+            await EnsurePaymentCodeAsync(payment);
+            var createdPayment = await _accountingRepository.CreatePaymentWithBillAllocationsAsync(payment, [allocation], currentUser);
+            await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
+            await CreateJournalEntriesFromBillPaymentDocumentAsync(createdPayment.PaymentId, bill.OrganizationId, currentUser);
+        }
+        catch (Exception ex)
+        {
+            await LogAccountingErrorAsync(
+                trigger: "BillPaymentBackfill",
+                organizationId: bill.OrganizationId,
+                officeId: bill.OfficeId,
+                sourceTypeId: (int)SourceType.BillPayment,
+                sourceId: bill.ReceiptId,
+                documentCode: bill.ReceiptCode,
+                accountingPeriod: bill.AccountingPeriod == default ? null : bill.AccountingPeriod,
+                amount: bill.PaidAmount,
+                message: $"Bill payment backfill failed for {bill.ReceiptCode}: {ex.Message}",
+                currentUser: currentUser);
+        }
+    }
+
+    private async Task<int> ResolveLegacyBillPaymentBankAccountIdAsync(Receipt bill)
+    {
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
+        var liabilityAccountId = GetBillReceiptLiabilityAccountId(bill, chartOfAccounts, accountingOffice);
+
+        var legacyPaymentEntries = await GetJournalEntriesForSourceAsync(
+            bill.OrganizationId,
+            bill.OfficeId,
+            SourceType.BillPayment,
+            bill.ReceiptId);
+
+        var resolvedBankAccountId = legacyPaymentEntries
+            .Select(entry => ResolveBillPaymentOffsetAccountId(entry, liabilityAccountId))
+            .FirstOrDefault(accountId => accountId is > 0);
+
+        return resolvedBankAccountId ?? GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice);
     }
 
     public async Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser)

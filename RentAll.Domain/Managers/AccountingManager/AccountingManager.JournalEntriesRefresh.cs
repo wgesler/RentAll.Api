@@ -331,6 +331,12 @@ public partial class AccountingManager
                 SourceType.BillPayment,
                 bill.ReceiptId);
 
+            if (await IsBillCoveredByBillPaymentDocumentAsync(bill.ReceiptId, bill.OrganizationId, bill.OfficeId))
+            {
+                await DeleteJournalEntriesExceptAsync(existingPayments, Array.Empty<Guid>(), bill.OrganizationId);
+                return;
+            }
+
             if (bill.PaidAmount == 0)
             {
                 await DeleteJournalEntriesExceptAsync(existingPayments, Array.Empty<Guid>(), bill.OrganizationId);

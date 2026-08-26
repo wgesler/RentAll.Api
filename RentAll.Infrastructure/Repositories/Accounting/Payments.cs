@@ -73,6 +73,21 @@ public partial class AccountingRepository
                 ?? createdPayment;
         });
 
+    public async Task<IReadOnlyList<PaymentBillAllocation>> GetBillAllocationsByReceiptIdAsync(Guid receiptId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var entities = await db.DapperProcQueryAsync<PaymentBillAllocationEntity>("Accounting.PaymentBillAllocation_GetByReceiptId", new
+        {
+            ReceiptId = receiptId,
+            OrganizationId = organizationId
+        });
+
+        return (entities ?? Enumerable.Empty<PaymentBillAllocationEntity>())
+            .Select(ConvertPaymentBillAllocationEntityToModel)
+            .OrderBy(allocation => allocation.LineNumber)
+            .ToList();
+    }
+
     public Task<Payment> CreatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser)
         => RunInTransactionAsync(async (db, transaction) =>
         {
