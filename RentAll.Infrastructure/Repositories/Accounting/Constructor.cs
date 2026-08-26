@@ -503,6 +503,7 @@ public partial class AccountingRepository : IAccountingRepository
             PaymentId = e.PaymentId,
             ReceiptId = e.ReceiptId,
             ReceiptCode = e.ReceiptCode,
+            VendorId = e.VendorId,
             VendorName = e.VendorName,
             LineNumber = e.LineNumber,
             Amount = e.Amount,

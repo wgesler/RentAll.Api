@@ -6,6 +6,7 @@ public class PaymentBillAllocation
     public Guid PaymentId { get; set; }
     public Guid ReceiptId { get; set; }
     public string ReceiptCode { get; set; } = string.Empty;
+    public Guid? VendorId { get; set; }
     public string VendorName { get; set; } = string.Empty;
     public int LineNumber { get; set; }
     public decimal Amount { get; set; }

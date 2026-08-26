@@ -908,7 +908,7 @@ public partial class AccountingManager : IAccountingManager
         if (splitDescriptions.Count > 0)
             return string.Join(" — ", splitDescriptions);
 
-        return (bill.Description ?? string.Empty).Trim();
+        return string.Empty;
     }
 
     private static string ResolveBillPaymentAllocationDescription(Receipt bill, string? allocationDescription, string? paymentDescription)
@@ -923,7 +923,7 @@ public partial class AccountingManager : IAccountingManager
         if (!string.IsNullOrWhiteSpace(paymentDescription))
             return paymentDescription.Trim();
 
-        return (bill.PaymentDescription ?? bill.Description ?? string.Empty).Trim();
+        return (bill.PaymentDescription ?? string.Empty).Trim();
     }
 
     private static int? ResolveCostCodeIdByChartOfAccountId(
