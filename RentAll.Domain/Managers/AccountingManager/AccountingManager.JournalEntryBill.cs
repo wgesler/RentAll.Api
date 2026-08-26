@@ -290,7 +290,7 @@ public partial class AccountingManager
 
         var amount = paymentApplication.AmountApplied;
         var transactionDate = paymentApplication.PaymentDate;
-        var paymentMemo = paymentApplication.Description?.Trim() ?? string.Empty;
+        var paymentMemo = BuildBillPaymentApplicationMemo(bill, paymentApplication.Description);
         var lineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
         var payableLine = new JournalEntryLine
         {
@@ -373,6 +373,53 @@ public partial class AccountingManager
         return bill.IsUtility
             ? BuildOwnerUtilityBillMemo(receiptCode, split.Description)
             : BuildOwnerBillMemo(receiptCode, split.Description);
+    }
+
+    private static string BuildBillPaymentApplicationMemo(Receipt bill, string? fallbackDescription = null)
+    {
+        var receiptCode = bill.ReceiptCode.Trim();
+        var eligibleSplits = (bill.Splits ?? [])
+            .Where(split => split.ReceiptType != ReceiptType.NonExpense && split.Amount != 0)
+            .OrderBy(split => split.ReceiptSplitId)
+            .ToList();
+
+        var splitDetail = string.Join(" — ", eligibleSplits
+            .Select(split => (split.Description ?? string.Empty).Trim())
+            .Where(description => description.Length > 0));
+
+        var detail = !string.IsNullOrWhiteSpace(splitDetail)
+            ? splitDetail
+            : (fallbackDescription ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(detail))
+            detail = (bill.PaymentDescription ?? bill.Description ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(detail))
+            throw new Exception($"Bill {receiptCode} requires a description to create a bill payment journal entry memo.");
+
+        if (bill.IsUtility)
+            return BuildOwnerUtilityBillMemo(receiptCode, detail);
+
+        if (eligibleSplits.Count > 0 && eligibleSplits.All(split => split.ReceiptType == ReceiptType.Owner))
+            return BuildOwnerBillMemo(receiptCode, detail);
+
+        return BuildBillMemo(receiptCode, detail);
+    }
+
+    private static string BuildConsolidatedBillPaymentBankLineMemo(IReadOnlyList<BillPaymentApplication> applications)
+    {
+        var memos = applications
+            .Where(application => application.AmountApplied != 0)
+            .Select(application => BuildBillPaymentApplicationMemo(application.Bill!, application.Description))
+            .Where(memo => !string.IsNullOrWhiteSpace(memo))
+            .ToList();
+
+        return memos.Count switch
+        {
+            0 => string.Empty,
+            1 => memos[0],
+            _ => string.Join("; ", memos)
+        };
     }
 
     private static string BuildBillJournalMemo(Receipt bill, IEnumerable<ReceiptSplit>? eligibleSplits = null)

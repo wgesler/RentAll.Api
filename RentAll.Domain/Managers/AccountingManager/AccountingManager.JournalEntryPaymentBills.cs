@@ -51,7 +51,7 @@ public partial class AccountingManager
                 AmountApplied = allocation.Amount,
                 PaymentDate = payment.PaymentDate,
                 ChartOfAccountId = payment.ChartOfAccountId.Value,
-                Description = string.IsNullOrWhiteSpace(allocation.Description) ? payment.Description : allocation.Description,
+                Description = ResolveBillPaymentAllocationDescription(bill, allocation.Description, payment.Description),
                 PaymentSequence = 0,
                 CostCodeId = allocation.CostCodeId
             });
@@ -215,19 +215,10 @@ public partial class AccountingManager
         if (bankAccountId <= 0)
             throw new Exception("Chart of account is required for bill payment");
 
-        var paymentMemo = payment.Description?.Trim() ?? string.Empty;
         var journalEntryLines = new List<JournalEntryLine>();
         var totalAmount = payment.Amount;
-
-        var bankLine = new JournalEntryLine
-        {
-            ChartOfAccountId = bankAccountId,
-            Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
-            Credit = totalAmount > 0 ? totalAmount : 0,
-            Memo = paymentMemo,
-            CreatedBy = currentUser
-        };
-        journalEntryLines.Add(bankLine);
+        var applicationMemos = new List<string>();
+        JournalEntryLineContext? bankLineContext = null;
 
         foreach (var application in applications)
         {
@@ -242,13 +233,17 @@ public partial class AccountingManager
                 : GetDefaultAccountsPayable(chartOfAccounts, bill.OfficeId, accountingOffice);
 
             var amount = application.AmountApplied;
+            var applicationMemo = BuildBillPaymentApplicationMemo(bill, application.Description);
+            applicationMemos.Add(applicationMemo);
             var lineContext = await ResolveReceiptJournalEntryLineContextAsync(bill);
+            bankLineContext ??= lineContext;
+
             var payableLine = new JournalEntryLine
             {
                 ChartOfAccountId = payableOrCardAccountId,
                 Debit = amount > 0 ? amount : 0,
                 Credit = amount < 0 ? Math.Abs(amount) : 0,
-                Memo = string.IsNullOrWhiteSpace(application.Description) ? paymentMemo : application.Description.Trim(),
+                Memo = applicationMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(payableLine, lineContext);
@@ -259,6 +254,23 @@ public partial class AccountingManager
             journalEntryLines.Add(payableLine);
         }
 
+        var bankLineMemo = BuildConsolidatedBillPaymentBankLineMemo(applications);
+        if (string.IsNullOrWhiteSpace(bankLineMemo))
+            bankLineMemo = payment.Description?.Trim() ?? string.Empty;
+
+        var bankLine = new JournalEntryLine
+        {
+            ChartOfAccountId = bankAccountId,
+            Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
+            Credit = totalAmount > 0 ? totalAmount : 0,
+            Memo = bankLineMemo,
+            CreatedBy = currentUser
+        };
+        if (bankLineContext is { } resolvedBankLineContext)
+            ApplyJournalEntryLineContext(bankLine, resolvedBankLineContext);
+
+        journalEntryLines.Insert(0, bankLine);
+
         return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = payment.OrganizationId,
@@ -267,7 +279,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.BillPayment,
             SourceId = payment.PaymentId,
             SourceCode = payment.PaymentCode,
-            Memo = paymentMemo,
+            Memo = bankLineMemo,
             PaymentId = payment.PaymentId,
             PaymentCode = payment.PaymentCode,
             JournalEntryLines = journalEntryLines,
