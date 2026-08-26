@@ -153,14 +153,15 @@ public partial class AccountingManager
                 return;
             }
 
-            var description = (bill.PaymentDescription ?? bill.Description ?? string.Empty).Trim();
+            var allocationDescription = ResolveBillPaymentAllocationDescription(bill, bill.PaymentDescription, null);
+            var paymentDescription = (bill.PaymentDescription ?? allocationDescription ?? bill.Description ?? string.Empty).Trim();
             var allocation = new PaymentBillAllocation
             {
                 ReceiptId = bill.ReceiptId,
                 ReceiptCode = bill.ReceiptCode,
                 LineNumber = 1,
                 Amount = bill.PaidAmount,
-                Description = description
+                Description = allocationDescription
             };
 
             var payment = new Payment
@@ -169,7 +170,7 @@ public partial class AccountingManager
                 OfficeId = bill.OfficeId,
                 PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
                 Amount = bill.PaidAmount,
-                Description = description,
+                Description = paymentDescription,
                 PaymentDirectionId = (int)PaymentDirection.Outbound,
                 PaymentTypeId = bill.PaymentTypeId > 0 ? bill.PaymentTypeId : null,
                 ChartOfAccountId = chartOfAccountId,

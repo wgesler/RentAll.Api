@@ -897,6 +897,35 @@ public partial class AccountingManager : IAccountingManager
         return null;
     }
 
+    private static string BuildBillSplitLineDescription(Receipt bill)
+    {
+        var splitDescriptions = (bill.Splits ?? [])
+            .Where(split => split.ReceiptType != ReceiptType.NonExpense && split.Amount != 0)
+            .Select(split => (split.Description ?? string.Empty).Trim())
+            .Where(description => description.Length > 0)
+            .ToList();
+
+        if (splitDescriptions.Count > 0)
+            return string.Join(" — ", splitDescriptions);
+
+        return (bill.Description ?? string.Empty).Trim();
+    }
+
+    private static string ResolveBillPaymentAllocationDescription(Receipt bill, string? allocationDescription, string? paymentDescription)
+    {
+        var splitDescription = BuildBillSplitLineDescription(bill);
+        if (!string.IsNullOrWhiteSpace(splitDescription))
+            return splitDescription;
+
+        if (!string.IsNullOrWhiteSpace(allocationDescription))
+            return allocationDescription.Trim();
+
+        if (!string.IsNullOrWhiteSpace(paymentDescription))
+            return paymentDescription.Trim();
+
+        return (bill.PaymentDescription ?? bill.Description ?? string.Empty).Trim();
+    }
+
     private static int? ResolveCostCodeIdByChartOfAccountId(
         List<ChartOfAccount> chartOfAccounts,
         int officeId,

@@ -145,9 +145,7 @@ public partial class AccountingManager
 
             allocation.LineNumber = lineNumber;
             allocation.CostCodeId = resolvedCostCodeId;
-            allocation.Description = string.IsNullOrWhiteSpace(allocation.Description)
-                ? payment.Description
-                : allocation.Description.Trim();
+            allocation.Description = ResolveBillPaymentAllocationDescription(bill, allocation.Description, payment.Description);
 
             applications.Add(new BillPaymentApplication
             {

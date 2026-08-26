@@ -8,6 +8,7 @@ public class PaymentBillAllocationResponseDto
     public Guid PaymentId { get; set; }
     public Guid ReceiptId { get; set; }
     public string ReceiptCode { get; set; } = string.Empty;
+    public string VendorName { get; set; } = string.Empty;
     public int LineNumber { get; set; }
     public decimal Amount { get; set; }
     public int? CostCodeId { get; set; }
@@ -20,6 +21,7 @@ public class PaymentBillAllocationResponseDto
         PaymentId = allocation.PaymentId;
         ReceiptId = allocation.ReceiptId;
         ReceiptCode = allocation.ReceiptCode;
+        VendorName = allocation.VendorName;
         LineNumber = allocation.LineNumber;
         Amount = allocation.Amount;
         CostCodeId = allocation.CostCodeId;
