@@ -123,7 +123,7 @@ public partial class AccountingManager
     {
         if (paymentLedgerLine.PaymentId is { } paymentId && paymentId != Guid.Empty)
         {
-            await CreateJournalEntriesFromPaymentDocumentAsync(paymentId, invoice.OrganizationId, currentUser);
+            await CreateJournalEntriesFromInvoicePaymentDocumentAsync(paymentId, invoice.OrganizationId, currentUser);
             var linkedPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
                 invoice.OrganizationId,
                 invoice.OfficeId,
@@ -699,7 +699,7 @@ public partial class AccountingManager
         if (paymentIds.Count == 1)
         {
             var organizationId = invoicePayment.PaymentApplications[0].Invoice.OrganizationId;
-            return CreateJournalEntriesFromPaymentDocumentAsync(paymentIds[0]!.Value, organizationId, currentUser);
+            return CreateJournalEntriesFromInvoicePaymentDocumentAsync(paymentIds[0]!.Value, organizationId, currentUser);
         }
 
         return CreateLegacyJournalEntriesFromInvoicePaymentAsync(invoicePayment, currentUser);

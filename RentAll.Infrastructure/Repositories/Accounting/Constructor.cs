@@ -425,7 +425,8 @@ public partial class AccountingRepository : IAccountingRepository
     #region Payment Helpers
     private static List<Payment> MapPaymentsWithLedgerLineEntities(
         IEnumerable<PaymentEntity>? paymentEntities,
-        IEnumerable<PaymentLedgerLineEntity>? ledgerLineEntities)
+        IEnumerable<PaymentLedgerLineEntity>? ledgerLineEntities,
+        IEnumerable<PaymentBillAllocationEntity>? billAllocationEntities = null)
     {
         if (paymentEntities == null || !paymentEntities.Any())
             return new List<Payment>();
@@ -441,11 +442,23 @@ public partial class AccountingRepository : IAccountingRepository
                     .ThenBy(line => line.LineNumber)
                     .ToList());
 
+        var billAllocationsByPaymentId = (billAllocationEntities ?? Enumerable.Empty<PaymentBillAllocationEntity>())
+            .GroupBy(allocation => allocation.PaymentId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertPaymentBillAllocationEntityToModel)
+                    .OrderBy(allocation => allocation.LineNumber)
+                    .ToList());
+
         var payments = paymentEntities.Select(ConvertPaymentEntityToModel).ToList();
         foreach (var payment in payments)
         {
             if (linesByPaymentId.TryGetValue(payment.PaymentId, out var lines))
                 payment.LedgerLines = lines;
+
+            if (billAllocationsByPaymentId.TryGetValue(payment.PaymentId, out var billAllocations))
+                payment.BillAllocations = billAllocations;
         }
 
         return payments;
@@ -468,6 +481,7 @@ public partial class AccountingRepository : IAccountingRepository
             PaymentDirectionId = e.PaymentDirectionId,
             PaymentTypeId = e.PaymentTypeId,
             PaymentTypeDescription = e.PaymentTypeDescription,
+            ChartOfAccountId = e.ChartOfAccountId,
             DepositId = e.DepositId == Guid.Empty ? null : e.DepositId,
             DepositCode = e.DepositCode,
             PostingStatusId = e.PostingStatusId,
@@ -478,6 +492,22 @@ public partial class AccountingRepository : IAccountingRepository
             ModifiedBy = e.ModifiedBy,
             ModifiedOn = e.ModifiedOn,
             ModifiedByName = e.ModifiedByName
+        };
+    }
+
+    private static PaymentBillAllocation ConvertPaymentBillAllocationEntityToModel(PaymentBillAllocationEntity e)
+    {
+        return new PaymentBillAllocation
+        {
+            PaymentBillAllocationId = e.PaymentBillAllocationId,
+            PaymentId = e.PaymentId,
+            ReceiptId = e.ReceiptId,
+            ReceiptCode = e.ReceiptCode,
+            LineNumber = e.LineNumber,
+            Amount = e.Amount,
+            CostCodeId = e.CostCodeId,
+            CostCodeDescription = e.CostCodeDescription,
+            Description = e.Description
         };
     }
 

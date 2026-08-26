@@ -7,18 +7,10 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Journal Entry
-    public async Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
-        => (await CreateJournalEntriesFromPaymentDocumentWithDiagnosticsAsync(
-            paymentId,
-            organizationId,
-            currentUser,
-            allowPartialAllocationsOnMismatch)).JournalEntries;
+    public async Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
+        => (await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(paymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch)).JournalEntries;
 
-    private async Task<PaymentJournalEntryCreateResult> CreateJournalEntriesFromPaymentDocumentWithDiagnosticsAsync(
-        Guid paymentId,
-        Guid organizationId,
-        Guid currentUser,
-        bool allowPartialAllocationsOnMismatch = false)
+    private async Task<PaymentJournalEntryCreateResult> CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
     {
         var result = new PaymentJournalEntryCreateResult();
 
@@ -133,7 +125,7 @@ public partial class AccountingManager
 
                 try
                 {
-                    var createResult = await CreateJournalEntriesFromPaymentDocumentWithDiagnosticsAsync(
+                    var createResult = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
                         paymentSummary.PaymentId,
                         organizationId,
                         currentUser,

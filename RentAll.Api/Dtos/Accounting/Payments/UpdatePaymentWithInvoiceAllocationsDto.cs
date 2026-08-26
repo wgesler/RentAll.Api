@@ -3,8 +3,9 @@ namespace RentAll.Api.Dtos.Accounting.Payments;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
-public class ApplyInvoicePaymentDto
+public class UpdatePaymentWithInvoiceAllocationsDto
 {
+    public Guid PaymentId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public DateOnly PaymentDate { get; set; }
@@ -12,14 +13,15 @@ public class ApplyInvoicePaymentDto
     public int CostCodeId { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? PaymentTypeId { get; set; }
-    public bool IsActive { get; set; } = true;
-    public List<Guid> Invoices { get; set; } = new();
+    public Guid? DepositId { get; set; }
+    public bool IsActive { get; set; }
     public List<PaymentInvoiceAllocationDto> Allocations { get; set; } = new();
-
-    public bool UsesExplicitAllocations => Allocations.Count > 0;
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        if (PaymentId == Guid.Empty)
+            return (false, "PaymentId is required");
+
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
@@ -35,27 +37,19 @@ public class ApplyInvoicePaymentDto
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
 
-        if (Amount == 0)
-            return (false, "No payment submitted");
+        if (Allocations == null || Allocations.Count == 0)
+            return (false, "At least one invoice allocation is required");
 
-        if (UsesExplicitAllocations)
+        foreach (var allocation in Allocations)
         {
-            foreach (var allocation in Allocations)
-            {
-                var (isValid, errorMessage) = allocation.IsValid();
-                if (!isValid)
-                    return (false, errorMessage);
-            }
-
-            var allocationTotal = Allocations.Sum(allocation => allocation.Amount);
-            if (allocationTotal != Amount)
-                return (false, "Allocation total must equal the payment amount");
-
-            return (true, null);
+            var (isValid, errorMessage) = allocation.IsValid();
+            if (!isValid)
+                return (false, errorMessage);
         }
 
-        if (Invoices.Count <= 0)
-            return (false, "No invoices submitted for payment");
+        var allocationTotal = Allocations.Sum(allocation => allocation.Amount);
+        if (allocationTotal != Amount)
+            return (false, "Allocation total must equal the payment amount");
 
         return (true, null);
     }
@@ -64,6 +58,7 @@ public class ApplyInvoicePaymentDto
     {
         return new Payment
         {
+            PaymentId = PaymentId,
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PaymentDate = PaymentDate,
@@ -72,16 +67,9 @@ public class ApplyInvoicePaymentDto
             Description = Description,
             PaymentDirectionId = (int)PaymentDirection.Inbound,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
+            DepositId = DepositId is { } depositId && depositId != Guid.Empty ? depositId : null,
             IsActive = IsActive,
-            CreatedBy = currentUser
+            ModifiedBy = currentUser
         };
-    }
-
-    public IReadOnlyList<Guid> ResolveInvoiceIdsForPostingCheck()
-    {
-        if (UsesExplicitAllocations)
-            return Allocations.Select(allocation => allocation.InvoiceId).Distinct().ToList();
-
-        return Invoices;
     }
 }

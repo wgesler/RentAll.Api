@@ -19,7 +19,6 @@ public interface IAccountingManager
     #region Payments
     Task<InvoicePayment> ApplyPaymentToInvoicesAsync(List<Guid> invoiceGuids, Guid organizationId, string offices, int costCodeId, string description, decimal amountPaid, DateOnly paymentDate, Guid currentUser);
     Task<Payment> ApplyInvoicePaymentAsync(Payment payment, IReadOnlyList<Guid>? autoSplitInvoiceIds, IReadOnlyList<PaymentInvoiceAllocation>? explicitAllocations, string officeAccess, Guid currentUser);
-    Task<BillPayment> ApplyPaymentToBillsAsync(List<Guid> billIds, Guid organizationId, string offices, int chartOfAccountId, string description, decimal amountPaid, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
     Task<List<JournalEntry>> ApplyPaymentToOwnersAsync(OwnerPayments ownerPayments, Guid organizationId, string offices, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromOwnerPaymentAsync(OwnerPaymentBatch ownerPaymentBatch, Guid currentUser);
     Task<Reservation> ApplySecurityDepositReturnAsync(Guid reservationId, Guid organizationId, string officeAccess, int chartOfAccountId, string description, decimal amount, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
@@ -45,9 +44,9 @@ public interface IAccountingManager
     Task<JournalEntry?> CreateJournalEntriesFromPrePaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
     Task<JournalEntry?> CreatePrePaymentReceivedJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
     Task<JournalEntry?> CreatePrePaymentApplyJournalEntryAsync(Invoice invoice, LedgerLine paymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser);
-    Task<List<JournalEntry>> CreateJournalEntriesFromPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false);
+    Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false);
+    Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser);
     Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentAsync(InvoicePayment invoicePayment, Guid currentUser);
-    Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromDepositAsync(Deposit deposit, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromTransferAsync(Transfer transfer, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
@@ -78,9 +77,11 @@ public interface IAccountingManager
     #endregion
 
     #region Payment
-    Task<Payment> CreatePaymentAsync(Payment payment, Guid currentUser);
     Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
-    Task<Payment> UpdatePaymentAsync(Payment payment, Guid currentUser);
+    Task<Payment> CreatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
+    Task<Payment> UpdatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
+    Task<Payment> UpdatePaymentInvoiceAsync(Payment payment, Guid currentUser);
+    Task<Payment> UpdatePaymentBillAsync(Payment payment, Guid currentUser);
     Task<Payment> UpdatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
     Task DeletePaymentAsync(Guid paymentId, Guid organizationId, Guid currentUser);
     #endregion

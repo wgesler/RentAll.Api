@@ -14,4 +14,5 @@ public class BillPaymentApplication
     public int ChartOfAccountId { get; set; }
     public string Description { get; set; } = string.Empty;
     public int PaymentSequence { get; set; }
+    public int? CostCodeId { get; set; }
 }

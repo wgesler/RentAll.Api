@@ -113,7 +113,10 @@ public interface IAccountingRepository
 
     #region Post
     Task<Payment> CreatePaymentAsync(Payment payment);
-    Task<Payment> CreatePaymentWithAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
+    Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
+    Task<Payment> CreatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
+    Task<Payment> UpdatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
+    Task<IReadOnlyList<PaymentBillAllocation>> GetBillAllocationsByPaymentIdAsync(Guid paymentId, Guid organizationId);
     Task SetLedgerLinePaymentIdAsync(Guid ledgerLineId, Guid paymentId, Guid modifiedBy);
     Task SetPaymentDepositIdAsync(Guid paymentId, Guid organizationId, Guid? depositId, Guid modifiedBy);
     Task ClearPaymentDepositIdsByDepositIdAsync(Guid organizationId, Guid depositId, Guid modifiedBy);
@@ -123,7 +126,7 @@ public interface IAccountingRepository
 
     #region Put
     Task<Payment> UpdatePaymentAsync(Payment payment);
-    Task<Payment> UpdatePaymentWithAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
+    Task<Payment> UpdatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
     #endregion
 
     #region Delete

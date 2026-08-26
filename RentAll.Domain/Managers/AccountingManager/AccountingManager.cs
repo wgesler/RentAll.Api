@@ -875,6 +875,53 @@ public partial class AccountingManager : IAccountingManager
         };
     }
 
+    private async Task<int?> ResolvePrimaryCostCodeIdFromBillAsync(Receipt bill)
+    {
+        var billWithSplits = await LoadReceiptWithSplitsAsync(bill);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(billWithSplits.OrganizationId, billWithSplits.OfficeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(billWithSplits.OrganizationId, billWithSplits.OfficeId);
+
+        var eligibleSplits = (billWithSplits.Splits ?? new List<ReceiptSplit>())
+            .Where(split => split.ReceiptType != ReceiptType.NonExpense && split.Amount != 0)
+            .OrderByDescending(split => Math.Abs(split.Amount))
+            .ToList();
+
+        foreach (var split in eligibleSplits)
+        {
+            var expenseAccountId = GetBillReceiptExpenseAccountId(split, billWithSplits.OfficeId, chartOfAccounts, accountingOffice);
+            var resolvedCostCodeId = ResolveCostCodeIdByChartOfAccountId(chartOfAccounts, billWithSplits.OfficeId, costCodeById, expenseAccountId);
+            if (resolvedCostCodeId is > 0)
+                return resolvedCostCodeId;
+        }
+
+        return null;
+    }
+
+    private static int? ResolveCostCodeIdByChartOfAccountId(
+        List<ChartOfAccount> chartOfAccounts,
+        int officeId,
+        IReadOnlyDictionary<int, CostCode> costCodeById,
+        int chartOfAccountId)
+    {
+        if (chartOfAccountId <= 0)
+            return null;
+
+        var account = chartOfAccounts.FirstOrDefault(a => a.AccountId == chartOfAccountId && a.OfficeId == officeId);
+        if (account == null || string.IsNullOrWhiteSpace(account.AccountNo))
+            return null;
+
+        var accountCode = NormalizeAccountCode(account.AccountNo);
+        if (string.IsNullOrWhiteSpace(accountCode))
+            return null;
+
+        var match = costCodeById.Values
+            .Where(costCode => costCode.OfficeId == officeId && costCode.IsActive)
+            .FirstOrDefault(costCode => NormalizeAccountCode(costCode.Code)
+                .Equals(accountCode, StringComparison.OrdinalIgnoreCase));
+
+        return match?.CostCodeId;
+    }
+
     private int GetBillReceiptLiabilityAccountId(Receipt bill, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
         if (bill.BankCardId is > 0)

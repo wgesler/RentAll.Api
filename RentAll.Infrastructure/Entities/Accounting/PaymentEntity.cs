@@ -15,6 +15,7 @@ public class PaymentEntity
     public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
+    public int? ChartOfAccountId { get; set; }
     public Guid? DepositId { get; set; }
     public string DepositCode { get; set; } = string.Empty;
     public int? PostingStatusId { get; set; }

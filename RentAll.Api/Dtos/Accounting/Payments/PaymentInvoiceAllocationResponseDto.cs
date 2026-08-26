@@ -1,6 +1,8 @@
 namespace RentAll.Api.Dtos.Accounting.Payments;
 
-public class PaymentLedgerLineResponseDto
+using RentAll.Domain.Models;
+
+public class PaymentInvoiceAllocationResponseDto
 {
     public Guid LedgerLineId { get; set; }
     public Guid InvoiceId { get; set; }
@@ -18,7 +20,7 @@ public class PaymentLedgerLineResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
 
-    public PaymentLedgerLineResponseDto(PaymentLedgerLine line)
+    public PaymentInvoiceAllocationResponseDto(PaymentLedgerLine line)
     {
         LedgerLineId = line.LedgerLineId;
         InvoiceId = line.InvoiceId;

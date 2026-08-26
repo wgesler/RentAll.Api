@@ -237,7 +237,7 @@ public partial class AccountingManager
             }
 
             foreach (var paymentId in paymentIdsToRefresh)
-                await CreateJournalEntriesFromPaymentDocumentAsync(paymentId, invoice.OrganizationId, invoice.ModifiedBy);
+                await CreateJournalEntriesFromInvoicePaymentDocumentAsync(paymentId, invoice.OrganizationId, invoice.ModifiedBy);
 
             await PruneOrphanedInvoicePaymentJournalEntriesAsync(invoice, await GetActiveInvoicePaymentLedgerLinesAsync(invoice));
         }

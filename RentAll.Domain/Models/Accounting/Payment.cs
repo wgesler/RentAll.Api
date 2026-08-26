@@ -15,11 +15,13 @@ public class Payment
     public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
+    public int? ChartOfAccountId { get; set; }
     public Guid? DepositId { get; set; }
     public string DepositCode { get; set; } = string.Empty;
     public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
     public List<PaymentLedgerLine> LedgerLines { get; set; } = new();
+    public List<PaymentBillAllocation> BillAllocations { get; set; } = new();
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public string CreatedByName { get; set; } = string.Empty;

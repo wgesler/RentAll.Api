@@ -7,9 +7,8 @@ public partial class AccountingController
 {
     #region Get
 
-    [HttpGet("payment")]
-    [HttpGet("payment/inbound")]
-    public async Task<IActionResult> GetAllPayments()
+    [HttpGet("payment/invoice")]
+    public async Task<IActionResult> GetAllInvoicePayments()
     {
         try
         {
@@ -24,9 +23,8 @@ public partial class AccountingController
         }
     }
 
-    [HttpGet("payment/office/{officeId:int}")]
-    [HttpGet("payment/inbound/office/{officeId:int}")]
-    public async Task<IActionResult> GetPaymentsByOfficeId(int officeId)
+    [HttpGet("payment/invoice/office/{officeId:int}")]
+    public async Task<IActionResult> GetInvoicePaymentsByOfficeId(int officeId)
     {
         if (officeId <= 0)
             return BadRequest("OfficeId is required");
@@ -42,6 +40,42 @@ public partial class AccountingController
         {
             _logger.LogError(ex, "Error getting payments");
             return ServerError("An error occurred while retrieving payments");
+        }
+    }
+
+    [HttpGet("payment/bill")]
+    public async Task<IActionResult> GetAllBillPayments()
+    {
+        try
+        {
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentDirection.Outbound);
+            var response = records.Select(o => new PaymentResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting bill payments");
+            return ServerError("An error occurred while retrieving bill payments");
+        }
+    }
+
+    [HttpGet("payment/bill/office/{officeId:int}")]
+    public async Task<IActionResult> GetBillPaymentsByOfficeId(int officeId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        try
+        {
+            var officeAccess = officeId.ToString();
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentDirection.Outbound);
+            var response = records.Select(o => new PaymentResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting bill payments");
+            return ServerError("An error occurred while retrieving bill payments");
         }
     }
 
@@ -71,36 +105,9 @@ public partial class AccountingController
 
     #region Post
 
-    [HttpPost("payment")]
-    public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentDto dto)
-    {
-        if (dto == null)
-            return BadRequest("Payment data is required");
-
-        if (dto.OrganizationId != CurrentOrganizationId)
-            return Unauthorized("Invalid organization Id");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
-
-        try
-        {
-            var payment = dto.ToModel(CurrentUser);
-            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
-            var created = await _accountingManager.CreatePaymentAsync(payment, CurrentUser);
-            var response = new PaymentResponseDto(created);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating payment");
-            return ServerError("An error occurred while creating the payment");
-        }
-    }
-
+    [HttpPost("payment/invoice-allocations")]
     [HttpPost("payment/allocations")]
-    public async Task<IActionResult> CreatePaymentWithAllocations([FromBody] CreatePaymentWithAllocationsDto dto)
+    public async Task<IActionResult> CreatePaymentWithInvoiceAllocations([FromBody] CreatePaymentWithInvoiceAllocationsDto dto)
     {
         if (dto == null)
             return BadRequest("Payment data is required");
@@ -115,7 +122,6 @@ public partial class AccountingController
         try
         {
             var payment = dto.ToModel(CurrentUser);
-            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
             var created = await _accountingManager.CreatePaymentWithInvoiceAllocationsAsync(
                 payment,
@@ -129,6 +135,103 @@ public partial class AccountingController
         {
             _logger.LogError(ex, "Error creating payment with allocations");
             return ServerError("An error occurred while creating the payment");
+        }
+    }
+
+    [HttpPost("payment/bill-allocations")]
+    public async Task<IActionResult> CreatePaymentWithBillAllocations([FromBody] CreatePaymentWithBillAllocationsDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var postingStatuses = new List<int?>();
+            foreach (var allocation in dto.Allocations)
+            {
+                var bill = await _maintenanceRepository.GetReceiptByIdAsync(allocation.ReceiptId, CurrentOrganizationId);
+                if (bill == null)
+                    return NotFound($"Bill not found: {allocation.ReceiptId}");
+
+                postingStatuses.Add(bill.PostingStatusId);
+            }
+
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(StrictestPostingStatus(postingStatuses), "bill");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
+
+            var payment = dto.ToModel(CurrentUser);
+            var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
+            var created = await _accountingManager.CreatePaymentWithBillAllocationsAsync(
+                payment,
+                allocations,
+                CurrentUser);
+            var response = new PaymentResponseDto(created);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating outbound payment with bill allocations");
+            return ServerError("An error occurred while creating the payment");
+        }
+    }
+
+    [HttpPut("payment/bill-allocations")]
+    public async Task<IActionResult> UpdatePaymentWithBillAllocations([FromBody] UpdatePaymentWithBillAllocationsDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var existing = await _accountingRepository.GetPaymentByIdAsync(dto.PaymentId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Payment record not found");
+
+            if (existing.PaymentDirectionId != (int)PaymentDirection.Outbound)
+                return BadRequest("Inbound payments must be updated through payment/invoice-allocations.");
+
+            var postingStatuses = new List<int?> { existing.PostingStatusId };
+            foreach (var allocation in dto.Allocations)
+            {
+                var bill = await _maintenanceRepository.GetReceiptByIdAsync(allocation.ReceiptId, CurrentOrganizationId);
+                if (bill == null)
+                    return NotFound($"Bill not found: {allocation.ReceiptId}");
+
+                postingStatuses.Add(bill.PostingStatusId);
+            }
+
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(StrictestPostingStatus(postingStatuses), "payment");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
+
+            var payment = dto.ToModel(CurrentUser);
+            var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
+            var updated = await _accountingManager.UpdatePaymentWithBillAllocationsAsync(
+                payment,
+                allocations,
+                CurrentUser);
+            var response = new PaymentResponseDto(updated);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating outbound payment with bill allocations: {PaymentId}", dto.PaymentId);
+            return ServerError("An error occurred while updating the payment");
         }
     }
 
@@ -162,7 +265,6 @@ public partial class AccountingController
                 return postingStatusCheck;
 
             var payment = dto.ToModel(CurrentUser);
-            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             var created = await _accountingManager.ApplyInvoicePaymentAsync(
                 payment,
                 dto.UsesExplicitAllocations ? null : dto.Invoices,
@@ -185,8 +287,9 @@ public partial class AccountingController
 
     #region Put
 
+    [HttpPut("payment/invoice-allocations")]
     [HttpPut("payment/allocations")]
-    public async Task<IActionResult> UpdatePaymentWithAllocations([FromBody] UpdatePaymentWithAllocationsDto dto)
+    public async Task<IActionResult> UpdatePaymentWithInvoiceAllocations([FromBody] UpdatePaymentWithInvoiceAllocationsDto dto)
     {
         if (dto == null)
             return BadRequest("Payment data is required");
@@ -204,6 +307,9 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
+            if (existing.PaymentDirectionId != (int)PaymentDirection.Inbound)
+                return BadRequest("Outbound payments must be updated through payment/bill-allocations.");
+
             var postingStatuses = new List<int?> { existing.PostingStatusId };
             foreach (var allocation in dto.Allocations)
             {
@@ -219,7 +325,6 @@ public partial class AccountingController
                 return postingStatusCheck;
 
             var payment = dto.ToModel(CurrentUser);
-            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             payment.PostingStatusId = existing.PostingStatusId;
             if (payment.DepositId is null || payment.DepositId == Guid.Empty)
                 payment.DepositId = existing.DepositId;
@@ -240,8 +345,8 @@ public partial class AccountingController
         }
     }
 
-    [HttpPut("payment")]
-    public async Task<IActionResult> UpdatePayment([FromBody] UpdatePaymentDto dto)
+    [HttpPut("payment/invoice")]
+    public async Task<IActionResult> UpdatePaymentInvoice([FromBody] UpdatePaymentInvoiceDto dto)
     {
         if (dto == null)
             return BadRequest("Payment data is required");
@@ -259,22 +364,66 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
+            if (existing.PaymentDirectionId != (int)PaymentDirection.Inbound)
+                return BadRequest("Outbound payments must be updated through payment/bill.");
+
             var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "payment");
             if (postingStatusCheck != null)
                 return postingStatusCheck;
 
             var payment = dto.ToModel(CurrentUser);
-            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             payment.PostingStatusId = existing.PostingStatusId;
             if (payment.DepositId is null || payment.DepositId == Guid.Empty)
                 payment.DepositId = existing.DepositId;
-            var updated = await _accountingManager.UpdatePaymentAsync(payment, CurrentUser);
+
+            var updated = await _accountingManager.UpdatePaymentInvoiceAsync(payment, CurrentUser);
             var response = new PaymentResponseDto(updated);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating payment: {PaymentId}", dto.PaymentId);
+            _logger.LogError(ex, "Error updating invoice payment header: {PaymentId}", dto.PaymentId);
+            return ServerError("An error occurred while updating the payment");
+        }
+    }
+
+    [HttpPut("payment/bill")]
+    public async Task<IActionResult> UpdatePaymentBill([FromBody] UpdatePaymentBillDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var existing = await _accountingRepository.GetPaymentByIdAsync(dto.PaymentId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Payment record not found");
+
+            if (existing.PaymentDirectionId != (int)PaymentDirection.Outbound)
+                return BadRequest("Inbound payments must be updated through payment/invoice.");
+
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "payment");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
+
+            var payment = dto.ToModel(CurrentUser);
+            payment.PostingStatusId = existing.PostingStatusId;
+            payment.CostCodeId = existing.CostCodeId;
+
+            var updated = await _accountingManager.UpdatePaymentBillAsync(payment, CurrentUser);
+            var response = new PaymentResponseDto(updated);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating bill payment header: {PaymentId}", dto.PaymentId);
             return ServerError("An error occurred while updating the payment");
         }
     }
@@ -297,11 +446,24 @@ public partial class AccountingController
 
             var postingStatuses = new List<int?> { payment.PostingStatusId };
             var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, CurrentOrganizationId);
-            foreach (var invoiceId in paymentLedgerLines.Select(line => line.InvoiceId).Distinct())
+            if (payment.PaymentDirectionId == (int)PaymentDirection.Outbound)
             {
-                var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
-                if (invoice != null)
-                    postingStatuses.Add(invoice.PostingStatusId);
+                var billAllocations = await _accountingRepository.GetBillAllocationsByPaymentIdAsync(paymentId, CurrentOrganizationId);
+                foreach (var allocation in billAllocations)
+                {
+                    var bill = await _maintenanceRepository.GetReceiptByIdAsync(allocation.ReceiptId, CurrentOrganizationId);
+                    if (bill != null)
+                        postingStatuses.Add(bill.PostingStatusId);
+                }
+            }
+            else
+            {
+                foreach (var invoiceId in paymentLedgerLines.Select(line => line.InvoiceId).Distinct())
+                {
+                    var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
+                    if (invoice != null)
+                        postingStatuses.Add(invoice.PostingStatusId);
+                }
             }
 
             var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(StrictestPostingStatus(postingStatuses), "payment");

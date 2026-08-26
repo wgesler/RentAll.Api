@@ -15,11 +15,13 @@ public class PaymentResponseDto
     public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
+    public int? ChartOfAccountId { get; set; }
     public Guid? DepositId { get; set; }
     public string DepositCode { get; set; } = string.Empty;
     public int? PostingStatusId { get; set; }
     public bool IsActive { get; set; }
-    public List<PaymentLedgerLineResponseDto> LedgerLines { get; set; } = new();
+    public List<PaymentInvoiceAllocationResponseDto> InvoiceAllocations { get; set; } = new();
+    public List<PaymentBillAllocationResponseDto> BillAllocations { get; set; } = new();
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTimeOffset ModifiedOn { get; set; }
@@ -40,12 +42,16 @@ public class PaymentResponseDto
         PaymentDirectionId = payment.PaymentDirectionId;
         PaymentTypeId = payment.PaymentTypeId;
         PaymentTypeDescription = payment.PaymentTypeDescription;
+        ChartOfAccountId = payment.ChartOfAccountId;
         DepositId = payment.DepositId is { } depositId && depositId != Guid.Empty ? depositId : null;
         DepositCode = payment.DepositCode;
         PostingStatusId = payment.PostingStatusId;
         IsActive = payment.IsActive;
-        LedgerLines = (payment.LedgerLines ?? new List<PaymentLedgerLine>())
-            .Select(line => new PaymentLedgerLineResponseDto(line))
+        InvoiceAllocations = (payment.LedgerLines ?? new List<PaymentLedgerLine>())
+            .Select(line => new PaymentInvoiceAllocationResponseDto(line))
+            .ToList();
+        BillAllocations = (payment.BillAllocations ?? new List<PaymentBillAllocation>())
+            .Select(allocation => new PaymentBillAllocationResponseDto(allocation))
             .ToList();
         CreatedOn = payment.CreatedOn;
         CreatedBy = payment.CreatedByName;

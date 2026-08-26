@@ -1,8 +1,9 @@
-using RentAll.Domain.Enums;
-
 namespace RentAll.Api.Dtos.Accounting.Payments;
 
-public class CreatePaymentDto
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
+
+public class CreatePaymentWithInvoiceAllocationsDto
 {
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
@@ -10,10 +11,10 @@ public class CreatePaymentDto
     public decimal Amount { get; set; }
     public int CostCodeId { get; set; }
     public string Description { get; set; } = string.Empty;
-    public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public Guid? DepositId { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<PaymentInvoiceAllocationDto> Allocations { get; set; } = new();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
@@ -32,6 +33,20 @@ public class CreatePaymentDto
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
 
+        if (Allocations == null || Allocations.Count == 0)
+            return (false, "At least one invoice allocation is required");
+
+        foreach (var allocation in Allocations)
+        {
+            var (isValid, errorMessage) = allocation.IsValid();
+            if (!isValid)
+                return (false, errorMessage);
+        }
+
+        var allocationTotal = Allocations.Sum(allocation => allocation.Amount);
+        if (allocationTotal != Amount)
+            return (false, "Allocation total must equal the payment amount");
+
         return (true, null);
     }
 
@@ -45,7 +60,7 @@ public class CreatePaymentDto
             Amount = Amount,
             CostCodeId = CostCodeId,
             Description = Description,
-            PaymentDirectionId = PaymentDirectionId >= 0 ? PaymentDirectionId : (int)PaymentDirection.Inbound,
+            PaymentDirectionId = (int)PaymentDirection.Inbound,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
             DepositId = DepositId is { } depositId && depositId != Guid.Empty ? depositId : null,
             IsActive = IsActive,

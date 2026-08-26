@@ -351,13 +351,26 @@ public partial class AccountingManager
         if (payment.PaymentId == Guid.Empty)
             return;
 
-        var entries = await GetJournalEntriesForSourceAsync(
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId);
+        foreach (var entry in linkedEntries)
+            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
+
+        var invoicePaymentEntries = await GetJournalEntriesForSourceAsync(
             payment.OrganizationId,
             payment.OfficeId,
             SourceType.InvoicePayment,
             payment.PaymentId);
 
-        foreach (var entry in entries)
+        foreach (var entry in invoicePaymentEntries)
+            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
+
+        var billPaymentEntries = await GetJournalEntriesForSourceAsync(
+            payment.OrganizationId,
+            payment.OfficeId,
+            SourceType.BillPayment,
+            payment.PaymentId);
+
+        foreach (var entry in billPaymentEntries)
             await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
     }
 

@@ -74,7 +74,7 @@ public partial class AccountingManager
         }
     }
 
-    public async Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser)
+    private async Task<List<JournalEntry>> CreateJournalEntriesFromBillPaymentAsync(BillPayment billPayment, Guid currentUser)
     {
         var journalEntries = new List<JournalEntry>();
 
@@ -312,6 +312,11 @@ public partial class AccountingManager
             CreatedBy = currentUser
         };
         ApplyJournalEntryLineContext(paymentLine, lineContext);
+        if (paymentApplication.CostCodeId is > 0)
+        {
+            payableLine.CostCodeId = paymentApplication.CostCodeId;
+            paymentLine.CostCodeId = paymentApplication.CostCodeId;
+        }
         var journalEntryLines = new List<JournalEntryLine> { payableLine, paymentLine };
 
         return ClassifyJournalEntry(new JournalEntry

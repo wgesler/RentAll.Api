@@ -7,6 +7,7 @@ public class BillPaymentRequestDto
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public int PaymentTypeId { get; set; }
+    public int? CostCodeId { get; set; }
     public List<Guid> Bills { get; set; } = new List<Guid>();
 
     public (bool IsValid, string? ErrorMessage) IsValid()
