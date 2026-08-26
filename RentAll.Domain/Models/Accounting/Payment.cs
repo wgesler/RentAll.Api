@@ -12,6 +12,7 @@ public class Payment
     public int CostCodeId { get; set; }
     public string CostCodeDescription { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
     public Guid? DepositId { get; set; }

@@ -106,7 +106,7 @@ public interface IAccountingRepository
     #endregion
 
     #region Get
-    Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess, int paymentDirectionId);
     Task<Payment?> GetPaymentByIdAsync(Guid paymentId, Guid organizationId);
     Task<IReadOnlyList<PaymentLedgerLine>> GetLedgerLinesByPaymentIdAsync(Guid paymentId, Guid organizationId);
     #endregion

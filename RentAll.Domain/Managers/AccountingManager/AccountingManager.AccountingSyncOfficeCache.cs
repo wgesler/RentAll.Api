@@ -599,7 +599,7 @@ public partial class AccountingManager
         IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
     {
         var payments = paymentsAlreadyLoaded?.ToList()
-            ?? (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds)).ToList();
+            ?? (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Inbound)).ToList();
 
         var deposits = depositsAlreadyLoaded?.ToList()
             ?? (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria

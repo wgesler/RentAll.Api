@@ -8,13 +8,14 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 public partial class AccountingRepository
 {
     #region Get
-    public async Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    public async Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess, int paymentDirectionId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var (headers, lines) = await db.DapperProcQueryMultipleAsync<PaymentEntity, PaymentLedgerLineEntity>("Accounting.Payment_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
-            Offices = officeAccess
+            Offices = officeAccess,
+            PaymentDirectionId = paymentDirectionId
         });
 
         return MapPaymentsWithLedgerLineEntities(headers, lines);
@@ -145,6 +146,7 @@ public partial class AccountingRepository
             Amount = payment.Amount,
             CostCodeId = payment.CostCodeId,
             Description = payment.Description,
+            PaymentDirectionId = payment.PaymentDirectionId,
             PaymentTypeId = payment.PaymentTypeId,
             PostingStatusId = payment.PostingStatusId ?? 0,
             IsActive = payment.IsActive,
@@ -169,6 +171,7 @@ public partial class AccountingRepository
             Amount = payment.Amount,
             CostCodeId = payment.CostCodeId,
             Description = payment.Description,
+            PaymentDirectionId = payment.PaymentDirectionId,
             PaymentTypeId = payment.PaymentTypeId,
             PostingStatusId = payment.PostingStatusId ?? 0,
             IsActive = payment.IsActive,

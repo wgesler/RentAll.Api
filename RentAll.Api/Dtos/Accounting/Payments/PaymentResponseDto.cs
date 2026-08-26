@@ -12,6 +12,7 @@ public class PaymentResponseDto
     public int CostCodeId { get; set; }
     public string CostCodeDescription { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
     public Guid? DepositId { get; set; }
@@ -36,6 +37,7 @@ public class PaymentResponseDto
         CostCodeId = payment.CostCodeId;
         CostCodeDescription = payment.CostCodeDescription;
         Description = payment.Description;
+        PaymentDirectionId = payment.PaymentDirectionId;
         PaymentTypeId = payment.PaymentTypeId;
         PaymentTypeDescription = payment.PaymentTypeDescription;
         DepositId = payment.DepositId is { } depositId && depositId != Guid.Empty ? depositId : null;

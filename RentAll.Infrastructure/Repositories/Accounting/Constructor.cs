@@ -465,6 +465,7 @@ public partial class AccountingRepository : IAccountingRepository
             CostCodeId = e.CostCodeId,
             CostCodeDescription = e.CostCodeDescription,
             Description = e.Description,
+            PaymentDirectionId = e.PaymentDirectionId,
             PaymentTypeId = e.PaymentTypeId,
             PaymentTypeDescription = e.PaymentTypeDescription,
             DepositId = e.DepositId == Guid.Empty ? null : e.DepositId,

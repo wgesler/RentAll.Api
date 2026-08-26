@@ -1,5 +1,6 @@
 namespace RentAll.Api.Dtos.Accounting.Payments;
 
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 public class UpdatePaymentWithAllocationsDto
@@ -11,6 +12,7 @@ public class UpdatePaymentWithAllocationsDto
     public decimal Amount { get; set; }
     public int CostCodeId { get; set; }
     public string Description { get; set; } = string.Empty;
+    public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public Guid? DepositId { get; set; }
     public bool IsActive { get; set; }
@@ -64,6 +66,7 @@ public class UpdatePaymentWithAllocationsDto
             Amount = Amount,
             CostCodeId = CostCodeId,
             Description = Description,
+            PaymentDirectionId = PaymentDirectionId >= 0 ? PaymentDirectionId : (int)PaymentDirection.Inbound,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
             DepositId = DepositId is { } depositId && depositId != Guid.Empty ? depositId : null,
             IsActive = IsActive,

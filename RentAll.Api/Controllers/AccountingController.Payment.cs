@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.Payments;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers;
 
@@ -7,11 +8,12 @@ public partial class AccountingController
     #region Get
 
     [HttpGet("payment")]
+    [HttpGet("payment/inbound")]
     public async Task<IActionResult> GetAllPayments()
     {
         try
         {
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentDirection.Inbound);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -23,6 +25,7 @@ public partial class AccountingController
     }
 
     [HttpGet("payment/office/{officeId:int}")]
+    [HttpGet("payment/inbound/office/{officeId:int}")]
     public async Task<IActionResult> GetPaymentsByOfficeId(int officeId)
     {
         if (officeId <= 0)
@@ -31,7 +34,7 @@ public partial class AccountingController
         try
         {
             var officeAccess = officeId.ToString();
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentDirection.Inbound);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -84,6 +87,7 @@ public partial class AccountingController
         try
         {
             var payment = dto.ToModel(CurrentUser);
+            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             var created = await _accountingManager.CreatePaymentAsync(payment, CurrentUser);
             var response = new PaymentResponseDto(created);
             return Ok(response);
@@ -111,6 +115,7 @@ public partial class AccountingController
         try
         {
             var payment = dto.ToModel(CurrentUser);
+            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
             var created = await _accountingManager.CreatePaymentWithInvoiceAllocationsAsync(
                 payment,
@@ -157,6 +162,7 @@ public partial class AccountingController
                 return postingStatusCheck;
 
             var payment = dto.ToModel(CurrentUser);
+            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             var created = await _accountingManager.ApplyInvoicePaymentAsync(
                 payment,
                 dto.UsesExplicitAllocations ? null : dto.Invoices,
@@ -213,6 +219,7 @@ public partial class AccountingController
                 return postingStatusCheck;
 
             var payment = dto.ToModel(CurrentUser);
+            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             payment.PostingStatusId = existing.PostingStatusId;
             if (payment.DepositId is null || payment.DepositId == Guid.Empty)
                 payment.DepositId = existing.DepositId;
@@ -257,6 +264,7 @@ public partial class AccountingController
                 return postingStatusCheck;
 
             var payment = dto.ToModel(CurrentUser);
+            payment.PaymentDirectionId = (int)PaymentDirection.Inbound;
             payment.PostingStatusId = existing.PostingStatusId;
             if (payment.DepositId is null || payment.DepositId == Guid.Empty)
                 payment.DepositId = existing.DepositId;

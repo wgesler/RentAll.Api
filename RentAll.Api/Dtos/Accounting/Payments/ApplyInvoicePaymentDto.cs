@@ -1,5 +1,6 @@
 namespace RentAll.Api.Dtos.Accounting.Payments;
 
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 public class ApplyInvoicePaymentDto
@@ -10,6 +11,7 @@ public class ApplyInvoicePaymentDto
     public decimal Amount { get; set; }
     public int CostCodeId { get; set; }
     public string Description { get; set; } = string.Empty;
+    public int PaymentDirectionId { get; set; }
     public int? PaymentTypeId { get; set; }
     public bool IsActive { get; set; } = true;
     public List<Guid> Invoices { get; set; } = new();
@@ -69,6 +71,7 @@ public class ApplyInvoicePaymentDto
             Amount = Amount,
             CostCodeId = CostCodeId,
             Description = Description,
+            PaymentDirectionId = PaymentDirectionId >= 0 ? PaymentDirectionId : (int)PaymentDirection.Inbound,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
             IsActive = IsActive,
             CreatedBy = currentUser
