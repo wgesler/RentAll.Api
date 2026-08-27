@@ -630,6 +630,7 @@ public partial class AccountingManager
                 continue;
 
             var totalAmount = ledgerLines.Sum(line => line.Amount);
+            var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
 
             previewInvoices.Add(BuildPreBillingInvoicePreview(
                 organizationId,
@@ -638,7 +639,8 @@ public partial class AccountingManager
                 periodStart,
                 periodEnd,
                 ledgerLines,
-                totalAmount));
+                totalAmount,
+                responsibleParty: responsibleParty));
         }
 
         return previewInvoices;
@@ -754,6 +756,7 @@ public partial class AccountingManager
             return;
 
         var nextSequence = ResolveNextInvoiceSequence(reservation, existingReservationInvoices);
+        var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
 
         foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth, accountingStart.Value))
         {
@@ -782,7 +785,8 @@ public partial class AccountingManager
                 periodEnd,
                 ledgerLines,
                 totalAmount,
-                nextSequence));
+                nextSequence,
+                responsibleParty));
             nextSequence++;
         }
     }
@@ -891,11 +895,10 @@ public partial class AccountingManager
     private static bool ReservationOverlapsBillingMonth(DateOnly arrivalDate, DateOnly departureDate, DateOnly monthStart, DateOnly monthEnd)
         => arrivalDate <= monthEnd && departureDate >= monthStart;
 
-    private static Invoice BuildPreBillingInvoicePreview(Guid organizationId, Reservation reservation, DateOnly billingMonth, DateOnly monthStart, DateOnly monthEnd, List<LedgerLine> ledgerLines, decimal totalAmount, int? invoiceSequence = null)
+    private static Invoice BuildPreBillingInvoicePreview(Guid organizationId, Reservation reservation, DateOnly billingMonth, DateOnly monthStart, DateOnly monthEnd, List<LedgerLine> ledgerLines, decimal totalAmount, int? invoiceSequence = null, string? responsibleParty = null)
     {
         var sequenceNumber = invoiceSequence ?? reservation.CurrentInvoiceNo + 1;
         var invoiceCode = $"{reservation.ReservationCode}-{sequenceNumber:000}";
-        var responsibleParty = ResolvePreBillingResponsibleParty(reservation);
 
         return new Invoice
         {
@@ -924,10 +927,20 @@ public partial class AccountingManager
         };
     }
 
-    private static string? ResolvePreBillingResponsibleParty(Reservation reservation)
+    private async Task<string?> ResolvePreBillingResponsiblePartyAsync(Guid organizationId, Reservation reservation)
     {
         if (reservation.ReservationType is ReservationType.Corporate or ReservationType.Platform)
+        {
+            if (NormalizeOptionalGuid(reservation.CompanyId) is { } companyId)
+            {
+                var companyContact = await _contactRepository.GetContactByIdsAsync(companyId, organizationId);
+                var companyName = NormalizeOptionalString(companyContact?.CompanyName);
+                if (companyName != null)
+                    return companyName;
+            }
+
             return NormalizeOptionalString(reservation.CompanyName) ?? NormalizeOptionalString(reservation.ContactName);
+        }
 
         return NormalizeOptionalString(reservation.ContactName);
     }

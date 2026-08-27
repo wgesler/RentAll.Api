@@ -327,6 +327,43 @@ public class AccountingManagerReservationInvoicePreviewTests
     }
 
     [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_CorporateReservation_UsesCompanyContactCompanyNameNotDisplayName()
+    {
+        var companyId = Guid.NewGuid();
+        var reservation = CreatePreviewReservation();
+        reservation.ReservationType = ReservationType.Corporate;
+        reservation.CompanyId = companyId;
+        reservation.CompanyName = "Display Name Inc";
+        reservation.ContactName = "Display Name Inc";
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureContactRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetContactByIdsAsync(companyId, AccountingManagerJournalEntryTestSupport.OrganizationId))
+                    .ReturnsAsync(new Contact
+                    {
+                        ContactId = companyId,
+                        OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        CompanyName = "Legal Company Name LLC",
+                        DisplayName = "Display Name Inc"
+                    });
+            });
+
+        var previews = await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.NotEmpty(previews);
+        Assert.All(previews, preview =>
+        {
+            Assert.Equal("Legal Company Name LLC", preview.ResponsibleParty);
+            Assert.Equal("Legal Company Name LLC", preview.ContactName);
+        });
+    }
+
+    [Fact]
     public async Task GetMissingInvoicesAsync_LoadsExistingInvoicesWithIncludePaid()
     {
         var reservation = CreatePreviewReservation();
@@ -474,11 +511,32 @@ public class AccountingManagerReservationInvoicePreviewTests
     private static AccountingManager CreatePreviewManager(
         Reservation reservation,
         Action<Mock<IReservationRepository>>? configureReservationRepository = null,
-        Action<Mock<IAccountingRepository>>? configureAccountingRepository = null)
+        Action<Mock<IAccountingRepository>>? configureAccountingRepository = null,
+        Action<Mock<IContactRepository>>? configureContactRepository = null)
     {
         var accountingRepository = new Mock<IAccountingRepository>();
         accountingRepository
             .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+            .ReturnsAsync([]);
+        accountingRepository
+            .Setup(r => r.GetCostCodesByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
+            .ReturnsAsync([
+                new CostCode
+                {
+                    CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    Code = "4000",
+                    Description = "Rent",
+                    TransactionType = TransactionType.ChargeProrate,
+                    IsActive = true
+                }
+            ]);
+        accountingRepository
+            .Setup(r => r.GetChartOfAccountsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
+            .ReturnsAsync([]);
+        accountingRepository
+            .Setup(r => r.GetBankCardsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
             .ReturnsAsync([]);
         configureAccountingRepository?.Invoke(accountingRepository);
 
@@ -518,6 +576,9 @@ public class AccountingManagerReservationInvoicePreviewTests
             .ReturnsAsync(reservation);
         configureReservationRepository?.Invoke(reservationRepository);
 
+        var contactRepository = new Mock<IContactRepository>();
+        configureContactRepository?.Invoke(contactRepository);
+
         return new AccountingManager(
             organizationRepository.Object,
             propertyRepository.Object,
@@ -526,7 +587,7 @@ public class AccountingManagerReservationInvoicePreviewTests
             reservationRepository.Object,
             journalEntryRepository: null!,
             organizationManager: null!,
-            contactRepository: null!,
+            contactRepository.Object,
             new EnabledFeatureFlagService());
     }
 
