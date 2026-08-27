@@ -320,6 +320,78 @@ public class LoggingRepository : ILoggingRepository
     }
     #endregion
 
+    #region Property Upload Log
+    public async Task AddPropertyUploadLogAsync(PropertyUploadLog log)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Logging.PropertyUploadLog_Add", new
+        {
+            OrganizationId = log.OrganizationId,
+            OfficeId = log.OfficeId,
+            VendorId = log.VendorId,
+            PropertyId = log.PropertyId,
+            PropertyCode = log.PropertyCode,
+            EventType = log.EventType,
+            Status = log.Status,
+            ImportId = log.ImportId,
+            PhotoId = log.PhotoId,
+            Url = log.Url,
+            Message = log.Message
+        });
+    }
+
+    public async Task<List<PropertyUploadLog>> GetAllPropertyUploadLogsByOrganizationIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<PropertyUploadLogEntity>("Logging.PropertyUploadLog_GetAllByOrganizationId", new
+        {
+            OrganizationId = organizationId
+        });
+        return rows?.Select(ConvertEntityToPropertyUploadLogModel).ToList() ?? [];
+    }
+
+    public async Task DeleteAllPropertyUploadLogsByOrganizationIdAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Logging.PropertyUploadLog_DeleteAllByOrganizationId", new
+        {
+            OrganizationId = organizationId
+        }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
+    }
+
+    public async Task<PropertyUploadLog?> GetPropertyUploadLogByIdAsync(int id, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<PropertyUploadLogEntity>("Logging.PropertyUploadLog_GetById", new
+        {
+            Id = id,
+            OrganizationId = organizationId
+        });
+        var row = rows?.FirstOrDefault();
+        return row == null ? null : ConvertEntityToPropertyUploadLogModel(row);
+    }
+
+    private static PropertyUploadLog ConvertEntityToPropertyUploadLogModel(PropertyUploadLogEntity entity)
+    {
+        return new PropertyUploadLog
+        {
+            Id = entity.Id,
+            OrganizationId = entity.OrganizationId,
+            OfficeId = entity.OfficeId,
+            VendorId = entity.VendorId,
+            PropertyId = entity.PropertyId,
+            PropertyCode = entity.PropertyCode,
+            EventType = entity.EventType,
+            Status = entity.Status,
+            ImportId = entity.ImportId,
+            PhotoId = entity.PhotoId,
+            Url = entity.Url,
+            Message = entity.Message,
+            CreatedOn = entity.CreatedOn
+        };
+    }
+    #endregion
+
     #region Log Retention
     public async Task ApplyLogRetentionAsync(int retainDays)
     {

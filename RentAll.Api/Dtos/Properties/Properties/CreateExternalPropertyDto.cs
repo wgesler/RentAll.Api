@@ -27,9 +27,9 @@ public class CreateExternalPropertyDto
 
     public decimal MonthlyRate { get; set; }
     public decimal DailyRate { get; set; }
-    public decimal DepartureFee { get; set; }
-    public decimal MaidServiceFee { get; set; }
-    public decimal PetFee { get; set; }
+    public decimal? DepartureFee { get; set; }
+    public decimal? MaidServiceFee { get; set; }
+    public decimal? PetFee { get; set; }
 
     public string ExternalCalendar { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -140,13 +140,13 @@ public class CreateExternalPropertyDto
         if (DailyRate < 0)
             return (false, "DailyRate must be >= 0");
 
-        if (DepartureFee < 0)
+        if (DepartureFee is < 0)
             return (false, "DepartureFee must be >= 0");
 
-        if (MaidServiceFee < 0)
+        if (MaidServiceFee is < 0)
             return (false, "MaidServiceFee must be >= 0");
 
-        if (PetFee < 0)
+        if (PetFee is < 0)
             return (false, "PetFee must be >= 0");
 
         if (ExternalCalendar == null)
@@ -201,9 +201,9 @@ public class CreateExternalPropertyDto
             ExternalCalendar = TrimOrNull(ExternalCalendar),
             MonthlyRate = MonthlyRate,
             DailyRate = DailyRate,
-            DepartureFee = DepartureFee,
-            MaidServiceFee = MaidServiceFee,
-            PetFee = PetFee,
+            DepartureFee = DepartureFee ?? 0m,
+            MaidServiceFee = MaidServiceFee ?? 0m,
+            PetFee = PetFee ?? 0m,
             UnitLevel = 1,
             Bedrooms = Bedrooms,
             Bathrooms = Bathrooms,

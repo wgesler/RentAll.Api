@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
+using RentAll.Api.Services;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
@@ -23,6 +24,7 @@ namespace RentAll.Api.Controllers
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly IFileService _fileService;
         private readonly IExternalApiKeyService _externalApiKeyService;
+        private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
         private readonly ILogger<PropertyController> _logger;
 
         public PropertyController(
@@ -37,6 +39,7 @@ namespace RentAll.Api.Controllers
             IFileAttachmentHelper fileAttachmentHelper,
             IFileService fileService,
             IExternalApiKeyService externalApiKeyService,
+            ExternalPropertyUploadLogService externalPropertyUploadLogService,
             ILogger<PropertyController> logger)
         {
             _appSettings = appSettingsOptions.Value;
@@ -50,6 +53,7 @@ namespace RentAll.Api.Controllers
             _fileAttachmentHelper = fileAttachmentHelper;
             _fileService = fileService;
             _externalApiKeyService = externalApiKeyService;
+            _externalPropertyUploadLogService = externalPropertyUploadLogService;
             _logger = logger;
         }
     }

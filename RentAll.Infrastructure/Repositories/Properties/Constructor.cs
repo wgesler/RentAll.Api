@@ -280,6 +280,33 @@ namespace RentAll.Infrastructure.Repositories.Properties
             PhotoPath = e.PhotoPath
         };
 
+        private static PropertyPhotoImport ConvertEntityToModel(PropertyPhotoImportEntity e) => new()
+        {
+            ImportId = e.ImportId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            VendorId = e.VendorId,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            Status = (PropertyPhotoImportStatus)e.Status,
+            CreatedOn = e.CreatedOn,
+            CompletedOn = e.CompletedOn
+        };
+
+        private static PropertyPhotoImportItem ConvertEntityToModel(PropertyPhotoImportItemEntity e) => new()
+        {
+            ImportItemId = e.ImportItemId,
+            ImportId = e.ImportId,
+            ItemIndex = e.ItemIndex,
+            Url = e.Url,
+            SortOrder = e.SortOrder,
+            Status = (PropertyPhotoImportItemStatus)e.Status,
+            ErrorMessage = e.ErrorMessage,
+            PhotoId = e.PhotoId,
+            StartedOn = e.StartedOn,
+            CompletedOn = e.CompletedOn
+        };
+
         private static PropertyListingShare ConvertEntityToModel(PropertyListingShareEntity e) => new()
         {
             ShareId = e.ShareId,

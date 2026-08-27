@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Properties;
 
@@ -61,6 +62,14 @@ public interface IPropertyRepository
     Task<PropertyPhoto> CreatePropertyPhotoAsync(PropertyPhoto photo);
     Task UpdatePropertyPhotoOrderAsync(int photoId, int order);
     Task DeletePropertyPhotoByIdAsync(int photoId);
+    #endregion
+
+    #region Property Photo Imports
+    Task<PropertyPhotoImport> CreatePropertyPhotoImportAsync(PropertyPhotoImport import, IReadOnlyList<PropertyPhotoImportItem> items);
+    Task<PropertyPhotoImport?> GetPropertyPhotoImportByIdAsync(Guid importId, Guid organizationId);
+    Task<IEnumerable<PropertyPhotoImportItem>> GetPropertyPhotoImportItemsByImportIdAsync(Guid importId);
+    Task<PropertyPhotoImportClaim?> ClaimNextPropertyPhotoImportItemAsync();
+    Task CompletePropertyPhotoImportItemAsync(int importItemId, PropertyPhotoImportItemStatus status, int? photoId, string? errorMessage);
     #endregion
 
     #region Property Listing Share

@@ -196,6 +196,42 @@ namespace RentAll.Api.Controllers
         }
         #endregion
 
+        #region Property Upload Log
+        [HttpGet("property-upload")]
+        public async Task<IActionResult> GetAllPropertyUploadLog()
+        {
+            if (!HasAdminAccess())
+                return Unauthorized("Only Admin or SuperAdmin can access logs.");
+
+            var rows = await _loggingRepository.GetAllPropertyUploadLogsByOrganizationIdAsync(CurrentOrganizationId);
+            var response = rows.Select(row => new PropertyUploadLogResponseDto(row)).ToList();
+            return Ok(response);
+        }
+
+        [HttpGet("property-upload/{id:int}")]
+        public async Task<IActionResult> GetPropertyUploadLogById(int id)
+        {
+            if (!HasAdminAccess())
+                return Unauthorized("Only Admin or SuperAdmin can access logs.");
+
+            var row = await _loggingRepository.GetPropertyUploadLogByIdAsync(id, CurrentOrganizationId);
+            if (row == null)
+                return NotFound("PropertyUploadLog record was not found.");
+
+            return Ok(new PropertyUploadLogResponseDto(row));
+        }
+
+        [HttpDelete("property-upload")]
+        public async Task<IActionResult> DeleteAllPropertyUploadLog()
+        {
+            if (!HasAdminAccess())
+                return Unauthorized("Only Admin or SuperAdmin can access logs.");
+
+            await _loggingRepository.DeleteAllPropertyUploadLogsByOrganizationIdAsync(CurrentOrganizationId);
+            return Ok();
+        }
+        #endregion
+
         #region Utility
         private bool HasAdminAccess()
         {

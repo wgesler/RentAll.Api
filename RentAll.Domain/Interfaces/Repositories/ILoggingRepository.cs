@@ -27,6 +27,11 @@ public interface ILoggingRepository
     Task DeleteAllGeneralErrorLogsByOrganizationIdAsync(Guid organizationId);
     Task<LoggingErrorLog?> GetGeneralErrorLogByIdAsync(int id, Guid organizationId);
 
+    Task AddPropertyUploadLogAsync(PropertyUploadLog log);
+    Task<List<PropertyUploadLog>> GetAllPropertyUploadLogsByOrganizationIdAsync(Guid organizationId);
+    Task DeleteAllPropertyUploadLogsByOrganizationIdAsync(Guid organizationId);
+    Task<PropertyUploadLog?> GetPropertyUploadLogByIdAsync(int id, Guid organizationId);
+
     Task ApplyLogRetentionAsync(int retainDays);
 
     Task<SchedulerJobRun?> GetSchedulerJobRunByJobNameAsync(string jobName);

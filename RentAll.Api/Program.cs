@@ -131,6 +131,10 @@ builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
+builder.Services.AddHttpClient(nameof(ExternalPropertyPhotoUrlImporter), client => client.Timeout = TimeSpan.FromSeconds(90));
+builder.Services.AddScoped<ExternalPropertyPhotoUrlImporter>();
+builder.Services.AddScoped<ExternalPropertyPhotoImportProcessor>();
+builder.Services.AddScoped<ExternalPropertyUploadLogService>();
 builder.Services.AddHttpClient(nameof(DocuSignService));
 builder.Services.AddScoped<IDocuSignService, DocuSignService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
@@ -220,6 +224,7 @@ builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ILoggingRepository, LoggingRepository>();
 
 builder.Services.AddHostedService<ApplicationLogHostedService>();
+builder.Services.AddHostedService<ExternalPropertyPhotoImportHostedService>();
 builder.Services.AddHostedService<SchedulingHostedService>();
 
 // Configure Swagger/OpenAPI with JWT support
