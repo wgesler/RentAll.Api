@@ -131,6 +131,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                     StartupPageId = (int)user.StartupPage,
                     DefaultPageSize = user.DefaultPageSize,
                     DefaultOfficeId = user.DefaultOfficeId,
+                    DocuSignUserId = user.DocuSignUserId,
                     CreatedBy = user.CreatedBy
                 });
 
@@ -202,6 +203,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 StartupPageId = (int)user.StartupPage,
                 DefaultPageSize = user.DefaultPageSize,
                 DefaultOfficeId = user.DefaultOfficeId,
+                DocuSignUserId = user.DocuSignUserId,
                 IsActive = user.IsActive,
                 ModifiedBy = user.ModifiedBy
             });

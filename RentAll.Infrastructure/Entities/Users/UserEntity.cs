@@ -19,6 +19,7 @@ public class UserEntity
     public int? DefaultOfficeId { get; set; }
     public Guid? AgentId { get; set; }
     public decimal CommissionRate { get; set; }
+    public Guid? DocuSignUserId { get; set; }
     public Guid? ContactId { get; set; }
     public DateTimeOffset? LastLoginOn { get; set; }
     public DateTimeOffset? LastSeenOn { get; set; }

@@ -16,6 +16,7 @@ public class User
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
+    public Guid? DocuSignUserId { get; set; }
     public DateTimeOffset? LastLoginOn { get; set; }
     public DateTimeOffset? LastSeenOn { get; set; }
     public DateTimeOffset? LastLogoutOn { get; set; }

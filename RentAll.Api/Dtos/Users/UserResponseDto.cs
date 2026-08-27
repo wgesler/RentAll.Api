@@ -10,6 +10,7 @@ public class UserResponseDto
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
+    public Guid? DocuSignUserId { get; set; }
     public DateTimeOffset? LastLoginOn { get; set; }
     public DateTimeOffset? LastSeenOn { get; set; }
     public DateTimeOffset? LastLogoutOn { get; set; }
@@ -41,6 +42,7 @@ public class UserResponseDto
         AgentId = user.AgentId;
         ContactId = user.ContactId;
         CommissionRate = user.CommissionRate;
+        DocuSignUserId = user.DocuSignUserId;
         LastLoginOn = user.LastLoginOn;
         LastSeenOn = user.LastSeenOn;
         LastLogoutOn = user.LastLogoutOn;

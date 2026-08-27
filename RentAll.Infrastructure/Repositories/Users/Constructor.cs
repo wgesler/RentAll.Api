@@ -65,6 +65,7 @@ namespace RentAll.Infrastructure.Repositories.Users
                 AgentId = e.AgentId,
                 ContactId = e.ContactId,
                 CommissionRate = e.CommissionRate,
+                DocuSignUserId = e.DocuSignUserId,
                 LastLoginOn = e.LastLoginOn,
                 LastSeenOn = e.LastSeenOn,
                 LastLogoutOn = e.LastLogoutOn,

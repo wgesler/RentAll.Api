@@ -23,6 +23,7 @@ public class UpdateUserDto
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
+    public Guid? DocuSignUserId { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -64,6 +65,7 @@ public class UpdateUserDto
             AgentId = d.AgentId,
             ContactId = d.ContactId,
             CommissionRate = d.CommissionRate,
+            DocuSignUserId = d.DocuSignUserId,
             Username = d.Email,
             FirstName = d.FirstName,
             LastName = d.LastName,

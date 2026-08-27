@@ -20,6 +20,7 @@ public class CreateUserDto
     public Guid? AgentId { get; set; }
     public Guid? ContactId { get; set; }
     public decimal CommissionRate { get; set; }
+    public Guid? DocuSignUserId { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -69,6 +70,7 @@ public class CreateUserDto
             AgentId = AgentId,
             ContactId = ContactId,
             CommissionRate = CommissionRate,
+            DocuSignUserId = DocuSignUserId,
             Username = Email,
             FirstName = FirstName,
             LastName = LastName,
