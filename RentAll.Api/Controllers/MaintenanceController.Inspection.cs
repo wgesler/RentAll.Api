@@ -67,12 +67,17 @@ public partial class MaintenanceController
         InspectionResponseDto? response = null;
         try
         {
-            var inspection = await _maintenanceRepository.GetInspectionByPropertyIdAsync(dto.PropertyId, CurrentOrganizationId, CurrentOfficeAccess);
-            if (inspection != null)
+            var existingRecords = await _maintenanceRepository.GetInspectionsByPropertyIdAsync(
+                dto.PropertyId,
+                CurrentOrganizationId,
+                CurrentOfficeAccess);
+            var sameTypeActive = existingRecords.FirstOrDefault(i =>
+                i.IsActive && (int)i.InspectionType == dto.InspectionTypeId);
+            if (sameTypeActive != null)
             {
-                inspection.IsActive = false;
-                inspection.ModifiedBy = CurrentUser;
-                await _maintenanceRepository.UpdateInspectionByIdAsync(inspection);
+                sameTypeActive.IsActive = false;
+                sameTypeActive.ModifiedBy = CurrentUser;
+                await _maintenanceRepository.UpdateInspectionByIdAsync(sameTypeActive);
             }
 
             var model = dto.ToModel(CurrentUser);
