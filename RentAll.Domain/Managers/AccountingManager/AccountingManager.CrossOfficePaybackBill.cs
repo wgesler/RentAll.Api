@@ -9,8 +9,14 @@ public partial class AccountingManager
     {
         receipt = await LoadReceiptWithSplitsAsync(receipt);
 
-        var bankCardOfficeVendorId = await ResolveInterOfficeVendorContactIdAsync(receipt.OrganizationId, receipt.OfficeId, bankCard.OfficeId);
-        var bankCardOfficeName = await GetOfficeNameAsync(receipt.OrganizationId, bankCard.OfficeId);
+        await CreateCrossOfficeOfficeBillAsync(receipt, receipt.OfficeId, bankCard.OfficeId, 1m, currentUser);
+        await CreateCrossOfficeOfficeBillAsync(receipt, bankCard.OfficeId, receipt.OfficeId, -1m, currentUser);
+    }
+
+    private async Task CreateCrossOfficeOfficeBillAsync(Receipt receipt, int billOfficeId, int vendorOfficeId, decimal amountSign, Guid currentUser)
+    {
+        var vendorId = await ResolveInterOfficeVendorContactIdAsync(receipt.OrganizationId, billOfficeId, vendorOfficeId);
+        var vendorName = await GetOfficeNameAsync(receipt.OrganizationId, vendorOfficeId);
         var receiptCode = receipt.ReceiptCode.Trim();
 
         var billCode = await _organizationManager.GenerateEntityCodeAsync(receipt.OrganizationId, EntityType.Receipt);
@@ -20,20 +26,20 @@ public partial class AccountingManager
         var bill = new Receipt
         {
             OrganizationId = receipt.OrganizationId,
-            OfficeId = receipt.OfficeId,
+            OfficeId = billOfficeId,
             ReceiptCode = billCode.Trim(),
             PropertyIds = receipt.PropertyIds?.ToList() ?? new List<Guid>(),
             ReceiptDate = receipt.ReceiptDate,
             DueDate = receipt.DueDate == default ? receipt.ReceiptDate : receipt.DueDate,
             AccountingPeriod = receipt.AccountingPeriod,
             BillNumber = receiptCode,
-            Amount = receipt.Amount,
+            Amount = receipt.Amount * amountSign,
             Description = receipt.Description,
             BankCardId = null,
-            VendorId = bankCardOfficeVendorId,
-            VendorName = bankCardOfficeName,
+            VendorId = vendorId,
+            VendorName = vendorName,
             PaidAmount = 0,
-            Splits = CloneReceiptSplitsForCrossOfficePaybackBill(receipt.Splits),
+            Splits = CloneReceiptSplitsForCrossOfficePaybackBill(receipt.Splits, amountSign),
             ReceiptPath = receipt.ReceiptPath,
             IsUtility = receipt.IsUtility,
             BusinessPrivate = receipt.BusinessPrivate,
@@ -45,12 +51,12 @@ public partial class AccountingManager
         await CreateJournalEntryFromBillAsync(createdBill, currentUser);
     }
 
-    private static List<ReceiptSplit> CloneReceiptSplitsForCrossOfficePaybackBill(IEnumerable<ReceiptSplit>? splits)
+    private static List<ReceiptSplit> CloneReceiptSplitsForCrossOfficePaybackBill(IEnumerable<ReceiptSplit>? splits, decimal amountSign)
     {
         return (splits ?? new List<ReceiptSplit>())
             .Select(split => new ReceiptSplit
             {
-                Amount = split.Amount,
+                Amount = split.Amount * amountSign,
                 Description = split.Description,
                 WorkOrder = split.WorkOrder,
                 PropertyId = split.PropertyId,
