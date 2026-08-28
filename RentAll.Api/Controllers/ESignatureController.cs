@@ -10,17 +10,20 @@ namespace RentAll.Api.Controllers;
 public class ESignatureController : BaseController
 {
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IPdfGenerationService _pdfGenerationService;
     private readonly IDocuSignService _docuSignService;
     private readonly ILogger<ESignatureController> _logger;
 
     public ESignatureController(
         IOrganizationRepository organizationRepository,
+        IUserRepository userRepository,
         IPdfGenerationService pdfGenerationService,
         IDocuSignService docuSignService,
         ILogger<ESignatureController> logger)
     {
         _organizationRepository = organizationRepository;
+        _userRepository = userRepository;
         _pdfGenerationService = pdfGenerationService;
         _docuSignService = docuSignService;
         _logger = logger;
@@ -46,6 +49,9 @@ public class ESignatureController : BaseController
             var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
             var fileName = string.IsNullOrWhiteSpace(dto.FileName) ? "document.pdf" : dto.FileName;
 
+            var currentUser = await _userRepository.GetUserByIdsAsync(CurrentUser, CurrentOrganizationId);
+            var docuSignUserId = currentUser?.DocuSignUserId;
+
             var result = await _docuSignService.SendEnvelopeAsync(
                 organization.Name,
                 pdfBytes,
@@ -55,7 +61,7 @@ public class ESignatureController : BaseController
                 dto.ReturnUrl,
                 dto.SenderEmail,
                 dto.SenderName,
-                dto.UserId,
+                docuSignUserId,
                 dto.ApiAccountId);
 
             return Ok(new SendDocumentForSignatureResponseDto(result));

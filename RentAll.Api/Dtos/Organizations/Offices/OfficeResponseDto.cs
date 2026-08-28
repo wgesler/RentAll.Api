@@ -72,7 +72,6 @@ public class OfficeResponseDto
     public bool QuotePetFee { get; set; }
     public bool QuoteDepartureFee { get; set; }
     public bool QuoteMaidFee { get; set; }
-    public Guid? DocuSignUserId { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
     public int? QbNameTypeId { get; set; }
     public int? QbClassTypeId { get; set; }
@@ -151,7 +150,6 @@ public class OfficeResponseDto
         QuotePetFee = office.QuotePetFee;
         QuoteDepartureFee = office.QuoteDepartureFee;
         QuoteMaidFee = office.QuoteMaidFee;
-        DocuSignUserId = office.DocuSignUserId;
         DocuSignApiAccountId = office.DocuSignApiAccountId;
         QbNameTypeId = office.QbNameType.HasValue ? (int?)office.QbNameType.Value : null;
         QbClassTypeId = office.QbClassType.HasValue ? (int?)office.QbClassType.Value : null;

@@ -70,7 +70,6 @@ public class OfficeCreateDto
     public bool QuotePetFee { get; set; }
     public bool QuoteDepartureFee { get; set; }
     public bool QuoteMaidFee { get; set; }
-    public Guid? DocuSignUserId { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
     public int? QbNameTypeId { get; set; }
     public int? QbClassTypeId { get; set; }
@@ -226,7 +225,6 @@ public class OfficeCreateDto
             QuotePetFee = QuotePetFee,
             QuoteDepartureFee = QuoteDepartureFee,
             QuoteMaidFee = QuoteMaidFee,
-            DocuSignUserId = DocuSignUserId,
             DocuSignApiAccountId = DocuSignApiAccountId,
             QbNameType = QbNameTypeId.HasValue ? (QbNameType)QbNameTypeId.Value : null,
             QbClassType = QbClassTypeId.HasValue ? (QbClassType)QbClassTypeId.Value : null,

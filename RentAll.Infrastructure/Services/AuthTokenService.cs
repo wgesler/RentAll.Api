@@ -62,6 +62,7 @@ public class AuthTokenService : IAuthTokenService
             startupPageId = (int)user.StartupPage,
             defaultPageSize = user.DefaultPageSize,
             defaultOfficeId = user.DefaultOfficeId,
+            docuSignUserId = user.DocuSignUserId?.ToString(),
             enabledFeatures = enabledFeatures ?? string.Empty
         };
 
