@@ -9,20 +9,17 @@ namespace RentAll.Api.Controllers;
 [Authorize]
 public class ESignatureController : BaseController
 {
-    private readonly IOrganizationRepository _organizationRepository;
     private readonly IUserRepository _userRepository;
     private readonly IPdfGenerationService _pdfGenerationService;
     private readonly IDocuSignService _docuSignService;
     private readonly ILogger<ESignatureController> _logger;
 
     public ESignatureController(
-        IOrganizationRepository organizationRepository,
         IUserRepository userRepository,
         IPdfGenerationService pdfGenerationService,
         IDocuSignService docuSignService,
         ILogger<ESignatureController> logger)
     {
-        _organizationRepository = organizationRepository;
         _userRepository = userRepository;
         _pdfGenerationService = pdfGenerationService;
         _docuSignService = docuSignService;
@@ -41,10 +38,6 @@ public class ESignatureController : BaseController
 
         try
         {
-            var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
-            if (organization == null)
-                return BadRequest(new { message = "Organization not found" });
-
             var signers = dto.ToSigners();
             var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
             var fileName = string.IsNullOrWhiteSpace(dto.FileName) ? "document.pdf" : dto.FileName;
@@ -53,7 +46,6 @@ public class ESignatureController : BaseController
             var docuSignUserId = currentUser?.DocuSignUserId;
 
             var result = await _docuSignService.SendEnvelopeAsync(
-                organization.Name,
                 pdfBytes,
                 fileName,
                 dto.Subject,
@@ -62,7 +54,8 @@ public class ESignatureController : BaseController
                 dto.SenderEmail,
                 dto.SenderName,
                 docuSignUserId,
-                dto.ApiAccountId);
+                dto.ApiAccountId,
+                dto.BaseUri);
 
             return Ok(new SendDocumentForSignatureResponseDto(result));
         }

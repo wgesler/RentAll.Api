@@ -73,6 +73,7 @@ public class OfficeUpdateDto
     public bool QuoteDepartureFee { get; set; }
     public bool QuoteMaidFee { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
+    public string? DocuSignBaseUri { get; set; }
     public int? QbNameTypeId { get; set; }
     public int? QbClassTypeId { get; set; }
     public string? EmailListForReservations { get; set; }
@@ -233,6 +234,7 @@ public class OfficeUpdateDto
             QuoteDepartureFee = QuoteDepartureFee,
             QuoteMaidFee = QuoteMaidFee,
             DocuSignApiAccountId = DocuSignApiAccountId,
+            DocuSignBaseUri = DocuSignBaseUri,
             QbNameType = QbNameTypeId.HasValue ? (QbNameType)QbNameTypeId.Value : null,
             QbClassType = QbClassTypeId.HasValue ? (QbClassType)QbClassTypeId.Value : null,
             EmailListForReservations = EmailListForReservations,

@@ -11,6 +11,7 @@ public class DocuSignSettings
 
     /// <summary>
     /// REST API base URL, e.g. https://demo.docusign.net/restapi or https://na4.docusign.net/restapi.
+    /// Used when BaseUri is not set.
     /// </summary>
     public string ApiBaseUrl { get; set; } = "https://demo.docusign.net/restapi";
 
@@ -25,17 +26,17 @@ public class DocuSignSettings
     public string? PrivateKey { get; set; }
 
     /// <summary>
-    /// Optional local override. When set, used instead of the tenant secret userId field.
+    /// Optional appsettings override for DocuSign userId when not supplied on the user record.
     /// </summary>
     public string? UserId { get; set; }
 
     /// <summary>
-    /// Optional local override. When set, used instead of the tenant secret accountId field.
+    /// Optional appsettings override for DocuSign accountId when not supplied on the office record.
     /// </summary>
     public string? AccountId { get; set; }
 
     /// <summary>
-    /// Optional local override. When set, used instead of the tenant secret baseUri field.
+    /// DocuSign account base URI, e.g. https://na4.docusign.net.
     /// </summary>
     public string? BaseUri { get; set; }
 }

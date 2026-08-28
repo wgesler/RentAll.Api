@@ -123,6 +123,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             QuoteDepartureFee = e.QuoteDepartureFee,
             QuoteMaidFee = e.QuoteMaidFee,
             DocuSignApiAccountId = e.DocuSignApiAccountId,
+            DocuSignBaseUri = e.DocuSignBaseUri,
             QbNameType = e.QbNameTypeId.HasValue ? (QbNameType)e.QbNameTypeId.Value : null,
             QbClassType = e.QbClassTypeId.HasValue ? (QbClassType)e.QbClassTypeId.Value : null,
             EmailListForReservations = e.EmailListForReservations,

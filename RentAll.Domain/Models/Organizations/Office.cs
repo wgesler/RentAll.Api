@@ -74,6 +74,7 @@ public class Office
     public bool QuoteDepartureFee { get; set; }
     public bool QuoteMaidFee { get; set; }
     public Guid? DocuSignApiAccountId { get; set; }
+    public string? DocuSignBaseUri { get; set; }
     public QbNameType? QbNameType { get; set; }
     public QbClassType? QbClassType { get; set; }
     public string? EmailListForReservations { get; set; }

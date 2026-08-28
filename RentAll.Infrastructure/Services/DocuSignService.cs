@@ -35,7 +35,6 @@ public class DocuSignService : IDocuSignService
     }
 
     public async Task<DocuSignEnvelopeResult> SendEnvelopeAsync(
-        string? companyName,
         byte[] pdfBytes,
         string fileName,
         string subject,
@@ -45,12 +44,10 @@ public class DocuSignService : IDocuSignService
         string senderName,
         Guid? userId = null,
         Guid? apiAccountId = null,
+        string? baseUri = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(pdfBytes);
-
-        if (string.IsNullOrWhiteSpace(companyName))
-            throw new InvalidOperationException("Organization name is required for DocuSign configuration.");
 
         if (signers.Count == 0)
             throw new ArgumentException("At least one signer is required.", nameof(signers));
@@ -67,8 +64,7 @@ public class DocuSignService : IDocuSignService
         if (string.IsNullOrWhiteSpace(senderName))
             throw new ArgumentException("Sender name is required.", nameof(senderName));
 
-        var docuSignSecretName = BuildDocuSignTenantSecretName(companyName);
-        var credentials = await GetCredentialsAsync(docuSignSecretName, userId, apiAccountId, cancellationToken);
+        var credentials = await GetCredentialsAsync(userId, apiAccountId, baseUri, cancellationToken);
         var accessToken = await RequestAccessTokenAsync(credentials, cancellationToken);
 
         var envelopeId = await CreateEnvelopeAsync(
@@ -97,7 +93,11 @@ public class DocuSignService : IDocuSignService
         };
     }
 
-    private async Task<DocuSignCredentials> GetCredentialsAsync(string tenantDocuSignSecretName, Guid? requestUserId, Guid? requestApiAccountId, CancellationToken cancellationToken)
+    private async Task<DocuSignCredentials> GetCredentialsAsync(
+        Guid? requestUserId,
+        Guid? requestApiAccountId,
+        string? requestBaseUri,
+        CancellationToken cancellationToken)
     {
         SecretClient? keyVaultClient = null;
 
@@ -131,61 +131,24 @@ public class DocuSignService : IDocuSignService
 
         var userId = FirstNonEmpty(ToGuidStringOrNull(requestUserId), _settings.UserId);
         var accountId = FirstNonEmpty(ToGuidStringOrNull(requestApiAccountId), _settings.AccountId);
-        var baseUri = ResolveBaseUri(_settings.BaseUri, null);
-
-        DocuSignTenantCredentials? tenantCredentials = null;
-        if (NeedsTenantCredentialsFromKeyVault(userId, accountId, baseUri))
-        {
-            var client = await GetKeyVaultClientAsync();
-            var tenantSecret = await client.GetSecretAsync(tenantDocuSignSecretName, cancellationToken: cancellationToken);
-            var tenantSecretValue = tenantSecret.Value.Value;
-
-            if (string.IsNullOrWhiteSpace(tenantSecretValue))
-            {
-                throw new InvalidOperationException(
-                    $"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' is empty.");
-            }
-
-            try
-            {
-                tenantCredentials = JsonSerializer.Deserialize<DocuSignTenantCredentials>(
-                    tenantSecretValue,
-                    CredentialJsonOptions);
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidOperationException(
-                    $"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' must be JSON with userId, accountId, and baseUri.",
-                    ex);
-            }
-
-            if (tenantCredentials == null)
-            {
-                throw new InvalidOperationException(
-                    $"DocuSign tenant Key Vault secret '{tenantDocuSignSecretName}' is missing required fields.");
-            }
-
-            userId = FirstNonEmpty(userId, tenantCredentials.UserId);
-            accountId = FirstNonEmpty(accountId, tenantCredentials.AccountId);
-            baseUri = ResolveBaseUri(_settings.BaseUri, tenantCredentials.BaseUri);
-        }
+        var baseUri = FirstNonEmpty(NormalizeBaseUri(requestBaseUri), ResolveBaseUri());
 
         if (string.IsNullOrWhiteSpace(userId))
         {
             throw new InvalidOperationException(
-                "DocuSign userId is not configured. Set DocuSignSettings:UserId in appsettings or provide it in the tenant Key Vault secret.");
+                "DocuSign userId is not configured. Set DocuSignUserId on the user record or DocuSignSettings:UserId in appsettings.");
         }
 
         if (string.IsNullOrWhiteSpace(accountId))
         {
             throw new InvalidOperationException(
-                "DocuSign accountId is not configured. Set DocuSignSettings:AccountId in appsettings or provide it in the tenant Key Vault secret.");
+                "DocuSign accountId is not configured. Set DocuSignApiAccountId on the office record or DocuSignSettings:AccountId in appsettings.");
         }
 
         if (string.IsNullOrWhiteSpace(baseUri))
         {
             throw new InvalidOperationException(
-                "DocuSign baseUri is not configured. Set DocuSignSettings:BaseUri in appsettings or provide it in the tenant Key Vault secret.");
+                "DocuSign baseUri is not configured. Set DocuSignBaseUri on the office record or DocuSignSettings:BaseUri in appsettings.");
         }
 
         ValidateDocuSignGuid(userId, "userId");
@@ -193,13 +156,14 @@ public class DocuSignService : IDocuSignService
         ValidateDocuSignGuid(clientId, "clientId");
 
         _logger.LogInformation(
-            "DocuSign credentials resolved. AuthServer={AuthServer}, ClientId source: {ClientIdSource}, PrivateKey source: {PrivateKeySource}, UserId source: {UserIdSource}, AccountId source: {AccountIdSource}, Tenant source: {TenantSource}, {KeyDiagnostics}",
+            "DocuSign credentials resolved. AuthServer={AuthServer}, BaseUri={BaseUri}, ClientId source: {ClientIdSource}, PrivateKey source: {PrivateKeySource}, UserId source: {UserIdSource}, AccountId source: {AccountIdSource}, BaseUri source: {BaseUriSource}, {KeyDiagnostics}",
             _settings.AuthServer,
+            baseUri,
             GetCredentialSource(_settings.ClientId),
             GetCredentialSource(_settings.PrivateKey),
-            GetDocuSignIdentitySource(requestUserId, _settings.UserId, tenantCredentials?.UserId),
-            GetDocuSignIdentitySource(requestApiAccountId, _settings.AccountId, tenantCredentials?.AccountId),
-            tenantCredentials != null ? $"KeyVault:{tenantDocuSignSecretName}" : "NotUsed",
+            GetDocuSignIdentitySource(requestUserId, _settings.UserId),
+            GetDocuSignIdentitySource(requestApiAccountId, _settings.AccountId),
+            GetDocuSignIdentitySource(requestBaseUri, _settings.BaseUri),
             DescribePrivateKeyDiagnostics(privateKey));
 
         return new DocuSignCredentials
@@ -212,13 +176,6 @@ public class DocuSignService : IDocuSignService
         };
     }
 
-    private static bool NeedsTenantCredentialsFromKeyVault(string? userId, string? accountId, string? baseUri)
-    {
-        return string.IsNullOrWhiteSpace(userId)
-            || string.IsNullOrWhiteSpace(accountId)
-            || string.IsNullOrWhiteSpace(baseUri);
-    }
-
     private static string? ToGuidStringOrNull(Guid? value)
     {
         return value.HasValue && value.Value != Guid.Empty
@@ -226,18 +183,34 @@ public class DocuSignService : IDocuSignService
             : null;
     }
 
-    private static string GetDocuSignIdentitySource(Guid? requestValue, string? settingsValue, string? tenantValue)
+    private static string GetDocuSignIdentitySource(Guid? requestValue, string? settingsValue)
     {
         if (requestValue.HasValue && requestValue.Value != Guid.Empty)
-            return "Office";
+            return "Request";
 
         if (!string.IsNullOrWhiteSpace(settingsValue))
             return "AppSettings";
 
-        if (!string.IsNullOrWhiteSpace(tenantValue))
-            return "KeyVault";
+        return "Missing";
+    }
+
+    private static string GetDocuSignIdentitySource(string? requestValue, string? settingsValue)
+    {
+        if (!string.IsNullOrWhiteSpace(requestValue))
+            return "Request";
+
+        if (!string.IsNullOrWhiteSpace(settingsValue))
+            return "AppSettings";
 
         return "Missing";
+    }
+
+    private static string? NormalizeBaseUri(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return value.Trim().TrimEnd('/');
     }
 
     private async Task<string> ResolveCredentialValueAsync(
@@ -261,11 +234,10 @@ public class DocuSignService : IDocuSignService
         return value;
     }
 
-    private string ResolveBaseUri(string? settingsBaseUri, string? tenantBaseUri)
+    private string ResolveBaseUri()
     {
-        var baseUri = FirstNonEmpty(settingsBaseUri, tenantBaseUri);
-        if (!string.IsNullOrWhiteSpace(baseUri))
-            return baseUri;
+        if (!string.IsNullOrWhiteSpace(_settings.BaseUri))
+            return _settings.BaseUri.Trim().TrimEnd('/');
 
         if (string.IsNullOrWhiteSpace(_settings.ApiBaseUrl))
             return string.Empty;
@@ -676,10 +648,9 @@ public class DocuSignService : IDocuSignService
         if (body.Contains("user_not_found", StringComparison.OrdinalIgnoreCase))
         {
             message +=
-                " The tenant secret userId is not a valid DocuSign user GUID for this environment. "
-                + "In DocuSign Admin (demo: https://apps-d.docusign.com), open Apps and Keys → your app → "
-                + "My Account Information and copy API Username (a GUID). Put that in the tenant secret as userId. "
-                + "Do not use an email address, Account ID, or a production user ID when AuthServer is account-d.docusign.com.";
+                " The configured DocuSign userId is not a valid user GUID for this environment. "
+                + "In DocuSign Admin, open Apps and Keys → My Account Information and copy API Username (a GUID). "
+                + "Set that value on the RentAll user record as DocuSignUserId.";
         }
         else if (body.Contains("consent_required", StringComparison.OrdinalIgnoreCase)
                  && !string.IsNullOrWhiteSpace(clientId)
@@ -692,7 +663,7 @@ public class DocuSignService : IDocuSignService
         else if (body.Contains("invalid_request", StringComparison.OrdinalIgnoreCase))
         {
             message +=
-                " Verify JWT settings: iss=Integration Key (docusign-client-id), sub=User GUID (tenant userId), "
+                " Verify JWT settings: iss=Integration Key (docusign-client-id), sub=User GUID (DocuSignUserId), "
                 + $"aud={authServer ?? "account-d.docusign.com or account.docusign.com"} (no https), "
                 + "scope=signature impersonation, demo vs prod environment matches your DocuSign account.";
         }
@@ -713,12 +684,6 @@ public class DocuSignService : IDocuSignService
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    private static readonly JsonSerializerOptions CredentialJsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
-    };
-
     private sealed class DocuSignCredentials
     {
         public string ClientId { get; set; } = string.Empty;
@@ -726,19 +691,6 @@ public class DocuSignService : IDocuSignService
         public string UserId { get; set; } = string.Empty;
         public string AccountId { get; set; } = string.Empty;
         public string BaseUri { get; set; } = string.Empty;
-    }
-
-    private sealed class DocuSignTenantCredentials
-    {
-        public string UserId { get; set; } = string.Empty;
-        public string AccountId { get; set; } = string.Empty;
-        public string BaseUri { get; set; } = string.Empty;
-    }
-
-    private sealed class DocuSignTokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string? AccessToken { get; set; }
     }
 
     private sealed class DocuSignEnvelopeRequest
@@ -786,16 +738,5 @@ public class DocuSignService : IDocuSignService
     private sealed class DocuSignSenderViewResponse
     {
         public string Url { get; set; } = string.Empty;
-    }
-
-    public static string BuildDocuSignTenantSecretName(string companyName)
-    {
-        var slug = Regex.Replace(companyName.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-")
-            .Trim('-');
-
-        if (string.IsNullOrWhiteSpace(slug))
-            throw new InvalidOperationException("Organization name cannot be used to build a DocuSign tenant secret name.");
-
-        return $"docusign-tenant-{slug}";
     }
 }

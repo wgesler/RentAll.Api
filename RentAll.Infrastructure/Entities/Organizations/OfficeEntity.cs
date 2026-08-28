@@ -75,6 +75,7 @@ public class OfficeEntity
     public bool QuoteMaidFee { get; set; }
 
     public Guid? DocuSignApiAccountId { get; set; }
+    public string? DocuSignBaseUri { get; set; }
 
     public int? QbNameTypeId { get; set; }
     public int? QbClassTypeId { get; set; }

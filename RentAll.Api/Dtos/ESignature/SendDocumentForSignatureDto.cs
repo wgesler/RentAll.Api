@@ -18,6 +18,7 @@ public class SendDocumentForSignatureDto
     public string SenderName { get; set; } = string.Empty;
     public Guid? UserId { get; set; }
     public Guid? ApiAccountId { get; set; }
+    public string? BaseUri { get; set; }
     public List<DocuSignSignerDto> Signers { get; set; } = [];
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId, string officeAccess)
