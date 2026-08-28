@@ -9,15 +9,41 @@ public partial class AccountingManager
     {
         receipt = await LoadReceiptWithSplitsAsync(receipt);
 
-        await CreateCrossOfficeOfficeBillAsync(receipt, receipt.OfficeId, bankCard.OfficeId, 1m, currentUser);
-        await CreateCrossOfficeOfficeBillAsync(receipt, bankCard.OfficeId, receipt.OfficeId, -1m, currentUser);
+        await CreateCrossOfficeOfficeBillAsync(receipt, bankCard, receipt.OfficeId, bankCard.OfficeId, 1m, currentUser);
+        await CreateCrossOfficeOfficeBillAsync(receipt, bankCard, bankCard.OfficeId, receipt.OfficeId, -1m, currentUser);
     }
 
-    private async Task CreateCrossOfficeOfficeBillAsync(Receipt receipt, int billOfficeId, int vendorOfficeId, decimal amountSign, Guid currentUser)
+    private async Task CreateCrossOfficeOfficeBillAsync(Receipt receipt, BankCard bankCard, int billOfficeId, int vendorOfficeId, decimal amountSign, Guid currentUser)
     {
-        var vendorId = await ResolveInterOfficeVendorContactIdAsync(receipt.OrganizationId, billOfficeId, vendorOfficeId);
+        var vendorId = await ResolveInterOfficeVendorContactIdAsync(receipt.OrganizationId, billOfficeId, vendorOfficeId, currentUser);
         var vendorName = await GetOfficeNameAsync(receipt.OrganizationId, vendorOfficeId);
         var receiptCode = receipt.ReceiptCode.Trim();
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(receipt.OrganizationId, billOfficeId);
+        var isOffendingOfficeBill = billOfficeId == receipt.OfficeId;
+        var splitAccountId = isOffendingOfficeBill
+            ? GetDefaultInterOfficeAccount(chartOfAccounts, billOfficeId, accountingOffice)
+            : GetCreditCardAccountId(bankCard);
+        var splitAccountName = isOffendingOfficeBill ? "Inter-Office" : "Visa";
+        var splits = CloneReceiptSplitsForCrossOfficePaybackBill(receipt.Splits, amountSign, splitAccountId, splitAccountName);
+
+        var existingBill = await FindCrossOfficePaybackBillAsync(receipt.OrganizationId, billOfficeId, receiptCode);
+        if (existingBill != null)
+        {
+            existingBill.Amount = receipt.Amount * amountSign;
+            existingBill.Description = receipt.Description;
+            existingBill.VendorId = vendorId;
+            existingBill.VendorName = vendorName;
+            existingBill.PropertyIds = receipt.PropertyIds?.ToList() ?? new List<Guid>();
+            existingBill.ReceiptDate = receipt.ReceiptDate;
+            existingBill.DueDate = receipt.DueDate == default ? receipt.ReceiptDate : receipt.DueDate;
+            existingBill.AccountingPeriod = receipt.AccountingPeriod;
+            existingBill.ReceiptPath = receipt.ReceiptPath;
+            existingBill.Splits = splits;
+            existingBill.ModifiedBy = currentUser;
+            await _maintenanceRepository.UpdateReceiptAsync(existingBill);
+            await ReplaceJournalEntriesFromBillAsync(existingBill, currentUser);
+            return;
+        }
 
         var billCode = await _organizationManager.GenerateEntityCodeAsync(receipt.OrganizationId, EntityType.Receipt);
         if (string.IsNullOrWhiteSpace(billCode))
@@ -39,7 +65,7 @@ public partial class AccountingManager
             VendorId = vendorId,
             VendorName = vendorName,
             PaidAmount = 0,
-            Splits = CloneReceiptSplitsForCrossOfficePaybackBill(receipt.Splits, amountSign),
+            Splits = splits,
             ReceiptPath = receipt.ReceiptPath,
             IsUtility = receipt.IsUtility,
             BusinessPrivate = receipt.BusinessPrivate,
@@ -51,7 +77,22 @@ public partial class AccountingManager
         await CreateJournalEntryFromBillAsync(createdBill, currentUser);
     }
 
-    private static List<ReceiptSplit> CloneReceiptSplitsForCrossOfficePaybackBill(IEnumerable<ReceiptSplit>? splits, decimal amountSign)
+    private async Task<Receipt?> FindCrossOfficePaybackBillAsync(Guid organizationId, int billOfficeId, string sourceReceiptCode)
+    {
+        var bills = await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = billOfficeId.ToString(),
+            ReceiptKind = ReceiptKind.Bill,
+            IncludeInactive = false
+        });
+
+        return bills.FirstOrDefault(bill =>
+            bill.BankCardId is not > 0 &&
+            string.Equals(bill.BillNumber?.Trim(), sourceReceiptCode, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static List<ReceiptSplit> CloneReceiptSplitsForCrossOfficePaybackBill(IEnumerable<ReceiptSplit>? splits, decimal amountSign, int splitAccountId, string splitAccountName)
     {
         return (splits ?? new List<ReceiptSplit>())
             .Select(split => new ReceiptSplit
@@ -63,8 +104,8 @@ public partial class AccountingManager
                 WorkOrderId = split.WorkOrderId,
                 WorkOrderCode = split.WorkOrderCode,
                 ReceiptTypeId = split.ReceiptTypeId,
-                ChartOfAccountId = split.ChartOfAccountId,
-                ChartOfAccountDisplayName = split.ChartOfAccountDisplayName
+                ChartOfAccountId = splitAccountId,
+                ChartOfAccountDisplayName = splitAccountName
             })
             .ToList();
     }

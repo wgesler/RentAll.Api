@@ -724,6 +724,29 @@ public partial class AccountingManager : IAccountingManager
         });
     }
 
+    public int GetDefaultInterOfficeAccount(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
+    {
+        return ResolveDefaultAccountIdCached(nameof(GetDefaultInterOfficeAccount), chartOfAccounts, officeId, null, () =>
+        {
+            if (accountingOffice?.DefaultInterOfficeAccountId is > 0)
+                return accountingOffice.DefaultInterOfficeAccountId.Value;
+
+            var account = chartOfAccounts
+                .Where(a => a.OfficeId == officeId)
+                .Where(a =>
+                    a.Name.Contains("Inter-Office", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.Contains("Inter Office", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.Contains("Interoffice", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(a => a.AccountId)
+                .FirstOrDefault();
+
+            if (account == null)
+                throw new Exception($"No Inter-Office chart of account is configured for office {officeId}");
+
+            return account.AccountId;
+        });
+    }
+
     /// <summary>
     /// Resolves the office rent charge cost code to a COA account, walks up to the rental income
     /// root when that account is a subaccount, and returns the root plus every subaccount beneath it.
