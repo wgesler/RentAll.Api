@@ -50,6 +50,7 @@ public class AccountingOfficeResponseDto
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultRetainedEarningsAccountId { get; set; }
+    public int? DefaultInterOfficeAccountId { get; set; }
     public string? LogoPath { get; set; }
     public FileDetails? FileDetails { get; set; }
     public string? CheckStockPath { get; set; }
@@ -109,6 +110,7 @@ public class AccountingOfficeResponseDto
         DefaultOwnActPayableAccountId = accountingOffice.DefaultOwnActPayableAccountId;
         DefaultPrePayAccountId = accountingOffice.DefaultPrePayAccountId;
         DefaultRetainedEarningsAccountId = accountingOffice.DefaultRetainedEarningsAccountId;
+        DefaultInterOfficeAccountId = accountingOffice.DefaultInterOfficeAccountId;
         LogoPath = accountingOffice.LogoPath;
         CheckStockPath = accountingOffice.CheckStockPath;
         CurrentCheckNumber = accountingOffice.CurrentCheckNumber;

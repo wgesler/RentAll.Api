@@ -49,6 +49,7 @@ public class CreateAccountingOfficeDto
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultRetainedEarningsAccountId { get; set; }
+    public int? DefaultInterOfficeAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
     public bool IsActive { get; set; }
@@ -168,6 +169,7 @@ public class CreateAccountingOfficeDto
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = DefaultPrePayAccountId,
             DefaultRetainedEarningsAccountId = DefaultRetainedEarningsAccountId,
+            DefaultInterOfficeAccountId = DefaultInterOfficeAccountId,
             LogoPath = null, // Will be set by controller after file save
             CurrentCheckNumber = CurrentCheckNumber,
             IsActive = IsActive,

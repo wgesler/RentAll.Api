@@ -49,6 +49,7 @@ public class UpdateAccountingOfficeDto
     public int? DefaultOwnActPayableAccountId { get; set; }
     public int? DefaultPrePayAccountId { get; set; }
     public int? DefaultRetainedEarningsAccountId { get; set; }
+    public int? DefaultInterOfficeAccountId { get; set; }
     public string? LogoPath { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
     public FileDetails? FileDetails { get; set; }
@@ -169,6 +170,7 @@ public class UpdateAccountingOfficeDto
             DefaultOwnActPayableAccountId = DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = DefaultPrePayAccountId,
             DefaultRetainedEarningsAccountId = DefaultRetainedEarningsAccountId,
+            DefaultInterOfficeAccountId = DefaultInterOfficeAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             CurrentCheckNumber = CurrentCheckNumber,
             IsActive = IsActive,

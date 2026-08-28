@@ -183,6 +183,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             DefaultOwnActPayableAccountId = e.DefaultOwnActPayableAccountId,
             DefaultPrePayAccountId = e.DefaultPrePayAccountId,
             DefaultRetainedEarningsAccountId = e.DefaultRetainedEarningsAccountId,
+            DefaultInterOfficeAccountId = e.DefaultInterOfficeAccountId,
             LogoPath = e.LogoPath,
             CheckStockPath = e.CheckStockPath,
             CurrentCheckNumber = e.CurrentCheckNumber,
