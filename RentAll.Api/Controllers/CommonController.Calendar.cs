@@ -47,8 +47,8 @@ namespace RentAll.Api.Controllers
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "Calendar import request failed for URL: {ExternalCalendarUrl}", dto.ExternalCalendarUrl);
-                return BadRequest("Unable to fetch external calendar URL.");
+                _logger.LogWarning(ex, "Calendar import request failed for URL: {ExternalCalendarUrl} property: {PropertyCode}", dto.ExternalCalendarUrl, dto.PropertyCode);
+                return BadRequest(BuildExternalCalendarFetchError(dto.PropertyCode));
             }
             catch (ArgumentException ex)
             {
@@ -59,6 +59,14 @@ namespace RentAll.Api.Controllers
                 _logger.LogError(ex, "Error importing external calendar for URL: {ExternalCalendarUrl}", dto.ExternalCalendarUrl);
                 return ServerError("An error occurred while importing external calendar");
             }
+        }
+
+        private static string BuildExternalCalendarFetchError(string? propertyCode)
+        {
+            var code = (propertyCode ?? string.Empty).Trim();
+            return string.IsNullOrWhiteSpace(code)
+                ? "Unable to fetch external calendar URL."
+                : $"Unable to fetch external calendar URL for {code}.";
         }
     }
 }
