@@ -9,17 +9,20 @@ namespace RentAll.Api.Controllers;
 [Authorize]
 public class ESignatureController : BaseController
 {
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IUserRepository _userRepository;
     private readonly IPdfGenerationService _pdfGenerationService;
     private readonly IDocuSignService _docuSignService;
     private readonly ILogger<ESignatureController> _logger;
 
     public ESignatureController(
+        IOrganizationRepository organizationRepository,
         IUserRepository userRepository,
         IPdfGenerationService pdfGenerationService,
         IDocuSignService docuSignService,
         ILogger<ESignatureController> logger)
     {
+        _organizationRepository = organizationRepository;
         _userRepository = userRepository;
         _pdfGenerationService = pdfGenerationService;
         _docuSignService = docuSignService;
@@ -38,6 +41,10 @@ public class ESignatureController : BaseController
 
         try
         {
+            var office = await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId, CurrentOrganizationId);
+            if (office == null)
+                return BadRequest(new { message = "Office not found" });
+
             var signers = dto.ToSigners();
             var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent);
             var fileName = string.IsNullOrWhiteSpace(dto.FileName) ? "document.pdf" : dto.FileName;
@@ -54,8 +61,8 @@ public class ESignatureController : BaseController
                 dto.SenderEmail,
                 dto.SenderName,
                 docuSignUserId,
-                dto.ApiAccountId,
-                dto.BaseUri);
+                office.DocuSignApiAccountId,
+                office.DocuSignBaseUri);
 
             return Ok(new SendDocumentForSignatureResponseDto(result));
         }
