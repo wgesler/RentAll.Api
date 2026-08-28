@@ -24,7 +24,17 @@ public partial class AccountingManager
             ? GetDefaultInterOfficeAccount(chartOfAccounts, billOfficeId, accountingOffice)
             : GetCreditCardAccountId(bankCard);
         var splitAccountName = isOffendingOfficeBill ? "Inter-Office" : "Visa";
-        var splits = CloneReceiptSplitsForCrossOfficePaybackBill(receipt.Splits, amountSign, splitAccountId, splitAccountName);
+        var splits = new List<ReceiptSplit>
+        {
+            new()
+            {
+                Amount = receipt.Amount * amountSign,
+                Description = string.IsNullOrWhiteSpace(receipt.Description) ? receiptCode : receipt.Description,
+                ReceiptTypeId = (int)ReceiptType.Company,
+                ChartOfAccountId = splitAccountId,
+                ChartOfAccountDisplayName = splitAccountName
+            }
+        };
 
         var existingBill = await FindCrossOfficePaybackBillAsync(receipt.OrganizationId, billOfficeId, receiptCode);
         if (existingBill != null)
@@ -92,21 +102,4 @@ public partial class AccountingManager
             string.Equals(bill.BillNumber?.Trim(), sourceReceiptCode, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static List<ReceiptSplit> CloneReceiptSplitsForCrossOfficePaybackBill(IEnumerable<ReceiptSplit>? splits, decimal amountSign, int splitAccountId, string splitAccountName)
-    {
-        return (splits ?? new List<ReceiptSplit>())
-            .Select(split => new ReceiptSplit
-            {
-                Amount = split.Amount * amountSign,
-                Description = split.Description,
-                WorkOrder = split.WorkOrder,
-                PropertyId = split.PropertyId,
-                WorkOrderId = split.WorkOrderId,
-                WorkOrderCode = split.WorkOrderCode,
-                ReceiptTypeId = split.ReceiptTypeId,
-                ChartOfAccountId = splitAccountId,
-                ChartOfAccountDisplayName = splitAccountName
-            })
-            .ToList();
-    }
 }
