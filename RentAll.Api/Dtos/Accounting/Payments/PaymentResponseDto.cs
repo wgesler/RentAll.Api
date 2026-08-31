@@ -22,6 +22,7 @@ public class PaymentResponseDto
     public bool IsActive { get; set; }
     public List<PaymentInvoiceAllocationResponseDto> InvoiceAllocations { get; set; } = new();
     public List<PaymentBillAllocationResponseDto> BillAllocations { get; set; } = new();
+    public List<PaymentOwnerAllocationResponseDto> OwnerAllocations { get; set; } = new();
     public DateTimeOffset CreatedOn { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTimeOffset ModifiedOn { get; set; }
@@ -52,6 +53,9 @@ public class PaymentResponseDto
             .ToList();
         BillAllocations = (payment.BillAllocations ?? new List<PaymentBillAllocation>())
             .Select(allocation => new PaymentBillAllocationResponseDto(allocation))
+            .ToList();
+        OwnerAllocations = (payment.OwnerAllocations ?? new List<PaymentOwnerAllocation>())
+            .Select(allocation => new PaymentOwnerAllocationResponseDto(allocation))
             .ToList();
         CreatedOn = payment.CreatedOn;
         CreatedBy = payment.CreatedByName;

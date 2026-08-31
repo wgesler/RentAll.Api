@@ -11,14 +11,14 @@ public partial class AccountingRepository
     public async Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess, int paymentKindId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (headers, lines, billAllocations) = await db.DapperProcQueryTripleAsync<PaymentEntity, PaymentLedgerLineEntity, PaymentBillAllocationEntity>("Accounting.Payment_GetListByOfficeIds", new
+        var (headers, lines, billAllocations, ownerAllocations) = await db.DapperProcQueryQuadrupleAsync<PaymentEntity, PaymentLedgerLineEntity, PaymentBillAllocationEntity, PaymentOwnerAllocationEntity>("Accounting.Payment_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess,
             PaymentKindId = paymentKindId
         });
 
-        return MapPaymentsWithLedgerLineEntities(headers, lines, billAllocations);
+        return MapPaymentsWithLedgerLineEntities(headers, lines, billAllocations, ownerAllocations);
     }
 
     public async Task<Payment?> GetPaymentByIdAsync(Guid paymentId, Guid organizationId)
@@ -36,6 +36,8 @@ public partial class AccountingRepository
 
         var billAllocations = await GetBillAllocationsByPaymentIdAsync(paymentId, organizationId);
         payment.BillAllocations = billAllocations.ToList();
+        var ownerAllocations = await GetOwnerAllocationsByPaymentIdAsync(paymentId, organizationId);
+        payment.OwnerAllocations = ownerAllocations.ToList();
         return payment;
     }
 
@@ -96,6 +98,21 @@ public partial class AccountingRepository
             return await LoadPaymentByIdCoreAsync(db, transaction, createdPayment.PaymentId, payment.OrganizationId)
                 ?? createdPayment;
         });
+
+    public Task<Payment> CreatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser)
+        => RunInTransactionAsync(async (db, transaction) =>
+        {
+            var createdPayment = await CreatePaymentCoreAsync(db, transaction, payment);
+            await ApplyOwnerAllocationsCoreAsync(db, transaction, createdPayment, allocations, currentUser);
+            createdPayment.OwnerAllocations = (await GetOwnerAllocationsByPaymentIdCoreAsync(db, transaction, createdPayment.PaymentId, payment.OrganizationId)).ToList();
+            return createdPayment;
+        });
+
+    public async Task<IReadOnlyList<PaymentOwnerAllocation>> GetOwnerAllocationsByPaymentIdAsync(Guid paymentId, Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        return await GetOwnerAllocationsByPaymentIdCoreAsync(db, null, paymentId, organizationId);
+    }
 
     public Task<Payment> UpdatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser)
         => RunInTransactionAsync(async (db, transaction) =>
@@ -389,5 +406,45 @@ public partial class AccountingRepository
                 CreatedBy = currentUser
             }, transaction: transaction);
         }
+    }
+
+    private async Task ApplyOwnerAllocationsCoreAsync(SqlConnection db, IDbTransaction transaction, Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser)
+    {
+        await db.DapperProcExecuteAsync("Accounting.PaymentOwnerAllocation_DeleteByPaymentId", new
+        {
+            PaymentId = payment.PaymentId
+        }, transaction: transaction);
+
+        var lineNumber = 0;
+        foreach (var allocation in allocations)
+        {
+            lineNumber++;
+            await db.DapperProcExecuteAsync("Accounting.PaymentOwnerAllocation_Add", new
+            {
+                PaymentId = payment.PaymentId,
+                OwnerId = allocation.OwnerId,
+                PropertyId = allocation.PropertyId,
+                LineNumber = lineNumber,
+                Amount = allocation.Amount,
+                Description = string.IsNullOrWhiteSpace(allocation.Description)
+                    ? payment.Description
+                    : allocation.Description.Trim(),
+                CreatedBy = currentUser
+            }, transaction: transaction);
+        }
+    }
+
+    private async Task<IReadOnlyList<PaymentOwnerAllocation>> GetOwnerAllocationsByPaymentIdCoreAsync(SqlConnection db, IDbTransaction? transaction, Guid paymentId, Guid organizationId)
+    {
+        var entities = await db.DapperProcQueryAsync<PaymentOwnerAllocationEntity>("Accounting.PaymentOwnerAllocation_GetByPaymentId", new
+        {
+            PaymentId = paymentId,
+            OrganizationId = organizationId
+        }, transaction: transaction);
+
+        return (entities ?? Enumerable.Empty<PaymentOwnerAllocationEntity>())
+            .Select(ConvertPaymentOwnerAllocationEntityToModel)
+            .OrderBy(allocation => allocation.LineNumber)
+            .ToList();
     }
 }

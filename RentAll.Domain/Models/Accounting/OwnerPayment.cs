@@ -35,4 +35,6 @@ public class OwnerPaymentApplication
     public int ChartOfAccountId { get; set; }
     public string Description { get; set; } = string.Empty;
     public PaymentType PaymentType { get; set; }
+    public Guid? PaymentId { get; set; }
+    public string PaymentCode { get; set; } = string.Empty;
 }

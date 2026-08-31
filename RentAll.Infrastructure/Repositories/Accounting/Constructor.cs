@@ -426,7 +426,8 @@ public partial class AccountingRepository : IAccountingRepository
     private static List<Payment> MapPaymentsWithLedgerLineEntities(
         IEnumerable<PaymentEntity>? paymentEntities,
         IEnumerable<PaymentLedgerLineEntity>? ledgerLineEntities,
-        IEnumerable<PaymentBillAllocationEntity>? billAllocationEntities = null)
+        IEnumerable<PaymentBillAllocationEntity>? billAllocationEntities = null,
+        IEnumerable<PaymentOwnerAllocationEntity>? ownerAllocationEntities = null)
     {
         if (paymentEntities == null || !paymentEntities.Any())
             return new List<Payment>();
@@ -451,6 +452,15 @@ public partial class AccountingRepository : IAccountingRepository
                     .OrderBy(allocation => allocation.LineNumber)
                     .ToList());
 
+        var ownerAllocationsByPaymentId = (ownerAllocationEntities ?? Enumerable.Empty<PaymentOwnerAllocationEntity>())
+            .GroupBy(allocation => allocation.PaymentId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(ConvertPaymentOwnerAllocationEntityToModel)
+                    .OrderBy(allocation => allocation.LineNumber)
+                    .ToList());
+
         var payments = paymentEntities.Select(ConvertPaymentEntityToModel).ToList();
         foreach (var payment in payments)
         {
@@ -459,6 +469,9 @@ public partial class AccountingRepository : IAccountingRepository
 
             if (billAllocationsByPaymentId.TryGetValue(payment.PaymentId, out var billAllocations))
                 payment.BillAllocations = billAllocations;
+
+            if (ownerAllocationsByPaymentId.TryGetValue(payment.PaymentId, out var ownerAllocations))
+                payment.OwnerAllocations = ownerAllocations;
         }
 
         return payments;
@@ -509,6 +522,22 @@ public partial class AccountingRepository : IAccountingRepository
             Amount = e.Amount,
             CostCodeId = e.CostCodeId,
             CostCodeDescription = e.CostCodeDescription,
+            Description = e.Description
+        };
+    }
+
+    private static PaymentOwnerAllocation ConvertPaymentOwnerAllocationEntityToModel(PaymentOwnerAllocationEntity e)
+    {
+        return new PaymentOwnerAllocation
+        {
+            PaymentOwnerAllocationId = e.PaymentOwnerAllocationId,
+            PaymentId = e.PaymentId,
+            OwnerId = e.OwnerId,
+            OwnerName = e.OwnerName,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            LineNumber = e.LineNumber,
+            Amount = e.Amount,
             Description = e.Description
         };
     }

@@ -79,6 +79,42 @@ public partial class AccountingController
         }
     }
 
+    [HttpGet("payment/owner")]
+    public async Task<IActionResult> GetAllOwnerPayments()
+    {
+        try
+        {
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentKind.Owner);
+            var response = records.Select(o => new PaymentResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting owner payments");
+            return ServerError("An error occurred while retrieving owner payments");
+        }
+    }
+
+    [HttpGet("payment/owner/office/{officeId:int}")]
+    public async Task<IActionResult> GetOwnerPaymentsByOfficeId(int officeId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        try
+        {
+            var officeAccess = officeId.ToString();
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentKind.Owner);
+            var response = records.Select(o => new PaymentResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting owner payments");
+            return ServerError("An error occurred while retrieving owner payments");
+        }
+    }
+
     [HttpGet("payment/{paymentId:guid}")]
     public async Task<IActionResult> GetPaymentById(Guid paymentId)
     {
@@ -178,7 +214,7 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating outbound payment with bill allocations");
+            _logger.LogError(ex, "Error creating bill payment with bill allocations");
             return ServerError("An error occurred while creating the payment");
         }
     }
@@ -230,7 +266,7 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating outbound payment with bill allocations: {PaymentId}", dto.PaymentId);
+            _logger.LogError(ex, "Error updating bill payment with bill allocations: {PaymentId}", dto.PaymentId);
             return ServerError("An error occurred while updating the payment");
         }
     }
@@ -445,8 +481,17 @@ public partial class AccountingController
                 return NotFound("Payment record not found");
 
             var postingStatuses = new List<int?> { payment.PostingStatusId };
-            var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, CurrentOrganizationId);
-            if (payment.PaymentKindId == (int)PaymentKind.Bill)
+            if (payment.PaymentKindId == (int)PaymentKind.Invoice)
+            {
+                var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, CurrentOrganizationId);
+                foreach (var invoiceId in paymentLedgerLines.Select(line => line.InvoiceId).Distinct())
+                {
+                    var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
+                    if (invoice != null)
+                        postingStatuses.Add(invoice.PostingStatusId);
+                }
+            }
+            else if (payment.PaymentKindId == (int)PaymentKind.Bill)
             {
                 var billAllocations = await _accountingRepository.GetBillAllocationsByPaymentIdAsync(paymentId, CurrentOrganizationId);
                 foreach (var allocation in billAllocations)
@@ -456,14 +501,9 @@ public partial class AccountingController
                         postingStatuses.Add(bill.PostingStatusId);
                 }
             }
-            else
+            else if (payment.PaymentKindId != (int)PaymentKind.Owner)
             {
-                foreach (var invoiceId in paymentLedgerLines.Select(line => line.InvoiceId).Distinct())
-                {
-                    var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, CurrentOrganizationId);
-                    if (invoice != null)
-                        postingStatuses.Add(invoice.PostingStatusId);
-                }
+                return BadRequest($"Unsupported payment kind: {payment.PaymentKindId}");
             }
 
             var postingStatusCheck = RefuseIfDocumentDeleteNotAllowed(StrictestPostingStatus(postingStatuses), "payment");

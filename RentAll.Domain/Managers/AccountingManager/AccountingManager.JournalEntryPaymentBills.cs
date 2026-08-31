@@ -105,9 +105,9 @@ public partial class AccountingManager
         return documentEntries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.BillPayment);
     }
 
-    private static HashSet<Guid> GetReceiptIdsCoveredByBillPaymentDocuments(IEnumerable<Payment> outboundPayments)
+    private static HashSet<Guid> GetReceiptIdsCoveredByBillPaymentDocuments(IEnumerable<Payment> billPayments)
     {
-        return outboundPayments
+        return billPayments
             .Where(payment => payment.IsActive)
             .SelectMany(payment => payment.BillAllocations ?? [])
             .Select(allocation => allocation.ReceiptId)
@@ -120,12 +120,12 @@ public partial class AccountingManager
         if (receiptId == Guid.Empty)
             return false;
 
-        var outboundPayments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+        var billPayments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
             organizationId,
             officeId.ToString(),
             (int)PaymentKind.Bill);
 
-        return GetReceiptIdsCoveredByBillPaymentDocuments(outboundPayments).Contains(receiptId);
+        return GetReceiptIdsCoveredByBillPaymentDocuments(billPayments).Contains(receiptId);
     }
 
     private async Task DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(Receipt bill)
@@ -140,7 +140,7 @@ public partial class AccountingManager
             await DeleteOpenJournalEntryAsync(journalEntry.JournalEntryId, bill.OrganizationId);
     }
 
-    private async Task SyncOutboundBillPaymentJournalEntryAsync(
+    private async Task SyncBillPaymentJournalEntryAsync(
         Payment paymentSummary,
         Guid organizationId,
         Guid currentUser,

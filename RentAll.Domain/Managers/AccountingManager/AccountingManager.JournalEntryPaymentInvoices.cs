@@ -107,19 +107,25 @@ public partial class AccountingManager
         var result = new JournalEntrySyncResult();
         await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
 
-        var inboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice))
+        var invoicePayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice))
             .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
-        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill))
+        var billPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill))
             .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
-        var allPayments = inboundPayments.Concat(outboundPayments).ToList();
+        var ownerPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Owner))
+            .Where(payment => payment.IsActive)
+            .OrderBy(payment => payment.PaymentDate)
+            .ThenBy(payment => payment.PaymentId)
+            .ToList();
+
+        var allPayments = invoicePayments.Concat(billPayments).Concat(ownerPayments).ToList();
 
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
@@ -127,7 +133,7 @@ public partial class AccountingManager
             var processed = 0;
             ReportSyncProgress(progress, "payment", total, processed, result, "Running");
 
-            foreach (var paymentSummary in inboundPayments)
+            foreach (var paymentSummary in invoicePayments)
             {
                 result.DocumentsProcessed++;
 
@@ -205,13 +211,13 @@ public partial class AccountingManager
                 ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
-            foreach (var paymentSummary in outboundPayments)
+            foreach (var paymentSummary in billPayments)
             {
                 result.DocumentsProcessed++;
 
                 try
                 {
-                    await SyncOutboundBillPaymentJournalEntryAsync(paymentSummary, organizationId, currentUser, result);
+                    await SyncBillPaymentJournalEntryAsync(paymentSummary, organizationId, currentUser, result);
                 }
                 catch (Exception ex)
                 {
@@ -222,6 +228,35 @@ public partial class AccountingManager
                         organizationId: organizationId,
                         officeId: paymentSummary.OfficeId,
                         sourceTypeId: (int)SourceType.BillPayment,
+                        sourceId: paymentSummary.PaymentId,
+                        documentCode: paymentSummary.PaymentCode ?? paymentSummary.Description,
+                        accountingPeriod: null,
+                        amount: paymentSummary.Amount,
+                        message: message,
+                        currentUser: currentUser);
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "payment", total, processed, result, processed >= total ? "Completed" : "Running");
+            }
+
+            foreach (var paymentSummary in ownerPayments)
+            {
+                result.DocumentsProcessed++;
+
+                try
+                {
+                    await SyncOwnerPaymentJournalEntryAsync(paymentSummary, organizationId, currentUser, result);
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Owner payment {paymentSummary.PaymentCode}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "OwnerPayment",
+                        organizationId: organizationId,
+                        officeId: paymentSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.OwnerDistribution,
                         sourceId: paymentSummary.PaymentId,
                         documentCode: paymentSummary.PaymentCode ?? paymentSummary.Description,
                         accountingPeriod: null,

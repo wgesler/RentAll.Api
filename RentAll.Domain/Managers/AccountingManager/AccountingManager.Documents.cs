@@ -341,38 +341,38 @@ public partial class AccountingManager
             throw new Exception("Payment record not found");
 
         await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
-
-        var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
-        var isBillPayment = payment.PaymentKindId == (int)PaymentKind.Bill;
-
         await DeleteJournalEntriesForPaymentAsync(payment);
 
-        if (isBillPayment && payment.BillAllocations.Count > 0)
-        {
+        if (payment.PaymentKindId == (int)PaymentKind.Invoice)
+            await ReverseInvoicePaymentApplicationsAsync(payment, currentUser);
+        else if (payment.PaymentKindId == (int)PaymentKind.Bill)
             await ReverseBillPaymentApplicationsAsync(payment, currentUser);
-        }
-        else
-        {
-            foreach (var invoiceGroup in paymentLedgerLines.GroupBy(line => line.InvoiceId))
-            {
-                var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceGroup.Key, organizationId);
-                if (invoice == null)
-                    continue;
-
-                foreach (var paymentLine in invoiceGroup)
-                {
-                    await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, ToInvoicePaymentLedgerLine(paymentLine));
-                    invoice.PaidAmount -= paymentLine.Amount;
-                    invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == paymentLine.LedgerLineId);
-                }
-
-                invoice.ModifiedBy = currentUser;
-                var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice, allowPaymentLinkedLineDeletion: true);
-                await PruneOrphanedInvoicePaymentJournalEntriesAsync(updatedInvoice, await GetActiveInvoicePaymentLedgerLinesAsync(updatedInvoice));
-            }
-        }
+        else if (payment.PaymentKindId != (int)PaymentKind.Owner)
+            throw new Exception($"Unsupported payment kind: {payment.PaymentKindId}");
 
         await _accountingRepository.DeletePaymentByIdAsync(paymentId, organizationId, currentUser);
+    }
+
+    private async Task ReverseInvoicePaymentApplicationsAsync(Payment payment, Guid currentUser)
+    {
+        var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(payment.PaymentId, payment.OrganizationId);
+        foreach (var invoiceGroup in paymentLedgerLines.GroupBy(line => line.InvoiceId))
+        {
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceGroup.Key, payment.OrganizationId);
+            if (invoice == null)
+                continue;
+
+            foreach (var paymentLine in invoiceGroup)
+            {
+                await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, ToInvoicePaymentLedgerLine(paymentLine));
+                invoice.PaidAmount -= paymentLine.Amount;
+                invoice.LedgerLines.RemoveAll(line => line.LedgerLineId == paymentLine.LedgerLineId);
+            }
+
+            invoice.ModifiedBy = currentUser;
+            var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice, allowPaymentLinkedLineDeletion: true);
+            await PruneOrphanedInvoicePaymentJournalEntriesAsync(updatedInvoice, await GetActiveInvoicePaymentLedgerLinesAsync(updatedInvoice));
+        }
     }
 
     #endregion

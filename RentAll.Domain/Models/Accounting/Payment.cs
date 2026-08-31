@@ -22,6 +22,7 @@ public class Payment
     public bool IsActive { get; set; }
     public List<PaymentLedgerLine> LedgerLines { get; set; } = new();
     public List<PaymentBillAllocation> BillAllocations { get; set; } = new();
+    public List<PaymentOwnerAllocation> OwnerAllocations { get; set; } = new();
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
