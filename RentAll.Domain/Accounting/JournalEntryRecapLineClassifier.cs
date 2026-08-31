@@ -84,8 +84,8 @@ public static class JournalEntryRecapLineClassifier
             return true;
         }
 
-        if ((kind is (int)JournalEntryKind.Bill or (int)JournalEntryKind.Receipt or (int)JournalEntryKind.Expense
-                or (int)JournalEntryKind.OwnerUtility or (int)JournalEntryKind.OwnerTransfer)
+        if ((kind is (int)JournalEntryKind.Manual or (int)JournalEntryKind.Bill or (int)JournalEntryKind.Receipt
+                or (int)JournalEntryKind.Expense or (int)JournalEntryKind.OwnerUtility or (int)JournalEntryKind.OwnerTransfer)
             && line.DefaultOwnActPayableAccountId is > 0
             && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId)
         {
@@ -93,7 +93,7 @@ public static class JournalEntryRecapLineClassifier
             return true;
         }
 
-        if ((kind is (int)JournalEntryKind.Bill or (int)JournalEntryKind.Receipt)
+        if ((kind is (int)JournalEntryKind.Manual or (int)JournalEntryKind.Bill or (int)JournalEntryKind.Receipt)
             && line.DefaultOwnerExpAccountId is > 0
             && line.ChartOfAccountId == line.DefaultOwnerExpAccountId)
         {

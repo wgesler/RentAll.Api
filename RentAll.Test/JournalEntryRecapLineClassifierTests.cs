@@ -56,6 +56,21 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_Manual_OwnerAp_IsExpense()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.Manual,
+            sourceTypeId: (int)SourceType.Journal,
+            chartOfAccountId: OwnerAp,
+            ownerApAccountId: OwnerAp,
+            debit: 250m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("Expense", result.RecapCategory);
+        Assert.Equal(250m, result.Amount);
+    }
+
+    [Fact]
     public void Classify_OwnerPayment_BillPayment_UsesKind()
     {
         var line = BuildLine(
