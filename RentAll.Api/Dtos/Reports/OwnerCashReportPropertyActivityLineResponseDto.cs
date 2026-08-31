@@ -7,6 +7,7 @@ public class OwnerCashReportPropertyActivityLineResponseDto
     public Guid? ActivityId { get; set; }
     public Guid? SourceId { get; set; }
     public Guid? JournalEntryLineId { get; set; }
+    public int JournalEntryKindId { get; set; }
     public string ActivityType { get; set; } = string.Empty;
     public DateOnly ActivityDate { get; set; }
     public string AccountingPeriod { get; set; } = string.Empty;
@@ -26,6 +27,7 @@ public class OwnerCashReportPropertyActivityLineResponseDto
         ActivityId = line.ActivityId;
         SourceId = line.SourceId;
         JournalEntryLineId = line.JournalEntryLineId;
+        JournalEntryKindId = line.JournalEntryKindId;
         ActivityType = line.ActivityType;
         ActivityDate = line.ActivityDate;
         AccountingPeriod = line.AccountingPeriod;

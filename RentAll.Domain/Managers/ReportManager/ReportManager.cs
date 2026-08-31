@@ -263,6 +263,7 @@ public partial class ReportManager : IReportManager
                 ActivityId = line.JournalEntryLineId,
                 SourceId = line.SourceId,
                 JournalEntryLineId = line.JournalEntryLineId,
+                JournalEntryKindId = line.JournalEntryKindId,
                 ActivityType = GetRecapActivityType(line.SourceTypeId, sourceDocumentCode),
                 ActivityDate = line.TransactionDate,
                 AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(line.AccountingPeriod.ToString("yyyy-MM-dd")),

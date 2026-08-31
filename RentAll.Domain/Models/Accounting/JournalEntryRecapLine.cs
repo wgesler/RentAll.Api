@@ -14,6 +14,7 @@ public class JournalEntryRecapLine
     public string? ReservationCode { get; set; }
     public int? SourceTypeId { get; set; }
     public Guid? SourceId { get; set; }
+    public int JournalEntryKindId { get; set; }
     public int PostingStatusId { get; set; }
     public string SourceTypeCode { get; set; } = string.Empty;
     public string SourceDocumentCode { get; set; } = string.Empty;
