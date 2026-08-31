@@ -80,7 +80,7 @@ public partial class AccountingManager
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
         var result = new JournalEntrySyncResult();
-        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Outbound)).ToList();
+        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill)).ToList();
         var receiptIdsCoveredByPaymentDocuments = GetReceiptIdsCoveredByBillPaymentDocuments(outboundPayments);
         var bills = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
         {

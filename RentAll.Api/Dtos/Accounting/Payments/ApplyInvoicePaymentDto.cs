@@ -70,7 +70,6 @@ public class ApplyInvoicePaymentDto
             Amount = Amount,
             CostCodeId = CostCodeId,
             Description = Description,
-            PaymentDirectionId = (int)PaymentDirection.Inbound,
             PaymentKindId = (int)PaymentKind.Invoice,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
             IsActive = IsActive,

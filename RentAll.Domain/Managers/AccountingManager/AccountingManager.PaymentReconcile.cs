@@ -23,7 +23,7 @@ public partial class AccountingManager
         if (groups.Count == 0)
             return;
 
-        var orphanPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Inbound))
+        var orphanPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice))
             .Where(payment => payment.IsActive && payment.LedgerLines.Count == 0)
             .ToList();
 

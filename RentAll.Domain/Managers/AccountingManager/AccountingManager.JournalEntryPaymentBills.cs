@@ -29,7 +29,7 @@ public partial class AccountingManager
             payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId)
                 ?? throw new Exception("Payment record not found");
 
-        if (payment.PaymentDirectionId != (int)PaymentDirection.Outbound)
+        if (payment.PaymentKindId != (int)PaymentKind.Bill)
             throw new Exception("Payment is not a bill payment.");
 
         if (payment.BillAllocations.Count == 0)
@@ -123,7 +123,7 @@ public partial class AccountingManager
         var outboundPayments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
             organizationId,
             officeId.ToString(),
-            (int)PaymentDirection.Outbound);
+            (int)PaymentKind.Bill);
 
         return GetReceiptIdsCoveredByBillPaymentDocuments(outboundPayments).Contains(receiptId);
     }

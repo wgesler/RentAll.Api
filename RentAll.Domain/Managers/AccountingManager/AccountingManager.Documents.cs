@@ -171,7 +171,6 @@ public partial class AccountingManager
                 PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
                 Amount = bill.PaidAmount,
                 Description = paymentDescription,
-                PaymentDirectionId = (int)PaymentDirection.Outbound,
                 PaymentKindId = (int)PaymentKind.Bill,
                 PaymentTypeId = bill.PaymentTypeId > 0 ? bill.PaymentTypeId : null,
                 ChartOfAccountId = chartOfAccountId,
@@ -302,7 +301,7 @@ public partial class AccountingManager
         var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId)
             ?? throw new Exception("Payment record not found");
 
-        if (existing.PaymentDirectionId != (int)PaymentDirection.Inbound)
+        if (existing.PaymentKindId != (int)PaymentKind.Invoice)
             throw new Exception("Bill payments must be updated through bill allocations.");
 
         payment.PaymentCode = existing.PaymentCode;
@@ -318,7 +317,7 @@ public partial class AccountingManager
         var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId)
             ?? throw new Exception("Payment record not found");
 
-        if (existing.PaymentDirectionId != (int)PaymentDirection.Outbound)
+        if (existing.PaymentKindId != (int)PaymentKind.Bill)
             throw new Exception("Invoice payments must be updated through invoice allocations.");
 
         payment.PaymentCode = existing.PaymentCode;
@@ -344,7 +343,7 @@ public partial class AccountingManager
         await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
 
         var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
-        var isBillPayment = payment.PaymentDirectionId == (int)PaymentDirection.Outbound;
+        var isBillPayment = payment.PaymentKindId == (int)PaymentKind.Bill;
 
         await DeleteJournalEntriesForPaymentAsync(payment);
 

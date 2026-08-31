@@ -1020,7 +1020,7 @@ public partial class AccountingManager
         if (existing == null)
             throw new Exception("Payment record not found");
 
-        if (existing.PaymentDirectionId != (int)PaymentDirection.Inbound)
+        if (existing.PaymentKindId != (int)PaymentKind.Invoice)
             throw new Exception("Bill payments must be updated through bill allocations.");
 
         payment.PaymentCode = existing.PaymentCode;
@@ -1121,7 +1121,7 @@ public partial class AccountingManager
 
     private static void EnsureInvoicePayment(Payment payment)
     {
-        if (payment.PaymentDirectionId != (int)PaymentDirection.Inbound)
+        if (payment.PaymentKindId != (int)PaymentKind.Invoice)
             throw new ArgumentException("Invoice allocations are only supported for invoice payments.", nameof(payment));
     }
     #endregion

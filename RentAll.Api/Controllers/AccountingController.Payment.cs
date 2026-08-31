@@ -12,7 +12,7 @@ public partial class AccountingController
     {
         try
         {
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentDirection.Inbound);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentKind.Invoice);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -32,7 +32,7 @@ public partial class AccountingController
         try
         {
             var officeAccess = officeId.ToString();
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentDirection.Inbound);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentKind.Invoice);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -48,7 +48,7 @@ public partial class AccountingController
     {
         try
         {
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentDirection.Outbound);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentKind.Bill);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -68,7 +68,7 @@ public partial class AccountingController
         try
         {
             var officeAccess = officeId.ToString();
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentDirection.Outbound);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentKind.Bill);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -202,8 +202,8 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
-            if (existing.PaymentDirectionId != (int)PaymentDirection.Outbound)
-                return BadRequest("Inbound payments must be updated through payment/invoice-allocations.");
+            if (existing.PaymentKindId != (int)PaymentKind.Bill)
+                return BadRequest("Invoice payments must be updated through payment/invoice-allocations.");
 
             var postingStatuses = new List<int?> { existing.PostingStatusId };
             foreach (var allocation in dto.Allocations)
@@ -307,8 +307,8 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
-            if (existing.PaymentDirectionId != (int)PaymentDirection.Inbound)
-                return BadRequest("Outbound payments must be updated through payment/bill-allocations.");
+            if (existing.PaymentKindId != (int)PaymentKind.Invoice)
+                return BadRequest("Bill payments must be updated through payment/bill-allocations.");
 
             var postingStatuses = new List<int?> { existing.PostingStatusId };
             foreach (var allocation in dto.Allocations)
@@ -364,8 +364,8 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
-            if (existing.PaymentDirectionId != (int)PaymentDirection.Inbound)
-                return BadRequest("Outbound payments must be updated through payment/bill.");
+            if (existing.PaymentKindId != (int)PaymentKind.Invoice)
+                return BadRequest("Bill payments must be updated through payment/bill.");
 
             var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "payment");
             if (postingStatusCheck != null)
@@ -406,8 +406,8 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
-            if (existing.PaymentDirectionId != (int)PaymentDirection.Outbound)
-                return BadRequest("Inbound payments must be updated through payment/invoice.");
+            if (existing.PaymentKindId != (int)PaymentKind.Bill)
+                return BadRequest("Invoice payments must be updated through payment/invoice.");
 
             var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "payment");
             if (postingStatusCheck != null)
@@ -446,7 +446,7 @@ public partial class AccountingController
 
             var postingStatuses = new List<int?> { payment.PostingStatusId };
             var paymentLedgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, CurrentOrganizationId);
-            if (payment.PaymentDirectionId == (int)PaymentDirection.Outbound)
+            if (payment.PaymentKindId == (int)PaymentKind.Bill)
             {
                 var billAllocations = await _accountingRepository.GetBillAllocationsByPaymentIdAsync(paymentId, CurrentOrganizationId);
                 foreach (var allocation in billAllocations)

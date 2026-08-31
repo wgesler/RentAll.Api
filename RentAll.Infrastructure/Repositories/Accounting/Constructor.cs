@@ -478,7 +478,6 @@ public partial class AccountingRepository : IAccountingRepository
             CostCodeId = e.CostCodeId,
             CostCodeDescription = e.CostCodeDescription,
             Description = e.Description,
-            PaymentDirectionId = e.PaymentDirectionId,
             PaymentKindId = e.PaymentKindId,
             PaymentTypeId = e.PaymentTypeId,
             PaymentTypeDescription = e.PaymentTypeDescription,

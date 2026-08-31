@@ -107,13 +107,13 @@ public partial class AccountingManager
         var result = new JournalEntrySyncResult();
         await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
 
-        var inboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Inbound))
+        var inboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice))
             .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
-        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentDirection.Outbound))
+        var outboundPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill))
             .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)

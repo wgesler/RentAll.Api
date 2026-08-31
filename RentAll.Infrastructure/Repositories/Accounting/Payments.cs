@@ -8,14 +8,14 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 public partial class AccountingRepository
 {
     #region Get
-    public async Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess, int paymentDirectionId)
+    public async Task<IEnumerable<Payment>> GetPaymentsByOfficeIdsAsync(Guid organizationId, string officeAccess, int paymentKindId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var (headers, lines, billAllocations) = await db.DapperProcQueryTripleAsync<PaymentEntity, PaymentLedgerLineEntity, PaymentBillAllocationEntity>("Accounting.Payment_GetListByOfficeIds", new
         {
             OrganizationId = organizationId,
             Offices = officeAccess,
-            PaymentDirectionId = paymentDirectionId
+            PaymentKindId = paymentKindId
         });
 
         return MapPaymentsWithLedgerLineEntities(headers, lines, billAllocations);
@@ -205,7 +205,6 @@ public partial class AccountingRepository
             Amount = payment.Amount,
             CostCodeId = payment.CostCodeId,
             Description = payment.Description,
-            PaymentDirectionId = payment.PaymentDirectionId,
             PaymentKindId = payment.PaymentKindId,
             PaymentTypeId = payment.PaymentTypeId,
             ChartOfAccountId = payment.ChartOfAccountId is > 0 ? payment.ChartOfAccountId : null,
@@ -232,7 +231,6 @@ public partial class AccountingRepository
             Amount = payment.Amount,
             CostCodeId = payment.CostCodeId,
             Description = payment.Description,
-            PaymentDirectionId = payment.PaymentDirectionId,
             PaymentKindId = payment.PaymentKindId,
             PaymentTypeId = payment.PaymentTypeId,
             ChartOfAccountId = payment.ChartOfAccountId is > 0 ? payment.ChartOfAccountId : null,

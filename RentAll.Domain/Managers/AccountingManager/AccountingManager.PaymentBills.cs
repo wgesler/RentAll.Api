@@ -53,7 +53,7 @@ public partial class AccountingManager
         var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId)
             ?? throw new Exception("Payment record not found");
 
-        if (existing.PaymentDirectionId != (int)PaymentDirection.Outbound)
+        if (existing.PaymentKindId != (int)PaymentKind.Bill)
             throw new Exception("Payment is not a bill payment.");
 
         payment.PaymentCode = existing.PaymentCode;
@@ -77,7 +77,7 @@ public partial class AccountingManager
 
     private static void EnsureBillPayment(Payment payment)
     {
-        if (payment.PaymentDirectionId != (int)PaymentDirection.Outbound)
+        if (payment.PaymentKindId != (int)PaymentKind.Bill)
             throw new ArgumentException("Bill allocations are only supported for bill payments.", nameof(payment));
     }
 
