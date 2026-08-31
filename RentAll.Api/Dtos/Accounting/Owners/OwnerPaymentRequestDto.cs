@@ -9,6 +9,8 @@ public class OwnerPaymentRequestDto
     public Guid OwnerId { get; set; }
     public Guid PropertyId { get; set; }
     public int PaymentTypeId { get; set; }
+    public int ChartOfAccountId { get; set; }
+    public string? Description { get; set; }
     public decimal Amount { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -39,6 +41,8 @@ public class OwnerPaymentRequestDto
             OwnerId = OwnerId,
             PropertyId = PropertyId,
             PaymentType = (PaymentType)PaymentTypeId,
+            ChartOfAccountId = ChartOfAccountId,
+            Description = Description?.Trim() ?? string.Empty,
             Amount = Amount
         };
     }

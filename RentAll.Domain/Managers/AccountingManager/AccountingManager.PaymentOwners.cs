@@ -31,8 +31,12 @@ public partial class AccountingManager
                 ownerName = NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
 
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, payment.OfficeId);
-            var chartOfAccountId = GetDefaultBankAccount(chartOfAccounts, payment.OfficeId, accountingOffice);
-            var paymentReference = FormatOwnerPaymentReference(payment.PaymentType);
+            var chartOfAccountId = payment.ChartOfAccountId > 0
+                ? payment.ChartOfAccountId
+                : GetDefaultBankAccount(chartOfAccounts, payment.OfficeId, accountingOffice);
+            var paymentReference = string.IsNullOrWhiteSpace(payment.Description)
+                ? FormatOwnerPaymentReference(payment.PaymentType)
+                : payment.Description.Trim();
             var propertyCode = NormalizeOptionalString(property.PropertyCode) ?? string.Empty;
             var ownerPayment = new Payment
             {
@@ -82,6 +86,74 @@ public partial class AccountingManager
         }
 
         return journalEntries;
+    }
+
+    public async Task<Payment> CreatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser)
+    {
+        EnsureOwnerPayment(payment);
+
+        if (payment.ChartOfAccountId is not > 0)
+            throw new ArgumentException("ChartOfAccountId is required.", nameof(payment));
+
+        var resolvedAllocations = await ResolveOwnerPaymentAllocationsAsync(payment, allocations);
+        ValidateExplicitOwnerPaymentAllocations(payment, resolvedAllocations);
+        payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
+
+        Payment? createdPayment = null;
+        try
+        {
+            await EnsurePaymentCodeAsync(payment);
+            createdPayment = await _accountingRepository.CreatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
+            await CreateJournalEntriesFromOwnerPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+        }
+        catch
+        {
+            if (createdPayment != null)
+                await TryDeleteIncompleteOwnerPaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+
+            throw;
+        }
+
+        return await _accountingRepository.GetPaymentByIdAsync(createdPayment!.PaymentId, payment.OrganizationId)
+            ?? createdPayment;
+    }
+
+    private async Task<List<PaymentOwnerAllocation>> ResolveOwnerPaymentAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations)
+    {
+        var resolved = new List<PaymentOwnerAllocation>();
+        var lineNumber = 1;
+        foreach (var allocation in allocations)
+        {
+            var property = await _propertyRepository.GetPropertyByIdAsync(allocation.PropertyId, payment.OrganizationId);
+            if (property == null || property.OfficeId != payment.OfficeId)
+                throw new Exception("Invalid property for owner payment");
+
+            if (property.Owner1Id != allocation.OwnerId && property.Owner2Id != allocation.OwnerId)
+                throw new Exception("Owner does not match property for owner payment");
+
+            string? ownerName = NormalizeOptionalString(allocation.OwnerName);
+            if (string.IsNullOrWhiteSpace(ownerName))
+            {
+                var contact = await _contactRepository.GetContactByIdsAsync(allocation.OwnerId, payment.OrganizationId);
+                if (contact != null)
+                    ownerName = NormalizeOptionalString(contact.DisplayName ?? contact.CompanyName ?? contact.FullName);
+            }
+
+            resolved.Add(new PaymentOwnerAllocation
+            {
+                OwnerId = allocation.OwnerId,
+                OwnerName = ownerName ?? string.Empty,
+                PropertyId = allocation.PropertyId,
+                PropertyCode = NormalizeOptionalString(property.PropertyCode) ?? allocation.PropertyCode,
+                LineNumber = lineNumber++,
+                Amount = allocation.Amount,
+                Description = string.IsNullOrWhiteSpace(allocation.Description)
+                    ? payment.Description
+                    : allocation.Description.Trim()
+            });
+        }
+
+        return resolved;
     }
 
     private static void EnsureOwnerPayment(Payment payment)

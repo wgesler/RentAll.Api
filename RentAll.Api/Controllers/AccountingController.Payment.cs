@@ -174,6 +174,37 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("payment/owner-allocations")]
+    public async Task<IActionResult> CreatePaymentWithOwnerAllocations([FromBody] CreatePaymentWithOwnerAllocationsDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var payment = dto.ToModel(CurrentUser);
+            var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
+            var created = await _accountingManager.CreatePaymentWithOwnerAllocationsAsync(
+                payment,
+                allocations,
+                CurrentUser);
+            var response = new PaymentResponseDto(created);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating owner payment with owner allocations");
+            return ServerError("An error occurred while creating the payment");
+        }
+    }
+
     [HttpPost("payment/bill-allocations")]
     public async Task<IActionResult> CreatePaymentWithBillAllocations([FromBody] CreatePaymentWithBillAllocationsDto dto)
     {

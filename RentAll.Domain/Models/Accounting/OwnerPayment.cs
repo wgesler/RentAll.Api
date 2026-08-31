@@ -14,6 +14,8 @@ public class OwnerPayment
     public Guid OwnerId { get; set; }
     public Guid PropertyId { get; set; }
     public PaymentType PaymentType { get; set; }
+    public int ChartOfAccountId { get; set; }
+    public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
 }
 
