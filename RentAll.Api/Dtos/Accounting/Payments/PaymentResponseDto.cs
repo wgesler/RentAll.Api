@@ -13,6 +13,7 @@ public class PaymentResponseDto
     public string CostCodeDescription { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int PaymentDirectionId { get; set; }
+    public int PaymentKindId { get; set; }
     public int? PaymentTypeId { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
     public int? ChartOfAccountId { get; set; }
@@ -40,6 +41,7 @@ public class PaymentResponseDto
         CostCodeDescription = payment.CostCodeDescription;
         Description = payment.Description;
         PaymentDirectionId = payment.PaymentDirectionId;
+        PaymentKindId = payment.PaymentKindId;
         PaymentTypeId = payment.PaymentTypeId;
         PaymentTypeDescription = payment.PaymentTypeDescription;
         ChartOfAccountId = payment.ChartOfAccountId;

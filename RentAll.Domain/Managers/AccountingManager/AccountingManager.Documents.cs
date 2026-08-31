@@ -172,6 +172,7 @@ public partial class AccountingManager
                 Amount = bill.PaidAmount,
                 Description = paymentDescription,
                 PaymentDirectionId = (int)PaymentDirection.Outbound,
+                PaymentKindId = (int)PaymentKind.Bill,
                 PaymentTypeId = bill.PaymentTypeId > 0 ? bill.PaymentTypeId : null,
                 ChartOfAccountId = chartOfAccountId,
                 IsActive = bill.IsActive,

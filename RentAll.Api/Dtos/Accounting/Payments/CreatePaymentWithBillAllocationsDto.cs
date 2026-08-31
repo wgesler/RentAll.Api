@@ -59,6 +59,7 @@ public class CreatePaymentWithBillAllocationsDto
             Amount = Amount,
             Description = Description,
             PaymentDirectionId = (int)PaymentDirection.Outbound,
+            PaymentKindId = (int)PaymentKind.Bill,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
             ChartOfAccountId = ChartOfAccountId,
             IsActive = IsActive,

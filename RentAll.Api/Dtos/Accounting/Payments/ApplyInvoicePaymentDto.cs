@@ -71,6 +71,7 @@ public class ApplyInvoicePaymentDto
             CostCodeId = CostCodeId,
             Description = Description,
             PaymentDirectionId = (int)PaymentDirection.Inbound,
+            PaymentKindId = (int)PaymentKind.Invoice,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
             IsActive = IsActive,
             CreatedBy = currentUser
