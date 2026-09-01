@@ -186,6 +186,10 @@ public partial class ReportManager : IReportManager
             if (IsPrepaymentPaymentRecapLine(line, prepaymentPaymentSourceIds, invoiceAccountingPeriodByKey))
                 continue;
 
+            if (string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
+                && !IsOwnerPayableExpenseRecapLine(line))
+                continue;
+
             var groupKey = GetOwnerInvoiceActivityGroupKey(line, category);
             if (!groups.TryGetValue(groupKey, out var group))
             {
@@ -284,7 +288,11 @@ public partial class ReportManager : IReportManager
         var isCrossPeriodPayment = !hasOwnerRentInGroup && hasPaidIncome && invoiceContext?.OwnerRentValue > 0;
         var isAccrual = mode == OwnerReportActivityMode.Accrual;
         var ownerRentAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.OwnerRentAccountingPeriod ?? group.AccountingPeriod);
-        var paymentAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod);
+        var ownerRentActualAccountingPeriod = FormatJournalEntryRecapAccountingPeriod(
+            !string.IsNullOrWhiteSpace(group.OwnerRentActualAccountingPeriod)
+                ? group.OwnerRentActualAccountingPeriod
+                : group.AccountingPeriod);
+        var paymentAccountingPeriod = ownerRentActualAccountingPeriod;
 
         if (hasOwnerRentInGroup && hasPaidIncome)
         {
@@ -297,12 +305,12 @@ public partial class ReportManager : IReportManager
                 JournalEntryLineId = group.OwnerRentJournalEntryLineId,
                 ActivityType = GetRecapActivityType(group.OwnerRentSourceTypeId, group.SourceDocumentCode),
                 ActivityDate = ParseActivityDate(group.TransactionDate),
-                AccountingPeriod = ownerRentAccountingPeriod,
+                AccountingPeriod = isAccrual ? ownerRentAccountingPeriod : ownerRentActualAccountingPeriod,
                 DocumentCode = GetOwnerRentDocumentCode(group),
                 SourceDocumentCode = GetOwnerActivityRefNo(group),
                 Description = GetOwnerRentActivityDescription(group),
                 ExpectedIncome = isAccrual ? group.OwnerRentValue : 0,
-                ReceivedIncome = paidIncome,
+                ReceivedIncome = isAccrual ? 0 : paidIncome,
                 Expenses = 0,
                 OwnerPayment = 0
             };
@@ -371,6 +379,28 @@ public partial class ReportManager : IReportManager
                 OwnerPayment = 0
             };
         }
+
+        if (group.OwnerPaymentReceivedValue != 0)
+        {
+            yield return new OwnerStatementPropertyActivityLine
+            {
+                PropertyId = group.PropertyId,
+                OfficeId = group.OfficeId,
+                ActivityId = group.OwnerPaymentJournalEntryLineId,
+                SourceId = group.OwnerPaymentSourceId,
+                JournalEntryLineId = group.OwnerPaymentJournalEntryLineId,
+                ActivityType = GetRecapActivityType(group.OwnerPaymentSourceTypeId, group.SourceDocumentCode),
+                ActivityDate = ParseActivityDate(group.TransactionDate),
+                AccountingPeriod = FormatJournalEntryRecapAccountingPeriod(group.AccountingPeriod),
+                DocumentCode = GetOwnerPaymentDocumentCode(group),
+                SourceDocumentCode = GetOwnerActivityRefNo(group),
+                Description = GetOwnerPaymentActivityDescription(group),
+                ExpectedIncome = 0,
+                ReceivedIncome = 0,
+                Expenses = 0,
+                OwnerPayment = group.OwnerPaymentReceivedValue
+            };
+        }
     }
 
     #endregion
@@ -400,6 +430,7 @@ public partial class ReportManager : IReportManager
         if (string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
         {
             group.OwnerRentActualValue += amount;
+            group.OwnerRentActualAccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd");
             return;
         }
 
@@ -586,6 +617,105 @@ public partial class ReportManager : IReportManager
         return null;
     }
 
+    private static bool IsAccountingPeriodInReportRange(DateOnly accountingPeriod, DateOnly? startDate, DateOnly? endDate)
+    {
+        var rangeStart = GetReportPeriodStartDate(startDate, endDate);
+        var rangeEnd = GetReportPeriodEndDate(startDate, endDate);
+        if (!rangeStart.HasValue && !rangeEnd.HasValue)
+            return true;
+
+        var lineMonth = GetCalendarMonthOrdinal(accountingPeriod);
+        var startMonth = rangeStart.HasValue ? GetCalendarMonthOrdinal(rangeStart.Value) : (int?)null;
+        var endMonth = rangeEnd.HasValue ? GetCalendarMonthOrdinal(rangeEnd.Value) : startMonth;
+        if (startMonth.HasValue && lineMonth < startMonth.Value)
+            return false;
+        if (endMonth.HasValue && lineMonth > endMonth.Value)
+            return false;
+
+        return true;
+    }
+
+    private static int GetCalendarMonthOrdinal(DateOnly date) => date.Year * 12 + date.Month;
+
+    private static bool IsOwnerCashAccountingPeriodFilteredRecapCategory(string category) =>
+        string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ShouldIncludeOwnerCashRecapLineByAccountingPeriod(JournalEntryRecapLine line, DateOnly? startDate, DateOnly? endDate)
+    {
+        var category = (line.RecapCategory ?? string.Empty).Trim();
+        if (!IsOwnerCashAccountingPeriodFilteredRecapCategory(category))
+            return true;
+
+        return IsAccountingPeriodInReportRange(line.AccountingPeriod, startDate, endDate);
+    }
+
+    private static List<JournalEntryRecapLine> GetOwnerCashActivitySourceLines(RecapLineSet recapLineSet, JournalEntryRecapGetCriteria criteria)
+    {
+        var keyed = new Dictionary<Guid, JournalEntryRecapLine>();
+
+        foreach (var line in recapLineSet.ActivityLines)
+        {
+            if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
+                continue;
+
+            keyed[line.JournalEntryLineId] = line;
+        }
+
+        foreach (var line in recapLineSet.AllLines)
+        {
+            if (line.IsInDateRange)
+                continue;
+
+            if (!IsOwnerCashAccountingPeriodFilteredRecapCategory((line.RecapCategory ?? string.Empty).Trim()))
+                continue;
+
+            if (!IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+                continue;
+
+            keyed.TryAdd(line.JournalEntryLineId, line);
+        }
+
+        return keyed.Values.ToList();
+    }
+
+    private static List<OwnerStatementPropertyActivityLine> FilterOwnerCashActivityLinesByAccountingPeriod(
+        IEnumerable<OwnerStatementPropertyActivityLine> lines,
+        JournalEntryRecapGetCriteria criteria)
+    {
+        return (lines ?? [])
+            .Where(line => IsOwnerStatementActivityLineAccountingPeriodInRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+            .ToList();
+    }
+
+    private static bool IsOwnerStatementActivityLineAccountingPeriodInRange(string? accountingPeriod, DateOnly? startDate, DateOnly? endDate)
+    {
+        if (!TryParseOwnerActivityAccountingPeriod(accountingPeriod, out var parsed))
+            return false;
+
+        return IsAccountingPeriodInReportRange(parsed, startDate, endDate);
+    }
+
+    private static bool TryParseOwnerActivityAccountingPeriod(string? accountingPeriod, out DateOnly parsed)
+    {
+        parsed = default;
+        var trimmed = (accountingPeriod ?? string.Empty).Trim();
+        if (trimmed.Length == 0 || string.Equals(trimmed, "—", StringComparison.Ordinal))
+            return false;
+
+        if (DateOnly.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
+            return true;
+
+        if (DateTime.TryParseExact(trimmed, "MM.yy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var monthYear))
+        {
+            parsed = DateOnly.FromDateTime(monthYear);
+            return true;
+        }
+
+        return false;
+    }
+
     private static Dictionary<string, InvoiceOwnerIncomeTotals> GetInvoiceOwnerIncomeTotalsByInvoiceKey(IEnumerable<JournalEntryRecapLine> lines)
     {
         var totalsByKey = new Dictionary<string, InvoiceOwnerIncomeTotals>(StringComparer.OrdinalIgnoreCase);
@@ -717,6 +847,9 @@ public partial class ReportManager : IReportManager
         if (string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase))
             return $"{propertyId:D}|{periodKey}|expense|{line.JournalEntryLineId:D}";
 
+        if (string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase))
+            return $"{propertyId:D}|{periodKey}|ownerpayment|{line.JournalEntryLineId:D}";
+
         var invoiceSourceKey = GetOwnerIncomeInvoiceSourceKey(line, category);
         return $"{propertyId:D}|income|{invoiceSourceKey}";
     }
@@ -805,6 +938,24 @@ public partial class ReportManager : IReportManager
         return GetOwnerExpenseDocumentCode(group);
     }
 
+    private static string GetOwnerPaymentDocumentCode(OwnerInvoiceActivityGroup group)
+    {
+        var ownerPaymentJournalEntryCode = (group.OwnerPaymentJournalEntryCode ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(ownerPaymentJournalEntryCode))
+            return ownerPaymentJournalEntryCode;
+
+        return (group.SourceDocumentCode ?? string.Empty).Trim();
+    }
+
+    private static string GetOwnerPaymentActivityDescription(OwnerInvoiceActivityGroup group)
+    {
+        var memo = (group.OwnerPaymentMemo ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(memo))
+            return StripOwnerMemoPrefixForDisplay(memo);
+
+        return GetOwnerPaymentDocumentCode(group);
+    }
+
     private static string GetTenantPaymentDocumentCode(OwnerInvoiceActivityGroup group)
     {
         var paymentJournalEntryCode = (group.PaymentJournalEntryCode ?? string.Empty).Trim();
@@ -834,6 +985,12 @@ public partial class ReportManager : IReportManager
     #endregion
 
     #region Helpers
+
+    private static bool IsOwnerPayableExpenseRecapLine(JournalEntryRecapLine line)
+    {
+        return line.DefaultOwnActPayableAccountId is > 0
+            && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId.Value;
+    }
 
     private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)
         => AccountingManager.MatchOwnerStartingBalanceMemo(journalMemo, lineMemo).IsMatch;

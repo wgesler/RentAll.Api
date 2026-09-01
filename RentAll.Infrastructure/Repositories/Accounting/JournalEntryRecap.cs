@@ -177,7 +177,8 @@ public partial class JournalEntryRepository
             Activity = classification.Activity,
             RecapCategory = classification.RecapCategory,
             Amount = classification.Amount,
-            IsInDateRange = rawLine.IsInDateRange
+            IsInDateRange = rawLine.IsInDateRange,
+            DefaultOwnActPayableAccountId = rawLine.DefaultOwnActPayableAccountId
         };
     }
 }

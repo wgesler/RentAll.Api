@@ -32,8 +32,10 @@ internal static class ReportManagerTestSupport
         Guid? sourceId = null,
         int? sourceTypeId = null,
         string? reservationCode = null,
-        Guid? journalEntryLineId = null)
+        Guid? journalEntryLineId = null,
+        int? chartOfAccountId = null)
     {
+        var isExpense = string.Equals(recapCategory, "Expense", StringComparison.OrdinalIgnoreCase);
         return new JournalEntryRecapLine
         {
             JournalEntryLineId = journalEntryLineId ?? Guid.NewGuid(),
@@ -51,7 +53,9 @@ internal static class ReportManagerTestSupport
             SourceDocumentCode = sourceDocumentCode,
             Description = description ?? sourceDocumentCode,
             RecapCategory = recapCategory,
-            Amount = amount
+            Amount = amount,
+            ChartOfAccountId = chartOfAccountId ?? (isExpense ? OwnerAccountsPayableAccountId : 0),
+            DefaultOwnActPayableAccountId = OwnerAccountsPayableAccountId
         };
     }
 

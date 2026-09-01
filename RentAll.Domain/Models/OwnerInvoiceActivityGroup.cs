@@ -6,6 +6,7 @@ internal sealed class OwnerInvoiceActivityGroup
     public int OfficeId { get; set; }
     public string AccountingPeriod { get; set; } = string.Empty;
     public string OwnerRentAccountingPeriod { get; set; } = string.Empty;
+    public string OwnerRentActualAccountingPeriod { get; set; } = string.Empty;
     public string InvoiceSourceCode { get; set; } = string.Empty;
     public string SourceDocumentCode { get; set; } = string.Empty;
     public Guid? SourceId { get; set; }

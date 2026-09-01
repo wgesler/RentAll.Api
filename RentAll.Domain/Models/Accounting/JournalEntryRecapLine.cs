@@ -28,4 +28,5 @@ public class JournalEntryRecapLine
     public string RecapCategory { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public bool IsInDateRange { get; set; } = true;
+    public int? DefaultOwnActPayableAccountId { get; set; }
 }
