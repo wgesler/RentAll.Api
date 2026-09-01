@@ -9,6 +9,15 @@ internal static class OwnerReportScenarioFixtures
     internal const string Invoice002 = "R-000177-002";
     internal const string CrossPeriodInvoice = "R-00087-001";
     internal const string CrossPeriodReservation = "R-00087";
+    internal const string Buck805Invoice001 = "R-000153-001";
+    internal const string Buck805Invoice002 = "R-000153-002";
+    internal const string Buck805Invoice003 = "R-000079-001";
+    internal const string Buck805Reservation153 = "R-000153";
+    internal const string Buck805Reservation079 = "R-000079";
+
+    internal const decimal Buck805OwnerRent001 = 980m;
+    internal const decimal Buck805OwnerRent002 = 490m;
+    internal const decimal Buck805OwnerRent003 = 924m;
 
     internal const decimal OwnerRent001 = 49.70m;
     internal const decimal ExpectedIncome001 = 2130m;
@@ -22,6 +31,7 @@ internal static class OwnerReportScenarioFixtures
     internal static readonly DateOnly JulyPeriod = new(2026, 7, 1);
     internal static readonly DateOnly MayPaymentDate = new(2026, 5, 15);
     internal static readonly DateOnly JunePaymentDate = new(2026, 6, 10);
+    internal static readonly DateOnly AprilPaymentDate = new(2026, 4, 28);
 
     internal static readonly Guid LatePaymentLedgerLineId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     internal static readonly Guid PrepaymentLedgerLineId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
@@ -139,6 +149,109 @@ internal static class OwnerReportScenarioFixtures
                 PrepaymentLedgerLineId,
                 (int)SourceType.InvoicePayment,
                 CrossPeriodReservation)
+        ];
+    }
+
+    internal static IReadOnlyList<JournalEntryRecapLine> BuildBuck805JuneScenarioLines()
+    {
+        const decimal prepaymentAmount = 980m;
+
+        return
+        [
+            ReportManagerTestSupport.RecapLine(
+                "Payment",
+                prepaymentAmount,
+                Buck805Invoice001,
+                MayPeriod,
+                AprilPaymentDate,
+                $"Payment: {Buck805Invoice001}",
+                PrepaymentLedgerLineId,
+                (int)SourceType.InvoicePayment),
+            ReportManagerTestSupport.RecapLine(
+                "PrePayment",
+                prepaymentAmount,
+                Buck805Invoice001,
+                MayPeriod,
+                AprilPaymentDate,
+                $"Prepayment: {Buck805Invoice001}",
+                PrepaymentLedgerLineId,
+                (int)SourceType.InvoicePayment,
+                Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRent",
+                Buck805OwnerRent001,
+                Buck805Invoice001,
+                JunePeriod,
+                JunePeriod,
+                $"{Buck805Invoice001}: Owner: Expected: Rent",
+                reservationCode: Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "ExpectedIncome",
+                4200m,
+                Buck805Invoice001,
+                JunePeriod,
+                JunePeriod,
+                reservationCode: Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                Buck805OwnerRent001,
+                Buck805Invoice001,
+                JunePeriod,
+                AprilPaymentDate,
+                $"{Buck805Invoice001}: Owner: Actual: Rent",
+                PrepaymentLedgerLineId,
+                (int)SourceType.Invoice,
+                Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRent",
+                Buck805OwnerRent002,
+                Buck805Invoice002,
+                JunePeriod,
+                JunePeriod,
+                $"{Buck805Invoice002}: Owner: Expected: Rent",
+                reservationCode: Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "ExpectedIncome",
+                2100m,
+                Buck805Invoice002,
+                JunePeriod,
+                JunePeriod,
+                reservationCode: Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                Buck805OwnerRent002,
+                Buck805Invoice002,
+                JunePeriod,
+                JunePaymentDate,
+                $"{Buck805Invoice002}: Owner: Actual: Rent",
+                LatePaymentLedgerLineId,
+                (int)SourceType.InvoicePayment,
+                Buck805Reservation153),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRent",
+                Buck805OwnerRent003,
+                Buck805Invoice003,
+                JunePeriod,
+                JunePeriod,
+                $"{Buck805Invoice003}: Owner: Expected: Rent",
+                reservationCode: Buck805Reservation079),
+            ReportManagerTestSupport.RecapLine(
+                "ExpectedIncome",
+                3960m,
+                Buck805Invoice003,
+                JunePeriod,
+                JunePeriod,
+                reservationCode: Buck805Reservation079),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                Buck805OwnerRent003,
+                Buck805Invoice003,
+                JunePeriod,
+                JunePaymentDate,
+                $"{Buck805Invoice003}: Owner: Actual: Rent",
+                LatePaymentLedgerLineId,
+                (int)SourceType.InvoicePayment,
+                Buck805Reservation079)
         ];
     }
 

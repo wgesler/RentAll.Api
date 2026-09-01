@@ -36,6 +36,8 @@ public partial class JournalEntryRepository
                 periodStartDate),
             commandTimeout: 120);
 
+        criteria.IncludePaymentInvoiceContext = true;
+
         return new OwnerReportBundleData
         {
             RecapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList(),

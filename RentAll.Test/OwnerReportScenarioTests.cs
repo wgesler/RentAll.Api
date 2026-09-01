@@ -179,6 +179,42 @@ public class OwnerReportScenarioTests
     }
 
     [Fact]
+    public async Task Buck805Prepayment_JuneOnly_CashIncludesPrepaidInvoiceSliceByRef()
+    {
+        var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildBuck805JuneScenarioLines());
+
+        var cashReport = await context.GetCashReportAsync(JuneStart, JuneEnd);
+        var cashRow = Assert.Single(cashReport.Rows);
+
+        Assert.Equal(
+            OwnerReportScenarioFixtures.Buck805OwnerRent001
+                + OwnerReportScenarioFixtures.Buck805OwnerRent002
+                + OwnerReportScenarioFixtures.Buck805OwnerRent003,
+            cashRow.ReceivedIncome);
+
+        var prepaidLine = cashReport.PropertyActivityLines.FirstOrDefault(
+            line => string.Equals(line.SourceDocumentCode, OwnerReportScenarioFixtures.Buck805Invoice001, StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(prepaidLine);
+        Assert.Equal(OwnerReportScenarioFixtures.Buck805OwnerRent001, prepaidLine!.ReceivedIncome);
+        Assert.Equal(0m, prepaidLine.ExpectedIncome);
+    }
+
+    [Fact]
+    public async Task Buck805Prepayment_JuneOnly_AccrualShowsAllInvoicedSlices()
+    {
+        var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildBuck805JuneScenarioLines());
+
+        var accrualReport = await context.GetAccrualReportAsync(JuneStart, JuneEnd);
+        var accrualRow = Assert.Single(accrualReport.Rows);
+
+        Assert.Equal(
+            OwnerReportScenarioFixtures.Buck805OwnerRent001
+                + OwnerReportScenarioFixtures.Buck805OwnerRent002
+                + OwnerReportScenarioFixtures.Buck805OwnerRent003,
+            accrualRow.InvoicedIncome);
+    }
+
+    [Fact]
     public async Task CrossPeriodPrepayment_JuneOnly_ShowsFirstSlicePaid()
     {
         var context = ReportManagerTestSupport.CreateContext(OwnerReportScenarioFixtures.BuildCrossPeriodPrepaymentScenarioLines());
