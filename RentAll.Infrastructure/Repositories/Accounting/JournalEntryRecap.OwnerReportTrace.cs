@@ -18,7 +18,7 @@ public partial class JournalEntryRepository
             .Where(line => line.JournalEntryKindId == (int)JournalEntryKind.OwnerActual)
             .ToList();
 
-        _logger.LogInformation(
+        _logger.LogError(
             "[OwnerReportTrace] Recap raw from SQL ({Source}): TotalRaw={TotalRaw} OwnerActualRaw={OwnerActualRaw} IncludeOwnerReportSupplemental={IncludeOwnerReportSupplemental} IncludePaymentInvoiceContext={IncludePaymentInvoiceContext} StartDate={StartDate} EndDate={EndDate} PropertyId={PropertyId}",
             source,
             rawLines.Count,
@@ -31,7 +31,7 @@ public partial class JournalEntryRepository
 
         foreach (var line in ownerActualRawLines)
         {
-            _logger.LogInformation(
+            _logger.LogError(
                 "[OwnerReportTrace] OwnerActual raw from SQL: JE={JournalEntryCode} LineId={JournalEntryLineId} TxnDate={TransactionDate} AcctPeriod={AccountingPeriod} IsInDateRange={IsInDateRange} SourceDoc={SourceDocumentCode} Property={PropertyCode} ChartAcct={ChartOfAccountId} OwnApAcct={DefaultOwnActPayableAccountId} Debit={Debit} Credit={Credit}",
                 line.JournalEntryCode,
                 line.JournalEntryLineId,
@@ -54,7 +54,7 @@ public partial class JournalEntryRepository
         JournalEntryRecapClassificationLine classificationLine,
         string? recapCategory = null)
     {
-        _logger.LogWarning(
+        _logger.LogError(
             "[OwnerReportTrace] OwnerActual raw dropped ({Reason}): JE={JournalEntryCode} LineId={JournalEntryLineId} TxnDate={TransactionDate} AcctPeriod={AccountingPeriod} IsInDateRange={IsInDateRange} SourceDoc={SourceDocumentCode} Property={PropertyCode} ChartAcct={ChartOfAccountId} OwnApAcct={DefaultOwnActPayableAccountId} Debit={Debit} Credit={Credit} RecapCategory={RecapCategory} IncludePaymentInvoiceContext={IncludePaymentInvoiceContext}",
             reason,
             rawLine.JournalEntryCode,

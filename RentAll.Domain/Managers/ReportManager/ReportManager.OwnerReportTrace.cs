@@ -15,7 +15,7 @@ public partial class ReportManager
             .Where(line => string.Equals(line.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        _logger.LogInformation(
+        _logger.LogError(
             "[OwnerReportTrace] Recap classified: AllLines={AllLines} ActivityLines={ActivityLines} OwnerRent={OwnerRentCount} OwnerRentActual={OwnerRentActualCount} StartDate={StartDate} EndDate={EndDate} PropertyId={PropertyId}",
             allLines.Count,
             recapLineSet.ActivityLines?.Count ?? 0,
@@ -27,7 +27,7 @@ public partial class ReportManager
 
         foreach (var line in ownerRentActualLines)
         {
-            _logger.LogInformation(
+            _logger.LogError(
                 "[OwnerReportTrace] OwnerRentActual recap line: JE={JournalEntryCode} LineId={JournalEntryLineId} TxnDate={TransactionDate} AcctPeriod={AccountingPeriod} IsInDateRange={IsInDateRange} SourceDoc={SourceDocumentCode} Property={PropertyCode} Amount={Amount} Desc={Description}",
                 line.JournalEntryCode,
                 line.JournalEntryLineId,
@@ -51,7 +51,7 @@ public partial class ReportManager
             .Where(line => !line.IsInDateRange)
             .ToList();
 
-        _logger.LogInformation(
+        _logger.LogError(
             "[OwnerReportTrace] Cash activity source lines: Total={Total} OwnerRentActual={OwnerRentActualCount} SupplementalOutOfRangeTxnOwnerRentActual={SupplementalCount}",
             activitySourceLines.Count,
             activitySourceLines.Count(line => string.Equals(line.RecapCategory, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)),
@@ -59,7 +59,7 @@ public partial class ReportManager
 
         foreach (var line in supplementalOwnerRentActual)
         {
-            _logger.LogInformation(
+            _logger.LogError(
                 "[OwnerReportTrace] Supplemental OwnerRentActual source line: JE={JournalEntryCode} LineId={JournalEntryLineId} TxnDate={TransactionDate} AcctPeriod={AccountingPeriod} SourceDoc={SourceDocumentCode} Property={PropertyCode} Amount={Amount}",
                 line.JournalEntryCode,
                 line.JournalEntryLineId,
@@ -80,7 +80,7 @@ public partial class ReportManager
             .Where(line => line.ReceivedIncome != 0 || line.ExpectedIncome != 0)
             .ToList();
 
-        _logger.LogInformation(
+        _logger.LogError(
             "[OwnerReportTrace] Cash property activity lines: Total={Total} IncomeRelated={IncomeRelatedCount} StartDate={StartDate} EndDate={EndDate} PropertyId={PropertyId}",
             lines.Count,
             incomeLines.Count,
@@ -90,7 +90,7 @@ public partial class ReportManager
 
         foreach (var line in incomeLines)
         {
-            _logger.LogInformation(
+            _logger.LogError(
                 "[OwnerReportTrace] Cash activity income line: Property={PropertyId} SourceDoc={SourceDocumentCode} DocCode={DocumentCode} AcctPeriod={AccountingPeriod} ActivityDate={ActivityDate} Expected={ExpectedIncome} Received={ReceivedIncome} Desc={Description}",
                 line.PropertyId,
                 line.SourceDocumentCode,

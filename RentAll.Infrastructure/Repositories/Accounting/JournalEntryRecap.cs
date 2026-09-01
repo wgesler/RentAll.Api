@@ -166,7 +166,7 @@ public partial class JournalEntryRepository
             if (traceOwnerActual)
             {
                 ownerActualKeptCount++;
-                _logger.LogInformation(
+                _logger.LogError(
                     "[OwnerReportTrace] OwnerActual raw kept: JE={JournalEntryCode} LineId={JournalEntryLineId} Category={RecapCategory} Amount={Amount} IsInDateRange={IsInDateRange} SourceDoc={SourceDocumentCode}",
                     rawLine.JournalEntryCode,
                     rawLine.JournalEntryLineId,
@@ -181,7 +181,7 @@ public partial class JournalEntryRepository
 
         if (ownerActualRawCount > 0)
         {
-            _logger.LogInformation(
+            _logger.LogError(
                 "[OwnerReportTrace] Recap classify summary: Raw={RawCount} OwnerActualRaw={OwnerActualRawCount} OwnerActualKept={OwnerActualKeptCount} IncludePaymentInvoiceContext={IncludePaymentInvoiceContext}",
                 rawLineList.Count,
                 ownerActualRawCount,
