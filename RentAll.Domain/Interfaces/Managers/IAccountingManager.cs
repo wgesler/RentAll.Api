@@ -81,6 +81,7 @@ public interface IAccountingManager
     Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser);
     Task<Payment> CreatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
     Task<Payment> CreatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser);
+    Task<Payment> UpdatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser);
     Task<Payment> UpdatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
     Task<Payment> UpdatePaymentInvoiceAsync(Payment payment, Guid currentUser);
     Task<Payment> UpdatePaymentBillAsync(Payment payment, Guid currentUser);

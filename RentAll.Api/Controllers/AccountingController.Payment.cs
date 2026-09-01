@@ -250,6 +250,49 @@ public partial class AccountingController
         }
     }
 
+    [HttpPut("payment/owner-allocations")]
+    public async Task<IActionResult> UpdatePaymentWithOwnerAllocations([FromBody] UpdatePaymentWithOwnerAllocationsDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var existing = await _accountingRepository.GetPaymentByIdAsync(dto.PaymentId, CurrentOrganizationId);
+            if (existing == null)
+                return NotFound("Payment record not found");
+
+            if (existing.PaymentKindId != (int)PaymentKind.Owner)
+                return BadRequest("Invoice and bill payments must be updated through their allocation endpoints.");
+
+            var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "payment");
+            if (postingStatusCheck != null)
+                return postingStatusCheck;
+
+            var payment = dto.ToModel(CurrentUser);
+            payment.PostingStatusId = existing.PostingStatusId;
+            var allocations = dto.Allocations.Select(allocation => allocation.ToModel()).ToList();
+            var updated = await _accountingManager.UpdatePaymentWithOwnerAllocationsAsync(
+                payment,
+                allocations,
+                CurrentUser);
+            var response = new PaymentResponseDto(updated);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating owner payment with owner allocations: {PaymentId}", dto.PaymentId);
+            return ServerError("An error occurred while updating the payment");
+        }
+    }
+
     [HttpPut("payment/bill-allocations")]
     public async Task<IActionResult> UpdatePaymentWithBillAllocations([FromBody] UpdatePaymentWithBillAllocationsDto dto)
     {

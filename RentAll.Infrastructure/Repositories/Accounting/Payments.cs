@@ -108,6 +108,15 @@ public partial class AccountingRepository
             return createdPayment;
         });
 
+    public Task<Payment> UpdatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser)
+        => RunInTransactionAsync(async (db, transaction) =>
+        {
+            var updatedPayment = await UpdatePaymentCoreAsync(db, transaction, payment);
+            await ApplyOwnerAllocationsCoreAsync(db, transaction, updatedPayment, allocations, currentUser);
+            updatedPayment.OwnerAllocations = (await GetOwnerAllocationsByPaymentIdCoreAsync(db, transaction, updatedPayment.PaymentId, payment.OrganizationId)).ToList();
+            return updatedPayment;
+        });
+
     public async Task<IReadOnlyList<PaymentOwnerAllocation>> GetOwnerAllocationsByPaymentIdAsync(Guid paymentId, Guid organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);

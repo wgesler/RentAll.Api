@@ -116,6 +116,7 @@ public interface IAccountingRepository
     Task<Payment> CreatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, Guid currentUser);
     Task<Payment> CreatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
     Task<Payment> CreatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser);
+    Task<Payment> UpdatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser);
     Task<Payment> UpdatePaymentWithBillAllocationsAsync(Payment payment, IReadOnlyList<PaymentBillAllocation> allocations, Guid currentUser);
     Task<IReadOnlyList<PaymentBillAllocation>> GetBillAllocationsByPaymentIdAsync(Guid paymentId, Guid organizationId);
     Task<IReadOnlyList<PaymentBillAllocation>> GetBillAllocationsByReceiptIdAsync(Guid receiptId, Guid organizationId);

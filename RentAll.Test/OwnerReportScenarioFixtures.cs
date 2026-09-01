@@ -134,7 +134,7 @@ internal static class OwnerReportScenarioFixtures
                 firstSliceOwnerRent,
                 CrossPeriodInvoice,
                 JunePeriod,
-                JunePeriod,
+                MayPaymentDate,
                 $"{CrossPeriodInvoice}: Owner: Actual: Rent",
                 PrepaymentLedgerLineId,
                 (int)SourceType.InvoicePayment,

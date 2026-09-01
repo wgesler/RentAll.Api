@@ -118,6 +118,39 @@ public partial class AccountingManager
             ?? createdPayment;
     }
 
+    public async Task<Payment> UpdatePaymentWithOwnerAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations, Guid currentUser)
+    {
+        if (payment.PaymentId == Guid.Empty)
+            throw new ArgumentException("PaymentId is required.", nameof(payment));
+
+        EnsureOwnerPayment(payment);
+
+        if (payment.ChartOfAccountId is not > 0)
+            throw new ArgumentException("ChartOfAccountId is required.", nameof(payment));
+
+        var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId)
+            ?? throw new Exception("Payment record not found");
+
+        if (existing.PaymentKindId != (int)PaymentKind.Owner)
+            throw new Exception("Payment is not an owner payment.");
+
+        var resolvedAllocations = await ResolveOwnerPaymentAllocationsAsync(payment, allocations);
+        ValidateExplicitOwnerPaymentAllocations(payment, resolvedAllocations);
+
+        payment.PaymentCode = existing.PaymentCode;
+        payment.PostingStatusId = existing.PostingStatusId;
+        payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
+
+        await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
+        await DeleteJournalEntriesForPaymentAsync(existing);
+
+        var updatedPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
+        await CreateJournalEntriesFromOwnerPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+
+        return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
+            ?? updatedPayment;
+    }
+
     private async Task<List<PaymentOwnerAllocation>> ResolveOwnerPaymentAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations)
     {
         var resolved = new List<PaymentOwnerAllocation>();
