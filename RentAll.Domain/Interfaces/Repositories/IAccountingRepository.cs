@@ -164,4 +164,11 @@ public interface IAccountingRepository
     Task<CheckHtml> UpdateCheckHtmlByIdAsync(CheckHtml checkHtml);
     Task DeleteCheckHtmlByIdAsync(Guid checkHtmlId);
     #endregion
+
+    #region OwnerInvoiceOutstanding
+    Task RecalculateOwnerInvoiceOutstandingForSliceAsync(OwnerInvoiceOutstandingSliceKey sliceKey);
+    Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByPropertyIdAsync(Guid organizationId, Guid propertyId);
+    Task DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(Guid organizationId, Guid invoiceId);
+    Task BackfillOwnerInvoiceOutstandingAsync(Guid? organizationId = null, int? officeId = null);
+    #endregion
 }

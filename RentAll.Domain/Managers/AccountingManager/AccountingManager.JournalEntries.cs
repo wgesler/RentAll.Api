@@ -68,6 +68,7 @@ public partial class AccountingManager
         var created = await _journalEntryRepository.CreateJournalEntryAsync(journalEntry);
         TouchOfficeSyncCache(created);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(created, logDecisions: false);
+        await TrySyncOwnerInvoiceOutstandingFromJournalEntryAsync(created);
         return created;
     }
 
@@ -128,6 +129,7 @@ public partial class AccountingManager
         if (!IsRetainedEarningsCloseJournalEntry(existing) && !IsRetainedEarningsCloseJournalEntry(updated))
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(updated, existing, logDecisions: false);
 
+        await TrySyncOwnerInvoiceOutstandingFromJournalEntryAsync(updated);
         return updated;
     }
 
@@ -272,6 +274,7 @@ public partial class AccountingManager
         await _journalEntryRepository.DeleteJournalEntryByIdAsync(journalEntryId, organizationId);
         RemoveFromOfficeSyncCache(journalEntryId);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
+        await TrySyncOwnerInvoiceOutstandingAfterDeleteAsync(journalEntry);
     }
 
     private async Task DeleteOpenJournalEntryAsync(Guid journalEntryId, Guid organizationId)
@@ -280,7 +283,10 @@ public partial class AccountingManager
         await _journalEntryRepository.DeleteOpenJournalEntryByIdAsync(journalEntryId, organizationId);
         RemoveFromOfficeSyncCache(journalEntryId);
         if (journalEntry != null)
+        {
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
+            await TrySyncOwnerInvoiceOutstandingAfterDeleteAsync(journalEntry);
+        }
     }
 
     private async Task DeleteJournalEntriesForDepositAsync(Deposit deposit)
@@ -301,6 +307,7 @@ public partial class AccountingManager
 
     private async Task DeleteJournalEntriesForInvoiceAsync(Invoice invoice)
     {
+        await DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(invoice.OrganizationId, invoice.InvoiceId);
         await _journalEntryRepository.DeleteJournalEntriesBySourceIdAsync(invoice.OrganizationId, (int)SourceType.Invoice, invoice.InvoiceId);
         await DeleteJournalEntriesForSourceAsync(
             invoice.OrganizationId,
@@ -308,6 +315,9 @@ public partial class AccountingManager
             (int)SourceType.OwnerDistribution,
             invoice.InvoiceId);
     }
+
+    private Task DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(Guid organizationId, Guid invoiceId)
+        => _accountingRepository.DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(organizationId, invoiceId);
 
     private async Task DeleteJournalEntriesForReceiptAsync(Receipt receipt)
     {
