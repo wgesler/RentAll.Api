@@ -168,7 +168,7 @@ public interface IAccountingRepository
     #region OwnerInvoiceOutstanding
     Task RecalculateOwnerInvoiceOutstandingForSliceAsync(OwnerInvoiceOutstandingSliceKey sliceKey);
     Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByPropertyIdAsync(Guid organizationId, Guid propertyId);
-    Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByCriteriaAsync(Guid organizationId, Guid? propertyId = null, string? officeIds = null);
+    Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByCriteriaAsync(Guid organizationId, Guid? propertyId = null, string? officeIds = null, DateOnly? endDate = null);
     Task DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(Guid organizationId, Guid invoiceId);
     Task BackfillOwnerInvoiceOutstandingAsync(Guid? organizationId = null, int? officeId = null);
     #endregion

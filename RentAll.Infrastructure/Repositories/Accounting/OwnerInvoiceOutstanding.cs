@@ -20,7 +20,7 @@ public partial class AccountingRepository
         });
     }
 
-    public async Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByCriteriaAsync(Guid organizationId, Guid? propertyId = null, string? officeIds = null)
+    public async Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingByCriteriaAsync(Guid organizationId, Guid? propertyId = null, string? officeIds = null, DateOnly? endDate = null)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var entities = await db.DapperProcQueryAsync<OwnerInvoiceOutstandingEntity>(
@@ -29,7 +29,8 @@ public partial class AccountingRepository
             {
                 OrganizationId = organizationId,
                 PropertyId = propertyId,
-                OfficeIds = officeIds
+                OfficeIds = officeIds,
+                EndDate = endDate?.ToDateTime(TimeOnly.MinValue)
             });
 
         return (entities ?? Enumerable.Empty<OwnerInvoiceOutstandingEntity>())

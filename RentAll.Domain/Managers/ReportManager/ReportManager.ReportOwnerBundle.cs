@@ -21,7 +21,8 @@ public partial class ReportManager
         var outstandingInvoices = await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(
             criteria.OrganizationId,
             criteria.PropertyId,
-            string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds);
+            string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds,
+            criteria.EndDate);
 
         return new OwnerReportsBundle
         {
