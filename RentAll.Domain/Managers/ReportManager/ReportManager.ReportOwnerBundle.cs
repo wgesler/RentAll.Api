@@ -18,6 +18,10 @@ public partial class ReportManager
         var cash = BuildOwnerCashReport(loaded, criteria);
         var accrual = BuildOwnerAccrualReport(loaded, criteria);
         var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
+        var outstandingInvoices = await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(
+            criteria.OrganizationId,
+            criteria.PropertyId,
+            string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds);
 
         return new OwnerReportsBundle
         {
@@ -27,7 +31,8 @@ public partial class ReportManager
             {
                 Rows = recapRows,
                 RentalIncomeParentAccountNo = ResolveRentalIncomeParentAccountNoLabel(criteria)
-            }
+            },
+            OutstandingInvoices = outstandingInvoices.ToList()
         };
     }
 
