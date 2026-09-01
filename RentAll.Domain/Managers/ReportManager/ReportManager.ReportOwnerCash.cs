@@ -33,7 +33,7 @@ public partial class ReportManager
 
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
 
-        var priorPeriodUnpaidByProperty = CalculatePriorPeriodUnpaidByProperty(lines, criteria, startingBalanceByKey);
+        var priorPeriodUnpaidByProperty = CalculatePriorPeriodUnpaidFromOutstanding(loaded.OutstandingInvoices, criteria);
         var ownerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(lines, criteria);
 
         var rows = properties
@@ -158,6 +158,23 @@ public partial class ReportManager
 
         return endingBalance < 0 ? 0 : endingBalance;
 
+    }
+
+    private static Dictionary<string, decimal> CalculatePriorPeriodUnpaidFromOutstanding(
+        IReadOnlyList<OwnerInvoiceOutstanding>? outstandingInvoices,
+        JournalEntryRecapGetCriteria criteria)
+    {
+        var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        if (!periodStart.HasValue)
+            return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+        return (outstandingInvoices ?? [])
+            .Where(row => row.AccountingPeriod < periodStart.Value)
+            .GroupBy(row => GetPropertyReportKey(row.OfficeId, row.PropertyId), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Sum(row => row.Outstanding),
+                StringComparer.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, decimal> CalculatePriorPeriodUnpaidByProperty(IReadOnlyList<JournalEntryRecapLine> lines, JournalEntryRecapGetCriteria criteria, IReadOnlyDictionary<string, OwnerStartingBalance> startingBalanceByKey)

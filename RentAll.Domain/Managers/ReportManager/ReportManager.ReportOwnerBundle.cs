@@ -10,6 +10,7 @@ public partial class ReportManager
         public List<PropertyReportData> Properties { get; init; } = [];
         public Dictionary<string, OwnerStartingBalance> StartingBalanceByKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
         public List<int> OfficeIds { get; init; } = [];
+        public List<OwnerInvoiceOutstanding> OutstandingInvoices { get; init; } = [];
     }
 
     public async Task<OwnerReportsBundle> GetOwnerReportsBundleAsync(JournalEntryRecapGetCriteria criteria)
@@ -18,11 +19,6 @@ public partial class ReportManager
         var cash = BuildOwnerCashReport(loaded, criteria);
         var accrual = BuildOwnerAccrualReport(loaded, criteria);
         var recapRows = BuildRecapReportRows(loaded.RecapLineSet.AllLines);
-        var outstandingInvoices = await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(
-            criteria.OrganizationId,
-            criteria.PropertyId,
-            string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds,
-            criteria.EndDate);
 
         return new OwnerReportsBundle
         {
@@ -33,7 +29,7 @@ public partial class ReportManager
                 Rows = recapRows,
                 RentalIncomeParentAccountNo = ResolveRentalIncomeParentAccountNoLabel(criteria)
             },
-            OutstandingInvoices = outstandingInvoices.ToList()
+            OutstandingInvoices = loaded.OutstandingInvoices
         };
     }
 
@@ -76,12 +72,18 @@ public partial class ReportManager
 
         var properties = await LoadOwnerPropertyReportDataAsync(criteria);
         var startingBalanceByKey = BuildOwnerStartingBalanceByProperty(criteria, officeIds, bundle.OwnerApLines);
+        var outstandingInvoices = (await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(
+            criteria.OrganizationId,
+            criteria.PropertyId,
+            string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds,
+            criteria.EndDate)).ToList();
         return new OwnerReportLoadedData
         {
             RecapLineSet = recapLineSet,
             Properties = properties,
             StartingBalanceByKey = startingBalanceByKey,
-            OfficeIds = officeIds
+            OfficeIds = officeIds,
+            OutstandingInvoices = outstandingInvoices
         };
     }
 }
