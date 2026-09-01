@@ -21,6 +21,7 @@ public partial class ReportManager
         var lines = recapLineSet.AllLines;
 
         var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
+        LogOwnerReportCashActivitySourceLines(criteria, recapLineSet, activitySourceLines);
 
         var properties = loaded.Properties;
 
@@ -28,6 +29,7 @@ public partial class ReportManager
 
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
             BuildOwnerActivityLines(activitySourceLines, lines, OwnerReportActivityMode.Cash), criteria);
+        LogOwnerReportCashPropertyActivityLines(criteria, propertyActivityLines);
 
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
 

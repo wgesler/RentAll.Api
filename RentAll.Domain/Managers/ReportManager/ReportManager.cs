@@ -3,6 +3,7 @@ using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 
 namespace RentAll.Domain.Managers;
 
@@ -13,14 +14,22 @@ public partial class ReportManager : IReportManager
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IPropertyRepository _propertyRepository;
     private readonly IAccountingManager _accountingManager;
+    private readonly ILogger<ReportManager> _logger;
 
-    public ReportManager(IJournalEntryRepository journalEntryRepository, IAccountingRepository accountingRepository, IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingManager accountingManager)
+    public ReportManager(
+        IJournalEntryRepository journalEntryRepository,
+        IAccountingRepository accountingRepository,
+        IOrganizationRepository organizationRepository,
+        IPropertyRepository propertyRepository,
+        IAccountingManager accountingManager,
+        ILogger<ReportManager> logger)
     {
         _journalEntryRepository = journalEntryRepository;
         _accountingRepository = accountingRepository;
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
         _accountingManager = accountingManager;
+        _logger = logger;
     }
 
     #region Load

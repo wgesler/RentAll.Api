@@ -1,6 +1,8 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using RentAll.Domain.Accounting;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Accounting;
@@ -37,10 +39,12 @@ public partial class JournalEntryRepository
             commandTimeout: 120);
 
         criteria.IncludePaymentInvoiceContext = true;
+        var rawLineList = (recapRaw ?? []).ToList();
+        LogOwnerReportRecapRawLines("OwnerReportBundle", criteria, rawLineList, includeOwnerReportSupplemental: true);
 
         return new OwnerReportBundleData
         {
-            RecapLines = ClassifyAndFilterRecapLines(recapRaw ?? [], criteria).ToList(),
+            RecapLines = ClassifyAndFilterRecapLines(rawLineList, criteria).ToList(),
             OwnerApLines = (ownerApRaw ?? []).Select(ConvertLineSearchEntityToModel).ToList()
         };
     }
@@ -88,39 +92,101 @@ public partial class JournalEntryRepository
         };
     }
 
-    private static IEnumerable<JournalEntryRecapLine> ClassifyAndFilterRecapLines(
+    private IEnumerable<JournalEntryRecapLine> ClassifyAndFilterRecapLines(
         IEnumerable<JournalEntryRecapRawLineEntity> rawLines,
         JournalEntryRecapGetCriteria criteria)
     {
+        var rawLineList = rawLines as IReadOnlyList<JournalEntryRecapRawLineEntity> ?? rawLines.ToList();
         var recapCategoryFilter = (criteria.RecapCategory ?? string.Empty).Trim();
         var hasRecapCategoryFilter = !string.IsNullOrWhiteSpace(recapCategoryFilter);
+        var ownerActualRawCount = rawLineList.Count(line => line.JournalEntryKindId == (int)JournalEntryKind.OwnerActual);
+        var ownerActualKeptCount = 0;
 
-        foreach (var rawLine in rawLines)
+        foreach (var rawLine in rawLineList)
         {
+            var traceOwnerActual = rawLine.JournalEntryKindId == (int)JournalEntryKind.OwnerActual;
             var classificationLine = ConvertRawEntityToClassificationLine(rawLine);
             if (!JournalEntryRecapLineClassifier.TryClassify(classificationLine, out var classification))
+            {
+                if (traceOwnerActual)
+                {
+                    LogOwnerActualRawDrop(rawLine, "ClassifyFailed", criteria, classificationLine);
+                }
+
                 continue;
+            }
 
             if (classification.Amount == 0)
+            {
+                if (traceOwnerActual)
+                {
+                    LogOwnerActualRawDrop(rawLine, "ZeroAmount", criteria, classificationLine, classification.RecapCategory);
+                }
+
                 continue;
+            }
 
             if (hasRecapCategoryFilter
                 && !string.Equals(classification.RecapCategory, recapCategoryFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                if (traceOwnerActual)
+                {
+                    LogOwnerActualRawDrop(rawLine, "RecapCategoryFilter", criteria, classificationLine, classification.RecapCategory);
+                }
+
                 continue;
+            }
 
             if (!rawLine.IsInDateRange)
             {
                 if (!criteria.IncludePaymentInvoiceContext)
+                {
+                    if (traceOwnerActual)
+                    {
+                        LogOwnerActualRawDrop(rawLine, "MissingPaymentInvoiceContext", criteria, classificationLine, classification.RecapCategory);
+                    }
+
                     continue;
+                }
 
                 var isReachBackCategory = string.Equals(classification.RecapCategory, "OwnerRent", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(classification.RecapCategory, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(classification.RecapCategory, "ExpectedIncome", StringComparison.OrdinalIgnoreCase);
                 if (!isReachBackCategory)
+                {
+                    if (traceOwnerActual)
+                    {
+                        LogOwnerActualRawDrop(rawLine, "OutOfRangeNonReachBackCategory", criteria, classificationLine, classification.RecapCategory);
+                    }
+
                     continue;
+                }
+            }
+
+            if (traceOwnerActual)
+            {
+                ownerActualKeptCount++;
+                _logger.LogInformation(
+                    "[OwnerReportTrace] OwnerActual raw kept: JE={JournalEntryCode} LineId={JournalEntryLineId} Category={RecapCategory} Amount={Amount} IsInDateRange={IsInDateRange} SourceDoc={SourceDocumentCode}",
+                    rawLine.JournalEntryCode,
+                    rawLine.JournalEntryLineId,
+                    classification.RecapCategory,
+                    classification.Amount,
+                    rawLine.IsInDateRange,
+                    rawLine.SourceDocumentCode);
             }
 
             yield return ConvertClassifiedRawEntityToModel(rawLine, classification);
+        }
+
+        if (ownerActualRawCount > 0)
+        {
+            _logger.LogInformation(
+                "[OwnerReportTrace] Recap classify summary: Raw={RawCount} OwnerActualRaw={OwnerActualRawCount} OwnerActualKept={OwnerActualKeptCount} IncludePaymentInvoiceContext={IncludePaymentInvoiceContext}",
+                rawLineList.Count,
+                ownerActualRawCount,
+                ownerActualKeptCount,
+                criteria.IncludePaymentInvoiceContext);
         }
     }
 

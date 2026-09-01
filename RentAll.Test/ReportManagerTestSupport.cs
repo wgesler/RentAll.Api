@@ -1,4 +1,5 @@
 using Moq;
+using Microsoft.Extensions.Logging.Abstractions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
@@ -228,7 +229,8 @@ internal static class ReportManagerTestSupport
                 accountingRepository.Object,
                 organizationRepository.Object,
                 propertyRepository.Object,
-                accountingManager.Object);
+                accountingManager.Object,
+                NullLogger<ReportManager>.Instance);
         }
 
         internal Task<OwnerAccrualReport> GetAccrualReportAsync(DateOnly startDate, DateOnly endDate)
