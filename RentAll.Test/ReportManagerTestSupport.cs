@@ -280,6 +280,9 @@ internal static class ReportManagerTestSupport
                     Description = line.Description,
                     RecapCategory = line.RecapCategory,
                     Amount = line.Amount,
+                    ChartOfAccountId = line.ChartOfAccountId,
+                    DefaultOwnActPayableAccountId = line.DefaultOwnActPayableAccountId,
+                    JournalEntryKindId = line.JournalEntryKindId,
                     IsInDateRange = IsLineInReportRange(line, criteria.StartDate, criteria.EndDate)
                 });
         }

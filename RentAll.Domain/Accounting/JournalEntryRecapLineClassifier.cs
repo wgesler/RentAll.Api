@@ -89,6 +89,13 @@ public static class JournalEntryRecapLineClassifier
             && line.DefaultOwnActPayableAccountId is > 0
             && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId)
         {
+            if (sourceTypeId == (int)SourceType.OwnerDistribution
+                || AccountingManager.IsOwnerPaymentRecapMemo(memo))
+            {
+                result = BuildResult("OwnerPayment", Math.Abs(debit - credit), line, memo, sourceTypeId);
+                return true;
+            }
+
             result = BuildResult("Expense", debit - credit, line, memo, sourceTypeId);
             return true;
         }

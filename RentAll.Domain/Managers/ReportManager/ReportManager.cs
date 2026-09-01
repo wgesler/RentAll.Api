@@ -358,7 +358,7 @@ public partial class ReportManager : IReportManager
             };
         }
 
-        if (group.OwnerExpenseValue != 0)
+        if (group.OwnerExpenseValue != 0 && !IsOwnerPaymentOwnerExpenseActivity(group))
         {
             yield return new OwnerStatementPropertyActivityLine
             {
@@ -463,6 +463,19 @@ public partial class ReportManager : IReportManager
             group.OwnerPaymentJournalEntryLineId = line.JournalEntryLineId;
             group.OwnerPaymentSourceId = line.SourceId;
             group.OwnerPaymentSourceTypeId = line.SourceTypeId;
+            return;
+        }
+
+        if (string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase))
+        {
+            group.OwnerExpenseValue += amount;
+            if (!string.IsNullOrWhiteSpace(memo))
+                group.OwnerExpenseMemo = memo;
+            if (!string.IsNullOrWhiteSpace(journalEntryCode))
+                group.OwnerExpenseJournalEntryCode = journalEntryCode;
+            group.OwnerExpenseJournalEntryLineId = line.JournalEntryLineId;
+            group.OwnerExpenseSourceId = line.SourceId;
+            group.OwnerExpenseSourceTypeId = line.SourceTypeId;
             return;
         }
 
@@ -990,6 +1003,17 @@ public partial class ReportManager : IReportManager
     {
         return line.DefaultOwnActPayableAccountId is > 0
             && line.ChartOfAccountId == line.DefaultOwnActPayableAccountId.Value;
+    }
+
+    private static bool IsOwnerPaymentOwnerExpenseActivity(OwnerInvoiceActivityGroup group)
+    {
+        if (group.OwnerExpenseSourceTypeId == (int)SourceType.OwnerDistribution)
+            return true;
+
+        if (AccountingManager.IsOwnerPaymentRecapMemo(group.OwnerExpenseMemo))
+            return true;
+
+        return AccountingManager.IsLegacyOwnerStatementPaymentMemo(group.OwnerExpenseMemo);
     }
 
     private static bool IsOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo)

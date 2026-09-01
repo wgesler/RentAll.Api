@@ -1,5 +1,8 @@
 namespace RentAll.Test;
 
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models;
+
 public class OwnerReportScenarioTests
 {
     private static readonly DateOnly MayStart = new(2026, 5, 1);
@@ -228,5 +231,86 @@ public class OwnerReportScenarioTests
 
         Assert.Equal(propertyRow.InvoicedIncome - propertyRow.OwnerExpenses, propertyRow.OwnerProfit);
         Assert.True(propertyRow.OwnerProfit >= 0m);
+    }
+
+    [Fact]
+    public async Task CashReport_NegativeVendorCredit_RemainsExpenseActivity()
+    {
+        var lines = new List<JournalEntryRecapLine>
+        {
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                100m,
+                OwnerReportScenarioFixtures.Invoice001,
+                JuneStart,
+                JuneStart,
+                $"{OwnerReportScenarioFixtures.Invoice001}: Owner: Actual: Rent"),
+            ReportManagerTestSupport.RecapLine(
+                "Payment",
+                100m,
+                OwnerReportScenarioFixtures.Invoice001,
+                JuneStart,
+                JuneStart),
+            ReportManagerTestSupport.RecapLine(
+                "Expense",
+                -35m,
+                "RC-000001",
+                JuneStart,
+                JuneStart,
+                "RC-000001: Owner: City of Littleton - Water (credit)",
+                sourceTypeId: (int)SourceType.Receipt)
+        };
+        var context = ReportManagerTestSupport.CreateContext(lines);
+
+        var report = await context.GetCashReportAsync(JuneStart, JuneEnd);
+
+        var creditLine = ReportManagerTestSupport.FindActivityLine(report.PropertyActivityLines, "JE-RC-000001");
+        Assert.NotNull(creditLine);
+        Assert.Equal(-35m, creditLine!.Expenses);
+        Assert.Equal(0m, creditLine.OwnerPayment);
+    }
+
+    [Fact]
+    public async Task CashReport_LegacyOwnerPaymentMemo_IsNotExpenseActivity()
+    {
+        var lines = new List<JournalEntryRecapLine>
+        {
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRentActual",
+                100m,
+                OwnerReportScenarioFixtures.Invoice001,
+                JuneStart,
+                JuneStart,
+                $"{OwnerReportScenarioFixtures.Invoice001}: Owner: Actual: Rent"),
+            ReportManagerTestSupport.RecapLine(
+                "Payment",
+                100m,
+                OwnerReportScenarioFixtures.Invoice001,
+                JuneStart,
+                JuneStart),
+            ReportManagerTestSupport.RecapLine(
+                "Expense",
+                -2649.32m,
+                "OWNER-PAY-JUNE",
+                JuneStart,
+                JuneStart,
+                "Owner's Payments - June 2026"),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerPayment",
+                2649.32m,
+                "P-000001",
+                JuneStart,
+                JuneEnd,
+                "DRE105: Owner: Payment: ACH",
+                sourceTypeId: (int)SourceType.OwnerDistribution)
+        };
+        var context = ReportManagerTestSupport.CreateContext(lines);
+
+        var report = await context.GetCashReportAsync(JuneStart, JuneEnd);
+
+        Assert.DoesNotContain(
+            report.PropertyActivityLines,
+            line => line.Expenses != 0 && line.Description.Contains("Owner's Payments", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.PropertyActivityLines, line => line.OwnerPayment == 2649.32m);
     }
 }

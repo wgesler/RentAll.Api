@@ -71,6 +71,38 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_Manual_OwnerAp_OwnerPaymentMemo_IsOwnerPayment()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.Manual,
+            sourceTypeId: (int)SourceType.Journal,
+            chartOfAccountId: OwnerAp,
+            ownerApAccountId: OwnerAp,
+            memo: "DRE105: Owner: Payment: ACH",
+            credit: 2649.32m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("OwnerPayment", result.RecapCategory);
+        Assert.Equal(2649.32m, result.Amount);
+    }
+
+    [Fact]
+    public void Classify_Manual_OwnerAp_VendorCredit_IsExpense()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.Manual,
+            sourceTypeId: (int)SourceType.Receipt,
+            chartOfAccountId: OwnerAp,
+            ownerApAccountId: OwnerAp,
+            memo: "RC-000001: Owner: City of Littleton - Water (credit)",
+            credit: 35m);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("Expense", result.RecapCategory);
+        Assert.Equal(-35m, result.Amount);
+    }
+
+    [Fact]
     public void Classify_OwnerPayment_BillPayment_UsesKind()
     {
         var line = BuildLine(

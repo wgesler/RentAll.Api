@@ -16,6 +16,7 @@ public partial class AccountingManager
     private static readonly Regex SecurityDepositWaiverActualMemoPattern = new(@"^R-\d+-\d+: Security Deposit Waiver Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex FeesActualMemoPattern = new(@"^R-\d+-\d+: Fees Actual: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerPaymentMemoPattern = new(@"^R-\d+-\d+: Owner: Payment: .+$", RegexOptions.Compiled);
+    private static readonly Regex LegacyOwnerStatementPaymentMemoPattern = new(@"^Owner'?s?\s+Payments?\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex OwnerBillMemoPattern = new(@"^RC-[^:]+: Owner: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerWorkOrderMemoPattern = new(@"^WO-[^:]+: Owner: .+$", RegexOptions.Compiled);
 
@@ -394,6 +395,27 @@ public partial class AccountingManager
             SourceCode = invoiceSourceCode,
             Detail = parts.Length > 1 ? parts[1].Trim() : string.Empty
         };
+    }
+
+    public static bool IsOwnerPaymentRecapMemo(string? journalMemo, string? lineMemo = null)
+        => IsOwnerPaymentRecapMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
+
+    public static bool IsOwnerPaymentRecapMemo(string? memo)
+    {
+        if (MatchOwnerPaymentMemo(memo).IsMatch)
+            return true;
+
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        return normalizedMemo.Contains(": Owner: Payment:", StringComparison.Ordinal);
+    }
+
+    public static bool IsLegacyOwnerStatementPaymentMemo(string? memo)
+    {
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedMemo))
+            return false;
+
+        return LegacyOwnerStatementPaymentMemoPattern.IsMatch(normalizedMemo);
     }
 
     // Example: RC-000123: Owner: City of Littleton - Water
