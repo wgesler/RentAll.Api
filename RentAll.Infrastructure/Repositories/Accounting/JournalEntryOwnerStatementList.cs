@@ -12,9 +12,7 @@ public partial class JournalEntryRepository
     public async Task<OwnerStatementListBundleData> GetOwnerStatementListDataAsync(JournalEntryRecapGetCriteria criteria)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (rowRaw, outstandingRaw) = await db.DapperProcQueryMultipleAsync<
-            OwnerStatementListRowEntity,
-            OwnerInvoiceOutstandingEntity>(
+        var rowRaw = await db.DapperProcQueryAsync<OwnerStatementListRowEntity>(
             OwnerStatementListProcName,
             new
             {
@@ -30,28 +28,9 @@ public partial class JournalEntryRepository
         return new OwnerStatementListBundleData
         {
             Rows = (rowRaw ?? []).Select(ConvertOwnerStatementListRowEntityToModel).ToList(),
-            OutstandingInvoices = (outstandingRaw ?? [])
-                .Select(ConvertOwnerStatementListOutstandingEntityToModel)
-                .ToList()
+            OutstandingInvoices = []
         };
     }
-
-    private static OwnerInvoiceOutstanding ConvertOwnerStatementListOutstandingEntityToModel(OwnerInvoiceOutstandingEntity entity)
-        => new()
-        {
-            OwnerInvoiceOutstandingId = entity.OwnerInvoiceOutstandingId,
-            OrganizationId = entity.OrganizationId,
-            OfficeId = entity.OfficeId,
-            PropertyId = entity.PropertyId,
-            InvoiceId = entity.InvoiceId,
-            InvoiceCode = entity.InvoiceCode,
-            AccountingPeriod = DateOnly.FromDateTime(entity.AccountingPeriod),
-            Description = entity.Description,
-            ExpectedAmount = entity.ExpectedAmount,
-            ActualAmount = entity.ActualAmount,
-            Outstanding = entity.Outstanding,
-            ModifiedOn = entity.ModifiedOn
-        };
 
     private static OwnerCashReportRow ConvertOwnerStatementListRowEntityToModel(OwnerStatementListRowEntity entity)
     {

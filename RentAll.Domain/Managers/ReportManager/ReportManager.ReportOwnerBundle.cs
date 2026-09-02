@@ -58,7 +58,6 @@ public partial class ReportManager
             AllLines = bundle.RecapLines,
             ActivityLines = bundle.RecapLines.Where(line => line.IsInDateRange).ToList()
         };
-        LogOwnerReportBundleRecap(criteria, recapLineSet);
 
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
         if (officeIds.Count == 0)

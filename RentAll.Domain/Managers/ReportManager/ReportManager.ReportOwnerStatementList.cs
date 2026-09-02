@@ -13,7 +13,19 @@ public partial class ReportManager
         return new OwnerStatementListReport
         {
             Rows = bundle.Rows ?? [],
-            OutstandingInvoices = bundle.OutstandingInvoices ?? []
+            OutstandingInvoices = []
         };
+    }
+
+    public async Task<IReadOnlyList<OwnerInvoiceOutstanding>> GetOwnerInvoiceOutstandingAsync(JournalEntryRecapGetCriteria criteria)
+    {
+        if (GetReportOfficeIds(criteria.OfficeIds).Count == 0)
+            return [];
+
+        return await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(
+            criteria.OrganizationId,
+            criteria.PropertyId,
+            string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds,
+            criteria.EndDate);
     }
 }

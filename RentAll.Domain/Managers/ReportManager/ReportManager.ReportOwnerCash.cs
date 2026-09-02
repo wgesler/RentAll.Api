@@ -13,13 +13,11 @@ public partial class ReportManager
         var recapLineSet = loaded.RecapLineSet;
         var lines = recapLineSet.AllLines;
         var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
-        LogOwnerReportCashActivitySourceLines(criteria, recapLineSet, activitySourceLines);
 
         var properties = loaded.Properties;
         var startingBalanceByKey = loaded.StartingBalanceByKey;
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
             BuildOwnerActivityLines(activitySourceLines, lines, OwnerReportActivityMode.Cash), criteria);
-        LogOwnerReportCashPropertyActivityLines(criteria, propertyActivityLines);
 
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
         var priorPeriodUnpaidByProperty = CalculatePriorPeriodUnpaidFromOutstanding(loaded.OutstandingInvoices, criteria);
