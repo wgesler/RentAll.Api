@@ -172,4 +172,19 @@ public interface IAccountingRepository
     Task DeleteOwnerInvoiceOutstandingByInvoiceIdAsync(Guid organizationId, Guid invoiceId);
     Task BackfillOwnerInvoiceOutstandingAsync(Guid? organizationId = null, int? officeId = null);
     #endregion
+
+    #region OwnerStatementBalance
+    Task<IReadOnlyList<OwnerStatementPropertyLedgerBalance>> GetOwnerStatementPropertyLedgersAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly asOfDate,
+        Guid? propertyId = null,
+        Guid? excludeJournalEntryId = null,
+        bool includeUnposted = true);
+    Task<Guid?> FindOwnerBalanceJournalEntryIdByMemoAsync(
+        Guid organizationId,
+        int officeId,
+        Guid propertyId,
+        string memo);
+    #endregion
 }

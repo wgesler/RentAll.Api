@@ -499,6 +499,14 @@ public partial class AccountingManager
     }
 
     // Example: BAR505: Owner: BAL-03-2026
+    public static string BuildOwnerStartingBalanceMemo(string propertyCode, DateOnly accountingPeriod)
+    {
+        if (string.IsNullOrWhiteSpace(propertyCode))
+            throw new ArgumentException("Property code is required.", nameof(propertyCode));
+
+        return $"{propertyCode.Trim()}: Owner: BAL-{accountingPeriod:MM}-{accountingPeriod:yyyy}";
+    }
+
     public static JournalEntryMemoMatch MatchOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo = null)
         => MatchOwnerStartingBalanceMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
 

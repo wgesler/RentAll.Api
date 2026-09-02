@@ -156,6 +156,32 @@ public class ReportController : BaseController
         }
     }
 
+    [HttpPost("owner-statement-list/close-month")]
+    public async Task<IActionResult> CloseOwnerStatementMonth([FromBody] GetOwnerCashReportDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Owner statement month close criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        if (!dto.EndDate.HasValue)
+            return BadRequest("EndDate is required to close an owner statement month");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var result = await _reportManager.CloseOwnerStatementMonthAsync(criteria, CurrentUser);
+            return Ok(new CloseOwnerStatementMonthResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error closing owner statement month");
+            return ServerError(ex.Message);
+        }
+    }
+
     [HttpPost("owner-invoice-outstanding/search")]
     public async Task<IActionResult> SearchOwnerInvoiceOutstanding([FromBody] GetOwnerCashReportDto dto)
     {

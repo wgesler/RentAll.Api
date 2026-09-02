@@ -28,4 +28,21 @@ public partial class ReportManager
             string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds,
             criteria.EndDate);
     }
+
+    public Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(JournalEntryRecapGetCriteria criteria, Guid currentUser)
+    {
+        if (GetReportOfficeIds(criteria.OfficeIds).Count == 0)
+            throw new Exception("At least one office is required.");
+
+        if (!criteria.EndDate.HasValue)
+            throw new Exception("End date is required to close an owner statement month.");
+
+        return _accountingManager.CloseOwnerStatementMonthAsync(
+            criteria.OrganizationId,
+            criteria.OfficeIds,
+            criteria.StartDate ?? new DateOnly(criteria.EndDate.Value.Year, criteria.EndDate.Value.Month, 1),
+            criteria.EndDate.Value,
+            criteria.PropertyId,
+            currentUser);
+    }
 }
