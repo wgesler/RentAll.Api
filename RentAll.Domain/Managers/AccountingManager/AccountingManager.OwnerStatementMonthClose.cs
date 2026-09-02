@@ -7,9 +7,8 @@ public partial class AccountingManager
 {
     public async Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(
         Guid organizationId,
-        string officeIds,
         DateOnly endDate,
-        IReadOnlyList<OwnerCashReportRow> rows,
+        IReadOnlyList<OwnerStatementMonthCloseLine> lines,
         Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -18,27 +17,30 @@ public partial class AccountingManager
         if (endDate == default)
             throw new Exception("End date is required to close an owner statement month.");
 
+        if (lines == null || lines.Count == 0)
+            throw new Exception("At least one owner statement line is required to close the month.");
+
         var closedMonthPeriod = FirstDayOfMonth(endDate);
         var balanceAccountingPeriod = closedMonthPeriod.AddMonths(1);
         var balanceTransactionDate = balanceAccountingPeriod;
         var result = new CloseOwnerStatementMonthResult();
 
-        foreach (var row in rows)
+        foreach (var line in lines)
         {
-            var memo = BuildOwnerStartingBalanceMemo(row.PropertyCode, balanceAccountingPeriod);
+            var memo = BuildOwnerStartingBalanceMemo(line.PropertyCode, balanceAccountingPeriod);
             var existingJournalEntryId = await _accountingRepository.FindOwnerBalanceJournalEntryIdByMemoAsync(
                 organizationId,
-                row.OfficeId,
-                row.PropertyId,
+                line.OfficeId,
+                line.PropertyId,
                 memo);
 
-            var staleMemo = BuildOwnerStartingBalanceMemo(row.PropertyCode, closedMonthPeriod);
+            var staleMemo = BuildOwnerStartingBalanceMemo(line.PropertyCode, closedMonthPeriod);
             if (!string.Equals(staleMemo, memo, StringComparison.Ordinal))
             {
                 var staleJournalEntryId = await _accountingRepository.FindOwnerBalanceJournalEntryIdByMemoAsync(
                     organizationId,
-                    row.OfficeId,
-                    row.PropertyId,
+                    line.OfficeId,
+                    line.PropertyId,
                     staleMemo);
                 if (staleJournalEntryId.HasValue
                     && staleJournalEntryId != existingJournalEntryId)
@@ -47,33 +49,22 @@ public partial class AccountingManager
                 }
             }
 
-            // Use the cash-report ending balance (working-capital carry-forward), not owner AP ledger total.
-            var statementEndingBalance = row.EndingBalance;
+            var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, line.OfficeId);
+            await UpsertOwnerStartingBalanceJournalEntryAsync(
+                organizationId,
+                line,
+                balanceAccountingPeriod,
+                balanceTransactionDate,
+                line.ClosingBalance,
+                existingJournalEntryId,
+                chartOfAccounts,
+                accountingOffice,
+                currentUser);
 
-            if (Math.Abs(statementEndingBalance) >= 0.005m)
-            {
-                var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, row.OfficeId);
-                await UpsertOwnerStartingBalanceJournalEntryAsync(
-                    organizationId,
-                    row,
-                    balanceAccountingPeriod,
-                    balanceTransactionDate,
-                    statementEndingBalance,
-                    existingJournalEntryId,
-                    chartOfAccounts,
-                    accountingOffice,
-                    currentUser);
-
-                if (existingJournalEntryId == null)
-                    result.JournalEntriesCreated++;
-                else
-                    result.JournalEntriesUpdated++;
-            }
-            else if (existingJournalEntryId.HasValue)
-            {
-                await DeleteJournalEntryAsync(existingJournalEntryId.Value, organizationId);
+            if (existingJournalEntryId == null)
+                result.JournalEntriesCreated++;
+            else
                 result.JournalEntriesUpdated++;
-            }
 
             result.PropertiesProcessed++;
         }
@@ -83,10 +74,10 @@ public partial class AccountingManager
 
     private async Task<Guid> UpsertOwnerStartingBalanceJournalEntryAsync(
         Guid organizationId,
-        OwnerCashReportRow row,
+        OwnerStatementMonthCloseLine row,
         DateOnly accountingPeriod,
         DateOnly transactionDate,
-        decimal statementEndingBalance,
+        decimal closingBalance,
         Guid? existingJournalEntryId,
         List<ChartOfAccount> chartOfAccounts,
         AccountingOffice? accountingOffice,
@@ -98,7 +89,7 @@ public partial class AccountingManager
         if (offsetAccountId <= 0)
             throw new Exception($"Retained earnings account is required for office {row.OfficeId}.");
 
-        var amount = Math.Abs(statementEndingBalance);
+        var amount = Math.Abs(closingBalance);
         var lineContext = new JournalEntryLineContext(
             row.PropertyId,
             row.PropertyCode,
@@ -110,8 +101,8 @@ public partial class AccountingManager
         var ownerApLine = new JournalEntryLine
         {
             ChartOfAccountId = ownerApAccountId,
-            Debit = statementEndingBalance < 0 ? amount : 0,
-            Credit = statementEndingBalance > 0 ? amount : 0,
+            Debit = closingBalance < 0 ? amount : 0,
+            Credit = closingBalance > 0 ? amount : 0,
             Memo = memo,
             CreatedBy = currentUser,
             ModifiedBy = currentUser
@@ -121,8 +112,8 @@ public partial class AccountingManager
         var offsetLine = new JournalEntryLine
         {
             ChartOfAccountId = offsetAccountId,
-            Debit = statementEndingBalance > 0 ? amount : 0,
-            Credit = statementEndingBalance < 0 ? amount : 0,
+            Debit = closingBalance > 0 ? amount : 0,
+            Credit = closingBalance < 0 ? amount : 0,
             Memo = memo,
             CreatedBy = currentUser,
             ModifiedBy = currentUser

@@ -16,26 +16,22 @@ public partial class ReportManager
             criteria.EndDate);
     }
 
-    public async Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(JournalEntryRecapGetCriteria criteria, Guid currentUser)
+    public Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(
+        Guid organizationId,
+        DateOnly endDate,
+        IReadOnlyList<OwnerStatementMonthCloseLine> lines,
+        Guid currentUser)
     {
-        if (GetReportOfficeIds(criteria.OfficeIds).Count == 0)
-            throw new Exception("At least one office is required.");
+        if (lines == null || lines.Count == 0)
+            throw new Exception("At least one owner statement line is required.");
 
-        if (!criteria.EndDate.HasValue)
+        if (endDate == default)
             throw new Exception("End date is required to close an owner statement month.");
 
-        criteria.IncludeUnposted = true;
-        if (!criteria.StartDate.HasValue)
-            criteria.StartDate = new DateOnly(criteria.EndDate.Value.Year, criteria.EndDate.Value.Month, 1);
-
-        var cashReport = await GetOwnerCashReportAsync(criteria);
-        var rows = cashReport.Rows ?? [];
-
-        return await _accountingManager.CloseOwnerStatementMonthAsync(
-            criteria.OrganizationId,
-            criteria.OfficeIds,
-            criteria.EndDate.Value,
-            rows,
+        return _accountingManager.CloseOwnerStatementMonthAsync(
+            organizationId,
+            endDate,
+            lines,
             currentUser);
     }
 }

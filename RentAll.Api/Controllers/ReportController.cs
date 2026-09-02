@@ -134,22 +134,22 @@ public class ReportController : BaseController
     }
 
     [HttpPost("owner-statement-list/close-month")]
-    public async Task<IActionResult> CloseOwnerStatementMonth([FromBody] GetOwnerCashReportDto dto)
+    public async Task<IActionResult> CloseOwnerStatementMonth([FromBody] CloseOwnerStatementMonthDto dto)
     {
         if (dto == null)
-            return BadRequest("Owner statement month close criteria is required");
+            return BadRequest("Owner statement month close request is required");
 
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (!dto.EndDate.HasValue)
-            return BadRequest("EndDate is required to close an owner statement month");
-
         try
         {
-            var criteria = dto.ToCriteria(CurrentOrganizationId);
-            var result = await _reportManager.CloseOwnerStatementMonthAsync(criteria, CurrentUser);
+            var result = await _reportManager.CloseOwnerStatementMonthAsync(
+                CurrentOrganizationId,
+                dto.EndDate!.Value,
+                dto.ToLines(),
+                CurrentUser);
             return Ok(new CloseOwnerStatementMonthResultDto(result));
         }
         catch (Exception ex)
