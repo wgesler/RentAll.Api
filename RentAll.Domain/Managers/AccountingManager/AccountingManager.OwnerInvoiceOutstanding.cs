@@ -12,10 +12,7 @@ public partial class AccountingManager
             && journalEntry.JournalEntryKindId is JournalEntryKind.OwnerExpected or JournalEntryKind.OwnerActual
             && journalEntry.AccountingPeriod != default;
 
-    private static bool TryResolveOwnerInvoiceOutstandingSliceKey(
-        JournalEntry journalEntry,
-        int ownerAccountsPayableAccountId,
-        out OwnerInvoiceOutstandingSliceKey sliceKey)
+    private static bool TryResolveOwnerInvoiceOutstandingSliceKey(JournalEntry journalEntry, int ownerAccountsPayableAccountId, out OwnerInvoiceOutstandingSliceKey sliceKey)
     {
         sliceKey = default;
         if (!IsOwnerInvoiceRentJournalEntry(journalEntry))

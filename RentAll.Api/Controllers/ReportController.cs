@@ -133,6 +133,29 @@ public class ReportController : BaseController
         }
     }
 
+    [HttpPost("owner-statement-list/search")]
+    public async Task<IActionResult> SearchOwnerStatementList([FromBody] GetOwnerCashReportDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Owner statement list search criteria is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var report = await _reportManager.GetOwnerStatementListAsync(criteria);
+            return Ok(new OwnerStatementListResponseDto(report));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching owner statement list");
+            return ServerError("An error occurred while retrieving the owner statement list");
+        }
+    }
+
     [HttpPost("escrow/search")]
     public async Task<IActionResult> SearchEscrowReport([FromBody] GetEscrowReportDto dto)
     {

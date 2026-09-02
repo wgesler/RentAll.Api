@@ -8,11 +8,7 @@ namespace RentAll.Infrastructure.Repositories.Accounting;
 
 public partial class JournalEntryRepository
 {
-    private void LogOwnerReportRecapRawLines(
-        string source,
-        JournalEntryRecapGetCriteria criteria,
-        IReadOnlyList<JournalEntryRecapRawLineEntity> rawLines,
-        bool includeOwnerReportSupplemental)
+    private void LogOwnerReportRecapRawLines(string source, JournalEntryRecapGetCriteria criteria, IReadOnlyList<JournalEntryRecapRawLineEntity> rawLines, bool includeOwnerReportSupplemental)
     {
         var ownerActualRawLines = rawLines
             .Where(line => line.JournalEntryKindId == (int)JournalEntryKind.OwnerActual)
@@ -47,12 +43,7 @@ public partial class JournalEntryRepository
         }
     }
 
-    private void LogOwnerActualRawDrop(
-        JournalEntryRecapRawLineEntity rawLine,
-        string reason,
-        JournalEntryRecapGetCriteria criteria,
-        JournalEntryRecapClassificationLine classificationLine,
-        string? recapCategory = null)
+    private void LogOwnerActualRawDrop(JournalEntryRecapRawLineEntity rawLine, string reason, JournalEntryRecapGetCriteria criteria, JournalEntryRecapClassificationLine classificationLine, string? recapCategory = null)
     {
         _logger.LogError(
             "[OwnerReportTrace] OwnerActual raw dropped ({Reason}): JE={JournalEntryCode} LineId={JournalEntryLineId} TxnDate={TransactionDate} AcctPeriod={AccountingPeriod} IsInDateRange={IsInDateRange} SourceDoc={SourceDocumentCode} Property={PropertyCode} ChartAcct={ChartOfAccountId} OwnApAcct={DefaultOwnActPayableAccountId} Debit={Debit} Credit={Credit} RecapCategory={RecapCategory} IncludePaymentInvoiceContext={IncludePaymentInvoiceContext}",

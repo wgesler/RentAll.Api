@@ -9,6 +9,7 @@ public interface IReportManager
     Task<OwnerCashReport> GetOwnerCashReportAsync(JournalEntryRecapGetCriteria criteria);
     Task<OwnerAccrualReport> GetOwnerAccrualReportAsync(JournalEntryRecapGetCriteria criteria);
     Task<OwnerReportsBundle> GetOwnerReportsBundleAsync(JournalEntryRecapGetCriteria criteria);
+    Task<OwnerStatementListReport> GetOwnerStatementListAsync(JournalEntryRecapGetCriteria criteria);
     Task<EscrowReport> GetEscrowReportAsync(JournalEntryRecapGetCriteria criteria, decimal cushion);
     Task<IEnumerable<OwnerStatementJournalEntryLine>> GetOwnerReportJournalEntryLinesAsync(OwnerReportJournalEntryDrillDownCriteria criteria);
     Task<IEnumerable<OwnerStatementJournalEntryLine>> GetEscrowReportJournalEntryLinesAsync(EscrowReportJournalEntryDrillDownCriteria criteria);

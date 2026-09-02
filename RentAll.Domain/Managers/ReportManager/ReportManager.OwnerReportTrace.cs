@@ -41,10 +41,7 @@ public partial class ReportManager
         }
     }
 
-    private void LogOwnerReportCashActivitySourceLines(
-        JournalEntryRecapGetCriteria criteria,
-        RecapLineSet recapLineSet,
-        IReadOnlyList<JournalEntryRecapLine> activitySourceLines)
+    private void LogOwnerReportCashActivitySourceLines(JournalEntryRecapGetCriteria criteria, RecapLineSet recapLineSet, IReadOnlyList<JournalEntryRecapLine> activitySourceLines)
     {
         var supplementalOwnerRentActual = activitySourceLines
             .Where(line => string.Equals(line.RecapCategory, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
@@ -71,9 +68,7 @@ public partial class ReportManager
         }
     }
 
-    private void LogOwnerReportCashPropertyActivityLines(
-        JournalEntryRecapGetCriteria criteria,
-        IEnumerable<OwnerStatementPropertyActivityLine> propertyActivityLines)
+    private void LogOwnerReportCashPropertyActivityLines(JournalEntryRecapGetCriteria criteria, IEnumerable<OwnerStatementPropertyActivityLine> propertyActivityLines)
     {
         var lines = propertyActivityLines?.ToList() ?? [];
         var incomeLines = lines
