@@ -1,5 +1,3 @@
-using RentAll.Domain.Enums;
-
 namespace RentAll.Api.Dtos.Properties.Properties;
 
 public class CreateExternalPropertyDto

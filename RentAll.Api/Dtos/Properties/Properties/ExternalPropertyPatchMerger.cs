@@ -1,6 +1,4 @@
 using System.Text.Json;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 

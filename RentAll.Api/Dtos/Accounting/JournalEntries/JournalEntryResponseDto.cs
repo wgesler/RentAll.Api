@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Accounting.JournalEntryLines;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Accounting.JournalEntries;
 

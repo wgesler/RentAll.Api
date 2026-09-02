@@ -1,4 +1,3 @@
-using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
@@ -8,7 +7,6 @@ using RentAll.Domain.Models;
 using RentAll.Domain.Models.Partners;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Partners;
-using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Partners;
 

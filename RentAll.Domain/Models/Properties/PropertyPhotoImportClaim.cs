@@ -1,5 +1,3 @@
-using RentAll.Domain.Enums;
-
 namespace RentAll.Domain.Models.Properties;
 
 public class PropertyPhotoImportClaim

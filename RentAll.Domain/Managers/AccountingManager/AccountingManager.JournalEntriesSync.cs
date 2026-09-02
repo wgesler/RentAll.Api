@@ -79,107 +79,107 @@ public partial class AccountingManager
     {
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-        var result = new JournalEntrySyncResult();
-        var billPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill)).ToList();
-        var receiptIdsCoveredByPaymentDocuments = GetReceiptIdsCoveredByBillPaymentDocuments(billPayments);
-        var bills = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IncludeInactive = true,
-            ReceiptKind = ReceiptKind.Bill
-        })).ToList();
-
-        var total = bills.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "bill", total, processed, result, "Running");
-
-        foreach (var billSummary in bills)
-        {
-            result.DocumentsProcessed++;
-
-            try
+            var result = new JournalEntrySyncResult();
+            var billPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill)).ToList();
+            var receiptIdsCoveredByPaymentDocuments = GetReceiptIdsCoveredByBillPaymentDocuments(billPayments);
+            var bills = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
             {
-                var bill = await _maintenanceRepository.GetReceiptByIdAsync(billSummary.ReceiptId, organizationId);
-                if (bill == null)
-                    continue;
+                OrganizationId = organizationId,
+                OfficeIds = officeIds,
+                IncludeInactive = true,
+                ReceiptKind = ReceiptKind.Bill
+            })).ToList();
 
-                EnsureReceiptIsBill(bill);
+            var total = bills.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "bill", total, processed, result, "Running");
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromBillWithResultAsync(bill, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = bill.OrganizationId,
-                        OfficeIds = bill.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.Bill,
-                        SourceId = bill.ReceiptId,
-                        IncludeUnposted = true
-                    },
-                    result);
+            foreach (var billSummary in bills)
+            {
+                result.DocumentsProcessed++;
 
-                if (bill.PaidAmount != 0)
+                try
                 {
-                    if (receiptIdsCoveredByPaymentDocuments.Contains(bill.ReceiptId))
-                    {
-                        await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
-                    }
-                    else
-                    {
-                        try
+                    var bill = await _maintenanceRepository.GetReceiptByIdAsync(billSummary.ReceiptId, organizationId);
+                    if (bill == null)
+                        continue;
+
+                    EnsureReceiptIsBill(bill);
+
+                    await TrackJournalEntryCreateAsync(
+                        () => CreateJournalEntryFromBillWithResultAsync(bill, currentUser),
+                        new JournalEntryGetCriteria
                         {
-                            await SyncBillPaymentJournalEntryAsync(bill, currentUser, result);
+                            OrganizationId = bill.OrganizationId,
+                            OfficeIds = bill.OfficeId.ToString(),
+                            SourceTypeId = (int)SourceType.Bill,
+                            SourceId = bill.ReceiptId,
+                            IncludeUnposted = true
+                        },
+                        result);
+
+                    if (bill.PaidAmount != 0)
+                    {
+                        if (receiptIdsCoveredByPaymentDocuments.Contains(bill.ReceiptId))
+                        {
+                            await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
                         }
-                        catch (Exception paymentEx)
+                        else
                         {
-                            var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
-                                ? billSummary.BillNumber
-                                : billSummary.ReceiptCode;
-                            var message = $"Bill {paymentBillLabel} payment: {paymentEx.Message}";
-                            result.Errors.Add(message);
-                            await LogAccountingErrorAsync(
-                                trigger: "BillPayment",
-                                organizationId: organizationId,
-                                officeId: billSummary.OfficeId,
-                                sourceTypeId: (int)SourceType.BillPayment,
-                                sourceId: billSummary.ReceiptId,
-                                documentCode: paymentBillLabel,
-                                accountingPeriod: null,
-                                amount: billSummary.PaidAmount,
-                                message: message,
-                                currentUser: currentUser);
+                            try
+                            {
+                                await SyncBillPaymentJournalEntryAsync(bill, currentUser, result);
+                            }
+                            catch (Exception paymentEx)
+                            {
+                                var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
+                                    ? billSummary.BillNumber
+                                    : billSummary.ReceiptCode;
+                                var message = $"Bill {paymentBillLabel} payment: {paymentEx.Message}";
+                                result.Errors.Add(message);
+                                await LogAccountingErrorAsync(
+                                    trigger: "BillPayment",
+                                    organizationId: organizationId,
+                                    officeId: billSummary.OfficeId,
+                                    sourceTypeId: (int)SourceType.BillPayment,
+                                    sourceId: billSummary.ReceiptId,
+                                    documentCode: paymentBillLabel,
+                                    accountingPeriod: null,
+                                    amount: billSummary.PaidAmount,
+                                    message: message,
+                                    currentUser: currentUser);
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    var billLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
+                        ? billSummary.BillNumber
+                        : billSummary.ReceiptCode;
+                    var message = $"Bill {billLabel}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "Bill",
+                        organizationId: organizationId,
+                        officeId: billSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.Bill,
+                        sourceId: billSummary.ReceiptId,
+                        documentCode: billLabel,
+                        accountingPeriod: null,
+                        amount: billSummary.Amount,
+                        message: message,
+                        currentUser: currentUser);
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "bill", total, processed, result, processed >= total ? "Completed" : "Running");
             }
-            catch (Exception ex)
-            {
-                var billLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
-                    ? billSummary.BillNumber
-                    : billSummary.ReceiptCode;
-                var message = $"Bill {billLabel}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Bill",
-                    organizationId: organizationId,
-                    officeId: billSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.Bill,
-                    sourceId: billSummary.ReceiptId,
-                    documentCode: billLabel,
-                    accountingPeriod: null,
-                    amount: billSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
-            }
 
-            processed++;
-            ReportSyncProgress(progress, "bill", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            if (total == 0)
+                ReportSyncProgress(progress, "bill", total, processed, result, "Completed");
 
-        if (total == 0)
-            ReportSyncProgress(progress, "bill", total, processed, result, "Completed");
-
-        return result;
+            return result;
         });
     }
 
@@ -196,68 +196,68 @@ public partial class AccountingManager
     {
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-        var result = new JournalEntrySyncResult();
-        var receipts = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IncludeInactive = true,
-            ReceiptKind = ReceiptKind.Card
-        })).ToList();
-
-        var total = receipts.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "receipt", total, processed, result, "Running");
-
-        foreach (var receiptSummary in receipts)
-        {
-            result.DocumentsProcessed++;
-
-            try
+            var result = new JournalEntrySyncResult();
+            var receipts = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
             {
-                var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptSummary.ReceiptId, organizationId);
-                if (receipt == null)
-                    continue;
+                OrganizationId = organizationId,
+                OfficeIds = officeIds,
+                IncludeInactive = true,
+                ReceiptKind = ReceiptKind.Card
+            })).ToList();
 
-                EnsureReceiptIsCardReceipt(receipt);
+            var total = receipts.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "receipt", total, processed, result, "Running");
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromReceiptWithResultAsync(receipt, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = receipt.OrganizationId,
-                        OfficeIds = receipt.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.Receipt,
-                        SourceId = receipt.ReceiptId,
-                        IncludeUnposted = true
-                    },
-                    result);
-            }
-            catch (Exception ex)
+            foreach (var receiptSummary in receipts)
             {
-                var message = $"Receipt {receiptSummary.ReceiptCode}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "Receipt",
-                    organizationId: organizationId,
-                    officeId: receiptSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.Receipt,
-                    sourceId: receiptSummary.ReceiptId,
-                    documentCode: receiptSummary.ReceiptCode,
-                    accountingPeriod: null,
-                    amount: receiptSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
+                result.DocumentsProcessed++;
+
+                try
+                {
+                    var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptSummary.ReceiptId, organizationId);
+                    if (receipt == null)
+                        continue;
+
+                    EnsureReceiptIsCardReceipt(receipt);
+
+                    await TrackJournalEntryCreateAsync(
+                        () => CreateJournalEntryFromReceiptWithResultAsync(receipt, currentUser),
+                        new JournalEntryGetCriteria
+                        {
+                            OrganizationId = receipt.OrganizationId,
+                            OfficeIds = receipt.OfficeId.ToString(),
+                            SourceTypeId = (int)SourceType.Receipt,
+                            SourceId = receipt.ReceiptId,
+                            IncludeUnposted = true
+                        },
+                        result);
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Receipt {receiptSummary.ReceiptCode}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "Receipt",
+                        organizationId: organizationId,
+                        officeId: receiptSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.Receipt,
+                        sourceId: receiptSummary.ReceiptId,
+                        documentCode: receiptSummary.ReceiptCode,
+                        accountingPeriod: null,
+                        amount: receiptSummary.Amount,
+                        message: message,
+                        currentUser: currentUser);
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "receipt", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
-            processed++;
-            ReportSyncProgress(progress, "receipt", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            if (total == 0)
+                ReportSyncProgress(progress, "receipt", total, processed, result, "Completed");
 
-        if (total == 0)
-            ReportSyncProgress(progress, "receipt", total, processed, result, "Completed");
-
-        return result;
+            return result;
         });
     }
 
@@ -273,64 +273,64 @@ public partial class AccountingManager
     {
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
-        var result = new JournalEntrySyncResult();
-        var workOrders = (await _maintenanceRepository.GetWorkOrdersByCriteriaAsync(new WorkOrderGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds
-        })).ToList();
-
-        var total = workOrders.Count;
-        var processed = 0;
-        ReportSyncProgress(progress, "workOrder", total, processed, result, "Running");
-
-        foreach (var workOrderSummary in workOrders)
-        {
-            result.DocumentsProcessed++;
-
-            try
+            var result = new JournalEntrySyncResult();
+            var workOrders = (await _maintenanceRepository.GetWorkOrdersByCriteriaAsync(new WorkOrderGetCriteria
             {
-                var workOrder = await _maintenanceRepository.GetWorkOrderByIdAsync(workOrderSummary.WorkOrderId, organizationId);
-                if (workOrder == null)
-                    continue;
+                OrganizationId = organizationId,
+                OfficeIds = officeIds
+            })).ToList();
 
-                await TrackJournalEntryCreateAsync(
-                    () => CreateJournalEntryFromWorkOrderWithResultAsync(workOrder, currentUser),
-                    new JournalEntryGetCriteria
-                    {
-                        OrganizationId = workOrder.OrganizationId,
-                        OfficeIds = workOrder.OfficeId.ToString(),
-                        SourceTypeId = (int)SourceType.WorkOrder,
-                        SourceId = workOrder.WorkOrderId,
-                        IncludeUnposted = true
-                    },
-                    result);
-            }
-            catch (Exception ex)
+            var total = workOrders.Count;
+            var processed = 0;
+            ReportSyncProgress(progress, "workOrder", total, processed, result, "Running");
+
+            foreach (var workOrderSummary in workOrders)
             {
-                var message = $"Work order {workOrderSummary.WorkOrderCode}: {ex.Message}";
-                result.Errors.Add(message);
-                await LogAccountingErrorAsync(
-                    trigger: "WorkOrder",
-                    organizationId: organizationId,
-                    officeId: workOrderSummary.OfficeId,
-                    sourceTypeId: (int)SourceType.WorkOrder,
-                    sourceId: workOrderSummary.WorkOrderId,
-                    documentCode: workOrderSummary.WorkOrderCode,
-                    accountingPeriod: null,
-                    amount: workOrderSummary.Amount,
-                    message: message,
-                    currentUser: currentUser);
+                result.DocumentsProcessed++;
+
+                try
+                {
+                    var workOrder = await _maintenanceRepository.GetWorkOrderByIdAsync(workOrderSummary.WorkOrderId, organizationId);
+                    if (workOrder == null)
+                        continue;
+
+                    await TrackJournalEntryCreateAsync(
+                        () => CreateJournalEntryFromWorkOrderWithResultAsync(workOrder, currentUser),
+                        new JournalEntryGetCriteria
+                        {
+                            OrganizationId = workOrder.OrganizationId,
+                            OfficeIds = workOrder.OfficeId.ToString(),
+                            SourceTypeId = (int)SourceType.WorkOrder,
+                            SourceId = workOrder.WorkOrderId,
+                            IncludeUnposted = true
+                        },
+                        result);
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Work order {workOrderSummary.WorkOrderCode}: {ex.Message}";
+                    result.Errors.Add(message);
+                    await LogAccountingErrorAsync(
+                        trigger: "WorkOrder",
+                        organizationId: organizationId,
+                        officeId: workOrderSummary.OfficeId,
+                        sourceTypeId: (int)SourceType.WorkOrder,
+                        sourceId: workOrderSummary.WorkOrderId,
+                        documentCode: workOrderSummary.WorkOrderCode,
+                        accountingPeriod: null,
+                        amount: workOrderSummary.Amount,
+                        message: message,
+                        currentUser: currentUser);
+                }
+
+                processed++;
+                ReportSyncProgress(progress, "workOrder", total, processed, result, processed >= total ? "Completed" : "Running");
             }
 
-            processed++;
-            ReportSyncProgress(progress, "workOrder", total, processed, result, processed >= total ? "Completed" : "Running");
-        }
+            if (total == 0)
+                ReportSyncProgress(progress, "workOrder", total, processed, result, "Completed");
 
-        if (total == 0)
-            ReportSyncProgress(progress, "workOrder", total, processed, result, "Completed");
-
-        return result;
+            return result;
         });
     }
 

@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Users;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 
@@ -136,31 +135,31 @@ public partial class AuthController
         if (!isValid || !IsValidEmail(dto.Email))
             return BadRequest(errorMessage ?? "Invalid request data");
 
-            try
-            {
-                var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
-                if (existingUser == null)
-                    return NotFound("User not found");
-                if (!CanEditDefaultOrgAdmin(existingUser))
-                    return Unauthorized("Only SuperAdmin can edit the default organization admin.");
+        try
+        {
+            var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
+            if (existingUser == null)
+                return NotFound("User not found");
+            if (!CanEditDefaultOrgAdmin(existingUser))
+                return Unauthorized("Only SuperAdmin can edit the default organization admin.");
 
-                if (!IsSuperAdmin() && dto.OrganizationId != CurrentOrganizationId)
-                    return Unauthorized("You are not authorized to update users for this organization.");
+            if (!IsSuperAdmin() && dto.OrganizationId != CurrentOrganizationId)
+                return Unauthorized("You are not authorized to update users for this organization.");
 
-                if (existingUser.Email != dto.Email && await _userRepository.ExistsByEmailAsync(dto.Email))
-                    return Conflict("Email already exists");
+            if (existingUser.Email != dto.Email && await _userRepository.ExistsByEmailAsync(dto.Email))
+                return Conflict("Email already exists");
 
-                string? passwordHash;
-                if (CurrentUserGroups.Contains("Admin") && dto.Password != null)
-                    passwordHash = _passwordHasher.HashPassword(dto.Password);
-                else
-                    passwordHash = existingUser.PasswordHash;
+            string? passwordHash;
+            if (CurrentUserGroups.Contains("Admin") && dto.Password != null)
+                passwordHash = _passwordHasher.HashPassword(dto.Password);
+            else
+                passwordHash = existingUser.PasswordHash;
 
-                var user = dto.ToModel(dto, passwordHash, CurrentUser);
-                user.ContactId = dto.ContactId ?? existingUser.ContactId;
+            var user = dto.ToModel(dto, passwordHash, CurrentUser);
+            user.ContactId = dto.ContactId ?? existingUser.ContactId;
 
-                user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                    dto.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
+            user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                dto.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
 
             var updatedUser = await _userRepository.UpdateByIdAsync(user);
             var response = new UserResponseDto(updatedUser);

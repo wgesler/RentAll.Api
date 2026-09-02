@@ -1,5 +1,3 @@
-using RentAll.Api.Dtos.Properties.Properties;
-
 namespace RentAll.Api.Dtos.Properties.PropertyPhotos;
 
 public class CreateExternalPropertyPhotosBatchDto : ExternalPropertyKeyRequest

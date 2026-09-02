@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Api.Controllers;

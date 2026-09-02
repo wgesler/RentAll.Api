@@ -1,7 +1,5 @@
-using System.Text.RegularExpressions;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Services;
 

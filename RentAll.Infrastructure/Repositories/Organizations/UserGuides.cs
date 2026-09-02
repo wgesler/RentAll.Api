@@ -1,8 +1,7 @@
-using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Organizations;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 

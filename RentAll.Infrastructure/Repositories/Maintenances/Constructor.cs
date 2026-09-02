@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
-using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;

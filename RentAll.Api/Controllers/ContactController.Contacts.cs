@@ -68,7 +68,8 @@ namespace RentAll.Api.Controllers
             if (CurrentOrganizationId == SuperAdminOrganizationId && !IsSuperAdmin())
                 return Unauthorized("Only SuperAdmin can retrieve contacts across organizations.");
 
-            try { 
+            try
+            {
                 var contact = IsSuperAdmin() ? await _contactRepository.GetContactByIdAsync(id) : await _contactRepository.GetContactByIdsAsync(id, CurrentOrganizationId);
                 if (contact == null)
                     return NotFound("Contact not found");

@@ -1115,10 +1115,10 @@ public partial class AccountingManager
 
         var allocations = new List<InvoicePaymentSplitAllocation>();
         if (firstPaymentAmount > 0)
-            allocations.Add(new InvoicePaymentSplitAllocation {AccountingPeriod = firstAccountingPeriod, Amount = firstPaymentAmount, Days = firstSliceDays, PerDiem = perDiem});
+            allocations.Add(new InvoicePaymentSplitAllocation { AccountingPeriod = firstAccountingPeriod, Amount = firstPaymentAmount, Days = firstSliceDays, PerDiem = perDiem });
 
         if (secondPaymentAmount > 0)
-            allocations.Add(new InvoicePaymentSplitAllocation {AccountingPeriod = secondAccountingPeriod, Amount = secondPaymentAmount, Days = secondSliceDays, PerDiem = perDiem});
+            allocations.Add(new InvoicePaymentSplitAllocation { AccountingPeriod = secondAccountingPeriod, Amount = secondPaymentAmount, Days = secondSliceDays, PerDiem = perDiem });
 
         return allocations;
     }

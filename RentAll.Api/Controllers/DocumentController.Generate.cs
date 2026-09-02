@@ -19,7 +19,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 // Generate PDF from HTML
-                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent, new PdfOptions {Landscape = dto.Landscape});
+                var pdfBytes = await _pdfGenerationService.ConvertHtmlToPdfAsync(dto.HtmlContent, new PdfOptions { Landscape = dto.Landscape });
                 var fileName = dto.FileName ?? $"document-{Guid.NewGuid()}.pdf";
 
                 // Return as file download

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Partners;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers;

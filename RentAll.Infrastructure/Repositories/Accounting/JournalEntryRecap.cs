@@ -1,10 +1,7 @@
-using Dapper;
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Accounting;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Accounting;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
 

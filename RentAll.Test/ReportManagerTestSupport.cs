@@ -1,5 +1,5 @@
-using Moq;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;

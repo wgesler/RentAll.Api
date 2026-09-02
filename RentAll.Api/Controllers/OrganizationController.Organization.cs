@@ -92,7 +92,7 @@ namespace RentAll.Api.Controllers
                 model.LogoPath = savedLogoPath;
 
                 var created = await _organizationRepository.CreateAsync(model);
-                await _organizationRepository.CreateFeatureAsync(new Feature {OrganizationId = created.OrganizationId, FeatureTypeId = FeatureType.MainProgram, HasAccess = true});
+                await _organizationRepository.CreateFeatureAsync(new Feature { OrganizationId = created.OrganizationId, FeatureTypeId = FeatureType.MainProgram, HasAccess = true });
                 await CreateDefaultMainOfficeAsync(created, dto.FileDetails);
                 var response = new OrganizationResponseDto(created);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
@@ -223,7 +223,7 @@ namespace RentAll.Api.Controllers
             var createdOffice = await _organizationRepository.CreateAsync(office);
 
             // If this is a Partner organization, create a default vendor
-            if(organization.OrganizationType == OrganizationType.Partner)
+            if (organization.OrganizationType == OrganizationType.Partner)
                 await CreateDefaultVendorContactAsync(organization, createdOffice);
 
             // Create cost codes for this fofice

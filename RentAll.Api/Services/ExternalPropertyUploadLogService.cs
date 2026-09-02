@@ -1,5 +1,4 @@
 using RentAll.Domain.Interfaces.Repositories;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Services;
 

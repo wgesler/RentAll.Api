@@ -1,5 +1,3 @@
-using RentAll.Domain.Models;
-
 namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager

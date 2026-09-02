@@ -41,8 +41,8 @@ public partial class AccountingManager
             or SourceType.BillPayment
             or SourceType.Receipt
             or SourceType.WorkOrder;
-            // InvoicePayment intentionally omitted — rare/legacy source rows are not guaranteed
-            // in the office bulk JE pull; always load by source id from the repository.
+    // InvoicePayment intentionally omitted — rare/legacy source rows are not guaranteed
+    // in the office bulk JE pull; always load by source id from the repository.
 
     private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByPaymentIdCachedAsync(Guid organizationId, Guid paymentId)
     {
