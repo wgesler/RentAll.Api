@@ -8,9 +8,8 @@ public partial class AccountingManager
     public async Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(
         Guid organizationId,
         string officeIds,
-        DateOnly startDate,
         DateOnly endDate,
-        Guid? propertyId,
+        IReadOnlyList<OwnerCashReportRow> rows,
         Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -20,20 +19,9 @@ public partial class AccountingManager
             throw new Exception("End date is required to close an owner statement month.");
 
         var accountingPeriod = FirstDayOfMonth(endDate);
-        var listCriteria = new JournalEntryRecapGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            PropertyId = propertyId,
-            StartDate = startDate == default ? accountingPeriod : startDate,
-            EndDate = endDate,
-            IncludeUnposted = true
-        };
-
-        var listData = await _journalEntryRepository.GetOwnerStatementListDataAsync(listCriteria);
         var result = new CloseOwnerStatementMonthResult();
 
-        foreach (var row in listData.Rows)
+        foreach (var row in rows)
         {
             var memo = BuildOwnerStartingBalanceMemo(row.PropertyCode, accountingPeriod);
             var existingJournalEntryId = await _accountingRepository.FindOwnerBalanceJournalEntryIdByMemoAsync(
