@@ -131,7 +131,11 @@ public partial class AccountingManager
             existing.JournalEntryLines = new List<JournalEntryLine> { ownerApLine, offsetLine };
             existing.ModifiedBy = currentUser;
 
-            var updated = await UpdateJournalEntryAsync(existing);
+            var requireActiveLines = RequiresActiveOwnerBalanceJournalEntryLines(closingBalance);
+            var updated = await UpdateJournalEntryAsync(
+                existing,
+                requireActiveLines,
+                postImmediately: !requireActiveLines);
             return updated.JournalEntryId;
         }
 
@@ -150,10 +154,22 @@ public partial class AccountingManager
             ModifiedBy = currentUser
         }, JournalEntryKind.Manual, Perspective.System);
 
-        var created = await CreateJournalEntryAsync(journalEntry)
+        if (RequiresActiveOwnerBalanceJournalEntryLines(closingBalance))
+        {
+            var created = await CreateJournalEntryAsync(journalEntry, requireActiveLines: true)
+                ?? throw new Exception($"Unable to create owner balance journal entry for property {row.PropertyCode}.");
+
+            var posted = await PostJournalEntryAsync(created.JournalEntryId, organizationId, currentUser, accountingPeriod);
+            return posted.JournalEntryId;
+        }
+
+        journalEntry.PostingStatusId = PostingStatus.Posted;
+        var zeroBalanceEntry = await CreateJournalEntryAsync(journalEntry, requireActiveLines: false, preservePostingStatus: true)
             ?? throw new Exception($"Unable to create owner balance journal entry for property {row.PropertyCode}.");
 
-        var posted = await PostJournalEntryAsync(created.JournalEntryId, organizationId, currentUser, accountingPeriod);
-        return posted.JournalEntryId;
+        return zeroBalanceEntry.JournalEntryId;
     }
+
+    private static bool RequiresActiveOwnerBalanceJournalEntryLines(decimal closingBalance)
+        => Math.Abs(closingBalance) >= 0.005m;
 }
