@@ -9,6 +9,9 @@ public static class JournalEntryRecapLineClassifier
     {
         result = default;
         var memo = AccountingManager.CoalesceJournalEntryMemo(line.JournalEntryMemo, line.LineMemo);
+        if (AccountingManager.MatchOwnerStartingBalanceMemo(memo).IsMatch)
+            return false;
+
         var sourceTypeId = line.SourceTypeId ?? 0;
         var kind = line.JournalEntryKindId ?? 0;
         var debit = line.Debit;

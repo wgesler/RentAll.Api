@@ -18,17 +18,34 @@ public partial class AccountingManager
         if (endDate == default)
             throw new Exception("End date is required to close an owner statement month.");
 
-        var accountingPeriod = FirstDayOfMonth(endDate);
+        var closedMonthPeriod = FirstDayOfMonth(endDate);
+        var balanceAccountingPeriod = closedMonthPeriod.AddMonths(1);
+        var balanceTransactionDate = balanceAccountingPeriod;
         var result = new CloseOwnerStatementMonthResult();
 
         foreach (var row in rows)
         {
-            var memo = BuildOwnerStartingBalanceMemo(row.PropertyCode, accountingPeriod);
+            var memo = BuildOwnerStartingBalanceMemo(row.PropertyCode, balanceAccountingPeriod);
             var existingJournalEntryId = await _accountingRepository.FindOwnerBalanceJournalEntryIdByMemoAsync(
                 organizationId,
                 row.OfficeId,
                 row.PropertyId,
                 memo);
+
+            var staleMemo = BuildOwnerStartingBalanceMemo(row.PropertyCode, closedMonthPeriod);
+            if (!string.Equals(staleMemo, memo, StringComparison.Ordinal))
+            {
+                var staleJournalEntryId = await _accountingRepository.FindOwnerBalanceJournalEntryIdByMemoAsync(
+                    organizationId,
+                    row.OfficeId,
+                    row.PropertyId,
+                    staleMemo);
+                if (staleJournalEntryId.HasValue
+                    && staleJournalEntryId != existingJournalEntryId)
+                {
+                    await DeleteJournalEntryAsync(staleJournalEntryId.Value, organizationId);
+                }
+            }
 
             var ledgerRows = await _accountingRepository.GetOwnerStatementPropertyLedgersAsync(
                 organizationId,
@@ -44,8 +61,8 @@ public partial class AccountingManager
                 await UpsertOwnerStartingBalanceJournalEntryAsync(
                     organizationId,
                     row,
-                    accountingPeriod,
-                    endDate,
+                    balanceAccountingPeriod,
+                    balanceTransactionDate,
                     ledgerBalance,
                     existingJournalEntryId,
                     chartOfAccounts,

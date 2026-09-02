@@ -71,6 +71,20 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_Manual_OwnerAp_OwnerStartingBalanceMemo_IsExcluded()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.Manual,
+            sourceTypeId: (int)SourceType.Journal,
+            chartOfAccountId: OwnerAp,
+            ownerApAccountId: OwnerAp,
+            credit: 500m,
+            memo: "BUCK805: Owner: BAL-07-2026");
+
+        Assert.False(JournalEntryRecapLineClassifier.TryClassify(line, out _));
+    }
+
+    [Fact]
     public void Classify_Manual_OwnerAp_OwnerPaymentMemo_IsOwnerPayment()
     {
         var line = BuildLine(
