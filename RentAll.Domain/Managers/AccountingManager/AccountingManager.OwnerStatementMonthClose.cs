@@ -47,15 +47,10 @@ public partial class AccountingManager
                 }
             }
 
-            var ledgerRows = await _accountingRepository.GetOwnerStatementPropertyLedgersAsync(
-                organizationId,
-                officeIds,
-                endDate,
-                row.PropertyId,
-                existingJournalEntryId);
-            var ledgerBalance = ledgerRows.FirstOrDefault()?.LedgerBalance ?? 0m;
+            // Use the cash-report ending balance (working-capital carry-forward), not owner AP ledger total.
+            var statementEndingBalance = row.EndingBalance;
 
-            if (Math.Abs(ledgerBalance) >= 0.005m)
+            if (Math.Abs(statementEndingBalance) >= 0.005m)
             {
                 var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, row.OfficeId);
                 await UpsertOwnerStartingBalanceJournalEntryAsync(
@@ -63,7 +58,7 @@ public partial class AccountingManager
                     row,
                     balanceAccountingPeriod,
                     balanceTransactionDate,
-                    ledgerBalance,
+                    statementEndingBalance,
                     existingJournalEntryId,
                     chartOfAccounts,
                     accountingOffice,
@@ -91,7 +86,7 @@ public partial class AccountingManager
         OwnerCashReportRow row,
         DateOnly accountingPeriod,
         DateOnly transactionDate,
-        decimal ledgerBalance,
+        decimal statementEndingBalance,
         Guid? existingJournalEntryId,
         List<ChartOfAccount> chartOfAccounts,
         AccountingOffice? accountingOffice,
@@ -103,7 +98,7 @@ public partial class AccountingManager
         if (offsetAccountId <= 0)
             throw new Exception($"Retained earnings account is required for office {row.OfficeId}.");
 
-        var amount = Math.Abs(ledgerBalance);
+        var amount = Math.Abs(statementEndingBalance);
         var lineContext = new JournalEntryLineContext(
             row.PropertyId,
             row.PropertyCode,
@@ -115,8 +110,8 @@ public partial class AccountingManager
         var ownerApLine = new JournalEntryLine
         {
             ChartOfAccountId = ownerApAccountId,
-            Debit = ledgerBalance < 0 ? amount : 0,
-            Credit = ledgerBalance > 0 ? amount : 0,
+            Debit = statementEndingBalance < 0 ? amount : 0,
+            Credit = statementEndingBalance > 0 ? amount : 0,
             Memo = memo,
             CreatedBy = currentUser,
             ModifiedBy = currentUser
@@ -126,8 +121,8 @@ public partial class AccountingManager
         var offsetLine = new JournalEntryLine
         {
             ChartOfAccountId = offsetAccountId,
-            Debit = ledgerBalance > 0 ? amount : 0,
-            Credit = ledgerBalance < 0 ? amount : 0,
+            Debit = statementEndingBalance > 0 ? amount : 0,
+            Credit = statementEndingBalance < 0 ? amount : 0,
             Memo = memo,
             CreatedBy = currentUser,
             ModifiedBy = currentUser
