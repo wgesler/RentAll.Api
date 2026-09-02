@@ -34,7 +34,7 @@ public partial class ReportManager
                     priorPeriodUnpaidIncome,
                     Math.Max(0m, ownerStartingBalance.LedgerBalance - ownerStartingBalance.OpeningAccountsPayableAmount));
 
-                var startingBalance = ownerStartingBalance.LedgerBalance - cancellableUnpaidIncome;
+                var startingBalance = GetOwnerReportStartingBalanceFromBalAnchor(ownerStartingBalance, criteria, cancellableUnpaidIncome);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 

@@ -132,13 +132,7 @@ public partial class ReportManager : IReportManager
 
         foreach (var propertyGroup in inRangeOwnerApLines.Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty).Where(line => IsOwnerStartingBalanceMemo(line.JournalEntryMemo, line.Memo)).GroupBy(line => GetPropertyReportKey(line.OfficeId, line.PropertyId!.Value)))
         {
-            if (startingBalanceByKey.TryGetValue(propertyGroup.Key, out var existingSnapshot)
-                && existingSnapshot.LedgerBalance != 0)
-            {
-                continue;
-            }
-
-            var earliestStartingBalanceEntry = propertyGroup
+            var anchorEntry = propertyGroup
                 .GroupBy(line => line.JournalEntryId)
                 .Select(journalEntryGroup =>
                 {
@@ -150,19 +144,18 @@ public partial class ReportManager : IReportManager
                         NetBalance = journalEntryGroup.Sum(line => line.Credit - line.Debit)
                     };
                 })
-                .Where(entry => entry.NetBalance != 0)
-                .OrderBy(entry => entry.TransactionDate)
-                .ThenBy(entry => entry.JournalEntryCode)
+                .OrderByDescending(entry => entry.TransactionDate)
+                .ThenByDescending(entry => entry.JournalEntryCode)
                 .FirstOrDefault();
 
-            if (earliestStartingBalanceEntry == null)
+            if (anchorEntry == null)
                 continue;
 
             startingBalanceByKey[propertyGroup.Key] = new OwnerStartingBalance
             {
-                LedgerBalance = earliestStartingBalanceEntry.NetBalance,
-                OpeningAccountsPayableAmount = earliestStartingBalanceEntry.NetBalance,
-                OpeningBalanceTransactionDate = earliestStartingBalanceEntry.TransactionDate
+                LedgerBalance = anchorEntry.NetBalance,
+                OpeningAccountsPayableAmount = anchorEntry.NetBalance,
+                OpeningBalanceTransactionDate = anchorEntry.TransactionDate
             };
         }
     }
@@ -598,6 +591,26 @@ public partial class ReportManager : IReportManager
         }
 
         return new OwnerStartingBalance { OfficeId = officeId, PropertyId = propertyId };
+    }
+
+    private static decimal GetOwnerReportStartingBalanceFromBalAnchor(
+        OwnerStartingBalance ownerStartingBalance,
+        JournalEntryRecapGetCriteria criteria,
+        decimal cancellableUnpaidIncome)
+    {
+        var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate);
+        var usesBalAnchor = ownerStartingBalance.OpeningBalanceTransactionDate.HasValue
+            && periodStart.HasValue
+            && reportEnd.HasValue
+            && ownerStartingBalance.OpeningBalanceTransactionDate.Value >= periodStart.Value
+            && ownerStartingBalance.OpeningBalanceTransactionDate.Value <= reportEnd.Value;
+
+        var baseBalance = usesBalAnchor
+            ? ownerStartingBalance.OpeningAccountsPayableAmount
+            : ownerStartingBalance.LedgerBalance;
+
+        return baseBalance - cancellableUnpaidIncome;
     }
 
     private static string GetPropertyReportKey(int officeId, Guid propertyId)

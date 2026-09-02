@@ -20,9 +20,11 @@ public partial class ReportManager
             .Select(property =>
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
-                var startingBalance = GetOwnerStartingBalance(startingBalanceByKey, property.OfficeId, property.PropertyId).LedgerBalance;
+                var ownerStartingBalance = GetOwnerStartingBalance(startingBalanceByKey, property.OfficeId, property.PropertyId);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
+
+                var startingBalance = GetOwnerReportStartingBalanceFromBalAnchor(ownerStartingBalance, criteria, cancellableUnpaidIncome: 0m);
 
                 var invoicedIncome = activityLines.Sum(line => line.ExpectedIncome);
                 var ownerExpenses = activityLines.Sum(line => line.Expenses);
