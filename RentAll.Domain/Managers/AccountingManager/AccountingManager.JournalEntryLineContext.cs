@@ -334,6 +334,32 @@ public partial class AccountingManager
         return await ResolvePropertyOwnerJournalEntryLineContextAsync(property, resolvedOwnerId, organizationId);
     }
 
+    private async Task<JournalEntryLineContext> ResolveOwnerUtilitySplitJournalEntryLineContextAsync(Guid organizationId, Guid? propertyId, Dictionary<Guid, JournalEntryLineContext> splitContextByPropertyId)
+    {
+        if (propertyId is not { } id || id == Guid.Empty)
+            return new JournalEntryLineContext();
+
+        if (splitContextByPropertyId.TryGetValue(id, out var cachedContext))
+            return cachedContext;
+
+        var property = await _propertyRepository.GetPropertyByIdAsync(id, organizationId);
+        if (property == null)
+        {
+            var missingPropertyContext = new JournalEntryLineContext(id, null, null, null, null, null);
+            splitContextByPropertyId[id] = missingPropertyContext;
+            return missingPropertyContext;
+        }
+
+        JournalEntryLineContext splitContext;
+        if (property.Owner1Id is { } resolvedOwnerId && resolvedOwnerId != Guid.Empty)
+            splitContext = await ResolvePropertyOwnerJournalEntryLineContextAsync(property, resolvedOwnerId, organizationId);
+        else
+            splitContext = new JournalEntryLineContext(property.PropertyId, NormalizeOptionalString(property.PropertyCode), null, null, null, null);
+
+        splitContextByPropertyId[id] = splitContext;
+        return splitContext;
+    }
+
     private async Task<JournalEntryLineContext> ResolveReceiptJournalEntryLineContextAsync(Receipt receipt, Guid? propertyId = null, Guid? contactId = null, string? contactName = null)
     {
         var resolvedPropertyId = NormalizeOptionalGuid(propertyId) ?? FirstReceiptPropertyId(receipt);

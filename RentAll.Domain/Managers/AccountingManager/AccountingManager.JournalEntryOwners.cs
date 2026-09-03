@@ -592,44 +592,25 @@ public partial class AccountingManager
         var pmUtilityIncomeAccountId = GetDefaultPmUtilityIncome(chartOfAccounts, bill.OfficeId, accountingOffice);
         var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber) ? bill.BillNumber.Trim() : bill.ReceiptCode.Trim();
         var receiptCode = bill.ReceiptCode.Trim();
-        var propertyId = ownerSplitLines
+        var fallbackPropertyId = ownerSplitLines
             .Select(split => split.PropertyId)
             .FirstOrDefault(splitPropertyId => splitPropertyId is { } id && id != Guid.Empty)
             ?? bill.PropertyIds.FirstOrDefault(id => !ReceiptPropertyConstants.IsCompanyPropertyId(id));
-        Guid? ownerContactId = null;
-        string? propertyCode = null;
-        string? ownerContactName = null;
-        if (propertyId != Guid.Empty)
-        {
-            var property = await _propertyRepository.GetPropertyByIdAsync(propertyId, bill.OrganizationId);
-            propertyCode = NormalizeOptionalString(property?.PropertyCode);
-            if (property?.Owner1Id is { } resolvedOwnerId && resolvedOwnerId != Guid.Empty)
-            {
-                ownerContactId = resolvedOwnerId;
-                var contact = await _contactRepository.GetContactByIdsAsync(resolvedOwnerId, bill.OrganizationId);
-                ownerContactName = NormalizeOptionalString(contact?.DisplayName ?? contact?.CompanyName ?? contact?.FullName);
-            }
-        }
         var ownerSplitDescription = ownerSplitLines
             .Select(split => split.Description)
             .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
         var memo = BuildOwnerBillMemo(receiptCode, ownerSplitDescription ?? string.Empty);
         var journalEntryLines = new List<JournalEntryLine>();
+        var splitContextByPropertyId = new Dictionary<Guid, JournalEntryLineContext>();
         foreach (var split in ownerSplitLines)
         {
             var splitAmount = split.Amount;
             var splitPropertyId = split.PropertyId is { } candidatePropertyId && candidatePropertyId != Guid.Empty
                 ? candidatePropertyId
-                : propertyId;
+                : fallbackPropertyId;
             var splitMemo = BuildOwnerBillMemo(receiptCode, split.Description ?? string.Empty);
             var splitIncomeMemo = BuildBillMemo(receiptCode, split.Description ?? string.Empty);
-            var splitContext = new JournalEntryLineContext(
-                NormalizeOptionalGuid(splitPropertyId == Guid.Empty ? null : splitPropertyId),
-                propertyCode,
-                null,
-                null,
-                ownerContactId,
-                ownerContactName);
+            var splitContext = await ResolveOwnerUtilitySplitJournalEntryLineContextAsync(bill.OrganizationId, splitPropertyId == Guid.Empty ? null : splitPropertyId, splitContextByPropertyId);
             var ownerPayableLine = new JournalEntryLine
             {
                 ChartOfAccountId = ownerAccountsPayableAccountId,
