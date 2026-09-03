@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using RentAll.Api.Dtos.Reports;
 using RentAll.Domain.Interfaces.Managers;
+using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 
@@ -10,11 +12,13 @@ namespace RentAll.Api.Controllers;
 public class ReportController : BaseController
 {
     private readonly IReportManager _reportManager;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<ReportController> _logger;
 
-    public ReportController(IReportManager reportManager, ILogger<ReportController> logger)
+    public ReportController(IReportManager reportManager, IServiceScopeFactory serviceScopeFactory, ILogger<ReportController> logger)
     {
         _reportManager = reportManager;
+        _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
@@ -145,11 +149,17 @@ public class ReportController : BaseController
 
         try
         {
+            var organizationId = CurrentOrganizationId;
+            var endDate = dto.EndDate!.Value;
+            var closeLines = dto.ToLines();
+            var currentUser = CurrentUser;
             var result = await _reportManager.CloseOwnerStatementMonthAsync(
-                CurrentOrganizationId,
-                dto.EndDate!.Value,
-                dto.ToLines(),
-                CurrentUser);
+                organizationId,
+                endDate,
+                closeLines,
+                currentUser);
+            result.OwnerApSoftCloseQueued = true;
+            QueueOwnerApSoftCloseAfterOwnerStatementMonthClose(organizationId, endDate, closeLines, currentUser);
             return Ok(new CloseOwnerStatementMonthResultDto(result));
         }
         catch (Exception ex)
@@ -255,5 +265,31 @@ public class ReportController : BaseController
             _logger.LogError(ex, "Error searching escrow report journal entry lines");
             return ServerError("An error occurred while retrieving escrow report journal entry lines");
         }
+    }
+
+    private void QueueOwnerApSoftCloseAfterOwnerStatementMonthClose(Guid organizationId, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var accountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
+                var softCloseResult = await accountingManager.SoftCloseOwnerApJournalEntriesForOwnerStatementMonthAsync(organizationId, endDate, lines, currentUser);
+                if (softCloseResult.FailedCount > 0)
+                {
+                    _logger.LogError(
+                        "[OwnerStatementMonthClose] Background owner AP soft close completed with {SuccessCount} success and {FailedCount} failures for organization {OrganizationId}. Errors: {Errors}",
+                        softCloseResult.SuccessCount,
+                        softCloseResult.FailedCount,
+                        organizationId,
+                        string.Join("; ", softCloseResult.Errors));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[OwnerStatementMonthClose] Background owner AP soft close failed for organization {OrganizationId}", organizationId);
+            }
+        });
     }
 }

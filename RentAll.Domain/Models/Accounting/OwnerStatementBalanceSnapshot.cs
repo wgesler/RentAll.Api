@@ -12,4 +12,5 @@ public class CloseOwnerStatementMonthResult
     public int PropertiesProcessed { get; set; }
     public int JournalEntriesCreated { get; set; }
     public int JournalEntriesUpdated { get; set; }
+    public bool OwnerApSoftCloseQueued { get; set; }
 }

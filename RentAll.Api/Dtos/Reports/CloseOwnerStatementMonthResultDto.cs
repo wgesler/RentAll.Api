@@ -5,6 +5,7 @@ public class CloseOwnerStatementMonthResultDto
     public int PropertiesProcessed { get; set; }
     public int JournalEntriesCreated { get; set; }
     public int JournalEntriesUpdated { get; set; }
+    public bool OwnerApSoftCloseQueued { get; set; }
 
     public CloseOwnerStatementMonthResultDto()
     {
@@ -15,5 +16,6 @@ public class CloseOwnerStatementMonthResultDto
         PropertiesProcessed = result.PropertiesProcessed;
         JournalEntriesCreated = result.JournalEntriesCreated;
         JournalEntriesUpdated = result.JournalEntriesUpdated;
+        OwnerApSoftCloseQueued = result.OwnerApSoftCloseQueued;
     }
 }
