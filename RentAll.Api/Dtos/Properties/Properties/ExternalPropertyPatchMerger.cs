@@ -51,6 +51,32 @@ public static class ExternalPropertyPatchMerger
         }, null);
     }
 
+    public static bool TryGetOrganizationContextForLogging(JsonElement body, out Guid organizationId, out int officeId, out Guid vendorId, out string propertyCode)
+    {
+        organizationId = Guid.Empty;
+        officeId = 0;
+        vendorId = Guid.Empty;
+        propertyCode = string.Empty;
+        if (body.ValueKind != JsonValueKind.Object)
+            return false;
+
+        if (TryGetProperty(body, "organizationId", out var organizationIdElement)
+            && organizationIdElement.TryGetGuid(out organizationId)
+            && organizationId != Guid.Empty
+            && TryGetProperty(body, "officeId", out var officeIdElement)
+            && officeIdElement.ValueKind == JsonValueKind.Number
+            && officeIdElement.TryGetInt32(out officeId)
+            && TryGetProperty(body, "vendorId", out var vendorIdElement)
+            && vendorIdElement.TryGetGuid(out vendorId)
+            && TryGetProperty(body, "propertyCode", out var propertyCodeElement)
+            && propertyCodeElement.ValueKind == JsonValueKind.String)
+        {
+            propertyCode = propertyCodeElement.GetString()?.Trim() ?? string.Empty;
+        }
+
+        return organizationId != Guid.Empty;
+    }
+
     public static (bool Success, UpdatePropertyDto? UpdateDto, string? ErrorMessage) TryMerge(Property existing, JsonElement body, ExternalPropertyKeyDto keys)
     {
         if (keys.OrganizationId != existing.OrganizationId)

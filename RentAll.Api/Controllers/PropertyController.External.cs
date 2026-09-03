@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Services;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
@@ -14,34 +15,42 @@ public partial class PropertyController
         if (dto == null)
             return BadRequest("Property data is required");
 
+        var attempt = new ExternalPropertyApiAttemptLog
+        {
+            OrganizationId = dto.OrganizationId,
+            OfficeId = dto.OfficeId,
+            VendorId = dto.VendorId,
+            PropertyCode = dto.PropertyCode?.Trim(),
+            EventType = PropertyUploadLogEvents.PropertyCreate,
+            Operation = PropertyUploadLogOperations.CreateProperty
+        };
+
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
+            return await CompleteExternalPropertyAttemptAsync(BadRequest(errorMessage ?? "Invalid request data"), attempt, errorMessage);
 
         var accessError = await ValidateExternalPropertyAccessAsync(dto.OrganizationId, dto.OfficeId);
         if (accessError != null)
-            return accessError;
+            return await CompleteExternalPropertyAttemptAsync(accessError, attempt);
 
         try
         {
             var propertyCode = dto.PropertyCode.Trim();
             var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, dto.OrganizationId);
             if (existingProperty != null)
-                return Conflict("Property Code already exists");
+                return await CompleteExternalPropertyAttemptAsync(Conflict("Property Code already exists"), attempt, "Property Code already exists");
 
             var propertyDto = dto.ToCreatePropertyDto(propertyCode);
             var (propertyDtoIsValid, propertyDtoErrorMessage) = propertyDto.IsValid();
             if (!propertyDtoIsValid)
-                return BadRequest(propertyDtoErrorMessage ?? "Invalid request data");
+                return await CompleteExternalPropertyAttemptAsync(BadRequest(propertyDtoErrorMessage ?? "Invalid request data"), attempt, propertyDtoErrorMessage);
 
             var createdProperty = await _propertyRepository.CreateAsync(propertyDto.ToModel(ExternalPropertySystemUserId));
-            await _externalPropertyUploadLogService.LogPropertyCreatedAsync(
-                dto.OrganizationId,
-                dto.OfficeId,
-                dto.VendorId,
-                createdProperty.PropertyId,
-                createdProperty.PropertyCode);
-            return Ok(new PropertyResponseDto(createdProperty));
+            return await CompleteExternalPropertyAttemptAsync(
+                Ok(new PropertyResponseDto(createdProperty)),
+                attempt,
+                $"Property {createdProperty.PropertyCode} created.",
+                createdProperty.PropertyId);
         }
         catch (Exception ex)
         {
@@ -52,7 +61,7 @@ public partial class PropertyController
                 dto.OfficeId,
                 dto.PropertyCode,
                 dto.VendorId);
-            return ServerError("An error occurred while saving the property");
+            return await CompleteExternalPropertyAttemptAsync(ServerError("An error occurred while saving the property"), attempt, ex.Message);
         }
     }
 
@@ -60,36 +69,61 @@ public partial class PropertyController
     [HttpPut("external")]
     public async Task<IActionResult> UpdateExternalProperty([FromBody] JsonElement body)
     {
+        ExternalPropertyApiAttemptLog attempt = new ExternalPropertyApiAttemptLog
+        {
+            EventType = PropertyUploadLogEvents.PropertyUpdate,
+            Operation = PropertyUploadLogOperations.UpdateProperty
+        };
+        if (ExternalPropertyPatchMerger.TryGetOrganizationContextForLogging(body, out var organizationId, out var officeId, out var vendorId, out var propertyCode))
+        {
+            attempt = new ExternalPropertyApiAttemptLog
+            {
+                OrganizationId = organizationId,
+                OfficeId = officeId,
+                VendorId = vendorId,
+                PropertyCode = propertyCode,
+                EventType = PropertyUploadLogEvents.PropertyUpdate,
+                Operation = PropertyUploadLogOperations.UpdateProperty
+            };
+        }
+
         var (keysParsed, keys, keysError) = ExternalPropertyPatchMerger.TryParseRequiredKeys(body);
         if (!keysParsed || keys == null)
-            return BadRequest(keysError ?? "Invalid request data");
+            return await CompleteExternalPropertyAttemptAsync(BadRequest(keysError ?? "Invalid request data"), attempt, keysError);
+
+        attempt = new ExternalPropertyApiAttemptLog
+        {
+            OrganizationId = keys.OrganizationId,
+            OfficeId = keys.OfficeId,
+            VendorId = keys.VendorId,
+            PropertyCode = keys.PropertyCode,
+            EventType = PropertyUploadLogEvents.PropertyUpdate,
+            Operation = PropertyUploadLogOperations.UpdateProperty
+        };
 
         var accessError = await ValidateExternalPropertyAccessAsync(keys.OrganizationId, keys.OfficeId);
         if (accessError != null)
-            return accessError;
+            return await CompleteExternalPropertyAttemptAsync(accessError, attempt);
 
         try
         {
             var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(keys.PropertyCode, keys.OrganizationId);
             if (existingProperty == null)
-                return NotFound("Property not found");
+                return await CompleteExternalPropertyAttemptAsync(NotFound("Property not found"), attempt, "Property not found");
 
             var (merged, updateDto, mergeError) = ExternalPropertyPatchMerger.TryMerge(existingProperty, body, keys);
             if (!merged || updateDto == null)
-                return BadRequest(mergeError ?? "Invalid request data");
+                return await CompleteExternalPropertyAttemptAsync(BadRequest(mergeError ?? "Invalid request data"), attempt, mergeError);
 
             var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, updateDto);
             if (updateResult == null)
-                return BadRequest(updateError ?? "Invalid request data");
+                return await CompleteExternalPropertyAttemptAsync(BadRequest(updateError ?? "Invalid request data"), attempt, updateError);
 
-            await _externalPropertyUploadLogService.LogPropertyUpdatedAsync(
-                keys.OrganizationId,
-                keys.OfficeId,
-                keys.VendorId,
-                updateResult.PropertyId,
-                updateResult.PropertyCode);
-
-            return Ok(new PropertyResponseDto(updateResult));
+            return await CompleteExternalPropertyAttemptAsync(
+                Ok(new PropertyResponseDto(updateResult)),
+                attempt,
+                $"Property {updateResult.PropertyCode} updated.",
+                updateResult.PropertyId);
         }
         catch (Exception ex)
         {
@@ -100,7 +134,7 @@ public partial class PropertyController
                 keys.OfficeId,
                 keys.PropertyCode,
                 keys.VendorId);
-            return ServerError("An error occurred while saving the property");
+            return await CompleteExternalPropertyAttemptAsync(ServerError("An error occurred while saving the property"), attempt, ex.Message);
         }
     }
 
