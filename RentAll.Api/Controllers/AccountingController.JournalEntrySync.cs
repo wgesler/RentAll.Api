@@ -239,6 +239,33 @@ public partial class AccountingController
         }
     }
 
+    [HttpPost("journal-entry/sync/type/start")]
+    public IActionResult StartDocumentTypeJournalEntriesSync([FromBody] StartDocumentTypeJournalEntrySyncRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var syncType = NormalizeSyncType(dto.SyncType);
+        if (string.IsNullOrWhiteSpace(syncType) || !DocumentTypeSyncTypes.Contains(syncType))
+            return BadRequest("Sync type is not supported");
+
+        var officeIds = ResolveRequestedOfficeIds(new SyncJournalEntriesRequestDto { OfficeIds = dto.OfficeIds });
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Forbid();
+
+        var jobId = Guid.NewGuid().ToString("N");
+        var job = CreateDocumentTypeSyncJob(jobId, syncType);
+        SyncJobs[jobId] = job;
+
+        _ = Task.Run(() => RunDocumentTypeJournalEntriesSyncJobAsync(job, syncType, CurrentOrganizationId, officeIds, CurrentUser));
+
+        return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
+    }
+
     [HttpPost("journal-entry/sync/transfers/start")]
     public IActionResult StartTransferJournalEntriesSync([FromBody] SyncJournalEntriesRequestDto dto)
     {
@@ -463,6 +490,99 @@ public partial class AccountingController
         }
 
         return job;
+    }
+
+    private static readonly HashSet<string> DocumentTypeSyncTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "invoice",
+        "payment",
+        "bill",
+        "receipt",
+        "workOrder",
+        "deposit",
+        "transfer"
+    };
+
+    private JournalEntrySyncJobState CreateDocumentTypeSyncJob(string jobId, string syncType)
+    {
+        var label = GetSyncTypeMap()
+            .FirstOrDefault(map => string.Equals(map.Type, syncType, StringComparison.OrdinalIgnoreCase))
+            .Label;
+
+        var job = new JournalEntrySyncJobState
+        {
+            JobId = jobId,
+            IsRunning = true,
+            IsCompleted = false,
+            Message = "Sync started."
+        };
+
+        job.Types[syncType] = new JournalEntrySyncJobTypeStatusDto
+        {
+            Type = syncType,
+            Label = string.IsNullOrWhiteSpace(label) ? syncType : label,
+            Status = "Pending"
+        };
+
+        return job;
+    }
+
+    private async Task RunDocumentTypeJournalEntriesSyncJobAsync(
+        JournalEntrySyncJobState job,
+        string syncType,
+        Guid organizationId,
+        string officeIds,
+        Guid currentUser)
+    {
+        var progress = new Progress<JournalEntrySyncProgress>(update => ApplySyncProgress(job, update));
+
+        try
+        {
+            SetSyncJobMessage(job, $"Syncing {syncType}...");
+            await RunScopedJournalEntrySyncAsync(async manager =>
+            {
+                switch (syncType)
+                {
+                    case "invoice":
+                        await manager.SyncInvoiceJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+                        break;
+                    case "payment":
+                        await manager.SyncPaymentJournalEntriesAsync(organizationId, officeIds, currentUser, progress, syncDocumentLinksAtEnd: true);
+                        break;
+                    case "bill":
+                        await manager.SyncBillJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+                        break;
+                    case "receipt":
+                        await manager.SyncReceiptJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+                        break;
+                    case "workOrder":
+                        await manager.SyncWorkOrderJournalEntriesAsync(organizationId, officeIds, currentUser, progress);
+                        break;
+                    case "deposit":
+                        await manager.SyncDepositJournalEntriesAsync(organizationId, officeIds, currentUser, progress, syncDocumentLinksAtEnd: true);
+                        break;
+                    case "transfer":
+                        await manager.SyncTransferJournalEntriesAsync(organizationId, officeIds, currentUser, progress, syncDocumentLinksAtEnd: false);
+                        break;
+                    default:
+                        throw new Exception($"Sync type '{syncType}' is not supported.");
+                }
+            });
+            SetSyncJobMessage(job, "Sync complete.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running document-type journal-entry sync job {JobId} ({SyncType})", job.JobId, syncType);
+            SetSyncJobMessage(job, $"Sync failed: {ex.Message}");
+        }
+        finally
+        {
+            lock (job.SyncRoot)
+            {
+                job.IsRunning = false;
+                job.IsCompleted = true;
+            }
+        }
     }
 
     private JournalEntrySyncJobState CreateTransferSyncJob(string jobId)
