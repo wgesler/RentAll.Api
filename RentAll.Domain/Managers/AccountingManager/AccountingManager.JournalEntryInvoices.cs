@@ -511,15 +511,11 @@ public partial class AccountingManager
             IReadOnlyList<JournalEntry> amountContextEntries = workingEntries;
             if (loadCrossPeriodExpectedContext || InvoiceCrossesAccountingPeriodBoundary(invoice))
             {
-                var invoiceEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-                {
-                    OrganizationId = invoice.OrganizationId,
-                    OfficeIds = invoice.OfficeId.ToString(),
-                    SourceTypeId = (int)SourceType.Invoice,
-                    SourceId = invoice.InvoiceId,
-                    StartDate = DateOnly.MinValue,
-                    IncludeUnposted = true
-                })).ToList();
+                var invoiceEntries = await GetDocumentJournalEntriesForSyncAsync(
+                    invoice.OrganizationId,
+                    invoice.OfficeId,
+                    SourceType.Invoice,
+                    invoice.InvoiceId);
                 amountContextEntries = invoiceEntries
                     .Concat(workingEntries)
                     .GroupBy(entry => entry.JournalEntryId)

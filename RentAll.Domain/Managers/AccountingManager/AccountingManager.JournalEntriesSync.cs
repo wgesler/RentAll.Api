@@ -914,48 +914,19 @@ public partial class AccountingManager
 
     private async Task<bool> ReceiptHasLinkedJournalEntryAsync(Guid organizationId, int officeId, Guid receiptId)
     {
-        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            SourceTypeId = (int)SourceType.Receipt,
-            SourceId = receiptId,
-            IncludeUnposted = true,
-            StartDate = DateOnly.MinValue
-        });
-
-        return entries.Any(entry =>
-            entry.JournalEntryKindId == JournalEntryKind.Receipt
-            || entry.JournalEntryKindId == JournalEntryKind.CrossOfficeCreditCard);
+        var entries = await GetReceiptJournalEntriesForSyncAsync(organizationId, officeId, receiptId);
+        return entries.Count > 0;
     }
 
     private async Task<bool> InvoiceHasChargeJournalEntryAsync(Guid organizationId, int officeId, Guid invoiceId)
     {
-        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            SourceId = invoiceId,
-            IncludeUnposted = true,
-            StartDate = DateOnly.MinValue
-        });
-
+        var entries = await GetDocumentJournalEntriesForSyncAsync(organizationId, officeId, SourceType.Invoice, invoiceId);
         return entries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.Charge);
     }
 
     private async Task<bool> BillHasBillJournalEntryAsync(Guid organizationId, int officeId, Guid billReceiptId)
     {
-        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            SourceTypeId = (int)SourceType.Bill,
-            SourceId = billReceiptId,
-            IncludeUnposted = true,
-            StartDate = DateOnly.MinValue
-        });
-
+        var entries = await GetDocumentJournalEntriesForSyncAsync(organizationId, officeId, SourceType.Bill, billReceiptId);
         return entries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.Bill);
     }
 
@@ -984,17 +955,8 @@ public partial class AccountingManager
 
     private async Task<bool> WorkOrderHasLinkedJournalEntryAsync(Guid organizationId, int officeId, Guid workOrderId)
     {
-        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            SourceTypeId = (int)SourceType.WorkOrder,
-            SourceId = workOrderId,
-            IncludeUnposted = true,
-            StartDate = DateOnly.MinValue
-        });
-
-        return entries.Any();
+        var entries = await GetDocumentJournalEntriesForSyncAsync(organizationId, officeId, SourceType.WorkOrder, workOrderId);
+        return entries.Count > 0;
     }
 
     private static void ReportSyncProgress(IProgress<JournalEntrySyncProgress>? progress, string syncType, int total, int processed, JournalEntrySyncResult result, string status)

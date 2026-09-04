@@ -337,14 +337,11 @@ public partial class AccountingManager
     #region Helpers
     private async Task<int> GetNextBillPaymentSequenceAsync(Receipt bill)
     {
-        var existingEntries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = bill.OrganizationId,
-            OfficeIds = bill.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.BillPayment,
-            SourceId = bill.ReceiptId,
-            IncludeUnposted = true
-        });
+        var existingEntries = await GetDocumentJournalEntriesForSyncAsync(
+            bill.OrganizationId,
+            bill.OfficeId,
+            SourceType.BillPayment,
+            bill.ReceiptId);
 
         return existingEntries.Count();
     }
