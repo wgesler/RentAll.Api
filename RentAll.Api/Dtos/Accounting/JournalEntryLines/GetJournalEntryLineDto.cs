@@ -13,6 +13,7 @@ public class GetJournalEntryLineDto
     public bool UnclearedOnly { get; set; }
     public bool IncludeCashOnly { get; set; }
     public bool ShowAll { get; set; }
+    public bool IncludePreStartBills { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 

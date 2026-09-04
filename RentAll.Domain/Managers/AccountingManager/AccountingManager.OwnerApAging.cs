@@ -105,11 +105,17 @@ public partial class AccountingManager
 
     private static bool ShouldIncludeOwnerApAgingLine(JournalEntryLineSearchResult line, IReadOnlyDictionary<int, DateOnly> cutoffs)
     {
+        if (IsBillRelatedApAgingSourceType(line.SourceTypeId))
+            return true;
+
         if (!cutoffs.TryGetValue(line.OfficeId, out var cutoff))
             return true;
 
         return line.TransactionDate >= cutoff;
     }
+
+    private static bool IsBillRelatedApAgingSourceType(int? sourceTypeId)
+        => sourceTypeId is (int)SourceType.Bill or (int)SourceType.BillPayment or (int)SourceType.BillCredit;
 
     /// <summary>
     /// Owner AP Aging account scope: configured owner A/P plus chart account No 2001 when present.

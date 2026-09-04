@@ -249,7 +249,7 @@ public partial class AccountingManager
 
     async Task SyncInvoicePaymentForHealthFixAsync(Payment paymentSummary, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
-        await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
+        var createResult = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
             paymentSummary.PaymentId,
             organizationId,
             currentUser,
@@ -263,7 +263,12 @@ public partial class AccountingManager
 
         result.JournalEntriesSkipped++;
         var payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
-        result.Errors.Add($"{ResolvePaymentDocumentCode(payment, paymentSummary)}: no Health Payment JE after fix.");
+        var paymentCode = ResolvePaymentDocumentCode(payment, paymentSummary);
+        var bailTrail = createResult.FormatBailTrail().Trim();
+        var detail = string.IsNullOrWhiteSpace(bailTrail)
+            ? "no Health Payment JE after fix."
+            : bailTrail;
+        result.Errors.Add($"{paymentCode}: {detail}");
     }
 
     async Task SyncDepositForHealthFixAsync(Guid organizationId, Guid depositId, Guid currentUser, JournalEntrySyncResult result)

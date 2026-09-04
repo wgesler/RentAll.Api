@@ -94,6 +94,7 @@ public partial class JournalEntryRepository
             UnclearedOnly = criteria.UnclearedOnly,
             IncludeCashOnly = criteria.IncludeCashOnly,
             ShowAll = criteria.ShowAll,
+            IncludePreStartBills = criteria.IncludePreStartBills,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
         }, commandTimeout: 120);

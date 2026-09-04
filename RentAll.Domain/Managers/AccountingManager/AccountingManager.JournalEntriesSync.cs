@@ -968,6 +968,7 @@ public partial class AccountingManager
             Processed = processed,
             Skipped = result.JournalEntriesSkipped,
             Errors = result.Errors.Count,
+            ErrorMessages = result.Errors.ToList(),
             Status = status
         });
     }

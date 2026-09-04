@@ -769,6 +769,7 @@ public partial class AccountingController
             status.Processed = update.Processed;
             status.Skipped = update.Skipped;
             status.Errors = update.Errors;
+            status.ErrorMessages = update.ErrorMessages?.ToList() ?? [];
             status.Status = string.IsNullOrWhiteSpace(update.Status) ? status.Status : update.Status;
         }
     }
@@ -837,6 +838,7 @@ public partial class AccountingController
             Processed = status.Processed,
             Skipped = status.Skipped,
             Errors = status.Errors,
+            ErrorMessages = status.ErrorMessages?.ToList() ?? [],
             Status = status.Status
         };
     }

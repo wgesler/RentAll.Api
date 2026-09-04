@@ -17,5 +17,6 @@ public class JournalEntrySyncJobTypeStatusDto
     public int Processed { get; set; }
     public int Skipped { get; set; }
     public int Errors { get; set; }
+    public List<string> ErrorMessages { get; set; } = [];
     public string Status { get; set; } = "Pending";
 }
