@@ -257,10 +257,16 @@ public partial class AccountingController
         if (string.IsNullOrWhiteSpace(officeIds))
             return Forbid();
 
-        var documentIds = (dto.DocumentIds ?? Array.Empty<Guid>())
-            .Where(id => id != Guid.Empty)
-            .Distinct()
-            .ToArray();
+        var documentIds = dto.ResolveDocumentIds();
+
+        if (dto.HealthFix)
+        {
+            _logger.LogError(
+                "[HealthFixTrace] Start SyncType={SyncType} PaymentKindId={PaymentKindId} DocumentCount={DocumentCount}",
+                syncType,
+                dto.PaymentKindId,
+                documentIds.Length);
+        }
 
         var jobId = Guid.NewGuid().ToString("N");
         var job = CreateDocumentTypeSyncJob(jobId, syncType);
@@ -273,7 +279,8 @@ public partial class AccountingController
             officeIds,
             CurrentUser,
             documentIds,
-            dto.PaymentKindId));
+            dto.PaymentKindId,
+            dto.HealthFix));
 
         return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
     }
@@ -546,7 +553,8 @@ public partial class AccountingController
         string officeIds,
         Guid currentUser,
         Guid[]? documentIds = null,
-        int? paymentKindId = null)
+        int? paymentKindId = null,
+        bool healthFix = false)
     {
         var progress = new Progress<JournalEntrySyncProgress>(update => ApplySyncProgress(job, update));
         var targetedDocumentIds = documentIds?
@@ -556,6 +564,9 @@ public partial class AccountingController
 
         try
         {
+            if (healthFix && targetedDocumentIds.Length == 0)
+                throw new InvalidOperationException("Health fix requires at least one document ID.");
+
             SetSyncJobMessage(job, targetedDocumentIds.Length > 0
                 ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
                 : $"Syncing {syncType}...");
@@ -573,6 +584,9 @@ public partial class AccountingController
                         progress);
                     return;
                 }
+
+                if (healthFix)
+                    throw new InvalidOperationException("Health fix cannot run a full sync.");
 
                 switch (syncType)
                 {
