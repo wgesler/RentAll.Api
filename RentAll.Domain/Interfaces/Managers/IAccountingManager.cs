@@ -147,6 +147,14 @@ public interface IAccountingManager
         DateOnly? endDate = null,
         IProgress<JournalEntrySyncProgress>? progress = null);
     Task<JournalEntrySyncResult> ClearAllJournalEntriesAsync(Guid organizationId, string officeIds);
+    Task<JournalEntrySyncResult> SyncJournalEntriesForHealthFixAsync(
+        Guid organizationId,
+        string officeIds,
+        string syncType,
+        IReadOnlyList<Guid> documentIds,
+        int? paymentKindId,
+        Guid currentUser,
+        IProgress<JournalEntrySyncProgress>? progress = null);
     #endregion
 
     #region Periodic Tasks

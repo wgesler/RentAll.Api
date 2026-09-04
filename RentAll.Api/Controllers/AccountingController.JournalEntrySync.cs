@@ -257,11 +257,23 @@ public partial class AccountingController
         if (string.IsNullOrWhiteSpace(officeIds))
             return Forbid();
 
+        var documentIds = (dto.DocumentIds ?? Array.Empty<Guid>())
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
         var jobId = Guid.NewGuid().ToString("N");
         var job = CreateDocumentTypeSyncJob(jobId, syncType);
         SyncJobs[jobId] = job;
 
-        _ = Task.Run(() => RunDocumentTypeJournalEntriesSyncJobAsync(job, syncType, CurrentOrganizationId, officeIds, CurrentUser));
+        _ = Task.Run(() => RunDocumentTypeJournalEntriesSyncJobAsync(
+            job,
+            syncType,
+            CurrentOrganizationId,
+            officeIds,
+            CurrentUser,
+            documentIds,
+            dto.PaymentKindId));
 
         return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
     }
@@ -532,15 +544,36 @@ public partial class AccountingController
         string syncType,
         Guid organizationId,
         string officeIds,
-        Guid currentUser)
+        Guid currentUser,
+        Guid[]? documentIds = null,
+        int? paymentKindId = null)
     {
         var progress = new Progress<JournalEntrySyncProgress>(update => ApplySyncProgress(job, update));
+        var targetedDocumentIds = documentIds?
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray() ?? [];
 
         try
         {
-            SetSyncJobMessage(job, $"Syncing {syncType}...");
+            SetSyncJobMessage(job, targetedDocumentIds.Length > 0
+                ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
+                : $"Syncing {syncType}...");
             await RunScopedJournalEntrySyncAsync(async manager =>
             {
+                if (targetedDocumentIds.Length > 0)
+                {
+                    await manager.SyncJournalEntriesForHealthFixAsync(
+                        organizationId,
+                        officeIds,
+                        syncType,
+                        targetedDocumentIds,
+                        paymentKindId,
+                        currentUser,
+                        progress);
+                    return;
+                }
+
                 switch (syncType)
                 {
                     case "invoice":
