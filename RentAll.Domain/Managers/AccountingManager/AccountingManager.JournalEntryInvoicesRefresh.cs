@@ -8,12 +8,6 @@ public partial class AccountingManager
     #region Journal Entry
     private async Task RefreshInvoiceChargeJournalEntriesAsync(Invoice invoice, Guid currentUser)
     {
-        if (!invoice.IsActive)
-        {
-            await DeleteJournalEntriesForInvoiceChargesAsync(invoice);
-            return;
-        }
-
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
         {
             await DeleteJournalEntriesForInvoiceChargesAsync(invoice);

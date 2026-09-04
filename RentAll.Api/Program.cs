@@ -22,6 +22,7 @@ using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Documents;
 using RentAll.Infrastructure.Repositories.Emails;
+using RentAll.Infrastructure.Repositories.Health;
 using RentAll.Infrastructure.Repositories.Leads;
 using RentAll.Infrastructure.Repositories.Logging;
 using RentAll.Infrastructure.Repositories.Maintenances;
@@ -222,6 +223,7 @@ builder.Services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
 builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ILoggingRepository, LoggingRepository>();
+builder.Services.AddScoped<IHealthRepository, HealthRepository>();
 
 builder.Services.AddHostedService<ApplicationLogHostedService>();
 builder.Services.AddHostedService<ExternalPropertyPhotoImportHostedService>();

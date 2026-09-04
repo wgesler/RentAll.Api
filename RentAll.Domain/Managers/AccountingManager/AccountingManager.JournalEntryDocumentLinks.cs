@@ -23,7 +23,6 @@ public partial class AccountingManager
         {
             var linkResult = new JournalEntrySyncResult();
             var payments = _officeSyncCache!.Payments
-                .Where(payment => payment.IsActive)
                 .OrderBy(payment => payment.PaymentDate)
                 .ThenBy(payment => payment.PaymentId)
                 .ToList();
@@ -112,7 +111,7 @@ public partial class AccountingManager
                 else
                     payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
 
-                if (payment == null || !payment.IsActive)
+                if (payment == null)
                     continue;
 
                 await EnsurePaymentCodePersistedAsync(payment, currentUser);

@@ -124,12 +124,6 @@ public partial class AccountingManager
 
     private async Task SyncOwnerPaymentJournalEntryAsync(Payment paymentSummary, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
-        if (!paymentSummary.IsActive)
-        {
-            result.JournalEntriesSkipped++;
-            return;
-        }
-
         if (paymentSummary.OwnerAllocations.Count == 0)
         {
             result.JournalEntriesSkipped++;

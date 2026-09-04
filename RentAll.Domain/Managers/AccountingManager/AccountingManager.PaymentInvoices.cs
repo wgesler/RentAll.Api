@@ -1025,15 +1025,55 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.DepositId = existing.DepositId;
+        payment.PostingStatusId = existing.PostingStatusId;
 
-        await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-        await DeleteJournalEntriesForPaymentAsync(existing);
+        var revertPayment = existing;
+        var revertAllocations = existing.LedgerLines
+            .GroupBy(line => line.InvoiceId)
+            .Select(group => new PaymentInvoiceAllocation
+            {
+                InvoiceId = group.Key,
+                Amount = group.Sum(line => line.Amount),
+                Description = group.First().Description ?? string.Empty
+            })
+            .ToList();
 
-        var updatedPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
-        await CreateJournalEntriesFromInvoicePaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+        try
+        {
+            await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
+            await DeleteJournalEntriesForPaymentAsync(existing);
 
-        return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
-            ?? updatedPayment;
+            var updatedPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
+            await CreateJournalEntriesFromInvoicePaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+
+            return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
+                ?? updatedPayment;
+        }
+        catch
+        {
+            await TryRevertInvoicePaymentUpdateAsync(revertPayment, revertAllocations, currentUser);
+            throw;
+        }
+    }
+
+    private async Task TryRevertInvoicePaymentUpdateAsync(Payment revertPayment, IReadOnlyList<PaymentInvoiceAllocation> revertAllocations, Guid currentUser)
+    {
+        try
+        {
+            var current = await _accountingRepository.GetPaymentByIdAsync(revertPayment.PaymentId, revertPayment.OrganizationId);
+            if (current == null)
+                return;
+
+            await ClearPaymentDocumentLinksAsync(current.OrganizationId, current.PaymentId, currentUser);
+            await DeleteJournalEntriesForPaymentAsync(current);
+
+            var restoredPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(revertPayment, revertAllocations, currentUser);
+            await CreateJournalEntriesFromInvoicePaymentDocumentAsync(restoredPayment.PaymentId, revertPayment.OrganizationId, currentUser);
+        }
+        catch
+        {
+            // Best-effort revert after a failed invoice payment update.
+        }
     }
 
     private static void ValidateExplicitPaymentAllocations(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations)

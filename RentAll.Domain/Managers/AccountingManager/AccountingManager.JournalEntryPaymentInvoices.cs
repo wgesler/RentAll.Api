@@ -8,7 +8,25 @@ public partial class AccountingManager
 {
     #region Journal Entry
     public async Task<List<JournalEntry>> CreateJournalEntriesFromInvoicePaymentDocumentAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
-        => (await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(paymentId, organizationId, currentUser, allowPartialAllocationsOnMismatch)).JournalEntries;
+    {
+        var result = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
+            paymentId,
+            organizationId,
+            currentUser,
+            allowPartialAllocationsOnMismatch);
+
+        if (result.JournalEntries.Count == 0 && paymentId != Guid.Empty)
+        {
+            var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+            if (payment?.LedgerLines.Count > 0)
+            {
+                throw new Exception(
+                    $"Payment journal entry sync failed.{Environment.NewLine}{result.FormatBailTrail()}");
+            }
+        }
+
+        return result.JournalEntries;
+    }
 
     private async Task<PaymentJournalEntryCreateResult> CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool allowPartialAllocationsOnMismatch = false)
     {
@@ -108,19 +126,16 @@ public partial class AccountingManager
         await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
 
         var invoicePayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice))
-            .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
         var billPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill))
-            .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
         var ownerPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Owner))
-            .Where(payment => payment.IsActive)
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
@@ -293,9 +308,6 @@ public partial class AccountingManager
             SourceType.InvoicePayment,
             payment.PaymentId);
         result.Note($"Existing SourceType.InvoicePayment JEs for payment: {existingPaymentDocumentEntries.Count}");
-
-        foreach (var consolidatedEntry in existingPaymentDocumentEntries)
-            await DeleteOpenJournalEntryAsync(consolidatedEntry.JournalEntryId, payment.OrganizationId);
 
         foreach (var application in applications)
         {
@@ -630,7 +642,7 @@ public partial class AccountingManager
 
     private async Task SyncPaymentDocumentLinksAsync(Payment payment, Guid currentUser)
     {
-        if (payment.PaymentId == Guid.Empty || !payment.IsActive)
+        if (payment.PaymentId == Guid.Empty)
             return;
 
         if (!await IsAccountingFeatureEnabledAsync(payment.OrganizationId))

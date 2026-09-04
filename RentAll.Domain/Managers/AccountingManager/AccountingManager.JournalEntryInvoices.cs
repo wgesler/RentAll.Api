@@ -19,15 +19,9 @@ public partial class AccountingManager
 
     private async Task<AccountingJournalEntryResult> CreateJournalEntryFromInvoiceWithResultAsync(
         Invoice invoice,
-        Guid currentUser,
-        bool processInactiveInvoice = false)
+        Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
-            return AccountingJournalEntryResult.Success();
-
-        // Day-to-day invoice save/refresh skips inactive. Sync (and similar backfills) pass
-        // processInactiveInvoice when the inactive invoice is intentionally in the work list.
-        if (!processInactiveInvoice && !invoice.IsActive)
             return AccountingJournalEntryResult.Success();
 
         try

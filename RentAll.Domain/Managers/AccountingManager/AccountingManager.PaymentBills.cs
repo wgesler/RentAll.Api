@@ -60,19 +60,55 @@ public partial class AccountingManager
         payment.DepositId = existing.DepositId;
         payment.PostingStatusId = existing.PostingStatusId;
 
+        var revertAllocations = existing.BillAllocations.ToList();
+        var revertPayment = existing;
+
         var preparedApplications = await PrepareBillPaymentApplicationsAsync(payment, allocations, currentUser);
         payment.CostCodeId = await ResolveBillPaymentHeaderCostCodeIdAsync(payment, preparedApplications);
 
-        await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-        await DeleteJournalEntriesForPaymentAsync(existing);
-        await ReverseBillPaymentApplicationsAsync(existing, currentUser);
+        try
+        {
+            await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
+            await DeleteJournalEntriesForPaymentAsync(existing);
+            await ReverseBillPaymentApplicationsAsync(existing, currentUser);
 
-        var updatedPayment = await _accountingRepository.UpdatePaymentWithBillAllocationsAsync(payment, allocations, currentUser);
-        await ApplyPreparedBillPaymentApplicationsAsync(preparedApplications, payment.PaymentTypeId, currentUser);
-        await CreateJournalEntriesFromBillPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+            var updatedPayment = await _accountingRepository.UpdatePaymentWithBillAllocationsAsync(payment, allocations, currentUser);
+            await ApplyPreparedBillPaymentApplicationsAsync(preparedApplications, payment.PaymentTypeId, currentUser);
+            await CreateJournalEntriesFromBillPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
 
-        return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
-            ?? updatedPayment;
+            return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
+                ?? updatedPayment;
+        }
+        catch
+        {
+            await TryRevertBillPaymentUpdateAsync(revertPayment, revertAllocations, currentUser);
+            throw;
+        }
+    }
+
+    private async Task TryRevertBillPaymentUpdateAsync(Payment revertPayment, IReadOnlyList<PaymentBillAllocation> revertAllocations, Guid currentUser)
+    {
+        try
+        {
+            var current = await _accountingRepository.GetPaymentByIdAsync(revertPayment.PaymentId, revertPayment.OrganizationId);
+            if (current == null)
+                return;
+
+            await ClearPaymentDocumentLinksAsync(current.OrganizationId, current.PaymentId, currentUser);
+            await DeleteJournalEntriesForPaymentAsync(current);
+            await ReverseBillPaymentApplicationsAsync(current, currentUser);
+
+            var preparedApplications = await PrepareBillPaymentApplicationsAsync(revertPayment, revertAllocations, currentUser);
+            revertPayment.CostCodeId = await ResolveBillPaymentHeaderCostCodeIdAsync(revertPayment, preparedApplications);
+
+            var restoredPayment = await _accountingRepository.UpdatePaymentWithBillAllocationsAsync(revertPayment, revertAllocations, currentUser);
+            await ApplyPreparedBillPaymentApplicationsAsync(preparedApplications, revertPayment.PaymentTypeId, currentUser);
+            await CreateJournalEntriesFromBillPaymentDocumentAsync(restoredPayment.PaymentId, revertPayment.OrganizationId, currentUser);
+        }
+        catch
+        {
+            // Best-effort revert after a failed bill payment update.
+        }
     }
 
     private static void EnsureBillPayment(Payment payment)
@@ -131,9 +167,6 @@ public partial class AccountingManager
 
             var bill = await _maintenanceRepository.GetReceiptByIdAsync(allocation.ReceiptId, payment.OrganizationId)
                 ?? throw new Exception("Invalid Bill");
-
-            if (!bill.IsActive)
-                throw new Exception($"Bill {bill.ReceiptCode} is inactive.");
 
             if (bill.OfficeId != payment.OfficeId)
                 throw new Exception($"Bill {bill.ReceiptCode} office does not match payment office.");

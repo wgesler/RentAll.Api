@@ -21,13 +21,24 @@ public partial class AccountingManager
         if (existingInvoice == null)
             throw new Exception("Invoice not found");
 
+        var snapshot = existingInvoice;
+
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
         await ValidateIncomingInvoicePaymentLedgerLinesAsync(invoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
-        await SyncLinkedPaymentAmountsFromInvoiceAsync(updatedInvoice, invoice.ModifiedBy);
-        await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, existingInvoice);
-        return updatedInvoice;
+
+        try
+        {
+            await SyncLinkedPaymentAmountsFromInvoiceAsync(updatedInvoice, invoice.ModifiedBy);
+            await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, existingInvoice);
+            return updatedInvoice;
+        }
+        catch
+        {
+            await RestoreInvoiceSnapshotAsync(snapshot);
+            throw;
+        }
     }
 
     private static void MergeInvoiceHeaderFromExisting(Invoice incoming, Invoice existing)
@@ -101,6 +112,10 @@ public partial class AccountingManager
 
     public async Task<Receipt> UpdateBillAsync(Receipt bill, Guid currentUser)
     {
+        var snapshot = bill.ReceiptId != Guid.Empty
+            ? await LoadReceiptSnapshotForRevertAsync(bill.ReceiptId, bill.OrganizationId)
+            : null;
+
         var existingBill = bill.ReceiptId != Guid.Empty
             ? await _maintenanceRepository.GetReceiptByIdAsync(bill.ReceiptId, bill.OrganizationId)
             : null;
@@ -109,12 +124,22 @@ public partial class AccountingManager
         var freshBill = await _maintenanceRepository.GetReceiptByIdAsync(bill.ReceiptId, bill.OrganizationId)
             ?? throw new Exception("Bill not found after update");
 
-        if (existingBill?.BankCardId is > 0)
-            await DeleteJournalEntriesForReceiptAsync(existingBill);
+        try
+        {
+            if (existingBill?.BankCardId is > 0)
+                await DeleteJournalEntriesForReceiptAsync(existingBill);
 
-        await EnsureBillPaymentDocumentForPaidBillAsync(freshBill, currentUser);
-        await ReplaceJournalEntriesFromBillAsync(freshBill, currentUser);
-        return freshBill;
+            await EnsureBillPaymentDocumentForPaidBillAsync(freshBill, currentUser);
+            await ReplaceJournalEntriesFromBillAsync(freshBill, currentUser);
+            return freshBill;
+        }
+        catch
+        {
+            if (snapshot != null)
+                await RestoreReceiptSnapshotAsync(snapshot);
+
+            throw;
+        }
     }
 
     private async Task EnsureBillPaymentDocumentForPaidBillAsync(Receipt bill, Guid currentUser)
@@ -200,6 +225,7 @@ public partial class AccountingManager
                 amount: bill.PaidAmount,
                 message: $"Bill payment backfill failed for {bill.ReceiptCode}: {ex.Message}",
                 currentUser: currentUser);
+            throw;
         }
     }
 
@@ -223,6 +249,10 @@ public partial class AccountingManager
 
     public async Task<Receipt> UpdateReceiptAsync(Receipt receipt, Guid currentUser)
     {
+        var snapshot = receipt.ReceiptId != Guid.Empty
+            ? await LoadReceiptSnapshotForRevertAsync(receipt.ReceiptId, receipt.OrganizationId)
+            : null;
+
         var existingReceipt = receipt.ReceiptId != Guid.Empty
             ? await _maintenanceRepository.GetReceiptByIdAsync(receipt.ReceiptId, receipt.OrganizationId)
             : null;
@@ -231,11 +261,21 @@ public partial class AccountingManager
         var freshReceipt = await _maintenanceRepository.GetReceiptByIdAsync(updatedReceipt.ReceiptId, updatedReceipt.OrganizationId)
             ?? throw new Exception("Receipt not found after update");
 
-        if (existingReceipt != null && existingReceipt.BankCardId is not > 0)
-            await DeleteJournalEntriesForBillAsync(existingReceipt);
+        try
+        {
+            if (existingReceipt != null && existingReceipt.BankCardId is not > 0)
+                await DeleteJournalEntriesForBillAsync(existingReceipt);
 
-        await ReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser);
-        return freshReceipt;
+            await ReplaceJournalEntriesFromReceiptAsync(freshReceipt, currentUser);
+            return freshReceipt;
+        }
+        catch
+        {
+            if (snapshot != null)
+                await RestoreReceiptSnapshotAsync(snapshot);
+
+            throw;
+        }
     }
 
     public async Task DeleteReceiptAsync(Guid receiptId, Guid organizationId, Guid currentUser)
@@ -268,12 +308,26 @@ public partial class AccountingManager
 
     public async Task<WorkOrder> UpdateWorkOrderAsync(WorkOrder workOrder, Guid currentUser)
     {
+        var snapshot = workOrder.WorkOrderId != Guid.Empty
+            ? await LoadWorkOrderSnapshotForRevertAsync(workOrder.WorkOrderId, workOrder.OrganizationId)
+            : null;
+
         var updatedWorkOrder = await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
         var freshWorkOrder = await _maintenanceRepository.GetWorkOrderByIdAsync(updatedWorkOrder.WorkOrderId, updatedWorkOrder.OrganizationId)
             ?? throw new Exception("Work order not found after update");
 
-        await TryReplaceJournalEntriesFromWorkOrderAsync(freshWorkOrder, currentUser);
-        return freshWorkOrder;
+        try
+        {
+            await TryReplaceJournalEntriesFromWorkOrderAsync(freshWorkOrder, currentUser);
+            return freshWorkOrder;
+        }
+        catch
+        {
+            if (snapshot != null)
+                await RestoreWorkOrderSnapshotAsync(snapshot);
+
+            throw;
+        }
     }
 
     public async Task DeleteWorkOrderAsync(Guid workOrderId, Guid organizationId, Guid currentUser)
@@ -306,10 +360,23 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.DepositId = existing.DepositId;
+        payment.PostingStatusId = existing.PostingStatusId;
 
         var updated = await _accountingRepository.UpdatePaymentAsync(payment);
-        return await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
+        var freshPayment = await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
             ?? updated;
+
+        try
+        {
+            await CreateJournalEntriesFromInvoicePaymentDocumentAsync(freshPayment.PaymentId, freshPayment.OrganizationId, currentUser);
+            return freshPayment;
+        }
+        catch
+        {
+            existing.ModifiedBy = currentUser;
+            await _accountingRepository.UpdatePaymentAsync(existing);
+            throw;
+        }
     }
 
     public async Task<Payment> UpdatePaymentBillAsync(Payment payment, Guid currentUser)
@@ -322,10 +389,23 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.CostCodeId = existing.CostCodeId;
+        payment.PostingStatusId = existing.PostingStatusId;
 
         var updated = await _accountingRepository.UpdatePaymentAsync(payment);
-        return await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
+        var freshPayment = await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
             ?? updated;
+
+        try
+        {
+            await CreateJournalEntriesFromBillPaymentDocumentAsync(freshPayment.PaymentId, freshPayment.OrganizationId, currentUser);
+            return freshPayment;
+        }
+        catch
+        {
+            existing.ModifiedBy = currentUser;
+            await _accountingRepository.UpdatePaymentAsync(existing);
+            throw;
+        }
     }
 
     public Task<Payment> UpdatePaymentWithInvoiceAllocationsAsync(Payment payment, IReadOnlyList<PaymentInvoiceAllocation> allocations, string officeAccess, Guid currentUser)

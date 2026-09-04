@@ -27,7 +27,7 @@ public partial class AccountingManager
                         ?? invoiceSummary;
 
                     await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser, processInactiveInvoice: true),
+                        () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser),
                         new JournalEntryGetCriteria
                         {
                             OrganizationId = invoice.OrganizationId,
