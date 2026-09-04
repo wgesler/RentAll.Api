@@ -247,11 +247,11 @@ public partial class PropertyController
 
     private async Task<(Property? Property, IActionResult? ErrorResult)> ResolveExternalPropertyForPhotoAsync(ExternalPropertyKeyDto keys)
     {
-        var property = await _propertyRepository.GetPropertyByCodeAsync(keys.PropertyCode, keys.OrganizationId);
-        if (property == null || property.OrganizationId != keys.OrganizationId)
-            return (null, NotFound("Property not found"));
+        var (property, isExactMatch, errorResult) = await ResolveExternalPropertyByKeysAsync(keys);
+        if (errorResult != null)
+            return (null, errorResult);
 
-        if (property.OfficeId != keys.OfficeId || property.VendorId != keys.VendorId)
+        if (!isExactMatch || property == null)
             return (null, NotFound("Property not found"));
 
         SetApplicationLogContext(keys.OrganizationId, keys.OfficeId);

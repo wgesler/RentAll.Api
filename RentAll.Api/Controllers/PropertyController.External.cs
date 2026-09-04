@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Services;
+using RentAll.Domain.Models.Properties;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
@@ -36,9 +37,41 @@ public partial class PropertyController
         try
         {
             var propertyCode = dto.PropertyCode.Trim();
-            var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(propertyCode, dto.OrganizationId);
-            if (existingProperty != null)
-                return await CompleteExternalPropertyAttemptAsync(Conflict("Property Code already exists"), attempt, "Property Code already exists");
+            var keys = new ExternalPropertyKeyDto
+            {
+                OrganizationId = dto.OrganizationId,
+                OfficeId = dto.OfficeId,
+                VendorId = dto.VendorId,
+                PropertyCode = propertyCode
+            };
+
+            var (existingProperty, isExactMatch, resolveError) = await ResolveExternalPropertyByKeysAsync(keys);
+            if (resolveError != null)
+                return await CompleteExternalPropertyAttemptAsync(resolveError, attempt, "Property not found");
+
+            if (isExactMatch && existingProperty != null)
+            {
+                attempt = new ExternalPropertyApiAttemptLog
+                {
+                    OrganizationId = dto.OrganizationId,
+                    OfficeId = dto.OfficeId,
+                    VendorId = dto.VendorId,
+                    PropertyCode = propertyCode,
+                    EventType = PropertyUploadLogEvents.PropertyUpdate,
+                    Operation = PropertyUploadLogOperations.UpdateProperty
+                };
+
+                var updateDto = dto.ToUpdatePropertyDto(existingProperty, propertyCode);
+                var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, updateDto);
+                if (updateResult == null)
+                    return await CompleteExternalPropertyAttemptAsync(BadRequest(updateError ?? "Invalid request data"), attempt, updateError);
+
+                return await CompleteExternalPropertyAttemptAsync(
+                    Ok(new PropertyResponseDto(updateResult)),
+                    attempt,
+                    $"Property {updateResult.PropertyCode} updated.",
+                    updateResult.PropertyId);
+            }
 
             var propertyDto = dto.ToCreatePropertyDto(propertyCode);
             var (propertyDtoIsValid, propertyDtoErrorMessage) = propertyDto.IsValid();
@@ -107,8 +140,11 @@ public partial class PropertyController
 
         try
         {
-            var existingProperty = await _propertyRepository.GetPropertyByCodeAsync(keys.PropertyCode, keys.OrganizationId);
-            if (existingProperty == null)
+            var (existingProperty, isExactMatch, resolveError) = await ResolveExternalPropertyByKeysAsync(keys);
+            if (resolveError != null)
+                return await CompleteExternalPropertyAttemptAsync(resolveError, attempt, "Property not found");
+
+            if (!isExactMatch || existingProperty == null)
                 return await CompleteExternalPropertyAttemptAsync(NotFound("Property not found"), attempt, "Property not found");
 
             var (merged, updateDto, mergeError) = ExternalPropertyPatchMerger.TryMerge(existingProperty, body, keys);
@@ -136,6 +172,22 @@ public partial class PropertyController
                 keys.VendorId);
             return await CompleteExternalPropertyAttemptAsync(ServerError("An error occurred while saving the property"), attempt, ex.Message);
         }
+    }
+
+    private async Task<(Property? Property, bool IsExactMatch, IActionResult? ErrorResult)> ResolveExternalPropertyByKeysAsync(ExternalPropertyKeyDto keys)
+    {
+        var property = await _propertyRepository.GetPropertyByCodeAsync(keys.PropertyCode, keys.OrganizationId);
+        if (property == null)
+            return (null, false, null);
+
+        if (property.OrganizationId != keys.OrganizationId
+            || property.OfficeId != keys.OfficeId
+            || property.VendorId != keys.VendorId)
+        {
+            return (null, false, NotFound("Property not found"));
+        }
+
+        return (property, true, null);
     }
 
     private async Task<IActionResult?> ValidateExternalPropertyAccessAsync(Guid organizationId, int officeId)

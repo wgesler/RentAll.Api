@@ -261,6 +261,106 @@ public class CreateExternalPropertyDto
         };
     }
 
+    public UpdatePropertyDto ToUpdatePropertyDto(Property existingProperty, string propertyCode)
+    {
+        var updateDto = UpdatePropertyDto.FromProperty(existingProperty);
+        updateDto.OrganizationId = OrganizationId;
+        updateDto.PropertyId = existingProperty.PropertyId;
+        updateDto.PropertyCode = propertyCode;
+        updateDto.VendorId = VendorId;
+        updateDto.OfficeId = OfficeId;
+
+        if (IsActive.HasValue)
+            updateDto.IsActive = IsActive.Value;
+
+        if (MinStay.HasValue)
+            updateDto.MinStay = MinStay.Value;
+
+        if (MaxStay.HasValue)
+            updateDto.MaxStay = MaxStay.Value;
+
+        if (CheckInTimeId.HasValue)
+            updateDto.CheckInTimeId = CheckInTimeId.Value;
+
+        if (CheckOutTimeId.HasValue)
+            updateDto.CheckOutTimeId = CheckOutTimeId.Value;
+
+        updateDto.PropertyStyleId = PropertyStyleId;
+        updateDto.PropertyTypeId = PropertyTypeId;
+        updateDto.ExternalCalendar = TrimOrNull(ExternalCalendar);
+        updateDto.MonthlyRate = MonthlyRate;
+        updateDto.DailyRate = DailyRate;
+        updateDto.DepartureFee = DepartureFee ?? updateDto.DepartureFee;
+        updateDto.MaidServiceFee = MaidServiceFee ?? updateDto.MaidServiceFee;
+        updateDto.PetFee = PetFee ?? updateDto.PetFee;
+        updateDto.Bedrooms = Bedrooms;
+        updateDto.Bathrooms = Bathrooms;
+        updateDto.Accommodates = Accommodates;
+        updateDto.SquareFeet = SquareFeet;
+
+        if (BedroomId1.HasValue)
+            updateDto.BedroomId1 = BedroomId1.Value;
+
+        if (BedroomId2.HasValue)
+            updateDto.BedroomId2 = BedroomId2.Value;
+
+        if (BedroomId3.HasValue)
+            updateDto.BedroomId3 = BedroomId3.Value;
+
+        if (BedroomId4.HasValue)
+            updateDto.BedroomId4 = BedroomId4.Value;
+
+        updateDto.Address1 = Address1.Trim();
+        updateDto.Address2 = TrimOrNull(Address2);
+        updateDto.Suite = TrimOrNull(Suite);
+        updateDto.City = City.Trim();
+        updateDto.State = State.Trim();
+        updateDto.Zip = Zip.Trim();
+        updateDto.Neighborhood = TrimOrNull(Neighborhood);
+        updateDto.CrossStreet = TrimOrNull(CrossStreet);
+        updateDto.View = TrimOrNull(View);
+        updateDto.Mailbox = TrimOrNull(Mailbox);
+        updateDto.Unfurnished = Unfurnished ?? updateDto.Unfurnished;
+        updateDto.Heating = Heating ?? updateDto.Heating;
+        updateDto.Ac = Ac ?? updateDto.Ac;
+        updateDto.Elevator = Elevator ?? updateDto.Elevator;
+        updateDto.Security = Security ?? updateDto.Security;
+        updateDto.Gated = Gated ?? updateDto.Gated;
+        updateDto.PetsAllowed = PetsAllowed ?? updateDto.PetsAllowed;
+        updateDto.DogsOkay = DogsOkay ?? updateDto.DogsOkay;
+        updateDto.CatsOkay = CatsOkay ?? updateDto.CatsOkay;
+        updateDto.PoundLimit = (PoundLimit ?? updateDto.PoundLimit).Trim();
+        updateDto.Smoking = Smoking ?? updateDto.Smoking;
+        updateDto.Parking = Parking ?? updateDto.Parking;
+        updateDto.ParkingNotes = TrimOrNull(ParkingNotes) ?? updateDto.ParkingNotes;
+        updateDto.Kitchen = Kitchen ?? updateDto.Kitchen;
+        updateDto.Oven = Oven ?? updateDto.Oven;
+        updateDto.Refrigerator = Refrigerator ?? updateDto.Refrigerator;
+        updateDto.Microwave = Microwave ?? updateDto.Microwave;
+        updateDto.Dishwasher = Dishwasher ?? updateDto.Dishwasher;
+        updateDto.Bathtub = Bathtub ?? updateDto.Bathtub;
+        updateDto.WasherDryerInUnit = WasherDryerInUnit ?? updateDto.WasherDryerInUnit;
+        updateDto.WasherDryerInBldg = WasherDryerInBldg ?? updateDto.WasherDryerInBldg;
+        updateDto.Tv = Tv ?? updateDto.Tv;
+        updateDto.Cable = Cable ?? updateDto.Cable;
+        updateDto.Dvd = Dvd ?? updateDto.Dvd;
+        updateDto.Streaming = Streaming ?? updateDto.Streaming;
+        updateDto.FastInternet = FastInternet ?? updateDto.FastInternet;
+        updateDto.Deck = Deck ?? updateDto.Deck;
+        updateDto.Patio = Patio ?? updateDto.Patio;
+        updateDto.Yard = Yard ?? updateDto.Yard;
+        updateDto.Garden = Garden ?? updateDto.Garden;
+        updateDto.CommonPool = CommonPool ?? updateDto.CommonPool;
+        updateDto.PrivatePool = PrivatePool ?? updateDto.PrivatePool;
+        updateDto.Jacuzzi = Jacuzzi ?? updateDto.Jacuzzi;
+        updateDto.Sauna = Sauna ?? updateDto.Sauna;
+        updateDto.Gym = Gym ?? updateDto.Gym;
+        updateDto.Amenities = TrimOrNull(Amenities) ?? updateDto.Amenities;
+        updateDto.Description = Description.Trim();
+
+        return updateDto;
+    }
+
     private static string? ValidateBedroomId(int? bedroomId, int bedroomNumber)
     {
         if (!bedroomId.HasValue)
