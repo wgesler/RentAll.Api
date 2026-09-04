@@ -26,17 +26,40 @@ public partial class AccountingManager
                     var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceSummary.InvoiceId, organizationId)
                         ?? invoiceSummary;
 
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = invoice.OrganizationId,
-                            OfficeIds = invoice.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.Invoice,
-                            SourceId = invoice.InvoiceId,
-                            IncludeUnposted = true
-                        },
-                        result);
+                    var hadChargeJournalEntry = await InvoiceHasChargeJournalEntryAsync(
+                        invoice.OrganizationId,
+                        invoice.OfficeId,
+                        invoice.InvoiceId);
+
+                    var refreshError = await RefreshInvoiceChargeJournalEntriesAsync(invoice, currentUser);
+
+                    var hasChargeJournalEntry = await InvoiceHasChargeJournalEntryAsync(
+                        invoice.OrganizationId,
+                        invoice.OfficeId,
+                        invoice.InvoiceId);
+
+                    if (hasChargeJournalEntry && !hadChargeJournalEntry)
+                        result.JournalEntriesCreated++;
+                    else if (hasChargeJournalEntry)
+                        result.JournalEntriesSkipped++;
+                    else if (invoice.TotalAmount != 0)
+                    {
+                        var message = refreshError != null
+                            ? $"Invoice {invoice.InvoiceCode}: {refreshError}"
+                            : $"Invoice {invoice.InvoiceCode}: no charge journal entry after sync.";
+                        result.Errors.Add(message);
+                        await LogAccountingErrorAsync(
+                            trigger: "Invoice",
+                            organizationId: organizationId,
+                            officeId: invoice.OfficeId,
+                            sourceTypeId: (int)SourceType.Invoice,
+                            sourceId: invoice.InvoiceId,
+                            documentCode: invoice.InvoiceCode,
+                            accountingPeriod: invoice.AccountingPeriod == default ? null : invoice.AccountingPeriod,
+                            amount: invoice.TotalAmount,
+                            message: message,
+                            currentUser: currentUser);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -62,6 +85,9 @@ public partial class AccountingManager
             if (total == 0)
                 ReportSyncProgress(progress, "invoice", total, processed, result, "Completed");
 
+            await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+            await RepairDepositAndTransferSplitLinksAsync(organizationId, officeIds, currentUser, progress);
+
             return result;
         });
     }
@@ -80,8 +106,6 @@ public partial class AccountingManager
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
         {
             var result = new JournalEntrySyncResult();
-            var billPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill)).ToList();
-            var receiptIdsCoveredByPaymentDocuments = GetReceiptIdsCoveredByBillPaymentDocuments(billPayments);
             var bills = (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
             {
                 OrganizationId = organizationId,
@@ -105,51 +129,50 @@ public partial class AccountingManager
                         continue;
 
                     EnsureReceiptIsBill(bill);
+                    bill = await LoadReceiptWithSplitsAsync(bill);
 
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromBillWithResultAsync(bill, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = bill.OrganizationId,
-                            OfficeIds = bill.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.Bill,
-                            SourceId = bill.ReceiptId,
-                            IncludeUnposted = true
-                        },
-                        result);
-
-                    if (bill.PaidAmount != 0)
+                    var expectJournalEntry = ShouldExpectBillJournalEntry(bill);
+                    if (!expectJournalEntry)
                     {
-                        if (receiptIdsCoveredByPaymentDocuments.Contains(bill.ReceiptId))
-                        {
-                            await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
-                        }
-                        else
-                        {
-                            try
-                            {
-                                await SyncBillPaymentJournalEntryAsync(bill, currentUser, result);
-                            }
-                            catch (Exception paymentEx)
-                            {
-                                var paymentBillLabel = !string.IsNullOrWhiteSpace(billSummary.BillNumber)
-                                    ? billSummary.BillNumber
-                                    : billSummary.ReceiptCode;
-                                var message = $"Bill {paymentBillLabel} payment: {paymentEx.Message}";
-                                result.Errors.Add(message);
-                                await LogAccountingErrorAsync(
-                                    trigger: "BillPayment",
-                                    organizationId: organizationId,
-                                    officeId: billSummary.OfficeId,
-                                    sourceTypeId: (int)SourceType.BillPayment,
-                                    sourceId: billSummary.ReceiptId,
-                                    documentCode: paymentBillLabel,
-                                    accountingPeriod: null,
-                                    amount: billSummary.PaidAmount,
-                                    message: message,
-                                    currentUser: currentUser);
-                            }
-                        }
+                        await ReplaceJournalEntriesFromBillAsync(bill, currentUser);
+                        result.JournalEntriesSkipped++;
+                        continue;
+                    }
+
+                    var hadJournalEntry = await BillHasBillJournalEntryAsync(
+                        bill.OrganizationId,
+                        bill.OfficeId,
+                        bill.ReceiptId);
+
+                    await ReplaceJournalEntriesFromBillAsync(bill, currentUser);
+
+                    var hasJournalEntry = await BillHasBillJournalEntryAsync(
+                        bill.OrganizationId,
+                        bill.OfficeId,
+                        bill.ReceiptId);
+
+                    if (hasJournalEntry && !hadJournalEntry)
+                        result.JournalEntriesCreated++;
+                    else if (hasJournalEntry)
+                        result.JournalEntriesSkipped++;
+                    else
+                    {
+                        var billLabel = !string.IsNullOrWhiteSpace(bill.BillNumber)
+                            ? bill.BillNumber
+                            : bill.ReceiptCode;
+                        var message = $"Bill {billLabel}: no bill journal entry after sync.";
+                        result.Errors.Add(message);
+                        await LogAccountingErrorAsync(
+                            trigger: "Bill",
+                            organizationId: organizationId,
+                            officeId: bill.OfficeId,
+                            sourceTypeId: (int)SourceType.Bill,
+                            sourceId: bill.ReceiptId,
+                            documentCode: billLabel,
+                            accountingPeriod: bill.AccountingPeriod == default ? null : bill.AccountingPeriod,
+                            amount: bill.Amount,
+                            message: message,
+                            currentUser: currentUser);
                     }
                 }
                 catch (Exception ex)
@@ -221,17 +244,38 @@ public partial class AccountingManager
 
                     EnsureReceiptIsCardReceipt(receipt);
 
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromReceiptWithResultAsync(receipt, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = receipt.OrganizationId,
-                            OfficeIds = receipt.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.Receipt,
-                            SourceId = receipt.ReceiptId,
-                            IncludeUnposted = true
-                        },
-                        result);
+                    var hadJournalEntry = await ReceiptHasLinkedJournalEntryAsync(
+                        receipt.OrganizationId,
+                        receipt.OfficeId,
+                        receipt.ReceiptId);
+
+                    await ReplaceJournalEntriesFromReceiptAsync(receipt, currentUser);
+
+                    var hasJournalEntry = await ReceiptHasLinkedJournalEntryAsync(
+                        receipt.OrganizationId,
+                        receipt.OfficeId,
+                        receipt.ReceiptId);
+
+                    if (hasJournalEntry && !hadJournalEntry)
+                        result.JournalEntriesCreated++;
+                    else if (hasJournalEntry)
+                        result.JournalEntriesSkipped++;
+                    else
+                    {
+                        var message = $"Receipt {receipt.ReceiptCode}: no journal entry after sync.";
+                        result.Errors.Add(message);
+                        await LogAccountingErrorAsync(
+                            trigger: "Receipt",
+                            organizationId: organizationId,
+                            officeId: receipt.OfficeId,
+                            sourceTypeId: (int)SourceType.Receipt,
+                            sourceId: receipt.ReceiptId,
+                            documentCode: receipt.ReceiptCode,
+                            accountingPeriod: null,
+                            amount: receipt.Amount,
+                            message: message,
+                            currentUser: currentUser);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -294,17 +338,46 @@ public partial class AccountingManager
                     if (workOrder == null)
                         continue;
 
-                    await TrackJournalEntryCreateAsync(
-                        () => CreateJournalEntryFromWorkOrderWithResultAsync(workOrder, currentUser),
-                        new JournalEntryGetCriteria
-                        {
-                            OrganizationId = workOrder.OrganizationId,
-                            OfficeIds = workOrder.OfficeId.ToString(),
-                            SourceTypeId = (int)SourceType.WorkOrder,
-                            SourceId = workOrder.WorkOrderId,
-                            IncludeUnposted = true
-                        },
-                        result);
+                    var expectJournalEntry = ShouldExpectWorkOrderJournalEntry(workOrder);
+                    if (!expectJournalEntry)
+                    {
+                        await TryReplaceJournalEntriesFromWorkOrderAsync(workOrder, currentUser);
+                        result.JournalEntriesSkipped++;
+                        continue;
+                    }
+
+                    var hadJournalEntry = await WorkOrderHasLinkedJournalEntryAsync(
+                        workOrder.OrganizationId,
+                        workOrder.OfficeId,
+                        workOrder.WorkOrderId);
+
+                    await TryReplaceJournalEntriesFromWorkOrderAsync(workOrder, currentUser);
+
+                    var hasJournalEntry = await WorkOrderHasLinkedJournalEntryAsync(
+                        workOrder.OrganizationId,
+                        workOrder.OfficeId,
+                        workOrder.WorkOrderId);
+
+                    if (hasJournalEntry && !hadJournalEntry)
+                        result.JournalEntriesCreated++;
+                    else if (hasJournalEntry)
+                        result.JournalEntriesSkipped++;
+                    else
+                    {
+                        var message = $"Work order {workOrder.WorkOrderCode}: no journal entry after sync.";
+                        result.Errors.Add(message);
+                        await LogAccountingErrorAsync(
+                            trigger: "WorkOrder",
+                            organizationId: organizationId,
+                            officeId: workOrder.OfficeId,
+                            sourceTypeId: (int)SourceType.WorkOrder,
+                            sourceId: workOrder.WorkOrderId,
+                            documentCode: workOrder.WorkOrderCode,
+                            accountingPeriod: null,
+                            amount: workOrderSummary.Amount,
+                            message: message,
+                            currentUser: currentUser);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -804,32 +877,6 @@ public partial class AccountingManager
         }
     }
 
-    private async Task SyncBillPaymentJournalEntryAsync(Receipt bill, Guid currentUser, JournalEntrySyncResult result)
-    {
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(bill.OrganizationId, bill.OfficeId);
-        var paymentApplication = new BillPaymentApplication
-        {
-            Bill = bill,
-            AmountApplied = bill.PaidAmount,
-            PaymentDate = bill.PaidDate ?? bill.ReceiptDate,
-            ChartOfAccountId = GetDefaultBankAccount(chartOfAccounts, bill.OfficeId, accountingOffice),
-            Description = bill.PaymentDescription?.Trim() ?? string.Empty,
-            PaymentSequence = 0
-        };
-
-        await TrackJournalEntryCreateAsync(
-            () => CreateJournalEntryFromBillPaymentWithResultAsync(paymentApplication, currentUser),
-            new JournalEntryGetCriteria
-            {
-                OrganizationId = bill.OrganizationId,
-                OfficeIds = bill.OfficeId.ToString(),
-                SourceTypeId = (int)SourceType.BillPayment,
-                SourceId = bill.ReceiptId,
-                IncludeUnposted = true
-            },
-            result);
-    }
-
     private async Task<JournalEntrySyncResult> ClearJournalEntriesBySourceTypesAsync(Guid organizationId, string officeIds, params int[] sourceTypeIds)
     {
         var result = new JournalEntrySyncResult();
@@ -865,24 +912,89 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task TrackJournalEntryCreateAsync(Func<Task<AccountingJournalEntryResult>> createJournalEntry, JournalEntryGetCriteria existingCriteria, JournalEntrySyncResult result)
+    private async Task<bool> ReceiptHasLinkedJournalEntryAsync(Guid organizationId, int officeId, Guid receiptId)
     {
-        // Skip check must see JEs before the accounting-office start date; otherwise Sync recreates duplicates.
-        existingCriteria.StartDate = DateOnly.MinValue;
-
-        var existingEntries = await GetJournalEntriesByCriteriaCachedAsync(existingCriteria);
-        if (existingEntries.Any())
+        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
         {
-            result.JournalEntriesSkipped++;
-            return;
-        }
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            SourceTypeId = (int)SourceType.Receipt,
+            SourceId = receiptId,
+            IncludeUnposted = true,
+            StartDate = DateOnly.MinValue
+        });
 
-        var createResult = await createJournalEntry();
-        if (createResult.JournalEntry != null)
-            result.JournalEntriesCreated++;
+        return entries.Any(entry =>
+            entry.JournalEntryKindId == JournalEntryKind.Receipt
+            || entry.JournalEntryKindId == JournalEntryKind.CrossOfficeCreditCard);
+    }
 
-        if (createResult.HasWarning)
-            result.Errors.Add(createResult.Warning!);
+    private async Task<bool> InvoiceHasChargeJournalEntryAsync(Guid organizationId, int officeId, Guid invoiceId)
+    {
+        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            SourceTypeId = (int)SourceType.Invoice,
+            SourceId = invoiceId,
+            IncludeUnposted = true,
+            StartDate = DateOnly.MinValue
+        });
+
+        return entries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.Charge);
+    }
+
+    private async Task<bool> BillHasBillJournalEntryAsync(Guid organizationId, int officeId, Guid billReceiptId)
+    {
+        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            SourceTypeId = (int)SourceType.Bill,
+            SourceId = billReceiptId,
+            IncludeUnposted = true,
+            StartDate = DateOnly.MinValue
+        });
+
+        return entries.Any(entry => entry.JournalEntryKindId == JournalEntryKind.Bill);
+    }
+
+    private static bool ShouldExpectBillJournalEntry(Receipt bill)
+    {
+        if (bill.ReceiptId == Guid.Empty)
+            return false;
+
+        if (bill.AccountingPeriod == default || bill.ReceiptDate == default)
+            return false;
+
+        return (bill.Splits ?? [])
+            .Any(split => split.ReceiptType != ReceiptType.NonExpense && split.Amount != 0);
+    }
+
+    private static bool ShouldExpectWorkOrderJournalEntry(WorkOrder workOrder)
+    {
+        if (!ShouldCreateJournalEntryForWorkOrder(workOrder))
+            return false;
+
+        if (workOrder.WorkOrderType != WorkOrderType.Owner)
+            return false;
+
+        return GetEligibleWorkOrderOwnerLines(workOrder).Sum(line => line.ItemAmount) != 0;
+    }
+
+    private async Task<bool> WorkOrderHasLinkedJournalEntryAsync(Guid organizationId, int officeId, Guid workOrderId)
+    {
+        var entries = await GetJournalEntriesByCriteriaCachedAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            SourceTypeId = (int)SourceType.WorkOrder,
+            SourceId = workOrderId,
+            IncludeUnposted = true,
+            StartDate = DateOnly.MinValue
+        });
+
+        return entries.Any();
     }
 
     private static void ReportSyncProgress(IProgress<JournalEntrySyncProgress>? progress, string syncType, int total, int processed, JournalEntrySyncResult result, string status)

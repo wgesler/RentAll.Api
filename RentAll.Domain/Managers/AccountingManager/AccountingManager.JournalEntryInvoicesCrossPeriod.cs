@@ -127,11 +127,13 @@ public partial class AccountingManager
         await DeleteJournalEntriesExceptAsync(
             firstExistingEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
             retainedEntryIds,
-            invoice.OrganizationId);
+            invoice.OrganizationId,
+            currentUser);
         await DeleteJournalEntriesExceptAsync(
             secondExistingEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
             retainedEntryIds,
-            invoice.OrganizationId);
+            invoice.OrganizationId,
+            currentUser);
 
         await LogInvoiceSplitDecisionAsync(invoice, split: true, firstPeriodInvoice, secondPeriodInvoice, message: "Cross-period split applied.");
 

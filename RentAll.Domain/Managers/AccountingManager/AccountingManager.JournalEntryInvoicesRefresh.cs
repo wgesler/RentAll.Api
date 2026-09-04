@@ -6,155 +6,40 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Journal Entry
-    private async Task RefreshInvoiceChargeJournalEntriesAsync(Invoice invoice, Guid currentUser)
+    private async Task<string?> RefreshInvoiceChargeJournalEntriesAsync(Invoice invoice, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
         {
             await DeleteJournalEntriesForInvoiceChargesAsync(invoice);
-            return;
+            return null;
         }
 
         if (await TryUseCrossPeriodInvoiceJournalEntryPathAsync(invoice))
         {
-            var refreshed = await RefreshCrossPeriodInvoiceJournalEntriesAsync(invoice, currentUser);
-            if (refreshed)
-                return;
+            var (crossPeriodEntry, decisionMessage, postAsStandardInvoice) =
+                await CreateJournalEntriesFromCrossPeriodInvoiceAsync(invoice, currentUser);
 
-            // Never fall back to a single full-invoice Charge for a cross-period invoice — that posts
-            // the whole amount on period 1 and can leave a stale period-2 slice (e.g. $5,950 + $2,385).
-            await LogInvoiceSplitDecisionAsync(
-                invoice,
-                split: false,
-                message: "Cross-period refresh failed; leaving existing charge journal entries unchanged.");
-            return;
+            if (crossPeriodEntry != null)
+            {
+                await DeleteOwnerDistributionJournalEntriesForInvoiceAsync(invoice);
+                return null;
+            }
+
+            await LogInvoiceSplitDecisionAsync(invoice, split: false, message: decisionMessage);
+
+            if (postAsStandardInvoice)
+            {
+                await RefreshStandardInvoiceChargeJournalEntriesAsync(invoice, currentUser);
+                return null;
+            }
+
+            return string.IsNullOrWhiteSpace(decisionMessage)
+                ? "Cross-period refresh failed; charge journal entries were not changed."
+                : decisionMessage;
         }
 
         await RefreshStandardInvoiceChargeJournalEntriesAsync(invoice, currentUser);
-    }
-
-    private async Task<bool> RefreshCrossPeriodInvoiceJournalEntriesAsync(Invoice invoice, Guid currentUser)
-    {
-        if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
-            return false;
-
-        var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId!.Value, invoice.OrganizationId);
-        if (reservation == null)
-            return false;
-
-        if (!await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(firstPeriodInvoice, reservation)
-            || !await TryPopulateCrossPeriodInvoiceLedgerLinesAsync(secondPeriodInvoice, reservation))
-        {
-            return false;
-        }
-
-        if (TryGetNaFrequencyExtraFee(invoice, reservation, out _))
-            return false;
-
-        var accountingContext = await LoadCrossPeriodInvoiceAccountingContextAsync(invoice);
-        var apportionableIncomeLines = await GetApportionableIncomeChargeLinesAsync(invoice, reservation, accountingContext);
-        if (!TryApplyApportionedCrossPeriodLinesFromOriginal(
-                invoice,
-                firstPeriodInvoice,
-                secondPeriodInvoice,
-                reservation,
-                apportionableIncomeLines,
-                accountingContext.CostCodeById,
-                accountingContext.Office?.DepartureFeeCcId))
-        {
-            return false;
-        }
-
-        var originalChargeTotal = SumInvoiceChargeLines(invoice, accountingContext.CostCodeById);
-        var splitChargeTotal = SumInvoiceChargeLines(firstPeriodInvoice, accountingContext.CostCodeById)
-            + SumInvoiceChargeLines(secondPeriodInvoice, accountingContext.CostCodeById);
-
-        if (originalChargeTotal != splitChargeTotal)
-            return false;
-
-        var firstSliceChargeTotal = SumInvoiceChargeLines(firstPeriodInvoice, accountingContext.CostCodeById);
-        var secondSliceChargeTotal = SumInvoiceChargeLines(secondPeriodInvoice, accountingContext.CostCodeById);
-        if (firstSliceChargeTotal == 0 || secondSliceChargeTotal == 0)
-            return false;
-
-        var chartOfAccounts = accountingContext.ChartOfAccounts.ToList();
-        var allInvoiceEntries = await GetAllJournalEntriesForInvoiceAsync(
-            invoice.OrganizationId,
-            invoice.OfficeId,
-            invoice.InvoiceId);
-        var firstExistingEntries = FilterInvoiceJournalEntriesForAccountingPeriod(
-            allInvoiceEntries,
-            firstPeriodInvoice.AccountingPeriod);
-        var secondExistingEntries = FilterInvoiceJournalEntriesForAccountingPeriod(
-            allInvoiceEntries,
-            secondPeriodInvoice.AccountingPeriod);
-
-        var firstEntry = await UpsertCrossPeriodSliceJournalEntryAsync(
-            firstPeriodInvoice,
-            invoice.InvoiceId,
-            chartOfAccounts,
-            accountingContext.AccountingOffice,
-            firstExistingEntries,
-            currentUser);
-
-        var secondEntry = await UpsertCrossPeriodSliceJournalEntryAsync(
-            secondPeriodInvoice,
-            invoice.InvoiceId,
-            chartOfAccounts,
-            accountingContext.AccountingOffice,
-            secondExistingEntries,
-            currentUser);
-
-        var retainedEntryIds = new HashSet<Guid>();
-        if (firstEntry != null)
-            retainedEntryIds.Add(firstEntry.JournalEntryId);
-        if (secondEntry != null)
-            retainedEntryIds.Add(secondEntry.JournalEntryId);
-
-        var referenceYear = invoice.AccountingPeriod != default
-            ? invoice.AccountingPeriod.Year
-            : invoice.InvoiceDate.Year;
-
-        if (invoice.LedgerLines.Any(line => line.Amount != 0 && IsCrossMonthRentalLine(line, referenceYear)))
-        {
-            if (TryGetInvoiceRentalLineAmount(firstPeriodInvoice, out _))
-            {
-                var firstRentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(firstPeriodInvoice);
-                var firstOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-                    firstPeriodInvoice,
-                    firstRentPlus4000Base,
-                    firstExistingEntries,
-                    currentUser);
-                if (firstOwnerShare != null)
-                    retainedEntryIds.Add(firstOwnerShare.JournalEntryId);
-            }
-
-            if (TryGetInvoiceRentalLineAmount(secondPeriodInvoice, out _))
-            {
-                var secondRentPlus4000Base = await GetInvoiceRentPlus4000BaseAsync(secondPeriodInvoice);
-                var secondOwnerShare = await UpsertJournalEntryFromInvoiceForOwnerShareAsync(
-                    secondPeriodInvoice,
-                    secondRentPlus4000Base,
-                    secondExistingEntries,
-                    currentUser);
-                if (secondOwnerShare != null)
-                    retainedEntryIds.Add(secondOwnerShare.JournalEntryId);
-            }
-        }
-
-        // Only prune Charge / OwnerExpected. Payment, PrePay, and OwnAct share SourceId=InvoiceId
-        // and must survive charge refresh.
-        await DeleteJournalEntriesExceptAsync(
-            firstExistingEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
-            retainedEntryIds,
-            invoice.OrganizationId);
-        await DeleteJournalEntriesExceptAsync(
-            secondExistingEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
-            retainedEntryIds,
-            invoice.OrganizationId);
-
-        await DeleteOwnerDistributionJournalEntriesForInvoiceAsync(invoice);
-        await LogInvoiceSplitDecisionAsync(invoice, split: true, firstPeriodInvoice, secondPeriodInvoice, message: "Cross-period split applied.");
-        return true;
+        return null;
     }
 
     private async Task RefreshStandardInvoiceChargeJournalEntriesAsync(Invoice invoice, Guid currentUser)
@@ -217,7 +102,8 @@ public partial class AccountingManager
         await DeleteJournalEntriesExceptAsync(
             existingInvoiceEntries.Where(IsInvoiceChargeOrOwnerExpectedJournalEntry),
             retainedEntryIds,
-            invoice.OrganizationId);
+            invoice.OrganizationId,
+            currentUser);
     }
 
     private async Task DeleteOwnerDistributionJournalEntriesForInvoiceAsync(Invoice invoice)
