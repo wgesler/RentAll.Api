@@ -7,5 +7,6 @@ public enum TicketStateType
     Scheduled = 2,
     InProgress = 3,
     WorkComplete = 4,
-    Closed = 5
+    Closed = 5,
+    InReview = 6
 }

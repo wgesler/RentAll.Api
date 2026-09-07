@@ -261,6 +261,7 @@ public class EmailManager : IEmailManager
         return state switch
         {
             TicketStateType.InProgress => "In Progress",
+            TicketStateType.InReview => "In Review",
             TicketStateType.WorkComplete => "Work Complete",
             _ => state.ToString()
         };
