@@ -20,6 +20,7 @@ public class CreateTicketDto
     public bool ConfirmedWithTenant { get; set; }
     public bool FollowedUpWithOwner { get; set; }
     public bool WorkOrderCompleted { get; set; }
+    public bool IsForRentAll { get; set; }
     public List<CreateTicketNoteDto>? Notes { get; set; } = new List<CreateTicketNoteDto>();
     public bool IsActive { get; set; } = true;
 
@@ -74,6 +75,7 @@ public class CreateTicketDto
             ConfirmedWithTenant = ConfirmedWithTenant,
             FollowedUpWithOwner = FollowedUpWithOwner,
             WorkOrderCompleted = WorkOrderCompleted,
+            IsForRentAll = IsForRentAll,
             Notes = Notes?.Select(note => note.ToModel(currentUser)).ToList() ?? new List<TicketNote>(),
             IsActive = IsActive,
             CreatedBy = currentUser

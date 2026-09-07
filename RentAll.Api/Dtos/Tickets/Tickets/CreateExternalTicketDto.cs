@@ -77,6 +77,7 @@ public class CreateExternalTicketDto
             ConfirmedWithTenant = false,
             FollowedUpWithOwner = false,
             WorkOrderCompleted = false,
+            IsForRentAll = false,
             Notes = new List<TicketNote>(),
             IsActive = true,
             CreatedBy = createdBy

@@ -24,6 +24,7 @@ namespace RentAll.Infrastructure.Entities.Tickets
         public bool ConfirmedWithTenant { get; set; }
         public bool FollowedUpWithOwner { get; set; }
         public bool WorkOrderCompleted { get; set; }
+        public bool IsForRentAll { get; set; }
         public string? Notes { get; set; }
         public bool IsActive { get; set; }
         public DateTimeOffset CreatedOn { get; set; }

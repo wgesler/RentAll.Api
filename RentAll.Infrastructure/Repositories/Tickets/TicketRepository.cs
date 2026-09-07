@@ -126,6 +126,7 @@ public class TicketRepository : ITicketRepository
                 ConfirmedWithTenant = ticket.ConfirmedWithTenant,
                 FollowedUpWithOwner = ticket.FollowedUpWithOwner,
                 WorkOrderCompleted = ticket.WorkOrderCompleted,
+                IsForRentAll = ticket.IsForRentAll,
                 IsActive = ticket.IsActive,
                 CreatedBy = ticket.CreatedBy
             }, transaction: transaction);
@@ -193,6 +194,7 @@ public class TicketRepository : ITicketRepository
                 ConfirmedWithTenant = ticket.ConfirmedWithTenant,
                 FollowedUpWithOwner = ticket.FollowedUpWithOwner,
                 WorkOrderCompleted = ticket.WorkOrderCompleted,
+                IsForRentAll = ticket.IsForRentAll,
                 IsActive = ticket.IsActive,
                 ModifiedBy = ticket.ModifiedBy
             }, transaction: transaction);
@@ -267,6 +269,7 @@ public class TicketRepository : ITicketRepository
             ConfirmedWithTenant = e.ConfirmedWithTenant,
             FollowedUpWithOwner = e.FollowedUpWithOwner,
             WorkOrderCompleted = e.WorkOrderCompleted,
+            IsForRentAll = e.IsForRentAll,
             Notes = DeserializeTicketNotes(e.Notes),
             IsActive = e.IsActive,
             CreatedBy = e.CreatedBy,

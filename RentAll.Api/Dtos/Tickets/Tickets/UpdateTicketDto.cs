@@ -21,6 +21,7 @@ public class UpdateTicketDto
     public bool ConfirmedWithTenant { get; set; }
     public bool FollowedUpWithOwner { get; set; }
     public bool WorkOrderCompleted { get; set; }
+    public bool IsForRentAll { get; set; }
     public List<UpdateTicketNoteDto>? Notes { get; set; } = new List<UpdateTicketNoteDto>();
     public bool IsActive { get; set; }
 
@@ -81,6 +82,7 @@ public class UpdateTicketDto
             ConfirmedWithTenant = ConfirmedWithTenant,
             FollowedUpWithOwner = FollowedUpWithOwner,
             WorkOrderCompleted = WorkOrderCompleted,
+            IsForRentAll = IsForRentAll,
             Notes = Notes?
                 .Where(note => note != null && !string.IsNullOrWhiteSpace(note.Note))
                 .Select(note => note.ToModel(currentUser))

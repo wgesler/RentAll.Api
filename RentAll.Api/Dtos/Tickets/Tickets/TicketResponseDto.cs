@@ -26,6 +26,7 @@ public class TicketResponseDto
     public bool ConfirmedWithTenant { get; set; }
     public bool FollowedUpWithOwner { get; set; }
     public bool WorkOrderCompleted { get; set; }
+    public bool IsForRentAll { get; set; }
     public List<TicketNoteResponseDto> Notes { get; set; } = new List<TicketNoteResponseDto>();
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -57,6 +58,7 @@ public class TicketResponseDto
         ConfirmedWithTenant = ticket.ConfirmedWithTenant;
         FollowedUpWithOwner = ticket.FollowedUpWithOwner;
         WorkOrderCompleted = ticket.WorkOrderCompleted;
+        IsForRentAll = ticket.IsForRentAll;
         Notes = ticket.Notes.Select(note => new TicketNoteResponseDto(note)).ToList();
         IsActive = ticket.IsActive;
         CreatedOn = ticket.CreatedOn;
