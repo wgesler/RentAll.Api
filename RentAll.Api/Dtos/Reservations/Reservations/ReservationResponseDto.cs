@@ -52,6 +52,7 @@ public class ReservationResponseDto
     public string? Notes { get; set; }
     public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
     public bool AllowExtensions { get; set; }
+    public bool BilledToEmployer { get; set; }
     public bool CollapseCharges { get; set; }
     public int InvoiceMethodId { get; set; }
 
@@ -126,6 +127,7 @@ public class ReservationResponseDto
         Notes = reservation.Notes;
         ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();
         AllowExtensions = reservation.AllowExtensions;
+        BilledToEmployer = reservation.BilledToEmployer;
         CollapseCharges = reservation.CollapseCharges;
         InvoiceMethodId = (int)reservation.InvoiceMethod;
         aCleanerUserId = reservation.aCleanerUserId;

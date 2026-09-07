@@ -107,6 +107,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 Notes = e.Notes,
                 ExtraFeeLines = extraFeeLines,
                 AllowExtensions = e.AllowExtensions,
+                BilledToEmployer = e.BilledToEmployer,
                 CollapseCharges = e.CollapseCharges,
                 InvoiceMethod = (InvoiceMethod)e.InvoiceMethodId,
                 aCleanerUserId = e.aCleanerUserId,
