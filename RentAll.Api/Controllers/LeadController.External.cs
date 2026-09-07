@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Leads.General;
+using RentAll.Api.Dtos.Leads.Partners;
 using RentAll.Api.Dtos.Leads.Rentals;
 
 namespace RentAll.Api.Controllers;
@@ -77,6 +78,44 @@ public partial class LeadController
         {
             _logger.LogError(ex, "Error creating external rental lead intake request");
             return ServerError("An error occurred while creating the rental lead");
+        }
+    }
+
+    #endregion
+
+    #region Partners
+
+    [AllowAnonymous]
+    [HttpPost("external/partners")]
+    public async Task<IActionResult> CreateExternalPartnerLeadAsync([FromBody] CreateExternalLeadPartnerDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Partner lead data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
+        if (organization == null)
+            return BadRequest("Invalid OrganizationId");
+
+        if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalLeadKeyVaultSecretName()))
+            return Unauthorized("Invalid API key");
+
+        try
+        {
+            var orgOfficeError = await TryValidateExternalLeadOfficeAsync(organization, dto.OfficeId);
+            if (orgOfficeError != null)
+                return orgOfficeError;
+
+            var created = await _leadRepository.CreatePartnerAsync(dto.ToModel(dto.OrganizationId));
+            return Ok(new LeadPartnerResponseDto(created));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating external partner lead intake request");
+            return ServerError("An error occurred while creating the partner lead");
         }
     }
 

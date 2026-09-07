@@ -41,4 +41,12 @@ public interface ILeadRepository
     Task<LeadGeneral> UpdateGeneralByIdAsync(LeadGeneral lead);
     Task DeleteGeneralByIdAsync(int generalId);
     #endregion
+
+    #region Partner leads
+    Task<IEnumerable<LeadPartner>> GetPartnersByOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task<LeadPartner?> GetPartnerByIdAsync(int partnerId);
+    Task<LeadPartner> CreatePartnerAsync(LeadPartner partner);
+    Task<LeadPartner> UpdatePartnerByIdAsync(LeadPartner partner);
+    Task DeletePartnerByIdAsync(int partnerId);
+    #endregion
 }

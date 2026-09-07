@@ -222,4 +222,30 @@ public partial class LeadRepository : ILeadRepository
             ModifiedByName = e.ModifiedByName,
             IsActive = e.IsActive
         };
+
+    private static LeadPartner ConvertPartnerEntityToModel(PartnerEntity e) =>
+        new()
+        {
+            PartnerId = e.PartnerId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            LeadState = (LeadStateType)e.LeadStateId,
+            Name = e.Name,
+            CompanyName = e.CompanyName,
+            Title = e.Title,
+            Email = e.Email,
+            Phone = e.Phone,
+            MarketsCitiesServed = e.MarketsCitiesServed,
+            FurnishedPropertiesInPortfolio = e.FurnishedPropertiesInPortfolio,
+            AboutYourBusiness = e.AboutYourBusiness,
+            Notes = e.Notes,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy,
+            ModifiedByName = e.ModifiedByName,
+            EmailPhoneConsent = e.EmailPhoneConsent,
+            SmsConsent = e.SmsConsent,
+            IsActive = e.IsActive
+        };
 }
