@@ -11,8 +11,8 @@ public class ApplyReservationRentChangeDto
         if (ReservationId == Guid.Empty)
             return (false, "ReservationId is required");
 
-        if (NewAmount < 0)
-            return (false, "NewAmount must be zero or greater");
+        if (NewAmount <= 0)
+            return (false, "NewAmount must be greater than zero");
 
         return (true, null);
     }

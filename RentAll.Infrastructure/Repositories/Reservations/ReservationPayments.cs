@@ -185,6 +185,14 @@ public partial class ReservationRepository
         return (true, null);
     }
 
+    public static (bool IsValid, string? ErrorMessage) ValidateReservationPaymentAmount(decimal amount)
+    {
+        if (amount <= 0)
+            return (false, "Payment amount must be greater than zero.");
+
+        return (true, null);
+    }
+
     private static ReservationPayment ConvertEntityToModel(ReservationPaymentEntity e)
     {
         return new ReservationPayment

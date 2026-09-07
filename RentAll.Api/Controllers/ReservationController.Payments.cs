@@ -57,6 +57,10 @@ public partial class ReservationController
             if (!overlapValidation.IsValid)
                 return BadRequest(overlapValidation.ErrorMessage);
 
+            var amountValidation = ReservationRepository.ValidateReservationPaymentAmount(dto.Amount);
+            if (!amountValidation.IsValid)
+                return BadRequest(amountValidation.ErrorMessage);
+
             var created = await _reservationRepository.CreateReservationPaymentAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new ReservationPaymentResponseDto(created));
         }
@@ -133,6 +137,10 @@ public partial class ReservationController
                 dto.ReservationPaymentId);
             if (!overlapValidation.IsValid)
                 return BadRequest(overlapValidation.ErrorMessage);
+
+            var amountValidation = ReservationRepository.ValidateReservationPaymentAmount(dto.Amount);
+            if (!amountValidation.IsValid)
+                return BadRequest(amountValidation.ErrorMessage);
 
             var updated = await _reservationRepository.UpdateReservationPaymentByIdAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new ReservationPaymentResponseDto(updated));

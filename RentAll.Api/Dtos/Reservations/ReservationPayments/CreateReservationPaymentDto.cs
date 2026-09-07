@@ -12,8 +12,8 @@ public class CreateReservationPaymentDto
         if (ReservationId == Guid.Empty)
             return (false, "ReservationId is required");
 
-        if (Amount < 0)
-            return (false, "Amount must be zero or greater");
+        if (Amount <= 0)
+            return (false, "Amount must be greater than zero");
 
         if (StartDate > EndDate)
             return (false, "StartDate must be on or before EndDate");
