@@ -22,6 +22,7 @@ global using RentAll.Api.Dtos.Properties.PropertyHtmls;
 global using RentAll.Api.Dtos.Properties.PropertyInformations;
 global using RentAll.Api.Dtos.Properties.TrackerResponses;
 global using RentAll.Api.Dtos.Reservations.LeaseInformations;
+global using RentAll.Api.Dtos.Reservations.ReservationPayments;
 global using RentAll.Api.Dtos.Reservations.Reservations;
 global using RentAll.Api.Dtos.Reservations.Trackers;
 global using RentAll.Domain.Enums;

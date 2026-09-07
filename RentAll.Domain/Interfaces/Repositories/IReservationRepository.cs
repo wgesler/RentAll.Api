@@ -50,4 +50,13 @@ public interface IReservationRepository
     Task<TrackerResponseOption> UpdateTrackerResponseOptionByIdAsync(Guid trackerResponseId, Guid trackerDefinitionOptionId, Guid newTrackerDefinitionOptionId);
     Task DeleteTrackerResponseOptionByIdAsync(Guid trackerResponseId, Guid trackerDefinitionOptionId);
     #endregion
+
+    #region Reservation Payments
+    Task<IEnumerable<ReservationPayment>> GetReservationPaymentsByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task<ReservationPayment?> GetReservationPaymentByIdAsync(int reservationPaymentId, Guid organizationId);
+    Task<ReservationPayment> CreateReservationPaymentAsync(ReservationPayment payment);
+    Task<ReservationPayment> UpdateReservationPaymentByIdAsync(ReservationPayment payment);
+    Task DeleteReservationPaymentByIdAsync(int reservationPaymentId, Guid organizationId);
+    Task<IEnumerable<ReservationPayment>> ApplyReservationRentChangeAsync(Reservation reservation, decimal newAmount, DateOnly effectiveDate, Guid modifiedBy);
+    #endregion
 }
