@@ -14,6 +14,7 @@ public class UpdateTicketDto
     public string TicketCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? StepsToReproduce { get; set; }
     public int TicketStateTypeId { get; set; }
     public bool NeedPermissionToEnter { get; set; }
     public bool PermissionGranted { get; set; }
@@ -75,6 +76,7 @@ public class UpdateTicketDto
             TicketCode = TicketCode,
             Title = Title,
             Description = Description,
+            StepsToReproduce = IsForRentAll ? StepsToReproduce : null,
             TicketStateType = (TicketStateType)TicketStateTypeId,
             NeedPermissionToEnter = NeedPermissionToEnter,
             PermissionGranted = PermissionGranted,

@@ -19,6 +19,7 @@ public class Ticket
     public string TicketCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? StepsToReproduce { get; set; }
     public TicketStateType TicketStateType { get; set; }
     public bool NeedPermissionToEnter { get; set; }
     public bool PermissionGranted { get; set; }

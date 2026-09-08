@@ -13,6 +13,7 @@ public class CreateTicketDto
     public Guid? AgentId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? StepsToReproduce { get; set; }
     public int TicketStateTypeId { get; set; }
     public bool NeedPermissionToEnter { get; set; }
     public bool PermissionGranted { get; set; }
@@ -37,6 +38,9 @@ public class CreateTicketDto
 
         if (string.IsNullOrWhiteSpace(Description))
             return (false, "Description is required");
+
+        if (IsForRentAll && string.IsNullOrWhiteSpace(StepsToReproduce))
+            return (false, "StepsToReproduce is required");
 
         if (!Enum.IsDefined(typeof(TicketStateType), TicketStateTypeId))
             return (false, $"Invalid TicketStateType value: {TicketStateTypeId}");
@@ -68,6 +72,7 @@ public class CreateTicketDto
             TicketCode = code,
             Title = Title,
             Description = Description,
+            StepsToReproduce = IsForRentAll ? StepsToReproduce : null,
             TicketStateType = (TicketStateType)TicketStateTypeId,
             NeedPermissionToEnter = NeedPermissionToEnter,
             PermissionGranted = PermissionGranted,

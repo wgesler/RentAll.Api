@@ -70,6 +70,7 @@ public class CreateExternalTicketDto
             TicketCode = code,
             Title = $"Maintenance Request: From {fullName}",
             Description = BuildDigestDescription(),
+            StepsToReproduce = null,
             TicketStateType = TicketStateType.Created,
             NeedPermissionToEnter = true,
             PermissionGranted = HasPermissionToEnter ?? false,

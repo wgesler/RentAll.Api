@@ -19,6 +19,7 @@ public class TicketResponseDto
     public string TicketCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? StepsToReproduce { get; set; }
     public int TicketStateTypeId { get; set; }
     public bool NeedPermissionToEnter { get; set; }
     public bool PermissionGranted { get; set; }
@@ -51,6 +52,7 @@ public class TicketResponseDto
         TicketCode = ticket.TicketCode;
         Title = ticket.Title;
         Description = ticket.Description;
+        StepsToReproduce = ticket.StepsToReproduce;
         TicketStateTypeId = (int)ticket.TicketStateType;
         NeedPermissionToEnter = ticket.NeedPermissionToEnter;
         PermissionGranted = ticket.PermissionGranted;
