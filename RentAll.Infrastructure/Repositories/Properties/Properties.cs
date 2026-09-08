@@ -116,6 +116,20 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return ConvertEntityToModel(res.FirstOrDefault()!);
         }
 
+        public async Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyEntity>("Partner.Partner_GetPropertyById", new
+            {
+                PropertyId = propertyId
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.FirstOrDefault()!);
+        }
+
         public async Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);

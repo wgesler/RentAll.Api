@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Partners;
+using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers;
@@ -10,13 +11,16 @@ namespace RentAll.Api.Controllers;
 public class PartnerController : BaseController
 {
     private readonly IPartnerRepository _partnerRepository;
+    private readonly IPropertyRepository _propertyRepository;
     private readonly ILogger<PartnerController> _logger;
 
     public PartnerController(
         IPartnerRepository partnerRepository,
+        IPropertyRepository propertyRepository,
         ILogger<PartnerController> logger)
     {
         _partnerRepository = partnerRepository;
+        _propertyRepository = propertyRepository;
         _logger = logger;
     }
 
@@ -50,6 +54,27 @@ public class PartnerController : BaseController
         {
             _logger.LogError(ex, "Error getting partner properties by selection for user: {UserId}", CurrentUser);
             return ServerError("An error occurred while retrieving partner properties");
+        }
+    }
+
+    [HttpGet("properties/{propertyId:guid}")]
+    public async Task<IActionResult> GetPropertyById(Guid propertyId)
+    {
+        if (propertyId == Guid.Empty)
+            return BadRequest("PropertyId is required");
+
+        try
+        {
+            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId);
+            if (property == null)
+                return NotFound("Partner property not found");
+
+            return Ok(new PropertyResponseDto(property));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting partner property {PropertyId}", propertyId);
+            return ServerError("An error occurred while retrieving the partner property");
         }
     }
 
