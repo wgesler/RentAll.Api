@@ -771,21 +771,20 @@ public partial class AccountingManager
             .ToList();
 
         var totalPool = pooledLines.Sum(l => l.Amount);
-        if (!TryApportionAmountByDayRatio(totalPool, firstDays, totalDays, out var firstPool, out var secondPool))
+        if (!TryApportionAmountByDayRatio(totalPool, firstDays, totalDays, out _, out _))
             return false;
 
         ApplyPooledMonthlyRecurringApportionment(
             firstSlice,
             secondSlice,
             pooledLines,
-            firstPool,
-            secondPool,
-            totalPool,
             referenceYear,
             rentalStart,
             rentalEnd,
             firstPeriodEnd,
-            secondPeriodStart);
+            secondPeriodStart,
+            firstDays,
+            totalDays);
 
         // One-time / up-front charges (deposits, pet, and OneTime extra fees) stay entirely on
         // the first accounting period. Platform departure fees bill on the last stay month instead.
@@ -870,29 +869,12 @@ public partial class AccountingManager
         }
     }
 
-    private static void ApplyPooledMonthlyRecurringApportionment(Invoice firstSlice, Invoice secondSlice, IReadOnlyList<LedgerLine> monthlyRecurringLines, decimal firstMonthPool, decimal secondMonthPool, decimal totalMonthlyRecurring, int referenceYear, DateOnly rentalStart, DateOnly rentalEnd, DateOnly firstPeriodEnd, DateOnly secondPeriodStart)
+    private static void ApplyPooledMonthlyRecurringApportionment(Invoice firstSlice, Invoice secondSlice, IReadOnlyList<LedgerLine> monthlyRecurringLines, int referenceYear, DateOnly rentalStart, DateOnly rentalEnd, DateOnly firstPeriodEnd, DateOnly secondPeriodStart, int firstDays, int totalDays)
     {
-        var distributedFirst = 0m;
-
-        for (var i = 0; i < monthlyRecurringLines.Count; i++)
+        foreach (var line in monthlyRecurringLines)
         {
-            var line = monthlyRecurringLines[i];
-            decimal firstAmount;
-            decimal secondAmount;
-
-            if (i == monthlyRecurringLines.Count - 1)
-            {
-                firstAmount = firstMonthPool - distributedFirst;
-                secondAmount = line.Amount - firstAmount;
-            }
-            else
-            {
-                firstAmount = totalMonthlyRecurring == 0
-                    ? 0
-                    : Math.Round(firstMonthPool * line.Amount / totalMonthlyRecurring, 2, MidpointRounding.AwayFromZero);
-                secondAmount = line.Amount - firstAmount;
-                distributedFirst += firstAmount;
-            }
+            if (!TryApportionAmountByDayRatio(line.Amount, firstDays, totalDays, out var firstAmount, out var secondAmount))
+                continue;
 
             if (TryParseDescriptionDateRange(line.Description, referenceYear, out _, out _))
             {

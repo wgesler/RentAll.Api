@@ -678,6 +678,21 @@ public class CrossPeriodInvoiceJournalEntryTests
     }
 
     [Fact]
+    public void CrossPeriodSplit_Aug16ToSep14_Rent2650_SplitsByDailyRate()
+    {
+        const int firstDays = 16;
+        const int totalDays = 30;
+        const decimal rent = 2650m;
+
+        var dailyRate = rent / totalDays;
+        var firstMonthRent = Math.Round(dailyRate * firstDays, 2, MidpointRounding.AwayFromZero);
+        var secondMonthRent = rent - firstMonthRent;
+
+        Assert.Equal(1413.33m, firstMonthRent);
+        Assert.Equal(1236.67m, secondMonthRent);
+    }
+
+    [Fact]
     public void CrossPeriodSplit_AportionedRental_Feb4ToMar5_SplitsByDailyRate()
     {
         var reservation = CreateFebReservationWithFees();
