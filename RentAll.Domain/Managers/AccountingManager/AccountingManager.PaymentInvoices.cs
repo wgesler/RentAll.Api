@@ -1025,7 +1025,12 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.DepositId = existing.DepositId;
-        payment.PostingStatusId = existing.PostingStatusId;
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existing.PostingStatusId,
+            existing.OrganizationId,
+            existing.OfficeId,
+            currentUser,
+            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
 
         var revertPayment = existing;
         var revertAllocations = existing.LedgerLines

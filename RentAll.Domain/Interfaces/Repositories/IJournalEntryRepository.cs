@@ -30,4 +30,6 @@ public interface IJournalEntryRepository
     Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<int> DeleteAllJournalEntriesByOrganizationIdAsync(Guid organizationId);
     Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, int? reconcileId, Guid modifiedBy);
+    Task<IReadOnlyList<int>> ClearReconcileMarksByJournalEntryIdsAsync(Guid organizationId, int officeId, IEnumerable<Guid> journalEntryIds, Guid modifiedBy);
+    Task<decimal> GetReconcileRegisterBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate);
 }

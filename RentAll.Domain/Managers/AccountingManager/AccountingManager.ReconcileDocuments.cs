@@ -91,6 +91,10 @@ public partial class AccountingManager
             SourceType.InvoicePayment => false,
             SourceType.Deposit => false,
             SourceType.Transfer => false,
+            SourceType.Invoice => false,
+            SourceType.Bill => false,
+            SourceType.BillPayment => false,
+            SourceType.Receipt => false,
             _ => true
         };
     }
@@ -126,6 +130,16 @@ public partial class AccountingManager
             case SourceType.Transfer:
                 await MarkTransferPostedFromReconcileAsync(sourceId, organizationId, currentUser);
                 break;
+            case SourceType.Invoice:
+                await MarkInvoicePostedFromReconcileAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Bill:
+            case SourceType.Receipt:
+                await MarkReceiptPostedFromReconcileAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.BillPayment:
+                await MarkBillPaymentPostedFromReconcileAsync(sourceId, organizationId, currentUser);
+                break;
         }
     }
 
@@ -141,6 +155,16 @@ public partial class AccountingManager
                 break;
             case SourceType.Transfer:
                 await MarkTransferSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Invoice:
+                await MarkInvoiceSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Bill:
+            case SourceType.Receipt:
+                await MarkReceiptSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.BillPayment:
+                await MarkBillPaymentSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
                 break;
         }
     }
@@ -246,6 +270,95 @@ public partial class AccountingManager
         transfer.PostingStatusId = (int)PostingStatus.SoftClosed;
         transfer.ModifiedBy = currentUser;
         await _accountingRepository.UpdateTransferAsync(transfer);
+    }
+
+    private async Task MarkInvoicePostedFromReconcileAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
+    {
+        var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, organizationId);
+        if (invoice == null || !CanMarkDocumentPostedFromReconcile(invoice.PostingStatusId))
+            return;
+
+        invoice.PostingStatusId = (int)PostingStatus.Posted;
+        invoice.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateByIdAsync(invoice);
+        await PostOpenJournalEntriesForSourceAsync(invoice.OrganizationId, invoice.OfficeId, SourceType.Invoice, invoiceId, organizationId, currentUser);
+    }
+
+    private async Task MarkInvoiceSoftClosedFromReconcileCompleteAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
+    {
+        var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, organizationId);
+        if (invoice == null || !CanSoftCloseDocumentFromReconcileComplete(invoice.PostingStatusId))
+            return;
+
+        invoice.PostingStatusId = (int)PostingStatus.SoftClosed;
+        invoice.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateByIdAsync(invoice);
+    }
+
+    private async Task MarkReceiptPostedFromReconcileAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, organizationId);
+        if (receipt == null || !CanMarkDocumentPostedFromReconcile(receipt.PostingStatusId))
+            return;
+
+        receipt.PostingStatusId = (int)PostingStatus.Posted;
+        receipt.ModifiedBy = currentUser;
+        await _maintenanceRepository.UpdateReceiptAsync(receipt);
+        await PostOpenJournalEntriesForReceiptDocumentAsync(receipt, organizationId, currentUser);
+    }
+
+    private async Task MarkReceiptSoftClosedFromReconcileCompleteAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, organizationId);
+        if (receipt == null || !CanSoftCloseDocumentFromReconcileComplete(receipt.PostingStatusId))
+            return;
+
+        receipt.PostingStatusId = (int)PostingStatus.SoftClosed;
+        receipt.ModifiedBy = currentUser;
+        await _maintenanceRepository.UpdateReceiptAsync(receipt);
+    }
+
+    private async Task MarkBillPaymentPostedFromReconcileAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        await MarkReceiptPostedFromReconcileAsync(receiptId, organizationId, currentUser);
+        await MarkLinkedBillPaymentsPostedFromReconcileAsync(receiptId, organizationId, currentUser);
+    }
+
+    private async Task MarkBillPaymentSoftClosedFromReconcileCompleteAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        await MarkReceiptSoftClosedFromReconcileCompleteAsync(receiptId, organizationId, currentUser);
+        await MarkLinkedBillPaymentsSoftClosedFromReconcileCompleteAsync(receiptId, organizationId, currentUser);
+    }
+
+    private async Task MarkLinkedBillPaymentsPostedFromReconcileAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        var allocations = await _accountingRepository.GetBillAllocationsByReceiptIdAsync(receiptId, organizationId);
+        foreach (var paymentId in allocations.Select(allocation => allocation.PaymentId).Distinct())
+        {
+            if (paymentId == Guid.Empty)
+                continue;
+
+            await MarkPaymentPostedFromReconcileAsync(paymentId, organizationId, currentUser);
+        }
+    }
+
+    private async Task MarkLinkedBillPaymentsSoftClosedFromReconcileCompleteAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        var allocations = await _accountingRepository.GetBillAllocationsByReceiptIdAsync(receiptId, organizationId);
+        foreach (var paymentId in allocations.Select(allocation => allocation.PaymentId).Distinct())
+        {
+            if (paymentId == Guid.Empty)
+                continue;
+
+            await MarkPaymentSoftClosedFromReconcileCompleteAsync(paymentId, organizationId, currentUser);
+        }
+    }
+
+    private async Task PostOpenJournalEntriesForReceiptDocumentAsync(Receipt receipt, Guid organizationId, Guid currentUser)
+    {
+        await PostOpenJournalEntriesForSourceAsync(receipt.OrganizationId, receipt.OfficeId, SourceType.Bill, receipt.ReceiptId, organizationId, currentUser);
+        await PostOpenJournalEntriesForSourceAsync(receipt.OrganizationId, receipt.OfficeId, SourceType.BillPayment, receipt.ReceiptId, organizationId, currentUser);
+        await PostOpenJournalEntriesForSourceAsync(receipt.OrganizationId, receipt.OfficeId, SourceType.Receipt, receipt.ReceiptId, organizationId, currentUser);
     }
 
     private static bool CanMarkDocumentPostedFromReconcile(int? postingStatusId)

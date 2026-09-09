@@ -23,7 +23,15 @@ public partial class AccountingManager
 
         var snapshot = existingInvoice;
 
+        var postingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existingInvoice.PostingStatusId,
+            existingInvoice.OrganizationId,
+            existingInvoice.OfficeId,
+            invoice.ModifiedBy,
+            () => LoadJournalEntriesForInvoiceDocumentAsync(existingInvoice.OrganizationId, existingInvoice));
+
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
+        invoice.PostingStatusId = postingStatusId;
         await ValidateIncomingInvoicePaymentLedgerLinesAsync(invoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
@@ -119,6 +127,16 @@ public partial class AccountingManager
         var existingBill = bill.ReceiptId != Guid.Empty
             ? await _maintenanceRepository.GetReceiptByIdAsync(bill.ReceiptId, bill.OrganizationId)
             : null;
+
+        if (existingBill != null)
+        {
+            bill.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+                existingBill.PostingStatusId,
+                existingBill.OrganizationId,
+                existingBill.OfficeId,
+                currentUser,
+                () => LoadJournalEntriesForReceiptDocumentAsync(existingBill.OrganizationId, existingBill));
+        }
 
         await _maintenanceRepository.UpdateReceiptAsync(bill);
         var freshBill = await _maintenanceRepository.GetReceiptByIdAsync(bill.ReceiptId, bill.OrganizationId)
@@ -257,6 +275,16 @@ public partial class AccountingManager
             ? await _maintenanceRepository.GetReceiptByIdAsync(receipt.ReceiptId, receipt.OrganizationId)
             : null;
 
+        if (existingReceipt != null)
+        {
+            receipt.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+                existingReceipt.PostingStatusId,
+                existingReceipt.OrganizationId,
+                existingReceipt.OfficeId,
+                currentUser,
+                () => LoadJournalEntriesForReceiptDocumentAsync(existingReceipt.OrganizationId, existingReceipt));
+        }
+
         var updatedReceipt = await _maintenanceRepository.UpdateReceiptAsync(receipt);
         var freshReceipt = await _maintenanceRepository.GetReceiptByIdAsync(updatedReceipt.ReceiptId, updatedReceipt.OrganizationId)
             ?? throw new Exception("Receipt not found after update");
@@ -360,7 +388,12 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.DepositId = existing.DepositId;
-        payment.PostingStatusId = existing.PostingStatusId;
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existing.PostingStatusId,
+            existing.OrganizationId,
+            existing.OfficeId,
+            currentUser,
+            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
 
         var updated = await _accountingRepository.UpdatePaymentAsync(payment);
         var freshPayment = await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
@@ -389,7 +422,12 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.CostCodeId = existing.CostCodeId;
-        payment.PostingStatusId = existing.PostingStatusId;
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existing.PostingStatusId,
+            existing.OrganizationId,
+            existing.OfficeId,
+            currentUser,
+            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
 
         var updated = await _accountingRepository.UpdatePaymentAsync(payment);
         var freshPayment = await _accountingRepository.GetPaymentByIdAsync(updated.PaymentId, updated.OrganizationId)
@@ -477,6 +515,12 @@ public partial class AccountingManager
         deposit.DepositCode = existing.DepositCode;
         deposit.TransferId = existing.TransferId;
         deposit.TransferCode = existing.TransferCode;
+        deposit.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existing.PostingStatusId,
+            existing.OrganizationId,
+            existing.OfficeId,
+            currentUser,
+            () => LoadJournalEntriesForDepositDocumentAsync(existing.OrganizationId, existing));
 
         await PrepareDepositForSaveAsync(deposit);
         await _accountingRepository.UpdateDepositAsync(deposit);
@@ -535,6 +579,12 @@ public partial class AccountingManager
         transfer.CreatedBy = existing.CreatedBy;
         transfer.TransferCode = existing.TransferCode;
         transfer.HasBeenTransfered = existing.HasBeenTransfered;
+        transfer.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existing.PostingStatusId,
+            existing.OrganizationId,
+            existing.OfficeId,
+            currentUser,
+            () => LoadJournalEntriesForTransferDocumentAsync(existing.OrganizationId, existing));
 
         await PrepareTransferForSaveAsync(transfer);
         await _accountingRepository.UpdateTransferAsync(transfer);

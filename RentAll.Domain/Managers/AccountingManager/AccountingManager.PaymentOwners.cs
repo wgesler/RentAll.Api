@@ -138,7 +138,12 @@ public partial class AccountingManager
         ValidateExplicitOwnerPaymentAllocations(payment, resolvedAllocations);
 
         payment.PaymentCode = existing.PaymentCode;
-        payment.PostingStatusId = existing.PostingStatusId;
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
+            existing.PostingStatusId,
+            existing.OrganizationId,
+            existing.OfficeId,
+            currentUser,
+            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
         payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
 
         await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);

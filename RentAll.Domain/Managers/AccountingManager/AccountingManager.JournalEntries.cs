@@ -78,6 +78,10 @@ public partial class AccountingManager
         if (existing == null)
             throw new Exception("Journal entry not found");
 
+        await ApplyJournalEntryEditReconcileInvalidationAsync(existing, journalEntry.ModifiedBy);
+        existing = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntry.JournalEntryId, journalEntry.OrganizationId)
+            ?? existing;
+
         if (!IsUserEditableJournalEntry(existing))
             throw new Exception("Only Manual, Opening Balance Sheet, and Retained Earnings journal entries can be updated.");
 

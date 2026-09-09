@@ -509,6 +509,45 @@ public partial class JournalEntryRepository
         public int JournalEntriesDeleted { get; set; }
     }
 
+    public async Task<IReadOnlyList<int>> ClearReconcileMarksByJournalEntryIdsAsync(Guid organizationId, int officeId, IEnumerable<Guid> journalEntryIds, Guid modifiedBy)
+    {
+        var journalEntryIdList = journalEntryIds?
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList() ?? [];
+
+        if (journalEntryIdList.Count == 0)
+            return Array.Empty<int>();
+
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ReconcileAffectedAccountEntity>("Accounting.JournalEntryLine_ClearReconcileMarksByJournalEntryIds", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            JournalEntryIds = string.Join(',', journalEntryIdList),
+            ModifiedBy = modifiedBy
+        });
+
+        if (res == null || !res.Any())
+            return Array.Empty<int>();
+
+        return res.Select(row => row.ChartOfAccountId).Distinct().ToList();
+    }
+
+    public async Task<decimal> GetReconcileRegisterBalanceAsync(Guid organizationId, int officeId, int chartOfAccountId, DateOnly? statementDate)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ReconcileRegisterBalanceEntity>("Accounting.JournalEntryLine_GetReconcileRegisterBalance", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ChartOfAccountId = chartOfAccountId,
+            StatementDate = statementDate
+        });
+
+        return res?.FirstOrDefault()?.RegisterBalance ?? 0m;
+    }
+
     public async Task UpdateReconcileMarksAsync(Guid organizationId, int officeId, int chartOfAccountId, IEnumerable<ReconcileJournalEntryLineMark> lines, bool setClearedOn, DateOnly? clearedOn, int? reconcileId, Guid modifiedBy)
     {
         var lineList = lines?.ToList() ?? new List<ReconcileJournalEntryLineMark>();
@@ -550,5 +589,15 @@ public partial class JournalEntryRepository
             throw new Exception("Journal entry not found");
 
         return ConvertEntityToModel(res.First());
+    }
+
+    sealed class ReconcileAffectedAccountEntity
+    {
+        public int ChartOfAccountId { get; set; }
+    }
+
+    sealed class ReconcileRegisterBalanceEntity
+    {
+        public decimal RegisterBalance { get; set; }
     }
 }
