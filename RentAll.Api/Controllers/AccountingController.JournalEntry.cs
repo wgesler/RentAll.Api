@@ -199,6 +199,7 @@ namespace RentAll.Api.Controllers
             {
                 var request = dto.ToModel();
                 await _journalEntryRepository.UpdateReconcileMarksAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.Lines, setClearedOn: false, clearedOn: null, reconcileId: null, CurrentUser);
+                await _accountingManager.ApplyReconcileClearPostingAsync(request.Lines, CurrentOrganizationId, CurrentUser);
 
                 return NoContent();
             }
@@ -241,8 +242,8 @@ namespace RentAll.Api.Controllers
                 });
 
                 await _journalEntryRepository.UpdateReconcileMarksAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.Lines, setClearedOn: true, clearedOn: clearedOn, reconcileId: createdReconcile.ReconcileId, CurrentUser);
-
-                await _accountingManager.ApplyDocumentPostingStatusFromReconcileAsync(request, CurrentOrganizationId, CurrentUser);
+                await _accountingManager.ApplyReconcileClearPostingAsync(request.Lines, CurrentOrganizationId, CurrentUser);
+                await _accountingManager.ApplyReconcileCompleteSoftCloseAsync(request.Lines, CurrentOrganizationId, CurrentUser);
 
                 var updatedAccount = await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(CurrentOrganizationId, request.OfficeId, request.ChartOfAccountId, request.EndingBalance, request.StatementDate);
 

@@ -6,37 +6,111 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     #region Reconcile Documents
-    public async Task ApplyDocumentPostingStatusFromReconcileAsync(CompleteReconcileRequest request, Guid organizationId, Guid currentUser)
+    public async Task ApplyReconcileClearPostingAsync(IReadOnlyList<ReconcileJournalEntryLineMark> lines, Guid organizationId, Guid currentUser)
     {
-        if (request.Lines.Count == 0)
+        var targets = await ResolveClearedLineTargetsAsync(lines, organizationId);
+        if (targets.SourceKeys.Count == 0 && targets.DirectPostJournalEntryIds.Count == 0)
             return;
 
-        var clearedLineIds = request.Lines
+        foreach (var (sourceType, sourceId) in targets.SourceKeys)
+            await MarkDocumentPostedFromReconcileAsync(sourceType, sourceId, organizationId, currentUser);
+
+        foreach (var journalEntryId in targets.DirectPostJournalEntryIds)
+            await PostJournalEntryIfOpenAsync(journalEntryId, organizationId, currentUser);
+    }
+
+    public async Task ApplyReconcileCompleteSoftCloseAsync(IReadOnlyList<ReconcileJournalEntryLineMark> lines, Guid organizationId, Guid currentUser)
+    {
+        var targets = await ResolveClearedLineTargetsAsync(lines, organizationId);
+        if (targets.SourceKeys.Count == 0 && targets.AllJournalEntryIds.Count == 0)
+            return;
+
+        foreach (var journalEntryId in targets.AllJournalEntryIds)
+            await SoftCloseJournalEntryIfEligibleAsync(journalEntryId, organizationId, currentUser);
+
+        foreach (var (sourceType, sourceId) in targets.SourceKeys)
+            await MarkDocumentSoftClosedFromReconcileCompleteAsync(sourceType, sourceId, organizationId, currentUser);
+    }
+
+    private async Task<ClearedReconcileLineTargets> ResolveClearedLineTargetsAsync(
+        IReadOnlyList<ReconcileJournalEntryLineMark> lines,
+        Guid organizationId)
+    {
+        var result = new ClearedReconcileLineTargets();
+        if (lines.Count == 0)
+            return result;
+
+        var clearedLineIds = lines
             .Where(line => line.IsCleared && line.JournalEntryLineId != Guid.Empty)
             .Select(line => line.JournalEntryLineId)
             .Distinct()
             .ToList();
         if (clearedLineIds.Count == 0)
-            return;
+            return result;
 
-        var sourceKeys = new HashSet<(SourceType SourceType, Guid SourceId)>();
         foreach (var lineId in clearedLineIds)
         {
             var line = await _journalEntryRepository.GetJournalEntryLineByIdAsync(lineId);
             if (line == null || line.JournalEntryId == Guid.Empty)
                 continue;
 
+            result.AllJournalEntryIds.Add(line.JournalEntryId);
+
             var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(line.JournalEntryId, organizationId);
-            if (journalEntry?.SourceId is not { } sourceId || sourceId == Guid.Empty)
+            if (journalEntry == null)
+                continue;
+
+            if (ShouldPostJournalEntryDirectlyFromReconcile(journalEntry))
+            {
+                result.DirectPostJournalEntryIds.Add(journalEntry.JournalEntryId);
+                continue;
+            }
+
+            if (journalEntry.SourceId is not { } sourceId || sourceId == Guid.Empty)
                 continue;
             if (journalEntry.SourceTypeId is not int sourceTypeId || sourceTypeId <= 0)
                 continue;
 
-            sourceKeys.Add(((SourceType)sourceTypeId, sourceId));
+            result.SourceKeys.Add(((SourceType)sourceTypeId, sourceId));
         }
 
-        foreach (var (sourceType, sourceId) in sourceKeys)
-            await MarkDocumentPostedFromReconcileAsync(sourceType, sourceId, organizationId, currentUser);
+        return result;
+    }
+
+    private static bool ShouldPostJournalEntryDirectlyFromReconcile(JournalEntry journalEntry)
+    {
+        if (journalEntry.SourceId is not { } sourceId || sourceId == Guid.Empty)
+            return true;
+
+        var sourceType = journalEntry.SourceTypeId is int sourceTypeId && sourceTypeId >= 0
+            ? (SourceType)sourceTypeId
+            : SourceType.Journal;
+
+        return sourceType switch
+        {
+            SourceType.InvoicePayment => false,
+            SourceType.Deposit => false,
+            SourceType.Transfer => false,
+            _ => true
+        };
+    }
+
+    private async Task PostJournalEntryIfOpenAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry?.PostingStatusId != PostingStatus.Open)
+            return;
+
+        await PostJournalEntryAsync(journalEntryId, organizationId, currentUser);
+    }
+
+    private async Task SoftCloseJournalEntryIfEligibleAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry?.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
+            return;
+
+        await SoftCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
     }
 
     private async Task MarkDocumentPostedFromReconcileAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser)
@@ -55,6 +129,22 @@ public partial class AccountingManager
         }
     }
 
+    private async Task MarkDocumentSoftClosedFromReconcileCompleteAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser)
+    {
+        switch (sourceType)
+        {
+            case SourceType.InvoicePayment:
+                await MarkPaymentSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Deposit:
+                await MarkDepositSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Transfer:
+                await MarkTransferSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
+                break;
+        }
+    }
+
     private async Task MarkPaymentPostedFromReconcileAsync(Guid paymentId, Guid organizationId, Guid currentUser)
     {
         var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
@@ -65,6 +155,17 @@ public partial class AccountingManager
         payment.ModifiedBy = currentUser;
         await _accountingRepository.UpdatePaymentAsync(payment);
         await PostOpenJournalEntriesForPaymentAsync(payment, organizationId, currentUser);
+    }
+
+    private async Task MarkPaymentSoftClosedFromReconcileCompleteAsync(Guid paymentId, Guid organizationId, Guid currentUser)
+    {
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        if (payment == null || !CanSoftCloseDocumentFromReconcileComplete(payment.PostingStatusId))
+            return;
+
+        payment.PostingStatusId = (int)PostingStatus.SoftClosed;
+        payment.ModifiedBy = currentUser;
+        await _accountingRepository.UpdatePaymentAsync(payment);
     }
 
     private async Task PostOpenJournalEntriesForPaymentAsync(Payment payment, Guid organizationId, Guid currentUser)
@@ -113,6 +214,17 @@ public partial class AccountingManager
         await PostOpenJournalEntriesForSourceAsync(deposit.OrganizationId, deposit.OfficeId, SourceType.Deposit, depositId, organizationId, currentUser);
     }
 
+    private async Task MarkDepositSoftClosedFromReconcileCompleteAsync(Guid depositId, Guid organizationId, Guid currentUser)
+    {
+        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+        if (deposit == null || !CanSoftCloseDocumentFromReconcileComplete(deposit.PostingStatusId))
+            return;
+
+        deposit.PostingStatusId = (int)PostingStatus.SoftClosed;
+        deposit.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateDepositAsync(deposit);
+    }
+
     private async Task MarkTransferPostedFromReconcileAsync(Guid transferId, Guid organizationId, Guid currentUser)
     {
         var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId);
@@ -125,6 +237,17 @@ public partial class AccountingManager
         await PostOpenJournalEntriesForSourceAsync(transfer.OrganizationId, transfer.OfficeId, SourceType.Transfer, transferId, organizationId, currentUser);
     }
 
+    private async Task MarkTransferSoftClosedFromReconcileCompleteAsync(Guid transferId, Guid organizationId, Guid currentUser)
+    {
+        var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId);
+        if (transfer == null || !CanSoftCloseDocumentFromReconcileComplete(transfer.PostingStatusId))
+            return;
+
+        transfer.PostingStatusId = (int)PostingStatus.SoftClosed;
+        transfer.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateTransferAsync(transfer);
+    }
+
     private static bool CanMarkDocumentPostedFromReconcile(int? postingStatusId)
     {
         var postingStatus = postingStatusId is >= 0 and <= (int)PostingStatus.HardClosed
@@ -134,11 +257,27 @@ public partial class AccountingManager
         return postingStatus == PostingStatus.Open;
     }
 
+    private static bool CanSoftCloseDocumentFromReconcileComplete(int? postingStatusId)
+    {
+        var postingStatus = postingStatusId is >= 0 and <= (int)PostingStatus.HardClosed
+            ? (PostingStatus)postingStatusId.Value
+            : PostingStatus.Open;
+
+        return postingStatus is PostingStatus.Open or PostingStatus.Posted;
+    }
+
     private async Task PostOpenJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, Guid currentOrganizationId, Guid currentUser)
     {
         var journalEntries = await GetJournalEntriesForSourceAsync(organizationId, officeId, sourceType, sourceId);
         foreach (var journalEntry in journalEntries.Where(entry => entry.PostingStatusId == PostingStatus.Open))
             await PostJournalEntryAsync(journalEntry.JournalEntryId, currentOrganizationId, currentUser);
+    }
+
+    private sealed class ClearedReconcileLineTargets
+    {
+        public HashSet<(SourceType SourceType, Guid SourceId)> SourceKeys { get; } = new();
+        public HashSet<Guid> DirectPostJournalEntryIds { get; } = new();
+        public HashSet<Guid> AllJournalEntryIds { get; } = new();
     }
     #endregion
 }
