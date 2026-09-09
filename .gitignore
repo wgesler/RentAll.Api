@@ -371,5 +371,6 @@ FodyWeavers.xsd
 /RentAll.Api/wwwroot/documents/propertyletter
 /RentAll.Infrastructure/RentAll.Infrastructure.csproj.Backup.tmp
 /RentAll.Api/appsettings.Development.json
-/.tmpbuild/api-verify
+# Local alternate build output (agent/CI scratch — can be hundreds of MB)
+/.tmpbuild/
 /tmp-build
