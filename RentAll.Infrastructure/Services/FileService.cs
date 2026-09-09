@@ -46,7 +46,7 @@ public class FileService : IFileService
         ImageUploadLimits.ThrowIfExceedsMaxBytes(fileBytes.Length, _imageUploadSettings);
         var buffer = new MemoryStream(fileBytes);
         var (streamToSave, effectiveExtension, _) = await ImagePersistencePreparer.PrepareForSaveAsync(
-            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+            buffer, fileName, contentType, _imageUploadSettings, imageType).ConfigureAwait(false);
         try
         {
             return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType).ConfigureAwait(false);
@@ -73,7 +73,7 @@ public class FileService : IFileService
 
         var buffer = await ImageUploadLimits.ReadImageStreamWithSizeCapAsync(fileStream, _imageUploadSettings).ConfigureAwait(false);
         var (streamToSave, effectiveExtension, _) = await ImagePersistencePreparer.PrepareForSaveAsync(
-            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+            buffer, fileName, contentType, _imageUploadSettings, imageType).ConfigureAwait(false);
         try
         {
             return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType).ConfigureAwait(false);

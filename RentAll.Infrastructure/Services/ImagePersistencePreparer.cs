@@ -1,9 +1,11 @@
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Infrastructure.Services;
 
 /// <summary>
-/// HEIC→WebP conversion and optional dimension limiting. Takes ownership of <paramref name="input"/> and disposes it.
+/// HEIC→WebP conversion, optional dimension limiting, and aggressive JPEG compression for listing photos.
+/// Takes ownership of <paramref name="input"/> and disposes it.
 /// </summary>
 internal static class ImagePersistencePreparer
 {
@@ -14,7 +16,8 @@ internal static class ImagePersistencePreparer
         MemoryStream input,
         string fileName,
         string contentType,
-        ImageUploadSettings settings)
+        ImageUploadSettings settings,
+        ImageType imageType)
     {
         var effectiveExtension = Path.GetExtension(fileName).ToLowerInvariant();
         var effectiveContentType = contentType;
@@ -22,6 +25,24 @@ internal static class ImagePersistencePreparer
 
         try
         {
+            if (imageType == ImageType.Photos
+                && settings.AggressivePhotoCompressionEnabled
+                && RasterImagePhotoCompressor.IsCompressiblePhoto(effectiveExtension, contentType))
+            {
+                var compressed = await Task.Run(() => RasterImagePhotoCompressor.Compress(current, settings)).ConfigureAwait(false);
+                if (!ReferenceEquals(compressed, current))
+                {
+                    await current.DisposeAsync().ConfigureAwait(false);
+                    current = compressed;
+                }
+
+                effectiveExtension = ".jpg";
+                effectiveContentType = "image/jpeg";
+                ImageUploadLimits.ThrowIfExceedsMaxBytes(current.Length, settings);
+                current.Position = 0;
+                return (current, effectiveExtension, effectiveContentType);
+            }
+
             if (HeicToWebpConverter.IsHeic(effectiveExtension, contentType))
             {
                 var converted = await HeicToWebpConverter.ConvertToWebpAsync(current).ConfigureAwait(false);

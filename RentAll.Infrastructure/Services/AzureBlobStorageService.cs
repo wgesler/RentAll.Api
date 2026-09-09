@@ -38,7 +38,7 @@ public class AzureBlobStorageService : IFileService
         ImageUploadLimits.ThrowIfExceedsMaxBytes(fileBytes.Length, _imageUploadSettings);
         var buffer = new MemoryStream(fileBytes);
         var (streamToUpload, effectiveExtension, uploadContentType) = await ImagePersistencePreparer.PrepareForSaveAsync(
-            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+            buffer, fileName, contentType, _imageUploadSettings, imageType).ConfigureAwait(false);
         try
         {
             return await UploadPreparedImageBlobAsync(
@@ -71,7 +71,7 @@ public class AzureBlobStorageService : IFileService
 
         var buffer = await ImageUploadLimits.ReadImageStreamWithSizeCapAsync(fileStream, _imageUploadSettings).ConfigureAwait(false);
         var (streamToUpload, effectiveExtension, uploadContentType) = await ImagePersistencePreparer.PrepareForSaveAsync(
-            buffer, fileName, contentType, _imageUploadSettings).ConfigureAwait(false);
+            buffer, fileName, contentType, _imageUploadSettings, imageType).ConfigureAwait(false);
         try
         {
             return await UploadPreparedImageBlobAsync(
