@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Partners;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
-using RentAll.Domain.Enums;
+using RentAll.Api.Dtos.Properties.PropertyShares;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
+using RentAll.Domain.Models.Properties;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace RentAll.Api.Controllers;
 
@@ -120,6 +122,47 @@ public class PartnerController : BaseController
         }
     }
 
+    [HttpPost("properties/{propertyId:guid}/share-link")]
+    public async Task<IActionResult> CreatePropertyListingShareLink(Guid propertyId)
+    {
+        if (propertyId == Guid.Empty)
+            return BadRequest("PropertyId is required");
+
+        try
+        {
+            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId);
+            if (property == null)
+                return NotFound("Partner property not found");
+
+            var token = GenerateListingShareToken();
+            var tokenHash = ComputeSha256Hex(token);
+
+            var share = new PropertyListingShare
+            {
+                ShareId = Guid.NewGuid(),
+                PropertyId = propertyId,
+                OrganizationId = property.OrganizationId,
+                TokenHash = tokenHash,
+                ExpiresOn = DateTimeOffset.UtcNow.AddDays(30)
+            };
+
+            var created = await _propertyRepository.UpsertPropertyListingShareByPropertyIdAsync(share);
+
+            return Ok(new PropertyListingShareResponseDto
+            {
+                ShareId = created.ShareId,
+                PropertyId = created.PropertyId,
+                Token = token,
+                ExpiresOn = created.ExpiresOn
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating partner property listing share link: {PropertyId}", propertyId);
+            return ServerError("An error occurred while creating the property listing share link");
+        }
+    }
+
     [HttpGet("cities")]
     public async Task<IActionResult> GetListOfCities()
     {
@@ -161,5 +204,21 @@ public class PartnerController : BaseController
         var normalizedOffice = string.IsNullOrWhiteSpace(officeName) ? "global" : officeName.Trim();
         var normalizedCode = string.IsNullOrWhiteSpace(propertyCode) ? "unknown-property" : propertyCode.Trim();
         return $"{normalizedOffice}/listings/{normalizedCode}";
+    }
+
+    private static string GenerateListingShareToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+    }
+
+    private static string ComputeSha256Hex(string value)
+    {
+        var bytes = Encoding.UTF8.GetBytes(value);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
     }
 }
