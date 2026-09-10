@@ -15,7 +15,6 @@ public partial class ReportManager
         var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
 
         var properties = loaded.Properties;
-        var startingBalanceByKey = loaded.StartingBalanceByKey;
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
             BuildOwnerActivityLines(activitySourceLines, lines, OwnerReportActivityMode.Cash), criteria);
 
@@ -26,10 +25,13 @@ public partial class ReportManager
             .Select(property =>
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
-                var ownerStartingBalance = GetOwnerStartingBalance(startingBalanceByKey, property.OfficeId, property.PropertyId);
-                var startingBalance = loaded.PriorCalendarMonthCashEndingByKey.TryGetValue(propertyKey, out var priorMonthEnding)
-                    ? priorMonthEnding
-                    : GetOwnerReportStartingBalance(ownerStartingBalance, cancellableUnpaidIncome: 0m);
+                var startingBalance = GetChainedCashStartingBalance(
+                    property,
+                    criteria,
+                    loaded.RecapLineSet,
+                    loaded.OwnerApLines,
+                    loaded.OfficeIds,
+                    loaded.OpeningBalanceSheetCloseByOffice);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 

@@ -9,7 +9,8 @@ public partial class ReportManager
         public RecapLineSet RecapLineSet { get; init; } = new();
         public List<PropertyReportData> Properties { get; init; } = [];
         public Dictionary<string, OwnerStartingBalance> StartingBalanceByKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<string, decimal> PriorCalendarMonthCashEndingByKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<int, DateOnly> OpeningBalanceSheetCloseByOffice { get; init; } = new();
+        public List<JournalEntryLineSearchResult> OwnerApLines { get; init; } = [];
         public List<int> OfficeIds { get; init; } = [];
         public List<OwnerInvoiceOutstanding> OutstandingInvoices { get; init; } = [];
     }
@@ -72,19 +73,15 @@ public partial class ReportManager
 
         var properties = await LoadOwnerPropertyReportDataAsync(criteria);
         var startingBalanceByKey = BuildOwnerStartingBalanceByProperty(criteria, officeIds, bundle.OwnerApLines);
-        var priorCalendarMonthCashEndingByKey = BuildPriorCalendarMonthCashEndingByProperty(
-            recapLineSet,
-            properties,
-            officeIds,
-            bundle.OwnerApLines,
-            criteria);
+        var openingBalanceSheetCloseByOffice = ResolveOpeningBalanceSheetCloseDateByOffice(bundle.OwnerApLines);
         var outstandingInvoices = (await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(criteria.OrganizationId, criteria.PropertyId, string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds, criteria.EndDate)).ToList();
         return new OwnerReportLoadedData
         {
             RecapLineSet = recapLineSet,
             Properties = properties,
             StartingBalanceByKey = startingBalanceByKey,
-            PriorCalendarMonthCashEndingByKey = priorCalendarMonthCashEndingByKey,
+            OpeningBalanceSheetCloseByOffice = openingBalanceSheetCloseByOffice,
+            OwnerApLines = bundle.OwnerApLines,
             OfficeIds = officeIds,
             OutstandingInvoices = outstandingInvoices
         };

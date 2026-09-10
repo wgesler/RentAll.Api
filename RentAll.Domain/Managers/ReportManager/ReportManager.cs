@@ -85,6 +85,97 @@ public partial class ReportManager : IReportManager
         JournalEntryRecapGetCriteria criteria,
         IReadOnlyList<int> officeIds,
         IReadOnlyList<JournalEntryLineSearchResult> ownerApLines)
+        => BuildOwnerStartingBalanceByPropertyStatic(criteria, officeIds, ownerApLines);
+
+    private static Dictionary<int, DateOnly> ResolveOpeningBalanceSheetCloseDateByOffice(IReadOnlyList<JournalEntryLineSearchResult> ownerApLines)
+    {
+        return (ownerApLines ?? [])
+            .Where(line => line.JournalEntryKindId == (int)JournalEntryKind.OpeningBalanceSheet)
+            .GroupBy(line => line.OfficeId)
+            .ToDictionary(group => group.Key, group => group.Max(line => line.TransactionDate));
+    }
+
+    private decimal GetChainedCashStartingBalance(
+        PropertyReportData property,
+        JournalEntryRecapGetCriteria criteria,
+        RecapLineSet recapLineSet,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
+        IReadOnlyList<int> officeIds,
+        IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice,
+        int chainDepth = 0)
+    {
+        if (chainDepth > 120)
+            return GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+
+        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var priorStart, out var priorEnd))
+            return GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+
+        if (openingBalanceSheetCloseByOffice.TryGetValue(property.OfficeId, out var openingBalanceCloseDate)
+            && priorEnd <= openingBalanceCloseDate)
+        {
+            return GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+        }
+
+        var priorCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, priorStart, priorEnd);
+        return CalculateCashEndingForPeriod(
+            property,
+            priorCriteria,
+            recapLineSet,
+            ownerApLines,
+            officeIds,
+            openingBalanceSheetCloseByOffice,
+            chainDepth + 1);
+    }
+
+    private decimal CalculateCashEndingForPeriod(
+        PropertyReportData property,
+        JournalEntryRecapGetCriteria criteria,
+        RecapLineSet recapLineSet,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
+        IReadOnlyList<int> officeIds,
+        IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice,
+        int chainDepth)
+    {
+        var startingBalance = GetChainedCashStartingBalance(
+            property,
+            criteria,
+            recapLineSet,
+            ownerApLines,
+            officeIds,
+            openingBalanceSheetCloseByOffice,
+            chainDepth);
+
+        var recapLines = recapLineSet.AllLines;
+        var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
+        var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
+            BuildOwnerActivityLines(activitySourceLines, recapLines, OwnerReportActivityMode.Cash),
+            criteria);
+        var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
+        var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
+        activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
+        activityLines ??= [];
+
+        var receivedIncome = activityLines.Sum(line => line.ReceivedIncome);
+        var ownerExpenses = activityLines.Sum(line => line.Expenses);
+        var ownerPayment = CalculateCashOwnerPayment(startingBalance, receivedIncome, ownerExpenses, property.WorkingCapitalBalance);
+        return CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
+    }
+
+    private static decimal GetLedgerCashStartingBalance(
+        PropertyReportData property,
+        JournalEntryRecapGetCriteria criteria,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
+        IReadOnlyList<int> officeIds)
+    {
+        var startingBalanceByKey = BuildOwnerStartingBalanceByPropertyStatic(criteria, officeIds, ownerApLines);
+        var ownerStartingBalance = GetOwnerStartingBalance(startingBalanceByKey, property.OfficeId, property.PropertyId);
+        return GetOwnerReportStartingBalance(ownerStartingBalance, cancellableUnpaidIncome: 0m);
+    }
+
+    private static Dictionary<string, OwnerStartingBalance> BuildOwnerStartingBalanceByPropertyStatic(
+        JournalEntryRecapGetCriteria criteria,
+        IReadOnlyList<int> officeIds,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines)
     {
         var startingBalanceByKey = new Dictionary<string, OwnerStartingBalance>(StringComparer.OrdinalIgnoreCase);
         var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
@@ -103,45 +194,6 @@ public partial class ReportManager : IReportManager
         }
 
         return startingBalanceByKey;
-    }
-
-    private Dictionary<string, decimal> BuildPriorCalendarMonthCashEndingByProperty(
-        RecapLineSet recapLineSet,
-        IReadOnlyList<PropertyReportData> properties,
-        IReadOnlyList<int> officeIds,
-        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
-        JournalEntryRecapGetCriteria criteria)
-    {
-        var priorPeriodEndingByKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var priorStart, out var priorEnd))
-            return priorPeriodEndingByKey;
-
-        var priorCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, priorStart, priorEnd);
-        var priorStartingBalanceByKey = BuildOwnerStartingBalanceByProperty(priorCriteria, officeIds, ownerApLines);
-        var recapLines = recapLineSet.AllLines;
-        var priorActivitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, priorCriteria);
-        var priorPropertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
-            BuildOwnerActivityLines(priorActivitySourceLines, recapLines, OwnerReportActivityMode.Cash),
-            priorCriteria);
-        var priorActivityLinesByProperty = BuildOwnerActivityLinesByProperty(priorPropertyActivityLines);
-        var priorOwnerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(recapLines, priorCriteria);
-
-        foreach (var property in properties)
-        {
-            var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
-            var ownerStartingBalance = GetOwnerStartingBalance(priorStartingBalanceByKey, property.OfficeId, property.PropertyId);
-            var startingBalance = GetOwnerReportStartingBalance(ownerStartingBalance, cancellableUnpaidIncome: 0m);
-            priorActivityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
-            activityLines ??= [];
-
-            var receivedIncome = activityLines.Sum(line => line.ReceivedIncome);
-            var ownerExpenses = activityLines.Sum(line => line.Expenses);
-            var ownerPayment = CalculateCashOwnerPayment(startingBalance, receivedIncome, ownerExpenses, property.WorkingCapitalBalance);
-            var endingBalance = CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
-            priorPeriodEndingByKey[propertyKey] = endingBalance;
-        }
-
-        return priorPeriodEndingByKey;
     }
 
     #endregion
