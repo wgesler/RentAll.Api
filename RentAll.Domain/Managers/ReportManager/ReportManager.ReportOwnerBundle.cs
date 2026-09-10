@@ -60,22 +60,16 @@ public partial class ReportManager
         var forwardRecapLoadStart = ResolveOwnerCashForwardRecapLoadStartDate(criteria, openingBalanceSheetCloseByOffice);
         if (forwardRecapLoadStart.HasValue)
         {
-            var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
-            var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
+            var reportEndDate = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
                 ?? criteria.EndDate
                 ?? criteria.StartDate
                 ?? forwardRecapLoadStart.Value;
-            if (reportStart.HasValue && forwardRecapLoadStart.Value <= reportStart.Value)
-            {
-                var forwardCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, forwardRecapLoadStart.Value, reportEnd);
-                var forwardBundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(
-                    forwardCriteria,
-                    GetPriorMonthCloseDate(forwardCriteria.StartDate, forwardCriteria.EndDate),
-                    GetReportPeriodStartDate(forwardCriteria.StartDate, forwardCriteria.EndDate));
-                recapLines = forwardRecapLoadStart.Value < reportStart.Value
-                    ? forwardBundle.RecapLines
-                    : MergeRecapLinesByJournalEntryLineId(forwardBundle.RecapLines, recapLines);
-            }
+            var forwardCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, forwardRecapLoadStart.Value, reportEndDate);
+            var forwardBundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(
+                forwardCriteria,
+                GetPriorMonthCloseDate(forwardCriteria.StartDate, forwardCriteria.EndDate),
+                GetReportPeriodStartDate(forwardCriteria.StartDate, forwardCriteria.EndDate));
+            recapLines = MergeRecapLinesByJournalEntryLineId(forwardBundle.RecapLines, recapLines);
         }
 
         var recapLineSet = new RecapLineSet

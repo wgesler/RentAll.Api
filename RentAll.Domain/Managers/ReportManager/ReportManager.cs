@@ -95,7 +95,7 @@ public partial class ReportManager : IReportManager
             .ToDictionary(group => group.Key, group => group.Max(line => line.TransactionDate));
     }
 
-    // Owner cash: anchor at OBS ledger, walk forward month-by-month through the report month.
+    // Owner cash: anchor at OBS ledger, walk forward through every month (or partial month) before the report starts.
     // Each month starts with the prior month's calculated ending balance.
     private (decimal StartingBalance, decimal EndingBalance) ComputeOwnerCashReportMonthBalancesFromObs(
         PropertyReportData property,
@@ -105,7 +105,8 @@ public partial class ReportManager : IReportManager
         IReadOnlyList<int> officeIds,
         IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
     {
-        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var reportStart, out var reportEnd))
+        var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        if (!reportStart.HasValue)
         {
             var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
             var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
@@ -119,26 +120,69 @@ public partial class ReportManager : IReportManager
             return (ledgerStarting, ledgerEnding);
         }
 
+        if (reportStart.Value <= openingBalanceCloseDate)
+        {
+            var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+            var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
+            return (ledgerStarting, ledgerEnding);
+        }
+
+        var balanceAsOfDate = reportStart.Value.AddDays(-1);
+        var reportStartingBalance = WalkForwardCashBalanceThroughDate(
+            property,
+            openingBalanceCloseDate,
+            balanceAsOfDate,
+            criteria,
+            recapLineSet,
+            ownerApLines,
+            officeIds);
+        var reportEndingBalance = CalculateCashEndingForPeriodWithStarting(
+            property,
+            criteria,
+            recapLineSet,
+            reportStartingBalance);
+
+        return (reportStartingBalance, reportEndingBalance);
+    }
+
+    private decimal WalkForwardCashBalanceThroughDate(
+        PropertyReportData property,
+        DateOnly openingBalanceCloseDate,
+        DateOnly balanceAsOfDate,
+        JournalEntryRecapGetCriteria criteria,
+        RecapLineSet recapLineSet,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
+        IReadOnlyList<int> officeIds)
+    {
+        if (balanceAsOfDate <= openingBalanceCloseDate)
+        {
+            return GetLedgerCashStartingBalanceAfterObsClose(
+                property,
+                openingBalanceCloseDate,
+                criteria,
+                ownerApLines,
+                officeIds);
+        }
+
         var forwardStartMonth = new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1);
+        var lastWalkMonth = new DateOnly(balanceAsOfDate.Year, balanceAsOfDate.Month, 1);
         var carryingBalance = GetLedgerCashStartingBalanceAfterObsClose(
             property,
             openingBalanceCloseDate,
             criteria,
             ownerApLines,
             officeIds);
-        var reportStartingBalance = carryingBalance;
 
         for (var monthCursor = forwardStartMonth;
-             monthCursor <= reportStart;
+             monthCursor <= lastWalkMonth;
              monthCursor = monthCursor.AddMonths(1))
         {
-            if (monthCursor == reportStart)
-                reportStartingBalance = carryingBalance;
-
-            var monthEnd = new DateOnly(
-                monthCursor.Year,
-                monthCursor.Month,
-                DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month));
+            var monthEnd = monthCursor.Year == balanceAsOfDate.Year && monthCursor.Month == balanceAsOfDate.Month
+                ? balanceAsOfDate
+                : new DateOnly(
+                    monthCursor.Year,
+                    monthCursor.Month,
+                    DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month));
             var monthCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, monthCursor, monthEnd);
             carryingBalance = CalculateCashEndingForPeriodWithStarting(
                 property,
@@ -147,7 +191,7 @@ public partial class ReportManager : IReportManager
                 carryingBalance);
         }
 
-        return (reportStartingBalance, carryingBalance);
+        return carryingBalance;
     }
 
     private static decimal GetLedgerCashStartingBalanceAfterObsClose(
@@ -188,24 +232,21 @@ public partial class ReportManager : IReportManager
         JournalEntryRecapGetCriteria criteria,
         IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
     {
-        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out _, out var reportEnd))
-            return null;
-
         if (openingBalanceSheetCloseByOffice.Count == 0)
             return null;
 
-        if (reportEnd <= openingBalanceSheetCloseByOffice.Values.Max())
+        var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
+            ?? criteria.EndDate
+            ?? criteria.StartDate;
+        if (!reportEnd.HasValue)
             return null;
 
-        var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
-        if (!reportStart.HasValue)
+        if (reportEnd.Value <= openingBalanceSheetCloseByOffice.Values.Max())
             return null;
 
-        var forwardStartMonth = openingBalanceSheetCloseByOffice.Values
+        return openingBalanceSheetCloseByOffice.Values
             .Select(openingBalanceCloseDate => new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1))
             .Min();
-
-        return forwardStartMonth <= reportStart.Value ? forwardStartMonth : null;
     }
 
     private static List<JournalEntryRecapLine> FilterRecapLinesToReportMonthActivity(
