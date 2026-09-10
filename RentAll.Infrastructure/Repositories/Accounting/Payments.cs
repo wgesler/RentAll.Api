@@ -340,7 +340,7 @@ public partial class AccountingRepository
             }
 
             invoice.ModifiedBy = currentUser;
-            await UpdateByIdCoreAsync(db, transaction, invoice);
+            await UpdateByIdCoreAsync(db, transaction, invoice, allowPaymentLinkedLineDeletion: true);
         }
     }
 

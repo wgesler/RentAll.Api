@@ -1034,12 +1034,11 @@ public partial class AccountingManager
 
         var revertPayment = existing;
         var revertAllocations = existing.LedgerLines
-            .GroupBy(line => line.InvoiceId)
-            .Select(group => new PaymentInvoiceAllocation
+            .Select(line => new PaymentInvoiceAllocation
             {
-                InvoiceId = group.Key,
-                Amount = group.Sum(line => line.Amount),
-                Description = group.First().Description ?? string.Empty
+                InvoiceId = line.InvoiceId,
+                Amount = line.Amount,
+                Description = line.Description ?? string.Empty
             })
             .ToList();
 
