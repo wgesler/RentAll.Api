@@ -20,7 +20,6 @@ public partial class ReportManager
             BuildOwnerActivityLines(activitySourceLines, lines, OwnerReportActivityMode.Cash), criteria);
 
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
-        var priorPeriodUnpaidByProperty = CalculatePriorPeriodUnpaidFromOutstanding(loaded.OutstandingInvoices, criteria);
         var ownerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(lines, criteria);
 
         var rows = properties
@@ -28,13 +27,7 @@ public partial class ReportManager
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
                 var ownerStartingBalance = GetOwnerStartingBalance(startingBalanceByKey, property.OfficeId, property.PropertyId);
-                priorPeriodUnpaidByProperty.TryGetValue(propertyKey, out var priorPeriodUnpaidIncome);
-
-                var cancellableUnpaidIncome = Math.Min(
-                    priorPeriodUnpaidIncome,
-                    Math.Max(0m, ownerStartingBalance.LedgerBalance - ownerStartingBalance.OpeningAccountsPayableAmount));
-
-                var startingBalance = GetOwnerReportStartingBalanceFromBalAnchor(ownerStartingBalance, criteria, cancellableUnpaidIncome);
+                var startingBalance = GetOwnerReportStartingBalanceFromBalAnchor(ownerStartingBalance, criteria, cancellableUnpaidIncome: 0m);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 
@@ -99,21 +92,6 @@ public partial class ReportManager
     {
         var endingBalance = startingBalance + receivedIncome - ownerExpenses - ownerPayment;
         return endingBalance < 0 ? 0 : endingBalance;
-    }
-
-    private static Dictionary<string, decimal> CalculatePriorPeriodUnpaidFromOutstanding(IReadOnlyList<OwnerInvoiceOutstanding>? outstandingInvoices, JournalEntryRecapGetCriteria criteria)
-    {
-        var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
-        if (!periodStart.HasValue)
-            return new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-
-        return (outstandingInvoices ?? [])
-            .Where(row => row.AccountingPeriod < periodStart.Value)
-            .GroupBy(row => GetPropertyReportKey(row.OfficeId, row.PropertyId), StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Sum(row => row.Outstanding),
-                StringComparer.OrdinalIgnoreCase);
     }
 
     #endregion
