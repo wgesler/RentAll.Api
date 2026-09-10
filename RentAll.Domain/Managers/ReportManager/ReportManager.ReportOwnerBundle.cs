@@ -55,10 +55,27 @@ public partial class ReportManager
         await EnsureRentalIncomeParentAccountIdsAsync(criteria);
 
         var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(criteria, priorMonthClose, periodStart);
+        var openingBalanceSheetCloseByOffice = ResolveOpeningBalanceSheetCloseDateByOffice(bundle.OwnerApLines);
+        var recapLines = bundle.RecapLines;
+        var chainRecapLoadStart = ResolveCashChainRecapLoadStartDate(criteria, openingBalanceSheetCloseByOffice);
+        if (chainRecapLoadStart.HasValue)
+        {
+            var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
+                ?? criteria.EndDate
+                ?? criteria.StartDate
+                ?? chainRecapLoadStart.Value;
+            var expandedCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, chainRecapLoadStart.Value, reportEnd);
+            var expandedBundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(
+                expandedCriteria,
+                GetPriorMonthCloseDate(expandedCriteria.StartDate, expandedCriteria.EndDate),
+                GetReportPeriodStartDate(expandedCriteria.StartDate, expandedCriteria.EndDate));
+            recapLines = MergeRecapLinesByJournalEntryLineId(expandedBundle.RecapLines, recapLines);
+        }
+
         var recapLineSet = new RecapLineSet
         {
-            AllLines = bundle.RecapLines,
-            ActivityLines = bundle.RecapLines.Where(line => line.IsInDateRange).ToList()
+            AllLines = recapLines,
+            ActivityLines = recapLines.Where(line => line.IsInDateRange).ToList()
         };
 
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
@@ -73,7 +90,6 @@ public partial class ReportManager
 
         var properties = await LoadOwnerPropertyReportDataAsync(criteria);
         var startingBalanceByKey = BuildOwnerStartingBalanceByProperty(criteria, officeIds, bundle.OwnerApLines);
-        var openingBalanceSheetCloseByOffice = ResolveOpeningBalanceSheetCloseDateByOffice(bundle.OwnerApLines);
         var outstandingInvoices = (await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(criteria.OrganizationId, criteria.PropertyId, string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds, criteria.EndDate)).ToList();
         return new OwnerReportLoadedData
         {
