@@ -15,7 +15,7 @@ public partial class ReportManager
 
         var properties = loaded.Properties;
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
-            BuildOwnerActivityLines(activitySourceLines, activitySourceLines, OwnerReportActivityMode.Cash), criteria);
+            BuildOwnerActivityLines(activitySourceLines, recapLineSet.AllLines, OwnerReportActivityMode.Cash), criteria);
 
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
         var ownerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(activitySourceLines, criteria);
@@ -78,6 +78,7 @@ public partial class ReportManager
         return (activitySourceLines ?? [])
             .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
             .Where(line => string.Equals(line.RecapCategory, "OwnerPayment", StringComparison.OrdinalIgnoreCase))
+            .Where(line => IsTransactionDateInReportRange(line.TransactionDate, criteria.StartDate, criteria.EndDate))
             .Where(line => IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
             .GroupBy(line => GetPropertyReportKey(line.OfficeId, line.PropertyId!.Value))
             .ToDictionary(

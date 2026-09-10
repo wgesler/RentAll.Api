@@ -188,7 +188,7 @@ public partial class ReportManager : IReportManager
     {
         var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
-            BuildOwnerActivityLines(activitySourceLines, activitySourceLines, OwnerReportActivityMode.Cash),
+            BuildOwnerActivityLines(activitySourceLines, recapLineSet.AllLines, OwnerReportActivityMode.Cash),
             criteria);
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
         var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
@@ -220,6 +220,7 @@ public partial class ReportManager : IReportManager
     {
         return (recapLines ?? [])
             .Where(line => line.IsInDateRange)
+            .Where(line => IsTransactionDateInReportRange(line.TransactionDate, criteria.StartDate, criteria.EndDate))
             .Where(line => IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
             .ToList();
     }
@@ -798,11 +799,27 @@ public partial class ReportManager : IReportManager
         return true;
     }
 
+    private static bool IsTransactionDateInReportRange(DateOnly transactionDate, DateOnly? startDate, DateOnly? endDate)
+    {
+        var rangeStart = GetReportPeriodStartDate(startDate, endDate);
+        var rangeEnd = GetReportPeriodEndDate(startDate, endDate);
+        if (rangeStart.HasValue && transactionDate < rangeStart.Value)
+            return false;
+        if (rangeEnd.HasValue && transactionDate > rangeEnd.Value)
+            return false;
+
+        return true;
+    }
+
     private static int GetCalendarMonthOrdinal(DateOnly date) => date.Year * 12 + date.Month;
 
-    private static bool IsOwnerCashAccountingPeriodFilteredRecapCategory(string category) =>
+    private static bool IsOwnerCashTransactionDatedRecapCategory(string category) =>
         string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOwnerCashAccountingPeriodFilteredRecapCategory(string category) =>
+        string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase);
 
     private static bool ShouldIncludeOwnerCashRecapLineByAccountingPeriod(JournalEntryRecapLine line, DateOnly? startDate, DateOnly? endDate)
@@ -820,15 +837,22 @@ public partial class ReportManager : IReportManager
 
         foreach (var line in recapLineSet.AllLines)
         {
-            if (line.IsInDateRange)
+            if (!line.IsInDateRange)
+                continue;
+
+            var category = (line.RecapCategory ?? string.Empty).Trim();
+            if (IsOwnerCashTransactionDatedRecapCategory(category))
+            {
+                if (!IsTransactionDateInReportRange(line.TransactionDate, criteria.StartDate, criteria.EndDate))
+                    continue;
+            }
+            else if (IsOwnerCashAccountingPeriodFilteredRecapCategory(category)
+                || string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
             {
                 if (!IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
                     continue;
-
-                if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
-                    continue;
             }
-            else if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
+            else if (string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -844,7 +868,9 @@ public partial class ReportManager : IReportManager
         JournalEntryRecapGetCriteria criteria)
     {
         return (lines ?? [])
-            .Where(line => IsOwnerStatementActivityLineAccountingPeriodInRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+            .Where(line => line.ReceivedIncome != 0
+                ? IsTransactionDateInReportRange(line.ActivityDate, criteria.StartDate, criteria.EndDate)
+                : IsOwnerStatementActivityLineAccountingPeriodInRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
             .ToList();
     }
 
