@@ -10,11 +10,21 @@ public partial class AccountingManager
         if (journalEntry.JournalEntryKindId is JournalEntryKind.OwnerExpected or JournalEntryKind.OwnerActual)
             return true;
 
-        if (journalEntry.JournalEntryKindId is JournalEntryKind.OwnerUtility or JournalEntryKind.OwnerTransfer)
+        if (journalEntry.JournalEntryKindId is JournalEntryKind.OwnerUtility
+            or JournalEntryKind.OwnerTransfer
+            or JournalEntryKind.Expense
+            or JournalEntryKind.LinenTowelFee
+            or JournalEntryKind.LinenTowelUnusedReversal)
+            return true;
+
+        if (journalEntry.SourceTypeId == (int)SourceType.WorkOrder)
+            return true;
+
+        if (journalEntry.JournalEntryKindId is JournalEntryKind.Bill or JournalEntryKind.Receipt)
             return true;
 
         return journalEntry.JournalEntryKindId == JournalEntryKind.BillPayment
-            && journalEntry.SourceTypeId == (int)SourceType.OwnerDistribution;
+            && journalEntry.SourceTypeId is (int)SourceType.OwnerDistribution or (int)SourceType.BillPayment;
     }
 
     private static DateOnly ResolveOwnerReportAnchorInvalidationPeriod(JournalEntry journalEntry)

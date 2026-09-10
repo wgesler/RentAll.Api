@@ -160,7 +160,7 @@ public class ReportController : BaseController
                 closeLines,
                 currentUser);
             result.OwnerApSoftCloseQueued = true;
-            QueueOwnerApSoftCloseAfterOwnerStatementMonthClose(organizationId, endDate, closeLines, currentUser);
+            QueueOwnerApSoftCloseAfterOwnerStatementMonthClose(organizationId, dto.StartDate, endDate, closeLines, currentUser);
             return Ok(new CloseOwnerStatementMonthResultDto(result));
         }
         catch (Exception ex)
@@ -268,7 +268,7 @@ public class ReportController : BaseController
         }
     }
 
-    private void QueueOwnerApSoftCloseAfterOwnerStatementMonthClose(Guid organizationId, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser)
+    private void QueueOwnerApSoftCloseAfterOwnerStatementMonthClose(Guid organizationId, DateOnly? startDate, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser)
     {
         _ = Task.Run(async () =>
         {
@@ -276,7 +276,7 @@ public class ReportController : BaseController
             {
                 using var scope = _serviceScopeFactory.CreateScope();
                 var accountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
-                var softCloseResult = await accountingManager.SoftCloseOwnerApJournalEntriesForOwnerStatementMonthAsync(organizationId, endDate, lines, currentUser);
+                var softCloseResult = await accountingManager.SoftCloseOwnerApJournalEntriesForOwnerStatementMonthAsync(organizationId, startDate, endDate, lines, currentUser);
                 if (softCloseResult.FailedCount > 0)
                 {
                     _logger.LogError(
