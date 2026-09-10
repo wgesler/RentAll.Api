@@ -837,10 +837,19 @@ public partial class ReportManager : IReportManager
 
         foreach (var line in recapLineSet.AllLines)
         {
+            var category = (line.RecapCategory ?? string.Empty).Trim();
+            if (string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+                    continue;
+
+                keyed.TryAdd(line.JournalEntryLineId, line);
+                continue;
+            }
+
             if (!line.IsInDateRange)
                 continue;
 
-            var category = (line.RecapCategory ?? string.Empty).Trim();
             if (IsOwnerCashTransactionDatedRecapCategory(category))
             {
                 if (!IsTransactionDateInReportRange(line.TransactionDate, criteria.StartDate, criteria.EndDate))

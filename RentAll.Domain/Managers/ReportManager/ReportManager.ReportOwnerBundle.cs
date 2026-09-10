@@ -76,7 +76,7 @@ public partial class ReportManager
 
         var properties = await LoadOwnerPropertyReportDataAsync(criteria);
         var startingBalanceByKey = BuildOwnerStartingBalanceByProperty(criteria, officeIds, bundle.OwnerApLines);
-        var outstandingInvoices = (await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(criteria.OrganizationId, criteria.PropertyId, string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds, criteria.EndDate)).ToList();
+        var outstandingInvoices = (await _accountingRepository.GetOwnerInvoiceOutstandingByCriteriaAsync(criteria.OrganizationId, criteria.PropertyId, string.IsNullOrWhiteSpace(criteria.OfficeIds) ? null : criteria.OfficeIds, criteria.EndDate) ?? []).ToList();
         return new OwnerReportLoadedData
         {
             RecapLineSet = recapLineSet,

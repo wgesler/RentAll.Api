@@ -202,6 +202,9 @@ internal static class ReportManagerTestSupport
             accountingRepository
                 .Setup(repository => repository.GetChartOfAccountsByOfficeIdAsync(OrganizationId, OfficeId))
                 .ReturnsAsync([]);
+            accountingRepository
+                .Setup(repository => repository.GetOwnerInvoiceOutstandingByCriteriaAsync(OrganizationId, PropertyId, It.IsAny<string?>(), It.IsAny<DateOnly?>()))
+                .ReturnsAsync([]);
 
             var organizationRepository = new Mock<IOrganizationRepository>();
             organizationRepository
