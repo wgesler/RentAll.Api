@@ -228,25 +228,17 @@ public partial class ReportManager : IReportManager
         return CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
     }
 
-    private static DateOnly? ResolveOwnerCashForwardRecapLoadStartDate(
-        JournalEntryRecapGetCriteria criteria,
-        IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
+    private static JournalEntryRecapGetCriteria CloneOwnerReportBundleLoadCriteria(JournalEntryRecapGetCriteria criteria)
     {
-        if (openingBalanceSheetCloseByOffice.Count == 0)
-            return null;
-
-        var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
+        var reportEndDate = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
             ?? criteria.EndDate
             ?? criteria.StartDate;
-        if (!reportEnd.HasValue)
-            return null;
 
-        if (reportEnd.Value <= openingBalanceSheetCloseByOffice.Values.Max())
-            return null;
+        if (!reportEndDate.HasValue)
+            return criteria;
 
-        return openingBalanceSheetCloseByOffice.Values
-            .Select(openingBalanceCloseDate => new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1))
-            .Min();
+        // Null StartDate tells JournalEntryRecap_GetByCriteria to load from go-live per office; OBS JEs are always included.
+        return CloneJournalEntryRecapCriteriaWithDates(criteria, null, reportEndDate);
     }
 
     private static List<JournalEntryRecapLine> FilterRecapLinesToReportMonthActivity(
@@ -772,8 +764,8 @@ public partial class ReportManager : IReportManager
 
     private static JournalEntryRecapGetCriteria CloneJournalEntryRecapCriteriaWithDates(
         JournalEntryRecapGetCriteria criteria,
-        DateOnly startDate,
-        DateOnly endDate)
+        DateOnly? startDate,
+        DateOnly? endDate)
     {
         return new JournalEntryRecapGetCriteria
         {

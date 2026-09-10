@@ -49,33 +49,19 @@ public partial class ReportManager
 
     private async Task<OwnerReportLoadedData> LoadOwnerReportLoadedDataAsync(JournalEntryRecapGetCriteria criteria)
     {
-        var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
-        var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
         criteria.IncludePaymentInvoiceContext = true;
         await EnsureRentalIncomeParentAccountIdsAsync(criteria);
 
-        var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(criteria, priorMonthClose, periodStart);
+        var loadCriteria = CloneOwnerReportBundleLoadCriteria(criteria);
+        var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
+        var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(loadCriteria, priorMonthClose, periodStart);
         var openingBalanceSheetCloseByOffice = ResolveOpeningBalanceSheetCloseDateByOffice(bundle.OwnerApLines);
-        var recapLines = bundle.RecapLines;
-        var forwardRecapLoadStart = ResolveOwnerCashForwardRecapLoadStartDate(criteria, openingBalanceSheetCloseByOffice);
-        if (forwardRecapLoadStart.HasValue)
-        {
-            var reportEndDate = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
-                ?? criteria.EndDate
-                ?? criteria.StartDate
-                ?? forwardRecapLoadStart.Value;
-            var forwardCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, forwardRecapLoadStart.Value, reportEndDate);
-            var forwardBundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(
-                forwardCriteria,
-                GetPriorMonthCloseDate(forwardCriteria.StartDate, forwardCriteria.EndDate),
-                GetReportPeriodStartDate(forwardCriteria.StartDate, forwardCriteria.EndDate));
-            recapLines = MergeRecapLinesByJournalEntryLineId(forwardBundle.RecapLines, recapLines);
-        }
 
         var recapLineSet = new RecapLineSet
         {
-            AllLines = recapLines,
-            ActivityLines = FilterRecapLinesToReportMonthActivity(recapLines, criteria)
+            AllLines = bundle.RecapLines,
+            ActivityLines = FilterRecapLinesToReportMonthActivity(bundle.RecapLines, criteria)
         };
 
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
