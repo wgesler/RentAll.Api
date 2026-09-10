@@ -814,12 +814,12 @@ public partial class ReportManager : IReportManager
     private static int GetCalendarMonthOrdinal(DateOnly date) => date.Year * 12 + date.Month;
 
     private static bool IsOwnerCashTransactionDatedRecapCategory(string category) =>
-        string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
+        string.Equals(category, "Payment", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "PrePayment", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsOwnerCashAccountingPeriodFilteredRecapCategory(string category) =>
-        string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
+        string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
         || string.Equals(category, "OwnerPayment", StringComparison.OrdinalIgnoreCase);
 
     private static bool ShouldIncludeOwnerCashRecapLineByAccountingPeriod(JournalEntryRecapLine line, DateOnly? startDate, DateOnly? endDate)
@@ -868,9 +868,7 @@ public partial class ReportManager : IReportManager
         JournalEntryRecapGetCriteria criteria)
     {
         return (lines ?? [])
-            .Where(line => line.ReceivedIncome != 0
-                ? IsTransactionDateInReportRange(line.ActivityDate, criteria.StartDate, criteria.EndDate)
-                : IsOwnerStatementActivityLineAccountingPeriodInRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+            .Where(line => IsOwnerStatementActivityLineAccountingPeriodInRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
             .ToList();
     }
 
