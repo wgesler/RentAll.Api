@@ -454,6 +454,26 @@ public partial class AccountingManager
         => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
            && entry.SourceTypeId == (int)SourceType.Invoice;
 
+    private static bool MatchesInvoicePrePaymentReceivedUpsert(
+        JournalEntry entry,
+        int prePaymentAccountId,
+        Invoice invoice,
+        LedgerLine paymentLedgerLine,
+        DateOnly? targetAccountingPeriod = null)
+    {
+        if (!IsInvoicePrePaymentReceivedJournalEntry(entry, prePaymentAccountId))
+            return false;
+
+        if (!MatchesInvoicePaymentLedgerLineMemo(entry, invoice, paymentLedgerLine))
+            return false;
+
+        var matchPeriod = targetAccountingPeriod is { } period && period != default
+            ? period
+            : FirstDayOfMonth(paymentLedgerLine.LedgerLineDate);
+
+        return MatchesJournalEntryAccountingPeriod(entry, matchPeriod);
+    }
+
     private static bool IsInvoicePrePaymentApplyJournalEntry(JournalEntry entry, int prePaymentAccountId)
         => entry.JournalEntryKindId == JournalEntryKind.PrePaymentApply
            && entry.SourceTypeId == (int)SourceType.Invoice;

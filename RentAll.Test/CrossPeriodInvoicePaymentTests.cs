@@ -24,10 +24,13 @@ public class CrossPeriodInvoicePaymentTests
         var (expectedJunePayment, expectedJulyPayment, expectedUnapplied) = AllocatePaymentWaterfall(scenario.InvoiceTotal, scenario.FirstPeriodCharge, scenario.SecondPeriodCharge);
 
         Assert.Equal(0m, expectedUnapplied);
+        Assert.Equal(2, CountPrePaymentReceivedEntries(scenario.Context, scenario.Invoice, payment));
         Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, payment));
         Assert.Equal(expectedJunePayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
         Assert.Equal(expectedJulyPayment, SumPrePaymentApplyDebits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
         Assert.Equal(scenario.InvoiceTotal, SumPrePaymentCredits(scenario.Context, scenario.Invoice, payment));
+        Assert.Equal(expectedJunePayment, SumPrePaymentReceivedCredits(scenario.Context, scenario.Invoice, payment, JuneAccountingPeriod));
+        Assert.Equal(expectedJulyPayment, SumPrePaymentReceivedCredits(scenario.Context, scenario.Invoice, payment, JulyAccountingPeriod));
 
         var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, MayPaymentDate, scenario.InvoiceTotal);
         AssertBalancedJournalEntry(paymentEntry);
@@ -350,6 +353,16 @@ public class CrossPeriodInvoicePaymentTests
         => context.ActiveJournalEntries
             .Where(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
                 && entry.SourceId == invoice.InvoiceId
+                && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal))
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
+            .Sum(line => line.Credit);
+
+    private static decimal SumPrePaymentReceivedCredits(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, LedgerLine payment, DateOnly accountingPeriod)
+        => context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
+                && entry.SourceId == invoice.InvoiceId
+                && entry.AccountingPeriod == accountingPeriod
                 && string.Equals(entry.Memo, AccountingManager.BuildInvoicePrePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal))
             .SelectMany(entry => entry.JournalEntryLines)
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.PrePaymentAccountId)
