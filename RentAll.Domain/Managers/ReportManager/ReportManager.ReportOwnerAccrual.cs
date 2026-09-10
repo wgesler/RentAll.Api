@@ -24,7 +24,7 @@ public partial class ReportManager
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 
-                var startingBalance = GetOwnerReportStartingBalanceFromBalAnchor(ownerStartingBalance, criteria, cancellableUnpaidIncome: 0m);
+                var startingBalance = GetOwnerReportStartingBalance(ownerStartingBalance, cancellableUnpaidIncome: 0m);
 
                 var invoicedIncome = activityLines.Sum(line => line.ExpectedIncome);
                 var ownerExpenses = activityLines.Sum(line => line.Expenses);

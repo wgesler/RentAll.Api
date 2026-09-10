@@ -27,7 +27,7 @@ public partial class ReportManager
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
                 var ownerStartingBalance = GetOwnerStartingBalance(startingBalanceByKey, property.OfficeId, property.PropertyId);
-                var startingBalance = GetOwnerReportStartingBalanceFromBalAnchor(ownerStartingBalance, criteria, cancellableUnpaidIncome: 0m);
+                var startingBalance = GetOwnerReportStartingBalance(ownerStartingBalance, cancellableUnpaidIncome: 0m);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 
