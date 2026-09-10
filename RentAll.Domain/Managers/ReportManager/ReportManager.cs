@@ -105,6 +105,45 @@ public partial class ReportManager : IReportManager
         return startingBalanceByKey;
     }
 
+    private Dictionary<string, decimal> BuildPriorCalendarMonthCashEndingByProperty(
+        RecapLineSet recapLineSet,
+        IReadOnlyList<PropertyReportData> properties,
+        IReadOnlyList<int> officeIds,
+        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
+        JournalEntryRecapGetCriteria criteria)
+    {
+        var priorPeriodEndingByKey = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var priorStart, out var priorEnd))
+            return priorPeriodEndingByKey;
+
+        var priorCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, priorStart, priorEnd);
+        var priorStartingBalanceByKey = BuildOwnerStartingBalanceByProperty(priorCriteria, officeIds, ownerApLines);
+        var recapLines = recapLineSet.AllLines;
+        var priorActivitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, priorCriteria);
+        var priorPropertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
+            BuildOwnerActivityLines(priorActivitySourceLines, recapLines, OwnerReportActivityMode.Cash),
+            priorCriteria);
+        var priorActivityLinesByProperty = BuildOwnerActivityLinesByProperty(priorPropertyActivityLines);
+        var priorOwnerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(recapLines, priorCriteria);
+
+        foreach (var property in properties)
+        {
+            var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
+            var ownerStartingBalance = GetOwnerStartingBalance(priorStartingBalanceByKey, property.OfficeId, property.PropertyId);
+            var startingBalance = GetOwnerReportStartingBalance(ownerStartingBalance, cancellableUnpaidIncome: 0m);
+            priorActivityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
+            activityLines ??= [];
+
+            var receivedIncome = activityLines.Sum(line => line.ReceivedIncome);
+            var ownerExpenses = activityLines.Sum(line => line.Expenses);
+            var ownerPayment = CalculateCashOwnerPayment(startingBalance, receivedIncome, ownerExpenses, property.WorkingCapitalBalance);
+            var endingBalance = CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
+            priorPeriodEndingByKey[propertyKey] = endingBalance;
+        }
+
+        return priorPeriodEndingByKey;
+    }
+
     #endregion
 
     #region Build
@@ -533,6 +572,61 @@ public partial class ReportManager : IReportManager
         }
 
         return null;
+    }
+
+    private static bool TryGetPriorCalendarMonthReportPeriod(
+        DateOnly? startDate,
+        DateOnly? endDate,
+        out DateOnly priorStart,
+        out DateOnly priorEnd)
+    {
+        priorStart = default;
+        priorEnd = default;
+
+        var periodStart = GetReportPeriodStartDate(startDate, endDate);
+        var periodEnd = GetReportPeriodEndDate(startDate, endDate);
+        if (!periodStart.HasValue || !periodEnd.HasValue)
+            return false;
+
+        if (periodStart.Value.Day != 1)
+            return false;
+
+        var lastDayOfMonth = new DateOnly(
+            periodEnd.Value.Year,
+            periodEnd.Value.Month,
+            DateTime.DaysInMonth(periodEnd.Value.Year, periodEnd.Value.Month));
+        if (periodEnd.Value != lastDayOfMonth)
+            return false;
+
+        if (periodStart.Value.Year != periodEnd.Value.Year || periodStart.Value.Month != periodEnd.Value.Month)
+            return false;
+
+        priorEnd = periodStart.Value.AddDays(-1);
+        priorStart = new DateOnly(priorEnd.Year, priorEnd.Month, 1);
+        return true;
+    }
+
+    private static JournalEntryRecapGetCriteria CloneJournalEntryRecapCriteriaWithDates(
+        JournalEntryRecapGetCriteria criteria,
+        DateOnly startDate,
+        DateOnly endDate)
+    {
+        return new JournalEntryRecapGetCriteria
+        {
+            OrganizationId = criteria.OrganizationId,
+            OfficeIds = criteria.OfficeIds,
+            PropertyId = criteria.PropertyId,
+            ReservationId = criteria.ReservationId,
+            StartDate = startDate,
+            EndDate = endDate,
+            IncludeUnposted = criteria.IncludeUnposted,
+            RecapCategory = criteria.RecapCategory,
+            IncludePaymentInvoiceContext = criteria.IncludePaymentInvoiceContext,
+            IncludeOwnerReportSupplemental = criteria.IncludeOwnerReportSupplemental,
+            IncludeEscrowSupplemental = criteria.IncludeEscrowSupplemental,
+            RentalIncomeParentAccountIds = criteria.RentalIncomeParentAccountIds,
+            RentalIncomeParentAccountNos = criteria.RentalIncomeParentAccountNos
+        };
     }
 
     private static DateOnly? GetReportPeriodStartDate(DateOnly? startDate, DateOnly? endDate)
