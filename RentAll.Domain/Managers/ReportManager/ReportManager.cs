@@ -95,7 +95,9 @@ public partial class ReportManager : IReportManager
             .ToDictionary(group => group.Key, group => group.Max(line => line.TransactionDate));
     }
 
-    private decimal GetChainedCashStartingBalance(
+    // Owner cash: anchor at OBS ledger, walk forward month-by-month through the report month.
+    // Each month starts with the prior month's calculated ending balance.
+    private (decimal StartingBalance, decimal EndingBalance) ComputeOwnerCashReportMonthBalancesFromObs(
         PropertyReportData property,
         JournalEntryRecapGetCriteria criteria,
         RecapLineSet recapLineSet,
@@ -103,27 +105,36 @@ public partial class ReportManager : IReportManager
         IReadOnlyList<int> officeIds,
         IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
     {
-        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var priorStart, out var priorEnd))
-            return GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
-
-        if (!openingBalanceSheetCloseByOffice.TryGetValue(property.OfficeId, out var openingBalanceCloseDate)
-            || priorEnd <= openingBalanceCloseDate)
+        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var reportStart, out var reportEnd))
         {
-            return GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+            var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+            var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
+            return (ledgerStarting, ledgerEnding);
         }
 
-        var chainStartMonth = new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1);
+        if (!openingBalanceSheetCloseByOffice.TryGetValue(property.OfficeId, out var openingBalanceCloseDate))
+        {
+            var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
+            var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
+            return (ledgerStarting, ledgerEnding);
+        }
+
+        var forwardStartMonth = new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1);
         var carryingBalance = GetLedgerCashStartingBalanceAfterObsClose(
             property,
             openingBalanceCloseDate,
             criteria,
             ownerApLines,
             officeIds);
+        var reportStartingBalance = carryingBalance;
 
-        for (var monthCursor = chainStartMonth;
-             monthCursor <= priorStart;
+        for (var monthCursor = forwardStartMonth;
+             monthCursor <= reportStart;
              monthCursor = monthCursor.AddMonths(1))
         {
+            if (monthCursor == reportStart)
+                reportStartingBalance = carryingBalance;
+
             var monthEnd = new DateOnly(
                 monthCursor.Year,
                 monthCursor.Month,
@@ -136,7 +147,7 @@ public partial class ReportManager : IReportManager
                 carryingBalance);
         }
 
-        return carryingBalance;
+        return (reportStartingBalance, carryingBalance);
     }
 
     private static decimal GetLedgerCashStartingBalanceAfterObsClose(
@@ -173,26 +184,38 @@ public partial class ReportManager : IReportManager
         return CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
     }
 
-    private static DateOnly? ResolveCashChainRecapLoadStartDate(
+    private static DateOnly? ResolveOwnerCashForwardRecapLoadStartDate(
         JournalEntryRecapGetCriteria criteria,
         IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
     {
-        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out var priorStart, out var priorEnd))
+        if (!TryGetPriorCalendarMonthReportPeriod(criteria.StartDate, criteria.EndDate, out _, out var reportEnd))
             return null;
 
-        if (openingBalanceSheetCloseByOffice.Count == 0 || priorEnd <= openingBalanceSheetCloseByOffice.Values.Max())
+        if (openingBalanceSheetCloseByOffice.Count == 0)
+            return null;
+
+        if (reportEnd <= openingBalanceSheetCloseByOffice.Values.Max())
             return null;
 
         var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
         if (!reportStart.HasValue)
             return null;
 
-        var chainStartMonth = openingBalanceSheetCloseByOffice.Values
+        var forwardStartMonth = openingBalanceSheetCloseByOffice.Values
             .Select(openingBalanceCloseDate => new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1))
             .Min();
 
-        var neededStart = chainStartMonth < priorStart ? chainStartMonth : priorStart;
-        return neededStart < reportStart.Value ? neededStart : null;
+        return forwardStartMonth <= reportStart.Value ? forwardStartMonth : null;
+    }
+
+    private static List<JournalEntryRecapLine> FilterRecapLinesToReportMonthActivity(
+        IReadOnlyList<JournalEntryRecapLine> recapLines,
+        JournalEntryRecapGetCriteria criteria)
+    {
+        return (recapLines ?? [])
+            .Where(line => line.IsInDateRange)
+            .Where(line => IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+            .ToList();
     }
 
     private static List<JournalEntryRecapLine> MergeRecapLinesByJournalEntryLineId(
@@ -789,21 +812,20 @@ public partial class ReportManager : IReportManager
     {
         var keyed = new Dictionary<Guid, JournalEntryRecapLine>();
 
-        foreach (var line in recapLineSet.ActivityLines)
-        {
-            if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
-                continue;
-
-            keyed[line.JournalEntryLineId] = line;
-        }
-
         foreach (var line in recapLineSet.AllLines)
         {
             if (line.IsInDateRange)
-                continue;
+            {
+                if (!IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
+                    continue;
 
-            if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
+                if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
+                    continue;
+            }
+            else if (!ShouldIncludeOwnerCashRecapLineByAccountingPeriod(line, criteria.StartDate, criteria.EndDate))
+            {
                 continue;
+            }
 
             keyed.TryAdd(line.JournalEntryLineId, line);
         }

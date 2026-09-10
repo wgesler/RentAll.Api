@@ -25,7 +25,7 @@ public partial class ReportManager
             .Select(property =>
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
-                var startingBalance = GetChainedCashStartingBalance(
+                var (startingBalance, endingBalance) = ComputeOwnerCashReportMonthBalancesFromObs(
                     property,
                     criteria,
                     loaded.RecapLineSet,
@@ -38,7 +38,6 @@ public partial class ReportManager
                 var receivedIncome = activityLines.Sum(line => line.ReceivedIncome);
                 var ownerExpenses = activityLines.Sum(line => line.Expenses);
                 var ownerPayment = CalculateCashOwnerPayment(startingBalance, receivedIncome, ownerExpenses, property.WorkingCapitalBalance);
-                var endingBalance = CalculateCashEndingBalance(startingBalance, receivedIncome, ownerExpenses, ownerPayment);
                 ownerPaymentPaidByProperty.TryGetValue(propertyKey, out var ownerPaymentPaid);
 
                 return new OwnerCashReportRow

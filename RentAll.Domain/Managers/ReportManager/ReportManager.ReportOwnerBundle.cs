@@ -57,25 +57,31 @@ public partial class ReportManager
         var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(criteria, priorMonthClose, periodStart);
         var openingBalanceSheetCloseByOffice = ResolveOpeningBalanceSheetCloseDateByOffice(bundle.OwnerApLines);
         var recapLines = bundle.RecapLines;
-        var chainRecapLoadStart = ResolveCashChainRecapLoadStartDate(criteria, openingBalanceSheetCloseByOffice);
-        if (chainRecapLoadStart.HasValue)
+        var forwardRecapLoadStart = ResolveOwnerCashForwardRecapLoadStartDate(criteria, openingBalanceSheetCloseByOffice);
+        if (forwardRecapLoadStart.HasValue)
         {
+            var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
             var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
                 ?? criteria.EndDate
                 ?? criteria.StartDate
-                ?? chainRecapLoadStart.Value;
-            var expandedCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, chainRecapLoadStart.Value, reportEnd);
-            var expandedBundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(
-                expandedCriteria,
-                GetPriorMonthCloseDate(expandedCriteria.StartDate, expandedCriteria.EndDate),
-                GetReportPeriodStartDate(expandedCriteria.StartDate, expandedCriteria.EndDate));
-            recapLines = MergeRecapLinesByJournalEntryLineId(expandedBundle.RecapLines, recapLines);
+                ?? forwardRecapLoadStart.Value;
+            if (reportStart.HasValue && forwardRecapLoadStart.Value <= reportStart.Value)
+            {
+                var forwardCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, forwardRecapLoadStart.Value, reportEnd);
+                var forwardBundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(
+                    forwardCriteria,
+                    GetPriorMonthCloseDate(forwardCriteria.StartDate, forwardCriteria.EndDate),
+                    GetReportPeriodStartDate(forwardCriteria.StartDate, forwardCriteria.EndDate));
+                recapLines = forwardRecapLoadStart.Value < reportStart.Value
+                    ? forwardBundle.RecapLines
+                    : MergeRecapLinesByJournalEntryLineId(forwardBundle.RecapLines, recapLines);
+            }
         }
 
         var recapLineSet = new RecapLineSet
         {
             AllLines = recapLines,
-            ActivityLines = recapLines.Where(line => line.IsInDateRange).ToList()
+            ActivityLines = FilterRecapLinesToReportMonthActivity(recapLines, criteria)
         };
 
         var officeIds = GetReportOfficeIds(criteria.OfficeIds);
