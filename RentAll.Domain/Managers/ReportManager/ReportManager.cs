@@ -95,8 +95,8 @@ public partial class ReportManager : IReportManager
             .ToDictionary(group => group.Key, group => group.Max(line => line.TransactionDate));
     }
 
-    // Owner cash: anchor at OBS ledger, walk forward through every month (or partial month) before the report starts.
-    // Each month starts with the prior month's calculated ending balance.
+    // Owner cash: OBS ledger, then cycle month-by-month through the report end.
+    // Month N starting = month N-1 calculated ending; report starting = balance before report period.
     private (decimal StartingBalance, decimal EndingBalance) ComputeOwnerCashReportMonthBalancesFromObs(
         PropertyReportData property,
         JournalEntryRecapGetCriteria criteria,
@@ -106,84 +106,58 @@ public partial class ReportManager : IReportManager
         IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
     {
         var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
-        if (!reportStart.HasValue)
+        var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
+            ?? criteria.EndDate
+            ?? criteria.StartDate;
+
+        if (!reportStart.HasValue || !reportEnd.HasValue)
         {
             var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
-            var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
-            return (ledgerStarting, ledgerEnding);
+            return (ledgerStarting, CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting));
         }
 
         if (!openingBalanceSheetCloseByOffice.TryGetValue(property.OfficeId, out var openingBalanceCloseDate))
         {
             var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
-            var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
-            return (ledgerStarting, ledgerEnding);
+            return (ledgerStarting, CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting));
         }
 
-        if (reportStart.Value <= openingBalanceCloseDate)
+        if (reportEnd.Value <= openingBalanceCloseDate)
         {
             var ledgerStarting = GetLedgerCashStartingBalance(property, criteria, ownerApLines, officeIds);
-            var ledgerEnding = CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting);
-            return (ledgerStarting, ledgerEnding);
-        }
-
-        var balanceAsOfDate = reportStart.Value.AddDays(-1);
-        var reportStartingBalance = WalkForwardCashBalanceThroughDate(
-            property,
-            openingBalanceCloseDate,
-            balanceAsOfDate,
-            criteria,
-            recapLineSet,
-            ownerApLines,
-            officeIds);
-        var reportEndingBalance = CalculateCashEndingForPeriodWithStarting(
-            property,
-            criteria,
-            recapLineSet,
-            reportStartingBalance);
-
-        return (reportStartingBalance, reportEndingBalance);
-    }
-
-    private decimal WalkForwardCashBalanceThroughDate(
-        PropertyReportData property,
-        DateOnly openingBalanceCloseDate,
-        DateOnly balanceAsOfDate,
-        JournalEntryRecapGetCriteria criteria,
-        RecapLineSet recapLineSet,
-        IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
-        IReadOnlyList<int> officeIds)
-    {
-        if (balanceAsOfDate <= openingBalanceCloseDate)
-        {
-            return GetLedgerCashStartingBalanceAfterObsClose(
-                property,
-                openingBalanceCloseDate,
-                criteria,
-                ownerApLines,
-                officeIds);
+            return (ledgerStarting, CalculateCashEndingForPeriodWithStarting(property, criteria, recapLineSet, ledgerStarting));
         }
 
         var forwardStartMonth = new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1);
-        var lastWalkMonth = new DateOnly(balanceAsOfDate.Year, balanceAsOfDate.Month, 1);
+        var reportStartMonth = new DateOnly(reportStart.Value.Year, reportStart.Value.Month, 1);
+        var reportEndMonth = new DateOnly(reportEnd.Value.Year, reportEnd.Value.Month, 1);
         var carryingBalance = GetLedgerCashStartingBalanceAfterObsClose(
             property,
             openingBalanceCloseDate,
             criteria,
             ownerApLines,
             officeIds);
+        var reportStartingBalance = carryingBalance;
+        var capturedReportStarting = false;
 
         for (var monthCursor = forwardStartMonth;
-             monthCursor <= lastWalkMonth;
+             monthCursor <= reportEndMonth;
              monthCursor = monthCursor.AddMonths(1))
         {
-            var monthEnd = monthCursor.Year == balanceAsOfDate.Year && monthCursor.Month == balanceAsOfDate.Month
-                ? balanceAsOfDate
+            if (!capturedReportStarting && monthCursor >= reportStartMonth)
+            {
+                reportStartingBalance = carryingBalance;
+                capturedReportStarting = true;
+            }
+
+            var monthStart = monthCursor == reportStartMonth ? reportStart.Value : monthCursor;
+            var monthEnd = monthCursor == reportEndMonth
+                ? reportEnd.Value
                 : new DateOnly(
                     monthCursor.Year,
                     monthCursor.Month,
                     DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month));
-            var monthCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, monthCursor, monthEnd);
+            var monthCriteria = CloneJournalEntryRecapCriteriaWithDates(criteria, monthStart, monthEnd);
             carryingBalance = CalculateCashEndingForPeriodWithStarting(
                 property,
                 monthCriteria,
@@ -191,7 +165,7 @@ public partial class ReportManager : IReportManager
                 carryingBalance);
         }
 
-        return carryingBalance;
+        return (reportStartingBalance, carryingBalance);
     }
 
     private static decimal GetLedgerCashStartingBalanceAfterObsClose(
@@ -212,10 +186,9 @@ public partial class ReportManager : IReportManager
         RecapLineSet recapLineSet,
         decimal startingBalance)
     {
-        var recapLines = recapLineSet.AllLines;
         var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
-            BuildOwnerActivityLines(activitySourceLines, recapLines, OwnerReportActivityMode.Cash),
+            BuildOwnerActivityLines(activitySourceLines, activitySourceLines, OwnerReportActivityMode.Cash),
             criteria);
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
         var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);

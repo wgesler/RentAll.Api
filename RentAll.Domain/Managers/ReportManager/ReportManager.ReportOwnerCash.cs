@@ -11,15 +11,14 @@ public partial class ReportManager
             return new OwnerCashReport();
 
         var recapLineSet = loaded.RecapLineSet;
-        var lines = recapLineSet.AllLines;
         var activitySourceLines = GetOwnerCashActivitySourceLines(recapLineSet, criteria);
 
         var properties = loaded.Properties;
         var propertyActivityLines = FilterOwnerCashActivityLinesByAccountingPeriod(
-            BuildOwnerActivityLines(activitySourceLines, lines, OwnerReportActivityMode.Cash), criteria);
+            BuildOwnerActivityLines(activitySourceLines, activitySourceLines, OwnerReportActivityMode.Cash), criteria);
 
         var activityLinesByProperty = BuildOwnerActivityLinesByProperty(propertyActivityLines);
-        var ownerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(lines, criteria);
+        var ownerPaymentPaidByProperty = CalculateOwnerPaymentPaidByProperty(activitySourceLines, criteria);
 
         var rows = properties
             .Select(property =>
@@ -72,9 +71,11 @@ public partial class ReportManager
 
     #region Calculate
 
-    private static Dictionary<string, decimal> CalculateOwnerPaymentPaidByProperty(IReadOnlyList<JournalEntryRecapLine> lines, JournalEntryRecapGetCriteria criteria)
+    private static Dictionary<string, decimal> CalculateOwnerPaymentPaidByProperty(
+        IReadOnlyList<JournalEntryRecapLine> activitySourceLines,
+        JournalEntryRecapGetCriteria criteria)
     {
-        return (lines ?? [])
+        return (activitySourceLines ?? [])
             .Where(line => line.PropertyId.HasValue && line.PropertyId.Value != Guid.Empty)
             .Where(line => string.Equals(line.RecapCategory, "OwnerPayment", StringComparison.OrdinalIgnoreCase))
             .Where(line => IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))
