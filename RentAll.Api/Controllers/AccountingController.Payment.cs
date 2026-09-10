@@ -447,10 +447,14 @@ public partial class AccountingController
             var response = new PaymentResponseDto(updated);
             return Ok(response);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating payment with allocations: {PaymentId}", dto.PaymentId);
-            return ServerError("An error occurred while updating the payment");
+            return ServerError(ex.Message);
         }
     }
 
