@@ -97,13 +97,19 @@ public partial class ReportManager : IReportManager
 
     // Owner cash: OBS ledger, then cycle month-by-month through the report end.
     // Month N starting = month N-1 calculated ending; report starting = balance before report period.
+    private static bool IsTrustedOwnerReportPriorMonthAnchor(OwnerReportMonthlyAnchor anchor)
+        => anchor.AnchorStatusId == OwnerReportAnchorStatus.Closed
+            && !anchor.IsDirty
+            && anchor.CalculationVersion == OwnerReportAnchorCalculation.CurrentVersion;
+
     private (decimal StartingBalance, decimal EndingBalance) ComputeOwnerCashReportMonthBalancesFromObs(
         PropertyReportData property,
         JournalEntryRecapGetCriteria criteria,
         RecapLineSet recapLineSet,
         IReadOnlyList<JournalEntryLineSearchResult> ownerApLines,
         IReadOnlyList<int> officeIds,
-        IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice)
+        IReadOnlyDictionary<int, DateOnly> openingBalanceSheetCloseByOffice,
+        OwnerReportMonthlyAnchor? priorMonthAnchor = null)
     {
         var reportStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
         var reportEnd = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
@@ -131,16 +137,25 @@ public partial class ReportManager : IReportManager
         var forwardStartMonth = new DateOnly(openingBalanceCloseDate.Year, openingBalanceCloseDate.Month, 1).AddMonths(1);
         var reportStartMonth = new DateOnly(reportStart.Value.Year, reportStart.Value.Month, 1);
         var reportEndMonth = new DateOnly(reportEnd.Value.Year, reportEnd.Value.Month, 1);
-        var carryingBalance = GetLedgerCashStartingBalanceAfterObsClose(
-            property,
-            openingBalanceCloseDate,
-            criteria,
-            ownerApLines,
-            officeIds);
+        var expectedPriorPeriodMonth = reportStartMonth.AddMonths(-1);
+        var trustedPriorAnchor = priorMonthAnchor is { } anchor
+            && IsTrustedOwnerReportPriorMonthAnchor(anchor)
+            && anchor.PeriodMonth == expectedPriorPeriodMonth
+            ? anchor
+            : null;
+
+        var carryingBalance = trustedPriorAnchor?.EndingBalance
+            ?? GetLedgerCashStartingBalanceAfterObsClose(
+                property,
+                openingBalanceCloseDate,
+                criteria,
+                ownerApLines,
+                officeIds);
+        var monthLoopStart = trustedPriorAnchor != null ? reportStartMonth : forwardStartMonth;
         var reportStartingBalance = carryingBalance;
         var capturedReportStarting = false;
 
-        for (var monthCursor = forwardStartMonth;
+        for (var monthCursor = monthLoopStart;
              monthCursor <= reportEndMonth;
              monthCursor = monthCursor.AddMonths(1))
         {

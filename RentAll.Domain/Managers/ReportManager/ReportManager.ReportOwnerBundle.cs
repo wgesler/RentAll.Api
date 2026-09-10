@@ -13,6 +13,7 @@ public partial class ReportManager
         public List<JournalEntryLineSearchResult> OwnerApLines { get; init; } = [];
         public List<int> OfficeIds { get; init; } = [];
         public List<OwnerInvoiceOutstanding> OutstandingInvoices { get; init; } = [];
+        public Dictionary<string, OwnerReportMonthlyAnchor> PriorMonthAnchorByKey { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<OwnerReportsBundle> GetOwnerReportsBundleAsync(JournalEntryRecapGetCriteria criteria)
@@ -52,9 +53,33 @@ public partial class ReportManager
         criteria.IncludePaymentInvoiceContext = true;
         await EnsureRentalIncomeParentAccountIdsAsync(criteria);
 
-        var loadCriteria = CloneOwnerReportBundleLoadCriteria(criteria);
-        var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
+        var officeIds = GetReportOfficeIds(criteria.OfficeIds);
+        var officeIdsCsv = string.IsNullOrWhiteSpace(criteria.OfficeIds)
+            ? string.Join(",", officeIds)
+            : criteria.OfficeIds;
         var periodStart = GetReportPeriodStartDate(criteria.StartDate, criteria.EndDate);
+        var reportEndDate = GetReportPeriodEndDate(criteria.StartDate, criteria.EndDate)
+            ?? criteria.EndDate
+            ?? criteria.StartDate;
+
+        var loadCriteria = CloneOwnerReportBundleLoadCriteria(criteria);
+        if (periodStart.HasValue && officeIds.Count > 0)
+        {
+            var loadPlan = await _accountingRepository.GetOwnerReportRecapLoadPlanAsync(
+                criteria.OrganizationId,
+                officeIdsCsv,
+                periodStart.Value,
+                criteria.PropertyId);
+            if (loadPlan.UseNarrowRecapLoad && loadPlan.RecapLoadStartDate.HasValue && reportEndDate.HasValue)
+            {
+                loadCriteria = CloneJournalEntryRecapCriteriaWithDates(
+                    criteria,
+                    loadPlan.RecapLoadStartDate,
+                    reportEndDate);
+            }
+        }
+
+        var priorMonthClose = GetPriorMonthCloseDate(criteria.StartDate, criteria.EndDate);
         var bundle = await _journalEntryRepository.GetOwnerReportBundleDataAsync(loadCriteria, priorMonthClose, periodStart);
         var openingBalanceSheetCloseByOffice = ResolveOpeningBalanceSheetCloseDateByOffice(bundle.OwnerApLines);
 
@@ -64,7 +89,6 @@ public partial class ReportManager
             ActivityLines = FilterRecapLinesToReportMonthActivity(bundle.RecapLines, criteria)
         };
 
-        var officeIds = GetReportOfficeIds(criteria.OfficeIds);
         if (officeIds.Count == 0)
         {
             return new OwnerReportLoadedData
@@ -72,6 +96,20 @@ public partial class ReportManager
                 RecapLineSet = recapLineSet,
                 OfficeIds = officeIds
             };
+        }
+
+        var priorMonthAnchorByKey = new Dictionary<string, OwnerReportMonthlyAnchor>(StringComparer.OrdinalIgnoreCase);
+        if (periodStart.HasValue)
+        {
+            var priorAnchors = await _accountingRepository.GetOwnerReportPriorMonthAnchorsAsync(
+                criteria.OrganizationId,
+                officeIdsCsv,
+                periodStart.Value,
+                criteria.PropertyId);
+            foreach (var anchor in priorAnchors.Where(IsTrustedOwnerReportPriorMonthAnchor))
+            {
+                priorMonthAnchorByKey[GetPropertyReportKey(anchor.OfficeId, anchor.PropertyId)] = anchor;
+            }
         }
 
         var properties = await LoadOwnerPropertyReportDataAsync(criteria);
@@ -85,7 +123,8 @@ public partial class ReportManager
             OpeningBalanceSheetCloseByOffice = openingBalanceSheetCloseByOffice,
             OwnerApLines = bundle.OwnerApLines,
             OfficeIds = officeIds,
-            OutstandingInvoices = outstandingInvoices
+            OutstandingInvoices = outstandingInvoices,
+            PriorMonthAnchorByKey = priorMonthAnchorByKey
         };
     }
 }

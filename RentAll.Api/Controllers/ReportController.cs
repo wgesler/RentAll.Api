@@ -155,6 +155,7 @@ public class ReportController : BaseController
             var currentUser = CurrentUser;
             var result = await _reportManager.CloseOwnerStatementMonthAsync(
                 organizationId,
+                dto.StartDate,
                 endDate,
                 closeLines,
                 currentUser);

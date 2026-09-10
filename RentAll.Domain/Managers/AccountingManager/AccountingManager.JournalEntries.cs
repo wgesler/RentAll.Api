@@ -69,6 +69,7 @@ public partial class AccountingManager
         TouchOfficeSyncCache(created);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(created, logDecisions: false);
         await TrySyncOwnerInvoiceOutstandingFromJournalEntryAsync(created);
+        await TryInvalidateOwnerReportMonthlyAnchorsFromJournalEntryAsync(created);
         return created;
     }
 
@@ -143,6 +144,7 @@ public partial class AccountingManager
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(updated, existing, logDecisions: false);
 
         await TrySyncOwnerInvoiceOutstandingFromJournalEntryAsync(updated);
+        await TryInvalidateOwnerReportMonthlyAnchorsFromJournalEntryAsync(updated);
         return updated;
     }
 
@@ -163,6 +165,7 @@ public partial class AccountingManager
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         var updated = await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
         TouchOfficeSyncCache(updated);
+        await TryInvalidateOwnerReportMonthlyAnchorsFromJournalEntryAsync(updated);
         return updated;
     }
 
@@ -288,6 +291,7 @@ public partial class AccountingManager
         RemoveFromOfficeSyncCache(journalEntryId);
         await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
         await TrySyncOwnerInvoiceOutstandingAfterDeleteAsync(journalEntry);
+        await TryInvalidateOwnerReportMonthlyAnchorsFromJournalEntryAsync(journalEntry);
     }
 
     private async Task DeleteOpenJournalEntryAsync(Guid journalEntryId, Guid organizationId)
@@ -299,6 +303,7 @@ public partial class AccountingManager
         {
             await TryRefreshRetainedEarningsAfterJournalEntryChangeAsync(journalEntry, logDecisions: false);
             await TrySyncOwnerInvoiceOutstandingAfterDeleteAsync(journalEntry);
+            await TryInvalidateOwnerReportMonthlyAnchorsFromJournalEntryAsync(journalEntry);
         }
     }
 

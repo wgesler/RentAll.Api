@@ -173,6 +173,29 @@ public interface IAccountingRepository
     Task BackfillOwnerInvoiceOutstandingAsync(Guid? organizationId = null, int? officeId = null);
     #endregion
 
+    #region OwnerReportMonthlyAnchor
+    Task<OwnerReportRecapLoadPlan> GetOwnerReportRecapLoadPlanAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly reportPeriodStartDate,
+        Guid? propertyId = null,
+        int calculationVersion = OwnerReportAnchorCalculation.CurrentVersion);
+    Task<IReadOnlyList<OwnerReportMonthlyAnchor>> GetOwnerReportPriorMonthAnchorsAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly reportPeriodStartDate,
+        Guid? propertyId = null,
+        int calculationVersion = OwnerReportAnchorCalculation.CurrentVersion,
+        bool includeDirty = false);
+    Task UpsertOwnerReportMonthlyAnchorAsync(OwnerReportMonthlyAnchor anchor, Guid currentUser);
+    Task MarkOwnerReportMonthlyAnchorsDirtyFromPeriodAsync(
+        Guid organizationId,
+        int officeId,
+        DateOnly fromPeriodMonth,
+        Guid currentUser,
+        Guid? propertyId = null);
+    #endregion
+
     #region OwnerStatementBalance
     Task<IReadOnlyList<OwnerStatementPropertyLedgerBalance>> GetOwnerStatementPropertyLedgersAsync(
         Guid organizationId,

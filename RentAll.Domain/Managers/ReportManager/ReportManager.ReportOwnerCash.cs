@@ -24,13 +24,15 @@ public partial class ReportManager
             .Select(property =>
             {
                 var propertyKey = GetPropertyReportKey(property.OfficeId, property.PropertyId);
+                loaded.PriorMonthAnchorByKey.TryGetValue(propertyKey, out var priorMonthAnchor);
                 var (startingBalance, endingBalance) = ComputeOwnerCashReportMonthBalancesFromObs(
                     property,
                     criteria,
                     loaded.RecapLineSet,
                     loaded.OwnerApLines,
                     loaded.OfficeIds,
-                    loaded.OpeningBalanceSheetCloseByOffice);
+                    loaded.OpeningBalanceSheetCloseByOffice,
+                    priorMonthAnchor);
                 activityLinesByProperty.TryGetValue(propertyKey, out var activityLines);
                 activityLines ??= [];
 
