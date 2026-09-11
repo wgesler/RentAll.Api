@@ -26,9 +26,9 @@ public class AccountingOffice
     public int YearEndMonth { get; set; } = 12;
     public int YearEndDay { get; set; } = 31;
     public int SoftClosedMonth { get; set; } = 12;
-    public int SoftClosedYear { get; set; } = 2025;
+    public int SoftClosedYear { get; set; } = 2020;
     public int HardClosedMonth { get; set; } = 12;
-    public int HardClosedYear { get; set; } = 2025;
+    public int HardClosedYear { get; set; } = 2020;
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
