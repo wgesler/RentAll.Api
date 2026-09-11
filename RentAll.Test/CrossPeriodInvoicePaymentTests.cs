@@ -15,6 +15,9 @@ public class CrossPeriodInvoicePaymentTests
     private static readonly DateOnly DecemberAccountingPeriod = new(2025, 12, 1);
     private static readonly DateOnly JanuaryAccountingPeriod = new(2026, 1, 1);
     private static readonly DateOnly DecemberPaymentDate = new(2025, 12, 1);
+    private static readonly DateOnly AugustAccountingPeriod = new(2026, 8, 1);
+    private static readonly DateOnly SeptemberAccountingPeriod = new(2026, 9, 1);
+    private static readonly DateOnly June30PaymentDate = new(2026, 6, 30);
 
     [Fact]
     public async Task CrossPeriodPayment_MayFullAmount_BothSlicesUsePrePaymentPath()
@@ -34,6 +37,109 @@ public class CrossPeriodInvoicePaymentTests
 
         var paymentEntry = AssertSingleFullPaymentEntry(scenario.Context, scenario.Invoice, payment, MayPaymentDate, scenario.InvoiceTotal);
         AssertBalancedJournalEntry(paymentEntry);
+    }
+
+    [Fact]
+    public async Task CrossPeriodInvoice_August8ToSeptember6_PaidJune30_CreatesTwoPrePaymentAndOwnerEntriesByPeriod()
+    {
+        var scenario = await SetupCrossPeriodInvoice0808To0906Async();
+        var manager = scenario.Context.CreateManager();
+
+        await manager.CreateJournalEntryFromInvoiceAsync(scenario.Invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(scenario.Invoice, scenario.InvoiceTotal, June30PaymentDate, description: "Wire - 08/08-09/06, Dept");
+        scenario.Invoice.LedgerLines.Add(payment);
+        scenario.Invoice.PaidAmount = scenario.InvoiceTotal;
+        scenario.Invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        var updatedInvoice = await manager.UpdateInvoiceAsync(scenario.Invoice);
+        var linkedPaymentLine = Assert.Single(updatedInvoice.LedgerLines, line => line.LedgerLineId == payment.LedgerLineId);
+        Assert.True(linkedPaymentLine.PaymentId.HasValue);
+        var paymentDocument = scenario.Context.GetPayment(linkedPaymentLine.PaymentId!.Value);
+        Assert.NotNull(paymentDocument);
+        Assert.Equal((int)PaymentKind.Invoice, paymentDocument!.PaymentKindId);
+        Assert.Equal(scenario.InvoiceTotal, paymentDocument.Amount);
+        Assert.Equal(June30PaymentDate, paymentDocument.PaymentDate);
+
+        AssertEntriesSpanAccountingPeriods(GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.PrePaymentReceive), AugustAccountingPeriod, SeptemberAccountingPeriod);
+        AssertEntriesSpanAccountingPeriods(GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.PrePaymentApply), AugustAccountingPeriod, SeptemberAccountingPeriod);
+        AssertEntriesSpanAccountingPeriods(GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.OwnerExpected), AugustAccountingPeriod, SeptemberAccountingPeriod);
+        AssertEntriesSpanAccountingPeriods(GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.OwnerActual), AugustAccountingPeriod, SeptemberAccountingPeriod);
+
+        scenario.Context.RemoveJournalEntries(entry => entry.AccountingPeriod == AugustAccountingPeriod && (entry.JournalEntryKindId is JournalEntryKind.PrePaymentReceive or JournalEntryKind.PrePaymentApply or JournalEntryKind.OwnerActual));
+        updatedInvoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+        await manager.UpdateInvoiceAsync(updatedInvoice);
+
+        var prePaymentReceivedEntries = GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.PrePaymentReceive);
+        var prePaymentApplyEntries = GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.PrePaymentApply);
+        var ownerExpectedEntries = GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.OwnerExpected);
+        var ownerActualEntries = GetEntriesByKind(scenario.Context, scenario.Invoice, JournalEntryKind.OwnerActual);
+
+        AssertEntriesSpanAccountingPeriods(prePaymentReceivedEntries, AugustAccountingPeriod, SeptemberAccountingPeriod);
+        AssertEntriesSpanAccountingPeriods(prePaymentApplyEntries, AugustAccountingPeriod, SeptemberAccountingPeriod);
+        AssertEntriesSpanAccountingPeriods(ownerExpectedEntries, AugustAccountingPeriod, SeptemberAccountingPeriod);
+        AssertEntriesSpanAccountingPeriods(ownerActualEntries, AugustAccountingPeriod, SeptemberAccountingPeriod);
+        Assert.Equal(2, CountPrePaymentReceivedEntries(scenario.Context, scenario.Invoice, linkedPaymentLine));
+        Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, scenario.Invoice, linkedPaymentLine));
+    }
+
+    [Fact]
+    public async Task CreateInvoice_WithDirectPaymentLine_CreatesAndLinksInvoicePaymentDocument()
+    {
+        var scenario = await SetupCrossPeriodInvoice0808To0906Async();
+        var paymentLine = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(scenario.Invoice, scenario.InvoiceTotal, June30PaymentDate, description: "Wire - 08/08-09/06, Dept");
+        scenario.Invoice.LedgerLines.Add(paymentLine);
+        scenario.Invoice.PaidAmount = scenario.InvoiceTotal;
+
+        var createdInvoice = await scenario.Context.CreateManager().CreateInvoiceAsync(scenario.Invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+        var linkedPaymentLine = Assert.Single(createdInvoice.LedgerLines, line => line.LedgerLineId == paymentLine.LedgerLineId);
+        Assert.True(linkedPaymentLine.PaymentId.HasValue);
+        var paymentDocument = scenario.Context.GetPayment(linkedPaymentLine.PaymentId!.Value);
+        Assert.NotNull(paymentDocument);
+        Assert.Equal((int)PaymentKind.Invoice, paymentDocument!.PaymentKindId);
+        Assert.Null(paymentDocument.PaymentTypeId);
+        Assert.Equal(scenario.InvoiceTotal, paymentDocument.Amount);
+        Assert.Equal(June30PaymentDate, paymentDocument.PaymentDate);
+        Assert.Equal(2, CountPrePaymentReceivedEntries(scenario.Context, createdInvoice, linkedPaymentLine));
+        Assert.Equal(2, CountPrePaymentApplyEntries(scenario.Context, createdInvoice, linkedPaymentLine));
+    }
+
+    [Fact]
+    public async Task InvoicePaymentLineAndPaymentDocument_UpdatesSynchronizeBothDirections()
+    {
+        var scenario = await SetupCrossPeriodInvoice0808To0906Async();
+        var manager = scenario.Context.CreateManager();
+        var paymentLine = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(scenario.Invoice, scenario.InvoiceTotal, June30PaymentDate, description: "Original payment");
+        scenario.Invoice.LedgerLines.Add(paymentLine);
+        scenario.Invoice.PaidAmount = scenario.InvoiceTotal;
+        scenario.Invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        var updatedInvoice = await manager.UpdateInvoiceAsync(scenario.Invoice);
+        var linkedPaymentLine = Assert.Single(updatedInvoice.LedgerLines, line => line.LedgerLineId == paymentLine.LedgerLineId);
+        var paymentId = Assert.IsType<Guid>(linkedPaymentLine.PaymentId);
+
+        linkedPaymentLine.Amount = 4300m;
+        linkedPaymentLine.LedgerLineDate = new DateOnly(2026, 7, 1);
+        linkedPaymentLine.Description = "Updated from invoice";
+        updatedInvoice.PaidAmount = linkedPaymentLine.Amount;
+        updatedInvoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+        await manager.UpdateInvoiceAsync(updatedInvoice);
+
+        var paymentDocument = Assert.IsType<Payment>(scenario.Context.GetPayment(paymentId));
+        Assert.Equal(4300m, paymentDocument.Amount);
+        Assert.Equal(new DateOnly(2026, 7, 1), paymentDocument.PaymentDate);
+        Assert.Equal("Updated from invoice", paymentDocument.Description);
+
+        paymentDocument.Amount = 4200m;
+        paymentDocument.PaymentDate = new DateOnly(2026, 7, 2);
+        paymentDocument.Description = "Updated from payment";
+        await manager.UpdatePaymentInvoiceAsync(paymentDocument, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var synchronizedInvoice = Assert.IsType<Invoice>(scenario.Context.GetInvoice(scenario.Invoice.InvoiceId));
+        var synchronizedLine = Assert.Single(synchronizedInvoice.LedgerLines, line => line.PaymentId == paymentId);
+        Assert.Equal(4200m, synchronizedLine.Amount);
+        Assert.Equal(new DateOnly(2026, 7, 2), synchronizedLine.LedgerLineDate);
+        Assert.Equal("Updated from payment", synchronizedLine.Description);
+        Assert.Equal(4200m, synchronizedInvoice.PaidAmount);
     }
 
     [Fact]
@@ -297,6 +403,32 @@ public class CrossPeriodInvoicePaymentTests
         return new CrossPeriodPaymentScenario(invoice, context, firstPeriodCharge, secondPeriodCharge, invoiceTotal);
     }
 
+    private static async Task<CrossPeriodPaymentScenario> SetupCrossPeriodInvoice0808To0906Async()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2026, 8, 8),
+            new DateOnly(2026, 12, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.SDW,
+            deposit: 60m,
+            hasPets: false,
+            departureFee: 375m,
+            billingRate: 4000m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(reservation, AugustAccountingPeriod, new DateOnly(2026, 8, 31), enableOwnerShare: true);
+        var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal));
+        rentalLine.Description = "Rental Fee (08/08-09/06)";
+        rentalLine.Amount = 4000m;
+        Assert.Equal(60m, Assert.Single(invoice.LedgerLines, line => line.Description == "Security Deposit Waiver").Amount);
+        Assert.Equal(375m, Assert.Single(invoice.LedgerLines, line => line.Description == "Departure Fee").Amount);
+        invoice.TotalAmount = invoice.LedgerLines.Where(line => line.Amount != 0).Sum(line => line.Amount);
+        Assert.Equal(4435m, invoice.TotalAmount);
+
+        return new CrossPeriodPaymentScenario(invoice, context, 0m, 0m, invoice.TotalAmount);
+    }
+
     private static async Task<LedgerLine> ApplyPaymentAsync(
         CrossPeriodPaymentScenario scenario,
         DateOnly paymentDate,
@@ -397,6 +529,16 @@ public class CrossPeriodInvoicePaymentTests
                 && string.Equals(entry.Memo, AccountingManager.BuildInvoicePaymentMemo(invoice.InvoiceCode, payment.Description), StringComparison.Ordinal)
                 && entry.JournalEntryLines.Any(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.UndepositedFundsAccountId))
             .ToList();
+
+    private static List<JournalEntry> GetEntriesByKind(AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext context, Invoice invoice, JournalEntryKind kind)
+        => context.ActiveJournalEntries.Where(entry => entry.JournalEntryKindId == kind && entry.SourceId == invoice.InvoiceId).ToList();
+
+    private static void AssertEntriesSpanAccountingPeriods(IReadOnlyCollection<JournalEntry> entries, DateOnly firstPeriod, DateOnly secondPeriod)
+    {
+        Assert.Equal(2, entries.Count);
+        Assert.Equal([firstPeriod, secondPeriod], entries.Select(entry => entry.AccountingPeriod).OrderBy(period => period).ToArray());
+        Assert.All(entries, AssertBalancedJournalEntry);
+    }
 
     private static void AssertBalancedJournalEntry(JournalEntry journalEntry)
     {

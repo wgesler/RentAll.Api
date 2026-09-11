@@ -9,10 +9,21 @@ public partial class AccountingManager
 
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser)
     {
-        await ValidateIncomingInvoicePaymentLedgerLinesAsync(invoice);
         var created = await _accountingRepository.CreateAsync(invoice);
-        await CreateJournalEntryFromInvoiceAsync(created, currentUser);
-        return created;
+        var createdPaymentIds = await CreateAndLinkPaymentDocumentsForUnlinkedInvoiceLinesAsync(created, currentUser);
+        try
+        {
+            await CreateJournalEntryFromInvoiceAsync(created, currentUser);
+            foreach (var paymentId in createdPaymentIds)
+                await CreateJournalEntriesFromInvoicePaymentDocumentAsync(paymentId, created.OrganizationId, currentUser);
+            return created;
+        }
+        catch
+        {
+            foreach (var paymentId in createdPaymentIds)
+                await TryDeleteIncompletePaymentAsync(paymentId, created.OrganizationId, currentUser);
+            throw;
+        }
     }
 
     public async Task<Invoice> UpdateInvoiceAsync(Invoice invoice)
@@ -32,18 +43,21 @@ public partial class AccountingManager
 
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
         invoice.PostingStatusId = postingStatusId;
-        await ValidateIncomingInvoicePaymentLedgerLinesAsync(invoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
+        var createdPaymentIds = new List<Guid>();
 
         try
         {
-            await SyncLinkedPaymentAmountsFromInvoiceAsync(updatedInvoice, invoice.ModifiedBy);
+            createdPaymentIds = await CreateAndLinkPaymentDocumentsForUnlinkedInvoiceLinesAsync(updatedInvoice, invoice.ModifiedBy);
+            await SyncLinkedPaymentsFromInvoiceAsync(updatedInvoice, existingInvoice, invoice.ModifiedBy);
             await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, existingInvoice);
             return updatedInvoice;
         }
         catch
         {
+            foreach (var paymentId in createdPaymentIds)
+                await TryDeleteIncompletePaymentAsync(paymentId, updatedInvoice.OrganizationId, invoice.ModifiedBy);
             await RestoreInvoiceSnapshotAsync(snapshot);
             throw;
         }
@@ -401,6 +415,7 @@ public partial class AccountingManager
 
         try
         {
+            await SynchronizeInvoicePaymentLinesFromPaymentAsync(freshPayment, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(freshPayment.PaymentId, freshPayment.OrganizationId, currentUser);
             return freshPayment;
         }
@@ -408,6 +423,7 @@ public partial class AccountingManager
         {
             existing.ModifiedBy = currentUser;
             await _accountingRepository.UpdatePaymentAsync(existing);
+            await SynchronizeInvoicePaymentLinesFromPaymentAsync(existing, currentUser);
             throw;
         }
     }

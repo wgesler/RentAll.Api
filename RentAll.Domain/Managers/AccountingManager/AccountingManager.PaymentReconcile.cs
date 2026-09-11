@@ -265,22 +265,55 @@ public partial class AccountingManager
     private static DateTimeOffset TruncateToSecond(DateTimeOffset value)
         => new DateTimeOffset(value.Year, value.Month, value.Day, value.Hour, value.Minute, value.Second, value.Offset);
 
-    private async Task ValidateIncomingInvoicePaymentLedgerLinesAsync(Invoice invoice)
+    private async Task<List<Guid>> CreateAndLinkPaymentDocumentsForUnlinkedInvoiceLinesAsync(Invoice invoice, Guid currentUser)
     {
         if (invoice.LedgerLines.Count == 0)
-            return;
+            return [];
 
         var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        foreach (var line in invoice.LedgerLines.Where(line => line.Amount != 0))
+        var createdPaymentIds = new List<Guid>();
+        try
         {
-            if (!costCodeById.TryGetValue(line.CostCodeId, out var costCode) || !IsPaymentLedgerLine(costCode))
-                continue;
+            foreach (var line in invoice.LedgerLines.Where(line => line.Amount != 0))
+            {
+                if (!costCodeById.TryGetValue(line.CostCodeId, out var costCode) || !IsPaymentLedgerLine(costCode))
+                    continue;
 
-            if (line.PaymentId is { } paymentId && paymentId != Guid.Empty)
-                continue;
+                if (line.PaymentId is { } paymentId && paymentId != Guid.Empty)
+                    continue;
 
-            throw new InvalidOperationException(
-                "A payment line on this invoice is not linked to a payment record. To apply a payment, use Apply Payment on the invoice list. To remove a payment, delete it from the Payment list — do not add or remove payment lines on the invoice.");
+                if (line.LedgerLineId == Guid.Empty)
+                    throw new InvalidOperationException("The invoice payment line must be saved before its Payment Document can be created.");
+
+                var payment = new Payment
+                {
+                    OrganizationId = invoice.OrganizationId,
+                    OfficeId = invoice.OfficeId,
+                    PaymentDate = line.LedgerLineDate,
+                    Amount = line.Amount,
+                    CostCodeId = line.CostCodeId,
+                    Description = line.Description,
+                    PaymentKindId = (int)PaymentKind.Invoice,
+                    PostingStatusId = (int)PostingStatus.Open,
+                    IsActive = invoice.IsActive,
+                    CreatedBy = currentUser,
+                    ModifiedBy = currentUser
+                };
+
+                await EnsurePaymentCodeAsync(payment);
+                var createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
+                createdPaymentIds.Add(createdPayment.PaymentId);
+                await _accountingRepository.SetLedgerLinePaymentIdAsync(line.LedgerLineId, createdPayment.PaymentId, currentUser);
+                line.PaymentId = createdPayment.PaymentId;
+            }
         }
+        catch
+        {
+            foreach (var paymentId in createdPaymentIds)
+                await TryDeleteIncompletePaymentAsync(paymentId, invoice.OrganizationId, currentUser);
+            throw;
+        }
+
+        return createdPaymentIds;
     }
 }

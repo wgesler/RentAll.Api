@@ -1129,7 +1129,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task SyncLinkedPaymentAmountsFromInvoiceAsync(Invoice invoice, Guid currentUser)
+    private async Task SyncLinkedPaymentsFromInvoiceAsync(Invoice invoice, Invoice priorInvoice, Guid currentUser)
     {
         var paymentIds = invoice.LedgerLines
             .Where(line => line.PaymentId is { } paymentId && paymentId != Guid.Empty)
@@ -1138,29 +1138,100 @@ public partial class AccountingManager
             .ToList();
 
         foreach (var paymentId in paymentIds)
-            await SyncPaymentAmountFromLinkedLedgerLinesAsync(paymentId, invoice.OrganizationId, currentUser);
+            await SyncPaymentFromLinkedLedgerLinesAsync(paymentId, invoice, priorInvoice, currentUser);
     }
 
-    private async Task SyncPaymentAmountFromLinkedLedgerLinesAsync(Guid paymentId, Guid organizationId, Guid currentUser)
+    private async Task SyncPaymentFromLinkedLedgerLinesAsync(Guid paymentId, Invoice invoice, Invoice priorInvoice, Guid currentUser)
     {
         if (paymentId == Guid.Empty)
             return;
 
-        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, invoice.OrganizationId);
         if (payment == null)
             return;
 
-        var linkedLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
+        var linkedLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, invoice.OrganizationId);
         if (linkedLines.Count == 0)
             return;
 
         var linkedTotal = linkedLines.Sum(line => line.Amount);
-        if (payment.Amount == linkedTotal)
+        var priorLinesById = priorInvoice.LedgerLines.ToDictionary(line => line.LedgerLineId);
+        var changedMetadataLines = invoice.LedgerLines
+            .Where(line => line.PaymentId == paymentId)
+            .Where(line => !priorLinesById.TryGetValue(line.LedgerLineId, out var priorLine)
+                || line.LedgerLineDate != priorLine.LedgerLineDate
+                || line.CostCodeId != priorLine.CostCodeId
+                || !string.Equals(line.Description, priorLine.Description, StringComparison.Ordinal))
+            .ToList();
+
+        if (changedMetadataLines.Select(line => (line.LedgerLineDate, line.CostCodeId)).Distinct().Count() > 1)
+            throw new InvalidOperationException("Payment lines linked to the same Payment Document must use the same date and cost code.");
+
+        var metadataSource = changedMetadataLines.FirstOrDefault();
+        var changed = payment.Amount != linkedTotal;
+        payment.Amount = linkedTotal;
+        if (metadataSource != null)
+        {
+            changed = changed
+                || payment.PaymentDate != metadataSource.LedgerLineDate
+                || payment.CostCodeId != metadataSource.CostCodeId
+                || (linkedLines.Count == 1 && !string.Equals(payment.Description, metadataSource.Description, StringComparison.Ordinal));
+            payment.PaymentDate = metadataSource.LedgerLineDate;
+            payment.CostCodeId = metadataSource.CostCodeId;
+            if (linkedLines.Count == 1)
+                payment.Description = metadataSource.Description;
+        }
+
+        if (!changed)
             return;
 
-        payment.Amount = linkedTotal;
         payment.ModifiedBy = currentUser;
         await _accountingRepository.UpdatePaymentAsync(payment);
+        if (metadataSource != null)
+            await SynchronizeInvoicePaymentLinesFromPaymentAsync(payment, currentUser);
+    }
+
+    private async Task SynchronizeInvoicePaymentLinesFromPaymentAsync(Payment payment, Guid currentUser)
+    {
+        var linkedLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(payment.PaymentId, payment.OrganizationId);
+        if (linkedLines.Count == 0)
+            return;
+
+        if (linkedLines.Count > 1 && linkedLines.Sum(line => line.Amount) != payment.Amount)
+            throw new InvalidOperationException("A multi-allocation Payment amount must be changed through its invoice allocations.");
+
+        var synchronizeAmountAndDescription = linkedLines.Count == 1;
+        var invoices = new List<Invoice>();
+        foreach (var invoiceGroup in linkedLines.GroupBy(line => line.InvoiceId))
+        {
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceGroup.Key, payment.OrganizationId);
+            if (invoice == null)
+                continue;
+
+            foreach (var paymentLine in invoiceGroup)
+            {
+                var line = invoice.LedgerLines.SingleOrDefault(candidate => candidate.LedgerLineId == paymentLine.LedgerLineId);
+                if (line == null)
+                    continue;
+
+                if (synchronizeAmountAndDescription)
+                {
+                    invoice.PaidAmount += payment.Amount - line.Amount;
+                    line.Amount = payment.Amount;
+                    line.Description = payment.Description;
+                }
+
+                line.LedgerLineDate = payment.PaymentDate;
+                line.CostCodeId = payment.CostCodeId;
+                line.ModifiedBy = currentUser;
+            }
+
+            invoice.ModifiedBy = currentUser;
+            invoices.Add(invoice);
+        }
+
+        if (invoices.Count > 0)
+            await _accountingRepository.UpdateByIdsInTransactionAsync(invoices);
     }
 
     private static void EnsureInvoicePayment(Payment payment)

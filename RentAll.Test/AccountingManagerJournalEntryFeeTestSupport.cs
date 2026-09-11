@@ -124,6 +124,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private readonly Dictionary<Guid, Payment> _payments = [];
         private int _journalEntryCodeSequence;
+        private int _paymentCodeSequence;
 
         internal FeeJournalEntryTestContext(
             Reservation reservation,
@@ -148,8 +149,14 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         internal void TrackPayment(Payment payment)
             => _payments[payment.PaymentId] = ClonePayment(payment);
 
+        internal void RemoveJournalEntries(Func<JournalEntry, bool> predicate)
+            => _journalEntries.RemoveAll(entry => predicate(entry));
+
         internal Payment? GetPayment(Guid paymentId)
             => _payments.TryGetValue(paymentId, out var payment) ? ClonePayment(payment) : null;
+
+        internal Invoice? GetInvoice(Guid invoiceId)
+            => _invoices.TryGetValue(invoiceId, out var invoice) ? CloneInvoice(invoice) : null;
 
         internal AccountingManager CreateManager()
         {
@@ -301,11 +308,26 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 .ReturnsAsync((Guid invoiceId, Guid _) =>
                     _invoices.TryGetValue(invoiceId, out var invoice) ? CloneInvoice(invoice) : null);
             accountingRepository
+                .Setup(r => r.CreateAsync(It.IsAny<Invoice>()))
+                .ReturnsAsync((Invoice invoice) =>
+                {
+                    _invoices[invoice.InvoiceId] = CloneInvoice(invoice);
+                    return CloneInvoice(invoice);
+                });
+            accountingRepository
                 .Setup(r => r.UpdateByIdAsync(It.IsAny<Invoice>(), It.IsAny<bool>()))
                 .ReturnsAsync((Invoice invoice, bool _) =>
                 {
                     _invoices[invoice.InvoiceId] = CloneInvoice(invoice);
                     return CloneInvoice(invoice);
+                });
+            accountingRepository
+                .Setup(r => r.UpdateByIdsInTransactionAsync(It.IsAny<IReadOnlyList<Invoice>>()))
+                .ReturnsAsync((IReadOnlyList<Invoice> invoices) =>
+                {
+                    foreach (var invoice in invoices)
+                        _invoices[invoice.InvoiceId] = CloneInvoice(invoice);
+                    return invoices.Select(CloneInvoice).ToList();
                 });
             accountingRepository
                 .Setup(r => r.GetPaymentByIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
@@ -338,6 +360,49 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 {
                     _payments[payment.PaymentId] = ClonePayment(payment);
                     return ClonePayment(payment);
+                });
+            accountingRepository
+                .Setup(r => r.CreatePaymentAsync(It.IsAny<Payment>()))
+                .ReturnsAsync((Payment payment) =>
+                {
+                    payment.PaymentId = payment.PaymentId == Guid.Empty ? Guid.NewGuid() : payment.PaymentId;
+                    _payments[payment.PaymentId] = ClonePayment(payment);
+                    return ClonePayment(payment);
+                });
+            accountingRepository
+                .Setup(r => r.SetLedgerLinePaymentIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+                .Returns((Guid ledgerLineId, Guid paymentId, Guid _) =>
+                {
+                    foreach (var invoice in _invoices.Values)
+                    {
+                        var line = invoice.LedgerLines.FirstOrDefault(candidate => candidate.LedgerLineId == ledgerLineId);
+                        if (line != null)
+                            line.PaymentId = paymentId;
+                    }
+
+                    if (_payments.TryGetValue(paymentId, out var payment))
+                    {
+                        payment.LedgerLines = _invoices.Values
+                            .SelectMany(invoice => invoice.LedgerLines.Select(line => new { Invoice = invoice, Line = line }))
+                            .Where(context => context.Line.PaymentId == paymentId)
+                            .Select(context => new PaymentLedgerLine
+                            {
+                                LedgerLineId = context.Line.LedgerLineId,
+                                InvoiceId = context.Invoice.InvoiceId,
+                                InvoiceCode = context.Invoice.InvoiceCode,
+                                LineNumber = context.Line.LineNumber,
+                                ReservationId = context.Line.ReservationId,
+                                CostCodeId = context.Line.CostCodeId,
+                                TransactionType = context.Line.TransactionType,
+                                Amount = context.Line.Amount,
+                                Description = context.Line.Description,
+                                LedgerLineDate = context.Line.LedgerLineDate,
+                                PaymentId = paymentId
+                            })
+                            .ToList();
+                    }
+
+                    return Task.CompletedTask;
                 });
 
             var organizationRepository = new Mock<IOrganizationRepository>();
@@ -488,6 +553,9 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             organizationManager
                 .Setup(m => m.GenerateEntityCodeAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, EntityType.JournalEntry))
                 .ReturnsAsync(() => $"JE-{Interlocked.Increment(ref _journalEntryCodeSequence):D4}");
+            organizationManager
+                .Setup(m => m.GenerateEntityCodeAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, EntityType.Payment))
+                .ReturnsAsync(() => $"PY-{Interlocked.Increment(ref _paymentCodeSequence):D6}");
 
             return new AccountingManager(
                 organizationRepository.Object,
@@ -530,7 +598,10 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 InvoiceDate = invoice.InvoiceDate,
                 InvoicePeriod = invoice.InvoicePeriod,
                 TotalAmount = invoice.TotalAmount,
+                PaidAmount = invoice.PaidAmount,
+                PostingStatusId = invoice.PostingStatusId,
                 IsActive = invoice.IsActive,
+                CreatedBy = invoice.CreatedBy,
                 ModifiedBy = invoice.ModifiedBy,
                 LedgerLines = invoice.LedgerLines.Select(line => new LedgerLine
                 {
@@ -542,7 +613,9 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     Amount = line.Amount,
                     Description = line.Description,
                     LedgerLineDate = line.LedgerLineDate,
-                    PaymentId = line.PaymentId
+                    PaymentId = line.PaymentId,
+                    CreatedBy = line.CreatedBy,
+                    ModifiedBy = line.ModifiedBy
                 }).ToList()
             };
 
@@ -557,8 +630,26 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 Amount = payment.Amount,
                 CostCodeId = payment.CostCodeId,
                 Description = payment.Description,
+                PaymentKindId = payment.PaymentKindId,
+                PaymentTypeId = payment.PaymentTypeId,
+                PostingStatusId = payment.PostingStatusId,
                 IsActive = payment.IsActive,
-                ModifiedBy = payment.ModifiedBy
+                CreatedBy = payment.CreatedBy,
+                ModifiedBy = payment.ModifiedBy,
+                LedgerLines = payment.LedgerLines.Select(line => new PaymentLedgerLine
+                {
+                    LedgerLineId = line.LedgerLineId,
+                    InvoiceId = line.InvoiceId,
+                    InvoiceCode = line.InvoiceCode,
+                    LineNumber = line.LineNumber,
+                    ReservationId = line.ReservationId,
+                    CostCodeId = line.CostCodeId,
+                    TransactionType = line.TransactionType,
+                    Amount = line.Amount,
+                    Description = line.Description,
+                    LedgerLineDate = line.LedgerLineDate,
+                    PaymentId = line.PaymentId
+                }).ToList()
             };
 
         private static JournalEntry CloneJournalEntry(JournalEntry entry)
