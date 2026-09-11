@@ -15,6 +15,8 @@ public class JournalEntryGetCriteria
 
     public bool IncludeUnposted { get; set; } = true;
 
+    public bool IncludeCashOnly { get; set; }
+
     public DateOnly? StartDate { get; set; }
 
     public DateOnly? EndDate { get; set; }

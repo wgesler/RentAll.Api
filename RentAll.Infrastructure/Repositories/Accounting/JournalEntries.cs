@@ -17,6 +17,7 @@ public partial class JournalEntryRepository
             SourceTypeId = criteria.SourceTypeId,
             SourceId = criteria.SourceId,
             IncludeUnposted = criteria.IncludeUnposted,
+            IncludeCashOnly = criteria.IncludeCashOnly,
             StartDate = criteria.StartDate,
             EndDate = criteria.EndDate
         });

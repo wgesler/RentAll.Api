@@ -30,7 +30,8 @@ public partial class AccountingManager
         {
             OrganizationId = organizationId,
             OfficeIds = officeId.ToString(),
-            IncludeUnposted = true
+            IncludeUnposted = true,
+            IncludeCashOnly = true
         })).ToList();
 
         var eligibleEntries = journalEntries
