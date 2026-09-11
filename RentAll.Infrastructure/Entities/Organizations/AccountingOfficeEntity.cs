@@ -25,6 +25,10 @@ public class AccountingOfficeEntity
     public int StartYear { get; set; }
     public int YearEndMonth { get; set; }
     public int YearEndDay { get; set; }
+    public int SoftClosedMonth { get; set; }
+    public int SoftClosedYear { get; set; }
+    public int HardClosedMonth { get; set; }
+    public int HardClosedYear { get; set; }
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }

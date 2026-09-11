@@ -27,6 +27,10 @@ public class UpdateAccountingOfficeDto
     public int StartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;
     public int YearEndDay { get; set; } = 31;
+    public int SoftClosedMonth { get; set; } = 12;
+    public int SoftClosedYear { get; set; } = 2025;
+    public int HardClosedMonth { get; set; } = 12;
+    public int HardClosedYear { get; set; } = 2025;
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
@@ -118,6 +122,18 @@ public class UpdateAccountingOfficeDto
         if (YearEndDay > maxDay)
             return (false, $"YearEndDay must be between 1 and {maxDay} for month {YearEndMonth:00}");
 
+        if (SoftClosedMonth < 1 || SoftClosedMonth > 12)
+            return (false, "SoftClosedMonth must be between 1 and 12");
+
+        if (SoftClosedYear < 1900 || SoftClosedYear > 2100)
+            return (false, "SoftClosedYear must be between 1900 and 2100");
+
+        if (HardClosedMonth < 1 || HardClosedMonth > 12)
+            return (false, "HardClosedMonth must be between 1 and 12");
+
+        if (HardClosedYear < 1900 || HardClosedYear > 2100)
+            return (false, "HardClosedYear must be between 1900 and 2100");
+
         return (true, null);
     }
 
@@ -148,6 +164,10 @@ public class UpdateAccountingOfficeDto
             StartYear = StartYear,
             YearEndMonth = YearEndMonth,
             YearEndDay = YearEndDay,
+            SoftClosedMonth = SoftClosedMonth,
+            SoftClosedYear = SoftClosedYear,
+            HardClosedMonth = HardClosedMonth,
+            HardClosedYear = HardClosedYear,
             WorkOrderNo = WorkOrderNo,
             DefaultTenantIncAccountId = DefaultTenantIncAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,

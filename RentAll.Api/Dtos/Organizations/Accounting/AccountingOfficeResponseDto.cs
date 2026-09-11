@@ -28,6 +28,10 @@ public class AccountingOfficeResponseDto
     public int StartYear { get; set; }
     public int YearEndMonth { get; set; }
     public int YearEndDay { get; set; }
+    public int SoftClosedMonth { get; set; }
+    public int SoftClosedYear { get; set; }
+    public int HardClosedMonth { get; set; }
+    public int HardClosedYear { get; set; }
     public int WorkOrderNo { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
@@ -88,6 +92,10 @@ public class AccountingOfficeResponseDto
         StartYear = accountingOffice.StartYear;
         YearEndMonth = accountingOffice.YearEndMonth;
         YearEndDay = accountingOffice.YearEndDay;
+        SoftClosedMonth = accountingOffice.SoftClosedMonth;
+        SoftClosedYear = accountingOffice.SoftClosedYear;
+        HardClosedMonth = accountingOffice.HardClosedMonth;
+        HardClosedYear = accountingOffice.HardClosedYear;
         WorkOrderNo = accountingOffice.WorkOrderNo;
         DefaultTenantIncAccountId = accountingOffice.DefaultTenantIncAccountId;
         DefaultTenantExpAccountId = accountingOffice.DefaultTenantExpAccountId;
