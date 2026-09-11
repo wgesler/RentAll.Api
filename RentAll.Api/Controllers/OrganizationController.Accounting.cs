@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
@@ -247,6 +248,7 @@ namespace RentAll.Api.Controllers
                     return NotFound("Accounting office not found");
 
                 var softClosedPeriodChanged = existing.SoftClosedMonth != dto.SoftClosedMonth || existing.SoftClosedYear != dto.SoftClosedYear;
+                var hardClosedPeriodChanged = existing.HardClosedMonth != dto.HardClosedMonth || existing.HardClosedYear != dto.HardClosedYear;
                 var accountingOffice = dto.ToModel(CurrentUser);
                 accountingOffice.OrganizationId = organizationId;
                 var officeName = await GetOfficeNameAsync(dto.OfficeId);
@@ -256,9 +258,16 @@ namespace RentAll.Api.Controllers
 
                 if (softClosedPeriodChanged)
                 {
-                    var closeResult = await _accountingManager.CloseJournalEntriesThroughClosedPeriodAsync(organizationId, updated.OfficeId, updated.SoftClosedMonth, updated.SoftClosedYear, updated.StartMonth, updated.StartYear, CurrentUser);
+                    var closeResult = await _accountingManager.CloseJournalEntriesThroughClosedPeriodAsync(organizationId, updated.OfficeId, updated.SoftClosedMonth, updated.SoftClosedYear, updated.StartMonth, updated.StartYear, PostingStatus.SoftClosed, CurrentUser);
                     if (closeResult.FailedCount > 0)
                         _logger.LogError("Accounting office closed-period soft close completed with failures for office {OfficeId}: {FailedCount} failed, errors: {Errors}", updated.OfficeId, closeResult.FailedCount, string.Join("; ", closeResult.Errors));
+                }
+
+                if (hardClosedPeriodChanged)
+                {
+                    var closeResult = await _accountingManager.CloseJournalEntriesThroughClosedPeriodAsync(organizationId, updated.OfficeId, updated.HardClosedMonth, updated.HardClosedYear, updated.StartMonth, updated.StartYear, PostingStatus.HardClosed, CurrentUser);
+                    if (closeResult.FailedCount > 0)
+                        _logger.LogError("Accounting office closed-period hard close completed with failures for office {OfficeId}: {FailedCount} failed, errors: {Errors}", updated.OfficeId, closeResult.FailedCount, string.Join("; ", closeResult.Errors));
                 }
 
                 var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(updated.OfficeId, organizationId);

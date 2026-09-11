@@ -117,6 +117,15 @@ public partial class AccountingManager
         await SoftCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
     }
 
+    private async Task HardCloseJournalEntryIfEligibleAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
+    {
+        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
+        if (journalEntry?.PostingStatusId == PostingStatus.HardClosed)
+            return;
+
+        await HardCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
+    }
+
     private async Task MarkDocumentPostedFromReconcileAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser)
     {
         switch (sourceType)
@@ -377,6 +386,109 @@ public partial class AccountingManager
             : PostingStatus.Open;
 
         return postingStatus is PostingStatus.Open or PostingStatus.Posted;
+    }
+
+    private static bool CanHardCloseDocumentFromAccountingOfficeClose(int? postingStatusId)
+    {
+        var postingStatus = postingStatusId is >= 0 and <= (int)PostingStatus.HardClosed
+            ? (PostingStatus)postingStatusId.Value
+            : PostingStatus.Open;
+
+        return postingStatus is PostingStatus.Open or PostingStatus.Posted or PostingStatus.SoftClosed;
+    }
+
+    private async Task MarkDocumentHardClosedFromAccountingOfficeCloseAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser)
+    {
+        switch (sourceType)
+        {
+            case SourceType.InvoicePayment:
+                await MarkPaymentHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Deposit:
+                await MarkDepositHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Transfer:
+                await MarkTransferHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Invoice:
+                await MarkInvoiceHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.Bill:
+            case SourceType.Receipt:
+                await MarkReceiptHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
+                break;
+            case SourceType.BillPayment:
+                await MarkBillPaymentHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
+                break;
+        }
+    }
+
+    private async Task MarkPaymentHardClosedFromAccountingOfficeCloseAsync(Guid paymentId, Guid organizationId, Guid currentUser)
+    {
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        if (payment == null || !CanHardCloseDocumentFromAccountingOfficeClose(payment.PostingStatusId))
+            return;
+
+        payment.PostingStatusId = (int)PostingStatus.HardClosed;
+        payment.ModifiedBy = currentUser;
+        await _accountingRepository.UpdatePaymentAsync(payment);
+    }
+
+    private async Task MarkDepositHardClosedFromAccountingOfficeCloseAsync(Guid depositId, Guid organizationId, Guid currentUser)
+    {
+        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+        if (deposit == null || !CanHardCloseDocumentFromAccountingOfficeClose(deposit.PostingStatusId))
+            return;
+
+        deposit.PostingStatusId = (int)PostingStatus.HardClosed;
+        deposit.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateDepositAsync(deposit);
+    }
+
+    private async Task MarkTransferHardClosedFromAccountingOfficeCloseAsync(Guid transferId, Guid organizationId, Guid currentUser)
+    {
+        var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId);
+        if (transfer == null || !CanHardCloseDocumentFromAccountingOfficeClose(transfer.PostingStatusId))
+            return;
+
+        transfer.PostingStatusId = (int)PostingStatus.HardClosed;
+        transfer.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateTransferAsync(transfer);
+    }
+
+    private async Task MarkInvoiceHardClosedFromAccountingOfficeCloseAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
+    {
+        var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, organizationId);
+        if (invoice == null || !CanHardCloseDocumentFromAccountingOfficeClose(invoice.PostingStatusId))
+            return;
+
+        invoice.PostingStatusId = (int)PostingStatus.HardClosed;
+        invoice.ModifiedBy = currentUser;
+        await _accountingRepository.UpdateByIdAsync(invoice);
+    }
+
+    private async Task MarkReceiptHardClosedFromAccountingOfficeCloseAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, organizationId);
+        if (receipt == null || !CanHardCloseDocumentFromAccountingOfficeClose(receipt.PostingStatusId))
+            return;
+
+        receipt.PostingStatusId = (int)PostingStatus.HardClosed;
+        receipt.ModifiedBy = currentUser;
+        await _maintenanceRepository.UpdateReceiptAsync(receipt);
+    }
+
+    private async Task MarkBillPaymentHardClosedFromAccountingOfficeCloseAsync(Guid receiptId, Guid organizationId, Guid currentUser)
+    {
+        await MarkReceiptHardClosedFromAccountingOfficeCloseAsync(receiptId, organizationId, currentUser);
+        var allocations = await _accountingRepository.GetBillAllocationsByReceiptIdAsync(receiptId, organizationId);
+        foreach (var paymentId in allocations.Select(allocation => allocation.PaymentId).Distinct())
+        {
+            if (paymentId == Guid.Empty)
+                continue;
+
+            await MarkPaymentHardClosedFromAccountingOfficeCloseAsync(paymentId, organizationId, currentUser);
+        }
     }
 
     private async Task PostOpenJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, Guid currentOrganizationId, Guid currentUser)
