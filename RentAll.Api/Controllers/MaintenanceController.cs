@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Services;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
@@ -20,6 +21,8 @@ public partial class MaintenanceController : BaseController
     private readonly IPropertyRepository _propertyRepository;
     private readonly IFileService _fileService;
     private readonly IFileAttachmentHelper _fileAttachmentHelper;
+    private readonly IDocumentIntelligenceService _documentIntelligenceService;
+    private readonly ReceiptExtractEnrichmentService _receiptExtractEnrichmentService;
     private readonly ILogger<MaintenanceController> _logger;
 
     public MaintenanceController(
@@ -33,6 +36,8 @@ public partial class MaintenanceController : BaseController
         IPropertyRepository propertyRepository,
         IFileService fileService,
         IFileAttachmentHelper fileAttachmentHelper,
+        IDocumentIntelligenceService documentIntelligenceService,
+        ReceiptExtractEnrichmentService receiptExtractEnrichmentService,
         ILogger<MaintenanceController> logger)
     {
         _organizationRepository = organizationRepository;
@@ -45,6 +50,8 @@ public partial class MaintenanceController : BaseController
         _propertyRepository = propertyRepository;
         _fileService = fileService;
         _fileAttachmentHelper = fileAttachmentHelper;
+        _documentIntelligenceService = documentIntelligenceService;
+        _receiptExtractEnrichmentService = receiptExtractEnrichmentService;
         _logger = logger;
     }
 }

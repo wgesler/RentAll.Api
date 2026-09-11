@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Maintenances.Receipts;
+using RentAll.Api.Services;
 
 namespace RentAll.Api.Controllers;
 
@@ -110,6 +111,51 @@ public partial class MaintenanceController
     #endregion
 
     #region Post
+    [HttpPost("receipt/extract")]
+    public async Task<IActionResult> ExtractReceipt([FromBody] ExtractReceiptDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Receipt extract data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        if (!_documentIntelligenceService.IsEnabled)
+            return BadRequest("Receipt document extraction is not configured.");
+
+        try
+        {
+            var fileBytes = ReceiptDocumentExtractionHelper.GetFileBytes(dto.FileDetails!);
+            var contentType = string.IsNullOrWhiteSpace(dto.FileDetails!.ContentType)
+                ? "application/octet-stream"
+                : dto.FileDetails.ContentType;
+
+            var extraction = await _documentIntelligenceService.ExtractReceiptAsync(fileBytes, contentType);
+            var enrichment = await _receiptExtractEnrichmentService.EnrichAsync(
+                extraction,
+                dto.OrganizationId,
+                dto.OfficeId);
+            return Ok(ReceiptExtractResponseDto.FromExtraction(
+                extraction,
+                enrichment.BankCardId,
+                enrichment.PropertyIds,
+                enrichment.Warnings));
+        }
+        catch (FormatException)
+        {
+            return BadRequest("Receipt file content is invalid.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extracting receipt document for organization {OrganizationId}", dto.OrganizationId);
+            return ServerError("An error occurred while reading the receipt document");
+        }
+    }
+
     [HttpPost("receipt")]
     public async Task<IActionResult> CreateReceipt([FromBody] CreateReceiptDto dto)
     {

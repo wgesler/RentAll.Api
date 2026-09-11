@@ -60,6 +60,7 @@ builder.Services.Configure<DocuSignSettings>(docuSignSettings);
 
 builder.Services.Configure<ImageUploadSettings>(builder.Configuration.GetSection("ImageUpload"));
 builder.Services.Configure<ExternalIntakeSettings>(builder.Configuration.GetSection("ExternalIntakeSettings"));
+builder.Services.Configure<DocumentIntelligenceSettings>(builder.Configuration.GetSection("DocumentIntelligenceSettings"));
 builder.Services.Configure<EncryptionSettings>(builder.Configuration.GetSection("EncryptionSettings"));
 builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
 builder.Services.Configure<ApplicationLoggingSettings>(builder.Configuration.GetSection("ApplicationLogging"));
@@ -132,6 +133,8 @@ builder.Services.AddScoped<IDailyQuoteService, DailyQuoteService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
+builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceService>();
+builder.Services.AddScoped<ReceiptExtractEnrichmentService>();
 builder.Services.AddHttpClient(nameof(ExternalPropertyPhotoUrlImporter), client => client.Timeout = TimeSpan.FromSeconds(90));
 builder.Services.AddScoped<ExternalPropertyPhotoUrlImporter>();
 builder.Services.AddScoped<ExternalPropertyPhotoImportProcessor>();
