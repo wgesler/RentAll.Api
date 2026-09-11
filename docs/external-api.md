@@ -296,3 +296,38 @@ Send the same `propertyCode` with changed fields:
 }
 ```
 
+---
+
+## 6) External Property Export API (v1)
+
+- **Authentication:** same `X-Api-Key` property key as Section 5
+- **Scope:** `organizationId` query parameter on every request (required)
+- **Included properties:** active, online listings only (`isActive = true`, `offlineChecked = false`)
+- **Partner properties:** when the requested organization has **Partner Integration** enabled, partner-organization properties are included in list/detail/photo responses
+
+### List properties
+
+- **Method:** `GET`
+- **URL:** `/api/property/external?organizationId={guid}`
+- **Success response:** `200 OK` with an array of property list items. Each item includes `organizationId`.
+
+### Get property by code
+
+- **Method:** `GET`
+- **URL:** `/api/property/external/{propertyCode}?organizationId={guid}`
+- **Behavior:** resolves the property in the requesting organization first; if not found and partner integration is enabled, searches partner organizations
+- **Success response:** `200 OK` with full property detail (public-safe fields only; no owner IDs or access codes)
+
+### Get property photos
+
+- **Method:** `GET`
+- **URL:** `/api/property/external/{propertyCode}/photos?organizationId={guid}`
+- **Behavior:** same property resolution as get-by-code
+- **Success response:** `200 OK` with photo metadata and image URLs/details
+
+### Error responses
+
+- `400 Bad Request` — missing/invalid `organizationId` or `propertyCode`
+- `401 Unauthorized` — missing or invalid `X-Api-Key`
+- `404 Not Found` — property not found or not eligible for export
+

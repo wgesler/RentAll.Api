@@ -482,6 +482,43 @@ namespace RentAll.Infrastructure.Repositories.Properties
             };
         }
 
+        private static ExternalExportPropertyList ConvertExternalExportEntityToModel(ExternalExportPropertyListEntity e) =>
+            new()
+            {
+                PropertyId = e.PropertyId,
+                OrganizationId = e.OrganizationId,
+                PropertyCode = e.PropertyCode,
+                PropertyLeaseTypeId = e.PropertyLeaseTypeId,
+                Address1 = e.Address1,
+                Suite = e.Suite,
+                City = e.City,
+                State = e.State,
+                Zip = e.Zip,
+                OfficeId = e.OfficeId,
+                OfficeName = e.OfficeName,
+                VendorId = e.VendorId,
+                AvailableFrom = e.AvailableFrom,
+                AvailableUntil = e.AvailableUntil,
+                UnitLevel = e.UnitLevel,
+                Bedrooms = e.Bedrooms,
+                Bathrooms = e.Bathrooms,
+                Accommodates = e.Accommodates,
+                SquareFeet = e.SquareFeet,
+                PropertyTypeId = e.PropertyTypeId,
+                PropertyStyleId = e.PropertyStyleId,
+                Unfurnished = e.Unfurnished,
+                MonthlyRate = e.MonthlyRate,
+                DailyRate = e.DailyRate,
+                DepartureFee = e.DepartureFee,
+                PetFee = e.PetFee,
+                MaidServiceFee = e.MaidServiceFee,
+                PropertyStatusId = e.PropertyStatusId,
+                Latitude = e.Latitude,
+                Longitude = e.Longitude,
+                ExternalCalendar = e.ExternalCalendar,
+                Description = e.Description
+            };
+
         private static TrackerResponseOption ConvertEntityToModel(TrackerResponseOptionEntity e)
         {
             return new TrackerResponseOption

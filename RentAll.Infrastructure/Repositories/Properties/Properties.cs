@@ -1,7 +1,9 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
+using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -195,6 +197,34 @@ WHERE
 
                 return row == null ? null : ConvertEntityToModel(row);
             }
+        }
+
+        public async Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListByOrganizationIdAsync(Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ExternalExportPropertyListEntity>("Property.Property_GetExternalExportListByOrganizationId", new
+            {
+                OrganizationId = organizationId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<ExternalExportPropertyList>();
+
+            return res.Select(ConvertExternalExportEntityToModel);
+        }
+
+        public async Task<Property?> GetPartnerExternalExportByCodeAsync(string propertyCode)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyEntity>("Partner.Partner_GetExternalExportByCode", new
+            {
+                PropertyCode = propertyCode
+            });
+
+            if (res == null || !res.Any())
+                return null;
+
+            return ConvertEntityToModel(res.First());
         }
 
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)

@@ -16,6 +16,7 @@ namespace RentAll.Api.Controllers
         private readonly AppSettings _appSettings;
         private readonly IPropertyManager _propertyManager;
         private readonly IPropertyRepository _propertyRepository;
+        private readonly IPartnerRepository _partnerRepository;
         private readonly IContactRepository _contactRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IOrganizationManager _organizationManager;
@@ -31,6 +32,7 @@ namespace RentAll.Api.Controllers
             IOptions<AppSettings> appSettingsOptions,
             IPropertyManager propertyManager,
             IPropertyRepository propertyRepository,
+            IPartnerRepository partnerRepository,
             IContactRepository contactRepository,
             IOrganizationRepository organizationRepository,
             IOrganizationManager organizationManager,
@@ -45,6 +47,7 @@ namespace RentAll.Api.Controllers
             _appSettings = appSettingsOptions.Value;
             _propertyManager = propertyManager;
             _propertyRepository = propertyRepository;
+            _partnerRepository = partnerRepository;
             _contactRepository = contactRepository;
             _organizationRepository = organizationRepository;
             _organizationManager = organizationManager;

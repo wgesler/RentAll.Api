@@ -190,7 +190,7 @@ public partial class PropertyController
         return (property, true, null);
     }
 
-    private async Task<IActionResult?> ValidateExternalPropertyAccessAsync(Guid organizationId, int officeId)
+    private async Task<IActionResult?> ValidateExternalPropertyOrganizationAccessAsync(Guid organizationId)
     {
         var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
         if (organization == null)
@@ -199,12 +199,21 @@ public partial class PropertyController
         if (!await _externalApiKeyService.IsApiKeyValidAsync(Request.Headers["X-Api-Key"].FirstOrDefault(), organization.GetExternalPropertyKeyVaultSecretName()))
             return Unauthorized("Invalid API key");
 
-        SetApplicationLogContext(organizationId, officeId);
+        SetApplicationLogContext(organizationId, null);
+        return null;
+    }
+
+    private async Task<IActionResult?> ValidateExternalPropertyAccessAsync(Guid organizationId, int officeId)
+    {
+        var organizationError = await ValidateExternalPropertyOrganizationAccessAsync(organizationId);
+        if (organizationError != null)
+            return organizationError;
 
         var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
         if (office == null)
             return BadRequest("Invalid OfficeId for OrganizationId");
 
+        SetApplicationLogContext(organizationId, officeId);
         return null;
     }
 

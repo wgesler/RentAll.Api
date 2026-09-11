@@ -5,8 +5,10 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Partners;
+using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Partners;
+using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Partners;
 
@@ -28,6 +30,17 @@ public class PartnerRepository : IPartnerRepository
             return Enumerable.Empty<PropertyList>();
 
         return res.Select(ConvertEntityToModel);
+    }
+
+    public async Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListAsync()
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ExternalExportPropertyListEntity>("Partner.Partner_GetExternalExportList");
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<ExternalExportPropertyList>();
+
+        return res.Select(ConvertExternalExportEntityToModel);
     }
 
     public async Task<IEnumerable<PropertyList>> GetActivePropertyListBySelectionCriteriaAsync(Guid userId)
@@ -79,6 +92,43 @@ public class PartnerRepository : IPartnerRepository
             Email = contact.Email
         };
     }
+
+    private static ExternalExportPropertyList ConvertExternalExportEntityToModel(ExternalExportPropertyListEntity e) =>
+        new()
+        {
+            PropertyId = e.PropertyId,
+            OrganizationId = e.OrganizationId,
+            PropertyCode = e.PropertyCode,
+            PropertyLeaseTypeId = e.PropertyLeaseTypeId,
+            Address1 = e.Address1,
+            Suite = e.Suite,
+            City = e.City,
+            State = e.State,
+            Zip = e.Zip,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            VendorId = e.VendorId,
+            AvailableFrom = e.AvailableFrom,
+            AvailableUntil = e.AvailableUntil,
+            UnitLevel = e.UnitLevel,
+            Bedrooms = e.Bedrooms,
+            Bathrooms = e.Bathrooms,
+            Accommodates = e.Accommodates,
+            SquareFeet = e.SquareFeet,
+            PropertyTypeId = e.PropertyTypeId,
+            PropertyStyleId = e.PropertyStyleId,
+            Unfurnished = e.Unfurnished,
+            MonthlyRate = e.MonthlyRate,
+            DailyRate = e.DailyRate,
+            DepartureFee = e.DepartureFee,
+            PetFee = e.PetFee,
+            MaidServiceFee = e.MaidServiceFee,
+            PropertyStatusId = e.PropertyStatusId,
+            Latitude = e.Latitude,
+            Longitude = e.Longitude,
+            ExternalCalendar = e.ExternalCalendar,
+            Description = e.Description
+        };
 
     private static PropertyList ConvertEntityToModel(PropertyListEntity e) =>
         new()
