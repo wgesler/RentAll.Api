@@ -176,7 +176,7 @@ public partial class AccountingManager
             throw new Exception("Journal entry not found");
 
         if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
-            throw new Exception("A voided journal entry cannot be posted");
+            throw new Exception("A closed journal entry cannot be posted");
 
         if (journalEntry.PostingStatusId == PostingStatus.Posted)
             throw new Exception("Journal entry is already posted");
@@ -192,23 +192,6 @@ public partial class AccountingManager
             journalEntry.AccountingPeriod = FirstDayOfMonth(journalEntry.TransactionDate);
 
         journalEntry.PostingStatusId = PostingStatus.Posted;
-        journalEntry.ModifiedBy = currentUser;
-        return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
-    }
-
-    public async Task<JournalEntry> VoidJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
-    {
-        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
-        if (journalEntry == null)
-            throw new Exception("Journal entry not found");
-
-        if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
-            throw new Exception("Journal entry is already voided");
-
-        if (journalEntry.PostingStatusId != PostingStatus.Posted)
-            throw new Exception("Only posted journal entries can be voided");
-
-        journalEntry.PostingStatusId = PostingStatus.SoftClosed;
         journalEntry.ModifiedBy = currentUser;
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
@@ -418,7 +401,7 @@ public partial class AccountingManager
             throw new Exception("Journal entry not found");
 
         if (journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed)
-            throw new Exception("A voided journal entry cannot be unposted");
+            throw new Exception("A closed journal entry cannot be unposted");
 
         if (journalEntry.PostingStatusId != PostingStatus.Posted)
             throw new Exception("Journal entry is not posted");

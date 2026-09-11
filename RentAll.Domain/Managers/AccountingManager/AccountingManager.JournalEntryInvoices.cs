@@ -431,7 +431,8 @@ public partial class AccountingManager
                     targetAccountingPeriod),
                 retainedEntryIds,
                 currentUser,
-                invoice.OrganizationId);
+                invoice.OrganizationId,
+                allowReloadFallback: false);
             return AccountingJournalEntryResult.Success(updated);
         }
         catch (Exception ex)
@@ -464,7 +465,8 @@ public partial class AccountingManager
                     && MatchesInvoicePaymentLedgerLineMemo(entry, invoice, paymentLedgerLine),
                 retainedEntryIds,
                 currentUser,
-                invoice.OrganizationId);
+                invoice.OrganizationId,
+                allowReloadFallback: false);
 
             var sourceInvoice = paymentSourceInvoice ?? invoice;
             // OwnAct cash date = when money was received; period = invoice/owner-statement month (apply period).

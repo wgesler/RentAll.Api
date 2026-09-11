@@ -348,33 +348,6 @@ namespace RentAll.Api.Controllers
             }
         }
 
-        [HttpPut("journal-entry/{journalEntryId}/void")]
-        public async Task<IActionResult> VoidJournalEntry(Guid journalEntryId)
-        {
-            if (journalEntryId == Guid.Empty)
-                return BadRequest("Journal entry ID is required");
-
-            try
-            {
-                var existingJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, CurrentOrganizationId);
-                if (existingJournalEntry == null)
-                    return NotFound("Journal entry not found");
-
-                var postingStatusCheck = RefuseIfJournalEntryUpdateNotAllowed(existingJournalEntry.PostingStatusId);
-                if (postingStatusCheck != null)
-                    return postingStatusCheck;
-
-                var journalEntry = await _accountingManager.VoidJournalEntryAsync(journalEntryId, CurrentOrganizationId, CurrentUser);
-                var response = new JournalEntryResponseDto(journalEntry);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error voiding journal entry: {JournalEntryId}", journalEntryId);
-                return BadRequest(ex.Message);
-            }
-        }
-
         [HttpPut("journal-entry/{journalEntryId}/soft-close")]
         public async Task<IActionResult> SoftCloseJournalEntry(Guid journalEntryId)
         {

@@ -32,7 +32,6 @@ public interface IAccountingManager
     Task<JournalEntry> UpdateJournalEntryAsync(JournalEntry journalEntry);
     Task<JournalEntry> PostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, DateOnly? accountingPeriod = null);
     Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
-    Task<JournalEntry> VoidJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<JournalEntry> SoftCloseJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<JournalEntry> HardCloseJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<CloseAccountingPeriodResult> CloseAccountingPeriodAsync(Guid organizationId, int officeId, DateOnly startDate, DateOnly endDate, PostingStatus closeStatus, IEnumerable<Guid> journalEntryIds, Guid currentUser);
