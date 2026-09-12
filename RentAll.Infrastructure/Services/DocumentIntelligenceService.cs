@@ -16,8 +16,17 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
 {
     private const string PrebuiltReceiptModelId = "prebuilt-receipt";
     private static readonly Regex PropertyCodePattern = new(@"\bR-\d+(?:-\d+)*\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex CardLastFourPattern = new(@"(?:\*{2,4}|x{2,4}|#{2,4}|\.{2,4})[\s-]*(\d{4})|(?:ending|ends)\s+(?:in|with)\s+[#*x]*(\d{4})|\b(?:visa|master\s*card|mc|discover|disc|amex|american\s*express)\b[^\d]{0,20}(\d{4})\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex StandaloneLastFourPattern = new(@"\b(\d{4})\b", RegexOptions.Compiled);
+    private static readonly Regex CardLastFourPattern = new(
+        @"(?:[#*xX\u2022\u00B7\s.-]{4,20})(\d{4})\b"
+        + @"|(?:ending|ends)\s+(?:in|with)\s+[#*xX]*(\d{4})"
+        + @"|\b(?:visa|master\s*card|mc|discover|disc|amex|american\s*express)\b[^\d]{0,40}(?:[#*xX\s.-]{0,20})(\d{4})\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PaymentSectionCardLastFourPattern = new(
+        @"\b(?:visa|master\s*card|mc|discover|disc|amex|american\s*express|payment|card(?:\s*(?:no|number|#))?)\b[\s\S]{0,120}?(?:[#*xX\u2022\u00B7\s.-]{3,20})(\d{4})\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex MerchantNoiseLinePattern = new(
+        @"^(?:table|check|server|cashier|guests?|seat|dine\s*in|order\s*type|auth(?:orization)?\s*code|amount\s*paid|balance\s*due|subtotal|total|tax|visa|master\s*card|discover|amex)\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private readonly DocumentIntelligenceSettings _settings;
     private readonly ILogger<DocumentIntelligenceService> _logger;
 
@@ -76,13 +85,18 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         }
 
         var document = analyzeResult.Documents[0];
+        var fullContent = analyzeResult.Content ?? string.Empty;
         var merchantName = ReadStringField(document, "MerchantName", confidences);
+        if (string.IsNullOrWhiteSpace(merchantName))
+            merchantName = InferMerchantNameFromContent(fullContent);
+        else
+            merchantName = NormalizeMerchantName(merchantName);
+
         var paymentMethod = ReadStringField(document, "PaymentMethod", confidences);
         var transactionDate = ReadDateField(document, "TransactionDate", confidences);
         var total = ReadCurrencyField(document, "Total", confidences);
         var subtotal = ReadCurrencyField(document, "Subtotal", confidences);
         var tax = ReadCurrencyField(document, "Tax", confidences);
-        var fullContent = analyzeResult.Content ?? string.Empty;
         var lineItemDescriptions = ExtractLineItemDescriptions(document);
         var detectedPropertyCodes = ExtractPropertyCodes(fullContent);
         var (cardLastFour, cardTypeId) = ParsePaymentCard(paymentMethod, fullContent);
@@ -237,44 +251,106 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
 
     private static (string? LastFour, int? CardTypeId) ParsePaymentCard(string? paymentMethod, string content)
     {
-        var searchText = string.Join(" ", new[] { paymentMethod, content }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var searchText = string.Join("\n", new[] { paymentMethod, content }.Where(value => !string.IsNullOrWhiteSpace(value)));
         if (string.IsNullOrWhiteSpace(searchText))
             return (null, null);
 
-        string? lastFour = null;
+        var cardTypeId = ParseCardType(searchText);
+        var lastFour = ExtractCardLastFour(searchText);
+        if (string.IsNullOrWhiteSpace(lastFour))
+            return (null, cardTypeId);
+
+        return (lastFour, cardTypeId ?? ParseCardType(searchText));
+    }
+
+    private static string? ExtractCardLastFour(string searchText)
+    {
         foreach (Match match in CardLastFourPattern.Matches(searchText))
         {
-            lastFour = match.Groups.Cast<Group>()
-                .Skip(1)
-                .Select(group => group.Value)
-                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
-                ?.Trim();
-
+            var lastFour = ReadCardLastFourFromMatch(match);
             if (!string.IsNullOrWhiteSpace(lastFour))
-                break;
+                return lastFour;
         }
 
-        if (string.IsNullOrWhiteSpace(lastFour))
+        var paymentSectionMatch = PaymentSectionCardLastFourPattern.Match(searchText);
+        if (paymentSectionMatch.Success)
         {
-            var cardTypeOnly = ParseCardType(searchText);
-            if (cardTypeOnly.HasValue)
-            {
-                foreach (Match match in StandaloneLastFourPattern.Matches(searchText))
-                {
-                    var candidate = match.Groups[1].Value;
-                    if (candidate.Length == 4)
-                    {
-                        lastFour = candidate;
-                        break;
-                    }
-                }
-            }
+            var lastFour = ReadCardLastFourFromMatch(paymentSectionMatch);
+            if (!string.IsNullOrWhiteSpace(lastFour))
+                return lastFour;
         }
 
-        if (string.IsNullOrWhiteSpace(lastFour))
-            return (null, null);
+        return null;
+    }
 
-        return (lastFour, ParseCardType(searchText));
+    private static string? ReadCardLastFourFromMatch(Match match)
+    {
+        return match.Groups.Cast<Group>()
+            .Skip(1)
+            .Select(group => group.Value)
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+            ?.Trim();
+    }
+
+    private static string? InferMerchantNameFromContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return null;
+
+        var lines = content
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Take(6)
+            .ToList();
+
+        if (lines.Count == 0)
+            return null;
+
+        var merchantLines = lines.Where(LooksLikeMerchantLine).Take(2).ToList();
+        if (merchantLines.Count == 0)
+            return NormalizeMerchantName(lines[0]);
+
+        return NormalizeMerchantName(string.Join(" ", merchantLines));
+    }
+
+    private static bool LooksLikeMerchantLine(string line)
+    {
+        var trimmed = line.Trim();
+        if (trimmed.Length < 2 || trimmed.Length > 80)
+            return false;
+
+        if (!Regex.IsMatch(trimmed, @"[A-Za-z]"))
+            return false;
+
+        if (Regex.IsMatch(trimmed, @"^\d"))
+            return false;
+
+        if (Regex.IsMatch(trimmed, @"^\d{1,2}/\d{1,2}/\d{2,4}\b"))
+            return false;
+
+        if (Regex.IsMatch(trimmed, @"^\d{1,2}:\d{2}\b"))
+            return false;
+
+        if (MerchantNoiseLinePattern.IsMatch(trimmed))
+            return false;
+
+        if (Regex.IsMatch(trimmed, @"\b(?:st|street|ave|avenue|road|rd|blvd|suite|ste|zip)\b", RegexOptions.IgnoreCase))
+            return false;
+
+        return true;
+    }
+
+    private static string? NormalizeMerchantName(string? merchantName)
+    {
+        if (string.IsNullOrWhiteSpace(merchantName))
+            return null;
+
+        var normalized = Regex.Replace(merchantName.Trim(), @"\s+", " ");
+        var firstLine = normalized
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(firstLine) ? normalized : firstLine;
     }
 
     private static int? ParseCardType(string text)

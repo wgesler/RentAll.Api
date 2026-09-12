@@ -199,20 +199,11 @@ public class ReceiptExtractEnrichmentService
                 return null;
             }
 
-            if (extraction.CardTypeId.HasValue)
+            var typeFallback = TrySelectFirstBankCardByType(extraction.CardTypeId, cards, out var typeFallbackWarning);
+            if (typeFallback.HasValue)
             {
-                var typeMatches = cards.Where(card => card.CardTypeId == extraction.CardTypeId.Value).ToList();
-                if (typeMatches.Count == 1)
-                {
-                    warning = $"Card ending {extraction.CardLastFour} was not found; selected the only matching {DescribeCardType(extraction.CardTypeId.Value)} card.";
-                    return typeMatches[0].BankCardId;
-                }
-
-                if (typeMatches.Count > 1)
-                {
-                    warning = $"Card ending {extraction.CardLastFour} was not found. Select the correct {DescribeCardType(extraction.CardTypeId.Value)} card.";
-                    return null;
-                }
+                warning = $"Card ending {extraction.CardLastFour} was not found; {typeFallbackWarning}";
+                return typeFallback.Value;
             }
 
             var cardTypeHint = extraction.CardTypeId.HasValue ? $" {DescribeCardType(extraction.CardTypeId.Value)}" : string.Empty;
@@ -222,15 +213,12 @@ public class ReceiptExtractEnrichmentService
 
         if (extraction.CardTypeId.HasValue)
         {
-            var typeMatches = cards.Where(card => card.CardTypeId == extraction.CardTypeId.Value).ToList();
-            if (typeMatches.Count == 1)
+            var typeFallback = TrySelectFirstBankCardByType(extraction.CardTypeId, cards, out var typeFallbackWarning);
+            if (typeFallback.HasValue)
             {
-                warning = $"Selected the only matching {DescribeCardType(extraction.CardTypeId.Value)} card.";
-                return typeMatches[0].BankCardId;
+                warning = typeFallbackWarning;
+                return typeFallback.Value;
             }
-
-            if (typeMatches.Count > 1)
-                warning = $"Multiple {DescribeCardType(extraction.CardTypeId.Value)} cards are available. Select the correct card.";
         }
 
         return null;
@@ -278,6 +266,23 @@ public class ReceiptExtractEnrichmentService
         }
 
         return found;
+    }
+
+    private static int? TrySelectFirstBankCardByType(int? cardTypeId, IReadOnlyList<BankCard> cards, out string? warning)
+    {
+        warning = null;
+        if (!cardTypeId.HasValue)
+            return null;
+
+        var typeMatches = cards.Where(card => card.CardTypeId == cardTypeId.Value).ToList();
+        if (typeMatches.Count == 0)
+            return null;
+
+        warning = typeMatches.Count == 1
+            ? $"selected the only matching {DescribeCardType(cardTypeId.Value)} card."
+            : $"selected the first matching {DescribeCardType(cardTypeId.Value)} card.";
+
+        return typeMatches[0].BankCardId;
     }
 
     private static List<BankCard> FilterBankCardsByLastFour(IEnumerable<BankCard> cards, string cardLastFour, int? cardTypeId)
