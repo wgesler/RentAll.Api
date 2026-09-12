@@ -981,6 +981,7 @@ public partial class AccountingManager
 
         await LinkInvoicePaymentApplicationsAsync(createdPayment.PaymentId, invoicePayment, currentUser);
         await CreateJournalEntriesFromInvoicePaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+        await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
 
         return await _accountingRepository.GetPaymentByIdAsync(createdPayment.PaymentId, payment.OrganizationId)
             ?? createdPayment;
@@ -996,6 +997,7 @@ public partial class AccountingManager
             await EnsurePaymentCodeAsync(payment);
             createdPayment = await _accountingRepository.CreatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
         catch
         {
@@ -1025,12 +1027,7 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.DepositId = existing.DepositId;
-        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
-            existing.PostingStatusId,
-            existing.OrganizationId,
-            existing.OfficeId,
-            currentUser,
-            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, payment.PaymentDate, default, currentUser, () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
 
         var revertPayment = existing;
         var revertAllocations = existing.LedgerLines
@@ -1049,6 +1046,7 @@ public partial class AccountingManager
 
             var updatedPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
 
             return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
                 ?? updatedPayment;

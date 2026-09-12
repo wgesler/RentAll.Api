@@ -25,6 +25,7 @@ public partial class AccountingManager
             createdPayment = await _accountingRepository.CreatePaymentWithBillAllocationsAsync(payment, allocations, currentUser);
             await ApplyPreparedBillPaymentApplicationsAsync(preparedApplications, payment.PaymentTypeId, currentUser);
             await CreateJournalEntriesFromBillPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
         catch
         {
@@ -58,12 +59,7 @@ public partial class AccountingManager
 
         payment.PaymentCode = existing.PaymentCode;
         payment.DepositId = existing.DepositId;
-        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
-            existing.PostingStatusId,
-            existing.OrganizationId,
-            existing.OfficeId,
-            currentUser,
-            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, payment.PaymentDate, default, currentUser, () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
 
         var revertAllocations = existing.BillAllocations.ToList();
         var revertPayment = existing;
@@ -80,6 +76,7 @@ public partial class AccountingManager
             var updatedPayment = await _accountingRepository.UpdatePaymentWithBillAllocationsAsync(payment, allocations, currentUser);
             await ApplyPreparedBillPaymentApplicationsAsync(preparedApplications, payment.PaymentTypeId, currentUser);
             await CreateJournalEntriesFromBillPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
 
             return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
                 ?? updatedPayment;

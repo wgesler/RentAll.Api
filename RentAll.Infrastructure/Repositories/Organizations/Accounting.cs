@@ -239,6 +239,42 @@ public partial class OrganizationRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+    public async Task<int> ClosePostingStatusThroughClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, int closeStatusId, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        return await db.DapperProcQueryScalarAsync<int>("Organization.AccountingOffice_ClosePostingStatusThroughDate", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ClosedEndDate = closedEndDate,
+            CloseStatusId = closeStatusId,
+            ModifiedBy = modifiedBy
+        });
+    }
+
+    public async Task<int> ReopenSoftClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        return await db.DapperProcQueryScalarAsync<int>("Organization.AccountingOffice_ReopenSoftClosedPostingStatusAfterDate", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ClosedEndDate = closedEndDate,
+            ModifiedBy = modifiedBy
+        });
+    }
+
+    public async Task<int> ReopenHardClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        return await db.DapperProcQueryScalarAsync<int>("Organization.AccountingOffice_ReopenHardClosedPostingStatusAfterDate", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            ClosedEndDate = closedEndDate,
+            ModifiedBy = modifiedBy
+        });
+    }
     #endregion
 
     #region Deletes

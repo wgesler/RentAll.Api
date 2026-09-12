@@ -38,6 +38,9 @@ public interface IOrganizationRepository
     Task<AccountingOffice> UpdateAccountingOfficeCheckNumberByIdAsync(Guid organizationId, int officeId, int currentCheckNumber, Guid modifiedBy);
     Task<AccountingOffice> UpdateAccountingOfficeCheckStockByIdAsync(Guid organizationId, int officeId, string? checkStockPath, Guid modifiedBy);
     Task DeleteAccountingOfficeByIdAsync(Guid organizationId, int officeId);
+    Task<int> ClosePostingStatusThroughClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, int closeStatusId, Guid modifiedBy);
+    Task<int> ReopenSoftClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, Guid modifiedBy);
+    Task<int> ReopenHardClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, Guid modifiedBy);
     #endregion
 
     #region Agents

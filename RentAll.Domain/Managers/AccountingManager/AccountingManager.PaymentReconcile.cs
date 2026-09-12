@@ -302,6 +302,7 @@ public partial class AccountingManager
 
                 await EnsurePaymentCodeAsync(payment);
                 var createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
+                await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
                 createdPaymentIds.Add(createdPayment.PaymentId);
                 await _accountingRepository.SetLedgerLinePaymentIdAsync(line.LedgerLineId, createdPayment.PaymentId, currentUser);
                 line.PaymentId = createdPayment.PaymentId;

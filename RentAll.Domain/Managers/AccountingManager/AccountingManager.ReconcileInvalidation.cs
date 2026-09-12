@@ -14,40 +14,32 @@ public partial class AccountingManager
             ? (PostingStatus)postingStatusId.Value
             : PostingStatus.Open;
 
-    private async Task<int> ApplySourceDocumentEditReconcileInvalidationAsync(
-        int? existingPostingStatusId,
-        Guid organizationId,
-        int officeId,
-        Guid currentUser,
-        Func<Task<IReadOnlyCollection<JournalEntry>>> loadJournalEntriesAsync)
+    private async Task<int> ApplySourceDocumentEditReconcileInvalidationAsync(int? existingPostingStatusId, Guid organizationId, int officeId, DateOnly transactionDate, DateOnly accountingPeriod, Guid currentUser, Func<Task<IReadOnlyCollection<JournalEntry>>> loadJournalEntriesAsync)
     {
         var existingStatus = ResolveDocumentPostingStatus(existingPostingStatusId);
-        if (!ShouldInvalidateReconcileOnDocumentEdit(existingStatus))
-            return (int)existingStatus;
+        var postingStatusId = (int)existingStatus;
 
-        var journalEntries = (await loadJournalEntriesAsync())
-            .GroupBy(entry => entry.JournalEntryId)
-            .Select(group => group.First())
-            .ToList();
-
-        if (journalEntries.Count > 0)
+        if (ShouldInvalidateReconcileOnDocumentEdit(existingStatus))
         {
-            var affectedAccountIds = await _journalEntryRepository.ClearReconcileMarksByJournalEntryIdsAsync(
-                organizationId,
-                officeId,
-                journalEntries.Select(entry => entry.JournalEntryId),
-                currentUser);
+            var journalEntries = (await loadJournalEntriesAsync())
+                .GroupBy(entry => entry.JournalEntryId)
+                .Select(group => group.First())
+                .ToList();
 
-            await AdjustReconcileAccountBalancesAfterInvalidationAsync(
-                organizationId,
-                officeId,
-                affectedAccountIds);
+            if (journalEntries.Count > 0)
+            {
+                var affectedAccountIds = await _journalEntryRepository.ClearReconcileMarksByJournalEntryIdsAsync(organizationId, officeId, journalEntries.Select(entry => entry.JournalEntryId), currentUser);
 
-            foreach (var journalEntry in journalEntries.Where(entry => entry.PostingStatusId is PostingStatus.Posted or PostingStatus.SoftClosed))
-                await ResetJournalEntryPostingStatusToOpenAsync(journalEntry.JournalEntryId, organizationId, currentUser);
+                await AdjustReconcileAccountBalancesAfterInvalidationAsync(organizationId, officeId, affectedAccountIds);
+
+                foreach (var journalEntry in journalEntries.Where(entry => entry.PostingStatusId is PostingStatus.Posted or PostingStatus.SoftClosed))
+                    await ResetJournalEntryPostingStatusToOpenAsync(journalEntry.JournalEntryId, organizationId, currentUser);
+            }
+
+            postingStatusId = (int)PostingStatus.Open;
         }
 
-        return (int)PostingStatus.Open;
+        return await ResolveDocumentPostingStatusWithAccountingOfficeCloseComplianceAsync(organizationId, officeId, transactionDate, accountingPeriod, postingStatusId);
     }
 
     private async Task ApplyJournalEntryEditReconcileInvalidationAsync(JournalEntry existingJournalEntry, Guid currentUser)
@@ -55,25 +47,15 @@ public partial class AccountingManager
         if (!ShouldInvalidateReconcileOnDocumentEdit(existingJournalEntry.PostingStatusId))
             return;
 
-        var affectedAccountIds = await _journalEntryRepository.ClearReconcileMarksByJournalEntryIdsAsync(
-            existingJournalEntry.OrganizationId,
-            existingJournalEntry.OfficeId,
-            [existingJournalEntry.JournalEntryId],
-            currentUser);
+        var affectedAccountIds = await _journalEntryRepository.ClearReconcileMarksByJournalEntryIdsAsync(existingJournalEntry.OrganizationId, existingJournalEntry.OfficeId, [existingJournalEntry.JournalEntryId], currentUser);
 
-        await AdjustReconcileAccountBalancesAfterInvalidationAsync(
-            existingJournalEntry.OrganizationId,
-            existingJournalEntry.OfficeId,
-            affectedAccountIds);
+        await AdjustReconcileAccountBalancesAfterInvalidationAsync(existingJournalEntry.OrganizationId, existingJournalEntry.OfficeId, affectedAccountIds);
 
         if (existingJournalEntry.PostingStatusId is PostingStatus.Posted or PostingStatus.SoftClosed)
             await ResetJournalEntryPostingStatusToOpenAsync(existingJournalEntry.JournalEntryId, existingJournalEntry.OrganizationId, currentUser);
     }
 
-    private async Task AdjustReconcileAccountBalancesAfterInvalidationAsync(
-        Guid organizationId,
-        int officeId,
-        IReadOnlyCollection<int> chartOfAccountIds)
+    private async Task AdjustReconcileAccountBalancesAfterInvalidationAsync(Guid organizationId, int officeId, IReadOnlyCollection<int> chartOfAccountIds)
     {
         foreach (var chartOfAccountId in chartOfAccountIds.Distinct().Where(id => id > 0))
         {
@@ -81,18 +63,9 @@ public partial class AccountingManager
             if (latestReconcile?.StatementDate is not DateOnly statementDate)
                 continue;
 
-            var registerBalance = await _journalEntryRepository.GetReconcileRegisterBalanceAsync(
-                organizationId,
-                officeId,
-                chartOfAccountId,
-                statementDate);
+            var registerBalance = await _journalEntryRepository.GetReconcileRegisterBalanceAsync(organizationId, officeId, chartOfAccountId, statementDate);
 
-            await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(
-                organizationId,
-                officeId,
-                chartOfAccountId,
-                registerBalance,
-                statementDate);
+            await _accountingRepository.UpdateChartOfAccountReconcileByIdAsync(organizationId, officeId, chartOfAccountId, registerBalance, statementDate);
         }
     }
 
@@ -104,6 +77,7 @@ public partial class AccountingManager
 
         journalEntry.PostingStatusId = PostingStatus.Open;
         journalEntry.ModifiedBy = currentUser;
+        await ApplyAccountingOfficeClosedPostingStatusComplianceAsync(journalEntry);
         await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
 
@@ -185,6 +159,16 @@ public partial class AccountingManager
         var journalEntries = new Dictionary<Guid, JournalEntry>();
 
         foreach (var entry in await GetDocumentJournalEntriesForSyncAsync(organizationId, invoice.OfficeId, SourceType.Invoice, invoice.InvoiceId))
+            journalEntries[entry.JournalEntryId] = entry;
+
+        return journalEntries.Values.ToList();
+    }
+
+    private async Task<IReadOnlyCollection<JournalEntry>> LoadJournalEntriesForWorkOrderDocumentAsync(Guid organizationId, WorkOrder workOrder)
+    {
+        var journalEntries = new Dictionary<Guid, JournalEntry>();
+
+        foreach (var entry in await GetDocumentJournalEntriesForSyncAsync(organizationId, workOrder.OfficeId, SourceType.WorkOrder, workOrder.WorkOrderId))
             journalEntries[entry.JournalEntryId] = entry;
 
         return journalEntries.Values.ToList();

@@ -64,6 +64,7 @@ public partial class AccountingManager
                 EntityType.JournalEntry);
         }
 
+        await ApplyAccountingOfficeClosedPostingStatusComplianceAsync(journalEntry);
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         var created = await _journalEntryRepository.CreateJournalEntryAsync(journalEntry);
         TouchOfficeSyncCache(created);
@@ -137,6 +138,7 @@ public partial class AccountingManager
         if (journalEntry.AccountingPeriod == default)
             journalEntry.AccountingPeriod = existing.AccountingPeriod;
 
+        await ApplyAccountingOfficeClosedPostingStatusComplianceAsync(journalEntry);
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         var updated = await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
         TouchOfficeSyncCache(updated);
@@ -162,6 +164,7 @@ public partial class AccountingManager
         if (journalEntry.AccountingPeriod == default)
             journalEntry.AccountingPeriod = existing.AccountingPeriod;
 
+        await ApplyAccountingOfficeClosedPostingStatusComplianceAsync(journalEntry);
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
         var updated = await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
         TouchOfficeSyncCache(updated);
@@ -193,6 +196,7 @@ public partial class AccountingManager
 
         journalEntry.PostingStatusId = PostingStatus.Posted;
         journalEntry.ModifiedBy = currentUser;
+        await ApplyAccountingOfficeClosedPostingStatusComplianceAsync(journalEntry);
         return await _journalEntryRepository.UpdateJournalEntryByIdAsync(journalEntry);
     }
 

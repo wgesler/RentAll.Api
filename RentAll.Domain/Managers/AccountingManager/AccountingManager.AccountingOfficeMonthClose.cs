@@ -5,6 +5,69 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    public async Task<CloseAccountingPeriodResult> ResyncAccountingOfficePostingStatusAsync(Guid organizationId, int officeId, int softClosedMonth, int softClosedYear, int hardClosedMonth, int hardClosedYear, int startMonth, int startYear, Guid currentUser)
+    {
+        var result = new CloseAccountingPeriodResult();
+
+        var softResult = await CloseJournalEntriesThroughClosedPeriodAsync(organizationId, officeId, softClosedMonth, softClosedYear, startMonth, startYear, PostingStatus.SoftClosed, currentUser);
+        MergeCloseAccountingPeriodResults(result, softResult);
+
+        var hardResult = await CloseJournalEntriesThroughClosedPeriodAsync(organizationId, officeId, hardClosedMonth, hardClosedYear, startMonth, startYear, PostingStatus.HardClosed, currentUser);
+        MergeCloseAccountingPeriodResults(result, hardResult);
+
+        var softClosedEndDate = GetAccountingOfficeClosedEndDate(softClosedYear, softClosedMonth);
+        var softReopenResult = await ReopenSoftClosedPostingStatusAfterClosedEndDateAsync(organizationId, officeId, softClosedEndDate, currentUser);
+        MergeCloseAccountingPeriodResults(result, softReopenResult);
+
+        return result;
+    }
+
+    private async Task<CloseAccountingPeriodResult> ReopenSoftClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, DateOnly softClosedEndDate, Guid currentUser)
+    {
+        var result = new CloseAccountingPeriodResult();
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return result;
+
+        try
+        {
+            result.SuccessCount = await _organizationRepository.ReopenSoftClosedPostingStatusAfterClosedEndDateAsync(organizationId, officeId, softClosedEndDate, currentUser);
+        }
+        catch (Exception ex)
+        {
+            result.FailedCount++;
+            result.Errors.Add(ex.Message);
+        }
+
+        return result;
+    }
+
+    public async Task<CloseAccountingPeriodResult> ReopenHardClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, int hardClosedMonth, int hardClosedYear, Guid currentUser)
+    {
+        var result = new CloseAccountingPeriodResult();
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return result;
+
+        if (hardClosedMonth < 1 || hardClosedMonth > 12)
+            throw new Exception("HardClosedMonth must be between 1 and 12.");
+
+        if (hardClosedYear < 1900 || hardClosedYear > 2500)
+            throw new Exception("HardClosedYear must be between 1900 and 2500.");
+
+        var hardClosedEndDate = GetAccountingOfficeClosedEndDate(hardClosedYear, hardClosedMonth);
+
+        try
+        {
+            result.SuccessCount = await _organizationRepository.ReopenHardClosedPostingStatusAfterClosedEndDateAsync(organizationId, officeId, hardClosedEndDate, currentUser);
+        }
+        catch (Exception ex)
+        {
+            result.FailedCount++;
+            result.Errors.Add(ex.Message);
+        }
+
+        return result;
+    }
+
     public async Task<CloseAccountingPeriodResult> CloseJournalEntriesThroughClosedPeriodAsync(Guid organizationId, int officeId, int closedMonth, int closedYear, int startMonth, int startYear, PostingStatus closeStatus, Guid currentUser)
     {
         if (closeStatus is not (PostingStatus.SoftClosed or PostingStatus.HardClosed))
@@ -26,70 +89,25 @@ public partial class AccountingManager
         if (startYear < 1900 || startYear > 2500)
             throw new Exception("StartYear must be between 1900 and 2500.");
 
-        var journalEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        var closedEndDate = GetAccountingOfficeClosedEndDate(closedYear, closedMonth);
+
+        try
         {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            IncludeUnposted = true,
-            IncludeCashOnly = true
-        })).ToList();
-
-        var eligibleEntries = journalEntries
-            .Where(entry => IsAccountingPeriodOnOrBeforeClosedPeriod(entry, closedYear, closedMonth))
-            .Where(entry => IsJournalEntryEligibleForAccountingOfficeClose(entry, closeStatus))
-            .ToList();
-
-        foreach (var journalEntry in eligibleEntries)
-        {
-            try
-            {
-                if (closeStatus == PostingStatus.HardClosed)
-                    await HardCloseJournalEntryIfEligibleAsync(journalEntry.JournalEntryId, organizationId, currentUser);
-                else
-                    await SoftCloseJournalEntryIfEligibleAsync(journalEntry.JournalEntryId, organizationId, currentUser);
-
-                result.SuccessCount++;
-            }
-            catch (Exception ex)
-            {
-                result.FailedCount++;
-                result.Errors.Add(ex.Message);
-            }
+            result.SuccessCount = await _organizationRepository.ClosePostingStatusThroughClosedEndDateAsync(organizationId, officeId, closedEndDate, (int)closeStatus, currentUser);
         }
-
-        var documentKeys = new HashSet<(SourceType SourceType, Guid SourceId)>();
-        foreach (var journalEntry in eligibleEntries)
+        catch (Exception ex)
         {
-            if (journalEntry.SourceId is not Guid sourceId || sourceId == Guid.Empty)
-                continue;
-            if (journalEntry.SourceTypeId is not int sourceTypeId || sourceTypeId < 0)
-                continue;
-
-            documentKeys.Add(((SourceType)sourceTypeId, sourceId));
-        }
-
-        foreach (var (sourceType, sourceId) in documentKeys)
-        {
-            try
-            {
-                await TryCloseDocumentForAccountingOfficeCloseAsync(sourceType, sourceId, organizationId, currentUser, closeStatus);
-                result.SuccessCount++;
-            }
-            catch (Exception ex)
-            {
-                result.FailedCount++;
-                result.Errors.Add(ex.Message);
-            }
+            result.FailedCount++;
+            result.Errors.Add(ex.Message);
         }
 
         var startDate = new DateOnly(startYear, startMonth, 1);
-        var endDate = new DateOnly(closedYear, closedMonth, DateTime.DaysInMonth(closedYear, closedMonth));
         var closedDate = await _accountingRepository.CreateClosedDateAsync(new ClosedDate
         {
             OrganizationId = organizationId,
             OfficeId = officeId,
             StartDate = startDate,
-            EndDate = endDate,
+            EndDate = closedEndDate,
             PostingStatusId = closeStatus
         });
         result.ClosedDateId = closedDate.ClosedDateId;
@@ -97,71 +115,87 @@ public partial class AccountingManager
         return result;
     }
 
-    private static bool IsJournalEntryEligibleForAccountingOfficeClose(JournalEntry journalEntry, PostingStatus closeStatus)
+    private static void MergeCloseAccountingPeriodResults(CloseAccountingPeriodResult target, CloseAccountingPeriodResult source)
     {
-        return closeStatus == PostingStatus.HardClosed
-            ? journalEntry.PostingStatusId is PostingStatus.Open or PostingStatus.Posted or PostingStatus.SoftClosed
-            : journalEntry.PostingStatusId is PostingStatus.Open or PostingStatus.Posted;
+        target.SuccessCount += source.SuccessCount;
+        target.FailedCount += source.FailedCount;
+        target.Errors.AddRange(source.Errors);
+        if (source.ClosedDateId is > 0)
+            target.ClosedDateId = source.ClosedDateId;
     }
 
-    private static bool IsAccountingPeriodOnOrBeforeClosedPeriod(JournalEntry journalEntry, int closedYear, int closedMonth)
+    internal static DateOnly GetAccountingOfficeClosedEndDate(int closedYear, int closedMonth)
+        => new(closedYear, closedMonth, DateTime.DaysInMonth(closedYear, closedMonth));
+
+    internal static bool IsJournalEntryInAccountingOfficeClosePeriod(JournalEntry journalEntry, DateOnly closedEndDate)
+        => IsDocumentInAccountingOfficeClosePeriod(journalEntry.TransactionDate, journalEntry.AccountingPeriod, closedEndDate);
+
+    internal static bool IsDocumentInAccountingOfficeClosePeriod(DateOnly transactionDate, DateOnly accountingPeriod, DateOnly closedEndDate)
     {
-        var accountingPeriod = journalEntry.AccountingPeriod != default
-            ? FirstDayOfMonth(journalEntry.AccountingPeriod)
-            : journalEntry.TransactionDate != default
-                ? FirstDayOfMonth(journalEntry.TransactionDate)
-                : default;
+        var closedEndMonth = new DateOnly(closedEndDate.Year, closedEndDate.Month, 1);
+        if (accountingPeriod != default)
+        {
+            var periodMonth = FirstDayOfMonth(accountingPeriod);
+            if (periodMonth > closedEndMonth)
+                return false;
+        }
+
+        if (transactionDate != default && transactionDate <= closedEndDate)
+            return true;
 
         if (accountingPeriod == default)
             return false;
 
-        var closedPeriodOrdinal = closedYear * 12 + closedMonth;
-        var entryPeriodOrdinal = accountingPeriod.Year * 12 + accountingPeriod.Month;
-        return entryPeriodOrdinal <= closedPeriodOrdinal;
+        return FirstDayOfMonth(accountingPeriod) <= closedEndMonth;
     }
 
-    private async Task TryCloseDocumentForAccountingOfficeCloseAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser, PostingStatus closeStatus)
+    private async Task ApplyAccountingOfficeClosedPostingStatusComplianceAsync(JournalEntry journalEntry)
     {
-        if (closeStatus == PostingStatus.HardClosed)
-        {
-            switch (sourceType)
-            {
-                case SourceType.WorkOrder:
-                    await MarkWorkOrderHardClosedForAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
-                    break;
-                case SourceType.OwnerDistribution:
-                    await MarkPaymentHardClosedFromAccountingOfficeCloseAsync(sourceId, organizationId, currentUser);
-                    break;
-                default:
-                    await MarkDocumentHardClosedFromAccountingOfficeCloseAsync(sourceType, sourceId, organizationId, currentUser);
-                    break;
-            }
+        if (journalEntry.OfficeId <= 0)
+            return;
 
+        var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(journalEntry.OrganizationId, journalEntry.OfficeId);
+        if (accountingOffice == null)
+            return;
+
+        EnsureJournalEntryAccountingPeriodForCloseEvaluation(journalEntry);
+
+        var requiredStatus = ResolveRequiredPostingStatusForAccountingOfficeClose(journalEntry, accountingOffice);
+        if (requiredStatus == null)
+            return;
+
+        if (requiredStatus == PostingStatus.HardClosed)
+        {
+            journalEntry.PostingStatusId = PostingStatus.HardClosed;
             return;
         }
 
-        switch (sourceType)
-        {
-            case SourceType.WorkOrder:
-                await MarkWorkOrderSoftClosedForOwnerStatementAsync(sourceId, organizationId, currentUser);
-                break;
-            case SourceType.OwnerDistribution:
-                await MarkPaymentSoftClosedFromReconcileCompleteAsync(sourceId, organizationId, currentUser);
-                break;
-            default:
-                await MarkDocumentSoftClosedFromReconcileCompleteAsync(sourceType, sourceId, organizationId, currentUser);
-                break;
-        }
+        if (journalEntry.PostingStatusId != PostingStatus.HardClosed)
+            journalEntry.PostingStatusId = PostingStatus.SoftClosed;
     }
 
-    private async Task MarkWorkOrderHardClosedForAccountingOfficeCloseAsync(Guid workOrderId, Guid organizationId, Guid currentUser)
+    private static void EnsureJournalEntryAccountingPeriodForCloseEvaluation(JournalEntry journalEntry)
     {
-        var workOrder = await _maintenanceRepository.GetWorkOrderByIdAsync(workOrderId, organizationId);
-        if (workOrder == null || !CanHardCloseDocumentFromAccountingOfficeClose(workOrder.PostingStatusId))
-            return;
+        if (journalEntry.AccountingPeriod == default && journalEntry.TransactionDate != default)
+            journalEntry.AccountingPeriod = FirstDayOfMonth(journalEntry.TransactionDate);
+    }
 
-        workOrder.PostingStatusId = (int)PostingStatus.HardClosed;
-        workOrder.ModifiedBy = currentUser;
-        await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
+    private static PostingStatus? ResolveRequiredPostingStatusForAccountingOfficeClose(JournalEntry journalEntry, AccountingOffice accountingOffice)
+    {
+        EnsureJournalEntryAccountingPeriodForCloseEvaluation(journalEntry);
+        return ResolveRequiredPostingStatusForAccountingOfficeClose(journalEntry.TransactionDate, journalEntry.AccountingPeriod, accountingOffice);
+    }
+
+    private static PostingStatus? ResolveRequiredPostingStatusForAccountingOfficeClose(DateOnly transactionDate, DateOnly accountingPeriod, AccountingOffice accountingOffice)
+    {
+        var hardClosedEndDate = GetAccountingOfficeClosedEndDate(accountingOffice.HardClosedYear, accountingOffice.HardClosedMonth);
+        if (IsDocumentInAccountingOfficeClosePeriod(transactionDate, accountingPeriod, hardClosedEndDate))
+            return PostingStatus.HardClosed;
+
+        var softClosedEndDate = GetAccountingOfficeClosedEndDate(accountingOffice.SoftClosedYear, accountingOffice.SoftClosedMonth);
+        if (IsDocumentInAccountingOfficeClosePeriod(transactionDate, accountingPeriod, softClosedEndDate))
+            return PostingStatus.SoftClosed;
+
+        return null;
     }
 }

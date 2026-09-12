@@ -36,6 +36,8 @@ public interface IAccountingManager
     Task<JournalEntry> HardCloseJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser);
     Task<CloseAccountingPeriodResult> CloseAccountingPeriodAsync(Guid organizationId, int officeId, DateOnly startDate, DateOnly endDate, PostingStatus closeStatus, IEnumerable<Guid> journalEntryIds, Guid currentUser);
     Task<CloseAccountingPeriodResult> CloseJournalEntriesThroughClosedPeriodAsync(Guid organizationId, int officeId, int closedMonth, int closedYear, int startMonth, int startYear, PostingStatus closeStatus, Guid currentUser);
+    Task<CloseAccountingPeriodResult> ResyncAccountingOfficePostingStatusAsync(Guid organizationId, int officeId, int softClosedMonth, int softClosedYear, int hardClosedMonth, int hardClosedYear, int startMonth, int startYear, Guid currentUser);
+    Task<CloseAccountingPeriodResult> ReopenHardClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, int hardClosedMonth, int hardClosedYear, Guid currentUser);
     Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(Guid organizationId, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser);
     Task<CloseAccountingPeriodResult> SoftCloseOwnerApJournalEntriesForOwnerStatementMonthAsync(Guid organizationId, DateOnly? startDate, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser);
     Task DeleteJournalEntryAsync(Guid journalEntryId, Guid organizationId);

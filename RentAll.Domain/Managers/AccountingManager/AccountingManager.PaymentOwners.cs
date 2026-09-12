@@ -74,6 +74,7 @@ public partial class AccountingManager
                 await EnsurePaymentCodeAsync(ownerPayment);
                 createdPayment = await _accountingRepository.CreatePaymentWithOwnerAllocationsAsync(ownerPayment, [allocation], currentUser);
                 var createdEntries = await CreateJournalEntriesFromOwnerPaymentDocumentAsync(createdPayment.PaymentId, organizationId, currentUser);
+                await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
                 journalEntries.AddRange(createdEntries);
             }
             catch
@@ -105,6 +106,7 @@ public partial class AccountingManager
             await EnsurePaymentCodeAsync(payment);
             createdPayment = await _accountingRepository.CreatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
             await CreateJournalEntriesFromOwnerPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
         catch
         {
@@ -138,12 +140,7 @@ public partial class AccountingManager
         ValidateExplicitOwnerPaymentAllocations(payment, resolvedAllocations);
 
         payment.PaymentCode = existing.PaymentCode;
-        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(
-            existing.PostingStatusId,
-            existing.OrganizationId,
-            existing.OfficeId,
-            currentUser,
-            () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
+        payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, payment.PaymentDate, default, currentUser, () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
         payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
 
         await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
@@ -151,6 +148,7 @@ public partial class AccountingManager
 
         var updatedPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
         await CreateJournalEntriesFromOwnerPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+        await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
 
         return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
             ?? updatedPayment;

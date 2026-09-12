@@ -1,4 +1,4 @@
-using RentAll.Domain.Enums;
+using RentAll.Api.Dtos.Accounting.JournalEntries;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Controllers
@@ -249,12 +249,25 @@ namespace RentAll.Api.Controllers
 
                 var softClosedPeriodChanged = existing.SoftClosedMonth != dto.SoftClosedMonth || existing.SoftClosedYear != dto.SoftClosedYear;
                 var hardClosedPeriodChanged = existing.HardClosedMonth != dto.HardClosedMonth || existing.HardClosedYear != dto.HardClosedYear;
+                var hardClosedPeriodDecreased = hardClosedPeriodChanged
+                    && GetAccountingOfficeClosedPeriodOrdinal(dto.HardClosedYear, dto.HardClosedMonth) < GetAccountingOfficeClosedPeriodOrdinal(existing.HardClosedYear, existing.HardClosedMonth);
+
+                if (hardClosedPeriodDecreased && !IsSuperAdmin())
+                    return Forbid();
+
                 var accountingOffice = dto.ToModel(CurrentUser);
                 accountingOffice.OrganizationId = organizationId;
                 var officeName = await GetOfficeNameAsync(dto.OfficeId);
                 accountingOffice.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(organizationId, officeName, dto.FileDetails, ImageType.Logos, existing.LogoPath, dto.LogoPath);
 
                 var updated = await _organizationRepository.UpdateAccountingAsync(accountingOffice);
+
+                if (hardClosedPeriodDecreased)
+                {
+                    var reopenResult = await _accountingManager.ReopenHardClosedPostingStatusAfterClosedEndDateAsync(organizationId, updated.OfficeId, updated.HardClosedMonth, updated.HardClosedYear, CurrentUser);
+                    if (reopenResult.FailedCount > 0)
+                        _logger.LogError("Accounting office hard closed reopen completed with failures for office {OfficeId}: {FailedCount} failed, errors: {Errors}", updated.OfficeId, reopenResult.FailedCount, string.Join("; ", reopenResult.Errors));
+                }
 
                 if (softClosedPeriodChanged)
                 {
@@ -285,6 +298,90 @@ namespace RentAll.Api.Controllers
                 return ServerError("An error occurred while updating the accounting office");
             }
         }
+
+        [HttpPost("accounting-office/{officeId}/reopen-hard-closed-posting-status")]
+        public async Task<IActionResult> ReopenHardClosedPostingStatusAsync(int officeId, [FromBody] ReopenHardClosedPostingStatusDto dto)
+        {
+            if (!IsSuperAdmin())
+                return Forbid();
+
+            if (officeId <= 0)
+                return BadRequest("Office ID is required");
+
+            if (dto == null)
+                return BadRequest("Reopen request is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid reopen request");
+
+            try
+            {
+                var organizationId = ResolveAccountingOrganizationId(dto.OrganizationId);
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
+                if (existing == null)
+                    return NotFound("Accounting office not found");
+
+                var result = await _accountingManager.ReopenHardClosedPostingStatusAfterClosedEndDateAsync(organizationId, officeId, dto.HardClosedMonth, dto.HardClosedYear, CurrentUser);
+
+                if (result.FailedCount > 0)
+                {
+                    _logger.LogError(
+                        "Accounting office hard closed reopen completed with failures for office {OfficeId}: {FailedCount} failed, errors: {Errors}",
+                        officeId,
+                        result.FailedCount,
+                        string.Join("; ", result.Errors));
+                }
+
+                return Ok(new CloseAccountingPeriodResultDto(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reopening hard closed posting status: {OfficeId}", officeId);
+                return ServerError("An error occurred while reopening hard closed posting status");
+            }
+        }
+
+        [HttpPost("accounting-office/{officeId}/resync-posting-status")]
+        public async Task<IActionResult> ResyncAccountingOfficePostingStatusAsync(int officeId, [FromBody] ResyncAccountingOfficeClosedPeriodDto dto)
+        {
+            if (officeId <= 0)
+                return BadRequest("Office ID is required");
+
+            if (dto == null)
+                return BadRequest("Resync request is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid resync request");
+
+            try
+            {
+                var organizationId = ResolveAccountingOrganizationId(dto.OrganizationId);
+                var existing = await _organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
+                if (existing == null)
+                    return NotFound("Accounting office not found");
+
+                var result = await _accountingManager.ResyncAccountingOfficePostingStatusAsync(organizationId, officeId, dto.SoftClosedMonth, dto.SoftClosedYear, dto.HardClosedMonth, dto.HardClosedYear, dto.StartMonth, dto.StartYear, CurrentUser);
+
+                if (result.FailedCount > 0)
+                {
+                    _logger.LogError(
+                        "Accounting office posting status resync completed with failures for office {OfficeId}: {FailedCount} failed, errors: {Errors}",
+                        officeId,
+                        result.FailedCount,
+                        string.Join("; ", result.Errors));
+                }
+
+                return Ok(new CloseAccountingPeriodResultDto(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resyncing accounting office posting status: {OfficeId}", officeId);
+                return ServerError("An error occurred while resyncing posting status");
+            }
+        }
+
         #endregion
 
         #region Delete
@@ -333,6 +430,9 @@ namespace RentAll.Api.Controllers
         {
             return IsSuperAdmin() && requestedOrganizationId != Guid.Empty ? requestedOrganizationId : CurrentOrganizationId;
         }
+
+        private static int GetAccountingOfficeClosedPeriodOrdinal(int year, int month)
+            => year * 12 + month;
 
         private async Task<bool> RequiresAccountingBankInformationAsync(Guid organizationId)
         {
