@@ -50,16 +50,16 @@ public partial class ReservationController
 
             var windowValidation = ReservationRepository.ValidateReservationPaymentWindow(reservation, dto.StartDate, dto.EndDate);
             if (!windowValidation.IsValid)
-                return BadRequest(windowValidation.ErrorMessage);
+                return BadRequest(windowValidation.ErrorMessage ?? "Invalid request data");
 
             var existing = await _reservationRepository.GetReservationPaymentsByReservationIdAsync(CurrentOrganizationId, dto.ReservationId);
             var overlapValidation = ReservationRepository.ValidateReservationPaymentOverlap(existing, dto.StartDate, dto.EndDate);
             if (!overlapValidation.IsValid)
-                return BadRequest(overlapValidation.ErrorMessage);
+                return BadRequest(overlapValidation.ErrorMessage ?? "Invalid request data");
 
             var amountValidation = ReservationRepository.ValidateReservationPaymentAmount(dto.Amount);
             if (!amountValidation.IsValid)
-                return BadRequest(amountValidation.ErrorMessage);
+                return BadRequest(amountValidation.ErrorMessage ?? "Invalid request data");
 
             var created = await _reservationRepository.CreateReservationPaymentAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new ReservationPaymentResponseDto(created));
@@ -127,7 +127,7 @@ public partial class ReservationController
 
             var windowValidation = ReservationRepository.ValidateReservationPaymentWindow(reservation, dto.StartDate, dto.EndDate);
             if (!windowValidation.IsValid)
-                return BadRequest(windowValidation.ErrorMessage);
+                return BadRequest(windowValidation.ErrorMessage ?? "Invalid request data");
 
             var existing = await _reservationRepository.GetReservationPaymentsByReservationIdAsync(CurrentOrganizationId, dto.ReservationId);
             var overlapValidation = ReservationRepository.ValidateReservationPaymentOverlap(
@@ -136,11 +136,11 @@ public partial class ReservationController
                 dto.EndDate,
                 dto.ReservationPaymentId);
             if (!overlapValidation.IsValid)
-                return BadRequest(overlapValidation.ErrorMessage);
+                return BadRequest(overlapValidation.ErrorMessage ?? "Invalid request data");
 
             var amountValidation = ReservationRepository.ValidateReservationPaymentAmount(dto.Amount);
             if (!amountValidation.IsValid)
-                return BadRequest(amountValidation.ErrorMessage);
+                return BadRequest(amountValidation.ErrorMessage ?? "Invalid request data");
 
             var updated = await _reservationRepository.UpdateReservationPaymentByIdAsync(dto.ToModel(CurrentOrganizationId, CurrentUser));
             return Ok(new ReservationPaymentResponseDto(updated));

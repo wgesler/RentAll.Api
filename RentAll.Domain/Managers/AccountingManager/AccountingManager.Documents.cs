@@ -212,7 +212,7 @@ public partial class AccountingManager
                 ReceiptCode = bill.ReceiptCode,
                 LineNumber = 1,
                 Amount = bill.PaidAmount,
-                Description = allocationDescription
+                Description = allocationDescription ?? string.Empty
             };
 
             var payment = new Payment

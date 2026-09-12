@@ -1000,7 +1000,7 @@ public partial class AccountingManager : IAccountingManager
             {
                 OrganizationId = organizationId,
                 OfficeId = officeId,
-                Trigger = TruncateForAccountingErrorLog(trigger, 50),
+                Trigger = TruncateForAccountingErrorLog(trigger, 50) ?? string.Empty,
                 SourceTypeId = sourceTypeId,
                 SourceId = sourceId,
                 DocumentCode = TruncateForAccountingErrorLog(documentCode, 100),

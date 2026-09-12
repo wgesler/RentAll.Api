@@ -1,7 +1,6 @@
 using Azure;
 using Azure.AI.DocumentIntelligence;
 using Azure.Identity;
-using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
@@ -43,16 +42,13 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         if (content == null || content.Length == 0)
             throw new ArgumentException("Receipt content is required.", nameof(content));
 
-        var endpoint = await ResolveEndpointAsync(cancellationToken);
+        var endpoint = (_settings.Endpoint ?? string.Empty).Trim().TrimEnd('/');
         if (string.IsNullOrWhiteSpace(endpoint))
             throw new InvalidOperationException("Document Intelligence endpoint is not configured.");
 
-        var apiKey = await ResolveApiKeyAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Document Intelligence API key is not configured.");
-
-        endpoint = endpoint.Trim().TrimEnd('/');
-        var client = new DocumentIntelligenceClient(new Uri(endpoint.TrimEnd('/')), new AzureKeyCredential(apiKey));
+        var client = new DocumentIntelligenceClient(
+            new Uri(endpoint),
+            new DefaultAzureCredential());
 
         _logger.LogError(
             "[ReceiptExtractTrace] Step=Analyze Start ContentType={ContentType} ContentLength={ContentLength}",
@@ -132,35 +128,6 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             Warnings = warnings,
             FieldConfidences = confidences
         };
-    }
-
-    private async Task<string?> ResolveApiKeyAsync(CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
-            return _settings.ApiKey.Trim();
-
-        return await GetKeyVaultSecretAsync(_settings.ApiKeySecretName, cancellationToken);
-    }
-
-    private async Task<string?> ResolveEndpointAsync(CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(_settings.Endpoint))
-            return _settings.Endpoint.Trim();
-
-        return await GetKeyVaultSecretAsync(_settings.EndpointSecretName, cancellationToken);
-    }
-
-    private async Task<string?> GetKeyVaultSecretAsync(string secretName, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(_settings.KeyVaultUri)
-            || string.IsNullOrWhiteSpace(secretName))
-        {
-            return null;
-        }
-
-        var client = new SecretClient(new Uri(_settings.KeyVaultUri), new DefaultAzureCredential());
-        var secret = await client.GetSecretAsync(secretName, cancellationToken: cancellationToken);
-        return secret.Value.Value;
     }
 
     private static string? ReadStringField(

@@ -36,7 +36,7 @@ public partial class PropertyController
 
         try
         {
-            var propertyCode = dto.PropertyCode.Trim();
+            var propertyCode = (dto.PropertyCode ?? string.Empty).Trim();
             var keys = new ExternalPropertyKeyDto
             {
                 OrganizationId = dto.OrganizationId,

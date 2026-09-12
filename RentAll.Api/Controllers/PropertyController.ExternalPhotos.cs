@@ -143,7 +143,7 @@ public partial class PropertyController
             OrganizationId = query.OrganizationId,
             OfficeId = query.OfficeId,
             VendorId = query.VendorId,
-            PropertyCode = query.PropertyCode.Trim()
+            PropertyCode = (query.PropertyCode ?? string.Empty).Trim()
         };
 
         var (keysAreValid, keysError) = new ExternalPropertyKeyRequest
@@ -232,7 +232,7 @@ public partial class PropertyController
         }
     }
 
-    private static string? ValidateExternalPropertyCodeRoute(string routePropertyCode, string bodyPropertyCode)
+    private static string? ValidateExternalPropertyCodeRoute(string routePropertyCode, string? bodyPropertyCode)
     {
         var normalizedRouteCode = routePropertyCode?.Trim() ?? string.Empty;
         var normalizedBodyCode = bodyPropertyCode?.Trim() ?? string.Empty;
