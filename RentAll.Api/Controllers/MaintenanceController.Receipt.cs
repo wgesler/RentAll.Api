@@ -143,7 +143,10 @@ public partial class MaintenanceController
                 extraction,
                 enrichment.BankCardId,
                 enrichment.PropertyIds,
-                enrichment.Warnings));
+                enrichment.Warnings,
+                enrichment.DetectedPropertyCodes,
+                enrichment.CardPaymentDetected,
+                enrichment.PropertyOfficeId));
         }
         catch (FormatException)
         {

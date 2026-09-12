@@ -21,6 +21,8 @@ public class ReceiptExtractResponseDto
     public string? VendorName { get; set; }
     public string? BillNumber { get; set; }
     public int? BankCardId { get; set; }
+    public int? OfficeId { get; set; }
+    public bool CardPaymentDetected { get; set; }
     public IReadOnlyList<string> PropertyIds { get; set; } = Array.Empty<string>();
     public IReadOnlyList<string> DetectedPropertyCodes { get; set; } = Array.Empty<string>();
     public ReceiptExtractSplitResponseDto? Split { get; set; }
@@ -31,7 +33,10 @@ public class ReceiptExtractResponseDto
         ReceiptDocumentExtraction extraction,
         int? bankCardId = null,
         IReadOnlyList<string>? propertyIds = null,
-        IReadOnlyList<string>? warnings = null)
+        IReadOnlyList<string>? warnings = null,
+        IReadOnlyList<string>? detectedPropertyCodes = null,
+        bool cardPaymentDetected = false,
+        int? officeId = null)
     {
         var receiptDate = extraction.ReceiptDate?.ToString("yyyy-MM-dd");
         var amount = extraction.Amount;
@@ -47,8 +52,10 @@ public class ReceiptExtractResponseDto
             VendorName = extraction.VendorName?.Trim(),
             BillNumber = extraction.BillNumber?.Trim(),
             BankCardId = bankCardId,
+            OfficeId = officeId,
+            CardPaymentDetected = cardPaymentDetected,
             PropertyIds = propertyIds ?? Array.Empty<string>(),
-            DetectedPropertyCodes = extraction.DetectedPropertyCodes,
+            DetectedPropertyCodes = detectedPropertyCodes ?? extraction.DetectedPropertyCodes,
             Split = amount.HasValue || !string.IsNullOrWhiteSpace(description)
                 ? new ReceiptExtractSplitResponseDto
                 {

@@ -9,6 +9,7 @@ public class ReceiptDocumentExtraction
     public string? BillNumber { get; set; }
     public string? CardLastFour { get; set; }
     public int? CardTypeId { get; set; }
+    public string FullText { get; set; } = string.Empty;
     public IReadOnlyList<string> DetectedPropertyCodes { get; set; } = Array.Empty<string>();
     public IReadOnlyList<string> LineItemDescriptions { get; set; } = Array.Empty<string>();
     public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();

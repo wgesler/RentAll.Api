@@ -123,6 +123,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             Description = description,
             CardLastFour = cardLastFour,
             CardTypeId = cardTypeId,
+            FullText = fullContent,
             DetectedPropertyCodes = detectedPropertyCodes,
             LineItemDescriptions = lineItemDescriptions,
             Warnings = warnings,
