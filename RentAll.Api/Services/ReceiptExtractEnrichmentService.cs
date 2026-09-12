@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;
@@ -48,7 +49,12 @@ public class ReceiptExtractEnrichmentService
             warnings,
             cancellationToken);
 
-        if (detectedPropertyCodes.Count > 0 && propertyIds.Count == 0)
+        if (propertyIds.Count == 0)
+            propertyIds.Add(ReceiptPropertyConstants.CompanyPropertyId.ToString());
+
+        if (detectedPropertyCodes.Count > 0 && propertyIds.Count == 1
+            && Guid.TryParse(propertyIds[0], out var solePropertyId)
+            && ReceiptPropertyConstants.IsCompanyPropertyId(solePropertyId))
         {
             warnings.Add($"Property code(s) {string.Join(", ", detectedPropertyCodes)} were not found.");
         }

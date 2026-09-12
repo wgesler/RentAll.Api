@@ -91,7 +91,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         if (!amount.HasValue && tax.HasValue && subtotal.HasValue)
             amount = subtotal.Value + tax.Value;
 
-        var description = BuildDescription(merchantName, lineItemDescriptions);
+        var description = BuildDescription(lineItemDescriptions);
 
         if (!amount.HasValue)
             warnings.Add("Total amount was not detected. Please enter the amount manually.");
@@ -229,7 +229,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             return Array.Empty<string>();
 
         return matches
-            .Select(match => match.Value.Trim().ToUpperInvariant())
+            .Select(match => match.Value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(code => code.Length)
             .ToList();
@@ -294,25 +294,14 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         return null;
     }
 
-    private static string? BuildDescription(string? merchantName, IReadOnlyList<string> lineItemDescriptions)
+    private static string? BuildDescription(IReadOnlyList<string> lineItemDescriptions)
     {
-        var merchant = merchantName?.Trim();
         var items = lineItemDescriptions
             .Where(item => !string.IsNullOrWhiteSpace(item))
             .Select(item => item.Trim())
-            .Where(item => !string.Equals(item, merchant, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (string.IsNullOrWhiteSpace(merchant) && items.Count == 0)
-            return null;
-
-        if (string.IsNullOrWhiteSpace(merchant))
-            return string.Join("; ", items);
-
-        if (items.Count == 0)
-            return merchant;
-
-        return $"{merchant} — {string.Join("; ", items)}";
+        return items.Count == 0 ? null : string.Join("; ", items);
     }
 }
