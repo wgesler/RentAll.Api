@@ -32,7 +32,7 @@ public class AuthManager
         if (user == null)
             return (false, null, null, null);
 
-        if (!_passwordHasher.VerifyPassword(password, user.PasswordHash))
+        if (!VerifyPasswordAllowingEntityCodePadding(password, user.PasswordHash))
             return (false, null, null, null);
 
         if (!user.IsActive)
@@ -169,7 +169,7 @@ public class AuthManager
         if (user == null)
             return (false, "User not found");
 
-        if (!_passwordHasher.VerifyPassword(currentPassword, user.PasswordHash))
+        if (!VerifyPasswordAllowingEntityCodePadding(currentPassword, user.PasswordHash))
             return (false, "Current password is incorrect");
 
         var newPasswordHash = _passwordHasher.HashPassword(newPassword);
@@ -189,7 +189,18 @@ public class AuthManager
         if (user == null || string.IsNullOrWhiteSpace(user.PasswordHash))
             return false;
 
-        return _passwordHasher.VerifyPassword(password, user.PasswordHash);
+        return VerifyPasswordAllowingEntityCodePadding(password, user.PasswordHash);
+    }
+
+    private bool VerifyPasswordAllowingEntityCodePadding(string password, string passwordHash)
+    {
+        foreach (var candidate in EntityCodeFormatting.GetLoginPasswordAlternates(password))
+        {
+            if (_passwordHasher.VerifyPassword(candidate, passwordHash))
+                return true;
+        }
+
+        return false;
     }
 
     private static string HashRefreshToken(string token)
