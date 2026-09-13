@@ -24,7 +24,7 @@ public class OrganizationManager : IOrganizationManager
         for (var attempt = 0; attempt < CodeSequenceResetThreshold; attempt++)
         {
             int nextNumber = await GetNextEntityCodeNumberAsync(systemOrganizationId, entityType);
-            var code = $"{prefix}-{nextNumber:D6}";
+            var code = EntityCodeFormatting.Format(prefix, nextNumber);
             if (!await _organizationRepository.ExistsByOrganizationCodeAsync(code))
                 return code;
         }
@@ -36,7 +36,7 @@ public class OrganizationManager : IOrganizationManager
     {
         var prefix = entityType.ToCode();
         int nextNumber = await GetNextEntityCodeNumberAsync(organizationId, entityType);
-        var code = $"{prefix}-{nextNumber:D6}";
+        var code = EntityCodeFormatting.Format(prefix, nextNumber);
 
         return code;
     }

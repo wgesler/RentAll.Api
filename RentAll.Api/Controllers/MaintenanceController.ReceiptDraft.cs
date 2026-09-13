@@ -92,6 +92,53 @@ public partial class MaintenanceController
         }
     }
 
+    [HttpPost("receipt-draft/{receiptDraftId:guid}/link/{receiptId:guid}")]
+    public async Task<IActionResult> LinkReceiptDraftToReceipt(Guid receiptDraftId, Guid receiptId)
+    {
+        if (receiptDraftId == Guid.Empty)
+            return BadRequest("ReceiptDraftId is required");
+
+        if (receiptId == Guid.Empty)
+            return BadRequest("ReceiptId is required");
+
+        try
+        {
+            var draft = await _maintenanceRepository.GetReceiptDraftByIdAsync(receiptDraftId, CurrentOrganizationId);
+            if (draft == null)
+                return NotFound("Receipt draft record not found");
+
+            if (draft.IsPromoted)
+                return BadRequest("Receipt draft has already been promoted");
+
+            var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, CurrentOrganizationId);
+            if (receipt == null)
+                return NotFound("Receipt record not found");
+
+            if (receipt.OrganizationId != CurrentOrganizationId)
+                return Unauthorized("Invalid organization Id");
+
+            var promotedDraft = await _maintenanceRepository.MarkReceiptDraftPromotedAsync(
+                receiptDraftId,
+                CurrentOrganizationId,
+                receiptId,
+                CurrentUser);
+
+            var response = new ReceiptDraftResponseDto(promotedDraft);
+            response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                promotedDraft.OrganizationId,
+                null,
+                promotedDraft.ReceiptPath,
+                ImageType.Receipts);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error linking receipt draft {ReceiptDraftId} to receipt {ReceiptId}", receiptDraftId, receiptId);
+            return ServerError("An error occurred while linking the receipt draft");
+        }
+    }
+
     [HttpPost("receipt-draft/{receiptDraftId:guid}/promote")]
     public async Task<IActionResult> PromoteReceiptDraft(Guid receiptDraftId)
     {

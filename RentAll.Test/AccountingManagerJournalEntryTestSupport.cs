@@ -1,4 +1,5 @@
 using Moq;
+using RentAll.Domain;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
@@ -374,7 +375,7 @@ internal static class AccountingManagerJournalEntryTestSupport
             var organizationManager = new Mock<IOrganizationManager>();
             organizationManager
                 .Setup(m => m.GenerateEntityCodeAsync(OrganizationId, EntityType.JournalEntry))
-                .ReturnsAsync(() => $"JE-{Interlocked.Increment(ref _journalEntryCodeSequence):D4}");
+                .ReturnsAsync(() => EntityCodeFormatting.Format("JE", Interlocked.Increment(ref _journalEntryCodeSequence)));
 
             return new AccountingManager(
                 organizationRepository.Object,

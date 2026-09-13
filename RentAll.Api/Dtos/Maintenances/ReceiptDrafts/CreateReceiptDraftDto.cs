@@ -34,15 +34,6 @@ public class CreateReceiptDraftDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
-        if (OfficeId.HasValue && OfficeId.Value < 0)
-            return (false, "OfficeId must be null or a positive integer");
-
-        foreach (var split in Splits ?? new List<ReceiptSplitDto>())
-        {
-            if (!Enum.IsDefined(typeof(ReceiptType), split.ReceiptTypeId))
-                return (false, $"Invalid ReceiptTypeId value: {split.ReceiptTypeId}");
-        }
-
         return (true, null);
     }
 

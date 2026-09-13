@@ -1,4 +1,5 @@
 using Moq;
+using RentAll.Domain;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
@@ -552,10 +553,10 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             var organizationManager = new Mock<IOrganizationManager>();
             organizationManager
                 .Setup(m => m.GenerateEntityCodeAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, EntityType.JournalEntry))
-                .ReturnsAsync(() => $"JE-{Interlocked.Increment(ref _journalEntryCodeSequence):D4}");
+                .ReturnsAsync(() => EntityCodeFormatting.Format("JE", Interlocked.Increment(ref _journalEntryCodeSequence)));
             organizationManager
                 .Setup(m => m.GenerateEntityCodeAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, EntityType.Payment))
-                .ReturnsAsync(() => $"PY-{Interlocked.Increment(ref _paymentCodeSequence):D6}");
+                .ReturnsAsync(() => EntityCodeFormatting.Format("PY", Interlocked.Increment(ref _paymentCodeSequence)));
 
             return new AccountingManager(
                 organizationRepository.Object,
