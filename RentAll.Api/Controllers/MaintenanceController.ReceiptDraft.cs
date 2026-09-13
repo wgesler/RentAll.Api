@@ -176,22 +176,15 @@ public partial class MaintenanceController
                 receipt.ReceiptPath = draft.ReceiptPath;
 
             var createdReceipt = await _accountingManager.CreateReceiptAsync(receipt, CurrentUser);
-            var promotedDraft = await _maintenanceRepository.MarkReceiptDraftPromotedAsync(
+            await _maintenanceRepository.DeleteReceiptDraftByIdAsync(
                 receiptDraftId,
                 CurrentOrganizationId,
-                createdReceipt.ReceiptId,
                 CurrentUser);
 
             var response = new PromoteReceiptDraftResponseDto
             {
-                Draft = new ReceiptDraftResponseDto(promotedDraft),
                 Receipt = new ReceiptResponseDto(createdReceipt)
             };
-            response.Draft.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                promotedDraft.OrganizationId,
-                null,
-                promotedDraft.ReceiptPath,
-                ImageType.Receipts);
             response.Receipt.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
                 createdReceipt.OrganizationId,
                 null,
