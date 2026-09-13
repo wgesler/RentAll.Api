@@ -1,0 +1,52 @@
+using RentAll.Domain.Enums;
+using RentAll.Domain.Models.Common;
+
+namespace RentAll.Domain.Models;
+
+public class ReceiptDraft
+{
+    public Guid ReceiptDraftId { get; set; }
+    public string DraftCode { get; set; } = string.Empty;
+    public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
+    public string OfficeName { get; set; } = string.Empty;
+    public List<Guid> PropertyIds { get; set; } = new();
+    public DateOnly? ReceiptDate { get; set; }
+    public DateOnly? DueDate { get; set; }
+    public DateOnly? AccountingPeriod { get; set; }
+    public string? BillNumber { get; set; }
+    public decimal Amount { get; set; }
+    public string? Description { get; set; }
+    public int? BankCardId { get; set; }
+    public string BankCardDisplayName { get; set; } = string.Empty;
+    public Guid? VendorId { get; set; }
+    public string? VendorName { get; set; }
+    public decimal PaidAmount { get; set; }
+    public DateOnly? PaidDate { get; set; }
+    public string? PaymentDescription { get; set; }
+    public List<ReceiptSplit> Splits { get; set; } = new();
+    public int? AgreementLineId { get; set; }
+    public string? AgreementLineNotes { get; set; }
+    public string? ReceiptPath { get; set; }
+    public FileDetails? FileDetails { get; set; }
+    public int PaymentTypeId { get; set; }
+    public bool CheckPrinted { get; set; }
+    public bool IsUtility { get; set; }
+    public bool BusinessPrivate { get; set; }
+    public ReceiptDraftSourceFlags DraftSourceFlags { get; set; }
+    public Guid? PromotedReceiptId { get; set; }
+    public string? PromotedReceiptCode { get; set; }
+    public DateTimeOffset? PromotedOn { get; set; }
+    public Guid? PromotedBy { get; set; }
+    public string PromotedByName { get; set; } = string.Empty;
+    public string? ExtractionJson { get; set; }
+    public bool IsActive { get; set; }
+    public DateTimeOffset CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
+    public string CreatedByName { get; set; } = string.Empty;
+    public DateTimeOffset ModifiedOn { get; set; }
+    public Guid ModifiedBy { get; set; }
+    public string ModifiedByName { get; set; } = string.Empty;
+
+    public bool IsPromoted => PromotedReceiptId.HasValue && PromotedReceiptId != Guid.Empty;
+}

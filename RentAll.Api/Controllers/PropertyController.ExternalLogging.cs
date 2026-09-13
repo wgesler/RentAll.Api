@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using RentAll.Api.Services;
 
 namespace RentAll.Api.Controllers;

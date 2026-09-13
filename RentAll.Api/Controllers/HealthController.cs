@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Health;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers;

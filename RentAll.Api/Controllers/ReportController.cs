@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.DependencyInjection;
 using RentAll.Api.Dtos.Reports;
 using RentAll.Domain.Interfaces.Managers;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 

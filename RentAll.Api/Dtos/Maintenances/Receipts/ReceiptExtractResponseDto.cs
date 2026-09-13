@@ -1,4 +1,3 @@
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Maintenances;
 
 namespace RentAll.Api.Dtos.Maintenances.Receipts;

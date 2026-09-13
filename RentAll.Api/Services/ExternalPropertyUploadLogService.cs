@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Services;

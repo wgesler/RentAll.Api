@@ -1,0 +1,18 @@
+using RentAll.Domain.Enums;
+
+namespace RentAll.Domain.Models;
+
+public class ReceiptDraftGetCriteria
+{
+    public Guid OrganizationId { get; set; }
+    public string OfficeIds { get; set; } = string.Empty;
+    public Guid? PropertyId { get; set; }
+    public bool? IsActive { get; set; }
+    public bool IncludeInactive { get; set; }
+    public bool IncludePromoted { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public ReceiptKind? ReceiptKind { get; set; }
+    public Guid? VendorId { get; set; }
+    public ReceiptDraftSourceFlags? DraftSourceFlags { get; set; }
+}
