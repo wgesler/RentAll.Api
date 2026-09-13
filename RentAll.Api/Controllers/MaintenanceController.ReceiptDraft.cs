@@ -233,13 +233,19 @@ public partial class MaintenanceController
 
             var draft = dto.ToModel(CurrentUser);
             draft.DraftCode = existing.DraftCode;
+            var receiptPathForUpdate = string.IsNullOrWhiteSpace(dto.ReceiptPath)
+                && dto.FileDetails == null
+                && !string.IsNullOrWhiteSpace(existing.ReceiptPath)
+                    ? existing.ReceiptPath
+                    : dto.ReceiptPath;
+
             draft.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                 existing.OrganizationId,
                 null,
                 dto.FileDetails,
                 ImageType.Receipts,
                 existing.ReceiptPath,
-                dto.ReceiptPath);
+                receiptPathForUpdate);
 
             var updated = await _maintenanceRepository.UpdateReceiptDraftAsync(draft);
             var response = new ReceiptDraftResponseDto(updated);
