@@ -27,6 +27,9 @@ public static class CreditCardStatementLineParser
     private static readonly Regex TrailingLocationPattern = new(
         @"\s+(?:[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2}\s+)?[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?\s*$",
         RegexOptions.Compiled);
+    private static readonly Regex TrailingNumberedLocationPattern = new(
+        @"\s+\d+(?:[A-Za-z][A-Za-z0-9]*|(?:\s+[A-Za-z].*))\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ZipPattern = new(@"\b\d{5}(?:-\d{4})?\b", RegexOptions.Compiled);
 
     public static CreditCardStatementExtraction ParseTables(IReadOnlyList<IReadOnlyList<string>> tables, string fullText)
@@ -192,12 +195,13 @@ public static class CreditCardStatementLineParser
             return null;
 
         var vendor = value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? value;
-        var hashIndex = vendor.IndexOf('#');
-        if (hashIndex >= 0)
-            vendor = vendor[..hashIndex];
+        var cutIndex = vendor.IndexOfAny(['#', '*']);
+        if (cutIndex >= 0)
+            vendor = vendor[..cutIndex];
         vendor = PhonePattern.Replace(vendor, " ");
         vendor = AddressPattern.Replace(vendor, " ");
         vendor = ZipPattern.Replace(vendor, " ");
+        vendor = TrailingNumberedLocationPattern.Replace(vendor.Trim(), string.Empty);
         vendor = TrailingLocationPattern.Replace(vendor.Trim(), string.Empty);
         vendor = Regex.Replace(vendor, @"\s+", " ").Trim(' ', ',', '-', '/', '|');
         return vendor.Length == 0 ? null : vendor;
