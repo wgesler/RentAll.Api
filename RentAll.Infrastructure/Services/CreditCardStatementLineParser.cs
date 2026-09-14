@@ -85,15 +85,25 @@ public static class CreditCardStatementLineParser
         if (string.IsNullOrWhiteSpace(text))
             return null;
 
-        var match = CardLastFourPattern.Match(text);
-        if (!match.Success)
-            return null;
+        var trimmed = text.Trim();
+        var match = CardLastFourPattern.Match(trimmed);
+        if (match.Success)
+        {
+            return match.Groups.Cast<Group>()
+                .Skip(1)
+                .Select(group => group.Value)
+                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+                ?.Trim();
+        }
 
-        return match.Groups.Cast<Group>()
-            .Skip(1)
-            .Select(group => group.Value)
-            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
-            ?.Trim();
+        // Card / Account # columns often carry plain suffix digits (883) or account ids (-12008).
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+        if (digits.Length >= 4)
+            return digits[^4..];
+        if (digits.Length == 3)
+            return digits;
+
+        return null;
     }
 
     public static int? ParseCardType(string? text)
@@ -124,13 +134,13 @@ public static class CreditCardStatementLineParser
 
         var headerIndex = grid.FindIndex(IsHeaderRow);
         var header = headerIndex >= 0 ? grid[headerIndex] : new List<string>();
-        var dateCol = FindColumn(header, "date", "trans date", "transaction date", "post date", "posted", "charge date");
+        var dateCol = FindColumn(header, "date", "trans date", "transaction date", "transactio", "post date", "posted", "charge date");
         var vendorCol = FindColumn(header, "merchant", "vendor", "description", "payee", "name");
         var amountCol = FindColumn(header, "amount", "charge", "debit", "usd");
         var debitCol = FindColumn(header, "debit");
         var creditCol = FindExactColumn(header, "credit", "credits");
         var typeCol = FindColumn(header, "type", "transaction type");
-        var cardCol = FindColumn(header, "card", "last 4", "last4", "account");
+        var cardCol = FindCardColumn(header);
 
         var startRow = headerIndex >= 0 ? headerIndex + 1 : 0;
         var lines = new List<CreditCardStatementLine>();
@@ -324,6 +334,32 @@ public static class CreditCardStatementLineParser
     {
         return string.Join('-', word.Split('-').Select(part =>
             part.Length == 0 ? part : char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
+    }
+
+    private static int FindCardColumn(IReadOnlyList<string> header)
+    {
+        foreach (var name in new[] { "account #", "account number", "last 4", "last4", "card last", "card number" })
+        {
+            var index = FindColumn(header, name);
+            if (index >= 0)
+                return index;
+        }
+
+        for (var i = 0; i < header.Count; i++)
+        {
+            var value = (header[i] ?? string.Empty).Trim().ToLowerInvariant();
+            if (value is "card" or "card #")
+                return i;
+        }
+
+        for (var i = 0; i < header.Count; i++)
+        {
+            var value = (header[i] ?? string.Empty).Trim().ToLowerInvariant();
+            if (value.Contains("card") && !value.Contains("member") && !value.Contains("cardholder"))
+                return i;
+        }
+
+        return FindColumn(header, "account");
     }
 
     private static int FindColumn(IReadOnlyList<string> header, params string[] names)
