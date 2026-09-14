@@ -10,4 +10,10 @@ public interface IDocumentIntelligenceService
         byte[] content,
         string contentType,
         CancellationToken cancellationToken = default);
+
+    Task<CreditCardStatementExtraction> ExtractCreditCardStatementAsync(
+        byte[] content,
+        string contentType,
+        string? fileName,
+        CancellationToken cancellationToken = default);
 }

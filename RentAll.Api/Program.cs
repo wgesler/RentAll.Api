@@ -135,6 +135,7 @@ builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
 builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceService>();
 builder.Services.AddScoped<ReceiptExtractEnrichmentService>();
+builder.Services.AddScoped<CreditReportService>();
 builder.Services.AddHttpClient(nameof(ExternalPropertyPhotoUrlImporter), client => client.Timeout = TimeSpan.FromSeconds(90));
 builder.Services.AddScoped<ExternalPropertyPhotoUrlImporter>();
 builder.Services.AddScoped<ExternalPropertyPhotoImportProcessor>();

@@ -27,6 +27,12 @@ public static class ReceiptDraftPromotionMapper
         if (draft.Splits == null || draft.Splits.Count == 0)
             return (false, "At least one split is required to promote a receipt draft", null);
 
+        var hasCard = draft.BankCardId is > 0;
+        var hasVendorId = draft.VendorId is { } vendorId && vendorId != Guid.Empty;
+        var hasTypedVendor = !string.IsNullOrWhiteSpace(draft.VendorName) && !hasVendorId;
+        if (!hasCard && hasTypedVendor)
+            return (false, "Bank Card is required to keep a typed Vendor name on the receipt.", null);
+
         var receiptDto = new CreateReceiptDto
         {
             OrganizationId = draft.OrganizationId,
@@ -38,9 +44,9 @@ public static class ReceiptDraftPromotionMapper
             BillNumber = draft.BillNumber ?? string.Empty,
             Amount = draft.Amount,
             Description = draft.Description.Trim(),
-            BankCardId = draft.BankCardId,
-            VendorId = draft.VendorId,
-            VendorName = draft.VendorName,
+            BankCardId = hasCard ? draft.BankCardId : null,
+            VendorId = hasCard ? null : draft.VendorId,
+            VendorName = hasCard ? draft.VendorName : null,
             PaidDate = draft.PaidDate,
             PaymentDescription = draft.PaymentDescription,
             Splits = draft.Splits.Select(split => new ReceiptSplitDto(split)).ToList(),

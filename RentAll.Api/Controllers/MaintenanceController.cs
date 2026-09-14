@@ -23,6 +23,7 @@ public partial class MaintenanceController : BaseController
     private readonly IFileAttachmentHelper _fileAttachmentHelper;
     private readonly IDocumentIntelligenceService _documentIntelligenceService;
     private readonly ReceiptExtractEnrichmentService _receiptExtractEnrichmentService;
+    private readonly CreditReportService _creditReportService;
     private readonly ILogger<MaintenanceController> _logger;
 
     public MaintenanceController(
@@ -38,6 +39,7 @@ public partial class MaintenanceController : BaseController
         IFileAttachmentHelper fileAttachmentHelper,
         IDocumentIntelligenceService documentIntelligenceService,
         ReceiptExtractEnrichmentService receiptExtractEnrichmentService,
+        CreditReportService creditReportService,
         ILogger<MaintenanceController> logger)
     {
         _organizationRepository = organizationRepository;
@@ -52,6 +54,7 @@ public partial class MaintenanceController : BaseController
         _fileAttachmentHelper = fileAttachmentHelper;
         _documentIntelligenceService = documentIntelligenceService;
         _receiptExtractEnrichmentService = receiptExtractEnrichmentService;
+        _creditReportService = creditReportService;
         _logger = logger;
     }
 }

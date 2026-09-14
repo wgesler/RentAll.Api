@@ -159,6 +159,60 @@ public partial class MaintenanceController
         }
     }
 
+    [HttpPost("receipt/credit-report")]
+    public async Task<IActionResult> ProcessCreditReport([FromBody] CreditReportRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Credit report data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var response = await _creditReportService.ProcessAsync(dto, CurrentUser);
+            return Ok(response);
+        }
+        catch (FormatException)
+        {
+            return BadRequest("Credit report file content is invalid.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing credit report for organization {OrganizationId}", dto.OrganizationId);
+            return ServerError("An error occurred while reading the credit report");
+        }
+    }
+
+    [HttpPost("receipt/credit-report/drafts")]
+    public async Task<IActionResult> CreateCreditReportDrafts([FromBody] CreditReportCreateDraftsRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Credit report draft data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var response = await _creditReportService.CreateDraftsAsync(dto, CurrentUser);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating credit report drafts for organization {OrganizationId}", dto.OrganizationId);
+            return ServerError("An error occurred while creating credit report drafts");
+        }
+    }
+
     [HttpPost("receipt")]
     public async Task<IActionResult> CreateReceipt([FromBody] CreateReceiptDto dto)
     {

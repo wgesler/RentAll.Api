@@ -15,6 +15,7 @@ namespace RentAll.Infrastructure.Services;
 public class DocumentIntelligenceService : IDocumentIntelligenceService
 {
     private const string PrebuiltReceiptModelId = "prebuilt-receipt";
+    private const string PrebuiltLayoutModelId = "prebuilt-layout";
     private static readonly Regex PropertyCodePattern = new(@"\bR-\d+(?:-\d+)*\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex CardLastFourPattern = new(
         @"(?:[#*xX\u2022\u00B7\s.-]{4,20})(\d{4})\b"
@@ -379,5 +380,72 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             .ToList();
 
         return items.Count == 0 ? null : string.Join("; ", items);
+    }
+
+    public async Task<CreditCardStatementExtraction> ExtractCreditCardStatementAsync(byte[] content, string contentType, string? fileName, CancellationToken cancellationToken = default)
+    {
+        if (content == null || content.Length == 0)
+            throw new ArgumentException("Statement content is required.", nameof(content));
+
+        if (CreditCardStatementSpreadsheetReader.IsLegacyExcel(fileName, contentType))
+        {
+            return new CreditCardStatementExtraction
+            {
+                Warnings = ["Legacy .xls files are not supported. Save the statement as .xlsx or .csv and upload again."]
+            };
+        }
+
+        if (CreditCardStatementSpreadsheetReader.IsSpreadsheet(fileName, contentType))
+        {
+            var spreadsheetTables = CreditCardStatementSpreadsheetReader.ReadTables(content, fileName, contentType);
+            var spreadsheetText = string.Join('\n', spreadsheetTables.SelectMany(table => table));
+            return CreditCardStatementLineParser.ParseTables(spreadsheetTables, spreadsheetText);
+        }
+
+        if (!_settings.Enabled)
+            throw new InvalidOperationException("Document Intelligence is not enabled.");
+
+        var endpoint = (_settings.Endpoint ?? string.Empty).Trim().TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(endpoint))
+            throw new InvalidOperationException("Document Intelligence endpoint is not configured.");
+
+        var client = new DocumentIntelligenceClient(new Uri(endpoint), new DefaultAzureCredential());
+        _logger.LogError("[CreditReportTrace] Step=Analyze Start ContentType={ContentType} FileName={FileName} ContentLength={ContentLength}", contentType, fileName, content.Length);
+
+        var operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, PrebuiltLayoutModelId, BinaryData.FromBytes(content), cancellationToken: cancellationToken);
+        var analyzeResult = operation.Value;
+        var fullText = analyzeResult.Content ?? string.Empty;
+        var tables = BuildTablesFromAnalyzeResult(analyzeResult);
+        var extraction = CreditCardStatementLineParser.ParseTables(tables, fullText);
+
+        _logger.LogError("[CreditReportTrace] Step=Analyze Complete LineCount={LineCount} CardLastFour={CardLastFour} WarningCount={WarningCount}", extraction.Lines.Count, extraction.StatementCardLastFour, extraction.Warnings.Count);
+        return extraction;
+    }
+
+    private static List<IReadOnlyList<string>> BuildTablesFromAnalyzeResult(AnalyzeResult analyzeResult)
+    {
+        var tables = new List<IReadOnlyList<string>>();
+        foreach (var table in analyzeResult.Tables ?? [])
+        {
+            var rowCount = table.RowCount;
+            var columnCount = table.ColumnCount;
+            if (rowCount <= 0 || columnCount <= 0)
+                continue;
+
+            var grid = Enumerable.Range(0, rowCount).Select(_ => Enumerable.Repeat(string.Empty, columnCount).ToArray()).ToList();
+            foreach (var cell in table.Cells ?? [])
+            {
+                if (cell.RowIndex < 0 || cell.RowIndex >= rowCount || cell.ColumnIndex < 0 || cell.ColumnIndex >= columnCount)
+                    continue;
+
+                var existing = grid[cell.RowIndex][cell.ColumnIndex];
+                var next = (cell.Content ?? string.Empty).Trim();
+                grid[cell.RowIndex][cell.ColumnIndex] = string.IsNullOrWhiteSpace(existing) ? next : $"{existing} {next}";
+            }
+
+            tables.Add(grid.Select(row => string.Join('\t', row)).ToList());
+        }
+
+        return tables;
     }
 }
