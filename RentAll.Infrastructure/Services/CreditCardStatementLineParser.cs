@@ -24,13 +24,25 @@ public static class CreditCardStatementLineParser
     private static readonly Regex AddressPattern = new(
         @"\b\d+\s+[\w.#-]+(?:\s+[\w.#-]+){0,4}\s+(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|ct|court|hwy|highway|pkwy|parkway|cir|circle|pl|place|ste|suite|apt|unit)\b.*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex TrailingLocationPattern = new(
-        @"\s+(?:[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2}\s+)?[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?\s*$",
-        RegexOptions.Compiled);
+    private const string UsStatePattern = @"A[LKZR]|C[AOT]|D[CE]|F[LM]|GA|HI|I[DLNA]|K[SY]|LA|M[EDAINSOTP]|N[EVHJMYCD]|O[HKR]|P[AR]|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY]";
+    private static readonly Regex TrailingCityStatePattern = new(
+        $@"\s+[A-Za-z]+,?\s+\b(?:{UsStatePattern})\b\.?(?:\s+\d{{5}}(?:-\d{{4}})?)?\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TrailingStateOnlyPattern = new(
+        $@"[,\s]+\b(?:{UsStatePattern})\b\.?(?:\s+\d{{5}}(?:-\d{{4}})?)?\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex TrailingNumberedLocationPattern = new(
-        @"\s+\d+(?:[A-Za-z][A-Za-z0-9]*|(?:\s+[A-Za-z].*))\s*$",
+        @"\s+\d+-?[A-Za-z][A-Za-z]+\.?,?\s*$|\s+\d+\s+[A-Za-z][A-Za-z]+\.?,?\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ZipPattern = new(@"\b\d{5}(?:-\d{4})?\b", RegexOptions.Compiled);
+    private static readonly Regex ProcessorPrefixPattern = new(
+        @"^(?:TST|SQ|SP|TBD|POS|PAYPAL|AMZN(?:\s+MKTP)?)\s*\*+\s*",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex VendorMarkerPattern = new(@"[#*＊∗✱﹡⁎]", RegexOptions.Compiled);
+    private static readonly HashSet<string> IncompleteVendorNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "a", "an", "el", "la", "de", "of", "city", "city of"
+    };
 
     public static CreditCardStatementExtraction ParseTables(IReadOnlyList<IReadOnlyList<string>> tables, string fullText)
     {
@@ -134,7 +146,7 @@ public static class CreditCardStatementLineParser
     {
         var date = dateCol >= 0 ? ParseDate(GetCell(cells, dateCol)) : FindDate(cells);
         var amount = amountCol >= 0 ? ParseAmount(GetCell(cells, amountCol)) : FindAmount(cells);
-        var vendor = CleanVendorName(vendorCol >= 0 ? CleanText(GetCell(cells, vendorCol)) : FindVendor(cells, date, amount));
+        var vendor = CleanVendorName(vendorCol >= 0 ? CollectVendorCells(cells, vendorCol) : FindVendor(cells, date, amount));
         var cardLastFour = cardCol >= 0 ? ExtractCardLastFour(GetCell(cells, cardCol)) : ExtractCardLastFour(string.Join(" ", cells));
         var rowText = CleanText(string.Join(" ", cells.Where(cell => !string.IsNullOrWhiteSpace(cell))));
 
@@ -189,21 +201,78 @@ public static class CreditCardStatementLineParser
         return !string.IsNullOrWhiteSpace(text) && PaymentRowPattern.IsMatch(text);
     }
 
-    private static string? CleanVendorName(string? value)
+    public static string? CleanVendorName(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
         var vendor = value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? value;
-        var cutIndex = vendor.IndexOfAny(['#', '*']);
-        if (cutIndex >= 0)
-            vendor = vendor[..cutIndex];
+        vendor = ProcessorPrefixPattern.Replace(vendor, string.Empty);
+        vendor = StripVendorMarkers(vendor);
         vendor = PhonePattern.Replace(vendor, " ");
         vendor = AddressPattern.Replace(vendor, " ");
         vendor = ZipPattern.Replace(vendor, " ");
-        vendor = TrailingNumberedLocationPattern.Replace(vendor.Trim(), string.Empty);
-        vendor = TrailingLocationPattern.Replace(vendor.Trim(), string.Empty);
-        vendor = Regex.Replace(vendor, @"\s+", " ").Trim(' ', ',', '-', '/', '|');
+        vendor = StripTrailingAddress(vendor);
+        var cleaned = FinalizeVendorName(vendor);
+        return IsIncompleteVendorName(cleaned) ? null : cleaned;
+    }
+
+    private static string StripTrailingAddress(string vendor)
+    {
+        var current = vendor.Trim();
+        var numbered = TrailingNumberedLocationPattern.Replace(current, string.Empty);
+        if (!IsIncompleteVendorName(FinalizeVendorName(numbered)))
+            current = numbered.Trim();
+
+        var cityState = TrailingCityStatePattern.Replace(current, string.Empty);
+        if (!IsIncompleteVendorName(FinalizeVendorName(cityState)))
+            return cityState;
+
+        var stateOnly = TrailingStateOnlyPattern.Replace(current, string.Empty);
+        if (!IsIncompleteVendorName(FinalizeVendorName(stateOnly)))
+            return stateOnly;
+
+        return current;
+    }
+
+    private static string StripVendorMarkers(string vendor)
+    {
+        while (true)
+        {
+            var match = VendorMarkerPattern.Match(vendor);
+            if (!match.Success)
+                return vendor;
+
+            var suffix = vendor[(match.Index + match.Length)..];
+            vendor = IsJunkVendorSuffix(suffix)
+                ? vendor[..match.Index]
+                : $"{vendor[..match.Index]} {suffix}";
+        }
+    }
+
+    private static bool IsJunkVendorSuffix(string suffix)
+    {
+        var text = suffix.Trim();
+        if (text.Length == 0)
+            return true;
+        if (text.Contains('@'))
+            return true;
+        if (Regex.IsMatch(text, @"\d{3,}"))
+            return true;
+        if (!text.Contains(' ') && Regex.IsMatch(text, @"[A-Za-z]") && Regex.IsMatch(text, @"\d"))
+            return true;
+        return false;
+    }
+
+    private static bool IsIncompleteVendorName(string? value)
+    {
+        var name = (value ?? string.Empty).Trim();
+        return name.Length == 0 || IncompleteVendorNames.Contains(name);
+    }
+
+    private static string? FinalizeVendorName(string? value)
+    {
+        var vendor = Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim(' ', ',', '-', '/', '|', '*', '#');
         return vendor.Length == 0 ? null : vendor;
     }
 
@@ -233,17 +302,48 @@ public static class CreditCardStatementLineParser
         return null;
     }
 
+    private static string? CollectVendorCells(IReadOnlyList<string> cells, int start)
+    {
+        var first = CleanText(GetCell(cells, start));
+        if (string.IsNullOrWhiteSpace(first) || !IsIncompleteVendorName(first))
+            return first;
+
+        var parts = new List<string>();
+        for (var i = start; i < cells.Count; i++)
+        {
+            var cell = cells[i];
+            if (string.IsNullOrWhiteSpace(cell) || ParseDate(cell).HasValue || ParseAmount(cell).HasValue)
+                break;
+
+            var cleaned = CleanText(cell);
+            if (string.IsNullOrWhiteSpace(cleaned) || !cleaned.Any(char.IsLetter))
+                break;
+
+            parts.Add(cleaned);
+        }
+
+        return parts.Count == 0 ? first : string.Join(" ", parts);
+    }
+
     private static string? FindVendor(IReadOnlyList<string> cells, DateOnly? date, decimal? amount)
     {
+        var parts = new List<string>();
         foreach (var cell in cells)
         {
             if (string.IsNullOrWhiteSpace(cell) || ParseDate(cell).HasValue || ParseAmount(cell).HasValue)
+            {
+                if (parts.Count > 0)
+                    break;
                 continue;
+            }
 
             var cleaned = CleanText(cell);
             if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Any(char.IsLetter))
-                return cleaned;
+                parts.Add(cleaned);
         }
+
+        if (parts.Count > 0)
+            return string.Join(" ", parts);
 
         return date.HasValue && amount.HasValue ? null : CleanText(cells.FirstOrDefault(cell => !string.IsNullOrWhiteSpace(cell)));
     }

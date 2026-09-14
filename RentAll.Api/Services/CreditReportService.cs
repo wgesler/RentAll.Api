@@ -9,6 +9,7 @@ using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Maintenances;
+using RentAll.Infrastructure.Services;
 
 namespace RentAll.Api.Services;
 
@@ -163,9 +164,12 @@ public class CreditReportService
             changed = true;
         }
 
-        if (string.IsNullOrWhiteSpace(draft.VendorName) && !string.IsNullOrWhiteSpace(line.VendorName))
+        var cleanedVendor = CreditCardStatementLineParser.CleanVendorName(draft.VendorName)
+            ?? CreditCardStatementLineParser.CleanVendorName(line.VendorName);
+        if (!string.IsNullOrWhiteSpace(cleanedVendor)
+            && !cleanedVendor.Equals((draft.VendorName ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            draft.VendorName = line.VendorName.Trim();
+            draft.VendorName = cleanedVendor;
             changed = true;
         }
 
@@ -239,7 +243,7 @@ public class CreditReportService
             Description = null,
             BankCardId = bankCard?.BankCardId,
             VendorId = vendorId,
-            VendorName = line.VendorName,
+            VendorName = CreditCardStatementLineParser.CleanVendorName(line.VendorName) ?? line.VendorName,
             PaidAmount = bankCard?.BankCardId > 0 ? amount : 0,
             PaidDate = bankCard?.BankCardId > 0 ? chargeDate : null,
             PaymentTypeId = bankCard?.BankCardId > 0 ? (int)PaymentType.CreditCard : 0,

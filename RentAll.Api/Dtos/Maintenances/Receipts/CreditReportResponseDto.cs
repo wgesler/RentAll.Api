@@ -1,5 +1,5 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Maintenances;
+using RentAll.Infrastructure.Services;
 
 namespace RentAll.Api.Dtos.Maintenances.Receipts;
 
@@ -39,17 +39,18 @@ public class CreditReportResponseDto
 
     public static CreditReportLineDto FromLine(CreditCardStatementLine line, Receipt? receipt = null, ReceiptDraft? draft = null, Guid? vendorId = null, int? bankCardId = null, int? cardTypeId = null, BankCard? resolvedCard = null)
     {
+        var isMatched = receipt != null || draft != null;
         return new CreditReportLineDto
         {
-            ChargeDate = line.ChargeDate ?? receipt?.ReceiptDate ?? draft?.ReceiptDate,
-            Amount = line.Amount ?? receipt?.Amount ?? draft?.Amount ?? 0,
-            VendorName = line.VendorName ?? receipt?.VendorName ?? draft?.VendorName,
-            VendorId = vendorId ?? receipt?.VendorId ?? draft?.VendorId,
-            CardLastFour = line.CardLastFour ?? resolvedCard?.LastFour,
-            BankCardId = bankCardId ?? receipt?.BankCardId ?? draft?.BankCardId ?? resolvedCard?.BankCardId,
-            BankCardDisplayName = ResolveCardDisplayName(receipt, draft, resolvedCard),
-            CardTypeId = cardTypeId ?? line.CardTypeId ?? resolvedCard?.CardTypeId,
-            Description = receipt?.Description ?? draft?.Description,
+            ChargeDate = isMatched ? (receipt?.ReceiptDate ?? draft?.ReceiptDate ?? line.ChargeDate) : line.ChargeDate,
+            Amount = isMatched ? (receipt?.Amount ?? draft?.Amount ?? line.Amount ?? 0) : (line.Amount ?? 0),
+            VendorName = ResolveDisplayVendorName(isMatched ? (receipt?.VendorName ?? draft?.VendorName) : line.VendorName, line.VendorName),
+            VendorId = isMatched ? (receipt?.VendorId ?? draft?.VendorId) : vendorId,
+            CardLastFour = isMatched ? (resolvedCard?.LastFour ?? line.CardLastFour) : (line.CardLastFour ?? resolvedCard?.LastFour),
+            BankCardId = isMatched ? (receipt?.BankCardId ?? draft?.BankCardId) : (bankCardId ?? resolvedCard?.BankCardId),
+            BankCardDisplayName = isMatched ? ResolveMatchedCardDisplayName(receipt, draft) : (resolvedCard?.DisplayName ?? null),
+            CardTypeId = isMatched ? (resolvedCard?.CardTypeId ?? line.CardTypeId ?? cardTypeId) : (cardTypeId ?? line.CardTypeId ?? resolvedCard?.CardTypeId),
+            Description = isMatched ? (receipt?.Description ?? draft?.Description) : null,
             ReceiptId = receipt?.ReceiptId,
             ReceiptCode = receipt?.ReceiptCode,
             ReceiptDraftId = draft?.ReceiptDraftId,
@@ -59,11 +60,16 @@ public class CreditReportResponseDto
         };
     }
 
-    private static string? ResolveCardDisplayName(Receipt? receipt, ReceiptDraft? draft, BankCard? resolvedCard)
+    private static string? ResolveDisplayVendorName(string? preferred, string? statement)
     {
-        if (!string.IsNullOrWhiteSpace(resolvedCard?.DisplayName))
-            return resolvedCard.DisplayName.Trim();
+        return CreditCardStatementLineParser.CleanVendorName(preferred)
+            ?? CreditCardStatementLineParser.CleanVendorName(statement)
+            ?? preferred
+            ?? statement;
+    }
 
+    private static string? ResolveMatchedCardDisplayName(Receipt? receipt, ReceiptDraft? draft)
+    {
         if (receipt?.BankCardId > 0 && IsOfficeCardName(receipt.BankCardDisplayName))
             return receipt.BankCardDisplayName.Trim();
 
