@@ -32,24 +32,69 @@ public static class CreditCardStatementSpreadsheetReader
             return [];
 
         var name = (fileName ?? string.Empty).Trim().ToLowerInvariant();
-        if (name.EndsWith(".xlsx") || (contentType ?? string.Empty).Contains("openxml", StringComparison.OrdinalIgnoreCase))
+        var type = (contentType ?? string.Empty).Trim();
+        if (name.EndsWith(".csv") || type.Contains("csv", StringComparison.OrdinalIgnoreCase))
+            return [ReadCsv(DecodeText(content))];
+
+        if (name.EndsWith(".xlsx") || type.Contains("openxml", StringComparison.OrdinalIgnoreCase))
             return ReadXlsx(content);
 
-        return [ReadCsv(Encoding.UTF8.GetString(content))];
+        return [ReadCsv(DecodeText(content))];
+    }
+
+    private static string DecodeText(byte[] content)
+    {
+        if (content.Length >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF)
+            return Encoding.UTF8.GetString(content, 3, content.Length - 3);
+        if (content.Length >= 2 && content[0] == 0xFF && content[1] == 0xFE)
+            return Encoding.Unicode.GetString(content);
+        if (content.Length >= 2 && content[0] == 0xFE && content[1] == 0xFF)
+            return Encoding.BigEndianUnicode.GetString(content);
+        if (content.Length >= 4 && content[1] == 0 && content[3] == 0)
+            return Encoding.Unicode.GetString(content);
+
+        return Encoding.UTF8.GetString(content);
     }
 
     private static List<string> ReadCsv(string text)
     {
-        return (text ?? string.Empty)
-            .Replace("\r\n", "\n")
-            .Replace('\r', '\n')
+        var normalized = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
+        var delimiter = DetectDelimiter(normalized);
+        return normalized
             .Split('\n')
-            .Select(line => string.Join('\t', SplitCsvLine(line)))
+            .Select(line => string.Join('\t', SplitCsvLine(line, delimiter)))
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToList();
     }
 
+    private static char DetectDelimiter(string text)
+    {
+        var sample = text.Split('\n').FirstOrDefault(line => line.IndexOfAny([',', ';', '\t']) >= 0) ?? string.Empty;
+        var comma = 0;
+        var semicolon = 0;
+        var tab = 0;
+        var inQuotes = false;
+        foreach (var ch in sample)
+        {
+            if (ch == '"')
+                inQuotes = !inQuotes;
+            else if (!inQuotes && ch == ',')
+                comma++;
+            else if (!inQuotes && ch == ';')
+                semicolon++;
+            else if (!inQuotes && ch == '\t')
+                tab++;
+        }
+
+        if (tab >= comma && tab >= semicolon && tab > 0)
+            return '\t';
+        return semicolon > comma ? ';' : ',';
+    }
+
     private static List<string> SplitCsvLine(string line)
+        => SplitCsvLine(line, ',');
+
+    private static List<string> SplitCsvLine(string line, char delimiter)
     {
         var cells = new List<string>();
         var current = new StringBuilder();
@@ -71,7 +116,7 @@ public static class CreditCardStatementSpreadsheetReader
                 continue;
             }
 
-            if (ch == ',' && !inQuotes)
+            if (ch == delimiter && !inQuotes)
             {
                 cells.Add(current.ToString().Trim());
                 current.Clear();

@@ -12,12 +12,14 @@ public class CreateEmailHtmlDto
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
     public string Schedules { get; set; } = string.Empty;
+    public string MissingReceipts { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;
     public string ScheduleSubject { get; set; } = string.Empty;
+    public string MissingReceiptsSubject { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId)
     {
@@ -69,6 +71,12 @@ public class CreateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(ScheduleSubject))
             return (false, "ScheduleSubject is required");
 
+        if (string.IsNullOrWhiteSpace(MissingReceipts))
+            return (false, "MissingReceipts is required");
+
+        if (string.IsNullOrWhiteSpace(MissingReceiptsSubject))
+            return (false, "MissingReceiptsSubject is required");
+
         return (true, null);
     }
 
@@ -86,12 +94,14 @@ public class CreateEmailHtmlDto
             CorporateInvoice = CorporateInvoice,
             OwnerStatement = OwnerStatement,
             Schedules = Schedules,
+            MissingReceipts = MissingReceipts,
             LetterSubject = LetterSubject,
             DepartureSubject = DepartureSubject,
             LeaseSubject = LeaseSubject,
             InvoiceSubject = InvoiceSubject,
             OwnerStatementSubject = OwnerStatementSubject,
             ScheduleSubject = ScheduleSubject,
+            MissingReceiptsSubject = MissingReceiptsSubject,
             CreatedBy = currentUser
         };
     }

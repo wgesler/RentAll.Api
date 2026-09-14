@@ -12,12 +12,14 @@ public class EmailHtmlResponseDto
     public string CorporateInvoice { get; set; } = string.Empty;
     public string OwnerStatement { get; set; } = string.Empty;
     public string Schedules { get; set; } = string.Empty;
+    public string MissingReceipts { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
     public string InvoiceSubject { get; set; } = string.Empty;
     public string OwnerStatementSubject { get; set; } = string.Empty;
     public string ScheduleSubject { get; set; } = string.Empty;
+    public string MissingReceiptsSubject { get; set; } = string.Empty;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -35,12 +37,14 @@ public class EmailHtmlResponseDto
         CorporateInvoice = emailHtml.CorporateInvoice;
         OwnerStatement = emailHtml.OwnerStatement;
         Schedules = emailHtml.Schedules;
+        MissingReceipts = emailHtml.MissingReceipts;
         LetterSubject = emailHtml.LetterSubject;
         DepartureSubject = emailHtml.DepartureSubject;
         LeaseSubject = emailHtml.LeaseSubject;
         InvoiceSubject = emailHtml.InvoiceSubject;
         OwnerStatementSubject = emailHtml.OwnerStatementSubject;
         ScheduleSubject = emailHtml.ScheduleSubject;
+        MissingReceiptsSubject = emailHtml.MissingReceiptsSubject;
         CreatedOn = emailHtml.CreatedOn;
         CreatedBy = emailHtml.CreatedBy;
         ModifiedOn = emailHtml.ModifiedOn;

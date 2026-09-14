@@ -15,5 +15,6 @@ public enum EmailType
     OwnerAgreement = 10,
     OwnerStatement = 11,
     SecurityDeposit = 12,
-    Schedules = 13
+    Schedules = 13,
+    MissingReceipts = 14
 }

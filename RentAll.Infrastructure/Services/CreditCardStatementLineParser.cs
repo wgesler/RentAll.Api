@@ -16,7 +16,7 @@ public static class CreditCardStatementLineParser
         @"^(?:previous|opening|new|ending|current)\s+balance\b|^minimum\s+payment\b|^total\b|^subtotal\b|^interest\s+charged\b|^fees?\s+charged\b|^credit\s+limit\b|^available\s+credit\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex PaymentRowPattern = new(
-        @"\b(?:payment|autopay|auto\s*pay|thank\s*you|pymt|online\s+pmt|mobile\s+payment|payment\s+received|bill\s*pay)\b",
+        @"\b(?:payment|autopay|auto\s*pay|thank\s*you|pymt|online\s+pmt|mobile\s+payment|payment\s+received|bill\s*pay|refund|reversal)\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex PhonePattern = new(
         @"\+?1?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b|\b\d{3}[\s.-]\d{4}\b",
@@ -126,7 +126,10 @@ public static class CreditCardStatementLineParser
         var header = headerIndex >= 0 ? grid[headerIndex] : new List<string>();
         var dateCol = FindColumn(header, "date", "trans date", "transaction date", "post date", "posted", "charge date");
         var vendorCol = FindColumn(header, "merchant", "vendor", "description", "payee", "name");
-        var amountCol = FindColumn(header, "amount", "charge", "debit", "credit", "usd");
+        var amountCol = FindColumn(header, "amount", "charge", "debit", "usd");
+        var debitCol = FindColumn(header, "debit");
+        var creditCol = FindExactColumn(header, "credit", "credits");
+        var typeCol = FindColumn(header, "type", "transaction type");
         var cardCol = FindColumn(header, "card", "last 4", "last4", "account");
 
         var startRow = headerIndex >= 0 ? headerIndex + 1 : 0;
@@ -134,7 +137,7 @@ public static class CreditCardStatementLineParser
         for (var i = startRow; i < grid.Count; i++)
         {
             var cells = grid[i];
-            var line = BuildLine(cells, dateCol, vendorCol, amountCol, cardCol, statementCardLastFour, statementCardTypeId);
+            var line = BuildLine(cells, dateCol, vendorCol, amountCol, debitCol, creditCol, typeCol, cardCol, statementCardLastFour, statementCardTypeId);
             if (line != null)
                 lines.Add(line);
         }
@@ -143,14 +146,20 @@ public static class CreditCardStatementLineParser
     }
 
     private static CreditCardStatementLine? BuildLine(IReadOnlyList<string> cells, int dateCol, int vendorCol, int amountCol, int cardCol, string? statementCardLastFour, int? statementCardTypeId)
+        => BuildLine(cells, dateCol, vendorCol, amountCol, -1, -1, -1, cardCol, statementCardLastFour, statementCardTypeId);
+
+    private static CreditCardStatementLine? BuildLine(IReadOnlyList<string> cells, int dateCol, int vendorCol, int amountCol, int debitCol, int creditCol, int typeCol, int cardCol, string? statementCardLastFour, int? statementCardTypeId)
     {
+        if (typeCol >= 0 && IsPaymentType(GetCell(cells, typeCol)))
+            return null;
+
         var date = dateCol >= 0 ? ParseDate(GetCell(cells, dateCol)) : FindDate(cells);
-        var amount = amountCol >= 0 ? ParseAmount(GetCell(cells, amountCol)) : FindAmount(cells);
+        var amount = ResolveChargeAmount(cells, amountCol, debitCol, creditCol);
         var vendor = CleanVendorName(vendorCol >= 0 ? CollectVendorCells(cells, vendorCol) : FindVendor(cells, date, amount));
         var cardLastFour = cardCol >= 0 ? ExtractCardLastFour(GetCell(cells, cardCol)) : ExtractCardLastFour(string.Join(" ", cells));
         var rowText = CleanText(string.Join(" ", cells.Where(cell => !string.IsNullOrWhiteSpace(cell))));
 
-        if (IsSummaryRow(vendor) || IsSummaryRow(rowText) || IsPaymentRow(vendor, rowText, amount))
+        if (IsSummaryRow(vendor) || IsSummaryRow(rowText) || IsPaymentRow(vendor, rowText))
             return null;
 
         if (!date.HasValue || !amount.HasValue || amount.Value == 0 || string.IsNullOrWhiteSpace(vendor))
@@ -165,6 +174,26 @@ public static class CreditCardStatementLineParser
             CardLastFour = cardLastFour ?? statementCardLastFour,
             CardTypeId = statementCardTypeId
         };
+    }
+
+    private static decimal? ResolveChargeAmount(IReadOnlyList<string> cells, int amountCol, int debitCol, int creditCol)
+    {
+        if (debitCol >= 0 || creditCol >= 0)
+        {
+            var debit = debitCol >= 0 ? ParseAmount(GetCell(cells, debitCol)) : null;
+            var credit = creditCol >= 0 ? ParseAmount(GetCell(cells, creditCol)) : null;
+            if (credit is > 0 && debit.GetValueOrDefault() == 0)
+                return null;
+            if (debit is > 0)
+                return debit;
+        }
+
+        var amountCell = amountCol >= 0 ? GetCell(cells, amountCol) : null;
+        if (IsCreditNotation(amountCell))
+            return null;
+
+        var amount = amountCol >= 0 ? ParseAmount(amountCell) : FindAmount(cells);
+        return amount.HasValue && amount.Value != 0 ? Math.Abs(amount.Value) : amount;
     }
 
     private static List<CreditCardStatementLine> ParsePlainTextLines(string fullText, string? statementCardLastFour, int? statementCardTypeId)
@@ -187,18 +216,30 @@ public static class CreditCardStatementLineParser
     private static bool IsHeaderRow(IReadOnlyList<string> cells)
     {
         var joined = string.Join(" ", cells).ToLowerInvariant();
-        return joined.Contains("date") && (joined.Contains("amount") || joined.Contains("merchant") || joined.Contains("description") || joined.Contains("vendor"));
+        var hasDate = joined.Contains("date") || joined.Contains("posted");
+        var hasCharge = joined.Contains("amount") || joined.Contains("merchant") || joined.Contains("description")
+            || joined.Contains("vendor") || joined.Contains("debit") || joined.Contains("payee");
+        return hasDate && hasCharge;
     }
 
     private static bool IsSummaryRow(string? text) => !string.IsNullOrWhiteSpace(text) && SummaryRowPattern.IsMatch(text.Trim());
 
-    private static bool IsPaymentRow(string? vendor, string? description, decimal? amount)
+    private static bool IsPaymentRow(string? vendor, string? description)
     {
-        if (amount is < 0)
-            return true;
-
         var text = string.Join(" ", new[] { vendor, description }.Where(value => !string.IsNullOrWhiteSpace(value)));
         return !string.IsNullOrWhiteSpace(text) && PaymentRowPattern.IsMatch(text);
+    }
+
+    private static bool IsPaymentType(string? value)
+    {
+        var type = (value ?? string.Empty).Trim().ToLowerInvariant();
+        return type is "payment" or "credit" or "refund" or "reversal" or "payment/credit" or "pymt";
+    }
+
+    private static bool IsCreditNotation(string? value)
+    {
+        var trimmed = (value ?? string.Empty).Trim();
+        return trimmed.Length > 0 && (trimmed.Contains('(') && trimmed.Contains(')') || trimmed.EndsWith("CR", StringComparison.OrdinalIgnoreCase));
     }
 
     public static string? CleanVendorName(string? value)
@@ -291,6 +332,18 @@ public static class CreditCardStatementLineParser
         {
             var value = (header[i] ?? string.Empty).Trim().ToLowerInvariant();
             if (names.Any(name => value.Contains(name)))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static int FindExactColumn(IReadOnlyList<string> header, params string[] names)
+    {
+        for (var i = 0; i < header.Count; i++)
+        {
+            var value = (header[i] ?? string.Empty).Trim().ToLowerInvariant();
+            if (names.Any(name => value == name || value == name + "s" || value == name + " amount"))
                 return i;
         }
 
