@@ -35,6 +35,7 @@ public class CreditReportResponseDto
     public List<CreditReportLineDto> CompleteMatches { get; set; } = new();
     public List<CreditReportLineDto> DraftMatches { get; set; } = new();
     public List<CreditReportLineDto> CreatedDrafts { get; set; } = new();
+    public List<CreditReportLineDto> UnknownMatches { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
 
     public static CreditReportLineDto FromLine(CreditCardStatementLine line, Receipt? receipt = null, ReceiptDraft? draft = null, Guid? vendorId = null, int? bankCardId = null, int? cardTypeId = null, BankCard? resolvedCard = null)
@@ -58,6 +59,11 @@ public class CreditReportResponseDto
             IsUtility = receipt?.IsUtility ?? draft?.IsUtility ?? false,
             Splits = (receipt?.Splits ?? draft?.Splits ?? []).Select(split => new CreditReportSplitDto { WorkOrderId = split.WorkOrderId, WorkOrderCode = split.WorkOrderCode ?? split.WorkOrder, ReceiptTypeId = split.ReceiptTypeId }).ToList()
         };
+    }
+
+    public static CreditReportLineDto FromExisting(Receipt? receipt, ReceiptDraft? draft, BankCard? resolvedCard = null)
+    {
+        return FromLine(new CreditCardStatementLine { ChargeDate = receipt?.ReceiptDate ?? draft?.ReceiptDate, Amount = receipt?.Amount ?? draft?.Amount, VendorName = receipt?.VendorName ?? draft?.VendorName, CardLastFour = resolvedCard?.LastFour, CardTypeId = resolvedCard?.CardTypeId }, receipt, draft, resolvedCard: resolvedCard);
     }
 
     private static string? ResolveDisplayVendorName(string? preferred, string? statement)

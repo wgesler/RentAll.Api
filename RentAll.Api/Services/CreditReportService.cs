@@ -61,7 +61,7 @@ public class CreditReportService
             IncludeInactive = false,
             StartDate = dateRange.StartDate,
             EndDate = dateRange.EndDate
-        })).ToList();
+        })).Where(receipt => receipt.IsActive).ToList();
         var drafts = (await _maintenanceRepository.GetReceiptDraftsByCriteriaAsync(new ReceiptDraftGetCriteria
         {
             OrganizationId = dto.OrganizationId,
@@ -71,7 +71,7 @@ public class CreditReportService
             IncludePromoted = false,
             StartDate = dateRange.StartDate,
             EndDate = dateRange.EndDate
-        })).ToList();
+        })).Where(draft => draft.IsActive).ToList();
 
         var usedReceiptIds = new HashSet<Guid>();
         var usedDraftIds = new HashSet<Guid>();
@@ -101,7 +101,13 @@ public class CreditReportService
             response.CreatedDrafts.Add(CreditReportResponseDto.FromLine(line, vendorId: resolvedVendor?.ContactId, bankCardId: resolvedCard?.BankCardId, cardTypeId: line.CardTypeId ?? extraction.StatementCardTypeId, resolvedCard: resolvedCard));
         }
 
-        _logger.LogError("[CreditReportTrace] Step=Complete Complete={Complete} DraftMatches={DraftMatches} Proposed={Proposed}", response.CompleteMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count);
+        foreach (var receipt in receipts.Where(receipt => !usedReceiptIds.Contains(receipt.ReceiptId) && receipt.BankCardId > 0))
+            response.UnknownMatches.Add(CreditReportResponseDto.FromExisting(receipt, null, LookupCard(receipt.BankCardId, bankCards)));
+
+        foreach (var draft in drafts.Where(draft => !usedDraftIds.Contains(draft.ReceiptDraftId) && draft.BankCardId > 0))
+            response.UnknownMatches.Add(CreditReportResponseDto.FromExisting(null, draft, LookupCard(draft.BankCardId, bankCards)));
+
+        _logger.LogError("[CreditReportTrace] Step=Complete Complete={Complete} DraftMatches={DraftMatches} Proposed={Proposed} Unknown={Unknown}", response.CompleteMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count, response.UnknownMatches.Count);
         return response;
     }
 
@@ -328,6 +334,14 @@ public class CreditReportService
             matches = matches.Where(card => card.CardTypeId == cardTypeId.Value).ToList();
 
         return matches.Count == 1 ? matches[0] : null;
+    }
+
+    private static BankCard? LookupCard(int? bankCardId, IReadOnlyList<BankCard> bankCards)
+    {
+        if (bankCardId is not > 0)
+            return null;
+
+        return bankCards.FirstOrDefault(card => card.BankCardId == bankCardId.Value);
     }
 
     private static string? LookupLastFour(int? bankCardId, IReadOnlyList<BankCard> bankCards)
