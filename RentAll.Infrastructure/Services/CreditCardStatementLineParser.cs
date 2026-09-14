@@ -273,7 +273,16 @@ public static class CreditCardStatementLineParser
     private static string? FinalizeVendorName(string? value)
     {
         var vendor = Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim(' ', ',', '-', '/', '|', '*', '#');
-        return vendor.Length == 0 ? null : vendor;
+        if (vendor.Length == 0)
+            return null;
+
+        return string.Join(' ', vendor.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(ToTitleCaseWord));
+    }
+
+    private static string ToTitleCaseWord(string word)
+    {
+        return string.Join('-', word.Split('-').Select(part =>
+            part.Length == 0 ? part : char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
     }
 
     private static int FindColumn(IReadOnlyList<string> header, params string[] names)
