@@ -210,10 +210,32 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 ## 5) External Property Intake API (v1)
 
 - **URL:** `/api/property/external`
-- **Behavior:** Upsert by `propertyCode`. If a property with that code already exists for the organization, it is updated. Otherwise a new property is created.
-- **Success response:** `200 OK` with the saved property (create or update).
+- **Request body:** always `{ "properties": [ ... ] }` — even a single create/update is an array of one item
+- **Limits:** 1–50 properties per request; all items must share the same `organizationId`
+- **Behavior (POST):** Upsert by `propertyCode`. If a property with that code already exists for the organization, it is updated. Otherwise a new property is created.
+- **Behavior (PUT):** Partial update existing properties only. Each item must include the required key fields plus only the fields being changed.
+- **Success response:** `200 OK` with per-item results:
 
-### Required fields
+```json
+{
+  "successCount": 1,
+  "failureCount": 0,
+  "results": [
+    {
+      "index": 0,
+      "propertyCode": "EXT-1001",
+      "success": true,
+      "updated": false,
+      "errorMessage": null,
+      "property": { }
+    }
+  ]
+}
+```
+
+- Partial failure is allowed: successful items are saved; failed items are reported in `results` with `success: false` and `errorMessage`
+
+### Required fields (each item in `properties`)
 
 - `organizationId` (string, GUID)
 - `officeId` (integer, must be > 0)
@@ -258,41 +280,65 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 - `400 Bad Request` — validation failure, invalid `organizationId`, or invalid `officeId`
 - `401 Unauthorized` — missing or invalid `X-Api-Key`
 
-### Example request (create)
+### Example request (create — POST)
 
 ```json
 {
-  "organizationId": "11111111-1111-1111-1111-111111111111",
-  "officeId": 1,
-  "propertyCode": "EXT-1001",
-  "vendorId": "22222222-2222-2222-2222-222222222222",
-  "address1": "123 Main St",
-  "city": "Austin",
-  "state": "TX",
-  "zip": "78701",
-  "bedrooms": 2,
-  "bathrooms": 2,
-  "monthlyRate": 3200,
-  "description": "Furnished 2BR downtown unit"
+  "properties": [
+    {
+      "organizationId": "11111111-1111-1111-1111-111111111111",
+      "officeId": 1,
+      "propertyCode": "EXT-1001",
+      "vendorId": "22222222-2222-2222-2222-222222222222",
+      "address1": "123 Main St",
+      "city": "Austin",
+      "state": "TX",
+      "zip": "78701",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "monthlyRate": 3200,
+      "description": "Furnished 2BR downtown unit"
+    }
+  ]
 }
 ```
 
-### Example request (update)
+### Example request (update — POST upsert)
 
-Send the same `propertyCode` with changed fields:
+Send the same `propertyCode` with changed fields inside `properties`:
 
 ```json
 {
-  "organizationId": "11111111-1111-1111-1111-111111111111",
-  "officeId": 1,
-  "propertyCode": "EXT-1001",
-  "vendorId": "22222222-2222-2222-2222-222222222222",
-  "address1": "123 Main St",
-  "city": "Austin",
-  "state": "TX",
-  "zip": "78701",
-  "monthlyRate": 3400,
-  "propertyStatusId": 1
+  "properties": [
+    {
+      "organizationId": "11111111-1111-1111-1111-111111111111",
+      "officeId": 1,
+      "propertyCode": "EXT-1001",
+      "vendorId": "22222222-2222-2222-2222-222222222222",
+      "address1": "123 Main St",
+      "city": "Austin",
+      "state": "TX",
+      "zip": "78701",
+      "monthlyRate": 3400,
+      "propertyStatusId": 1
+    }
+  ]
+}
+```
+
+### Example request (partial update — PUT)
+
+```json
+{
+  "properties": [
+    {
+      "organizationId": "11111111-1111-1111-1111-111111111111",
+      "officeId": 1,
+      "propertyCode": "EXT-1001",
+      "vendorId": "22222222-2222-2222-2222-222222222222",
+      "monthlyRate": 3400
+    }
+  ]
 }
 ```
 
