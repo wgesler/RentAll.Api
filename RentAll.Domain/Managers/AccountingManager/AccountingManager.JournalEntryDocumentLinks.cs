@@ -79,6 +79,32 @@ public partial class AccountingManager
         });
     }
 
+    public async Task<JournalEntrySyncResult> RepairDocumentLinksForHealthFixAsync(
+        Guid organizationId,
+        string officeIds,
+        Guid currentUser,
+        IProgress<JournalEntrySyncProgress>? progress = null)
+    {
+        if (organizationId == Guid.Empty)
+            throw new ArgumentException("OrganizationId is required.", nameof(organizationId));
+
+        if (string.IsNullOrWhiteSpace(officeIds))
+            throw new ArgumentException("OfficeIds is required.", nameof(officeIds));
+
+        if (!await IsAccountingFeatureEnabledAsync(organizationId))
+            return new JournalEntrySyncResult();
+
+        var combined = await SyncPaymentJournalEntriesAsync(
+            organizationId,
+            officeIds,
+            currentUser,
+            progress,
+            syncDocumentLinksAtEnd: false);
+
+        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+        return combined;
+    }
+
     private async Task SyncInvoicePaymentDocumentLinksFromLedgerAsync(Guid organizationId, string officeIds, Guid currentUser)
     {
         var invoices = _officeSyncCache != null

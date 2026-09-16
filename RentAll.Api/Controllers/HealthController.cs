@@ -89,14 +89,16 @@ public class HealthController : BaseController
 
         try
         {
-            await _accountingManager.SyncDocumentLinksAsync(CurrentOrganizationId, officeIds, CurrentUser);
-            var result = await _accountingManager.RepairDepositAndTransferSplitLinksAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            var result = await _accountingManager.RepairDocumentLinksForHealthFixAsync(CurrentOrganizationId, officeIds, CurrentUser);
             return Ok(new JournalEntrySyncResultDto(result));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error repairing payment/deposit/transfer document links");
-            return ServerError("An error occurred while repairing document links");
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ServerError(string.IsNullOrWhiteSpace(detail)
+                ? "An error occurred while repairing document links"
+                : $"Document link repair failed: {detail}");
         }
     }
 

@@ -308,6 +308,29 @@ public partial class AccountingController
         return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
     }
 
+    [HttpPost("journal-entry/sync/document-links-repair/start")]
+    public IActionResult StartDocumentLinksRepair([FromBody] SyncJournalEntriesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var officeIds = ResolveRequestedOfficeIds(dto);
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Forbid();
+
+        var jobId = Guid.NewGuid().ToString("N");
+        var job = CreateSyncJob(jobId);
+        SyncJobs[jobId] = job;
+
+        _ = Task.Run(() => RunDocumentLinksRepairJobAsync(job, CurrentOrganizationId, officeIds, CurrentUser));
+
+        return Ok(new StartJournalEntrySyncJobResponseDto { JobId = jobId });
+    }
+
     [HttpPost("journal-entry/sync/document-links")]
     public async Task<IActionResult> SyncDocumentLinks([FromBody] SyncJournalEntriesRequestDto dto)
     {
@@ -648,6 +671,36 @@ public partial class AccountingController
             Status = "Pending"
         };
         return job;
+    }
+
+    private async Task RunDocumentLinksRepairJobAsync(
+        JournalEntrySyncJobState job,
+        Guid organizationId,
+        string officeIds,
+        Guid currentUser)
+    {
+        var progress = new Progress<JournalEntrySyncProgress>(update => ApplySyncProgress(job, update));
+
+        try
+        {
+            SetSyncJobMessage(job, "Rebuilding invoice payment JEs, syncing document links, and repairing split links...");
+            await RunScopedJournalEntrySyncAsync(manager =>
+                manager.RepairDocumentLinksForHealthFixAsync(organizationId, officeIds, currentUser, progress));
+            SetSyncJobMessage(job, "Document link repair complete.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running document link repair job {JobId}", job.JobId);
+            SetSyncJobMessage(job, $"Document link repair failed: {ex.Message}");
+        }
+        finally
+        {
+            lock (job.SyncRoot)
+            {
+                job.IsRunning = false;
+                job.IsCompleted = true;
+            }
+        }
     }
 
     private async Task RunTransferJournalEntriesSyncJobAsync(
