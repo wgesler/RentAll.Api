@@ -2,8 +2,6 @@ namespace RentAll.Api.Controllers
 {
     public partial class OrganizationController
     {
-        private static readonly Guid SystemUserGuideOrganizationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
-
         #region Get
 
         [HttpGet("user-guide")]
@@ -41,7 +39,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var fileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                    SystemUserGuideOrganizationId,
+                    SystemOrganizationId,
                     null,
                     path,
                     ImageType.UserGuide);
@@ -75,7 +73,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 var imagePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(
-                    SystemUserGuideOrganizationId,
+                    SystemOrganizationId,
                     null,
                     dto.FileDetails,
                     ImageType.UserGuide);
@@ -111,7 +109,7 @@ namespace RentAll.Api.Controllers
             try
             {
                 await _fileService.DeleteImageAsync(
-                    SystemUserGuideOrganizationId,
+                    SystemOrganizationId,
                     null,
                     path,
                     ImageType.UserGuide);

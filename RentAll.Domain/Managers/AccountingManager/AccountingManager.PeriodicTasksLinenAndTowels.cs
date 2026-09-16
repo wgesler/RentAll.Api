@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -25,7 +26,7 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                await LogAccountingErrorAsync(trigger: "LinensAndTowels", organizationId: organizationId, officeId: monthlyAgreement.OfficeId, sourceTypeId: (int)SourceType.LinensAndTowels, sourceId: monthlyAgreement.PropertyId, documentCode: $"Property-{monthlyAgreement.PropertyId}", accountingPeriod: null, amount: monthlyAgreement.LinenAndTowelFee, message: ex.Message, currentUser: SystemOrganization);
+                await LogAccountingErrorAsync(trigger: "LinensAndTowels", organizationId: organizationId, officeId: monthlyAgreement.OfficeId, sourceTypeId: (int)SourceType.LinensAndTowels, sourceId: monthlyAgreement.PropertyId, documentCode: $"Property-{monthlyAgreement.PropertyId}", accountingPeriod: null, amount: monthlyAgreement.LinenAndTowelFee, message: ex.Message, currentUser: SystemConstants.SystemOrganizationId);
             }
         }
 
@@ -40,7 +41,7 @@ public partial class AccountingManager
                 }
                 catch (Exception ex)
                 {
-                    await LogAccountingErrorAsync(trigger: "LinensAndTowels", organizationId: organizationId, officeId: annualAgreement.OfficeId, sourceTypeId: (int)SourceType.LinensAndTowels, sourceId: annualAgreement.PropertyId, documentCode: $"Property-{annualAgreement.PropertyId}", accountingPeriod: null, amount: annualAgreement.LinenAndTowelFee, message: ex.Message, currentUser: SystemOrganization);
+                    await LogAccountingErrorAsync(trigger: "LinensAndTowels", organizationId: organizationId, officeId: annualAgreement.OfficeId, sourceTypeId: (int)SourceType.LinensAndTowels, sourceId: annualAgreement.PropertyId, documentCode: $"Property-{annualAgreement.PropertyId}", accountingPeriod: null, amount: annualAgreement.LinenAndTowelFee, message: ex.Message, currentUser: SystemConstants.SystemOrganizationId);
                 }
             }
         }
@@ -161,7 +162,7 @@ public partial class AccountingManager
             Debit = ownerApDebit,
             Credit = ownerApCredit,
             Memo = ownerLineMemo,
-            CreatedBy = SystemOrganization
+            CreatedBy = SystemConstants.SystemOrganizationId
         };
         ApplyJournalEntryLineContext(ownerApLine, lineContext);
 
@@ -171,7 +172,7 @@ public partial class AccountingManager
             Debit = incomeDebit,
             Credit = incomeCredit,
             Memo = incomeLineMemo,
-            CreatedBy = SystemOrganization
+            CreatedBy = SystemConstants.SystemOrganizationId
         };
         ApplyJournalEntryLineContext(incomeLine, lineContext);
 
@@ -188,7 +189,7 @@ public partial class AccountingManager
                 ownerApLine,
                 incomeLine
             ],
-            CreatedBy = SystemOrganization
+            CreatedBy = SystemConstants.SystemOrganizationId
         },
             reverseEntryDirection ? JournalEntryKind.LinenTowelUnusedReversal : JournalEntryKind.LinenTowelFee,
             Perspective.Company);

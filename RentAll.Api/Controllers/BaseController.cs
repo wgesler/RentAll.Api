@@ -1,5 +1,6 @@
 using RentAll.Api.Dtos.Accounting.ClosedDate;
 using RentAll.Api.Logging;
+using RentAll.Domain.Constants;
 using RentAll.Domain.Interfaces.Repositories;
 using System.Text;
 using System.Text.Json;
@@ -11,7 +12,9 @@ namespace RentAll.Api.Controllers
     {
         private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups, string Properties)? _cachedUserInfo;
 
-        protected static readonly Guid SuperAdminOrganizationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+        protected static readonly Guid SystemUserId = SystemConstants.SystemUserId;
+        protected static readonly Guid SystemOrganizationId = SystemConstants.SystemOrganizationId;
+        protected static readonly Guid SuperAdminOrganizationId = SystemConstants.SystemOrganizationId;
 
         protected Guid CurrentUser => GetUserInfoFromJwt().UserId;
         protected Guid CurrentOrganizationId => GetUserInfoFromJwt().OrganizationId;

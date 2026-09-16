@@ -1,4 +1,5 @@
 using RentAll.Domain.Configuration;
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
@@ -13,8 +14,6 @@ public partial class AccountingManager : IAccountingManager
 {
     private readonly record struct OfficeContextCacheKey(Guid OrganizationId, int OfficeId);
     private readonly record struct AccountResolverCacheKey(int ChartContextId, int OfficeId, string ResolverKey, string CostCodeKey);
-
-    private readonly Guid SystemOrganization = Guid.Parse("99999999-9999-9999-9999-999999999999");
 
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IPropertyRepository _propertyRepository;

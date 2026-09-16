@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -50,7 +51,7 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                await LogAccountingErrorAsync(trigger: "Departures", organizationId: organizationId, officeId: reservation.OfficeId, sourceTypeId: (int)SourceType.Reservation, sourceId: reservation.ReservationId, documentCode: reservation.ReservationCode, accountingPeriod: reservation.DepartureDate, amount: null, message: ex.Message, currentUser: SystemOrganization);
+                await LogAccountingErrorAsync(trigger: "Departures", organizationId: organizationId, officeId: reservation.OfficeId, sourceTypeId: (int)SourceType.Reservation, sourceId: reservation.ReservationId, documentCode: reservation.ReservationCode, accountingPeriod: reservation.DepartureDate, amount: null, message: ex.Message, currentUser: SystemConstants.SystemOrganizationId);
             }
         }
     }
@@ -152,7 +153,7 @@ public partial class AccountingManager
                     Debit = departureFeeAmount,
                     Credit = 0m,
                     Memo = BuildDepartureFeeMemo(reservation.ReservationCode),
-                    CreatedBy = SystemOrganization
+                    CreatedBy = SystemConstants.SystemOrganizationId
                 };
                 ApplyJournalEntryLineContext(departureExpenseLine, lineContext);
                 journalEntryLines.Add(departureExpenseLine);
@@ -163,7 +164,7 @@ public partial class AccountingManager
                     Debit = 0m,
                     Credit = departureFeeAmount,
                     Memo = BuildDepartureFeeIncomeMemo(reservation.ReservationCode),
-                    CreatedBy = SystemOrganization
+                    CreatedBy = SystemConstants.SystemOrganizationId
                 };
                 ApplyJournalEntryLineContext(departureIncomeLine, lineContext);
                 journalEntryLines.Add(departureIncomeLine);
@@ -183,7 +184,7 @@ public partial class AccountingManager
                     Debit = petFeeAmount,
                     Credit = 0m,
                     Memo = BuildPetFeeMemo(reservation.ReservationCode),
-                    CreatedBy = SystemOrganization
+                    CreatedBy = SystemConstants.SystemOrganizationId
                 };
                 ApplyJournalEntryLineContext(petExpenseLine, lineContext);
                 journalEntryLines.Add(petExpenseLine);
@@ -194,7 +195,7 @@ public partial class AccountingManager
                     Debit = 0m,
                     Credit = petFeeAmount,
                     Memo = BuildPetFeeMemo(reservation.ReservationCode),
-                    CreatedBy = SystemOrganization
+                    CreatedBy = SystemConstants.SystemOrganizationId
                 };
                 ApplyJournalEntryLineContext(petIncomeLine, lineContext);
                 journalEntryLines.Add(petIncomeLine);
@@ -215,7 +216,7 @@ public partial class AccountingManager
             SourceCode = ResolveJournalEntrySourceCodeFromReservation(reservation),
             Memo = BuildDeparturesMemo(reservation.ReservationCode),
             JournalEntryLines = journalEntryLines,
-            CreatedBy = SystemOrganization
+            CreatedBy = SystemConstants.SystemOrganizationId
         }, JournalEntryKind.DepartureFee, Perspective.Company);
     }
     #endregion

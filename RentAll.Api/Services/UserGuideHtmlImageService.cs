@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Interfaces.Services;
 using System.Text.RegularExpressions;
 
@@ -5,7 +6,6 @@ namespace RentAll.Api.Services;
 
 public partial class UserGuideHtmlImageService
 {
-    private static readonly Guid SystemUserGuideOrganizationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
     public const string ImagePathAttribute = "data-rentall-guide-path";
 
     private readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -51,7 +51,7 @@ public partial class UserGuideHtmlImageService
                 continue;
 
             var fileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                SystemUserGuideOrganizationId,
+                SystemConstants.SystemOrganizationId,
                 null,
                 storagePath,
                 ImageType.UserGuide).ConfigureAwait(false);

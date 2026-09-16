@@ -5,8 +5,6 @@ namespace RentAll.Api.Controllers;
 
 public partial class TicketController
 {
-    private static readonly Guid ExternalTicketSystemUserId = new("99999999-9999-9999-9999-999999999999");
-
     #region Create
     [AllowAnonymous]
     [HttpPost("external")]
@@ -33,7 +31,7 @@ public partial class TicketController
                 return BadRequest("Invalid OfficeId for OrganizationId");
 
             var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Ticket);
-            var ticket = dto.ToModel(code, ExternalTicketSystemUserId);
+            var ticket = dto.ToModel(code, SystemUserId);
 
             var created = await _ticketRepository.CreateTicketAsync(ticket);
             return Ok(new TicketResponseDto(created));

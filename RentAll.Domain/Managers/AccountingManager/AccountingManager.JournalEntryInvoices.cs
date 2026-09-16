@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -1039,7 +1040,7 @@ public partial class AccountingManager
         if (!invoice.ReservationId.HasValue || invoice.ReservationId == Guid.Empty)
             return null;
 
-        if (invoice.ReservationId == SystemOrganization)
+        if (invoice.ReservationId == SystemConstants.SystemOrganizationId)
             return null;
 
         var reservation = await _reservationRepository.GetReservationByIdAsync(invoice.ReservationId.Value, invoice.OrganizationId);

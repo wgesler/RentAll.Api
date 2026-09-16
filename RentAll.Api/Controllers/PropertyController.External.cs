@@ -6,8 +6,6 @@ namespace RentAll.Api.Controllers;
 
 public partial class PropertyController
 {
-    private static readonly Guid ExternalPropertySystemUserId = new("99999999-9999-9999-9999-999999999999");
-
     [AllowAnonymous]
     [HttpPost("external")]
     public async Task<IActionResult> CreateExternalProperty([FromBody] CreateExternalPropertyRequestDto dto)
@@ -433,7 +431,7 @@ public partial class PropertyController
                     attempt);
             }
 
-            var createdProperty = await _propertyRepository.CreateAsync(createDto.ToModel(ExternalPropertySystemUserId));
+            var createdProperty = await _propertyRepository.CreateAsync(createDto.ToModel(SystemUserId));
             var createdResponse = new PropertyResponseDto(createdProperty);
             return new ExternalPropertyUpsertResult(
                 true,
@@ -470,9 +468,9 @@ public partial class PropertyController
         if (!updateIsValid)
             return (null, updateErrorMessage ?? "Invalid request data");
 
-        var property = updateDto.ToModel(ExternalPropertySystemUserId);
+        var property = updateDto.ToModel(SystemUserId);
         if (existingProperty.OfficeId != updateDto.OfficeId)
-            await _propertyManager.UpdatePropertyOfficeAsync(property, ExternalPropertySystemUserId);
+            await _propertyManager.UpdatePropertyOfficeAsync(property, SystemUserId);
 
         var updatedProperty = await _propertyRepository.UpdateByIdAsync(property);
         return (updatedProperty, null);

@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -66,7 +67,7 @@ public partial class AccountingManager
             }
             catch (Exception ex)
             {
-                await LogAccountingErrorAsync(trigger: "RetainedEarnings", organizationId: organizationId, officeId: accountingOffice.OfficeId, sourceTypeId: (int)SourceType.Journal, sourceId: null, documentCode: $"Office-{accountingOffice.OfficeId}", accountingPeriod: processingDate, amount: null, message: ex.Message, currentUser: SystemOrganization);
+                await LogAccountingErrorAsync(trigger: "RetainedEarnings", organizationId: organizationId, officeId: accountingOffice.OfficeId, sourceTypeId: (int)SourceType.Journal, sourceId: null, documentCode: $"Office-{accountingOffice.OfficeId}", accountingPeriod: processingDate, amount: null, message: ex.Message, currentUser: SystemConstants.SystemOrganizationId);
             }
         }
     }
@@ -259,7 +260,7 @@ public partial class AccountingManager
                 SourceTypeId = (int)SourceType.Journal,
                 Memo = BuildRetainedEarningsMemo(processingDate),
                 JournalEntryLines = [],
-                CreatedBy = SystemOrganization
+                CreatedBy = SystemConstants.SystemOrganizationId
             }, JournalEntryKind.RetainedEarnings, Perspective.System);
         }
 
@@ -271,7 +272,7 @@ public partial class AccountingManager
                 Debit = 0m,
                 Credit = netIncome,
                 Memo = BuildRetainedEarningsMemo(processingDate),
-                CreatedBy = SystemOrganization
+                CreatedBy = SystemConstants.SystemOrganizationId
             });
         }
         else if (netIncome < 0m)
@@ -282,7 +283,7 @@ public partial class AccountingManager
                 Debit = Math.Abs(netIncome),
                 Credit = 0m,
                 Memo = BuildRetainedEarningsMemo(processingDate),
-                CreatedBy = SystemOrganization
+                CreatedBy = SystemConstants.SystemOrganizationId
             });
         }
 
@@ -295,7 +296,7 @@ public partial class AccountingManager
             SourceTypeId = (int)SourceType.Journal,
             Memo = BuildRetainedEarningsMemo(processingDate),
             JournalEntryLines = journalEntryLines,
-            CreatedBy = SystemOrganization
+            CreatedBy = SystemConstants.SystemOrganizationId
         }, JournalEntryKind.RetainedEarnings, Perspective.System);
     }
 
@@ -322,7 +323,7 @@ public partial class AccountingManager
             Debit = debit,
             Credit = credit,
             Memo = BuildRetainedEarningsAccountCloseMemo(account),
-            CreatedBy = SystemOrganization
+            CreatedBy = SystemConstants.SystemOrganizationId
         };
     }
     #endregion
@@ -356,7 +357,7 @@ public partial class AccountingManager
                 accountingPeriod: journalEntry.TransactionDate,
                 amount: null,
                 message: ex.Message,
-                currentUser: SystemOrganization);
+                currentUser: SystemConstants.SystemOrganizationId);
         }
     }
 
@@ -556,7 +557,7 @@ public partial class AccountingManager
         rebuilt.IsCashOnly = existing.IsCashOnly;
         rebuilt.Memo = existing.Memo;
         rebuilt.CreatedBy = existing.CreatedBy;
-        rebuilt.ModifiedBy = SystemOrganization;
+        rebuilt.ModifiedBy = SystemConstants.SystemOrganizationId;
     }
 
     private static bool RetainedEarningsJournalEntryLinesMatch(JournalEntry existing, JournalEntry rebuilt)

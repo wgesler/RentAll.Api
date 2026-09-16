@@ -269,7 +269,7 @@ public partial class AccountingManager
         if ((!contactId.HasValue || contactName == null)
             && invoice.ReservationId is { } reservationId
             && reservationId != Guid.Empty
-            && reservationId != SystemOrganization)
+            && reservationId != SystemConstants.SystemOrganizationId)
         {
             reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
             if (reservation != null && !contactId.HasValue)
