@@ -85,7 +85,6 @@ public static class ExternalPropertyPatchMerger
         var presentFields = GetPresentFields(body);
         var updateDto = UpdatePropertyDto.FromProperty(existing);
         updateDto.OfficeId = keys.OfficeId;
-        updateDto.VendorId = keys.VendorId;
 
         if (presentFields.Contains("address1"))
         {
@@ -155,6 +154,14 @@ public static class ExternalPropertyPatchMerger
                 return (false, null, "SquareFeet must be >= 0");
 
             updateDto.SquareFeet = squareFeet;
+        }
+
+        if (presentFields.Contains("propertyLeaseTypeId"))
+        {
+            if (!TryGetInt(body, "propertyLeaseTypeId", out var propertyLeaseTypeId) || !Enum.IsDefined(typeof(PropertyLeaseType), propertyLeaseTypeId))
+                return (false, null, $"Invalid PropertyLeaseTypeId value: {propertyLeaseTypeId}");
+
+            updateDto.PropertyLeaseTypeId = propertyLeaseTypeId;
         }
 
         if (presentFields.Contains("propertyStyleId"))

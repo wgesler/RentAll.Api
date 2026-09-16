@@ -1,11 +1,16 @@
+using RentAll.Api.Dtos.Properties.PropertyPhotos;
+
 namespace RentAll.Api.Dtos.Properties.Properties;
 
 public class CreateExternalPropertyDto
 {
-    public Guid OrganizationId { get; set; }
-    public int OfficeId { get; set; }
-    public Guid VendorId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
+    public int PropertyLeaseTypeId { get; set; }
+    public ExternalPropertyContactDto? Owner1 { get; set; }
+    public ExternalPropertyContactDto? Owner2 { get; set; }
+    public ExternalPropertyContactDto? Owner3 { get; set; }
+    public ExternalPropertyContactDto? Vendor { get; set; }
+    public List<ExternalPropertyPhotoUrlItemDto>? Photos { get; set; }
 
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -87,14 +92,56 @@ public class CreateExternalPropertyDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
+        if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId))
+            return (false, $"Invalid PropertyLeaseTypeId value: {PropertyLeaseTypeId}");
 
-        if (OfficeId <= 0)
-            return (false, "OfficeId is required");
+        var leaseType = (PropertyLeaseType)PropertyLeaseTypeId;
+        if (leaseType == PropertyLeaseType.PropertyManagement)
+        {
+            if (Owner1 == null)
+                return (false, "Owner1 is required for PropertyManagement lease type");
 
-        if (VendorId == Guid.Empty)
-            return (false, "VendorId is required");
+            var owner1Validation = Owner1.IsValid("Owner1");
+            if (!owner1Validation.IsValid)
+                return (false, owner1Validation.ErrorMessage);
+
+            if (Vendor != null)
+                return (false, "Vendor is not allowed for PropertyManagement lease type");
+        }
+        else if (leaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty)
+        {
+            if (Vendor == null)
+                return (false, "Vendor is required for Direct and ThirdParty lease types");
+
+            var vendorValidation = Vendor.IsValid("Vendor");
+            if (!vendorValidation.IsValid)
+                return (false, vendorValidation.ErrorMessage);
+        }
+
+        if (Owner2 != null)
+        {
+            var owner2Validation = Owner2.IsValid("Owner2");
+            if (!owner2Validation.IsValid)
+                return (false, owner2Validation.ErrorMessage);
+        }
+
+        if (Owner3 != null)
+        {
+            var owner3Validation = Owner3.IsValid("Owner3");
+            if (!owner3Validation.IsValid)
+                return (false, owner3Validation.ErrorMessage);
+        }
+
+        if (Owner1 != null && leaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty)
+        {
+            var owner1Validation = Owner1.IsValid("Owner1");
+            if (!owner1Validation.IsValid)
+                return (false, owner1Validation.ErrorMessage);
+        }
+
+        var (photosAreValid, photosError) = ExternalPropertyPhotosValidator.ValidatePhotos(Photos);
+        if (!photosAreValid)
+            return (false, photosError);
 
         if (string.IsNullOrWhiteSpace(PropertyCode))
             return (false, "PropertyCode is required");
@@ -175,14 +222,40 @@ public class CreateExternalPropertyDto
         return (true, null);
     }
 
-    public CreatePropertyDto ToCreatePropertyDto(string propertyCode)
+    public static (bool IsValid, string? ErrorMessage) ValidateLeaseTypeContacts(int propertyLeaseTypeId, Guid? owner1Id, Guid? propertyVendorContactId, bool vendorContactInRequest)
+    {
+        if (!Enum.IsDefined(typeof(PropertyLeaseType), propertyLeaseTypeId))
+            return (false, $"Invalid PropertyLeaseTypeId value: {propertyLeaseTypeId}");
+
+        var leaseType = (PropertyLeaseType)propertyLeaseTypeId;
+        if (leaseType == PropertyLeaseType.PropertyManagement)
+        {
+            if (owner1Id == null || owner1Id == Guid.Empty)
+                return (false, "Owner1 is required for PropertyManagement lease type");
+
+            if (vendorContactInRequest || (propertyVendorContactId != null && propertyVendorContactId != Guid.Empty))
+                return (false, "Vendor is not allowed for PropertyManagement lease type");
+        }
+        else if (leaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty)
+        {
+            if (propertyVendorContactId == null || propertyVendorContactId == Guid.Empty)
+                return (false, "Vendor is required for Direct and ThirdParty lease types");
+        }
+
+        return (true, null);
+    }
+
+    public CreatePropertyDto ToCreatePropertyDto(string propertyCode, ExternalPropertyIntakeContext context, Guid? owner1Id, Guid? owner2Id, Guid? owner3Id, Guid? propertyVendorContactId)
     {
         return new CreatePropertyDto
         {
-            OrganizationId = OrganizationId,
+            OrganizationId = context.OrganizationId,
             PropertyCode = propertyCode,
-            PropertyLeaseTypeId = (int)PropertyLeaseType.Direct,
-            VendorId = VendorId,
+            PropertyLeaseTypeId = PropertyLeaseTypeId,
+            Owner1Id = owner1Id,
+            Owner2Id = owner2Id,
+            Owner3Id = owner3Id,
+            VendorId = propertyVendorContactId,
             IsActive = IsActive ?? true,
             MinStay = MinStay ?? 0,
             MaxStay = MaxStay ?? 0,
@@ -193,7 +266,7 @@ public class CreateExternalPropertyDto
             PropertyStatusId = (int)PropertyStatus.Vacant,
             NoticeToVacateId = 0,
             NoticeStatusId = (int)NoticeStatusType.None,
-            OfficeId = OfficeId,
+            OfficeId = context.OfficeId,
             Latitude = 0m,
             Longitude = 0m,
             ExternalCalendar = TrimOrNull(ExternalCalendar),
@@ -261,14 +334,18 @@ public class CreateExternalPropertyDto
         };
     }
 
-    public UpdatePropertyDto ToUpdatePropertyDto(Property existingProperty, string propertyCode)
+    public UpdatePropertyDto ToUpdatePropertyDto(Property existingProperty, string propertyCode, ExternalPropertyIntakeContext context, Guid? owner1Id, Guid? owner2Id, Guid? owner3Id, Guid? propertyVendorContactId)
     {
         var updateDto = UpdatePropertyDto.FromProperty(existingProperty);
-        updateDto.OrganizationId = OrganizationId;
+        updateDto.OrganizationId = context.OrganizationId;
         updateDto.PropertyId = existingProperty.PropertyId;
         updateDto.PropertyCode = propertyCode;
-        updateDto.VendorId = VendorId;
-        updateDto.OfficeId = OfficeId;
+        updateDto.VendorId = propertyVendorContactId;
+        updateDto.OfficeId = context.OfficeId;
+        updateDto.PropertyLeaseTypeId = PropertyLeaseTypeId;
+        updateDto.Owner1Id = owner1Id;
+        updateDto.Owner2Id = owner2Id;
+        updateDto.Owner3Id = owner3Id;
 
         if (IsActive.HasValue)
             updateDto.IsActive = IsActive.Value;

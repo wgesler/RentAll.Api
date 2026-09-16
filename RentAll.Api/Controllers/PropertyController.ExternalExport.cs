@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
+using RentAll.Domain.Models;
+using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Api.Controllers;
 
@@ -7,7 +10,7 @@ public partial class PropertyController
 {
     [AllowAnonymous]
     [HttpGet("external")]
-    public async Task<IActionResult> GetExternalPropertiesAsync([FromQuery] ExternalPropertyOrganizationQueryDto query)
+    public async Task<IActionResult> GetExternalPropertiesAsync([FromQuery] ExternalPropertyExportQueryDto query)
     {
         if (query == null)
             return BadRequest("Query parameters are required");
@@ -16,27 +19,57 @@ public partial class PropertyController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        var accessError = await ValidateExternalPropertyOrganizationAccessAsync(query.OrganizationId);
+        var accessError = await ValidateExternalPropertyAccessAsync(query.OrganizationId, query.OfficeId);
         if (accessError != null)
             return accessError;
 
         try
         {
-            var properties = (await _propertyRepository.GetExternalExportListByOrganizationIdAsync(query.OrganizationId))
-                .Select(property => new ExternalPropertyListResponseDto(property))
+            var exportProperties = (await _propertyRepository.GetExternalExportListByOrganizationIdAsync(query.OrganizationId))
+                .Where(property => property.OfficeId == query.OfficeId)
                 .ToList();
 
             if (await HasPartnerIntegrationAccessAsync(query.OrganizationId))
             {
-                var partnerProperties = await _partnerRepository.GetExternalExportListAsync();
-                properties.AddRange(partnerProperties.Select(property => new ExternalPropertyListResponseDto(property)));
+                var partnerProperties = (await _partnerRepository.GetExternalExportListAsync())
+                    .Where(property => property.OfficeId == query.OfficeId);
+                exportProperties.AddRange(partnerProperties);
             }
 
-            return Ok(properties.OrderBy(property => property.PropertyCode));
+            var primaryPhotos = (await _propertyRepository.GetPrimaryPropertyPhotosByPropertyIdsAsync(
+                exportProperties.Select(property => property.PropertyId).ToList()))
+                .ToDictionary(photo => photo.PropertyId);
+
+            var properties = new List<ExternalPropertyExportItemDto>();
+            foreach (var exportProperty in exportProperties.OrderBy(property => property.PropertyCode))
+            {
+                var propertyDto = ExternalPropertyExportItemDto.FromExportList(exportProperty);
+                if (primaryPhotos.TryGetValue(exportProperty.PropertyId, out var primaryPhoto))
+                {
+                    propertyDto.PrimaryPhotoUrl = await ResolveExternalPrimaryPhotoUrlAsync(
+                        exportProperty.OrganizationId,
+                        exportProperty.OfficeName,
+                        exportProperty.PropertyCode,
+                        primaryPhoto);
+                }
+
+                properties.Add(propertyDto);
+            }
+
+            return Ok(new ExternalPropertyExportResponseDto
+            {
+                OrganizationId = query.OrganizationId,
+                OfficeId = query.OfficeId,
+                Properties = properties
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting external property export list. OrganizationId={OrganizationId}", query.OrganizationId);
+            _logger.LogError(
+                ex,
+                "Error getting external property export list. OrganizationId={OrganizationId}, OfficeId={OfficeId}",
+                query.OrganizationId,
+                query.OfficeId);
             return ServerError("An error occurred while retrieving properties");
         }
     }
@@ -45,7 +78,7 @@ public partial class PropertyController
     [HttpGet("external/{propertyCode}")]
     public async Task<IActionResult> GetExternalPropertyByCodeAsync(
         string propertyCode,
-        [FromQuery] ExternalPropertyOrganizationQueryDto query)
+        [FromQuery] ExternalPropertyExportQueryDto query)
     {
         if (query == null)
             return BadRequest("Query parameters are required");
@@ -57,7 +90,7 @@ public partial class PropertyController
         if (string.IsNullOrWhiteSpace(propertyCode))
             return BadRequest("PropertyCode is required");
 
-        var accessError = await ValidateExternalPropertyOrganizationAccessAsync(query.OrganizationId);
+        var accessError = await ValidateExternalPropertyAccessAsync(query.OrganizationId, query.OfficeId);
         if (accessError != null)
             return accessError;
 
@@ -65,17 +98,35 @@ public partial class PropertyController
         {
             var includePartners = await HasPartnerIntegrationAccessAsync(query.OrganizationId);
             var property = await ResolveExternalExportPropertyAsync(query.OrganizationId, propertyCode.Trim(), includePartners);
-            if (property == null)
+            if (property == null || property.OfficeId != query.OfficeId)
                 return NotFound("Property not found");
 
-            return Ok(new ExternalPropertyResponseDto(property));
+            var propertyDto = ExternalPropertyExportItemDto.FromProperty(property);
+            var primaryPhotos = await _propertyRepository.GetPrimaryPropertyPhotosByPropertyIdsAsync([property.PropertyId]);
+            var primaryPhoto = primaryPhotos.FirstOrDefault();
+            if (primaryPhoto != null)
+            {
+                propertyDto.PrimaryPhotoUrl = await ResolveExternalPrimaryPhotoUrlAsync(
+                    property.OrganizationId,
+                    property.OfficeName,
+                    property.PropertyCode,
+                    primaryPhoto);
+            }
+
+            return Ok(new ExternalPropertyExportResponseDto
+            {
+                OrganizationId = query.OrganizationId,
+                OfficeId = query.OfficeId,
+                Properties = [propertyDto]
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
-                "Error getting external property export detail. OrganizationId={OrganizationId}, PropertyCode={PropertyCode}",
+                "Error getting external property export detail. OrganizationId={OrganizationId}, OfficeId={OfficeId}, PropertyCode={PropertyCode}",
                 query.OrganizationId,
+                query.OfficeId,
                 propertyCode);
             return ServerError("An error occurred while retrieving the property");
         }
@@ -108,22 +159,31 @@ public partial class PropertyController
             if (property == null)
                 return NotFound("Property not found");
 
-            var listingScope = BuildListingPhotoScope(property.OfficeName, property.PropertyCode);
             var photos = await _propertyRepository.GetPropertyPhotosByPropertyIdAsync(property.PropertyId);
-            var response = new List<PropertyPhotoResponseDto>();
+            var photoItems = new List<ExternalPropertyPhotoUrlItemDto>();
 
-            foreach (var photo in photos)
+            foreach (var photo in photos.OrderBy(item => item.Order).ThenBy(item => item.PhotoId))
             {
-                var photoResponse = new PropertyPhotoResponseDto(photo);
-                photoResponse.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+                var url = await ResolveExternalPrimaryPhotoUrlAsync(
                     property.OrganizationId,
-                    listingScope,
-                    photo.PhotoPath,
-                    ImageType.Photos);
-                response.Add(photoResponse);
+                    property.OfficeName,
+                    property.PropertyCode,
+                    photo);
+                if (string.IsNullOrWhiteSpace(url))
+                    continue;
+
+                photoItems.Add(new ExternalPropertyPhotoUrlItemDto
+                {
+                    Url = url,
+                    SortOrder = photo.Order
+                });
             }
 
-            return Ok(response);
+            return Ok(new ExternalPropertyPhotosExportResponseDto
+            {
+                PropertyCode = property.PropertyCode,
+                Photos = photoItems
+            });
         }
         catch (Exception ex)
         {
@@ -163,4 +223,34 @@ public partial class PropertyController
         property != null
         && property.IsActive
         && !property.OfflineChecked;
+
+    private async Task<string?> ResolveExternalPrimaryPhotoUrlAsync(
+        Guid organizationId,
+        string? officeName,
+        string propertyCode,
+        PropertyPhoto primaryPhoto)
+    {
+        var listingScope = BuildListingPhotoScope(officeName, propertyCode);
+        var fileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
+            organizationId,
+            listingScope,
+            primaryPhoto.PhotoPath,
+            ImageType.Photos);
+
+        if (fileDetails != null && !string.IsNullOrWhiteSpace(fileDetails.DataUrl))
+            return fileDetails.DataUrl;
+
+        if (string.IsNullOrWhiteSpace(primaryPhoto.PhotoPath))
+            return null;
+
+        var normalizedPath = primaryPhoto.PhotoPath.Trim().Replace("\\", "/");
+        if (Uri.TryCreate(normalizedPath, UriKind.Absolute, out var absoluteUri))
+            return absoluteUri.ToString();
+
+        if (!normalizedPath.StartsWith('/'))
+            normalizedPath = "/" + normalizedPath;
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+        return $"{baseUrl}{normalizedPath}";
+    }
 }

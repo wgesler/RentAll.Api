@@ -1,122 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
 using RentAll.Api.Services;
-using RentAll.Domain.Models.Properties;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Controllers;
 
 public partial class PropertyController
 {
-    [AllowAnonymous]
-    [HttpPost("external/{propertyCode}/photos")]
-    public async Task<IActionResult> AddExternalPropertyPhotosAsync(string propertyCode, [FromBody] CreateExternalPropertyPhotosBatchDto dto)
-    {
-        if (dto == null)
-            return BadRequest("Photo data is required");
-
-        var attempt = new ExternalPropertyApiAttemptLog
-        {
-            OrganizationId = dto.OrganizationId,
-            OfficeId = dto.OfficeId,
-            VendorId = dto.VendorId,
-            PropertyCode = dto.PropertyCode?.Trim(),
-            EventType = PropertyUploadLogEvents.PhotoImportQueue,
-            Operation = PropertyUploadLogOperations.QueuePhotoImport
-        };
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return await CompleteExternalPropertyAttemptAsync(BadRequest(errorMessage ?? "Invalid request data"), attempt, errorMessage);
-
-        var routeError = ValidateExternalPropertyCodeRoute(propertyCode, dto.PropertyCode);
-        if (routeError != null)
-            return await CompleteExternalPropertyAttemptAsync(BadRequest(routeError), attempt, routeError);
-
-        var accessError = await ValidateExternalPropertyAccessAsync(dto.OrganizationId, dto.OfficeId);
-        if (accessError != null)
-            return await CompleteExternalPropertyAttemptAsync(accessError, attempt);
-
-        try
-        {
-            var keys = dto.ToKeyDto();
-            var (property, propertyError) = await ResolveExternalPropertyForPhotoAsync(keys);
-            if (property == null)
-            {
-                var notFoundResult = propertyError ?? NotFound("Property not found");
-                return await CompleteExternalPropertyAttemptAsync(notFoundResult, attempt, "Property not found");
-            }
-
-            var importId = Guid.NewGuid();
-            var import = new PropertyPhotoImport
-            {
-                ImportId = importId,
-                OrganizationId = keys.OrganizationId,
-                OfficeId = keys.OfficeId,
-                VendorId = keys.VendorId,
-                PropertyId = property.PropertyId,
-                PropertyCode = keys.PropertyCode,
-                Status = PropertyPhotoImportStatus.Pending
-            };
-
-            var items = dto.Photos
-                .Select((photo, index) => new PropertyPhotoImportItem
-                {
-                    ImportId = importId,
-                    ItemIndex = index,
-                    Url = photo.Url.Trim(),
-                    SortOrder = photo.SortOrder,
-                    Status = PropertyPhotoImportItemStatus.Pending
-                })
-                .ToList();
-
-            await _propertyRepository.CreatePropertyPhotoImportAsync(import, items);
-
-            await _externalPropertyUploadLogService.LogPhotoImportQueuedAsync(
-                keys.OrganizationId,
-                keys.OfficeId,
-                keys.VendorId,
-                property.PropertyId,
-                keys.PropertyCode,
-                importId,
-                items.Count);
-
-            return await CompleteExternalPropertyAttemptAsync(
-                Accepted(new ExternalPropertyPhotoImportCreatedResponseDto
-                {
-                    ImportId = importId,
-                    PropertyCode = keys.PropertyCode,
-                    PropertyId = property.PropertyId,
-                    Status = PropertyPhotoImportStatus.Pending.ToString(),
-                    PhotoCount = items.Count
-                }),
-                new ExternalPropertyApiAttemptLog
-                {
-                    OrganizationId = keys.OrganizationId,
-                    OfficeId = keys.OfficeId,
-                    VendorId = keys.VendorId,
-                    PropertyId = property.PropertyId,
-                    PropertyCode = keys.PropertyCode,
-                    ImportId = importId,
-                    EventType = PropertyUploadLogEvents.PhotoImportQueue,
-                    Operation = PropertyUploadLogOperations.QueuePhotoImport
-                },
-                $"Queued {items.Count} photo URL(s). ImportId={importId}.",
-                property.PropertyId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error queueing external property photo import. OrganizationId={OrganizationId}, OfficeId={OfficeId}, PropertyCode={PropertyCode}, VendorId={VendorId}, PhotoCount={PhotoCount}",
-                dto.OrganizationId,
-                dto.OfficeId,
-                dto.PropertyCode,
-                dto.VendorId,
-                dto.Photos.Count);
-            return await CompleteExternalPropertyAttemptAsync(ServerError("An error occurred while queueing property photos"), attempt, ex.Message);
-        }
-    }
-
     [AllowAnonymous]
     [HttpGet("external/{propertyCode}/photos/import/{importId:guid}")]
     public async Task<IActionResult> GetExternalPropertyPhotoImportStatusAsync(
@@ -243,18 +133,5 @@ public partial class PropertyController
             return "PropertyCode in URL must match PropertyCode in body";
 
         return null;
-    }
-
-    private async Task<(Property? Property, IActionResult? ErrorResult)> ResolveExternalPropertyForPhotoAsync(ExternalPropertyKeyDto keys)
-    {
-        var (property, isExactMatch, errorResult) = await ResolveExternalPropertyByKeysAsync(keys);
-        if (errorResult != null)
-            return (null, errorResult);
-
-        if (!isExactMatch || property == null)
-            return (null, NotFound("Property not found"));
-
-        SetApplicationLogContext(keys.OrganizationId, keys.OfficeId);
-        return (property, null);
     }
 }

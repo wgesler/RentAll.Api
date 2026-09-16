@@ -1,3 +1,5 @@
+using RentAll.Api.Dtos.Properties.PropertyPhotos;
+
 namespace RentAll.Api.Dtos.Properties.Properties;
 
 public class ExternalPropertyBatchItemResultDto
@@ -8,6 +10,8 @@ public class ExternalPropertyBatchItemResultDto
     public bool Updated { get; set; }
     public string? ErrorMessage { get; set; }
     public PropertyResponseDto? Property { get; set; }
+    public ExternalPropertyPhotoImportCreatedResponseDto? PhotoImport { get; set; }
+    public string? PhotoImportError { get; set; }
 }
 
 public class ExternalPropertyBatchResponseDto

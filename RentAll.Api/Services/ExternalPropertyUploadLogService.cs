@@ -17,7 +17,7 @@ public static class PropertyUploadLogOperations
 {
     public const string CreateProperty = "POST /property/external";
     public const string UpdateProperty = "PUT /property/external";
-    public const string QueuePhotoImport = "POST /property/external/{propertyCode}/photos";
+    public const string QueuePhotoImport = "POST|PUT /property/external (photos)";
     public const string GetPhotoImportStatus = "GET /property/external/{propertyCode}/photos/import/{importId}";
 }
 

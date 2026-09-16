@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Dtos.Properties.PropertyPhotos;
 using RentAll.Api.Services;
 using System.Text.Json;
 
@@ -17,24 +18,44 @@ public partial class PropertyController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        var organizationAccessError = await ValidateExternalPropertyRequestOrganizationAsync(dto.Properties);
+        var organizationAccessError = await ValidateExternalPropertyOrganizationAccessAsync(dto.OrganizationId);
         if (organizationAccessError != null)
             return organizationAccessError;
 
-        return Ok(await ProcessExternalPropertyUpsertsAsync(dto.Properties, PropertyUploadLogOperations.CreateProperty));
+        var accessError = await ValidateExternalPropertyAccessAsync(dto.OrganizationId, dto.OfficeId);
+        if (accessError != null)
+            return accessError;
+
+        var partnerError = await ValidateExternalPropertyPartnerAsync(dto.OrganizationId, dto.VendorId);
+        if (partnerError != null)
+            return partnerError;
+
+        return Ok(await ProcessExternalPropertyUpsertsAsync(dto.ToIntakeContext(), dto.Properties, PropertyUploadLogOperations.CreateProperty));
     }
 
     [AllowAnonymous]
     [HttpPut("external")]
     public async Task<IActionResult> UpdateExternalProperty([FromBody] JsonElement body)
     {
+        var (contextParsed, context, contextError) = ExternalPropertyOwnerContactResolver.TryParseIntakeContext(body);
+        if (!contextParsed || context == null)
+            return BadRequest(contextError ?? "Invalid request data");
+
         var (propertiesParsed, properties, parseError) = TryParseExternalPropertyRequestArray(body);
         if (!propertiesParsed || properties == null)
             return BadRequest(parseError ?? "Invalid request data");
 
-        var organizationAccessError = await ValidateExternalPropertyRequestOrganizationAsync(properties);
+        var organizationAccessError = await ValidateExternalPropertyOrganizationAccessAsync(context.OrganizationId);
         if (organizationAccessError != null)
             return organizationAccessError;
+
+        var accessError = await ValidateExternalPropertyAccessAsync(context.OrganizationId, context.OfficeId);
+        if (accessError != null)
+            return accessError;
+
+        var partnerError = await ValidateExternalPropertyPartnerAsync(context.OrganizationId, context.PartnerVendorId);
+        if (partnerError != null)
+            return partnerError;
 
         var response = new ExternalPropertyBatchResponseDto();
         for (var index = 0; index < properties.Count; index++)
@@ -42,7 +63,7 @@ public partial class PropertyController
             var propertyBody = properties[index];
             var itemResult = new ExternalPropertyBatchItemResultDto { Index = index };
 
-            var patchResult = await PatchExternalPropertyAsync(propertyBody, PropertyUploadLogOperations.UpdateProperty);
+            var patchResult = await PatchExternalPropertyAsync(propertyBody, context, PropertyUploadLogOperations.UpdateProperty);
             await CompleteExternalPropertyAttemptAsync(
                 patchResult.Success ? Ok(patchResult.Property) : BadRequest(patchResult.ErrorMessage),
                 patchResult.Attempt,
@@ -54,6 +75,28 @@ public partial class PropertyController
             itemResult.Updated = patchResult.Success;
             itemResult.ErrorMessage = patchResult.ErrorMessage;
             itemResult.Property = patchResult.Property;
+            itemResult.PhotoImport = patchResult.PhotoImport;
+            itemResult.PhotoImportError = patchResult.PhotoImportError;
+
+            if (patchResult.PhotoImport != null)
+            {
+                await CompleteExternalPropertyAttemptAsync(
+                    Accepted(patchResult.PhotoImport),
+                    new ExternalPropertyApiAttemptLog
+                    {
+                        OrganizationId = context.OrganizationId,
+                        OfficeId = context.OfficeId,
+                        VendorId = context.PartnerVendorId,
+                        PropertyId = patchResult.Property?.PropertyId,
+                        PropertyCode = patchResult.PropertyCode,
+                        ImportId = patchResult.PhotoImport.ImportId,
+                        EventType = PropertyUploadLogEvents.PhotoImportQueue,
+                        Operation = PropertyUploadLogOperations.QueuePhotoImport
+                    },
+                    $"Queued {patchResult.PhotoImport.PhotoCount} photo URL(s). ImportId={patchResult.PhotoImport.ImportId}.",
+                    patchResult.Property?.PropertyId);
+            }
+
             response.Results.Add(itemResult);
         }
 
@@ -63,6 +106,7 @@ public partial class PropertyController
     }
 
     private async Task<ExternalPropertyBatchResponseDto> ProcessExternalPropertyUpsertsAsync(
+        ExternalPropertyIntakeContext context,
         IReadOnlyList<CreateExternalPropertyDto> properties,
         string operation)
     {
@@ -76,15 +120,7 @@ public partial class PropertyController
                 PropertyCode = (propertyDto.PropertyCode ?? string.Empty).Trim()
             };
 
-            var accessError = await ValidateExternalPropertyAccessAsync(propertyDto.OrganizationId, propertyDto.OfficeId);
-            if (accessError != null)
-            {
-                itemResult.ErrorMessage = ExtractExternalPropertyAttemptDetail(accessError) ?? "Invalid request data";
-                response.Results.Add(itemResult);
-                continue;
-            }
-
-            var upsertResult = await UpsertExternalPropertyAsync(propertyDto, operation);
+            var upsertResult = await UpsertExternalPropertyAsync(propertyDto, context, operation);
             await CompleteExternalPropertyAttemptAsync(
                 upsertResult.Success ? Ok(upsertResult.Property) : BadRequest(upsertResult.ErrorMessage),
                 upsertResult.Attempt,
@@ -95,44 +131,34 @@ public partial class PropertyController
             itemResult.Updated = upsertResult.Updated;
             itemResult.ErrorMessage = upsertResult.ErrorMessage;
             itemResult.Property = upsertResult.Property;
+            itemResult.PhotoImport = upsertResult.PhotoImport;
+            itemResult.PhotoImportError = upsertResult.PhotoImportError;
+
+            if (upsertResult.PhotoImport != null)
+            {
+                await CompleteExternalPropertyAttemptAsync(
+                    Accepted(upsertResult.PhotoImport),
+                    new ExternalPropertyApiAttemptLog
+                    {
+                        OrganizationId = context.OrganizationId,
+                        OfficeId = context.OfficeId,
+                        VendorId = context.PartnerVendorId,
+                        PropertyId = upsertResult.Property?.PropertyId,
+                        PropertyCode = itemResult.PropertyCode,
+                        ImportId = upsertResult.PhotoImport.ImportId,
+                        EventType = PropertyUploadLogEvents.PhotoImportQueue,
+                        Operation = PropertyUploadLogOperations.QueuePhotoImport
+                    },
+                    $"Queued {upsertResult.PhotoImport.PhotoCount} photo URL(s). ImportId={upsertResult.PhotoImport.ImportId}.",
+                    upsertResult.Property?.PropertyId);
+            }
+
             response.Results.Add(itemResult);
         }
 
         response.SuccessCount = response.Results.Count(result => result.Success);
         response.FailureCount = response.Results.Count - response.SuccessCount;
         return response;
-    }
-
-    private async Task<IActionResult?> ValidateExternalPropertyRequestOrganizationAsync(IReadOnlyList<CreateExternalPropertyDto> properties)
-    {
-        if (properties.Count == 0)
-            return BadRequest("Properties must contain at least one item");
-
-        return await ValidateExternalPropertyOrganizationAccessAsync(properties[0].OrganizationId);
-    }
-
-    private async Task<IActionResult?> ValidateExternalPropertyRequestOrganizationAsync(IReadOnlyList<JsonElement> properties)
-    {
-        if (properties.Count == 0)
-            return BadRequest("Properties must contain at least one item");
-
-        var organizationIds = new HashSet<Guid>();
-        foreach (var property in properties)
-        {
-            if (ExternalPropertyPatchMerger.TryGetOrganizationContextForLogging(property, out var organizationId, out _, out _, out _)
-                && organizationId != Guid.Empty)
-            {
-                organizationIds.Add(organizationId);
-            }
-        }
-
-        if (organizationIds.Count == 0)
-            return BadRequest("OrganizationId is required");
-
-        if (organizationIds.Count > 1)
-            return BadRequest("All properties must use the same OrganizationId");
-
-        return await ValidateExternalPropertyOrganizationAccessAsync(organizationIds.First());
     }
 
     private static (bool Success, List<JsonElement>? Properties, string? ErrorMessage) TryParseExternalPropertyRequestArray(JsonElement body)
@@ -159,59 +185,43 @@ public partial class PropertyController
         PropertyResponseDto? Property,
         string? ErrorMessage,
         string? Detail,
-        ExternalPropertyApiAttemptLog Attempt);
+        ExternalPropertyApiAttemptLog Attempt,
+        ExternalPropertyPhotoImportCreatedResponseDto? PhotoImport = null,
+        string? PhotoImportError = null);
 
-    private async Task<ExternalPropertyPatchResult> PatchExternalPropertyAsync(JsonElement body, string operation)
+    private async Task<ExternalPropertyPatchResult> PatchExternalPropertyAsync(JsonElement body, ExternalPropertyIntakeContext context, string operation)
     {
+        var (keysParsed, keys, keysError) = ExternalPropertyOwnerContactResolver.TryParsePropertyKeys(body, context);
         ExternalPropertyApiAttemptLog attempt = new ExternalPropertyApiAttemptLog
         {
+            OrganizationId = context.OrganizationId,
+            OfficeId = context.OfficeId,
+            VendorId = context.PartnerVendorId,
+            PropertyCode = keys?.PropertyCode,
             EventType = PropertyUploadLogEvents.PropertyUpdate,
             Operation = operation
         };
-        if (ExternalPropertyPatchMerger.TryGetOrganizationContextForLogging(body, out var organizationId, out var officeId, out var vendorId, out var propertyCode))
-        {
-            attempt = new ExternalPropertyApiAttemptLog
-            {
-                OrganizationId = organizationId,
-                OfficeId = officeId,
-                VendorId = vendorId,
-                PropertyCode = propertyCode,
-                EventType = PropertyUploadLogEvents.PropertyUpdate,
-                Operation = operation
-            };
-        }
 
-        var (keysParsed, keys, keysError) = ExternalPropertyPatchMerger.TryParseRequiredKeys(body);
         if (!keysParsed || keys == null)
         {
             return new ExternalPropertyPatchResult(
                 false,
-                propertyCode,
+                keys?.PropertyCode ?? string.Empty,
                 null,
                 keysError ?? "Invalid request data",
                 keysError,
                 attempt);
         }
 
-        attempt = new ExternalPropertyApiAttemptLog
-        {
-            OrganizationId = keys.OrganizationId,
-            OfficeId = keys.OfficeId,
-            VendorId = keys.VendorId,
-            PropertyCode = keys.PropertyCode,
-            EventType = PropertyUploadLogEvents.PropertyUpdate,
-            Operation = operation
-        };
-
-        var accessError = await ValidateExternalPropertyAccessAsync(keys.OrganizationId, keys.OfficeId);
-        if (accessError != null)
+        var photosFieldPresent = ExternalPropertyPhotoSyncService.TryParsePhotosField(body, out var patchPhotos, out var photosParseError);
+        if (photosParseError != null)
         {
             return new ExternalPropertyPatchResult(
                 false,
                 keys.PropertyCode,
                 null,
-                ExtractExternalPropertyAttemptDetail(accessError) ?? "Invalid request data",
-                ExtractExternalPropertyAttemptDetail(accessError),
+                photosParseError,
+                photosParseError,
                 attempt);
         }
 
@@ -252,6 +262,38 @@ public partial class PropertyController
                     attempt);
             }
 
+            var (contactsApplied, contactPatchError) = await _externalPropertyOwnerContactResolver.TryApplyContactPatchesAsync(body, context, updateDto, SystemUserId);
+            if (!contactsApplied)
+            {
+                return new ExternalPropertyPatchResult(
+                    false,
+                    keys.PropertyCode,
+                    null,
+                    contactPatchError ?? "Invalid request data",
+                    contactPatchError,
+                    attempt);
+            }
+
+            var vendorContactInRequest = ExternalPropertyOwnerContactResolver.TryGetContact(body, "vendor", out _);
+            var (leaseContactsValid, leaseContactsError) = CreateExternalPropertyDto.ValidateLeaseTypeContacts(
+                updateDto.PropertyLeaseTypeId,
+                updateDto.Owner1Id,
+                updateDto.VendorId,
+                vendorContactInRequest);
+            if (!leaseContactsValid)
+            {
+                return new ExternalPropertyPatchResult(
+                    false,
+                    keys.PropertyCode,
+                    null,
+                    leaseContactsError ?? "Invalid request data",
+                    leaseContactsError,
+                    attempt);
+            }
+
+            if ((PropertyLeaseType)updateDto.PropertyLeaseTypeId == PropertyLeaseType.PropertyManagement)
+                updateDto.VendorId = null;
+
             var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, updateDto);
             if (updateResult == null)
             {
@@ -265,23 +307,51 @@ public partial class PropertyController
             }
 
             var updatedProperty = new PropertyResponseDto(updateResult);
+            var detail = $"Property {updatedProperty.PropertyCode} updated.";
+            ExternalPropertyPhotoImportCreatedResponseDto? photoImport = null;
+            string? photoImportError = null;
+
+            if (photosFieldPresent && patchPhotos != null)
+            {
+                var (syncImport, syncError, syncDetail) = await _externalPropertyPhotoSyncService.SyncPhotosAsync(keys, updateResult, patchPhotos);
+                photoImport = syncImport;
+                photoImportError = syncError;
+                if (!string.IsNullOrWhiteSpace(syncDetail))
+                    detail += $" {syncDetail}";
+
+                if (syncError != null)
+                {
+                    return new ExternalPropertyPatchResult(
+                        true,
+                        updatedProperty.PropertyCode,
+                        updatedProperty,
+                        null,
+                        detail,
+                        attempt,
+                        photoImport,
+                        photoImportError);
+                }
+            }
+
             return new ExternalPropertyPatchResult(
                 true,
                 updatedProperty.PropertyCode,
                 updatedProperty,
                 null,
-                $"Property {updatedProperty.PropertyCode} updated.",
-                attempt);
+                detail,
+                attempt,
+                photoImport,
+                photoImportError);
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
                 "Error updating external property intake request. OrganizationId={OrganizationId}, OfficeId={OfficeId}, PropertyCode={PropertyCode}, VendorId={VendorId}",
-                keys.OrganizationId,
-                keys.OfficeId,
+                context.OrganizationId,
+                context.OfficeId,
                 keys.PropertyCode,
-                keys.VendorId);
+                context.PartnerVendorId);
             return new ExternalPropertyPatchResult(
                 false,
                 keys.PropertyCode,
@@ -298,12 +368,8 @@ public partial class PropertyController
         if (property == null)
             return (null, false, null);
 
-        if (property.OrganizationId != keys.OrganizationId
-            || property.OfficeId != keys.OfficeId
-            || property.VendorId != keys.VendorId)
-        {
+        if (property.OrganizationId != keys.OrganizationId || property.OfficeId != keys.OfficeId)
             return (null, false, NotFound("Property not found"));
-        }
 
         return (property, true, null);
     }
@@ -335,16 +401,29 @@ public partial class PropertyController
         return null;
     }
 
+    private async Task<IActionResult?> ValidateExternalPropertyPartnerAsync(Guid organizationId, Guid partnerVendorId)
+    {
+        if (partnerVendorId == Guid.Empty)
+            return BadRequest("VendorId is required");
+
+        var partner = await _contactRepository.GetContactByIdsAsync(partnerVendorId, organizationId);
+        if (partner == null || partner.EntityType != EntityType.Vendor)
+            return BadRequest("Invalid VendorId");
+
+        return null;
+    }
+
     private static ExternalPropertyApiAttemptLog BuildExternalPropertyAttempt(
         CreateExternalPropertyDto dto,
+        ExternalPropertyIntakeContext context,
         string eventType,
         string operation)
     {
         return new ExternalPropertyApiAttemptLog
         {
-            OrganizationId = dto.OrganizationId,
-            OfficeId = dto.OfficeId,
-            VendorId = dto.VendorId,
+            OrganizationId = context.OrganizationId,
+            OfficeId = context.OfficeId,
+            VendorId = context.PartnerVendorId,
             PropertyCode = dto.PropertyCode?.Trim(),
             EventType = eventType,
             Operation = operation
@@ -358,24 +437,40 @@ public partial class PropertyController
         PropertyResponseDto? Property,
         string? ErrorMessage,
         string? Detail,
-        ExternalPropertyApiAttemptLog Attempt);
+        ExternalPropertyApiAttemptLog Attempt,
+        ExternalPropertyPhotoImportCreatedResponseDto? PhotoImport = null,
+        string? PhotoImportError = null);
 
     private async Task<ExternalPropertyUpsertResult> UpsertExternalPropertyAsync(
         CreateExternalPropertyDto dto,
+        ExternalPropertyIntakeContext context,
         string operation)
     {
         var propertyCode = (dto.PropertyCode ?? string.Empty).Trim();
-        var attempt = BuildExternalPropertyAttempt(dto, PropertyUploadLogEvents.PropertyCreate, operation);
+        var attempt = BuildExternalPropertyAttempt(dto, context, PropertyUploadLogEvents.PropertyCreate, operation);
         var keys = new ExternalPropertyKeyDto
         {
-            OrganizationId = dto.OrganizationId,
-            OfficeId = dto.OfficeId,
-            VendorId = dto.VendorId,
+            OrganizationId = context.OrganizationId,
+            OfficeId = context.OfficeId,
+            VendorId = context.PartnerVendorId,
             PropertyCode = propertyCode
         };
 
         try
         {
+            var (contactsResolved, owner1Id, owner2Id, owner3Id, propertyVendorContactId, contactError) = await _externalPropertyOwnerContactResolver.ResolveContactsAsync(dto, context, SystemUserId);
+            if (!contactsResolved)
+            {
+                return new ExternalPropertyUpsertResult(
+                    false,
+                    false,
+                    StatusCodes.Status400BadRequest,
+                    null,
+                    contactError ?? "Invalid request data",
+                    contactError,
+                    attempt);
+            }
+
             var (existingProperty, isExactMatch, resolveError) = await ResolveExternalPropertyByKeysAsync(keys);
             if (resolveError != null)
             {
@@ -391,8 +486,8 @@ public partial class PropertyController
 
             if (isExactMatch && existingProperty != null)
             {
-                attempt = BuildExternalPropertyAttempt(dto, PropertyUploadLogEvents.PropertyUpdate, operation);
-                var updateDto = dto.ToUpdatePropertyDto(existingProperty, propertyCode);
+                attempt = BuildExternalPropertyAttempt(dto, context, PropertyUploadLogEvents.PropertyUpdate, operation);
+                var updateDto = dto.ToUpdatePropertyDto(existingProperty, propertyCode, context, owner1Id, owner2Id, owner3Id, propertyVendorContactId);
                 var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, updateDto);
                 if (updateResult == null)
                 {
@@ -407,17 +502,21 @@ public partial class PropertyController
                 }
 
                 var updatedProperty = new PropertyResponseDto(updateResult);
+                var (updatedPhotoImport, updatedPhotoImportError, updatedPhotoSyncDetail) = await SyncPropertyPhotosIfProvidedAsync(dto, keys, updateResult);
+                var updatedDetail = BuildUpsertDetail(updatedProperty.PropertyCode, true, updatedPhotoSyncDetail, updatedPhotoImportError);
                 return new ExternalPropertyUpsertResult(
                     true,
                     true,
                     StatusCodes.Status200OK,
                     updatedProperty,
                     null,
-                    $"Property {updatedProperty.PropertyCode} updated.",
-                    attempt);
+                    updatedDetail,
+                    attempt,
+                    updatedPhotoImport,
+                    updatedPhotoImportError);
             }
 
-            var createDto = dto.ToCreatePropertyDto(propertyCode);
+            var createDto = dto.ToCreatePropertyDto(propertyCode, context, owner1Id, owner2Id, owner3Id, propertyVendorContactId);
             var (createIsValid, createErrorMessage) = createDto.IsValid();
             if (!createIsValid)
             {
@@ -433,24 +532,28 @@ public partial class PropertyController
 
             var createdProperty = await _propertyRepository.CreateAsync(createDto.ToModel(SystemUserId));
             var createdResponse = new PropertyResponseDto(createdProperty);
+            var (createdPhotoImport, createdPhotoImportError, createdPhotoSyncDetail) = await SyncPropertyPhotosIfProvidedAsync(dto, keys, createdProperty);
+            var createdDetail = BuildUpsertDetail(createdResponse.PropertyCode, false, createdPhotoSyncDetail, createdPhotoImportError);
             return new ExternalPropertyUpsertResult(
                 true,
                 false,
                 StatusCodes.Status200OK,
                 createdResponse,
                 null,
-                $"Property {createdResponse.PropertyCode} created.",
-                attempt);
+                createdDetail,
+                attempt,
+                createdPhotoImport,
+                createdPhotoImportError);
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
                 "Error upserting external property intake request. OrganizationId={OrganizationId}, OfficeId={OfficeId}, PropertyCode={PropertyCode}, VendorId={VendorId}",
-                dto.OrganizationId,
-                dto.OfficeId,
+                context.OrganizationId,
+                context.OfficeId,
                 dto.PropertyCode,
-                dto.VendorId);
+                context.PartnerVendorId);
             return new ExternalPropertyUpsertResult(
                 false,
                 false,
@@ -460,6 +563,37 @@ public partial class PropertyController
                 ex.Message,
                 attempt);
         }
+    }
+
+    private async Task<(ExternalPropertyPhotoImportCreatedResponseDto? PhotoImport, string? PhotoImportError, string? PhotoSyncDetail)> SyncPropertyPhotosIfProvidedAsync(
+        CreateExternalPropertyDto dto,
+        ExternalPropertyKeyDto keys,
+        Property property)
+    {
+        if (dto.Photos == null)
+            return (null, null, null);
+
+        var (photoImport, syncError, syncDetail) = await _externalPropertyPhotoSyncService.SyncPhotosAsync(keys, property, dto.Photos);
+        return (photoImport, syncError, syncDetail);
+    }
+
+    private static string BuildUpsertDetail(
+        string propertyCode,
+        bool updated,
+        string? photoSyncDetail,
+        string? photoImportError)
+    {
+        var detail = updated
+            ? $"Property {propertyCode} updated."
+            : $"Property {propertyCode} created.";
+
+        if (!string.IsNullOrWhiteSpace(photoSyncDetail))
+            detail += $" {photoSyncDetail}";
+
+        if (!string.IsNullOrWhiteSpace(photoImportError))
+            detail += $" Photo sync failed: {photoImportError}";
+
+        return detail;
     }
 
     private async Task<(Property? Property, string? ErrorMessage)> TryUpdateExternalPropertyAsync(Property existingProperty, UpdatePropertyDto updateDto)

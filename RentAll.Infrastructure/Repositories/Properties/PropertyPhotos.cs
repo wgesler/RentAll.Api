@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -27,6 +28,23 @@ namespace RentAll.Infrastructure.Repositories.Properties
             var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.PropertyPhoto_GetAllByPropertyId", new
             {
                 PropertyId = propertyId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<PropertyPhoto>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
+        public async Task<IEnumerable<PropertyPhoto>> GetPrimaryPropertyPhotosByPropertyIdsAsync(IReadOnlyList<Guid> propertyIds)
+        {
+            if (propertyIds == null || propertyIds.Count == 0)
+                return Enumerable.Empty<PropertyPhoto>();
+
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyPhotoEntity>("Property.PropertyPhoto_GetPrimaryByPropertyIds", new
+            {
+                PropertyIds = JsonSerializer.Serialize(propertyIds)
             });
 
             if (res == null || !res.Any())

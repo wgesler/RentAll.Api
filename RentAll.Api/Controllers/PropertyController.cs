@@ -26,6 +26,8 @@ namespace RentAll.Api.Controllers
         private readonly IFileService _fileService;
         private readonly IExternalApiKeyService _externalApiKeyService;
         private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
+        private readonly ExternalPropertyOwnerContactResolver _externalPropertyOwnerContactResolver;
+        private readonly ExternalPropertyPhotoSyncService _externalPropertyPhotoSyncService;
         private readonly ILogger<PropertyController> _logger;
 
         public PropertyController(
@@ -42,6 +44,8 @@ namespace RentAll.Api.Controllers
             IFileService fileService,
             IExternalApiKeyService externalApiKeyService,
             ExternalPropertyUploadLogService externalPropertyUploadLogService,
+            ExternalPropertyOwnerContactResolver externalPropertyOwnerContactResolver,
+            ExternalPropertyPhotoSyncService externalPropertyPhotoSyncService,
             ILogger<PropertyController> logger)
         {
             _appSettings = appSettingsOptions.Value;
@@ -57,6 +61,8 @@ namespace RentAll.Api.Controllers
             _fileService = fileService;
             _externalApiKeyService = externalApiKeyService;
             _externalPropertyUploadLogService = externalPropertyUploadLogService;
+            _externalPropertyOwnerContactResolver = externalPropertyOwnerContactResolver;
+            _externalPropertyPhotoSyncService = externalPropertyPhotoSyncService;
             _logger = logger;
         }
     }

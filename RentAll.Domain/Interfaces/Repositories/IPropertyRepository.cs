@@ -62,6 +62,7 @@ public interface IPropertyRepository
     #region Property Photos
     Task<PropertyPhoto?> GetPropertyPhotoByIdAsync(int photoId, Guid organizationId);
     Task<IEnumerable<PropertyPhoto>> GetPropertyPhotosByPropertyIdAsync(Guid propertyId);
+    Task<IEnumerable<PropertyPhoto>> GetPrimaryPropertyPhotosByPropertyIdsAsync(IReadOnlyList<Guid> propertyIds);
     Task<PropertyPhoto> CreatePropertyPhotoAsync(PropertyPhoto photo);
     Task UpdatePropertyPhotoOrderAsync(int photoId, int order);
     Task DeletePropertyPhotoByIdAsync(int photoId);
@@ -71,6 +72,7 @@ public interface IPropertyRepository
     Task<PropertyPhotoImport> CreatePropertyPhotoImportAsync(PropertyPhotoImport import, IReadOnlyList<PropertyPhotoImportItem> items);
     Task<PropertyPhotoImport?> GetPropertyPhotoImportByIdAsync(Guid importId, Guid organizationId);
     Task<IEnumerable<PropertyPhotoImportItem>> GetPropertyPhotoImportItemsByImportIdAsync(Guid importId);
+    Task<IEnumerable<PropertyPhotoImportItem>> GetPropertyPhotoImportItemsByPropertyIdAsync(Guid propertyId);
     Task<PropertyPhotoImportClaim?> ClaimNextPropertyPhotoImportItemAsync();
     Task CompletePropertyPhotoImportItemAsync(int importItemId, PropertyPhotoImportItemStatus status, int? photoId, string? errorMessage);
     #endregion

@@ -64,6 +64,20 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<PropertyPhotoImportItem>> GetPropertyPhotoImportItemsByPropertyIdAsync(Guid propertyId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<PropertyPhotoImportItemEntity>("Property.PropertyPhotoImportItem_GetByPropertyId", new
+            {
+                PropertyId = propertyId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<PropertyPhotoImportItem>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<PropertyPhotoImportClaim?> ClaimNextPropertyPhotoImportItemAsync()
         {
             await using var db = new SqlConnection(_dbConnectionString);
