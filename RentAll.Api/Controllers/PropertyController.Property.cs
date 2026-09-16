@@ -247,6 +247,7 @@ namespace RentAll.Api.Controllers
 
                 // Check if PropertyOffice is being changed and update associated owners if necessary
                 var property = dto.ToModel(CurrentUser);
+                property.IsDeleted = existingProperty.IsDeleted;
                 if (existingProperty.OfficeId != dto.OfficeId)
                     await _propertyManager.UpdatePropertyOfficeAsync(property, CurrentUser);
 

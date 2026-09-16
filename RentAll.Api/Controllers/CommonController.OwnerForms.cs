@@ -710,6 +710,7 @@ namespace RentAll.Api.Controllers
 
                 var updateDto = createDto.ToUpdateDto(existingProperty.PropertyId);
                 var property = updateDto.ToModel(Guid.Empty);
+                property.IsDeleted = existingProperty.IsDeleted;
                 if (existingProperty.OfficeId != updateDto.OfficeId)
                     await _propertyManager.UpdatePropertyOfficeAsync(property, Guid.Empty);
 

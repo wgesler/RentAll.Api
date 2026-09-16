@@ -365,12 +365,12 @@ public partial class PropertyController
 
     private async Task<(Property? Property, bool IsExactMatch, IActionResult? ErrorResult)> ResolveExternalPropertyByKeysAsync(ExternalPropertyKeyDto keys)
     {
-        var property = await _propertyRepository.GetPropertyByCodeIncludingDeletedAsync(keys.PropertyCode, keys.OrganizationId);
+        var property = await _propertyRepository.GetPropertyByCodeIncludingDeletedAsync(
+            keys.PropertyCode,
+            keys.OrganizationId,
+            keys.OfficeId);
         if (property == null)
             return (null, false, null);
-
-        if (property.OrganizationId != keys.OrganizationId || property.OfficeId != keys.OfficeId)
-            return (null, false, NotFound("Property not found"));
 
         return (property, true, null);
     }
@@ -546,7 +546,6 @@ public partial class PropertyController
                 createdPhotoImport,
                 createdPhotoImportError);
         }
-            var recovered = await TryRecoverExternalPropertyUpsertFromDuplicateKeyAsync(
         catch (Exception ex)
         {
             _logger.LogError(
@@ -619,8 +618,7 @@ public partial class PropertyController
         if (!updateIsValid)
             return (null, updateErrorMessage ?? "Invalid request data");
 
-        if (existingProperty.IsDeleted)
-            await _propertyRepository.RestorePropertyByIdAsync(existingProperty.PropertyId, existingProperty.OrganizationId, SystemUserId);
+        updateDto.IsDeleted = false;
 
         var property = updateDto.ToModel(SystemUserId);
         if (existingProperty.OfficeId != updateDto.OfficeId)

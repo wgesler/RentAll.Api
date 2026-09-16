@@ -147,6 +147,7 @@ public class UpdatePropertyDto
     public bool OfflineChecked { get; set; }
 
     public bool IsActive { get; set; }
+    public bool IsDeleted { get; set; }
 
     public static UpdatePropertyDto FromProperty(Property property)
     {
@@ -271,7 +272,8 @@ public class UpdatePropertyDto
             offInspectingDate = property.offInspectingDate,
             OnlineChecked = property.OnlineChecked,
             OfflineChecked = property.OfflineChecked,
-            IsActive = property.IsActive
+            IsActive = property.IsActive,
+            IsDeleted = property.IsDeleted
         };
     }
 
@@ -455,6 +457,7 @@ public class UpdatePropertyDto
             OnlineChecked = OnlineChecked,
             OfflineChecked = OfflineChecked,
             IsActive = IsActive,
+            IsDeleted = IsDeleted,
             ModifiedBy = currentUser
         };
     }
