@@ -123,26 +123,7 @@ public class ExternalPropertyOwnerContactResolver
     }
 
     public static (bool Success, ExternalPropertyIntakeContext? Context, string? ErrorMessage) TryParseIntakeContext(JsonElement body)
-    {
-        if (body.ValueKind != JsonValueKind.Object)
-            return (false, null, "Property data is required");
-
-        if (!TryGetProperty(body, "organizationId", out var organizationIdElement) || !organizationIdElement.TryGetGuid(out var organizationId) || organizationId == Guid.Empty)
-            return (false, null, "OrganizationId is required");
-
-        if (!TryGetProperty(body, "officeId", out var officeIdElement) || officeIdElement.ValueKind != JsonValueKind.Number || !officeIdElement.TryGetInt32(out var officeId) || officeId <= 0)
-            return (false, null, "OfficeId is required");
-
-        if (!TryGetProperty(body, "vendorId", out var vendorIdElement) || !vendorIdElement.TryGetGuid(out var partnerVendorId) || partnerVendorId == Guid.Empty)
-            return (false, null, "VendorId is required");
-
-        return (true, new ExternalPropertyIntakeContext
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId,
-            PartnerVendorId = partnerVendorId
-        }, null);
-    }
+        => ExternalPropertyIntakeJson.TryParseIntakeContext(body);
 
     public static (bool Success, ExternalPropertyKeyDto? Keys, string? ErrorMessage) TryParsePropertyKeys(JsonElement propertyBody, ExternalPropertyIntakeContext context)
     {

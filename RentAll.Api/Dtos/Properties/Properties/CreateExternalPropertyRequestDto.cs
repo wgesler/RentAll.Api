@@ -53,25 +53,13 @@ public class CreateExternalPropertyRequestDto
         if (body.ValueKind != JsonValueKind.Object)
             return (false, null, null, "Property data is required");
 
-        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "organizationId", out var organizationIdElement)
-            || !organizationIdElement.TryGetGuid(out var organizationId)
-            || organizationId == Guid.Empty)
-            return (false, null, null, "OrganizationId is required");
+        var (contextParsed, context, contextError) = ExternalPropertyIntakeJson.TryParseIntakeContext(body);
+        if (!contextParsed || context == null)
+            return (false, null, null, contextError ?? "Invalid request data");
 
-        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "officeId", out var officeIdElement)
-            || officeIdElement.ValueKind != JsonValueKind.Number
-            || !officeIdElement.TryGetInt32(out var officeId)
-            || officeId <= 0)
-            return (false, null, null, "OfficeId is required");
-
-        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "vendorId", out var vendorIdElement)
-            || !vendorIdElement.TryGetGuid(out var vendorId)
-            || vendorId == Guid.Empty)
-            return (false, null, null, "VendorId is required");
-
-        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "properties", out var propertiesElement)
-            || propertiesElement.ValueKind != JsonValueKind.Array)
-            return (false, null, null, "Properties must contain at least one item");
+        var (propertiesParsed, propertiesElement, propertiesError) = ExternalPropertyIntakeJson.TryParseRequiredPropertiesArray(body);
+        if (!propertiesParsed)
+            return (false, null, null, propertiesError ?? "Properties must contain at least one item");
 
         var properties = new List<CreateExternalPropertyDto>();
         var index = 0;
@@ -104,11 +92,6 @@ public class CreateExternalPropertyRequestDto
         if (properties.Count > MaxPropertiesPerRequest)
             return (false, null, null, $"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
 
-        return (true, new ExternalPropertyIntakeContext
-        {
-            OrganizationId = organizationId,
-            OfficeId = officeId,
-            PartnerVendorId = vendorId
-        }, properties, null);
+        return (true, context, properties, null);
     }
 }

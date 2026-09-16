@@ -14,7 +14,7 @@ public partial class PropertyController
     {
         var (parsed, context, properties, parseError) = CreateExternalPropertyRequestDto.TryParseFromBody(body);
         if (!parsed || context == null || properties == null)
-            return BadRequest(parseError ?? "Invalid request data");
+            return await RejectExternalPropertyRequestAsync(body, PropertyUploadLogOperations.CreateProperty, PropertyUploadLogEvents.PropertyCreate, parseError ?? "Invalid request data");
 
         var organizationAccessError = await ValidateExternalPropertyOrganizationAccessAsync(context.OrganizationId);
         if (organizationAccessError != null)
@@ -37,11 +37,11 @@ public partial class PropertyController
     {
         var (contextParsed, context, contextError) = ExternalPropertyOwnerContactResolver.TryParseIntakeContext(body);
         if (!contextParsed || context == null)
-            return BadRequest(contextError ?? "Invalid request data");
+            return await RejectExternalPropertyRequestAsync(body, PropertyUploadLogOperations.UpdateProperty, PropertyUploadLogEvents.PropertyUpdate, contextError ?? "Invalid request data");
 
         var (propertiesParsed, properties, parseError) = TryParseExternalPropertyRequestArray(body);
         if (!propertiesParsed || properties == null)
-            return BadRequest(parseError ?? "Invalid request data");
+            return await RejectExternalPropertyRequestAsync(body, PropertyUploadLogOperations.UpdateProperty, PropertyUploadLogEvents.PropertyUpdate, parseError ?? "Invalid request data", context);
 
         var organizationAccessError = await ValidateExternalPropertyOrganizationAccessAsync(context.OrganizationId);
         if (organizationAccessError != null)
@@ -164,12 +164,11 @@ public partial class PropertyController
         if (body.ValueKind != JsonValueKind.Object)
             return (false, null, "Property data is required");
 
-        if (!body.TryGetProperty("properties", out var propertiesElement) || propertiesElement.ValueKind != JsonValueKind.Array)
-            return (false, null, "Properties must contain at least one item");
+        var (propertiesParsed, propertiesElement, propertiesError) = ExternalPropertyIntakeJson.TryParseRequiredPropertiesArray(body);
+        if (!propertiesParsed)
+            return (false, null, propertiesError ?? "Properties must contain at least one item");
 
         var properties = propertiesElement.EnumerateArray().ToList();
-        if (properties.Count == 0)
-            return (false, null, "Properties must contain at least one item");
 
         if (properties.Count > CreateExternalPropertyRequestDto.MaxPropertiesPerRequest)
             return (false, null, $"Properties cannot exceed {CreateExternalPropertyRequestDto.MaxPropertiesPerRequest} items per request");
