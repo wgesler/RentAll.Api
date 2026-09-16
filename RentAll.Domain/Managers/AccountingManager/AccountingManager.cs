@@ -24,11 +24,12 @@ public partial class AccountingManager : IAccountingManager
     private readonly IOrganizationManager _organizationManager;
     private readonly IContactRepository _contactRepository;
     private readonly IFeatureFlagService _featureFlagService;
+    private readonly IHealthRepository _healthRepository;
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)>> _accountContextCache = new();
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<IReadOnlyDictionary<int, CostCode>>> _costCodeByOfficeCache = new();
     private readonly ConcurrentDictionary<AccountResolverCacheKey, int> _defaultAccountIdCache = new();
 
-    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService)
+    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService, IHealthRepository healthRepository)
     {
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
@@ -39,6 +40,7 @@ public partial class AccountingManager : IAccountingManager
         _organizationManager = organizationManager;
         _contactRepository = contactRepository;
         _featureFlagService = featureFlagService;
+        _healthRepository = healthRepository;
     }
 
     private Task<bool> IsAccountingFeatureEnabledAsync(Guid organizationId)

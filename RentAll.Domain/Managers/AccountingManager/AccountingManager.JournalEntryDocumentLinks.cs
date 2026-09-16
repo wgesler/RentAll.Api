@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
@@ -94,8 +95,62 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return new JournalEntrySyncResult();
 
+        var scan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
+        var result = new JournalEntrySyncResult();
+
+        var paymentIds = new HashSet<Guid>();
+        var depositIds = new HashSet<Guid>();
+        var transferIds = new HashSet<Guid>();
+        DocumentHealthFixRouting.CollectFixTargets(scan.Issues, paymentIds, depositIds, transferIds);
+
+        if (paymentIds.Count > 0)
+        {
+            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
+                organizationId,
+                officeIds,
+                "payment",
+                paymentIds.ToList(),
+                (int)PaymentKind.Invoice,
+                currentUser,
+                progress));
+        }
+
+        if (depositIds.Count > 0)
+        {
+            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
+                organizationId,
+                officeIds,
+                "deposit",
+                depositIds.ToList(),
+                paymentKindId: null,
+                currentUser,
+                progress));
+        }
+
+        if (transferIds.Count > 0)
+        {
+            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
+                organizationId,
+                officeIds,
+                "transfer",
+                transferIds.ToList(),
+                paymentKindId: null,
+                currentUser,
+                progress));
+        }
+
+        await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(scan.Issues, organizationId, currentUser, result);
         await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
-        return new JournalEntrySyncResult();
+        return result;
+    }
+
+    private static void MergeSyncResults(JournalEntrySyncResult target, JournalEntrySyncResult source)
+    {
+        target.DocumentsProcessed += source.DocumentsProcessed;
+        target.JournalEntriesCreated += source.JournalEntriesCreated;
+        target.JournalEntriesSkipped += source.JournalEntriesSkipped;
+        target.JournalEntriesDeleted += source.JournalEntriesDeleted;
+        target.Errors.AddRange(source.Errors);
     }
 
     private async Task SyncInvoicePaymentDocumentLinksFromLedgerAsync(Guid organizationId, string officeIds, Guid currentUser)

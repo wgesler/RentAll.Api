@@ -587,13 +587,12 @@ public partial class AccountingController
 
         try
         {
-            SetSyncJobMessage(job, healthFix
-                ? targetedDocumentIds.Length > 0
-                    ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
-                    : $"Fixing all {syncType} documents in office..."
-                : targetedDocumentIds.Length > 0
-                    ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
-                    : $"Syncing {syncType}...");
+            if (healthFix && targetedDocumentIds.Length == 0)
+                throw new InvalidOperationException("Health fix requires at least one document ID.");
+
+            SetSyncJobMessage(job, targetedDocumentIds.Length > 0
+                ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
+                : $"Syncing {syncType}...");
             await RunScopedJournalEntrySyncAsync(async manager =>
             {
                 if (targetedDocumentIds.Length > 0)

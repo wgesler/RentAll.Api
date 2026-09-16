@@ -40,20 +40,25 @@ public partial class AccountingManager
         Guid currentUser,
         IProgress<JournalEntrySyncProgress>? progress)
     {
+        // Caller runs office health-check first and passes broken document IDs only.
+        // Repair one document at a time — never blind-sync the whole office.
         var distinctIds = documentIds
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
 
-        if (distinctIds.Count == 0)
-            distinctIds = await ResolveHealthFixDocumentIdsForOfficeAsync(organizationId, officeIds, syncType, paymentKindId);
-
         var result = new JournalEntrySyncResult();
-        await RunOfficeHealthFixBulkPruneAsync(syncType, paymentKindId, organizationId, officeIds, result);
+        if (distinctIds.Count == 0)
+        {
+            ReportSyncProgress(progress, syncType, 0, 0, result, "Completed");
+            return result;
+        }
+
+        await RunHealthFixBulkPruneAsync(syncType, paymentKindId, organizationId, officeIds, distinctIds, result);
 
         var total = distinctIds.Count;
         var processed = 0;
-        ReportSyncProgress(progress, syncType, total, processed, result, total == 0 ? "Completed" : "Running");
+        ReportSyncProgress(progress, syncType, total, processed, result, "Running");
 
         foreach (var documentId in distinctIds)
         {
@@ -97,148 +102,62 @@ public partial class AccountingManager
             ReportSyncProgress(progress, syncType, total, processed, result, processed >= total ? "Completed" : "Running");
         }
 
+        if (syncType == "payment" && paymentKindId == (int)PaymentKind.Invoice)
+        {
+            await ReconcileOrphanPaymentsDuringSyncAsync(organizationId, officeIds, currentUser, result);
+
+            var paymentScan = await _healthRepository.RunPaymentHealthCheckAsync(
+                organizationId,
+                officeIds,
+                (int)PaymentKind.Invoice);
+            await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(
+                paymentScan.Issues,
+                organizationId,
+                currentUser,
+                result);
+
+            var documentLinksScan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
+            await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(
+                documentLinksScan.Issues,
+                organizationId,
+                currentUser,
+                result);
+        }
+
         return result;
     }
 
-    private async Task RunOfficeHealthFixBulkPruneAsync(
+    private async Task RunHealthFixBulkPruneAsync(
         string syncType,
         int? paymentKindId,
         Guid organizationId,
         string officeIds,
+        IReadOnlyList<Guid> targetedDocumentIds,
         JournalEntrySyncResult result)
     {
+        if (targetedDocumentIds.Count == 0)
+            return;
+
+        var targetedIds = string.Join(",", targetedDocumentIds);
+
         if (syncType == "payment" && paymentKindId == (int)PaymentKind.Invoice)
         {
             result.JournalEntriesDeleted += await _journalEntryRepository.PruneDuplicateOpenInvoicePaymentJesAsync(
                 organizationId,
                 officeIds,
-                paymentIds: null);
+                paymentIds: targetedIds);
         }
         else if (syncType == "deposit")
         {
             result.JournalEntriesDeleted += await _journalEntryRepository.PruneDuplicateOpenDepositJesAsync(
                 organizationId,
                 officeIds,
-                depositIds: null);
+                depositIds: targetedIds);
         }
     }
 
-    private async Task<List<Guid>> ResolveHealthFixDocumentIdsForOfficeAsync(
-        Guid organizationId,
-        string officeIds,
-        string syncType,
-        int? paymentKindId)
-    {
-        if (_officeSyncCache != null)
-        {
-            switch (syncType)
-            {
-                case "invoice":
-                    return _officeSyncCache.InvoicesById.Keys.OrderBy(id => id).ToList();
-                case "payment" when paymentKindId.HasValue:
-                    return _officeSyncCache.Payments
-                        .Where(payment => payment.PaymentKindId == paymentKindId.Value)
-                        .Select(payment => payment.PaymentId)
-                        .Distinct()
-                        .OrderBy(id => id)
-                        .ToList();
-                case "deposit":
-                    return _officeSyncCache.Deposits
-                        .Where(deposit => deposit.IsActive)
-                        .Select(deposit => deposit.DepositId)
-                        .Distinct()
-                        .OrderBy(id => id)
-                        .ToList();
-                case "transfer":
-                    return _officeSyncCache.Transfers
-                        .Where(transfer => transfer.IsActive)
-                        .Select(transfer => transfer.TransferId)
-                        .Distinct()
-                        .OrderBy(id => id)
-                        .ToList();
-            }
-        }
-
-        return await ResolveHealthFixDocumentIdsForOfficeWithoutCacheAsync(organizationId, officeIds, syncType, paymentKindId);
-    }
-
-    private async Task<List<Guid>> ResolveHealthFixDocumentIdsForOfficeWithoutCacheAsync(
-        Guid organizationId,
-        string officeIds,
-        string syncType,
-        int? paymentKindId)
-    {
-        switch (syncType)
-        {
-            case "invoice":
-                return (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-                {
-                    OrganizationId = organizationId,
-                    OfficeIds = officeIds,
-                    IncludeInactive = true,
-                    IncludePaid = true
-                }))
-                    .Select(invoice => invoice.InvoiceId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            case "payment":
-                if (!paymentKindId.HasValue)
-                    throw new ArgumentException("PaymentKindId is required for payment health fix.");
-
-                return (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, paymentKindId.Value))
-                    .Select(payment => payment.PaymentId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            case "deposit":
-                return (await _accountingRepository.GetDepositsByOfficeIdsAsync(organizationId, officeIds))
-                    .Where(deposit => deposit.IsActive)
-                    .Select(deposit => deposit.DepositId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            case "transfer":
-                return (await _accountingRepository.GetTransfersByOfficeIdsAsync(organizationId, officeIds))
-                    .Where(transfer => transfer.IsActive)
-                    .Select(transfer => transfer.TransferId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            case "receipt":
-                return (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
-                {
-                    OrganizationId = organizationId,
-                    OfficeIds = officeIds,
-                    IncludeInactive = true,
-                    ReceiptKind = ReceiptKind.Card
-                }))
-                    .Select(receipt => receipt.ReceiptId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            case "bill":
-                return (await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
-                {
-                    OrganizationId = organizationId,
-                    OfficeIds = officeIds,
-                    IncludeInactive = true,
-                    ReceiptKind = ReceiptKind.Bill
-                }))
-                    .Select(bill => bill.ReceiptId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            case "workOrder":
-                return (await _maintenanceRepository.GetWorkOrdersByOfficeIdsAsync(organizationId, officeIds))
-                    .Select(workOrder => workOrder.WorkOrderId)
-                    .Distinct()
-                    .OrderBy(id => id)
-                    .ToList();
-            default:
-                throw new Exception($"Sync type '{syncType}' is not supported for office-wide health fix.");
-        }
-    }
+    private static DateOnly ResolveEffectiveAccountingPeriodForHealthFix(JournalEntry entry)
+        => entry.AccountingPeriod > new DateOnly(1900, 1, 1) ? entry.AccountingPeriod : entry.TransactionDate;
 
     async Task SyncReceiptForHealthFixAsync(Guid organizationId, Guid receiptId, Guid currentUser, JournalEntrySyncResult result)
     {
@@ -356,6 +275,22 @@ public partial class AccountingManager
             invoice.OrganizationId,
             invoice.OfficeId,
             invoice.InvoiceId);
+
+        var openChargeEntries = (await GetAllJournalEntriesForInvoiceAsync(
+                invoice.OrganizationId,
+                invoice.OfficeId,
+                invoice.InvoiceId))
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Charge && entry.PostingStatusId == PostingStatus.Open)
+            .ToList();
+
+        foreach (var periodGroup in openChargeEntries.GroupBy(ResolveEffectiveAccountingPeriodForHealthFix))
+        {
+            if (periodGroup.Count() <= 1)
+                continue;
+
+            var workingEntries = periodGroup.ToList();
+            await PruneOpenDuplicateAutoGeneratedJournalEntriesAsync(workingEntries, organizationId, currentUser);
+        }
 
         var refreshError = await RefreshInvoiceChargeJournalEntriesAsync(invoice, currentUser);
 
