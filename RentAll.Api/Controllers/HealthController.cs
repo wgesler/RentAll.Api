@@ -70,8 +70,50 @@ public class HealthController : BaseController
     public Task<IActionResult> CheckDocumentLinks([FromBody] HealthCheckRequestDto dto)
         => RunHealthCheckAsync(dto, (orgId, officeIds) => _healthRepository.RunDocumentLinksHealthCheckAsync(orgId, officeIds));
 
+    [HttpPost("receipt/fix")]
+    public Task<IActionResult> FixReceipts([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "receipt");
+
+    [HttpPost("bill/fix")]
+    public Task<IActionResult> FixBills([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "bill");
+
+    [HttpPost("work-order/fix")]
+    public Task<IActionResult> FixWorkOrders([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "workOrder");
+
+    [HttpPost("invoice/fix")]
+    public Task<IActionResult> FixInvoices([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "invoice");
+
+    [HttpPost("payment-invoice/fix")]
+    public Task<IActionResult> FixInvoicePayments([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "payment", (int)PaymentKind.Invoice);
+
+    [HttpPost("payment-bill/fix")]
+    public Task<IActionResult> FixBillPayments([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "payment", (int)PaymentKind.Bill);
+
+    [HttpPost("payment-owner/fix")]
+    public Task<IActionResult> FixOwnerPayments([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "payment", (int)PaymentKind.Owner);
+
+    [HttpPost("deposit/fix")]
+    public Task<IActionResult> FixDeposits([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "deposit");
+
+    [HttpPost("transfer/fix")]
+    public Task<IActionResult> FixTransfers([FromBody] HealthCheckRequestDto dto)
+        => RunHealthFixAsync(dto, "transfer");
+
     [HttpPost("document-links/fix")]
-    public async Task<IActionResult> FixDocumentLinks([FromBody] HealthCheckRequestDto dto)
+    public Task<IActionResult> FixDocumentLinks([FromBody] HealthCheckRequestDto dto)
+        => RunDocumentLinksHealthFixAsync(dto);
+
+    private async Task<IActionResult> RunHealthFixAsync(
+        HealthCheckRequestDto dto,
+        string syncType,
+        int? paymentKindId = null)
     {
         if (!HasAdminAccess())
             return Unauthorized("Only Admin or SuperAdmin can run health fixes.");
@@ -89,6 +131,51 @@ public class HealthController : BaseController
 
         try
         {
+            _logger.LogError(
+                "[HealthFixTrace] Fix SyncType={SyncType} PaymentKindId={PaymentKindId} OfficeIds={OfficeIds}",
+                syncType,
+                paymentKindId,
+                officeIds);
+
+            var result = await _accountingManager.SyncJournalEntriesForHealthFixAsync(
+                CurrentOrganizationId,
+                officeIds,
+                syncType,
+                Array.Empty<Guid>(),
+                paymentKindId,
+                CurrentUser);
+
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running health fix for {SyncType}", syncType);
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ServerError(string.IsNullOrWhiteSpace(detail)
+                ? "An error occurred while running the health fix"
+                : $"Health fix failed: {detail}");
+        }
+    }
+
+    private async Task<IActionResult> RunDocumentLinksHealthFixAsync(HealthCheckRequestDto dto)
+    {
+        if (!HasAdminAccess())
+            return Unauthorized("Only Admin or SuperAdmin can run health fixes.");
+
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var officeIds = ResolveRequestedOfficeIds(dto);
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Forbid();
+
+        try
+        {
+            _logger.LogError("[HealthFixTrace] Fix SyncType=documentLinks OfficeIds={OfficeIds}", officeIds);
             var result = await _accountingManager.RepairDocumentLinksForHealthFixAsync(CurrentOrganizationId, officeIds, CurrentUser);
             return Ok(new JournalEntrySyncResultDto(result));
         }

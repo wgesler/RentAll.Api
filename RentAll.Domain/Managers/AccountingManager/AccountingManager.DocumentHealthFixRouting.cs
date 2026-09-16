@@ -25,6 +25,26 @@ public partial class AccountingManager
             return paymentIds.OrderBy(id => id).ToList();
         }
 
+        internal static IReadOnlyList<Guid> CollectFixDocumentIds(IEnumerable<DocumentHealthIssue> issues)
+        {
+            var ids = new HashSet<Guid>();
+            foreach (var issue in issues ?? [])
+            {
+                if (issue.DocumentId != EmptyGuid)
+                    ids.Add(issue.DocumentId);
+
+                var normalizedIssue = (issue.Issue ?? string.Empty).Trim();
+                if (issue.RelatedId is { } relatedId
+                    && relatedId != EmptyGuid
+                    && normalizedIssue.Contains("Duplicate invoice payment documents", StringComparison.OrdinalIgnoreCase))
+                {
+                    ids.Add(relatedId);
+                }
+            }
+
+            return ids.OrderBy(id => id).ToList();
+        }
+
         private static void CollectFixTarget(
             DocumentHealthIssue issue,
             ISet<Guid> paymentIds,
@@ -72,7 +92,7 @@ public partial class AccountingManager
                 return;
             }
 
-            RouteDocumentId(id, issueText, paymentIds, depositIds, transferIds);
+            RouteDocumentId(id, issueText ?? string.Empty, paymentIds, depositIds, transferIds);
         }
 
         private static void RouteDocumentId(

@@ -587,8 +587,23 @@ public partial class AccountingController
 
         try
         {
-            if (healthFix && targetedDocumentIds.Length == 0)
-                throw new InvalidOperationException("Health fix requires at least one document ID.");
+            if (healthFix)
+            {
+                SetSyncJobMessage(job, targetedDocumentIds.Length > 0
+                    ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
+                    : $"Scanning office for broken {syncType} documents...");
+                await RunScopedJournalEntrySyncAsync(manager =>
+                    manager.SyncJournalEntriesForHealthFixAsync(
+                        organizationId,
+                        officeIds,
+                        syncType,
+                        targetedDocumentIds,
+                        paymentKindId,
+                        currentUser,
+                        progress));
+                SetSyncJobMessage(job, "Health fix complete.");
+                return;
+            }
 
             SetSyncJobMessage(job, targetedDocumentIds.Length > 0
                 ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
@@ -607,9 +622,6 @@ public partial class AccountingController
                         progress);
                     return;
                 }
-
-                if (healthFix)
-                    throw new InvalidOperationException("Health fix cannot run a full sync.");
 
                 switch (syncType)
                 {

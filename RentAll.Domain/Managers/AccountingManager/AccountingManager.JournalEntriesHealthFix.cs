@@ -40,12 +40,8 @@ public partial class AccountingManager
         Guid currentUser,
         IProgress<JournalEntrySyncProgress>? progress)
     {
-        // Caller runs office health-check first and passes broken document IDs only.
-        // Repair one document at a time — never blind-sync the whole office.
-        var distinctIds = documentIds
-            .Where(id => id != Guid.Empty)
-            .Distinct()
-            .ToList();
+        // Always scan the office health-check proc first; issues drive the one-by-one repair list.
+        var distinctIds = await ResolveBrokenDocumentIdsFromHealthScanAsync(organizationId, officeIds, syncType, paymentKindId);
 
         var result = new JournalEntrySyncResult();
         if (distinctIds.Count == 0)
@@ -125,6 +121,32 @@ public partial class AccountingManager
         }
 
         return result;
+    }
+
+    private async Task<List<Guid>> ResolveBrokenDocumentIdsFromHealthScanAsync(
+        Guid organizationId,
+        string officeIds,
+        string syncType,
+        int? paymentKindId)
+    {
+        var scan = syncType switch
+        {
+            "receipt" => await _healthRepository.RunReceiptHealthCheckAsync(organizationId, officeIds),
+            "bill" => await _healthRepository.RunBillHealthCheckAsync(organizationId, officeIds),
+            "workOrder" => await _healthRepository.RunWorkOrderHealthCheckAsync(organizationId, officeIds),
+            "invoice" => await _healthRepository.RunInvoiceHealthCheckAsync(organizationId, officeIds),
+            "payment" => await _healthRepository.RunPaymentHealthCheckAsync(organizationId, officeIds, paymentKindId),
+            "deposit" => await _healthRepository.RunDepositHealthCheckAsync(organizationId, officeIds),
+            "transfer" => await _healthRepository.RunTransferHealthCheckAsync(organizationId, officeIds),
+            _ => throw new Exception($"Sync type '{syncType}' is not supported for health fix scan.")
+        };
+
+        if (scan.Summary.IsClean)
+            return [];
+
+        return syncType == "payment"
+            ? DocumentHealthFixRouting.CollectPaymentFixIds(scan.Issues).ToList()
+            : DocumentHealthFixRouting.CollectFixDocumentIds(scan.Issues).ToList();
     }
 
     private async Task RunHealthFixBulkPruneAsync(
