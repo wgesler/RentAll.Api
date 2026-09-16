@@ -84,7 +84,7 @@ public class ExternalPropertyPhotoSyncService
                 .ToDictionary(group => group.Key, group => group.Last());
 
             var existingPhotos = (await _propertyRepository.GetPropertyPhotosByPropertyIdAsync(property.PropertyId)).ToList();
-            var importItems = (await _propertyRepository.GetPropertyPhotoImportItemsByPropertyIdAsync(property.PropertyId)).ToList();
+            var importItems = await GetPropertyPhotoImportHistoryAsync(property.PropertyId);
 
             var urlToPhotoId = BuildUrlToPhotoIdMap(importItems);
             var photoIdToUrl = urlToPhotoId
@@ -217,6 +217,22 @@ public class ExternalPropertyPhotoSyncService
                 keys.VendorId,
                 photos.Count);
             return (null, "An error occurred while queueing property photos");
+        }
+    }
+
+    private async Task<List<PropertyPhotoImportItem>> GetPropertyPhotoImportHistoryAsync(Guid propertyId)
+    {
+        try
+        {
+            return (await _propertyRepository.GetPropertyPhotoImportItemsByPropertyIdAsync(propertyId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unable to load property photo import history. PropertyId={PropertyId}",
+                propertyId);
+            return [];
         }
     }
 

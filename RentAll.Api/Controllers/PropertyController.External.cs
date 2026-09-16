@@ -63,7 +63,7 @@ public partial class PropertyController
 
             var patchResult = await PatchExternalPropertyAsync(propertyBody, context, PropertyUploadLogOperations.UpdateProperty);
             await CompleteExternalPropertyAttemptAsync(
-                patchResult.Success ? Ok(patchResult.Property) : BadRequest(patchResult.ErrorMessage),
+                patchResult.Success ? Ok(patchResult.Property) : BadRequest(patchResult.ErrorMessage ?? "Invalid request data"),
                 patchResult.Attempt,
                 patchResult.Detail ?? patchResult.ErrorMessage,
                 patchResult.Property?.PropertyId);
@@ -120,7 +120,7 @@ public partial class PropertyController
 
             var upsertResult = await UpsertExternalPropertyAsync(propertyDto, context, operation);
             await CompleteExternalPropertyAttemptAsync(
-                upsertResult.Success ? Ok(upsertResult.Property) : BadRequest(upsertResult.ErrorMessage),
+                upsertResult.Success ? Ok(upsertResult.Property) : BadRequest(upsertResult.ErrorMessage ?? "Invalid request data"),
                 upsertResult.Attempt,
                 upsertResult.Detail ?? upsertResult.ErrorMessage,
                 upsertResult.Property?.PropertyId);
@@ -555,15 +555,30 @@ public partial class PropertyController
                 context.OfficeId,
                 dto.PropertyCode,
                 context.PartnerVendorId);
+
+            var errorMessage = GetExternalPropertySaveErrorMessage(ex);
+            var isClientError = errorMessage.Contains("stored procedure", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("Violation of UNIQUE KEY", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("Cannot insert the value NULL", StringComparison.OrdinalIgnoreCase);
+
             return new ExternalPropertyUpsertResult(
                 false,
                 false,
-                StatusCodes.Status500InternalServerError,
+                isClientError ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError,
                 null,
-                "An error occurred while saving the property",
+                errorMessage,
                 ex.Message,
                 attempt);
         }
+    }
+
+    private static string GetExternalPropertySaveErrorMessage(Exception ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        if (string.IsNullOrWhiteSpace(message))
+            return "An error occurred while saving the property";
+
+        return message.Length > 500 ? message[..500] : message;
     }
 
     private async Task<(ExternalPropertyPhotoImportCreatedResponseDto? PhotoImport, string? PhotoImportError, string? PhotoSyncDetail)> SyncPropertyPhotosIfProvidedAsync(
