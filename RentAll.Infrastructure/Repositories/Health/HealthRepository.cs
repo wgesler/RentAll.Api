@@ -45,6 +45,9 @@ public class HealthRepository : IHealthRepository
     public Task<DocumentHealthResult> RunManualJournalEntryHealthCheckAsync(Guid organizationId, string officeIds)
         => RunHealthCheckAsync("Accounting.JournalEntry_HealthCheck", organizationId, officeIds);
 
+    public Task<DocumentHealthResult> RunDocumentLinksHealthCheckAsync(Guid organizationId, string officeIds)
+        => RunHealthCheckAsync("Accounting.DocumentLinks_HealthCheck", organizationId, officeIds);
+
     private async Task<DocumentHealthResult> RunHealthCheckAsync(
         string procedureName,
         Guid organizationId,

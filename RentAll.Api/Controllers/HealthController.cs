@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Dtos.Accounting.JournalEntries;
 using RentAll.Api.Dtos.Health;
+using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 
 namespace RentAll.Api.Controllers;
@@ -10,11 +12,13 @@ namespace RentAll.Api.Controllers;
 public class HealthController : BaseController
 {
     private readonly IHealthRepository _healthRepository;
+    private readonly IAccountingManager _accountingManager;
     private readonly ILogger<HealthController> _logger;
 
-    public HealthController(IHealthRepository healthRepository, ILogger<HealthController> logger)
+    public HealthController(IHealthRepository healthRepository, IAccountingManager accountingManager, ILogger<HealthController> logger)
     {
         _healthRepository = healthRepository;
+        _accountingManager = accountingManager;
         _logger = logger;
     }
 
@@ -61,6 +65,40 @@ public class HealthController : BaseController
     [HttpPost("manual-journal-entry/check")]
     public Task<IActionResult> CheckManualJournalEntries([FromBody] HealthCheckRequestDto dto)
         => RunHealthCheckAsync(dto, (orgId, officeIds) => _healthRepository.RunManualJournalEntryHealthCheckAsync(orgId, officeIds));
+
+    [HttpPost("document-links/check")]
+    public Task<IActionResult> CheckDocumentLinks([FromBody] HealthCheckRequestDto dto)
+        => RunHealthCheckAsync(dto, (orgId, officeIds) => _healthRepository.RunDocumentLinksHealthCheckAsync(orgId, officeIds));
+
+    [HttpPost("document-links/fix")]
+    public async Task<IActionResult> FixDocumentLinks([FromBody] HealthCheckRequestDto dto)
+    {
+        if (!HasAdminAccess())
+            return Unauthorized("Only Admin or SuperAdmin can run health fixes.");
+
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var officeIds = ResolveRequestedOfficeIds(dto);
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Forbid();
+
+        try
+        {
+            await _accountingManager.SyncDocumentLinksAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            var result = await _accountingManager.RepairDepositAndTransferSplitLinksAsync(CurrentOrganizationId, officeIds, CurrentUser);
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error repairing payment/deposit/transfer document links");
+            return ServerError("An error occurred while repairing document links");
+        }
+    }
 
     private async Task<IActionResult> RunHealthCheckAsync(
         HealthCheckRequestDto dto,

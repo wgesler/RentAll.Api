@@ -124,6 +124,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         private readonly List<JournalEntry> _journalEntries = [];
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private readonly Dictionary<Guid, Payment> _payments = [];
+        private readonly Dictionary<Guid, Deposit> _deposits = [];
         private int _journalEntryCodeSequence;
         private int _paymentCodeSequence;
 
@@ -149,6 +150,9 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
 
         internal void TrackPayment(Payment payment)
             => _payments[payment.PaymentId] = ClonePayment(payment);
+
+        internal void TrackDeposit(Deposit deposit)
+            => _deposits[deposit.DepositId] = CloneDeposit(deposit);
 
         internal void RemoveJournalEntries(Func<JournalEntry, bool> predicate)
             => _journalEntries.RemoveAll(entry => predicate(entry));
@@ -334,6 +338,10 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 .Setup(r => r.GetPaymentByIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
                 .ReturnsAsync((Guid paymentId, Guid _) =>
                     _payments.TryGetValue(paymentId, out var payment) ? ClonePayment(payment) : null);
+            accountingRepository
+                .Setup(r => r.GetDepositByIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
+                .ReturnsAsync((Guid depositId, Guid _) =>
+                    _deposits.TryGetValue(depositId, out var deposit) ? CloneDeposit(deposit) : null);
             accountingRepository
                 .Setup(r => r.GetLedgerLinesByPaymentIdAsync(It.IsAny<Guid>(), AccountingManagerJournalEntryTestSupport.OrganizationId))
                 .ReturnsAsync((Guid paymentId, Guid _) =>
@@ -633,6 +641,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 Description = payment.Description,
                 PaymentKindId = payment.PaymentKindId,
                 PaymentTypeId = payment.PaymentTypeId,
+                DepositId = payment.DepositId,
+                DepositCode = payment.DepositCode,
                 PostingStatusId = payment.PostingStatusId,
                 IsActive = payment.IsActive,
                 CreatedBy = payment.CreatedBy,
@@ -651,6 +661,34 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     LedgerLineDate = line.LedgerLineDate,
                     PaymentId = line.PaymentId
                 }).ToList()
+            };
+
+        private static Deposit CloneDeposit(Deposit deposit)
+            => new()
+            {
+                DepositId = deposit.DepositId,
+                DepositCode = deposit.DepositCode,
+                OrganizationId = deposit.OrganizationId,
+                OfficeId = deposit.OfficeId,
+                DepositDate = deposit.DepositDate,
+                AccountingPeriod = deposit.AccountingPeriod,
+                Amount = deposit.Amount,
+                Description = deposit.Description,
+                TransferId = deposit.TransferId,
+                TransferCode = deposit.TransferCode,
+                PostingStatusId = deposit.PostingStatusId,
+                IsActive = deposit.IsActive,
+                Splits = deposit.Splits?.Select(split => new DepositSplit
+                {
+                    DepositSplitId = split.DepositSplitId,
+                    JournalEntryLineId = split.JournalEntryLineId,
+                    ChartOfAccountId = split.ChartOfAccountId,
+                    Amount = split.Amount,
+                    Description = split.Description,
+                    PropertyId = split.PropertyId,
+                    ReservationId = split.ReservationId,
+                    ContactId = split.ContactId
+                }).ToList() ?? []
             };
 
         private static JournalEntry CloneJournalEntry(JournalEntry entry)

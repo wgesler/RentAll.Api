@@ -12,4 +12,5 @@ public interface IHealthRepository
     Task<DocumentHealthResult> RunDepositHealthCheckAsync(Guid organizationId, string officeIds);
     Task<DocumentHealthResult> RunTransferHealthCheckAsync(Guid organizationId, string officeIds);
     Task<DocumentHealthResult> RunManualJournalEntryHealthCheckAsync(Guid organizationId, string officeIds);
+    Task<DocumentHealthResult> RunDocumentLinksHealthCheckAsync(Guid organizationId, string officeIds);
 }

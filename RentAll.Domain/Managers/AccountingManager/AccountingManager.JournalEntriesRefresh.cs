@@ -134,6 +134,7 @@ public partial class AccountingManager
                 return;
 
             var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+            var depositedPaymentIds = await CollectDepositedPaymentIdsAsync(invoice, priorInvoice, costCodeById);
 
             var priorPaymentLedgerLines = priorInvoice.LedgerLines
                 .Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0)
@@ -149,9 +150,12 @@ public partial class AccountingManager
             var paymentIdsToRefresh = new HashSet<Guid>();
             foreach (var removedPaymentLedgerLine in priorPaymentLedgerLines.Where(line => !currentPaymentLedgerLineIds.Contains(line.LedgerLineId)))
             {
+                if (removedPaymentLedgerLine.PaymentId is { } removedPaymentId && removedPaymentId != Guid.Empty && depositedPaymentIds.Contains(removedPaymentId))
+                    continue;
+
                 await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, removedPaymentLedgerLine);
-                if (removedPaymentLedgerLine.PaymentId is { } removedPaymentId && removedPaymentId != Guid.Empty)
-                    paymentIdsToRefresh.Add(removedPaymentId);
+                if (removedPaymentLedgerLine.PaymentId is { } refreshPaymentId && refreshPaymentId != Guid.Empty && !depositedPaymentIds.Contains(refreshPaymentId))
+                    paymentIdsToRefresh.Add(refreshPaymentId);
             }
 
             await RefreshInvoiceChargeJournalEntriesAsync(invoice, invoice.ModifiedBy);
@@ -162,7 +166,8 @@ public partial class AccountingManager
             {
                 if (paymentLedgerLine.PaymentId is { } paymentId && paymentId != Guid.Empty)
                 {
-                    paymentIdsToRefresh.Add(paymentId);
+                    if (!depositedPaymentIds.Contains(paymentId))
+                        paymentIdsToRefresh.Add(paymentId);
                     continue;
                 }
 
@@ -174,7 +179,7 @@ public partial class AccountingManager
                 await UpsertJournalEntryFromPaymentAsync(invoice, paymentLedgerLine, existingPaymentEntries, invoice.ModifiedBy);
             }
 
-            foreach (var paymentId in paymentIdsToRefresh)
+            foreach (var paymentId in paymentIdsToRefresh.Where(id => !depositedPaymentIds.Contains(id)))
                 await CreateJournalEntriesFromInvoicePaymentDocumentAsync(paymentId, invoice.OrganizationId, invoice.ModifiedBy);
 
             await PruneOrphanedInvoicePaymentJournalEntriesAsync(invoice, await GetActiveInvoicePaymentLedgerLinesAsync(invoice));

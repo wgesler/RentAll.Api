@@ -39,6 +39,7 @@ public partial class AccountingManager
 
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
         invoice.PostingStatusId = postingStatusId;
+        await ValidateInvoiceUpdatePreservesDepositedPaymentsAsync(invoice, existingInvoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
         var createdPaymentIds = new List<Guid>();

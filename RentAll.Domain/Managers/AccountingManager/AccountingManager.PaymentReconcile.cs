@@ -270,6 +270,8 @@ public partial class AccountingManager
         if (invoice.LedgerLines.Count == 0)
             return [];
 
+        await ValidateNewPaymentLinesAgainstDepositedPaymentsAsync(invoice);
+
         var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
         var createdPaymentIds = new List<Guid>();
         try

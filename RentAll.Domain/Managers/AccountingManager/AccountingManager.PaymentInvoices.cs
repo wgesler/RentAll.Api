@@ -1167,13 +1167,24 @@ public partial class AccountingManager
 
         var metadataSource = changedMetadataLines.FirstOrDefault();
         var changed = payment.Amount != linkedTotal;
-        payment.Amount = linkedTotal;
         if (metadataSource != null)
         {
             changed = changed
                 || payment.PaymentDate != metadataSource.LedgerLineDate
                 || payment.CostCodeId != metadataSource.CostCodeId
                 || (linkedLines.Count == 1 && !string.Equals(payment.Description, metadataSource.Description, StringComparison.Ordinal));
+        }
+
+        var lockContext = await TryLoadDepositedPaymentLockContextAsync(paymentId, invoice.OrganizationId);
+        if (lockContext != null)
+        {
+            EnsureDepositedPaymentHeaderUnchanged(payment, lockContext, linkedTotal, metadataSource, invoice.InvoiceCode);
+            return;
+        }
+
+        payment.Amount = linkedTotal;
+        if (metadataSource != null)
+        {
             payment.PaymentDate = metadataSource.LedgerLineDate;
             payment.CostCodeId = metadataSource.CostCodeId;
             if (linkedLines.Count == 1)
