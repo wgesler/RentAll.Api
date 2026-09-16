@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace RentAll.Api.Dtos.Properties.Properties;
 
 public class CreateExternalPropertyRequestDto
@@ -44,5 +46,69 @@ public class CreateExternalPropertyRequestDto
             OfficeId = OfficeId,
             PartnerVendorId = VendorId
         };
+    }
+
+    public static (bool Success, ExternalPropertyIntakeContext? Context, List<CreateExternalPropertyDto>? Properties, string? ErrorMessage) TryParseFromBody(JsonElement body)
+    {
+        if (body.ValueKind != JsonValueKind.Object)
+            return (false, null, null, "Property data is required");
+
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "organizationId", out var organizationIdElement)
+            || !organizationIdElement.TryGetGuid(out var organizationId)
+            || organizationId == Guid.Empty)
+            return (false, null, null, "OrganizationId is required");
+
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "officeId", out var officeIdElement)
+            || officeIdElement.ValueKind != JsonValueKind.Number
+            || !officeIdElement.TryGetInt32(out var officeId)
+            || officeId <= 0)
+            return (false, null, null, "OfficeId is required");
+
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "vendorId", out var vendorIdElement)
+            || !vendorIdElement.TryGetGuid(out var vendorId)
+            || vendorId == Guid.Empty)
+            return (false, null, null, "VendorId is required");
+
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "properties", out var propertiesElement)
+            || propertiesElement.ValueKind != JsonValueKind.Array)
+            return (false, null, null, "Properties must contain at least one item");
+
+        var properties = new List<CreateExternalPropertyDto>();
+        var index = 0;
+        foreach (var propertyElement in propertiesElement.EnumerateArray())
+        {
+            if (propertyElement.ValueKind != JsonValueKind.Object)
+                return (false, null, null, $"Properties[{index}] must be an object");
+
+            CreateExternalPropertyDto propertyDto;
+            try
+            {
+                propertyDto = ExternalPropertyIntakeJson.DeserializePropertyItem(propertyElement);
+            }
+            catch (JsonException)
+            {
+                return (false, null, null, $"Properties[{index}]: Invalid property JSON");
+            }
+
+            var (itemIsValid, itemError) = propertyDto.IsValid();
+            if (!itemIsValid)
+                return (false, null, null, $"Properties[{index}]: {itemError}");
+
+            properties.Add(propertyDto);
+            index++;
+        }
+
+        if (properties.Count == 0)
+            return (false, null, null, "Properties must contain at least one item");
+
+        if (properties.Count > MaxPropertiesPerRequest)
+            return (false, null, null, $"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
+
+        return (true, new ExternalPropertyIntakeContext
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            PartnerVendorId = vendorId
+        }, properties, null);
     }
 }
