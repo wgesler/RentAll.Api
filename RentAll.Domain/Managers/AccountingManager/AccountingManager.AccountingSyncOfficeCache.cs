@@ -418,44 +418,25 @@ public partial class AccountingManager
 
         public List<UndepositedPaymentLineCandidate> GetOrBuildUndepositedCandidates(
             Deposit deposit,
-            int undepositedFundsAccountId,
-            Func<JournalEntry, bool> isPaymentCandidate,
-            Func<JournalEntry, string> resolveSourceCode)
+            int undepositedFundsAccountId)
         {
             var key = (deposit.OfficeId, undepositedFundsAccountId);
             if (_undepositedCandidates.TryGetValue(key, out var cached))
                 return cached.ToList();
 
             var candidates = new List<UndepositedPaymentLineCandidate>();
-            foreach (var paymentEntry in GetBySourceType((int)SourceType.Invoice, deposit.OfficeId))
+            foreach (var payment in Payments.Where(payment => payment.IsActive && payment.PaymentKindId == (int)PaymentKind.Invoice))
             {
-                if (!isPaymentCandidate(paymentEntry))
-                    continue;
-
-                var sourceCode = resolveSourceCode(paymentEntry);
-                if (string.IsNullOrWhiteSpace(sourceCode))
-                    continue;
-
-                foreach (var line in paymentEntry.JournalEntryLines ?? [])
+                foreach (var paymentEntry in GetByPaymentId(payment.PaymentId))
                 {
-                    if (line.ChartOfAccountId != undepositedFundsAccountId)
+                    if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                         continue;
 
-                    var netAmount = line.Debit - line.Credit;
-                    if (Math.Abs(netAmount) <= 0.005m)
-                        continue;
-
-                    candidates.Add(new UndepositedPaymentLineCandidate
-                    {
-                        JournalEntryLineId = line.JournalEntryLineId,
-                        NetAmount = netAmount,
-                        PropertyId = NormalizeOptionalGuid(line.PropertyId),
-                        ReservationId = NormalizeOptionalGuid(line.ReservationId),
-                        ContactId = NormalizeOptionalGuid(line.ContactId),
-                        DepositId = NormalizeOptionalGuid(paymentEntry.DepositId),
-                        SourceCode = sourceCode,
-                        TransactionDate = paymentEntry.TransactionDate
-                    });
+                    AppendUndepositedPaymentLineCandidates(
+                        candidates,
+                        paymentEntry,
+                        undepositedFundsAccountId,
+                        payment.DepositId);
                 }
             }
 

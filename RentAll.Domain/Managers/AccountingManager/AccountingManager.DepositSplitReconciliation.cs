@@ -136,63 +136,73 @@ public partial class AccountingManager
         return messages;
     }
 
+    private static bool IsRematchableHealthInvoicePaymentJournalEntry(JournalEntry entry)
+        => entry.PostingStatusId == PostingStatus.Open
+            && entry.PaymentId is { } paymentId
+            && paymentId != Guid.Empty
+            && entry.JournalEntryKindId is JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive;
+
     private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(Deposit deposit, int undepositedFundsAccountId)
     {
         if (_officeSyncCache != null)
-        {
-            return _officeSyncCache.GetOrBuildUndepositedCandidates(
-                deposit,
-                undepositedFundsAccountId,
-                entry => IsStandardInvoicePaymentJournalEntry(entry)
-                    || entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive,
-                ResolvePaymentJournalEntrySourceCode);
-        }
-
-        var paymentEntries = (await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
-        {
-            OrganizationId = deposit.OrganizationId,
-            OfficeIds = deposit.OfficeId.ToString(),
-            SourceTypeId = (int)SourceType.Invoice,
-            // Rematch must see payment JEs before the accounting-office start date.
-            StartDate = DateOnly.MinValue,
-            IncludeUnposted = true
-        }))
-            .Where(entry =>
-                IsStandardInvoicePaymentJournalEntry(entry)
-                || entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive)
-            .ToList();
+            return _officeSyncCache.GetOrBuildUndepositedCandidates(deposit, undepositedFundsAccountId);
 
         var candidates = new List<UndepositedPaymentLineCandidate>();
-        foreach (var paymentEntry in paymentEntries)
+        var payments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+            deposit.OrganizationId,
+            deposit.OfficeId.ToString(),
+            (int)PaymentKind.Invoice);
+
+        foreach (var payment in payments.Where(payment => payment.IsActive))
         {
-            var sourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
-            if (string.IsNullOrWhiteSpace(sourceCode))
-                continue;
-
-            foreach (var line in paymentEntry.JournalEntryLines)
+            var paymentEntries = await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId);
+            foreach (var paymentEntry in paymentEntries)
             {
-                if (line.ChartOfAccountId != undepositedFundsAccountId)
+                if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                     continue;
 
-                var netAmount = line.Debit - line.Credit;
-                if (Math.Abs(netAmount) <= 0.005m)
-                    continue;
-
-                candidates.Add(new UndepositedPaymentLineCandidate
-                {
-                    JournalEntryLineId = line.JournalEntryLineId,
-                    NetAmount = netAmount,
-                    PropertyId = NormalizeOptionalGuid(line.PropertyId),
-                    ReservationId = NormalizeOptionalGuid(line.ReservationId),
-                    ContactId = NormalizeOptionalGuid(line.ContactId),
-                    DepositId = NormalizeOptionalGuid(paymentEntry.DepositId),
-                    SourceCode = sourceCode,
-                    TransactionDate = paymentEntry.TransactionDate
-                });
+                AppendUndepositedPaymentLineCandidates(
+                    candidates,
+                    paymentEntry,
+                    undepositedFundsAccountId,
+                    payment.DepositId);
             }
         }
 
         return candidates;
+    }
+
+    private static void AppendUndepositedPaymentLineCandidates(
+        ICollection<UndepositedPaymentLineCandidate> candidates,
+        JournalEntry paymentEntry,
+        int undepositedFundsAccountId,
+        Guid? paymentDepositId)
+    {
+        var sourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
+        if (string.IsNullOrWhiteSpace(sourceCode))
+            return;
+
+        foreach (var line in paymentEntry.JournalEntryLines ?? [])
+        {
+            if (line.ChartOfAccountId != undepositedFundsAccountId)
+                continue;
+
+            var netAmount = line.Debit - line.Credit;
+            if (Math.Abs(netAmount) <= 0.005m)
+                continue;
+
+            candidates.Add(new UndepositedPaymentLineCandidate
+            {
+                JournalEntryLineId = line.JournalEntryLineId,
+                NetAmount = netAmount,
+                PropertyId = NormalizeOptionalGuid(line.PropertyId),
+                ReservationId = NormalizeOptionalGuid(line.ReservationId),
+                ContactId = NormalizeOptionalGuid(line.ContactId),
+                DepositId = NormalizeOptionalGuid(paymentEntry.DepositId ?? paymentDepositId),
+                SourceCode = sourceCode,
+                TransactionDate = paymentEntry.TransactionDate
+            });
+        }
     }
 
     private async Task<HashSet<Guid>> GetJournalEntryLineIdsClaimedByOtherDepositsAsync(Deposit deposit)
@@ -288,9 +298,7 @@ public partial class AccountingManager
                 continue;
 
             var paymentEntries = (await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId))
-                .Where(entry =>
-                    entry.PostingStatusId == PostingStatus.Open
-                    && entry.JournalEntryKindId == JournalEntryKind.Payment);
+                .Where(IsRematchableHealthInvoicePaymentJournalEntry);
 
             foreach (var paymentEntry in paymentEntries)
             {
