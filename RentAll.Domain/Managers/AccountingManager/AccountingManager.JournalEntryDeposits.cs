@@ -441,6 +441,117 @@ public partial class AccountingManager
         return paymentIds;
     }
 
+    private async Task<HashSet<Guid>> CollectPaymentIdsForDepositHealthFixAsync(Deposit deposit, Guid organizationId)
+    {
+        var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (Math.Abs(split.Amount) <= 0.005m)
+                continue;
+
+            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+            if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+                continue;
+
+            foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(organizationId, deposit.OfficeId, invoiceSourceCode))
+                paymentIds.Add(paymentId);
+        }
+
+        var officePayments = _officeSyncCache != null
+            ? _officeSyncCache.Payments
+            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                organizationId,
+                deposit.OfficeId.ToString(),
+                (int)PaymentKind.Invoice)).ToList();
+
+        foreach (var payment in officePayments)
+        {
+            if (payment.IsActive
+                && payment.PaymentKindId == (int)PaymentKind.Invoice
+                && payment.DepositId == deposit.DepositId)
+            {
+                paymentIds.Add(payment.PaymentId);
+            }
+        }
+
+        return paymentIds;
+    }
+
+    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(
+        Guid organizationId,
+        int officeId,
+        string invoiceSourceCode)
+    {
+        var normalizedSourceCode = invoiceSourceCode.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSourceCode))
+            return [];
+
+        var paymentIds = new HashSet<Guid>();
+
+        if (_officeSyncCache != null)
+        {
+            foreach (var payment in _officeSyncCache.Payments)
+            {
+                if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                    continue;
+
+                foreach (var line in payment.LedgerLines ?? [])
+                {
+                    if (line.InvoiceId == Guid.Empty)
+                        continue;
+
+                    if (!_officeSyncCache.InvoicesById.TryGetValue(line.InvoiceId, out var invoice))
+                        continue;
+
+                    if (!string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    paymentIds.Add(payment.PaymentId);
+                    break;
+                }
+            }
+
+            return paymentIds.ToList();
+        }
+
+        var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            IncludeInactive = true,
+            IncludePaid = true
+        })).ToList();
+
+        var invoiceIds = invoices
+            .Where(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+            .Select(invoice => invoice.InvoiceId)
+            .ToHashSet();
+
+        if (invoiceIds.Count == 0)
+            return [];
+
+        foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                     organizationId,
+                     officeId.ToString(),
+                     (int)PaymentKind.Invoice))
+        {
+            if (!payment.IsActive)
+                continue;
+
+            if ((payment.LedgerLines ?? []).Any(line => invoiceIds.Contains(line.InvoiceId)))
+                paymentIds.Add(payment.PaymentId);
+        }
+
+        return paymentIds.ToList();
+    }
+
     private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, Guid currentUser)
     {
         if (deposit.DepositId == Guid.Empty)

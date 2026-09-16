@@ -305,10 +305,14 @@ public partial class AccountingManager
                 var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
                 foreach (var line in paymentEntry.JournalEntryLines ?? [])
                 {
-                    if (line.ChartOfAccountId != undepositedFundsAccountId || line.Debit <= 0)
+                    if (line.ChartOfAccountId != undepositedFundsAccountId)
                         continue;
 
-                    if (Math.Abs(line.Debit - splitAmount) > 0.005m)
+                    var netAmount = Math.Abs(line.Debit - line.Credit);
+                    if (netAmount <= 0.005m)
+                        continue;
+
+                    if (Math.Abs(netAmount - splitAmount) > 0.005m)
                         continue;
 
                     if (line.JournalEntryLineId == Guid.Empty)
@@ -378,7 +382,19 @@ public partial class AccountingManager
             .ToList();
 
         if (invoiceAmountMatches.Count == 0)
+        {
+            var invoiceOnlyMatches = candidates
+                .Where(candidate =>
+                    !claimedLineIds.Contains(candidate.JournalEntryLineId)
+                    && !assignedLineIds.Contains(candidate.JournalEntryLineId)
+                    && string.Equals(candidate.SourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (invoiceOnlyMatches.Count == 1)
+                return invoiceOnlyMatches[0].JournalEntryLineId;
+
             return null;
+        }
 
         if (invoiceAmountMatches.Count == 1)
             return invoiceAmountMatches[0].JournalEntryLineId;

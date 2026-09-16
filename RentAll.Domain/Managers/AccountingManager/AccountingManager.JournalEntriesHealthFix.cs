@@ -381,26 +381,7 @@ public partial class AccountingManager
         Guid currentUser,
         JournalEntrySyncResult result)
     {
-        var paymentIds = new HashSet<Guid>(await CollectPaymentIdsFromDepositSplitsAsync(deposit));
-
-        var officePayments = _officeSyncCache != null
-            ? _officeSyncCache.Payments
-            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                organizationId,
-                deposit.OfficeId.ToString(),
-                (int)PaymentKind.Invoice)).ToList();
-
-        foreach (var payment in officePayments)
-        {
-            if (!payment.IsActive
-                || payment.PaymentKindId != (int)PaymentKind.Invoice
-                || payment.DepositId != deposit.DepositId)
-            {
-                continue;
-            }
-
-            paymentIds.Add(payment.PaymentId);
-        }
+        var paymentIds = await CollectPaymentIdsForDepositHealthFixAsync(deposit, organizationId);
 
         foreach (var paymentId in paymentIds)
         {
@@ -415,6 +396,8 @@ public partial class AccountingManager
 
             await SyncInvoicePaymentForHealthFixAsync(payment, organizationId, currentUser, result);
         }
+
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
     }
 
     async Task SyncInvoicePaymentForHealthFixAsync(Payment paymentSummary, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
