@@ -247,6 +247,40 @@ public partial class AccountingManager
         }
     }
 
+    async Task SyncDepositedInvoicePaymentsForDepositHealthFixAsync(Deposit deposit, Guid organizationId, Guid currentUser)
+    {
+        var paymentIds = new HashSet<Guid>(await CollectPaymentIdsFromDepositSplitsAsync(deposit));
+
+        var officePayments = _officeSyncCache != null
+            ? _officeSyncCache.Payments
+            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                organizationId,
+                deposit.OfficeId.ToString(),
+                (int)PaymentKind.Invoice)).ToList();
+
+        foreach (var payment in officePayments)
+        {
+            if (!payment.IsActive
+                || payment.PaymentKindId != (int)PaymentKind.Invoice
+                || payment.DepositId != deposit.DepositId)
+            {
+                continue;
+            }
+
+            paymentIds.Add(payment.PaymentId);
+        }
+
+        foreach (var paymentId in paymentIds)
+        {
+            await PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(paymentId, organizationId, currentUser);
+            await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
+                paymentId,
+                organizationId,
+                currentUser,
+                allowPartialAllocationsOnMismatch: true);
+        }
+    }
+
     async Task SyncInvoicePaymentForHealthFixAsync(Payment paymentSummary, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
         var createResult = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
@@ -284,6 +318,8 @@ public partial class AccountingManager
             ? deposit.DepositId.ToString()
             : deposit.DepositCode.Trim();
         var trail = new AccountingSyncBailTrail();
+
+        await SyncDepositedInvoicePaymentsForDepositHealthFixAsync(deposit, organizationId, currentUser);
 
         var originalSplitLineIds = (deposit.Splits ?? [])
             .Select(split => split.JournalEntryLineId)
