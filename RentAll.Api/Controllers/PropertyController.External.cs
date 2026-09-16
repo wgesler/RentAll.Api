@@ -546,6 +546,7 @@ public partial class PropertyController
                 createdPhotoImport,
                 createdPhotoImportError);
         }
+            var recovered = await TryRecoverExternalPropertyUpsertFromDuplicateKeyAsync(
         catch (Exception ex)
         {
             _logger.LogError(
