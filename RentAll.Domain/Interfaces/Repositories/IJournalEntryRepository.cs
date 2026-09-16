@@ -25,6 +25,15 @@ public interface IJournalEntryRepository
     Task<JournalEntry> UpdateJournalEntryCheckNumberByIdAsync(Guid journalEntryId, Guid organizationId, string checkNumber, Guid modifiedBy);
     Task DeleteJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
     Task DeleteOpenJournalEntryByIdAsync(Guid journalEntryId, Guid organizationId);
+    Task<int> PruneDuplicateOpenInvoicePaymentJesAsync(
+        Guid organizationId,
+        string officeIds,
+        string? paymentIds = null,
+        bool removeOrphanPrePayReceive = true);
+    Task<int> PruneDuplicateOpenDepositJesAsync(
+        Guid organizationId,
+        string officeIds,
+        string? depositIds = null);
     Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, int sourceTypeId, Guid sourceId, int? journalEntryKindId = null, bool includeCashOnly = true);
     Task<int> DeleteOpenJournalEntriesBySourceCodesAsync(Guid organizationId, int officeId, IEnumerable<int> sourceTypeIds, IEnumerable<string> sourceCodes);
     Task<int> DeleteJournalEntriesByOfficeIdsAsync(Guid organizationId, string officeIds);

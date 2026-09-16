@@ -78,6 +78,20 @@ public partial class AccountingManager
                 continue;
             }
 
+            resolvedLineId = await ResolveDepositSplitByDepositedPaymentStampAsync(
+                deposit,
+                split,
+                undepositedFundsAccountId,
+                claimedLineIds,
+                assignedLineIds);
+            if (resolvedLineId.HasValue && resolvedLineId != Guid.Empty)
+            {
+                split.JournalEntryLineId = resolvedLineId;
+                assignedLineIds.Add(resolvedLineId.Value);
+                trail?.Note($"Rematch linked via payment stamp: {splitLabel} amount={split.Amount:0.00} -> line={resolvedLineId}");
+                continue;
+            }
+
             // Stale after clear/resync (or wrong account line): clear so callers rematch instead of treating as valid.
             if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
             {
@@ -246,6 +260,92 @@ public partial class AccountingManager
             return false;
 
         return true;
+    }
+
+    private async Task<Guid?> ResolveDepositSplitByDepositedPaymentStampAsync(
+        Deposit deposit,
+        DepositSplit split,
+        int undepositedFundsAccountId,
+        IReadOnlySet<Guid> claimedLineIds,
+        IReadOnlySet<Guid> assignedLineIds)
+    {
+        if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+            return null;
+
+        var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+        if (splitAmount <= 0.005m)
+            return null;
+
+        var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+        var payments = await GetInvoicePaymentsStampedToDepositAsync(deposit);
+
+        Guid? bestLineId = null;
+        var bestRank = int.MaxValue;
+
+        foreach (var payment in payments)
+        {
+            if (payment.DepositId != deposit.DepositId)
+                continue;
+
+            var paymentEntries = (await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId))
+                .Where(entry =>
+                    entry.PostingStatusId == PostingStatus.Open
+                    && entry.JournalEntryKindId == JournalEntryKind.Payment);
+
+            foreach (var paymentEntry in paymentEntries)
+            {
+                var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
+                foreach (var line in paymentEntry.JournalEntryLines ?? [])
+                {
+                    if (line.ChartOfAccountId != undepositedFundsAccountId || line.Debit <= 0)
+                        continue;
+
+                    if (Math.Abs(line.Debit - splitAmount) > 0.005m)
+                        continue;
+
+                    if (line.JournalEntryLineId == Guid.Empty)
+                        continue;
+
+                    if (claimedLineIds.Contains(line.JournalEntryLineId) || assignedLineIds.Contains(line.JournalEntryLineId))
+                        continue;
+
+                    var rank = 0;
+                    if (!string.IsNullOrWhiteSpace(splitSourceCode)
+                        && string.Equals(paymentSourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        rank -= 2;
+                    }
+
+                    if (rank < bestRank)
+                    {
+                        bestRank = rank;
+                        bestLineId = line.JournalEntryLineId;
+                    }
+                }
+            }
+        }
+
+        return bestLineId;
+    }
+
+    private async Task<List<Payment>> GetInvoicePaymentsStampedToDepositAsync(Deposit deposit)
+    {
+        if (_officeSyncCache != null)
+        {
+            return _officeSyncCache.Payments
+                .Where(payment =>
+                    payment.IsActive
+                    && payment.PaymentKindId == (int)PaymentKind.Invoice
+                    && payment.DepositId == deposit.DepositId)
+                .ToList();
+        }
+
+        return (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                deposit.OrganizationId,
+                deposit.OfficeId.ToString(),
+                (int)PaymentKind.Invoice))
+            .Where(payment => payment.IsActive && payment.DepositId == deposit.DepositId)
+            .ToList();
     }
 
     private static Guid? ResolveDepositSplitJournalEntryLineId(Deposit deposit, DepositSplit split, IReadOnlyList<UndepositedPaymentLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)

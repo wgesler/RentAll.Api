@@ -436,6 +436,44 @@ public partial class JournalEntryRepository
         });
     }
 
+    public async Task<int> PruneDuplicateOpenInvoicePaymentJesAsync(
+        Guid organizationId,
+        string officeIds,
+        string? paymentIds = null,
+        bool removeOrphanPrePayReceive = true)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>(
+            "Accounting.Payment_PruneDuplicateOpenInvoicePaymentJes",
+            new
+            {
+                OrganizationId = organizationId,
+                OfficeIds = officeIds,
+                PaymentIds = paymentIds,
+                RemoveOrphanPrePayReceive = removeOrphanPrePayReceive
+            });
+
+        return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
+    }
+
+    public async Task<int> PruneDuplicateOpenDepositJesAsync(
+        Guid organizationId,
+        string officeIds,
+        string? depositIds = null)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var result = await db.DapperProcQueryAsync<JournalEntryDeleteAllResult>(
+            "Accounting.Deposit_PruneDuplicateOpenDepositJes",
+            new
+            {
+                OrganizationId = organizationId,
+                OfficeIds = officeIds,
+                DepositIds = depositIds
+            });
+
+        return result?.FirstOrDefault()?.JournalEntriesDeleted ?? 0;
+    }
+
     public async Task<int> DeleteJournalEntriesBySourceIdAsync(Guid organizationId, int sourceTypeId, Guid sourceId, int? journalEntryKindId = null, bool includeCashOnly = true)
     {
         await using var db = new SqlConnection(_dbConnectionString);

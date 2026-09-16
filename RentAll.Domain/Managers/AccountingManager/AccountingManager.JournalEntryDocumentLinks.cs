@@ -94,15 +94,8 @@ public partial class AccountingManager
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             return new JournalEntrySyncResult();
 
-        var combined = await SyncPaymentJournalEntriesAsync(
-            organizationId,
-            officeIds,
-            currentUser,
-            progress,
-            syncDocumentLinksAtEnd: false);
-
         await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
-        return combined;
+        return new JournalEntrySyncResult();
     }
 
     private async Task SyncInvoicePaymentDocumentLinksFromLedgerAsync(Guid organizationId, string officeIds, Guid currentUser)

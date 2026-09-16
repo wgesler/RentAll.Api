@@ -31,9 +31,6 @@ public class StartDocumentTypeJournalEntrySyncRequestDto
                 return (false, "Each document ID must be a valid GUID");
         }
 
-        if (HealthFix && ResolveDocumentIds().Length == 0)
-            return (false, "At least one document ID is required for health fix.");
-
         return (true, null);
     }
 }

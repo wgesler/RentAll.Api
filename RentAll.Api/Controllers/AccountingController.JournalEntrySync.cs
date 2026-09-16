@@ -587,12 +587,13 @@ public partial class AccountingController
 
         try
         {
-            if (healthFix && targetedDocumentIds.Length == 0)
-                throw new InvalidOperationException("Health fix requires at least one document ID.");
-
-            SetSyncJobMessage(job, targetedDocumentIds.Length > 0
-                ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
-                : $"Syncing {syncType}...");
+            SetSyncJobMessage(job, healthFix
+                ? targetedDocumentIds.Length > 0
+                    ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
+                    : $"Fixing all {syncType} documents in office..."
+                : targetedDocumentIds.Length > 0
+                    ? $"Fixing {targetedDocumentIds.Length} {syncType} document(s)..."
+                    : $"Syncing {syncType}...");
             await RunScopedJournalEntrySyncAsync(async manager =>
             {
                 if (targetedDocumentIds.Length > 0)
@@ -683,7 +684,7 @@ public partial class AccountingController
 
         try
         {
-            SetSyncJobMessage(job, "Rebuilding invoice payment JEs, syncing document links, and repairing split links...");
+            SetSyncJobMessage(job, "Syncing document links and repairing split links...");
             await RunScopedJournalEntrySyncAsync(manager =>
                 manager.RepairDocumentLinksForHealthFixAsync(organizationId, officeIds, currentUser, progress));
             SetSyncJobMessage(job, "Document link repair complete.");
