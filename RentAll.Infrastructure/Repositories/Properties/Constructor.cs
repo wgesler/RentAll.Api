@@ -145,6 +145,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 OnlineChecked = e.OnlineChecked,
                 OfflineChecked = e.OfflineChecked,
                 IsActive = e.IsActive,
+                IsDeleted = e.IsDeleted,
                 CreatedOn = e.CreatedOn,
                 CreatedBy = e.CreatedBy,
                 ModifiedOn = e.ModifiedOn,

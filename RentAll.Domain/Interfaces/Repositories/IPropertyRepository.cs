@@ -17,12 +17,14 @@ public interface IPropertyRepository
     Task<Property?> GetPropertyByIdAsync(Guid propertyId, Guid organizationId);
     Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId);
     Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId);
+    Task<Property?> GetPropertyByCodeIncludingDeletedAsync(string propertyCode, Guid organizationId);
     Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListByOrganizationIdAsync(Guid organizationId);
     Task<Property?> GetPartnerExternalExportByCodeAsync(string propertyCode);
     Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId);
 
     Task<Property> CreateAsync(Property property);
     Task<Property> UpdateByIdAsync(Property property);
+    Task RestorePropertyByIdAsync(Guid propertyId, Guid organizationId, Guid modifiedBy);
     Task DeletePropertyByIdAsync(Guid propertyId);
     #endregion
 

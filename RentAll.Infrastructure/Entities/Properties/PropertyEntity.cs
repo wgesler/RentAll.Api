@@ -149,6 +149,7 @@ public class PropertyEntity
     public bool OfflineChecked { get; set; }
 
     public bool IsActive { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

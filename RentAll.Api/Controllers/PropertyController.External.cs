@@ -365,7 +365,7 @@ public partial class PropertyController
 
     private async Task<(Property? Property, bool IsExactMatch, IActionResult? ErrorResult)> ResolveExternalPropertyByKeysAsync(ExternalPropertyKeyDto keys)
     {
-        var property = await _propertyRepository.GetPropertyByCodeAsync(keys.PropertyCode, keys.OrganizationId);
+        var property = await _propertyRepository.GetPropertyByCodeIncludingDeletedAsync(keys.PropertyCode, keys.OrganizationId);
         if (property == null)
             return (null, false, null);
 
@@ -617,6 +617,9 @@ public partial class PropertyController
         var (updateIsValid, updateErrorMessage) = updateDto.IsValid();
         if (!updateIsValid)
             return (null, updateErrorMessage ?? "Invalid request data");
+
+        if (existingProperty.IsDeleted)
+            await _propertyRepository.RestorePropertyByIdAsync(existingProperty.PropertyId, existingProperty.OrganizationId, SystemUserId);
 
         var property = updateDto.ToModel(SystemUserId);
         if (existingProperty.OfficeId != updateDto.OfficeId)
