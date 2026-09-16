@@ -126,7 +126,10 @@ public class HealthController : BaseController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error running document health check");
-            return ServerError("An error occurred while running the health check");
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ServerError(string.IsNullOrWhiteSpace(detail)
+                ? "An error occurred while running the health check"
+                : $"Health check failed: {detail}");
         }
     }
 
