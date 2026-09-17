@@ -327,7 +327,11 @@ public partial class AccountingManager
 
     private static bool IsPaymentBackedDepositSplit(DepositSplit split, int undepositedFundsAccountId)
     {
-        return split.ChartOfAccountId is > 0 && split.ChartOfAccountId == undepositedFundsAccountId;
+        if (split.ChartOfAccountId is not > 0 || split.ChartOfAccountId != undepositedFundsAccountId)
+            return false;
+
+        var description = (split.Description ?? string.Empty).Trim();
+        return !OfficeOpeningBalanceSheetMemoPattern.IsMatch(description);
     }
 
     private static TransferDepositAllocationResult BuildNonPaymentTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, Deposit deposit, DepositSplit split)
