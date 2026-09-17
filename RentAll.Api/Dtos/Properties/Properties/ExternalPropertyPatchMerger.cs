@@ -20,13 +20,14 @@ public static class ExternalPropertyPatchMerger
             return (false, null, "Property not found");
 
         var presentFields = GetPresentFields(body);
+        var errors = new List<string>();
         var updateDto = UpdatePropertyDto.FromProperty(existing);
         updateDto.OfficeId = keys.OfficeId;
 
         if (presentFields.Contains("address1"))
         {
             if (!TryGetTrimmedString(body, "address1", out var address1) || string.IsNullOrWhiteSpace(address1))
-                return (false, null, "Address1 cannot be empty when provided");
+                errors.Add($"address1 cannot be empty when provided. Received {ExternalPropertyIntakeErrors.DescribeField(body, "address1")}.");
 
             updateDto.Address1 = address1;
         }
@@ -40,7 +41,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("city"))
         {
             if (!TryGetTrimmedString(body, "city", out var city) || string.IsNullOrWhiteSpace(city))
-                return (false, null, "City cannot be empty when provided");
+                errors.Add($"city cannot be empty when provided. Received {ExternalPropertyIntakeErrors.DescribeField(body, "city")}.");
 
             updateDto.City = city;
         }
@@ -48,15 +49,19 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("state"))
         {
             if (!TryGetTrimmedString(body, "state", out var state) || string.IsNullOrWhiteSpace(state))
-                return (false, null, "State cannot be empty when provided");
-
-            updateDto.State = UsStateCode.Normalize(state) ?? state;
+                errors.Add($"state cannot be empty when provided. Received {ExternalPropertyIntakeErrors.DescribeField(body, "state")}.");
+            else if (!UsStateCode.IsRecognized(state))
+                errors.Add($"state must be a 2-letter US code or full state name. Received \"{state}\".");
+            else
+                updateDto.State = UsStateCode.Normalize(state) ?? state;
         }
 
         if (presentFields.Contains("zip"))
         {
             if (!TryGetTrimmedString(body, "zip", out var zip) || string.IsNullOrWhiteSpace(zip))
-                return (false, null, "Zip cannot be empty when provided");
+                errors.Add($"zip cannot be empty when provided. Received {ExternalPropertyIntakeErrors.DescribeField(body, "zip")}.");
+            else if (zip.Length > 10)
+                errors.Add($"zip is {zip.Length} characters; max is 10. Received \"{zip}\".");
 
             updateDto.Zip = zip;
         }
@@ -64,7 +69,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("bedrooms"))
         {
             if (!TryGetInt(body, "bedrooms", out var bedrooms) || bedrooms < 0)
-                return (false, null, "Bedrooms must be >= 0");
+                errors.Add($"bedrooms must be an integer >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "bedrooms")}.");
 
             updateDto.Bedrooms = bedrooms;
         }
@@ -72,7 +77,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("bathrooms"))
         {
             if (!TryGetDecimal(body, "bathrooms", out var bathrooms) || bathrooms < 0)
-                return (false, null, "Bathrooms must be >= 0");
+                errors.Add($"bathrooms must be a number >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "bathrooms")}.");
 
             updateDto.Bathrooms = bathrooms;
         }
@@ -80,7 +85,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("accommodates"))
         {
             if (!TryGetInt(body, "accommodates", out var accommodates) || accommodates < 0)
-                return (false, null, "Accommodates must be >= 0");
+                errors.Add($"accommodates must be an integer >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "accommodates")}.");
 
             updateDto.Accommodates = accommodates;
         }
@@ -88,7 +93,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("squareFeet"))
         {
             if (!TryGetInt(body, "squareFeet", out var squareFeet) || squareFeet < 0)
-                return (false, null, "SquareFeet must be >= 0");
+                errors.Add($"squareFeet must be an integer >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "squareFeet")}.");
 
             updateDto.SquareFeet = squareFeet;
         }
@@ -96,7 +101,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("propertyLeaseTypeId"))
         {
             if (!TryGetInt(body, "propertyLeaseTypeId", out var propertyLeaseTypeId) || !Enum.IsDefined(typeof(PropertyLeaseType), propertyLeaseTypeId))
-                return (false, null, $"Invalid PropertyLeaseTypeId value: {propertyLeaseTypeId}");
+                errors.Add($"propertyLeaseTypeId must be 0=PropertyManagement, 1=Direct, or 2=ThirdParty. Received {ExternalPropertyIntakeErrors.DescribeField(body, "propertyLeaseTypeId")}.");
 
             updateDto.PropertyLeaseTypeId = propertyLeaseTypeId;
         }
@@ -104,18 +109,15 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("propertyStyleId"))
         {
             if (!TryGetInt(body, "propertyStyleId", out var propertyStyleId) || !Enum.IsDefined(typeof(PropertyStyle), propertyStyleId))
-                return (false, null, $"Invalid PropertyStyleId value: {propertyStyleId}");
+                errors.Add($"propertyStyleId must be 0=Standard, 1=Corporate, or 2=Vacation. Received {ExternalPropertyIntakeErrors.DescribeField(body, "propertyStyleId")}.");
 
             updateDto.PropertyStyleId = propertyStyleId;
         }
 
         if (presentFields.Contains("propertyTypeId"))
         {
-            if (!TryGetInt(body, "propertyTypeId", out var propertyTypeId) || !Enum.IsDefined(typeof(PropertyType), propertyTypeId))
-                return (false, null, $"Invalid PropertyTypeId value: {propertyTypeId}");
-
-            if (propertyTypeId == (int)PropertyType.Unspecified)
-                return (false, null, "PropertyTypeId cannot be Unspecified when provided");
+            if (!TryGetInt(body, "propertyTypeId", out var propertyTypeId) || !Enum.IsDefined(typeof(PropertyType), propertyTypeId) || propertyTypeId == (int)PropertyType.Unspecified)
+                errors.Add($"propertyTypeId must be 1-17 (1=Apartment, 8=House, 5=Condo). 0=Unspecified is not allowed. Received {ExternalPropertyIntakeErrors.DescribeField(body, "propertyTypeId")}.");
 
             updateDto.PropertyTypeId = propertyTypeId;
         }
@@ -123,7 +125,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("monthlyRate"))
         {
             if (!TryGetDecimal(body, "monthlyRate", out var monthlyRate) || monthlyRate < 0)
-                return (false, null, "MonthlyRate must be >= 0");
+                errors.Add($"monthlyRate must be a number >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "monthlyRate")}.");
 
             updateDto.MonthlyRate = monthlyRate;
         }
@@ -131,7 +133,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("dailyRate"))
         {
             if (!TryGetDecimal(body, "dailyRate", out var dailyRate) || dailyRate < 0)
-                return (false, null, "DailyRate must be >= 0");
+                errors.Add($"dailyRate must be a number >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "dailyRate")}.");
 
             updateDto.DailyRate = dailyRate;
         }
@@ -139,7 +141,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("departureFee"))
         {
             if (!TryGetDecimal(body, "departureFee", out var departureFee) || departureFee < 0)
-                return (false, null, "DepartureFee must be >= 0");
+                errors.Add($"departureFee must be a number >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "departureFee")}.");
 
             updateDto.DepartureFee = departureFee;
         }
@@ -147,7 +149,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("maidServiceFee"))
         {
             if (!TryGetDecimal(body, "maidServiceFee", out var maidServiceFee) || maidServiceFee < 0)
-                return (false, null, "MaidServiceFee must be >= 0");
+                errors.Add($"maidServiceFee must be a number >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "maidServiceFee")}.");
 
             updateDto.MaidServiceFee = maidServiceFee;
         }
@@ -155,7 +157,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("petFee"))
         {
             if (!TryGetDecimal(body, "petFee", out var petFee) || petFee < 0)
-                return (false, null, "PetFee must be >= 0");
+                errors.Add($"petFee must be a number >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "petFee")}.");
 
             updateDto.PetFee = petFee;
         }
@@ -169,7 +171,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("isActive"))
         {
             if (!TryGetBool(body, "isActive", out var isActive))
-                return (false, null, "IsActive must be a boolean when provided");
+                errors.Add($"isActive must be true/false or 0/1. Received {ExternalPropertyIntakeErrors.DescribeField(body, "isActive")}.");
 
             updateDto.IsActive = isActive;
         }
@@ -177,7 +179,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("minStay"))
         {
             if (!TryGetInt(body, "minStay", out var minStay) || minStay < 0)
-                return (false, null, "MinStay must be >= 0");
+                errors.Add($"minStay must be an integer >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "minStay")}.");
 
             updateDto.MinStay = minStay;
         }
@@ -185,7 +187,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("maxStay"))
         {
             if (!TryGetInt(body, "maxStay", out var maxStay) || maxStay < 0)
-                return (false, null, "MaxStay must be >= 0");
+                errors.Add($"maxStay must be an integer >= 0. Received {ExternalPropertyIntakeErrors.DescribeField(body, "maxStay")}.");
 
             updateDto.MaxStay = maxStay;
         }
@@ -193,7 +195,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("checkInTimeId"))
         {
             if (!TryGetInt(body, "checkInTimeId", out var checkInTimeId) || !Enum.IsDefined(typeof(CheckInTime), checkInTimeId))
-                return (false, null, $"Invalid CheckInTimeId value: {checkInTimeId}");
+                errors.Add($"checkInTimeId must be 1=12PM through 6=5PM. Received {ExternalPropertyIntakeErrors.DescribeField(body, "checkInTimeId")}.");
 
             updateDto.CheckInTimeId = checkInTimeId;
         }
@@ -201,17 +203,15 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("checkOutTimeId"))
         {
             if (!TryGetInt(body, "checkOutTimeId", out var checkOutTimeId) || !Enum.IsDefined(typeof(CheckOutTime), checkOutTimeId))
-                return (false, null, $"Invalid CheckOutTimeId value: {checkOutTimeId}");
+                errors.Add($"checkOutTimeId must be 1=8AM through 6=1PM. Received {ExternalPropertyIntakeErrors.DescribeField(body, "checkOutTimeId")}.");
 
             updateDto.CheckOutTimeId = checkOutTimeId;
         }
 
-        var bedroomValidation = ApplyBedroomIdPatch(body, presentFields, "bedroomId1", 1, value => updateDto.BedroomId1 = value)
-            ?? ApplyBedroomIdPatch(body, presentFields, "bedroomId2", 2, value => updateDto.BedroomId2 = value)
-            ?? ApplyBedroomIdPatch(body, presentFields, "bedroomId3", 3, value => updateDto.BedroomId3 = value)
-            ?? ApplyBedroomIdPatch(body, presentFields, "bedroomId4", 4, value => updateDto.BedroomId4 = value);
-        if (bedroomValidation != null)
-            return (false, null, bedroomValidation);
+        AddBedroomIdPatch(body, presentFields, "bedroomId1", value => updateDto.BedroomId1 = value, errors);
+        AddBedroomIdPatch(body, presentFields, "bedroomId2", value => updateDto.BedroomId2 = value, errors);
+        AddBedroomIdPatch(body, presentFields, "bedroomId3", value => updateDto.BedroomId3 = value, errors);
+        AddBedroomIdPatch(body, presentFields, "bedroomId4", value => updateDto.BedroomId4 = value, errors);
 
         if (presentFields.Contains("neighborhood"))
             updateDto.Neighborhood = TryGetTrimmedString(body, "neighborhood", out var neighborhood) ? TrimOrNull(neighborhood) : null;
@@ -234,71 +234,78 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("amenities"))
             updateDto.Amenities = TryGetTrimmedString(body, "amenities", out var amenities) ? TrimOrNull(amenities) : null;
 
-        ApplyBoolPatch(body, presentFields, "unfurnished", value => updateDto.Unfurnished = value);
-        ApplyBoolPatch(body, presentFields, "heating", value => updateDto.Heating = value);
-        ApplyBoolPatch(body, presentFields, "ac", value => updateDto.Ac = value);
-        ApplyBoolPatch(body, presentFields, "elevator", value => updateDto.Elevator = value);
-        ApplyBoolPatch(body, presentFields, "security", value => updateDto.Security = value);
-        ApplyBoolPatch(body, presentFields, "gated", value => updateDto.Gated = value);
-        ApplyBoolPatch(body, presentFields, "petsAllowed", value => updateDto.PetsAllowed = value);
-        ApplyBoolPatch(body, presentFields, "dogsOkay", value => updateDto.DogsOkay = value);
-        ApplyBoolPatch(body, presentFields, "catsOkay", value => updateDto.CatsOkay = value);
-        ApplyBoolPatch(body, presentFields, "smoking", value => updateDto.Smoking = value);
-        ApplyBoolPatch(body, presentFields, "parking", value => updateDto.Parking = value);
-        ApplyBoolPatch(body, presentFields, "kitchen", value => updateDto.Kitchen = value);
-        ApplyBoolPatch(body, presentFields, "oven", value => updateDto.Oven = value);
-        ApplyBoolPatch(body, presentFields, "refrigerator", value => updateDto.Refrigerator = value);
-        ApplyBoolPatch(body, presentFields, "microwave", value => updateDto.Microwave = value);
-        ApplyBoolPatch(body, presentFields, "dishwasher", value => updateDto.Dishwasher = value);
-        ApplyBoolPatch(body, presentFields, "bathtub", value => updateDto.Bathtub = value);
-        ApplyBoolPatch(body, presentFields, "washerDryerInUnit", value => updateDto.WasherDryerInUnit = value);
-        ApplyBoolPatch(body, presentFields, "washerDryerInBldg", value => updateDto.WasherDryerInBldg = value);
-        ApplyBoolPatch(body, presentFields, "tv", value => updateDto.Tv = value);
-        ApplyBoolPatch(body, presentFields, "cable", value => updateDto.Cable = value);
-        ApplyBoolPatch(body, presentFields, "dvd", value => updateDto.Dvd = value);
-        ApplyBoolPatch(body, presentFields, "streaming", value => updateDto.Streaming = value);
-        ApplyBoolPatch(body, presentFields, "fastInternet", value => updateDto.FastInternet = value);
-        ApplyBoolPatch(body, presentFields, "deck", value => updateDto.Deck = value);
-        ApplyBoolPatch(body, presentFields, "patio", value => updateDto.Patio = value);
-        ApplyBoolPatch(body, presentFields, "yard", value => updateDto.Yard = value);
-        ApplyBoolPatch(body, presentFields, "garden", value => updateDto.Garden = value);
-        ApplyBoolPatch(body, presentFields, "commonPool", value => updateDto.CommonPool = value);
-        ApplyBoolPatch(body, presentFields, "privatePool", value => updateDto.PrivatePool = value);
-        ApplyBoolPatch(body, presentFields, "jacuzzi", value => updateDto.Jacuzzi = value);
-        ApplyBoolPatch(body, presentFields, "sauna", value => updateDto.Sauna = value);
-        ApplyBoolPatch(body, presentFields, "gym", value => updateDto.Gym = value);
+        ApplyBoolPatch(body, presentFields, "unfurnished", value => updateDto.Unfurnished = value, errors);
+        ApplyBoolPatch(body, presentFields, "heating", value => updateDto.Heating = value, errors);
+        ApplyBoolPatch(body, presentFields, "ac", value => updateDto.Ac = value, errors);
+        ApplyBoolPatch(body, presentFields, "elevator", value => updateDto.Elevator = value, errors);
+        ApplyBoolPatch(body, presentFields, "security", value => updateDto.Security = value, errors);
+        ApplyBoolPatch(body, presentFields, "gated", value => updateDto.Gated = value, errors);
+        ApplyBoolPatch(body, presentFields, "petsAllowed", value => updateDto.PetsAllowed = value, errors);
+        ApplyBoolPatch(body, presentFields, "dogsOkay", value => updateDto.DogsOkay = value, errors);
+        ApplyBoolPatch(body, presentFields, "catsOkay", value => updateDto.CatsOkay = value, errors);
+        ApplyBoolPatch(body, presentFields, "smoking", value => updateDto.Smoking = value, errors);
+        ApplyBoolPatch(body, presentFields, "parking", value => updateDto.Parking = value, errors);
+        ApplyBoolPatch(body, presentFields, "kitchen", value => updateDto.Kitchen = value, errors);
+        ApplyBoolPatch(body, presentFields, "oven", value => updateDto.Oven = value, errors);
+        ApplyBoolPatch(body, presentFields, "refrigerator", value => updateDto.Refrigerator = value, errors);
+        ApplyBoolPatch(body, presentFields, "microwave", value => updateDto.Microwave = value, errors);
+        ApplyBoolPatch(body, presentFields, "dishwasher", value => updateDto.Dishwasher = value, errors);
+        ApplyBoolPatch(body, presentFields, "bathtub", value => updateDto.Bathtub = value, errors);
+        ApplyBoolPatch(body, presentFields, "washerDryerInUnit", value => updateDto.WasherDryerInUnit = value, errors);
+        ApplyBoolPatch(body, presentFields, "washerDryerInBldg", value => updateDto.WasherDryerInBldg = value, errors);
+        ApplyBoolPatch(body, presentFields, "tv", value => updateDto.Tv = value, errors);
+        ApplyBoolPatch(body, presentFields, "cable", value => updateDto.Cable = value, errors);
+        ApplyBoolPatch(body, presentFields, "dvd", value => updateDto.Dvd = value, errors);
+        ApplyBoolPatch(body, presentFields, "streaming", value => updateDto.Streaming = value, errors);
+        ApplyBoolPatch(body, presentFields, "fastInternet", value => updateDto.FastInternet = value, errors);
+        ApplyBoolPatch(body, presentFields, "deck", value => updateDto.Deck = value, errors);
+        ApplyBoolPatch(body, presentFields, "patio", value => updateDto.Patio = value, errors);
+        ApplyBoolPatch(body, presentFields, "yard", value => updateDto.Yard = value, errors);
+        ApplyBoolPatch(body, presentFields, "garden", value => updateDto.Garden = value, errors);
+        ApplyBoolPatch(body, presentFields, "commonPool", value => updateDto.CommonPool = value, errors);
+        ApplyBoolPatch(body, presentFields, "privatePool", value => updateDto.PrivatePool = value, errors);
+        ApplyBoolPatch(body, presentFields, "jacuzzi", value => updateDto.Jacuzzi = value, errors);
+        ApplyBoolPatch(body, presentFields, "sauna", value => updateDto.Sauna = value, errors);
+        ApplyBoolPatch(body, presentFields, "gym", value => updateDto.Gym = value, errors);
+
+        if (errors.Count > 0)
+            return (false, null, ExternalPropertyIntakeErrors.Join(errors));
 
         return (true, updateDto, null);
     }
 
-    private static string? ApplyBedroomIdPatch(JsonElement body, HashSet<string> presentFields, string fieldName, int bedroomNumber, Action<int> apply)
+    private static void AddBedroomIdPatch(JsonElement body, HashSet<string> presentFields, string fieldName, Action<int> apply, List<string> errors)
     {
         if (!presentFields.Contains(fieldName))
-            return null;
+            return;
 
         if (!TryGetProperty(body, fieldName, out var element) || element.ValueKind == JsonValueKind.Null)
         {
             apply(0);
-            return null;
+            return;
         }
 
-        if (!TryCoerceInt32(element, out var bedroomId))
-            return $"Invalid BedroomId{bedroomNumber} value";
-
-        if (!Enum.IsDefined(typeof(BedSizeType), bedroomId))
-            return $"Invalid BedroomId{bedroomNumber} value: {bedroomId}";
+        if (!TryCoerceInt32(element, out var bedroomId) || !Enum.IsDefined(typeof(BedSizeType), bedroomId))
+        {
+            errors.Add($"{fieldName} must be an integer 0-7 (0=Unknown, 1=King, 2=Queen, 3=Double, 4=Twin, 5=TwoTwins, 6=DayBed, 7=SofaBed). Received {ExternalPropertyIntakeErrors.Describe(element)}.");
+            return;
+        }
 
         apply(bedroomId);
-        return null;
     }
 
-    private static void ApplyBoolPatch(JsonElement body, HashSet<string> presentFields, string fieldName, Action<bool> apply)
+    private static void ApplyBoolPatch(JsonElement body, HashSet<string> presentFields, string fieldName, Action<bool> apply, List<string> errors)
     {
         if (!presentFields.Contains(fieldName))
             return;
 
         if (TryGetBool(body, fieldName, out var value))
+        {
             apply(value);
+            return;
+        }
+
+        errors.Add($"{fieldName} must be true/false or 0/1. Received {ExternalPropertyIntakeErrors.DescribeField(body, fieldName)}.");
     }
 
     private static HashSet<string> GetPresentFields(JsonElement body)

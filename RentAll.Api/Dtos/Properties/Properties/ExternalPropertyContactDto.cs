@@ -20,16 +20,26 @@ public class ExternalPropertyContactDto
 
     public (bool IsValid, string? ErrorMessage) IsValid(string fieldLabel)
     {
+        var errors = CollectErrors(fieldLabel);
+        return errors.Count == 0 ? (true, null) : (false, ExternalPropertyIntakeErrors.Join(errors));
+    }
+
+    public List<string> CollectErrors(string fieldLabel)
+    {
+        var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(FirstName))
-            return (false, $"{fieldLabel}.FirstName is required");
-
+            errors.Add($"{fieldLabel}.firstName is required.");
         if (string.IsNullOrWhiteSpace(LastName))
-            return (false, $"{fieldLabel}.LastName is required");
-
+            errors.Add($"{fieldLabel}.lastName is required.");
         if (string.IsNullOrWhiteSpace(Email))
-            return (false, $"{fieldLabel}.Email is required");
-
-        return (true, null);
+            errors.Add($"{fieldLabel}.email is required.");
+        if (!string.IsNullOrWhiteSpace(State) && !UsStateCode.IsRecognized(State))
+            errors.Add($"{fieldLabel}.state must be a 2-letter US code or full state name. Received \"{State}\".");
+        if (!string.IsNullOrWhiteSpace(Zip) && Zip.Trim().Length > 10)
+            errors.Add($"{fieldLabel}.zip is {Zip.Trim().Length} characters; max is 10. Received \"{Zip.Trim()}\".");
+        if (!string.IsNullOrWhiteSpace(Phone) && Phone.Trim().Length > 25)
+            errors.Add($"{fieldLabel}.phone is {Phone.Trim().Length} characters; max is 25. Received \"{Phone.Trim()}\".");
+        return errors;
     }
 
     public Contact ToNewOwnerContactModel(Guid organizationId, int officeId, string contactCode, Guid currentUser)

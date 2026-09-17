@@ -62,30 +62,35 @@ public class CreateExternalPropertyRequestDto
             return (false, null, null, propertiesError ?? "Properties must contain at least one item");
 
         var properties = new List<CreateExternalPropertyDto>();
+        var errors = new List<string>();
         var index = 0;
         foreach (var propertyElement in propertiesElement.EnumerateArray())
         {
-            if (propertyElement.ValueKind != JsonValueKind.Object)
-                return (false, null, null, $"Properties[{index}] must be an object");
-
-            CreateExternalPropertyDto propertyDto;
-            try
+            var prefix = $"Properties[{index}]";
+            var itemErrors = ExternalPropertyIntakeErrors.CollectFromJson(propertyElement, prefix);
+            if (itemErrors.Count == 0)
             {
-                propertyDto = ExternalPropertyIntakeJson.DeserializePropertyItem(propertyElement);
-            }
-            catch (JsonException ex)
-            {
-                var path = string.IsNullOrWhiteSpace(ex.Path) ? "property" : ex.Path;
-                return (false, null, null, $"Properties[{index}]: Invalid property JSON ({path}: {ex.Message})");
+                try
+                {
+                    var propertyDto = ExternalPropertyIntakeJson.DeserializePropertyItem(propertyElement);
+                    var (itemIsValid, itemError) = propertyDto.IsValid();
+                    if (!itemIsValid)
+                        itemErrors.Add($"{prefix}: {itemError}");
+                    else
+                        properties.Add(propertyDto);
+                }
+                catch (JsonException ex)
+                {
+                    itemErrors.Add(ExternalPropertyIntakeErrors.FromJsonException(ex, propertyElement, prefix));
+                }
             }
 
-            var (itemIsValid, itemError) = propertyDto.IsValid();
-            if (!itemIsValid)
-                return (false, null, null, $"Properties[{index}]: {itemError}");
-
-            properties.Add(propertyDto);
+            errors.AddRange(itemErrors);
             index++;
         }
+
+        if (errors.Count > 0)
+            return (false, null, null, ExternalPropertyIntakeErrors.Join(errors));
 
         if (properties.Count == 0)
             return (false, null, null, "Properties must contain at least one item");

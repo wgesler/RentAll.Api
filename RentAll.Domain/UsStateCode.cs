@@ -79,4 +79,10 @@ public static class UsStateCode
 
         return NameToCode.TryGetValue(trimmed, out var code) ? code : trimmed;
     }
+
+    public static bool IsRecognized(string? value)
+    {
+        var normalized = Normalize(value);
+        return !string.IsNullOrWhiteSpace(normalized) && normalized.Length == 2 && Codes.Contains(normalized);
+    }
 }

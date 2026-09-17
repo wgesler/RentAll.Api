@@ -157,7 +157,7 @@ public class ExternalPropertyOwnerContactResolver
         if (existingContact != null)
         {
             if (existingContact.EntityType != EntityType.Owner)
-                return (false, null, $"{fieldLabel} email is already used by a non-owner contact");
+                return (false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to Owner.");
 
             owner.ApplyToExistingOwnerContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
@@ -180,7 +180,7 @@ public class ExternalPropertyOwnerContactResolver
         if (existingContact != null)
         {
             if (existingContact.EntityType != EntityType.Vendor)
-                return (false, null, "Vendor email is already used by a non-vendor contact");
+                return (false, null, $"Vendor email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to Vendor.");
 
             vendor.ApplyToExistingVendorContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);

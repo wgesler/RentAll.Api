@@ -93,134 +93,107 @@ public class CreateExternalPropertyDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId))
-            return (false, $"Invalid PropertyLeaseTypeId value: {PropertyLeaseTypeId}");
+        var errors = CollectErrors();
+        return errors.Count == 0 ? (true, null) : (false, ExternalPropertyIntakeErrors.Join(errors));
+    }
 
-        var leaseType = (PropertyLeaseType)PropertyLeaseTypeId;
+    public List<string> CollectErrors()
+    {
+        var errors = new List<string>();
+        if (!Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId))
+            errors.Add($"propertyLeaseTypeId must be 0=PropertyManagement, 1=Direct, or 2=ThirdParty. Received {PropertyLeaseTypeId}.");
+
+        var leaseType = Enum.IsDefined(typeof(PropertyLeaseType), PropertyLeaseTypeId) ? (PropertyLeaseType)PropertyLeaseTypeId : (PropertyLeaseType)(-1);
         if (leaseType == PropertyLeaseType.PropertyManagement)
         {
             if (Owner1 == null)
-                return (false, "Owner1 is required for PropertyManagement lease type");
-
-            var owner1Validation = Owner1.IsValid("Owner1");
-            if (!owner1Validation.IsValid)
-                return (false, owner1Validation.ErrorMessage);
+                errors.Add("owner1 is required when propertyLeaseTypeId is 0 (PropertyManagement).");
+            else
+                errors.AddRange(Owner1.CollectErrors("owner1"));
 
             if (Vendor != null)
-                return (false, "Vendor is not allowed for PropertyManagement lease type");
+                errors.Add("vendor is not allowed when propertyLeaseTypeId is 0 (PropertyManagement).");
         }
         else if (leaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty)
         {
             if (Vendor == null)
-                return (false, "Vendor is required for Direct and ThirdParty lease types");
-
-            var vendorValidation = Vendor.IsValid("Vendor");
-            if (!vendorValidation.IsValid)
-                return (false, vendorValidation.ErrorMessage);
+                errors.Add($"vendor is required when propertyLeaseTypeId is {(int)leaseType} ({leaseType}).");
+            else
+                errors.AddRange(Vendor.CollectErrors("vendor"));
         }
 
         if (Owner2 != null)
-        {
-            var owner2Validation = Owner2.IsValid("Owner2");
-            if (!owner2Validation.IsValid)
-                return (false, owner2Validation.ErrorMessage);
-        }
+            errors.AddRange(Owner2.CollectErrors("owner2"));
 
         if (Owner3 != null)
-        {
-            var owner3Validation = Owner3.IsValid("Owner3");
-            if (!owner3Validation.IsValid)
-                return (false, owner3Validation.ErrorMessage);
-        }
+            errors.AddRange(Owner3.CollectErrors("owner3"));
 
         if (Owner1 != null && leaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty)
-        {
-            var owner1Validation = Owner1.IsValid("Owner1");
-            if (!owner1Validation.IsValid)
-                return (false, owner1Validation.ErrorMessage);
-        }
+            errors.AddRange(Owner1.CollectErrors("owner1"));
 
         var (photosAreValid, photosError) = ExternalPropertyPhotosValidator.ValidatePhotos(Photos);
-        if (!photosAreValid)
-            return (false, photosError);
+        if (!photosAreValid && photosError != null)
+            errors.Add(photosError);
 
         if (string.IsNullOrWhiteSpace(PropertyCode))
-            return (false, "PropertyCode is required");
-
+            errors.Add("propertyCode is required.");
         if (string.IsNullOrWhiteSpace(Address1))
-            return (false, "Address1 is required");
-
+            errors.Add("address1 is required.");
         if (string.IsNullOrWhiteSpace(City))
-            return (false, "City is required");
-
+            errors.Add("city is required.");
         if (string.IsNullOrWhiteSpace(State))
-            return (false, "State is required");
-
+            errors.Add("state is required.");
+        else if (!UsStateCode.IsRecognized(State))
+            errors.Add($"state must be a 2-letter US code or full state name. Received \"{State}\".");
         if (string.IsNullOrWhiteSpace(Zip))
-            return (false, "Zip is required");
+            errors.Add("zip is required.");
+        else if (Zip.Trim().Length > 10)
+            errors.Add($"zip is {Zip.Trim().Length} characters; max is 10. Received \"{Zip.Trim()}\".");
 
         if (Bedrooms < 0)
-            return (false, "Bedrooms must be >= 0");
-
+            errors.Add($"bedrooms must be >= 0. Received {Bedrooms}.");
         if (Bathrooms < 0)
-            return (false, "Bathrooms must be >= 0");
-
+            errors.Add($"bathrooms must be >= 0. Received {Bathrooms}.");
         if (Accommodates < 0)
-            return (false, "Accommodates must be >= 0");
-
+            errors.Add($"accommodates must be >= 0. Received {Accommodates}.");
         if (SquareFeet < 0)
-            return (false, "SquareFeet must be >= 0");
+            errors.Add($"squareFeet must be >= 0. Received {SquareFeet}.");
 
         if (!Enum.IsDefined(typeof(PropertyStyle), PropertyStyleId))
-            return (false, $"Invalid PropertyStyleId value: {PropertyStyleId}");
-
-        if (!Enum.IsDefined(typeof(PropertyType), PropertyTypeId))
-            return (false, $"Invalid PropertyTypeId value: {PropertyTypeId}");
-
-        if (PropertyTypeId == (int)PropertyType.Unspecified)
-            return (false, "PropertyTypeId is required");
+            errors.Add($"propertyStyleId must be 0=Standard, 1=Corporate, or 2=Vacation. Received {PropertyStyleId}.");
+        if (!Enum.IsDefined(typeof(PropertyType), PropertyTypeId) || PropertyTypeId == (int)PropertyType.Unspecified)
+            errors.Add($"propertyTypeId must be 1-17 (1=Apartment, 8=House, 5=Condo). 0=Unspecified is not allowed. Received {PropertyTypeId}.");
 
         if (MonthlyRate < 0)
-            return (false, "MonthlyRate must be >= 0");
-
+            errors.Add($"monthlyRate must be >= 0. Received {MonthlyRate}.");
         if (DailyRate < 0)
-            return (false, "DailyRate must be >= 0");
-
+            errors.Add($"dailyRate must be >= 0. Received {DailyRate}.");
         if (DepartureFee is < 0)
-            return (false, "DepartureFee must be >= 0");
-
+            errors.Add($"departureFee must be >= 0. Received {DepartureFee}.");
         if (MaidServiceFee is < 0)
-            return (false, "MaidServiceFee must be >= 0");
-
+            errors.Add($"maidServiceFee must be >= 0. Received {MaidServiceFee}.");
         if (PetFee is < 0)
-            return (false, "PetFee must be >= 0");
+            errors.Add($"petFee must be >= 0. Received {PetFee}.");
 
         if (ExternalCalendar == null)
-            return (false, "ExternalCalendar is required");
-
+            errors.Add("externalCalendar is required.");
         if (string.IsNullOrWhiteSpace(Description))
-            return (false, "Description is required");
-
+            errors.Add("description is required.");
         if (MinStay is < 0)
-            return (false, "MinStay must be >= 0");
-
+            errors.Add($"minStay must be >= 0. Received {MinStay}.");
         if (MaxStay is < 0)
-            return (false, "MaxStay must be >= 0");
-
+            errors.Add($"maxStay must be >= 0. Received {MaxStay}.");
         if (CheckInTimeId.HasValue && !Enum.IsDefined(typeof(CheckInTime), CheckInTimeId.Value))
-            return (false, $"Invalid CheckInTimeId value: {CheckInTimeId.Value}");
-
+            errors.Add($"checkInTimeId must be 1=12PM through 6=5PM. Received {CheckInTimeId.Value}.");
         if (CheckOutTimeId.HasValue && !Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId.Value))
-            return (false, $"Invalid CheckOutTimeId value: {CheckOutTimeId.Value}");
+            errors.Add($"checkOutTimeId must be 1=8AM through 6=1PM. Received {CheckOutTimeId.Value}.");
 
-        var bedroomValidation = ValidateBedroomId(BedroomId1, 1)
-            ?? ValidateBedroomId(BedroomId2, 2)
-            ?? ValidateBedroomId(BedroomId3, 3)
-            ?? ValidateBedroomId(BedroomId4, 4);
-        if (bedroomValidation != null)
-            return (false, bedroomValidation);
+        AddBedroomIdError(errors, BedroomId1, "bedroomId1");
+        AddBedroomIdError(errors, BedroomId2, "bedroomId2");
+        AddBedroomIdError(errors, BedroomId3, "bedroomId3");
+        AddBedroomIdError(errors, BedroomId4, "bedroomId4");
 
-        return (true, null);
+        return errors;
     }
 
     public static (bool IsValid, string? ErrorMessage) ValidateLeaseTypeContacts(int propertyLeaseTypeId, Guid? owner1Id, Guid? propertyVendorContactId, bool vendorContactInRequest)
@@ -439,15 +412,10 @@ public class CreateExternalPropertyDto
         return updateDto;
     }
 
-    private static string? ValidateBedroomId(int? bedroomId, int bedroomNumber)
+    private static void AddBedroomIdError(List<string> errors, int? bedroomId, string fieldName)
     {
-        if (!bedroomId.HasValue)
-            return null;
-
-        if (!Enum.IsDefined(typeof(BedSizeType), bedroomId.Value))
-            return $"Invalid BedroomId{bedroomNumber} value: {bedroomId.Value}";
-
-        return null;
+        if (bedroomId.HasValue && !Enum.IsDefined(typeof(BedSizeType), bedroomId.Value))
+            errors.Add($"{fieldName} must be 0-7 (0=Unknown, 1=King, 2=Queen, 3=Double, 4=Twin, 5=TwoTwins, 6=DayBed, 7=SofaBed). Received {bedroomId.Value}.");
     }
 
     private static string? TrimOrNull(string? value)

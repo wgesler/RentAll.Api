@@ -61,7 +61,7 @@ public partial class PropertyController
             var propertyBody = properties[index];
             var itemResult = new ExternalPropertyBatchItemResultDto { Index = index };
 
-            var patchResult = await PatchExternalPropertyAsync(propertyBody, context, PropertyUploadLogOperations.UpdateProperty);
+            var patchResult = await PatchExternalPropertyAsync(propertyBody, context, PropertyUploadLogOperations.UpdateProperty, index);
             await CompleteExternalPropertyAttemptAsync(
                 patchResult.Success ? Ok(patchResult.Property) : BadRequest(patchResult.ErrorMessage ?? "Invalid request data"),
                 patchResult.Attempt,
@@ -186,11 +186,13 @@ public partial class PropertyController
         ExternalPropertyPhotoImportCreatedResponseDto? PhotoImport = null,
         string? PhotoImportError = null);
 
-    private async Task<ExternalPropertyPatchResult> PatchExternalPropertyAsync(JsonElement body, ExternalPropertyIntakeContext context, string operation)
+    private async Task<ExternalPropertyPatchResult> PatchExternalPropertyAsync(JsonElement body, ExternalPropertyIntakeContext context, string operation, int index)
     {
+        var prefix = $"Properties[{index}]";
         var propertyBody = body.ValueKind == JsonValueKind.Object
             ? ExternalPropertyIntakeJson.StripRequestHeaderFields(body)
             : body;
+        var jsonErrors = ExternalPropertyIntakeErrors.CollectFromJson(propertyBody, prefix, requireCreateFields: false);
         var (keysParsed, keys, keysError) = ExternalPropertyOwnerContactResolver.TryParsePropertyKeys(propertyBody, context);
         ExternalPropertyApiAttemptLog attempt = new ExternalPropertyApiAttemptLog
         {
@@ -204,13 +206,16 @@ public partial class PropertyController
 
         if (!keysParsed || keys == null)
         {
-            return new ExternalPropertyPatchResult(
-                false,
-                keys?.PropertyCode ?? string.Empty,
-                null,
-                keysError ?? "Invalid request data",
-                keysError,
-                attempt);
+            if (!string.IsNullOrWhiteSpace(keysError))
+                jsonErrors.Insert(0, $"{prefix}: {keysError}");
+            var keyError = jsonErrors.Count > 0 ? ExternalPropertyIntakeErrors.Join(jsonErrors) : (keysError ?? "Invalid request data");
+            return new ExternalPropertyPatchResult(false, keys?.PropertyCode ?? string.Empty, null, keyError, keyError, attempt);
+        }
+
+        if (jsonErrors.Count > 0)
+        {
+            var jsonError = ExternalPropertyIntakeErrors.Join(jsonErrors);
+            return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, jsonError, jsonError, attempt);
         }
 
         var photosFieldPresent = ExternalPropertyPhotoSyncService.TryParsePhotosField(propertyBody, out var patchPhotos, out var photosParseError);
@@ -234,7 +239,7 @@ public partial class PropertyController
                     false,
                     keys.PropertyCode,
                     null,
-                    "Property not found",
+                    ExternalPropertyIntakeErrors.Prefix(prefix, "Property not found"),
                     "Property not found",
                     attempt);
             }
@@ -245,7 +250,7 @@ public partial class PropertyController
                     false,
                     keys.PropertyCode,
                     null,
-                    "Property not found",
+                    ExternalPropertyIntakeErrors.Prefix(prefix, "Property not found"),
                     "Property not found",
                     attempt);
             }
@@ -253,25 +258,15 @@ public partial class PropertyController
             var (merged, updateDto, mergeError) = ExternalPropertyPatchMerger.TryMerge(existingProperty, propertyBody, keys);
             if (!merged || updateDto == null)
             {
-                return new ExternalPropertyPatchResult(
-                    false,
-                    keys.PropertyCode,
-                    null,
-                    mergeError ?? "Invalid request data",
-                    mergeError,
-                    attempt);
+                var prefixedMerge = ExternalPropertyIntakeErrors.Prefix(prefix, mergeError);
+                return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedMerge, prefixedMerge, attempt);
             }
 
             var (contactsApplied, contactPatchError) = await _externalPropertyOwnerContactResolver.TryApplyContactPatchesAsync(propertyBody, context, updateDto, SystemUserId);
             if (!contactsApplied)
             {
-                return new ExternalPropertyPatchResult(
-                    false,
-                    keys.PropertyCode,
-                    null,
-                    contactPatchError ?? "Invalid request data",
-                    contactPatchError,
-                    attempt);
+                var prefixedContact = ExternalPropertyIntakeErrors.Prefix(prefix, contactPatchError);
+                return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedContact, prefixedContact, attempt);
             }
 
             var vendorContactInRequest = ExternalPropertyOwnerContactResolver.TryGetContact(propertyBody, "vendor", out _);
@@ -282,13 +277,8 @@ public partial class PropertyController
                 vendorContactInRequest);
             if (!leaseContactsValid)
             {
-                return new ExternalPropertyPatchResult(
-                    false,
-                    keys.PropertyCode,
-                    null,
-                    leaseContactsError ?? "Invalid request data",
-                    leaseContactsError,
-                    attempt);
+                var prefixedLease = ExternalPropertyIntakeErrors.Prefix(prefix, leaseContactsError);
+                return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedLease, prefixedLease, attempt);
             }
 
             if ((PropertyLeaseType)updateDto.PropertyLeaseTypeId == PropertyLeaseType.PropertyManagement)
@@ -297,13 +287,8 @@ public partial class PropertyController
             var (updateResult, updateError) = await TryUpdateExternalPropertyAsync(existingProperty, updateDto);
             if (updateResult == null)
             {
-                return new ExternalPropertyPatchResult(
-                    false,
-                    keys.PropertyCode,
-                    null,
-                    updateError ?? "Invalid request data",
-                    updateError,
-                    attempt);
+                var prefixedUpdate = ExternalPropertyIntakeErrors.Prefix(prefix, updateError);
+                return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedUpdate, prefixedUpdate, attempt);
             }
 
             var updatedProperty = new PropertyResponseDto(updateResult);
@@ -555,7 +540,7 @@ public partial class PropertyController
                 dto.PropertyCode,
                 context.PartnerVendorId);
 
-            var errorMessage = GetExternalPropertySaveErrorMessage(ex);
+            var errorMessage = ExternalPropertyIntakeErrors.TranslateSaveError(GetExternalPropertySaveErrorMessage(ex));
             var isClientError = errorMessage.Contains("stored procedure", StringComparison.OrdinalIgnoreCase)
                 || errorMessage.Contains("Violation of UNIQUE KEY", StringComparison.OrdinalIgnoreCase)
                 || errorMessage.Contains("Cannot insert the value NULL", StringComparison.OrdinalIgnoreCase);
