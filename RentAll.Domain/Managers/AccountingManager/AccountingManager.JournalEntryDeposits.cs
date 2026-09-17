@@ -457,11 +457,17 @@ public partial class AccountingManager
                 continue;
 
             var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-            if (string.IsNullOrWhiteSpace(invoiceSourceCode))
-                continue;
+            if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
+            {
+                foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(organizationId, deposit.OfficeId, invoiceSourceCode))
+                    paymentIds.Add(paymentId);
+            }
 
-            foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(organizationId, deposit.OfficeId, invoiceSourceCode))
-                paymentIds.Add(paymentId);
+            if (split.ReservationId is { } reservationId && reservationId != Guid.Empty)
+            {
+                foreach (var paymentId in await FindInvoicePaymentIdsByReservationIdAsync(organizationId, deposit.OfficeId, reservationId))
+                    paymentIds.Add(paymentId);
+            }
         }
 
         var officePayments = _officeSyncCache != null
@@ -497,25 +503,24 @@ public partial class AccountingManager
 
         if (_officeSyncCache != null)
         {
+            var cacheMatchedInvoiceIds = _officeSyncCache.InvoicesById.Values
+                .Where(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+                .Select(invoice => invoice.InvoiceId)
+                .ToHashSet();
+
             foreach (var payment in _officeSyncCache.Payments)
             {
                 if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
                     continue;
 
-                foreach (var line in payment.LedgerLines ?? [])
-                {
-                    if (line.InvoiceId == Guid.Empty)
-                        continue;
-
-                    if (!_officeSyncCache.InvoicesById.TryGetValue(line.InvoiceId, out var invoice))
-                        continue;
-
-                    if (!string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
+                if (PaymentMatchesInvoiceSourceCode(payment, normalizedSourceCode, cacheMatchedInvoiceIds))
                     paymentIds.Add(payment.PaymentId);
-                    break;
-                }
+            }
+
+            if (paymentIds.Count == 0)
+            {
+                foreach (var paymentId in FindPaymentIdsByJournalEntryInvoiceSourceCode(normalizedSourceCode))
+                    paymentIds.Add(paymentId);
             }
 
             return paymentIds.ToList();
@@ -529,12 +534,12 @@ public partial class AccountingManager
             IncludePaid = true
         })).ToList();
 
-        var invoiceIds = invoices
+        var repoMatchedInvoiceIds = invoices
             .Where(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
             .Select(invoice => invoice.InvoiceId)
             .ToHashSet();
 
-        if (invoiceIds.Count == 0)
+        if (repoMatchedInvoiceIds.Count == 0)
             return [];
 
         foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
@@ -545,11 +550,127 @@ public partial class AccountingManager
             if (!payment.IsActive)
                 continue;
 
-            if ((payment.LedgerLines ?? []).Any(line => invoiceIds.Contains(line.InvoiceId)))
+            if ((payment.LedgerLines ?? []).Any(line =>
+                    repoMatchedInvoiceIds.Contains(line.InvoiceId)
+                    || PaymentLedgerLineMatchesInvoiceSourceCode(line, normalizedSourceCode)))
                 paymentIds.Add(payment.PaymentId);
         }
 
         return paymentIds.ToList();
+    }
+
+    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsByReservationIdAsync(
+        Guid organizationId,
+        int officeId,
+        Guid reservationId)
+    {
+        if (reservationId == Guid.Empty)
+            return [];
+
+        var paymentIds = new HashSet<Guid>();
+
+        if (_officeSyncCache != null)
+        {
+            var cachedReservationInvoiceIds = _officeSyncCache.InvoicesById.Values
+                .Where(invoice => invoice.ReservationId == reservationId)
+                .Select(invoice => invoice.InvoiceId)
+                .ToHashSet();
+
+            foreach (var payment in _officeSyncCache.Payments)
+            {
+                if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                    continue;
+
+                if ((payment.LedgerLines ?? []).Any(line =>
+                        line.InvoiceId != Guid.Empty && cachedReservationInvoiceIds.Contains(line.InvoiceId)))
+                {
+                    paymentIds.Add(payment.PaymentId);
+                }
+            }
+
+            return paymentIds.ToList();
+        }
+
+        var invoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            IncludeInactive = true,
+            IncludePaid = true
+        })).Where(invoice => invoice.ReservationId == reservationId).ToList();
+
+        var reservationInvoiceIds = invoices.Select(invoice => invoice.InvoiceId).ToHashSet();
+        if (reservationInvoiceIds.Count == 0)
+            return [];
+
+        foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                     organizationId,
+                     officeId.ToString(),
+                     (int)PaymentKind.Invoice))
+        {
+            if (!payment.IsActive)
+                continue;
+
+            if ((payment.LedgerLines ?? []).Any(line =>
+                    line.InvoiceId != Guid.Empty && reservationInvoiceIds.Contains(line.InvoiceId)))
+            {
+                paymentIds.Add(payment.PaymentId);
+            }
+        }
+
+        return paymentIds.ToList();
+    }
+
+    private IEnumerable<Guid> FindPaymentIdsByJournalEntryInvoiceSourceCode(string invoiceSourceCode)
+    {
+        if (_officeSyncCache == null)
+            yield break;
+
+        foreach (var payment in _officeSyncCache.Payments)
+        {
+            if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                continue;
+
+            foreach (var paymentEntry in _officeSyncCache.GetByPaymentId(payment.PaymentId))
+            {
+                if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                    continue;
+
+                if (string.Equals(
+                        ResolvePaymentJournalEntrySourceCode(paymentEntry),
+                        invoiceSourceCode,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    yield return payment.PaymentId;
+                    break;
+                }
+            }
+        }
+    }
+
+    private static bool PaymentMatchesInvoiceSourceCode(
+        Payment payment,
+        string invoiceSourceCode,
+        IReadOnlySet<Guid> invoiceIds)
+    {
+        foreach (var line in payment.LedgerLines ?? [])
+        {
+            if (PaymentLedgerLineMatchesInvoiceSourceCode(line, invoiceSourceCode))
+                return true;
+
+            if (line.InvoiceId != Guid.Empty && invoiceIds.Contains(line.InvoiceId))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool PaymentLedgerLineMatchesInvoiceSourceCode(PaymentLedgerLine line, string invoiceSourceCode)
+    {
+        if (string.Equals(line.InvoiceCode?.Trim(), invoiceSourceCode, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
     }
 
     private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, Guid currentUser)

@@ -394,13 +394,36 @@ public partial class AccountingManager
             if (payment == null || !payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
                 continue;
 
-            await SyncInvoicePaymentForHealthFixAsync(payment, organizationId, currentUser, result);
+            await SyncInvoicePaymentForHealthFixAsync(
+                payment,
+                organizationId,
+                currentUser,
+                result,
+                forcePaymentJournalEntryUpsert: true);
         }
 
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
+
+        if (_officeSyncCache != null)
+        {
+            foreach (var paymentId in paymentIds)
+            {
+                if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                    cachedPayment.DepositId = deposit.DepositId;
+            }
+        }
+
+        var reloadedDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloadedDeposit?.Splits != null)
+            deposit.Splits = reloadedDeposit.Splits;
     }
 
-    async Task SyncInvoicePaymentForHealthFixAsync(Payment paymentSummary, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
+    async Task SyncInvoicePaymentForHealthFixAsync(
+        Payment paymentSummary,
+        Guid organizationId,
+        Guid currentUser,
+        JournalEntrySyncResult result,
+        bool forcePaymentJournalEntryUpsert = false)
     {
         var payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
         if (payment == null)
@@ -414,11 +437,8 @@ public partial class AccountingManager
             organizationId,
             currentUser);
 
-        if (await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId))
-        {
-            result.JournalEntriesSkipped++;
-        }
-        else
+        var hadHealthPaymentJournalEntry = await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId);
+        if (forcePaymentJournalEntryUpsert || !hadHealthPaymentJournalEntry)
         {
             var createResult = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
                 payment.PaymentId,
@@ -428,7 +448,10 @@ public partial class AccountingManager
 
             if (await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId))
             {
-                result.JournalEntriesCreated++;
+                if (hadHealthPaymentJournalEntry)
+                    result.JournalEntriesSkipped++;
+                else
+                    result.JournalEntriesCreated++;
             }
             else
             {
@@ -441,8 +464,14 @@ public partial class AccountingManager
                 result.Errors.Add($"{paymentCode}: {detail}");
             }
         }
+        else
+        {
+            result.JournalEntriesSkipped++;
+        }
 
-        await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser);
+        payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
+        if (payment != null)
+            await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser);
     }
 
     async Task ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(

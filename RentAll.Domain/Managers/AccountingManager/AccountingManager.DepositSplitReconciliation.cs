@@ -92,6 +92,20 @@ public partial class AccountingManager
                 continue;
             }
 
+            resolvedLineId = await ResolveHealthFixDepositSplitLineIdAsync(
+                deposit,
+                split,
+                undepositedFundsAccountId,
+                claimedLineIds,
+                assignedLineIds);
+            if (resolvedLineId.HasValue && resolvedLineId != Guid.Empty)
+            {
+                split.JournalEntryLineId = resolvedLineId;
+                assignedLineIds.Add(resolvedLineId.Value);
+                trail?.Note($"Rematch linked via invoice payment: {splitLabel} amount={split.Amount:0.00} -> line={resolvedLineId}");
+                continue;
+            }
+
             // Stale after clear/resync (or wrong account line): clear so callers rematch instead of treating as valid.
             if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
             {
@@ -134,6 +148,216 @@ public partial class AccountingManager
         }
 
         return messages;
+    }
+
+    private async Task<Guid?> ResolveHealthFixDepositSplitLineIdAsync(
+        Deposit deposit,
+        DepositSplit split,
+        int undepositedFundsAccountId,
+        IReadOnlySet<Guid> claimedLineIds,
+        IReadOnlySet<Guid> assignedLineIds)
+    {
+        if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+            return null;
+
+        var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+        var splitReservationId = NormalizeOptionalGuid(split.ReservationId);
+        if (string.IsNullOrWhiteSpace(splitSourceCode) && splitReservationId == null)
+            return null;
+
+        var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+        if (splitAmount <= 0.005m)
+            return null;
+
+        var paymentIds = new HashSet<Guid>();
+        if (!string.IsNullOrWhiteSpace(splitSourceCode))
+        {
+            foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(
+                         deposit.OrganizationId,
+                         deposit.OfficeId,
+                         splitSourceCode))
+            {
+                paymentIds.Add(paymentId);
+            }
+        }
+
+        if (splitReservationId != null)
+        {
+            foreach (var paymentId in await FindInvoicePaymentIdsByReservationIdAsync(
+                         deposit.OrganizationId,
+                         deposit.OfficeId,
+                         splitReservationId.Value))
+            {
+                paymentIds.Add(paymentId);
+            }
+        }
+
+        var matches = new List<(Guid LineId, int Rank)>();
+        foreach (var paymentId in paymentIds)
+        {
+            foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId))
+                CollectUndepositedFundsLineMatches(
+                    paymentEntry,
+                    undepositedFundsAccountId,
+                    splitSourceCode ?? string.Empty,
+                    splitAmount,
+                    claimedLineIds,
+                    assignedLineIds,
+                    matches);
+        }
+
+        var invoiceId = !string.IsNullOrWhiteSpace(splitSourceCode)
+            ? await ResolveInvoiceIdBySourceCodeAsync(deposit.OrganizationId, deposit.OfficeId, splitSourceCode)
+            : Guid.Empty;
+        if (invoiceId != Guid.Empty)
+        {
+            foreach (var paymentEntry in await GetDocumentJournalEntriesForSyncAsync(
+                         deposit.OrganizationId,
+                         deposit.OfficeId,
+                         SourceType.Invoice,
+                         invoiceId,
+                         JournalEntryKind.Payment))
+            {
+                CollectUndepositedFundsLineMatches(
+                    paymentEntry,
+                    undepositedFundsAccountId,
+                    splitSourceCode ?? string.Empty,
+                    splitAmount,
+                    claimedLineIds,
+                    assignedLineIds,
+                    matches);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            matches = await CollectUndepositedFundsLineMatchesByPaymentAmountAsync(
+                paymentIds,
+                deposit.OrganizationId,
+                split,
+                undepositedFundsAccountId,
+                claimedLineIds,
+                assignedLineIds);
+        }
+
+        if (matches.Count == 0)
+            return null;
+
+        return matches
+            .OrderBy(match => match.Rank)
+            .ThenBy(match => match.LineId)
+            .First()
+            .LineId;
+    }
+
+    private async Task<List<(Guid LineId, int Rank)>> CollectUndepositedFundsLineMatchesByPaymentAmountAsync(
+        IReadOnlyCollection<Guid> paymentIds,
+        Guid organizationId,
+        DepositSplit split,
+        int undepositedFundsAccountId,
+        IReadOnlySet<Guid> claimedLineIds,
+        IReadOnlySet<Guid> assignedLineIds)
+    {
+        var matches = new List<(Guid LineId, int Rank)>();
+        var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+        if (splitAmount <= 0.005m)
+            return matches;
+
+        foreach (var paymentId in paymentIds)
+        {
+            foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(organizationId, paymentId))
+            {
+                if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                    continue;
+
+                foreach (var line in paymentEntry.JournalEntryLines ?? [])
+                {
+                    if (line.ChartOfAccountId != undepositedFundsAccountId)
+                        continue;
+
+                    var netAmount = Math.Abs(line.Debit - line.Credit);
+                    if (netAmount <= 0.005m || line.JournalEntryLineId == Guid.Empty)
+                        continue;
+
+                    if (claimedLineIds.Contains(line.JournalEntryLineId) || assignedLineIds.Contains(line.JournalEntryLineId))
+                        continue;
+
+                    if (Math.Abs(netAmount - splitAmount) > 0.005m)
+                        continue;
+
+                    matches.Add((line.JournalEntryLineId, -20));
+                }
+            }
+        }
+
+        return matches;
+    }
+
+    private static void CollectUndepositedFundsLineMatches(
+        JournalEntry paymentEntry,
+        int undepositedFundsAccountId,
+        string splitSourceCode,
+        decimal splitAmount,
+        IReadOnlySet<Guid> claimedLineIds,
+        IReadOnlySet<Guid> assignedLineIds,
+        ICollection<(Guid LineId, int Rank)> matches)
+    {
+        if (paymentEntry.PostingStatusId != PostingStatus.Open)
+            return;
+
+        if (paymentEntry.JournalEntryKindId is not (JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive))
+            return;
+
+        var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
+        var sourceMatches = string.Equals(paymentSourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase);
+
+        foreach (var line in paymentEntry.JournalEntryLines ?? [])
+        {
+            if (line.ChartOfAccountId != undepositedFundsAccountId)
+                continue;
+
+            var netAmount = Math.Abs(line.Debit - line.Credit);
+            if (netAmount <= 0.005m || line.JournalEntryLineId == Guid.Empty)
+                continue;
+
+            if (claimedLineIds.Contains(line.JournalEntryLineId) || assignedLineIds.Contains(line.JournalEntryLineId))
+                continue;
+
+            var rank = 0;
+            if (sourceMatches)
+                rank -= 5;
+
+            if (Math.Abs(netAmount - splitAmount) <= 0.005m)
+                rank -= 10;
+
+            matches.Add((line.JournalEntryLineId, rank));
+        }
+    }
+
+    private async Task<Guid> ResolveInvoiceIdBySourceCodeAsync(Guid organizationId, int officeId, string invoiceSourceCode)
+    {
+        var normalizedSourceCode = invoiceSourceCode.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedSourceCode))
+            return Guid.Empty;
+
+        if (_officeSyncCache != null)
+        {
+            var cachedInvoice = _officeSyncCache.InvoicesById.Values.FirstOrDefault(invoice =>
+                string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase));
+            return cachedInvoice?.InvoiceId ?? Guid.Empty;
+        }
+
+        var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            IncludeInactive = true,
+            IncludePaid = true
+        });
+
+        return invoices
+            .FirstOrDefault(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+            ?.InvoiceId ?? Guid.Empty;
     }
 
     private static bool IsRematchableHealthInvoicePaymentJournalEntry(JournalEntry entry)
@@ -392,6 +616,23 @@ public partial class AccountingManager
 
             if (invoiceOnlyMatches.Count == 1)
                 return invoiceOnlyMatches[0].JournalEntryLineId;
+
+            if (invoiceOnlyMatches.Count > 1)
+            {
+                var closestAmountMatches = invoiceOnlyMatches
+                    .OrderBy(candidate => Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount))
+                    .ThenByDescending(candidate => candidate.DepositId == deposit.DepositId ? 1 : 0)
+                    .ThenBy(candidate => candidate.JournalEntryLineId)
+                    .ToList();
+
+                var best = closestAmountMatches[0];
+                var bestDelta = Math.Abs(Math.Abs(best.NetAmount) - splitAmount);
+                if (closestAmountMatches.Count == 1
+                    || Math.Abs(Math.Abs(closestAmountMatches[1].NetAmount) - splitAmount) - bestDelta > 0.005m)
+                {
+                    return best.JournalEntryLineId;
+                }
+            }
 
             return null;
         }
