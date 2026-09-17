@@ -110,6 +110,7 @@ public partial class AccountingManager
 
         await CreateJournalEntriesFromPaymentApplicationsAsync(payment, loadResult.Applications, currentUser, result);
         await PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(paymentId, organizationId, currentUser);
+        await PruneDetachedUnstampedInvoicePaymentJournalEntriesAsync(payment, currentUser);
 
         if (result.JournalEntries.Count == 0)
             result.Bail("Exit: create/upsert finished with zero Payment/PrePaymentReceive journal entries returned.");

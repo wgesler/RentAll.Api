@@ -396,6 +396,21 @@ public partial class AccountingManager
 
         foreach (var entry in ownerPaymentEntries)
             await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
+
+        if (payment.PaymentKindId != (int)PaymentKind.Invoice)
+            return;
+
+        foreach (var paymentLine in payment.LedgerLines.Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0))
+        {
+            if (paymentLine.InvoiceId == Guid.Empty)
+                continue;
+
+            var invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, payment.OrganizationId);
+            if (invoice == null)
+                continue;
+
+            await DeleteJournalEntriesForInvoicePaymentLedgerLineAsync(invoice, ToInvoicePaymentLedgerLine(paymentLine));
+        }
     }
 
     public async Task<JournalEntry> UnpostJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)

@@ -176,6 +176,88 @@ public partial class AccountingManager
     private static bool IsHealthInvoicePaymentJournalEntry(JournalEntry entry)
         => entry.JournalEntryKindId is JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive;
 
+    private async Task PruneDetachedUnstampedInvoicePaymentJournalEntriesAsync(Payment payment, Guid currentUser)
+    {
+        if (payment.PaymentKindId != (int)PaymentKind.Invoice || payment.PaymentId == Guid.Empty)
+            return;
+
+        foreach (var paymentLine in payment.LedgerLines.Where(line => line.LedgerLineId != Guid.Empty && line.Amount != 0))
+        {
+            if (paymentLine.InvoiceId == Guid.Empty)
+                continue;
+
+            Invoice? invoice = null;
+            if (_officeSyncCache != null && _officeSyncCache.TryGetInvoiceWithLedgerLines(paymentLine.InvoiceId, out invoice))
+            {
+                // use cached invoice
+            }
+            else
+            {
+                invoice = await _accountingRepository.GetInvoiceByIdAsync(paymentLine.InvoiceId, payment.OrganizationId);
+            }
+
+            if (invoice == null)
+                continue;
+
+            var ledgerLine = ToInvoicePaymentLedgerLine(paymentLine);
+            ledgerLine.PaymentId = payment.PaymentId;
+
+            var matched = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                invoice.OrganizationId,
+                invoice.OfficeId,
+                invoice,
+                ledgerLine);
+
+            var openPaymentEntries = matched
+                .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Payment
+                    && entry.SourceTypeId == (int)SourceType.Invoice
+                    && entry.PostingStatusId == PostingStatus.Open)
+                .ToList();
+
+            if (openPaymentEntries.Count <= 1)
+                continue;
+
+            var stampedEntries = openPaymentEntries
+                .Where(entry => entry.PaymentId == payment.PaymentId)
+                .ToList();
+
+            if (stampedEntries.Count == 0)
+                continue;
+
+            SortJournalEntriesForDuplicateRetention(stampedEntries);
+            var retainedEntry = stampedEntries[0];
+
+            foreach (var duplicate in openPaymentEntries.Where(entry => entry.JournalEntryId != retainedEntry.JournalEntryId))
+            {
+                var lineIds = (duplicate.JournalEntryLines ?? []).Select(line => line.JournalEntryLineId);
+                if (await IsAnyJournalEntryLineClaimedByDepositSplitAsync(payment.OrganizationId, payment.OfficeId, lineIds))
+                    continue;
+
+                if (currentUser != Guid.Empty)
+                    await ReconnectDuplicateJournalEntryLinksAsync(retainedEntry, duplicate, payment.OrganizationId, currentUser);
+
+                await DeleteOpenJournalEntryAsync(duplicate.JournalEntryId, payment.OrganizationId);
+            }
+        }
+    }
+
+    private async Task<bool> IsAnyJournalEntryLineClaimedByDepositSplitAsync(
+        Guid organizationId,
+        int officeId,
+        IEnumerable<Guid> lineIds)
+    {
+        var lineIdSet = lineIds.Where(lineId => lineId != Guid.Empty).ToHashSet();
+        if (lineIdSet.Count == 0)
+            return false;
+
+        var deposits = _officeSyncCache?.Deposits?.ToList()
+            ?? (await _accountingRepository.GetDepositsByOfficeIdsAsync(organizationId, officeId.ToString())).ToList();
+
+        return deposits.Any(deposit =>
+            (deposit.Splits ?? []).Any(split =>
+                split.JournalEntryLineId is { } lineId && lineIdSet.Contains(lineId)));
+    }
+
     private async Task<int> PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(
         Guid paymentId,
         Guid organizationId,

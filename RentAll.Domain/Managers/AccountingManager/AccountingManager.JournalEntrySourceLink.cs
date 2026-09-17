@@ -150,6 +150,27 @@ public partial class AccountingManager
     private static bool IsInvoicePaymentLedgerLineJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
         => MatchesInvoicePaymentLedgerLineMemo(entry, invoice, paymentLedgerLine);
 
+    private static bool MatchesStandardInvoicePaymentJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        if (entry.JournalEntryKindId != JournalEntryKind.Payment
+            || entry.SourceTypeId != (int)SourceType.Invoice
+            || entry.SourceId != invoice.InvoiceId)
+        {
+            return false;
+        }
+
+        if (paymentLedgerLine.PaymentId is { } paymentId && paymentId != Guid.Empty
+            && entry.PaymentId is { } entryPaymentId && entryPaymentId != Guid.Empty)
+        {
+            return entryPaymentId == paymentId;
+        }
+
+        return string.Equals(
+            entry.Memo,
+            BuildInvoicePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description),
+            StringComparison.Ordinal);
+    }
+
     private static bool MatchesInvoicePaymentLedgerLineMemo(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
     {
         if (entry.SourceId != invoice.InvoiceId || entry.SourceTypeId != (int)SourceType.Invoice)
@@ -157,10 +178,7 @@ public partial class AccountingManager
 
         return entry.JournalEntryKindId switch
         {
-            JournalEntryKind.Payment => string.Equals(
-                entry.Memo,
-                BuildInvoicePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description),
-                StringComparison.Ordinal),
+            JournalEntryKind.Payment => MatchesStandardInvoicePaymentJournalEntry(entry, invoice, paymentLedgerLine),
             JournalEntryKind.PrePaymentReceive or JournalEntryKind.PrePaymentApply => string.Equals(
                 entry.Memo,
                 BuildInvoicePrePaymentMemo(invoice.InvoiceCode, paymentLedgerLine.Description),
