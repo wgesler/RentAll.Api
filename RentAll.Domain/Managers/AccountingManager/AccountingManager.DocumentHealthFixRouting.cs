@@ -92,6 +92,12 @@ public partial class AccountingManager
                 return;
             }
 
+            if (normalizedIssue.Contains("Deposited payment", StringComparison.OrdinalIgnoreCase))
+            {
+                depositIds.Add(id);
+                return;
+            }
+
             RouteDocumentId(id, issueText ?? string.Empty, paymentIds, depositIds, transferIds);
         }
 

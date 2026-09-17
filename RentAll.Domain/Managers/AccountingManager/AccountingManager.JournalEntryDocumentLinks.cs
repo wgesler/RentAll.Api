@@ -139,9 +139,108 @@ public partial class AccountingManager
                 progress));
         }
 
+        await ClearRefundPaymentDepositStampsForHealthFixIssuesAsync(scan.Issues, organizationId, currentUser, result);
         await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(scan.Issues, organizationId, currentUser, result);
-        await SyncDocumentLinksAsync(organizationId, officeIds, currentUser, progress);
+        await SyncDocumentLinksForHealthFixTargetsAsync(
+            organizationId,
+            officeIds,
+            paymentIds,
+            depositIds,
+            transferIds,
+            currentUser,
+            progress);
         return result;
+    }
+
+    private async Task SyncDocumentLinksForHealthFixTargetsAsync(
+        Guid organizationId,
+        string officeIds,
+        IReadOnlySet<Guid> paymentIds,
+        IReadOnlySet<Guid> depositIds,
+        IReadOnlySet<Guid> transferIds,
+        Guid currentUser,
+        IProgress<JournalEntrySyncProgress>? progress)
+    {
+        if (paymentIds.Count == 0 && depositIds.Count == 0 && transferIds.Count == 0)
+            return;
+
+        await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
+        {
+            var linkResult = new JournalEntrySyncResult();
+            var payments = _officeSyncCache!.Payments
+                .Where(payment => paymentIds.Contains(payment.PaymentId))
+                .OrderBy(payment => payment.PaymentDate)
+                .ThenBy(payment => payment.PaymentId)
+                .ToList();
+
+            var processed = 0;
+            var total = payments.Count;
+            ReportSyncProgress(progress, "documentLinkPayment", total, processed, linkResult, total == 0 ? "Completed" : "Running");
+
+            foreach (var payment in payments)
+            {
+                await SyncPaymentDocumentLinksAsync(payment, currentUser);
+                processed++;
+                ReportSyncProgress(progress, "documentLinkPayment", total, processed, linkResult, processed >= total ? "Completed" : "Running");
+            }
+
+            var deposits = _officeSyncCache.Deposits
+                .Where(deposit => deposit.IsActive && depositIds.Contains(deposit.DepositId))
+                .ToList();
+
+            processed = 0;
+            total = deposits.Count;
+            ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, total == 0 ? "Completed" : "Running");
+
+            foreach (var deposit in deposits)
+            {
+                await SyncDepositDocumentLinksAsync(deposit, currentUser);
+                processed++;
+                ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, processed >= total ? "Completed" : "Running");
+            }
+
+            var transfers = _officeSyncCache.Transfers
+                .Where(transfer => transfer.IsActive && transferIds.Contains(transfer.TransferId))
+                .ToList();
+
+            processed = 0;
+            total = transfers.Count;
+            ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, total == 0 ? "Completed" : "Running");
+
+            foreach (var transfer in transfers)
+            {
+                await SyncTransferDocumentLinksAsync(transfer, currentUser);
+                processed++;
+                ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, processed >= total ? "Completed" : "Running");
+            }
+        });
+    }
+
+    private async Task ClearRefundPaymentDepositStampsForHealthFixIssuesAsync(
+        IReadOnlyList<DocumentHealthIssue> issues,
+        Guid organizationId,
+        Guid currentUser,
+        JournalEntrySyncResult result)
+    {
+        foreach (var issue in issues ?? [])
+        {
+            var issueText = (issue.Issue ?? string.Empty).Trim();
+            if (!issueText.Contains("Deposited payment missing deposit split link", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (issue.Amount is not { } amount || amount > -0.005m)
+                continue;
+
+            if (issue.DocumentId == Guid.Empty)
+                continue;
+
+            var payment = await _accountingRepository.GetPaymentByIdAsync(issue.DocumentId, organizationId);
+            if (payment?.DepositId is not { } depositId || depositId == Guid.Empty)
+                continue;
+
+            await _accountingRepository.SetPaymentDepositIdAsync(payment.PaymentId, organizationId, null, currentUser);
+            result.DocumentsProcessed++;
+        }
     }
 
     private static void MergeSyncResults(JournalEntrySyncResult target, JournalEntrySyncResult source)
