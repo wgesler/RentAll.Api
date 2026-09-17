@@ -270,9 +270,34 @@ public partial class AccountingManager
         rebuilt.ModifiedBy = currentUser;
 
         foreach (var line in rebuilt.JournalEntryLines)
-        {
             line.JournalEntryId = existing.JournalEntryId;
-            line.JournalEntryLineId = Guid.Empty;
+
+        PreserveRebuiltJournalEntryLineIds(rebuilt.JournalEntryLines, existing.JournalEntryLines ?? []);
+    }
+
+    private static void PreserveRebuiltJournalEntryLineIds(
+        IReadOnlyList<JournalEntryLine> rebuiltLines,
+        IReadOnlyList<JournalEntryLine> existingLines)
+    {
+        var availableExisting = existingLines.ToList();
+        foreach (var rebuiltLine in rebuiltLines)
+        {
+            rebuiltLine.JournalEntryLineId = Guid.Empty;
+
+            var match = availableExisting.FirstOrDefault(existing =>
+                existing.ChartOfAccountId == rebuiltLine.ChartOfAccountId
+                && existing.Debit == rebuiltLine.Debit
+                && existing.Credit == rebuiltLine.Credit
+                && existing.PropertyId == rebuiltLine.PropertyId
+                && existing.ReservationId == rebuiltLine.ReservationId
+                && existing.ContactId == rebuiltLine.ContactId
+                && existing.PerspectiveId == rebuiltLine.PerspectiveId);
+
+            if (match == null || match.JournalEntryLineId == Guid.Empty)
+                continue;
+
+            rebuiltLine.JournalEntryLineId = match.JournalEntryLineId;
+            availableExisting.Remove(match);
         }
     }
 

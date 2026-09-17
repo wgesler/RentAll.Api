@@ -64,8 +64,6 @@ public partial class AccountingManager
             return result;
         }
 
-        await PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(paymentId, organizationId, currentUser);
-
         // AGENT-NOTE: Payment JE create must not skip inactive invoices. LoadPaymentApplications
         // uses Invoice_GetById (IsDeleted=0 only). Invoice.IsActive is ignored here on purpose —
         // Sync and payment save both process payment lines on inactive invoices.
@@ -111,6 +109,7 @@ public partial class AccountingManager
         }
 
         await CreateJournalEntriesFromPaymentApplicationsAsync(payment, loadResult.Applications, currentUser, result);
+        await PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(paymentId, organizationId, currentUser);
 
         if (result.JournalEntries.Count == 0)
             result.Bail("Exit: create/upsert finished with zero Payment/PrePaymentReceive journal entries returned.");
