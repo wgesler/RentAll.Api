@@ -15,6 +15,7 @@ public class UpdateLeadPartnerDto
     public string? MarketsCitiesServed { get; set; }
     public string? FurnishedPropertiesInPortfolio { get; set; }
     public string? AboutYourBusiness { get; set; }
+    public string? HowHearAboutUs { get; set; }
     public string? Notes { get; set; }
     public bool EmailPhoneConsent { get; set; }
     public bool SmsConsent { get; set; }
@@ -65,6 +66,7 @@ public class UpdateLeadPartnerDto
             MarketsCitiesServed = MarketsCitiesServed,
             FurnishedPropertiesInPortfolio = FurnishedPropertiesInPortfolio,
             AboutYourBusiness = AboutYourBusiness,
+            HowHearAboutUs = HowHearAboutUs,
             Notes = Notes,
             ModifiedBy = currentUser,
             EmailPhoneConsent = EmailPhoneConsent,

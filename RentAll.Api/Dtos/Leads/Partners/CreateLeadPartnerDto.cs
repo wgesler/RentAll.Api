@@ -15,6 +15,7 @@ public class CreateLeadPartnerDto
     public string? MarketsCitiesServed { get; set; }
     public string? FurnishedPropertiesInPortfolio { get; set; }
     public string? AboutYourBusiness { get; set; }
+    public string? HowHearAboutUs { get; set; }
     public string? Notes { get; set; }
     public bool EmailPhoneConsent { get; set; }
     public bool SmsConsent { get; set; }
@@ -64,6 +65,7 @@ public class CreateLeadPartnerDto
             MarketsCitiesServed = MarketsCitiesServed,
             FurnishedPropertiesInPortfolio = FurnishedPropertiesInPortfolio,
             AboutYourBusiness = AboutYourBusiness,
+            HowHearAboutUs = HowHearAboutUs,
             Notes = Notes,
             CreatedBy = currentUser,
             ModifiedBy = currentUser,

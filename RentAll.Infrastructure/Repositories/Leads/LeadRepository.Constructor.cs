@@ -238,6 +238,7 @@ public partial class LeadRepository : ILeadRepository
             MarketsCitiesServed = e.MarketsCitiesServed,
             FurnishedPropertiesInPortfolio = e.FurnishedPropertiesInPortfolio,
             AboutYourBusiness = e.AboutYourBusiness,
+            HowHearAboutUs = e.HowHearAboutUs,
             Notes = e.Notes,
             CreatedOn = e.CreatedOn,
             CreatedBy = e.CreatedBy,

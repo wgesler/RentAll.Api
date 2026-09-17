@@ -16,6 +16,7 @@ public class LeadPartner
     public string? MarketsCitiesServed { get; set; }
     public string? FurnishedPropertiesInPortfolio { get; set; }
     public string? AboutYourBusiness { get; set; }
+    public string? HowHearAboutUs { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

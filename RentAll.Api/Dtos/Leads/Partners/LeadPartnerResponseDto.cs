@@ -16,6 +16,7 @@ public class LeadPartnerResponseDto
     public string? MarketsCitiesServed { get; set; }
     public string? FurnishedPropertiesInPortfolio { get; set; }
     public string? AboutYourBusiness { get; set; }
+    public string? HowHearAboutUs { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
@@ -40,6 +41,7 @@ public class LeadPartnerResponseDto
         MarketsCitiesServed = partner.MarketsCitiesServed;
         FurnishedPropertiesInPortfolio = partner.FurnishedPropertiesInPortfolio;
         AboutYourBusiness = partner.AboutYourBusiness;
+        HowHearAboutUs = partner.HowHearAboutUs;
         Notes = partner.Notes;
         CreatedOn = partner.CreatedOn;
         CreatedBy = partner.CreatedBy;
