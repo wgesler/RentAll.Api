@@ -1,3 +1,4 @@
+using RentAll.Domain;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -28,18 +29,12 @@ public class ExternalPropertyContactDto
         if (string.IsNullOrWhiteSpace(Email))
             return (false, $"{fieldLabel}.Email is required");
 
-        if (string.Equals(fieldLabel, "Vendor", StringComparison.OrdinalIgnoreCase))
-            return (true, null);
-
-        if (OwnerTypeId.HasValue && !Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
-            return (false, $"{fieldLabel}.OwnerTypeId is invalid");
-
         return (true, null);
     }
 
     public Contact ToNewOwnerContactModel(Guid organizationId, int officeId, string contactCode, Guid currentUser)
     {
-        var ownerType = OwnerTypeId.HasValue ? (OwnerType)OwnerTypeId.Value : OwnerType.Individual;
+        var ownerType = ResolveOwnerType(required: true) ?? OwnerType.Individual;
         return new Contact
         {
             OrganizationId = organizationId,
@@ -58,7 +53,7 @@ public class ExternalPropertyContactDto
             Address1 = TrimOrNull(Address1),
             Address2 = TrimOrNull(Address2),
             City = TrimOrNull(City),
-            State = TrimOrNull(State),
+            State = UsStateCode.Normalize(TrimOrNull(State)),
             Zip = TrimOrNull(Zip),
             Rating = 0,
             IsInternational = false,
@@ -92,7 +87,7 @@ public class ExternalPropertyContactDto
             Address1 = TrimOrNull(Address1),
             Address2 = TrimOrNull(Address2),
             City = TrimOrNull(City),
-            State = TrimOrNull(State),
+            State = UsStateCode.Normalize(TrimOrNull(State)),
             Zip = TrimOrNull(Zip),
             Rating = 0,
             IsInternational = false,
@@ -122,7 +117,7 @@ public class ExternalPropertyContactDto
         contact.Address1 = TrimOrNull(Address1) ?? contact.Address1;
         contact.Address2 = TrimOrNull(Address2) ?? contact.Address2;
         contact.City = TrimOrNull(City) ?? contact.City;
-        contact.State = TrimOrNull(State) ?? contact.State;
+        contact.State = UsStateCode.Normalize(TrimOrNull(State)) ?? contact.State;
         contact.Zip = TrimOrNull(Zip) ?? contact.Zip;
         if (!string.IsNullOrWhiteSpace(CompanyName))
             contact.CompanyName = CompanyName.Trim();
@@ -145,13 +140,25 @@ public class ExternalPropertyContactDto
         contact.Address1 = TrimOrNull(Address1) ?? contact.Address1;
         contact.Address2 = TrimOrNull(Address2) ?? contact.Address2;
         contact.City = TrimOrNull(City) ?? contact.City;
-        contact.State = TrimOrNull(State) ?? contact.State;
+        contact.State = UsStateCode.Normalize(TrimOrNull(State)) ?? contact.State;
         contact.Zip = TrimOrNull(Zip) ?? contact.Zip;
-        if (OwnerTypeId.HasValue && Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
-            contact.OwnerType = (OwnerType)OwnerTypeId.Value;
+        var ownerType = ResolveOwnerType(required: false);
+        if (ownerType.HasValue)
+            contact.OwnerType = ownerType.Value;
         if (!string.IsNullOrWhiteSpace(CompanyName))
             contact.CompanyName = CompanyName.Trim();
         contact.ModifiedBy = modifiedBy;
+    }
+
+    private OwnerType? ResolveOwnerType(bool required)
+    {
+        if (OwnerTypeId.HasValue && Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
+            return (OwnerType)OwnerTypeId.Value;
+
+        if (!OwnerTypeId.HasValue && !required)
+            return null;
+
+        return string.IsNullOrWhiteSpace(CompanyName) ? OwnerType.Individual : OwnerType.Company;
     }
 
     private static string? TrimOrNull(string? value)

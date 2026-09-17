@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
+using RentAll.Domain;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
@@ -288,7 +289,7 @@ public class CreateExternalPropertyDto
             Address2 = TrimOrNull(Address2),
             Suite = TrimOrNull(Suite),
             City = City.Trim(),
-            State = State.Trim(),
+            State = UsStateCode.Normalize(State) ?? string.Empty,
             Zip = Zip.Trim(),
             Neighborhood = TrimOrNull(Neighborhood),
             CrossStreet = TrimOrNull(CrossStreet),
@@ -391,7 +392,7 @@ public class CreateExternalPropertyDto
         updateDto.Address2 = TrimOrNull(Address2);
         updateDto.Suite = TrimOrNull(Suite);
         updateDto.City = City.Trim();
-        updateDto.State = State.Trim();
+        updateDto.State = UsStateCode.Normalize(State) ?? string.Empty;
         updateDto.Zip = Zip.Trim();
         updateDto.Neighborhood = TrimOrNull(Neighborhood);
         updateDto.CrossStreet = TrimOrNull(CrossStreet);

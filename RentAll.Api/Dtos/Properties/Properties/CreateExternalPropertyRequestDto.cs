@@ -73,9 +73,10 @@ public class CreateExternalPropertyRequestDto
             {
                 propertyDto = ExternalPropertyIntakeJson.DeserializePropertyItem(propertyElement);
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
-                return (false, null, null, $"Properties[{index}]: Invalid property JSON");
+                var path = string.IsNullOrWhiteSpace(ex.Path) ? "property" : ex.Path;
+                return (false, null, null, $"Properties[{index}]: Invalid property JSON ({path}: {ex.Message})");
             }
 
             var (itemIsValid, itemError) = propertyDto.IsValid();

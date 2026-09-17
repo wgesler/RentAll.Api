@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
+using RentAll.Domain;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
@@ -48,7 +50,7 @@ public static class ExternalPropertyPatchMerger
             if (!TryGetTrimmedString(body, "state", out var state) || string.IsNullOrWhiteSpace(state))
                 return (false, null, "State cannot be empty when provided");
 
-            updateDto.State = state;
+            updateDto.State = UsStateCode.Normalize(state) ?? state;
         }
 
         if (presentFields.Contains("zip"))
@@ -280,7 +282,7 @@ public static class ExternalPropertyPatchMerger
             return null;
         }
 
-        if (!element.TryGetInt32(out var bedroomId))
+        if (!TryCoerceInt32(element, out var bedroomId))
             return $"Invalid BedroomId{bedroomNumber} value";
 
         if (!Enum.IsDefined(typeof(BedSizeType), bedroomId))
@@ -332,27 +334,44 @@ public static class ExternalPropertyPatchMerger
     private static bool TryGetInt(JsonElement body, string name, out int value)
     {
         value = 0;
-        if (!TryGetProperty(body, name, out var element) || element.ValueKind != JsonValueKind.Number)
-            return false;
-
-        return element.TryGetInt32(out value);
+        return TryGetProperty(body, name, out var element) && TryCoerceInt32(element, out value);
     }
 
     private static bool TryGetDecimal(JsonElement body, string name, out decimal value)
     {
         value = 0;
-        if (!TryGetProperty(body, name, out var element) || element.ValueKind != JsonValueKind.Number)
-            return false;
-
-        return element.TryGetDecimal(out value);
+        return TryGetProperty(body, name, out var element) && TryCoerceDecimal(element, out value);
     }
 
     private static bool TryGetBool(JsonElement body, string name, out bool value)
     {
         value = false;
-        if (!TryGetProperty(body, name, out var element))
-            return false;
+        return TryGetProperty(body, name, out var element) && TryCoerceBool(element, out value);
+    }
 
+    private static bool TryCoerceInt32(JsonElement element, out int value)
+    {
+        value = 0;
+        if (element.ValueKind == JsonValueKind.Number)
+            return element.TryGetInt32(out value);
+
+        return element.ValueKind == JsonValueKind.String
+            && int.TryParse(element.GetString()?.Trim(), out value);
+    }
+
+    private static bool TryCoerceDecimal(JsonElement element, out decimal value)
+    {
+        value = 0;
+        if (element.ValueKind == JsonValueKind.Number)
+            return element.TryGetDecimal(out value);
+
+        return element.ValueKind == JsonValueKind.String
+            && decimal.TryParse(element.GetString()?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out value);
+    }
+
+    private static bool TryCoerceBool(JsonElement element, out bool value)
+    {
+        value = false;
         if (element.ValueKind == JsonValueKind.True)
         {
             value = true;
@@ -360,12 +379,33 @@ public static class ExternalPropertyPatchMerger
         }
 
         if (element.ValueKind == JsonValueKind.False)
+            return true;
+
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var number))
         {
-            value = false;
+            if (number == 1)
+            {
+                value = true;
+                return true;
+            }
+
+            return number == 0;
+        }
+
+        if (element.ValueKind != JsonValueKind.String)
+            return false;
+
+        var raw = element.GetString()?.Trim();
+        if (bool.TryParse(raw, out value))
+            return true;
+
+        if (string.Equals(raw, "1", StringComparison.Ordinal))
+        {
+            value = true;
             return true;
         }
 
-        return false;
+        return string.Equals(raw, "0", StringComparison.Ordinal);
     }
 
     private static string? TrimOrNull(string? value)

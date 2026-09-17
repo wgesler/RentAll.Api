@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
@@ -7,7 +8,9 @@ public static class ExternalPropertyIntakeJson
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        Converters = { new FlexibleJsonBooleanConverter(), new FlexibleNullableJsonBooleanConverter() }
     };
 
     private static readonly HashSet<string> RequestHeaderFields = new(StringComparer.OrdinalIgnoreCase)
@@ -163,12 +166,16 @@ public static class ExternalPropertyIntakeJson
 
         if (element.ValueKind == JsonValueKind.String)
         {
+            if (TryCoerceOfficeId(element, out officeId))
+            {
+                errorMessage = null;
+                return true;
+            }
+
             var raw = element.GetString()?.Trim() ?? string.Empty;
             errorMessage = string.IsNullOrWhiteSpace(raw)
                 ? "OfficeId is required"
-                : int.TryParse(raw, out var parsedOfficeId) && parsedOfficeId > 0
-                    ? $"OfficeId must be a JSON number, not a string. Received \"{raw}\"."
-                    : $"OfficeId must be a JSON number, not a string. Received \"{raw}\".";
+                : $"OfficeId must be a valid integer greater than 0. Received \"{raw}\".";
             return false;
         }
 
@@ -255,4 +262,79 @@ public static class ExternalPropertyIntakeJson
             JsonValueKind.Object => "object",
             _ => kind.ToString().ToLowerInvariant()
         };
+
+    private sealed class FlexibleJsonBooleanConverter : JsonConverter<bool>
+    {
+        public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (TryReadFlexibleBoolean(ref reader, out var value))
+                return value;
+
+            throw new JsonException("Boolean value is invalid.");
+        }
+
+        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) => writer.WriteBooleanValue(value);
+    }
+
+    private sealed class FlexibleNullableJsonBooleanConverter : JsonConverter<bool?>
+    {
+        public override bool? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null)
+                return null;
+
+            if (TryReadFlexibleBoolean(ref reader, out var value))
+                return value;
+
+            throw new JsonException("Boolean value is invalid.");
+        }
+
+        public override void Write(Utf8JsonWriter writer, bool? value, JsonSerializerOptions options)
+        {
+            if (value.HasValue)
+                writer.WriteBooleanValue(value.Value);
+            else
+                writer.WriteNullValue();
+        }
+    }
+
+    private static bool TryReadFlexibleBoolean(ref Utf8JsonReader reader, out bool value)
+    {
+        value = false;
+        if (reader.TokenType == JsonTokenType.True)
+        {
+            value = true;
+            return true;
+        }
+
+        if (reader.TokenType == JsonTokenType.False)
+            return true;
+
+        if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out var number))
+        {
+            if (number == 1)
+            {
+                value = true;
+                return true;
+            }
+
+            if (number == 0)
+                return true;
+        }
+
+        if (reader.TokenType != JsonTokenType.String)
+            return false;
+
+        var raw = reader.GetString()?.Trim();
+        if (bool.TryParse(raw, out value))
+            return true;
+
+        if (string.Equals(raw, "1", StringComparison.Ordinal))
+        {
+            value = true;
+            return true;
+        }
+
+        return string.Equals(raw, "0", StringComparison.Ordinal);
+    }
 }

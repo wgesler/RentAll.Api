@@ -116,7 +116,7 @@ public class ExternalPropertyOwnerContactResolver
         contact.State = TryGetTrimmedString(contactElement, "state");
         contact.Zip = TryGetTrimmedString(contactElement, "zip");
         contact.CompanyName = TryGetTrimmedString(contactElement, "companyName");
-        if (TryGetProperty(contactElement, "ownerTypeId", out var ownerTypeElement) && ownerTypeElement.ValueKind == JsonValueKind.Number && ownerTypeElement.TryGetInt32(out var ownerTypeId))
+        if (TryGetProperty(contactElement, "ownerTypeId", out var ownerTypeElement) && TryCoerceInt32(ownerTypeElement, out var ownerTypeId))
             contact.OwnerTypeId = ownerTypeId;
 
         return true;
@@ -214,5 +214,14 @@ public class ExternalPropertyOwnerContactResolver
 
         var value = element.GetString()?.Trim();
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static bool TryCoerceInt32(JsonElement element, out int value)
+    {
+        value = 0;
+        if (element.ValueKind == JsonValueKind.Number)
+            return element.TryGetInt32(out value);
+
+        return element.ValueKind == JsonValueKind.String && int.TryParse(element.GetString()?.Trim(), out value);
     }
 }
