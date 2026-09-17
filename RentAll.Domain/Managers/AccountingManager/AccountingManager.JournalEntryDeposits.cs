@@ -718,6 +718,19 @@ public partial class AccountingManager
             if (paymentId == Guid.Empty)
                 continue;
 
+            Payment? payment = null;
+            if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                payment = cachedPayment;
+            else
+                payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
+
+            if (payment?.DepositId is { } existingDepositId
+                && existingDepositId != Guid.Empty
+                && existingDepositId != deposit.DepositId)
+            {
+                continue;
+            }
+
             await _accountingRepository.SetPaymentDepositIdAsync(
                 paymentId,
                 deposit.OrganizationId,
