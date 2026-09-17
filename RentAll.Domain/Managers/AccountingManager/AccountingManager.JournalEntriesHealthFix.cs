@@ -397,11 +397,12 @@ public partial class AccountingManager
             await SyncInvoicePaymentForHealthFixAsync(payment, organizationId, currentUser, result);
         }
 
-        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
+        var stampPaymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, stampPaymentIds, currentUser);
 
         if (_officeSyncCache != null)
         {
-            foreach (var paymentId in paymentIds)
+            foreach (var paymentId in stampPaymentIds)
             {
                 if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
                     cachedPayment.DepositId = deposit.DepositId;
@@ -471,7 +472,7 @@ public partial class AccountingManager
 
     async Task StampPaymentDepositIdsAfterSplitReconcileAsync(Deposit deposit, Guid organizationId, Guid currentUser)
     {
-        var paymentIds = await CollectPaymentIdsForDepositHealthFixAsync(deposit, organizationId);
+        var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
 
         if (_officeSyncCache == null)

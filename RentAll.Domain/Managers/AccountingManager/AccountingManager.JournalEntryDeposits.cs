@@ -425,27 +425,38 @@ public partial class AccountingManager
 
         foreach (var split in deposit.Splits ?? [])
         {
-            if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
-                continue;
-
-            if (_officeSyncCache != null && _officeSyncCache.TryGetPaymentIdForLine(journalEntryLineId, out var cachedPaymentId))
-            {
-                paymentIds.Add(cachedPaymentId);
-                continue;
-            }
-
-            var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
-            if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
-                continue;
-
-            var undepositedFundsJournalEntry = await GetJournalEntryByIdCachedAsync(
-                sourceLine.JournalEntryId,
-                deposit.OrganizationId);
-            if (undepositedFundsJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty)
+            var paymentId = await ResolvePaymentIdFromDepositSplitLineAsync(split, deposit.OrganizationId);
+            if (paymentId != Guid.Empty)
                 paymentIds.Add(paymentId);
         }
 
         return paymentIds;
+    }
+
+    private async Task<Guid> ResolvePaymentIdFromDepositSplitLineAsync(DepositSplit split, Guid organizationId)
+    {
+        if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
+            return Guid.Empty;
+
+        if (_officeSyncCache != null
+            && _officeSyncCache.TryGetPaymentIdForLine(journalEntryLineId, out var cachedPaymentId)
+            && cachedPaymentId != Guid.Empty)
+        {
+            return cachedPaymentId;
+        }
+
+        var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+        if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
+            return Guid.Empty;
+
+        var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(sourceLine.JournalEntryId, organizationId);
+        if (paymentJournalEntry?.PaymentId is { } cachedEntryPaymentId && cachedEntryPaymentId != Guid.Empty)
+            return cachedEntryPaymentId;
+
+        paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
+        return paymentJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty
+            ? paymentId
+            : Guid.Empty;
     }
 
     private async Task<HashSet<Guid>> CollectPaymentIdsForDepositHealthFixAsync(Deposit deposit, Guid organizationId)
@@ -692,6 +703,9 @@ public partial class AccountingManager
     private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, IReadOnlyCollection<Guid> paymentIds, Guid currentUser)
     {
         if (deposit.DepositId == Guid.Empty)
+            return;
+
+        if (paymentIds.Count == 0)
             return;
 
         await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
