@@ -534,8 +534,18 @@ public partial class AccountingManager
         var originalSplitLineIds = (deposit.Splits ?? [])
             .Select(split => split.JournalEntryLineId)
             .ToList();
+        var originalSplitReservationIds = (deposit.Splits ?? [])
+            .Select(split => split.ReservationId)
+            .ToList();
+        var originalSplitPropertyIds = (deposit.Splits ?? [])
+            .Select(split => split.PropertyId)
+            .ToList();
         await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail);
-        if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
+        if (DepositSplitReconciliationChanged(
+                originalSplitLineIds,
+                originalSplitReservationIds,
+                originalSplitPropertyIds,
+                deposit.Splits))
         {
             deposit.ModifiedBy = currentUser;
             var updated = await _accountingRepository.UpdateDepositAsync(deposit);

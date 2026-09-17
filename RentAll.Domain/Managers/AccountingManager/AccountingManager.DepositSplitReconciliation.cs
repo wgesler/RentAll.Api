@@ -50,6 +50,8 @@ public partial class AccountingManager
         var assignedLineIds = new HashSet<Guid>();
         trail?.Note($"Rematch: UF account={undepositedFundsAccountId} candidates={paymentLineCandidates.Count} claimedByOthers={claimedLineIds.Count}");
 
+        await EnsureDepositSplitReservationContextAsync(deposit, trail);
+
         foreach (var split in deposit.Splits)
         {
             var splitLabel = ResolveDepositSplitInvoiceSourceCode(split) ?? split.DepositSplitId.ToString();
@@ -781,11 +783,105 @@ public partial class AccountingManager
         return null;
     }
 
+    private sealed class DepositSplitReservationContext
+    {
+        public Guid ReservationId { get; init; }
+        public Guid? PropertyId { get; init; }
+    }
+
+    private async Task EnsureDepositSplitReservationContextAsync(Deposit deposit, AccountingSyncBailTrail? trail)
+    {
+        foreach (var split in deposit.Splits ?? [])
+        {
+            var needsReservation = NormalizeOptionalGuid(split.ReservationId) == null;
+            var needsProperty = NormalizeOptionalGuid(split.PropertyId) == null;
+            if (!needsReservation && !needsProperty)
+                continue;
+
+            DepositSplitReservationContext? context = null;
+            if (needsReservation)
+            {
+                context = await ResolveDepositSplitReservationContextAsync(deposit, split);
+                if (context == null)
+                    continue;
+
+                split.ReservationId = context.ReservationId;
+            }
+
+            if (!needsProperty)
+                continue;
+
+            var propertyId = context?.PropertyId ?? NormalizeOptionalGuid(split.PropertyId);
+            if (propertyId == null)
+            {
+                var reservationId = NormalizeOptionalGuid(split.ReservationId);
+                if (reservationId != null)
+                    propertyId = await ResolvePropertyIdForReservationAsync(reservationId.Value, deposit.OrganizationId);
+            }
+
+            if (propertyId == null)
+                continue;
+
+            split.PropertyId = propertyId;
+            trail?.Note(
+                $"Set reservation/property on split {split.DepositSplitId} from {ResolveDepositSplitReservationSourceCode(split) ?? "description"}.");
+        }
+    }
+
     private async Task<Guid?> ResolveReservationIdForDepositSplitAsync(Deposit deposit, DepositSplit split)
     {
         var reservationId = NormalizeOptionalGuid(split.ReservationId);
         if (reservationId != null)
             return reservationId;
+
+        return (await ResolveDepositSplitReservationContextAsync(deposit, split))?.ReservationId;
+    }
+
+    private async Task<DepositSplitReservationContext?> ResolveDepositSplitReservationContextAsync(
+        Deposit deposit,
+        DepositSplit split)
+    {
+        var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+        if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
+        {
+            var invoiceId = await ResolveInvoiceIdBySourceCodeAsync(
+                deposit.OrganizationId,
+                deposit.OfficeId,
+                invoiceSourceCode);
+            if (invoiceId != Guid.Empty)
+            {
+                if (_officeSyncCache != null
+                    && _officeSyncCache.InvoicesById.TryGetValue(invoiceId, out var cachedInvoice)
+                    && cachedInvoice.ReservationId is { } cachedReservationId
+                    && cachedReservationId != Guid.Empty)
+                {
+                    return new DepositSplitReservationContext
+                    {
+                        ReservationId = cachedReservationId,
+                        PropertyId = NormalizeOptionalGuid(cachedInvoice.PropertyId)
+                            ?? await ResolvePropertyIdForReservationAsync(cachedReservationId, deposit.OrganizationId)
+                    };
+                }
+
+                var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+                {
+                    OrganizationId = deposit.OrganizationId,
+                    OfficeIds = deposit.OfficeId.ToString(),
+                    IncludeInactive = true,
+                    IncludePaid = true
+                });
+                var invoice = invoices.FirstOrDefault(item => item.InvoiceId == invoiceId);
+                if (invoice?.ReservationId is { } resolvedFromInvoice && resolvedFromInvoice != Guid.Empty)
+                {
+                    return new DepositSplitReservationContext
+                    {
+                        ReservationId = resolvedFromInvoice,
+                        PropertyId = NormalizeOptionalGuid(invoice.PropertyId)
+                            ?? await ResolvePropertyIdForReservationAsync(resolvedFromInvoice, deposit.OrganizationId)
+                    };
+                }
+            }
+        }
 
         var reservationSourceCode = ResolveDepositSplitReservationSourceCode(split);
         if (string.IsNullOrWhiteSpace(reservationSourceCode))
@@ -799,7 +895,14 @@ public partial class AccountingManager
                     continue;
 
                 if (invoice.ReservationId is { } cachedReservationId && cachedReservationId != Guid.Empty)
-                    return cachedReservationId;
+                {
+                    return new DepositSplitReservationContext
+                    {
+                        ReservationId = cachedReservationId,
+                        PropertyId = NormalizeOptionalGuid(invoice.PropertyId)
+                            ?? await ResolvePropertyIdForReservationAsync(cachedReservationId, deposit.OrganizationId)
+                    };
+                }
             }
         }
 
@@ -807,25 +910,56 @@ public partial class AccountingManager
             deposit.OrganizationId,
             deposit.OfficeId.ToString());
 
-        return reservations.FirstOrDefault(reservation =>
-                string.Equals(reservation.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase))
-            ?.ReservationId is { } resolvedReservationId && resolvedReservationId != Guid.Empty
-            ? resolvedReservationId
-            : null;
+        var activeMatch = reservations.FirstOrDefault(reservation =>
+            string.Equals(reservation.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase));
+        if (activeMatch?.ReservationId is { } activeReservationId && activeReservationId != Guid.Empty)
+        {
+            return new DepositSplitReservationContext
+            {
+                ReservationId = activeReservationId,
+                PropertyId = NormalizeOptionalGuid(activeMatch.PropertyId)
+            };
+        }
+
+        var reservationLists = await _reservationRepository.GetReservationListByOfficeIdAsync(
+            deposit.OrganizationId,
+            deposit.OfficeId.ToString());
+
+        var listedMatch = reservationLists.FirstOrDefault(reservation =>
+            string.Equals(reservation.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase));
+        if (listedMatch?.ReservationId is { } listedReservationId && listedReservationId != Guid.Empty)
+        {
+            return new DepositSplitReservationContext
+            {
+                ReservationId = listedReservationId,
+                PropertyId = NormalizeOptionalGuid(listedMatch.PropertyId)
+            };
+        }
+
+        return null;
+    }
+
+    private async Task<Guid?> ResolvePropertyIdForReservationAsync(Guid reservationId, Guid organizationId)
+    {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId);
+        return NormalizeOptionalGuid(reservation?.PropertyId);
     }
 
     private static string? ResolveDepositSplitReservationSourceCode(DepositSplit split)
     {
-        var invoiceOrReservationToken = ResolveDepositSplitInvoiceSourceCode(split);
-        if (string.IsNullOrWhiteSpace(invoiceOrReservationToken))
+        var invoiceCode = ResolveDepositSplitInvoiceSourceCode(split);
+        if (string.IsNullOrWhiteSpace(invoiceCode))
             return null;
 
-        var reservationPrefixMatch = ReservationSourceCodePrefixPattern.Match(invoiceOrReservationToken);
-        return reservationPrefixMatch.Success ? reservationPrefixMatch.Value : invoiceOrReservationToken;
+        var invoicePatternMatch = InvoiceReservationSourceCodePattern.Match(invoiceCode);
+        if (invoicePatternMatch.Success)
+            return invoicePatternMatch.Groups[1].Value;
+
+        return invoiceCode;
     }
 
-    private static readonly Regex ReservationSourceCodePrefixPattern =
-        new(@"^R-\d+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex InvoiceReservationSourceCodePattern =
+        new(@"^(R-\d+)-\d+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static string? ResolveDepositSplitInvoiceSourceCode(DepositSplit split)
     {
@@ -897,4 +1031,53 @@ public partial class AccountingManager
 
         return false;
     }
+
+    private static bool DepositSplitReservationIdsChanged(
+        IReadOnlyList<Guid?> originalReservationIds,
+        IReadOnlyList<DepositSplit>? reconciledSplits)
+    {
+        var currentReservationIds = (reconciledSplits ?? [])
+            .Select(split => split.ReservationId)
+            .ToList();
+
+        if (originalReservationIds.Count != currentReservationIds.Count)
+            return true;
+
+        for (var index = 0; index < originalReservationIds.Count; index++)
+        {
+            if (NormalizeOptionalGuid(originalReservationIds[index]) != NormalizeOptionalGuid(currentReservationIds[index]))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool DepositSplitPropertyIdsChanged(
+        IReadOnlyList<Guid?> originalPropertyIds,
+        IReadOnlyList<DepositSplit>? reconciledSplits)
+    {
+        var currentPropertyIds = (reconciledSplits ?? [])
+            .Select(split => split.PropertyId)
+            .ToList();
+
+        if (originalPropertyIds.Count != currentPropertyIds.Count)
+            return true;
+
+        for (var index = 0; index < originalPropertyIds.Count; index++)
+        {
+            if (NormalizeOptionalGuid(originalPropertyIds[index]) != NormalizeOptionalGuid(currentPropertyIds[index]))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool DepositSplitReconciliationChanged(
+        IReadOnlyList<Guid?> originalLineIds,
+        IReadOnlyList<Guid?> originalReservationIds,
+        IReadOnlyList<Guid?> originalPropertyIds,
+        IReadOnlyList<DepositSplit>? reconciledSplits)
+        => DepositSplitJournalEntryLineIdsChanged(originalLineIds, reconciledSplits)
+            || DepositSplitReservationIdsChanged(originalReservationIds, reconciledSplits)
+            || DepositSplitPropertyIdsChanged(originalPropertyIds, reconciledSplits);
 }
