@@ -394,12 +394,7 @@ public partial class AccountingManager
             if (payment == null || !payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
                 continue;
 
-            await SyncInvoicePaymentForHealthFixAsync(
-                payment,
-                organizationId,
-                currentUser,
-                result,
-                forcePaymentJournalEntryUpsert: true);
+            await SyncInvoicePaymentForHealthFixAsync(payment, organizationId, currentUser, result);
         }
 
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
@@ -474,6 +469,21 @@ public partial class AccountingManager
             await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser);
     }
 
+    async Task StampPaymentDepositIdsAfterSplitReconcileAsync(Deposit deposit, Guid organizationId, Guid currentUser)
+    {
+        var paymentIds = await CollectPaymentIdsForDepositHealthFixAsync(deposit, organizationId);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
+
+        if (_officeSyncCache == null)
+            return;
+
+        foreach (var paymentId in paymentIds)
+        {
+            if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                cachedPayment.DepositId = deposit.DepositId;
+        }
+    }
+
     async Task ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(
         Payment payment,
         Guid organizationId,
@@ -497,6 +507,7 @@ public partial class AccountingManager
         deposit.ModifiedBy = currentUser;
         var updated = await _accountingRepository.UpdateDepositAsync(deposit);
         deposit.Splits = updated.Splits;
+        _officeSyncCache?.ReplaceDeposit(deposit);
     }
 
     async Task SyncDepositForHealthFixAsync(Guid organizationId, Guid depositId, Guid currentUser, JournalEntrySyncResult result)
@@ -530,7 +541,10 @@ public partial class AccountingManager
             deposit.ModifiedBy = currentUser;
             var updated = await _accountingRepository.UpdateDepositAsync(deposit);
             deposit.Splits = updated.Splits;
+            _officeSyncCache?.ReplaceDeposit(deposit);
         }
+
+        await StampPaymentDepositIdsAfterSplitReconcileAsync(deposit, organizationId, currentUser);
 
         if (await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId))
         {

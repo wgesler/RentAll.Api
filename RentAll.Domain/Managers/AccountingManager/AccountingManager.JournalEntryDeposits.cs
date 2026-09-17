@@ -334,6 +334,29 @@ public partial class AccountingManager
     #endregion
 
     #region Document Link
+    private static bool IsClosedJournalEntryForDepositLinkUpdate(JournalEntry journalEntry)
+        => journalEntry.PostingStatusId is PostingStatus.SoftClosed or PostingStatus.HardClosed;
+
+    private async Task TryUpdateJournalEntryDepositDocumentLinkAsync(JournalEntry journalEntry, Deposit deposit, Guid currentUser)
+    {
+        if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
+            return;
+
+        ApplyDepositDocumentLink(journalEntry, deposit);
+        journalEntry.ModifiedBy = currentUser;
+        await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+    }
+
+    private async Task TryClearJournalEntryDepositDocumentLinkAsync(JournalEntry journalEntry, Guid currentUser)
+    {
+        if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
+            return;
+
+        ClearDepositDocumentLink(journalEntry);
+        journalEntry.ModifiedBy = currentUser;
+        await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+    }
+
     private static void ApplyDepositDocumentLink(JournalEntry journalEntry, Deposit deposit)
     {
         if (deposit.DepositId == Guid.Empty)
@@ -368,19 +391,11 @@ public partial class AccountingManager
             var paymentJournalEntries = await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId);
 
             foreach (var journalEntry in paymentJournalEntries)
-            {
-                ApplyDepositDocumentLink(journalEntry, deposit);
-                journalEntry.ModifiedBy = currentUser;
-                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
-            }
+                await TryUpdateJournalEntryDepositDocumentLinkAsync(journalEntry, deposit, currentUser);
 
             var invoiceChargeJournalEntries = await LoadDepositInvoiceChargeJournalEntriesForPaymentJournalEntriesAsync(deposit.OrganizationId, deposit.OfficeId, paymentJournalEntries);
             foreach (var invoiceChargeJournalEntry in invoiceChargeJournalEntries)
-            {
-                ApplyDepositDocumentLink(invoiceChargeJournalEntry, deposit);
-                invoiceChargeJournalEntry.ModifiedBy = currentUser;
-                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(invoiceChargeJournalEntry, requireActiveLines: true);
-            }
+                await TryUpdateJournalEntryDepositDocumentLinkAsync(invoiceChargeJournalEntry, deposit, currentUser);
         }
 
         var depositJournalEntries = await GetDocumentJournalEntriesForSyncAsync(
@@ -390,11 +405,7 @@ public partial class AccountingManager
             deposit.DepositId);
 
         foreach (var depositJournalEntry in depositJournalEntries)
-        {
-            ApplyDepositDocumentLink(depositJournalEntry, deposit);
-            depositJournalEntry.ModifiedBy = currentUser;
-            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(depositJournalEntry, requireActiveLines: true);
-        }
+            await TryUpdateJournalEntryDepositDocumentLinkAsync(depositJournalEntry, deposit, currentUser);
     }
 
     private async Task ClearDepositDocumentLinksAsync(Guid organizationId, Guid depositId, Guid currentUser)
@@ -405,11 +416,7 @@ public partial class AccountingManager
         var linkedEntries = await GetJournalEntriesByDepositIdCachedAsync(organizationId, depositId);
 
         foreach (var journalEntry in linkedEntries)
-        {
-            ClearDepositDocumentLink(journalEntry);
-            journalEntry.ModifiedBy = currentUser;
-            await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
-        }
+            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser);
     }
 
     private async Task<HashSet<Guid>> CollectPaymentIdsFromDepositSplitsAsync(Deposit deposit)
@@ -723,6 +730,9 @@ public partial class AccountingManager
 
             var journalEntry = await GetJournalEntryByIdCachedAsync(journalEntryId, deposit.OrganizationId);
             if (journalEntry == null)
+                continue;
+
+            if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
                 continue;
 
             ApplyDepositDocumentLink(journalEntry, deposit);

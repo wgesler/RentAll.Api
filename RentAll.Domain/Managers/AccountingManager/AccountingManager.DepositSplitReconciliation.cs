@@ -302,9 +302,6 @@ public partial class AccountingManager
         IReadOnlySet<Guid> assignedLineIds,
         ICollection<(Guid LineId, int Rank)> matches)
     {
-        if (paymentEntry.PostingStatusId != PostingStatus.Open)
-            return;
-
         if (paymentEntry.JournalEntryKindId is not (JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive))
             return;
 
@@ -361,8 +358,7 @@ public partial class AccountingManager
     }
 
     private static bool IsRematchableHealthInvoicePaymentJournalEntry(JournalEntry entry)
-        => entry.PostingStatusId == PostingStatus.Open
-            && entry.PaymentId is { } paymentId
+        => entry.PaymentId is { } paymentId
             && paymentId != Guid.Empty
             && entry.JournalEntryKindId is JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive;
 
