@@ -531,8 +531,6 @@ public partial class AccountingManager
             organizationId,
             currentUser);
 
-        await SyncDepositedInvoicePaymentsForDepositHealthFixAsync(deposit, organizationId, currentUser, result);
-
         var originalSplitLineIds = (deposit.Splits ?? [])
             .Select(split => split.JournalEntryLineId)
             .ToList();

@@ -106,7 +106,15 @@ public partial class AccountingManager
                 continue;
             }
 
-            // Stale after clear/resync (or wrong account line): clear so callers rematch instead of treating as valid.
+            if (split.JournalEntryLineId is { } existingLineId
+                && existingLineId != Guid.Empty
+                && await DepositSplitLineStillPointsAtPaymentAsync(deposit.OrganizationId, existingLineId))
+            {
+                assignedLineIds.Add(existingLineId);
+                trail?.Note($"Rematch keep existing payment line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                continue;
+            }
+
             if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
             {
                 trail?.Bail($"Rematch cleared stale line on {splitLabel} amount={split.Amount:0.00} was={staleLineId}");
@@ -470,26 +478,29 @@ public partial class AccountingManager
         if (!DepositSplitMatchesUndepositedLineAmount(split, line.Debit - line.Credit))
             return false;
 
-        // Payment-backed splits: linked UF line must belong to that invoice's payment JE.
-        var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-        if (string.IsNullOrWhiteSpace(splitSourceCode))
-            return true;
-
-        var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, organizationId);
-        if (paymentJournalEntry == null)
+        if (!await DepositSplitLineStillPointsAtPaymentAsync(organizationId, journalEntryLineId))
             return false;
 
-        var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentJournalEntry);
-        if (!string.Equals(paymentSourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        // Property on the payment line is often blank; only reject when both sides have different properties.
         var splitPropertyId = NormalizeOptionalGuid(split.PropertyId);
         var linePropertyId = NormalizeOptionalGuid(line.PropertyId);
         if (splitPropertyId != null && linePropertyId != null && splitPropertyId != linePropertyId)
             return false;
 
         return true;
+    }
+
+    private async Task<bool> DepositSplitLineStillPointsAtPaymentAsync(Guid organizationId, Guid journalEntryLineId)
+    {
+        var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+        if (line == null || line.JournalEntryId == Guid.Empty)
+            return false;
+
+        var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, organizationId);
+        if (paymentJournalEntry?.PaymentId is { } cachedPaymentId && cachedPaymentId != Guid.Empty)
+            return true;
+
+        paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(line.JournalEntryId, organizationId);
+        return paymentJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty;
     }
 
     private async Task<Guid?> ResolveDepositSplitByDepositedPaymentStampAsync(
