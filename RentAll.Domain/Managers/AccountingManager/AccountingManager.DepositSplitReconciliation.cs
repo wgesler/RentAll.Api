@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -162,15 +163,16 @@ public partial class AccountingManager
             return null;
 
         var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-        var splitReservationId = NormalizeOptionalGuid(split.ReservationId);
-        if (string.IsNullOrWhiteSpace(splitSourceCode) && splitReservationId == null)
-            return null;
+        var splitReservationId = await ResolveReservationIdForDepositSplitAsync(deposit, split);
 
         var splitAmount = Math.Abs(RoundCurrency(split.Amount));
         if (splitAmount <= 0.005m)
             return null;
 
         var paymentIds = new HashSet<Guid>();
+        foreach (var payment in await GetInvoicePaymentsStampedToDepositAsync(deposit))
+            paymentIds.Add(payment.PaymentId);
+
         if (!string.IsNullOrWhiteSpace(splitSourceCode))
         {
             foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(
@@ -192,6 +194,9 @@ public partial class AccountingManager
                 paymentIds.Add(paymentId);
             }
         }
+
+        if (string.IsNullOrWhiteSpace(splitSourceCode) && splitReservationId == null && paymentIds.Count == 0)
+            return null;
 
         paymentIds = await FilterPaymentIdsAvailableForDepositRematchAsync(deposit, paymentIds);
         if (paymentIds.Count == 0)
@@ -565,9 +570,7 @@ public partial class AccountingManager
 
         var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
         var payments = await GetInvoicePaymentsStampedToDepositAsync(deposit);
-
-        Guid? bestLineId = null;
-        var bestRank = int.MaxValue;
+        var matches = new List<(Guid LineId, int Rank)>();
 
         foreach (var payment in payments)
         {
@@ -605,16 +608,12 @@ public partial class AccountingManager
                         rank -= 2;
                     }
 
-                    if (rank < bestRank)
-                    {
-                        bestRank = rank;
-                        bestLineId = line.JournalEntryLineId;
-                    }
+                    matches.Add((line.JournalEntryLineId, rank));
                 }
             }
         }
 
-        return bestLineId;
+        return ResolveUniqueDepositSplitLineMatch(matches);
     }
 
     private async Task<List<Payment>> GetInvoicePaymentsStampedToDepositAsync(Deposit deposit)
@@ -644,10 +643,10 @@ public partial class AccountingManager
             return null;
 
         var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-        if (string.IsNullOrWhiteSpace(splitSourceCode))
-            return null;
-
         var splitPropertyId = NormalizeOptionalGuid(split.PropertyId);
+
+        if (string.IsNullOrWhiteSpace(splitSourceCode))
+            return ResolveUniqueDepositStampedAmountLineMatch(deposit, splitAmount, candidates, claimedLineIds, assignedLineIds);
 
         // Hard key: invoice + amount. Property narrows when the payment line also has it.
         var invoiceAmountMatches = candidates
@@ -689,7 +688,7 @@ public partial class AccountingManager
                 }
             }
 
-            return null;
+            return ResolveUniqueDepositStampedAmountLineMatch(deposit, splitAmount, candidates, claimedLineIds, assignedLineIds);
         }
 
         if (invoiceAmountMatches.Count == 1)
@@ -707,14 +706,126 @@ public partial class AccountingManager
                 invoiceAmountMatches = exactPropertyMatches;
         }
 
-        // Same invoice/amount should be rare; prefer deposit-stamped then closest date.
-        return invoiceAmountMatches
-            .OrderByDescending(candidate => candidate.DepositId == deposit.DepositId ? 1 : 0)
-            .ThenBy(candidate => Math.Abs(candidate.TransactionDate.DayNumber - deposit.DepositDate.DayNumber))
-            .ThenBy(candidate => candidate.JournalEntryLineId)
-            .First()
-            .JournalEntryLineId;
+        if (invoiceAmountMatches.Count == 1)
+            return invoiceAmountMatches[0].JournalEntryLineId;
+
+        if (invoiceAmountMatches.Count > 1)
+        {
+            var uniqueRankedMatch = ResolveUniqueDepositSplitLineMatch(
+                invoiceAmountMatches
+                    .Select((candidate, index) => (
+                        candidate.JournalEntryLineId,
+                        Rank: (candidate.DepositId == deposit.DepositId ? -1 : 0)
+                            + index))
+                    .ToList());
+            if (uniqueRankedMatch != null)
+                return uniqueRankedMatch;
+        }
+
+        return ResolveUniqueDepositStampedAmountLineMatch(deposit, splitAmount, candidates, claimedLineIds, assignedLineIds);
     }
+
+    private static Guid? ResolveUniqueDepositStampedAmountLineMatch(
+        Deposit deposit,
+        decimal splitAmount,
+        IReadOnlyList<UndepositedPaymentLineCandidate> candidates,
+        IReadOnlySet<Guid> claimedLineIds,
+        IReadOnlySet<Guid> assignedLineIds)
+    {
+        var stampedAmountMatches = candidates
+            .Where(candidate =>
+                candidate.DepositId == deposit.DepositId
+                && !claimedLineIds.Contains(candidate.JournalEntryLineId)
+                && !assignedLineIds.Contains(candidate.JournalEntryLineId)
+                && Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount) <= 0.005m)
+            .ToList();
+
+        if (stampedAmountMatches.Count == 1)
+            return stampedAmountMatches[0].JournalEntryLineId;
+
+        if (stampedAmountMatches.Count > 1)
+        {
+            var closestDateMatch = stampedAmountMatches
+                .OrderBy(candidate => Math.Abs(candidate.TransactionDate.DayNumber - deposit.DepositDate.DayNumber))
+                .ThenBy(candidate => candidate.JournalEntryLineId)
+                .ToList();
+
+            var best = closestDateMatch[0];
+            var second = closestDateMatch[1];
+            if (Math.Abs(closestDateMatch[0].TransactionDate.DayNumber - deposit.DepositDate.DayNumber)
+                < Math.Abs(second.TransactionDate.DayNumber - deposit.DepositDate.DayNumber))
+            {
+                return best.JournalEntryLineId;
+            }
+        }
+
+        return null;
+    }
+
+    private static Guid? ResolveUniqueDepositSplitLineMatch(IReadOnlyList<(Guid LineId, int Rank)> matches)
+    {
+        if (matches.Count == 0)
+            return null;
+
+        if (matches.Count == 1)
+            return matches[0].LineId;
+
+        var ordered = matches
+            .OrderBy(match => match.Rank)
+            .ThenBy(match => match.LineId)
+            .ToList();
+
+        if (ordered[0].Rank < ordered[1].Rank)
+            return ordered[0].LineId;
+
+        return null;
+    }
+
+    private async Task<Guid?> ResolveReservationIdForDepositSplitAsync(Deposit deposit, DepositSplit split)
+    {
+        var reservationId = NormalizeOptionalGuid(split.ReservationId);
+        if (reservationId != null)
+            return reservationId;
+
+        var reservationSourceCode = ResolveDepositSplitReservationSourceCode(split);
+        if (string.IsNullOrWhiteSpace(reservationSourceCode))
+            return null;
+
+        if (_officeSyncCache != null)
+        {
+            foreach (var invoice in _officeSyncCache.InvoicesById.Values)
+            {
+                if (!string.Equals(invoice.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (invoice.ReservationId is { } cachedReservationId && cachedReservationId != Guid.Empty)
+                    return cachedReservationId;
+            }
+        }
+
+        var reservations = await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(
+            deposit.OrganizationId,
+            deposit.OfficeId.ToString());
+
+        return reservations.FirstOrDefault(reservation =>
+                string.Equals(reservation.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase))
+            ?.ReservationId is { } resolvedReservationId && resolvedReservationId != Guid.Empty
+            ? resolvedReservationId
+            : null;
+    }
+
+    private static string? ResolveDepositSplitReservationSourceCode(DepositSplit split)
+    {
+        var invoiceOrReservationToken = ResolveDepositSplitInvoiceSourceCode(split);
+        if (string.IsNullOrWhiteSpace(invoiceOrReservationToken))
+            return null;
+
+        var reservationPrefixMatch = ReservationSourceCodePrefixPattern.Match(invoiceOrReservationToken);
+        return reservationPrefixMatch.Success ? reservationPrefixMatch.Value : invoiceOrReservationToken;
+    }
+
+    private static readonly Regex ReservationSourceCodePrefixPattern =
+        new(@"^R-\d+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static string? ResolveDepositSplitInvoiceSourceCode(DepositSplit split)
     {

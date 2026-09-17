@@ -557,21 +557,48 @@ public partial class AccountingManager
             .Select(invoice => invoice.InvoiceId)
             .ToHashSet();
 
-        if (repoMatchedInvoiceIds.Count == 0)
-            return [];
-
-        foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                     organizationId,
-                     officeId.ToString(),
-                     (int)PaymentKind.Invoice))
+        if (repoMatchedInvoiceIds.Count > 0)
         {
-            if (!payment.IsActive)
-                continue;
+            foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                         organizationId,
+                         officeId.ToString(),
+                         (int)PaymentKind.Invoice))
+            {
+                if (!payment.IsActive)
+                    continue;
 
-            if ((payment.LedgerLines ?? []).Any(line =>
-                    repoMatchedInvoiceIds.Contains(line.InvoiceId)
-                    || PaymentLedgerLineMatchesInvoiceSourceCode(line, normalizedSourceCode)))
-                paymentIds.Add(payment.PaymentId);
+                if ((payment.LedgerLines ?? []).Any(line =>
+                        repoMatchedInvoiceIds.Contains(line.InvoiceId)
+                        || PaymentLedgerLineMatchesInvoiceSourceCode(line, normalizedSourceCode)))
+                    paymentIds.Add(payment.PaymentId);
+            }
+        }
+
+        if (paymentIds.Count == 0)
+        {
+            foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                         organizationId,
+                         officeId.ToString(),
+                         (int)PaymentKind.Invoice))
+            {
+                if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                    continue;
+
+                foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId))
+                {
+                    if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                        continue;
+
+                    if (string.Equals(
+                            ResolvePaymentJournalEntrySourceCode(paymentEntry),
+                            normalizedSourceCode,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        paymentIds.Add(payment.PaymentId);
+                        break;
+                    }
+                }
+            }
         }
 
         return paymentIds.ToList();
