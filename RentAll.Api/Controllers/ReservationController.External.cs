@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using RentAll.Api.Dtos.Properties.Properties;
-using RentAll.Api.Dtos.Reservations.Reservations;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;

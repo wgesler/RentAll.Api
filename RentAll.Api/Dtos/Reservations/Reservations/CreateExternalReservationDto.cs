@@ -1,8 +1,6 @@
 using RentAll.Api.Dtos.External;
-using RentAll.Api.Dtos.Properties.Properties;
-using RentAll.Domain;
-using RentAll.Domain.Models;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
@@ -31,7 +29,8 @@ public class CreateExternalReservationDto
     public decimal? BillingRate { get; set; }
     public decimal? Deposit { get; set; }
     public int? DepositTypeId { get; set; }
-    public int? DepositType { get; set; }
+    [JsonPropertyName("depositType")]
+    public int? AlternateDepositTypeId { get; set; }
     public decimal? DepartureFee { get; set; }
     public bool? HasPets { get; set; }
     public bool? Pets { get; set; }
@@ -67,7 +66,7 @@ public class CreateExternalReservationDto
     public List<CreateExternalReservationExtraFeeDto> ExtraFeeLines { get; set; } = [];
 
     public bool ResolvedHasPets => HasPets ?? Pets ?? false;
-    public int ResolvedDepositTypeId => DepositTypeId ?? DepositType ?? (int)RentAll.Domain.DepositType.Deposit;
+    public int ResolvedDepositTypeId => DepositTypeId ?? AlternateDepositTypeId ?? (int)DepositType.Deposit;
     public bool RequiresCompany => ReservationTypeId is (int)ReservationType.Corporate or (int)ReservationType.Platform;
     public EntityType ExpectedContactEntityType => ReservationTypeId == (int)ReservationType.Owner ? EntityType.Owner : EntityType.Tenant;
 
@@ -118,11 +117,11 @@ public class CreateExternalReservationDto
             errors.Add("billingRate is required.");
         else if (BillingRate.Value < 0)
             errors.Add("billingRate must be zero or greater.");
-        if (!DepositTypeId.HasValue && !DepositType.HasValue)
+        if (!DepositTypeId.HasValue && !AlternateDepositTypeId.HasValue)
             errors.Add("depositTypeId is required.");
         else if (!Enum.IsDefined(typeof(DepositType), ResolvedDepositTypeId))
             errors.Add($"depositTypeId must be 0=Deposit, 1=CLR, or 2=SDW. Received {ResolvedDepositTypeId}.");
-        else if (ResolvedDepositTypeId == (int)RentAll.Domain.DepositType.CLR)
+        else if (ResolvedDepositTypeId == (int)DepositType.CLR)
         {
             if (Deposit.HasValue && Deposit.Value != 0)
                 errors.Add("deposit must be 0 when depositTypeId is 1=CLR.");
@@ -224,7 +223,7 @@ public class CreateExternalReservationDto
         CollectPetFields(body, prefix, errors);
         CollectMaidFields(body, prefix, errors);
         CollectRequiredContact(body, prefix, "contact", errors);
-        if (RequiresCompany(body))
+        if (RequiresCompanyFromJson(body))
             CollectRequiredContact(body, prefix, "company", errors);
         else
             CollectOptionalContact(body, prefix, "company", errors);
@@ -275,7 +274,7 @@ public class CreateExternalReservationDto
             ProrateTypeId = ProrateTypeId ?? (int)ProrateType.FirstMonth,
             BillingTypeId = billingTypeId,
             BillingRate = BillingRate!.Value,
-            Deposit = ResolvedDepositTypeId == (int)RentAll.Domain.DepositType.CLR ? 0 : Deposit!.Value,
+            Deposit = ResolvedDepositTypeId == (int)DepositType.CLR ? 0 : Deposit!.Value,
             DepositTypeId = ResolvedDepositTypeId,
             DepositReturned = false,
             DepartureFee = DepartureFee!.Value,
@@ -410,13 +409,13 @@ public class CreateExternalReservationDto
     private static bool IsOwnerReservation(JsonElement body) =>
         TryGetIntProperty(body, "reservationTypeId", out var typeId) && typeId == (int)ReservationType.Owner;
 
-    private static bool RequiresCompany(JsonElement body) =>
+    private static bool RequiresCompanyFromJson(JsonElement body) =>
         TryGetIntProperty(body, "reservationTypeId", out var typeId)
         && typeId is (int)ReservationType.Corporate or (int)ReservationType.Platform;
 
     private static bool IsClrDeposit(JsonElement body) =>
         (TryGetIntProperty(body, "depositTypeId", out var depositTypeId) || TryGetIntProperty(body, "depositType", out depositTypeId))
-        && depositTypeId == (int)RentAll.Domain.DepositType.CLR;
+        && depositTypeId == (int)DepositType.CLR;
 
     private static bool TryGetIntProperty(JsonElement body, string field, out int value)
     {

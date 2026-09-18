@@ -1,6 +1,3 @@
-using RentAll.Domain;
-using RentAll.Domain.Models;
-
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
 public class CreateExternalReservationExtraFeeDto

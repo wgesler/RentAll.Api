@@ -438,7 +438,7 @@ Send the same `propertyCode` with changed fields inside `properties`:
       "referenceNo": "AIRBNB-8891",
       "tenantName": "Sam Guest",
       "agentCode": "AG-01",
-      "reservationTypeId": 0,
+      "reservationTypeId": 1,
       "reservationStatusId": 1,
       "reservationNoticeId": 0,
       "arrivalDate": "2026-10-01",
@@ -477,6 +477,13 @@ Send the same `propertyCode` with changed fields inside `properties`:
         "email": "sam.guest@example.com",
         "phone": "555-111-2222",
         "entityTypeId": 5
+      },
+      "company": {
+        "firstName": "Pat",
+        "lastName": "Billing",
+        "email": "billing@acme.com",
+        "companyName": "Acme Inc",
+        "entityTypeId": 3
       },
       "extraFeeLines": [
         { "feeDescription": "Parking", "feeAmount": 25, "feeFrequencyId": 4, "costCodeId": 1 }

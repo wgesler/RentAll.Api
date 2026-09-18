@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.External;
-using RentAll.Api.Dtos.Properties.Properties;
 using System.Text.Json;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
