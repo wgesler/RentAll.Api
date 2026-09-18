@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Contacts.ContactCards;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Contacts;
@@ -43,6 +44,8 @@ public class CreateContactDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? ContactCardId { get; set; }
+    public UpsertContactCardDto? ContactCard { get; set; }
     public bool IsOwnerReady { get; set; }
     public bool IsActive { get; set; }
 
@@ -81,6 +84,13 @@ public class CreateContactDto
 
         if (InvoiceMethodTypeId.HasValue && !Enum.IsDefined(typeof(InvoiceMethod), InvoiceMethodTypeId.Value))
             return (false, $"Invalid InvoiceMethodTypeId value: {InvoiceMethodTypeId}");
+
+        if (ContactCard != null)
+        {
+            var (cardIsValid, cardError) = ContactCard.IsValid(requireCardNumber: true);
+            if (!cardIsValid)
+                return (false, cardError);
+        }
 
         return (true, null);
     }
@@ -129,6 +139,7 @@ public class CreateContactDto
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
+            ContactCardId = ContactCardId,
             IsOwnerReady = IsOwnerReady,
             IsActive = IsActive,
             CreatedBy = currentUser

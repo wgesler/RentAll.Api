@@ -82,6 +82,7 @@ namespace RentAll.Api.Controllers
                 var response = new ContactResponseDto(contact);
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.InsurancePath, ImageType.Insurances);
+                await AttachContactCardAsync(response, contact);
 
                 return Ok(response);
             }
@@ -116,6 +117,7 @@ namespace RentAll.Api.Controllers
 
                 contact.W9Path = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms);
                 contact.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
+                contact.ContactCardId = await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, null, dto.ContactCard);
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
                 var afterLogin = await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
@@ -123,6 +125,7 @@ namespace RentAll.Api.Controllers
 
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.InsurancePath, ImageType.Insurances);
+                await AttachContactCardAsync(response, afterLogin);
 
                 return Ok(response);
             }
@@ -173,12 +176,16 @@ namespace RentAll.Api.Controllers
 
                 contact.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
                 contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
+                contact.ContactCardId = dto.ContactCard != null
+                    ? await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, existing.ContactCardId, dto.ContactCard)
+                    : (dto.ContactCardId ?? existing.ContactCardId);
 
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 var response = new ContactResponseDto(updatedContact);
 
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.InsurancePath, ImageType.Insurances);
+                await AttachContactCardAsync(response, updatedContact);
 
                 return Ok(response);
             }

@@ -62,6 +62,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 BankName = contact.BankName,
                 RoutingNumber = contact.RoutingNumber,
                 AccountNumber = contact.AccountNumber,
+                ContactCardId = contact.ContactCardId,
                 IsOwnerReady = contact.IsOwnerReady,
                 CreatedBy = contact.CreatedBy
             });

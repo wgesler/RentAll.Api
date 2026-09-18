@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Contacts.ContactCards;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Contacts;
@@ -51,6 +52,8 @@ public class ContactResponseDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public int? ContactCardId { get; set; }
+    public ContactCardResponseDto? ContactCard { get; set; }
     public bool IsOwnerReady { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -107,6 +110,7 @@ public class ContactResponseDto
         BankName = contact.BankName;
         RoutingNumber = contact.RoutingNumber;
         AccountNumber = contact.AccountNumber;
+        ContactCardId = contact.ContactCardId;
         IsOwnerReady = contact.IsOwnerReady;
         IsActive = contact.IsActive;
         CreatedOn = contact.CreatedOn;

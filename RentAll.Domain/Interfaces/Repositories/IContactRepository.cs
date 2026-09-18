@@ -19,4 +19,11 @@ public interface IContactRepository
     Task<Contact> UpdateByIdAsync(Contact contact);
     Task DeleteContactByIdAsync(Guid contactId, Guid modifiedBy);
     #endregion
+
+    #region ContactCards
+    Task<ContactCard?> GetContactCardByIdAsync(int contactCardId, Guid organizationId, int officeId);
+    Task<ContactCard> CreateContactCardAsync(ContactCard contactCard, byte[] encryptedCardNumber);
+    Task<ContactCard> UpdateContactCardByIdAsync(ContactCard contactCard, byte[] encryptedCardNumber);
+    Task DeleteContactCardByIdAsync(int contactCardId, Guid organizationId, int officeId);
+    #endregion
 }
