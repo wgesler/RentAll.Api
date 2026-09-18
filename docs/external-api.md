@@ -377,3 +377,117 @@ Send the same `propertyCode` with changed fields inside `properties`:
 - `401 Unauthorized` — missing or invalid `X-Api-Key`
 - `404 Not Found` — property not found or not eligible for export
 
+---
+
+## 7) External Reservation Intake API (v1)
+
+- **URL:** `/api/reservation/external`
+- **Authentication:** same `X-Api-Key` property key as Section 5
+- **Request body:** always `{ "reservations": [ ... ] }` — even a single create/update is an array of one item
+- **Limits:** 1–50 reservations per request; all items must share the same `organizationId`, `officeId`, and `vendorId`
+- **Behavior (POST):** Create, or upsert when `referenceNo` matches an active reservation on that property
+- **Success response:** `200 OK` with per-item results (`successCount`, `failureCount`, `results`)
+
+### Required header fields
+
+- `organizationId` (string, GUID)
+- `officeId` (integer, must be > 0)
+- `vendorId` (string, GUID) — same integration vendor as property intake
+
+### Required fields (each item in `reservations`)
+
+- `propertyCode` (string) — existing property in the organization
+- `reservationTypeId` (0 Individual, 1 Corporate, 2 Owner, 3 Platform)
+- `reservationStatusId` (0 PreBooking through 8 Offline)
+- `reservationNoticeId` (0 ThirtyDays, 1 FifteenDays, 2 FourteenDays, 3 SixtyDays, 4 FirmEndDate)
+- `agentCode` — required except when `reservationTypeId` is `2` Owner
+- `tenantName` (string) — contact name
+- `contact` object — `firstName`, `lastName`, `email` required. `entityTypeId` must be `5` Tenant, or `4` Owner when `reservationTypeId` is `2`
+- `company` object — required when `reservationTypeId` is `1` Corporate or `3` Platform (`entityTypeId` `3`)
+- `numberOfPeople`
+- `billingTypeId` (0 Monthly, 1 Daily, 2 Nightly)
+- `billingRate`
+- `depositTypeId` or `depositType` (0 Deposit, 1 CLR, 2 SDW)
+- `deposit` — required unless `depositTypeId` is `1` CLR, which must be `0`
+- `departureFee`
+- `arrivalDate`, `departureDate` (string date `YYYY-MM-DD`; departure must be after arrival)
+
+### Optional fields (same as the reservation form)
+
+- Identity: `referenceNo` (upsert key)
+- People: `company` contact (`entityTypeId` 3) when not Corporate/Platform
+- Dates/times: `billingStartDate`, `billingEndDate`, `checkInTimeId` (optional, default `5` = 4PM), `checkOutTimeId` (optional, default `4` = 11AM)
+- Access: `lockBoxCode`, `unitTenantCode`, `garageCode`
+- Billing: `billingMethodId` (0 Invoice, 1 CreditCard), `prorateTypeId` (optional, default `0` FirstMonth), `taxes`, `invoiceMethodId` (optional, default `0` Create), `collapseCharges`, `billedToEmployer` (Corporate only)
+- Pets: `hasPets` or `pets` (optional, default `false`). If `true`, `petFee`, `numberOfPets`, and `petDescription` are required
+- Maid: `maidService` (optional, default `false`). If `true`, `maidServiceFee`, `frequencyId`, and `maidStartDate` are required. `maidEmail` remains optional
+- Extra fees: `extraFeeLines[]` with `feeDescription` and `costCodeId` required; `feeFrequencyId` defaults to `0` NA
+- Flags: `allowExtensions` (default true), `isActive` (default true), `notes`
+- Turnover: `aCleanerUserId`, `aCleaningDate`, `aCarpetUserId`, `aCarpetDate`, `aInspectorUserId`, `aInspectingDate`, and the matching `d*` departure fields
+
+### Example request
+
+```json
+{
+  "organizationId": "280CD8DA-F1BE-41F2-AE6E-B45008CF3896",
+  "officeId": 1,
+  "vendorId": "22222222-2222-2222-2222-222222222222",
+  "reservations": [
+    {
+      "propertyCode": "EXT-1001",
+      "referenceNo": "AIRBNB-8891",
+      "tenantName": "Sam Guest",
+      "agentCode": "AG-01",
+      "reservationTypeId": 0,
+      "reservationStatusId": 1,
+      "reservationNoticeId": 0,
+      "arrivalDate": "2026-10-01",
+      "departureDate": "2026-10-08",
+      "billingStartDate": "2026-10-01",
+      "billingEndDate": "2026-10-08",
+      "checkInTimeId": 5,
+      "checkOutTimeId": 4,
+      "lockBoxCode": "1234",
+      "unitTenantCode": "7788",
+      "garageCode": "99",
+      "numberOfPeople": 2,
+      "billingTypeId": 0,
+      "billingMethodId": 0,
+      "prorateTypeId": 0,
+      "billingRate": 3200,
+      "deposit": 500,
+      "depositTypeId": 0,
+      "departureFee": 150,
+      "hasPets": true,
+      "petFee": 50,
+      "numberOfPets": 1,
+      "petDescription": "Small dog",
+      "maidService": true,
+      "maidServiceFee": 75,
+      "frequencyId": 2,
+      "maidStartDate": "2026-10-01",
+      "allowExtensions": true,
+      "collapseCharges": false,
+      "invoiceMethodId": 0,
+      "isActive": true,
+      "notes": "Late arrival",
+      "contact": {
+        "firstName": "Sam",
+        "lastName": "Guest",
+        "email": "sam.guest@example.com",
+        "phone": "555-111-2222",
+        "entityTypeId": 5
+      },
+      "extraFeeLines": [
+        { "feeDescription": "Parking", "feeAmount": 25, "feeFrequencyId": 4, "costCodeId": 1 }
+      ]
+    }
+  ]
+}
+```
+
+### Error responses
+
+- `400 Bad Request` — validation failure, invalid `organizationId`, `officeId`, or `vendorId`
+- `401 Unauthorized` — missing or invalid `X-Api-Key`
+

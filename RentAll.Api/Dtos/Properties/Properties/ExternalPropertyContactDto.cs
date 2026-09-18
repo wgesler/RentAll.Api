@@ -181,6 +181,24 @@ public class ExternalPropertyContactDto
         };
     }
 
+    public Contact ToNewCompanyContactModel(Guid organizationId, int officeId, string contactCode, Guid currentUser)
+    {
+        EntityTypeId = (int)EntityType.Company;
+        var contact = ToNewOwnerContactModel(organizationId, officeId, contactCode, currentUser);
+        contact.EntityType = EntityType.Company;
+        return contact;
+    }
+
+    public Contact ToNewTenantContactModel(Guid organizationId, int officeId, string contactCode, Guid currentUser)
+    {
+        EntityTypeId = (int)EntityType.Tenant;
+        var contact = ToNewOwnerContactModel(organizationId, officeId, contactCode, currentUser);
+        contact.EntityType = EntityType.Tenant;
+        contact.OwnerType = OwnerType.Individual;
+        contact.VendorType = VendorType.Individual;
+        return contact;
+    }
+
     public Contact ToNewVendorContactModel(Guid organizationId, int officeId, string contactCode, Guid currentUser)
     {
         return new Contact

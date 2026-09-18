@@ -98,6 +98,65 @@ public static class ExternalIntakeErrors
         errors.Add($"{field} must be an integer. Received {Describe(element)}.");
     }
 
+    public static void CollectRequiredInt(JsonElement body, string field, List<string> errors, string requiredMessage)
+    {
+        if (!TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            errors.Add(requiredMessage);
+            return;
+        }
+
+        if (!TryCoerceInt32(element, out _))
+            errors.Add($"{field} must be an integer. Received {Describe(element)}.");
+    }
+
+    public static void CollectRequiredNonNegativeInt(JsonElement body, string field, List<string> errors, string requiredMessage)
+    {
+        if (!TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            errors.Add(requiredMessage);
+            return;
+        }
+
+        if (!TryCoerceInt32(element, out var value))
+        {
+            errors.Add($"{field} must be an integer. Received {Describe(element)}.");
+            return;
+        }
+
+        if (value < 0)
+            errors.Add($"{field} cannot be negative. Received {value}.");
+    }
+
+    public static void CollectRequiredNonNegativeDecimal(JsonElement body, string field, List<string> errors, string requiredMessage)
+    {
+        if (!TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            errors.Add(requiredMessage);
+            return;
+        }
+
+        if (!TryCoerceDecimal(element, out var value))
+        {
+            errors.Add($"{field} must be a number. Received {Describe(element)}.");
+            return;
+        }
+
+        if (value < 0)
+            errors.Add($"{field} cannot be negative. Received {value}.");
+    }
+
+    public static bool TryGetOptionalBool(JsonElement body, string field, out bool value)
+    {
+        value = false;
+        return TryGetProperty(body, field, out var element)
+            && element.ValueKind != JsonValueKind.Null
+            && TryCoerceBool(element, out value);
+    }
+
+    public static bool HasProperty(JsonElement body, string field) =>
+        TryGetProperty(body, field, out var element) && element.ValueKind != JsonValueKind.Null;
+
     public static void CollectRequiredString(JsonElement body, string field, List<string> errors, string requiredMessage)
     {
         if (!TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
@@ -199,6 +258,31 @@ public static class ExternalIntakeErrors
 
         if (!TryCoerceBool(element, out _))
             errors.Add($"{field} must be true/false or 0/1. Received {Describe(element)}.");
+    }
+
+    public static void CollectRequiredDateOnly(JsonElement body, string field, List<string> errors, string requiredMessage)
+    {
+        if (!TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            errors.Add(requiredMessage);
+            return;
+        }
+
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var raw = element.GetString()?.Trim() ?? string.Empty;
+            if (raw.Length == 0)
+            {
+                errors.Add(requiredMessage);
+                return;
+            }
+
+            if (!DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                errors.Add($"{field} must be a date (YYYY-MM-DD). Received \"{raw}\".");
+            return;
+        }
+
+        errors.Add($"{field} must be a date string (YYYY-MM-DD). Received {Describe(element)}.");
     }
 
     public static void CollectOptionalDateOnly(JsonElement body, string field, List<string> errors)
