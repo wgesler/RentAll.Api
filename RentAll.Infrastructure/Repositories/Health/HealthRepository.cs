@@ -48,6 +48,42 @@ public class HealthRepository : IHealthRepository
     public Task<DocumentHealthResult> RunDocumentLinksHealthCheckAsync(Guid organizationId, string officeIds)
         => RunHealthCheckAsync("Accounting.DocumentLinks_HealthCheck", organizationId, officeIds);
 
+    public async Task<TransactionChainExport> GetTransactionChainExportAsync(
+        Guid organizationId,
+        string officeIds,
+        DateOnly? startDate,
+        DateOnly? endDate)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+
+        var (chain, invoices, invoiceLines, payments, deposits, transfers, summaryRows) =
+            await db.DapperProcQuerySeptupleAsync<
+                TransactionChainRowEntity,
+                TransactionChainInvoiceEntity,
+                TransactionChainInvoiceLineEntity,
+                TransactionChainPaymentEntity,
+                TransactionChainDepositEntity,
+                TransactionChainTransferEntity,
+                TransactionChainSummaryEntity>(
+                "Accounting.TransactionChain_ExportByOfficeIds",
+                new
+                {
+                    OrganizationId = organizationId,
+                    OfficeIds = officeIds,
+                    StartDate = startDate,
+                    EndDate = endDate
+                });
+
+        return TransactionChainExportMapper.Map(
+            chain ?? [],
+            invoices ?? [],
+            invoiceLines ?? [],
+            payments ?? [],
+            deposits ?? [],
+            transfers ?? [],
+            summaryRows?.FirstOrDefault());
+    }
+
     private async Task<DocumentHealthResult> RunHealthCheckAsync(
         string procedureName,
         Guid organizationId,

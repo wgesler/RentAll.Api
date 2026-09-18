@@ -70,6 +70,10 @@ public class HealthController : BaseController
     public Task<IActionResult> CheckDocumentLinks([FromBody] HealthCheckRequestDto dto)
         => RunHealthCheckAsync(dto, (orgId, officeIds) => _healthRepository.RunDocumentLinksHealthCheckAsync(orgId, officeIds));
 
+    [HttpPost("transaction-chain/export")]
+    public Task<IActionResult> ExportTransactionChain([FromBody] TransactionChainExportRequestDto dto)
+        => RunTransactionChainExportAsync(dto);
+
     [HttpPost("receipt/fix")]
     public Task<IActionResult> FixReceipts([FromBody] HealthCheckRequestDto dto)
         => RunHealthFixAsync(dto, "receipt");
@@ -186,6 +190,41 @@ public class HealthController : BaseController
             return ServerError(string.IsNullOrWhiteSpace(detail)
                 ? "An error occurred while repairing document links"
                 : $"Document link repair failed: {detail}");
+        }
+    }
+
+    private async Task<IActionResult> RunTransactionChainExportAsync(TransactionChainExportRequestDto dto)
+    {
+        if (!HasAdminAccess())
+            return Unauthorized("Only Admin or SuperAdmin can export transaction reports.");
+
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var officeIds = ResolveRequestedOfficeIds(dto);
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return Forbid();
+
+        try
+        {
+            var result = await _healthRepository.GetTransactionChainExportAsync(
+                CurrentOrganizationId,
+                officeIds,
+                dto.StartDate,
+                dto.EndDate);
+            return Ok(new TransactionChainExportDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting transaction chain report");
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ServerError(string.IsNullOrWhiteSpace(detail)
+                ? "An error occurred while exporting the transaction report"
+                : $"Transaction report export failed: {detail}");
         }
     }
 
