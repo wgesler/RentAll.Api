@@ -97,14 +97,12 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var transactionDate = ReadDateField(document, "TransactionDate", confidences);
         var total = ReadCurrencyField(document, "Total", confidences);
         var subtotal = ReadCurrencyField(document, "Subtotal", confidences);
-        var tax = ReadCurrencyField(document, "Tax", confidences);
+        var tax = ReadCurrencyField(document, "TotalTax", confidences) ?? ReadCurrencyField(document, "Tax", confidences);
         var lineItemDescriptions = ExtractLineItemDescriptions(document);
         var detectedPropertyCodes = ExtractPropertyCodes(fullContent);
         var (cardLastFour, cardTypeId) = ParsePaymentCard(paymentMethod, fullContent);
 
-        var amount = total ?? subtotal;
-        if (!amount.HasValue && tax.HasValue && subtotal.HasValue)
-            amount = subtotal.Value + tax.Value;
+        var amount = ReceiptAmountParser.ResolveAmount(total, subtotal, tax, fullContent);
 
         var description = BuildDescription(lineItemDescriptions);
 
@@ -121,9 +119,12 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             warnings.Add($"Card ending {cardLastFour} was detected but card type was unclear.");
 
         _logger.LogError(
-            "[ReceiptExtractTrace] Step=Analyze Complete ReceiptDate={ReceiptDate} Amount={Amount} VendorName={VendorName} CardLastFour={CardLastFour} CardTypeId={CardTypeId} PropertyCodes={PropertyCodes} ItemCount={ItemCount}",
+            "[ReceiptExtractTrace] Step=Analyze Complete ReceiptDate={ReceiptDate} Amount={Amount} Total={Total} Subtotal={Subtotal} Tax={Tax} VendorName={VendorName} CardLastFour={CardLastFour} CardTypeId={CardTypeId} PropertyCodes={PropertyCodes} ItemCount={ItemCount}",
             transactionDate,
             amount,
+            total,
+            subtotal,
+            tax,
             merchantName,
             cardLastFour,
             cardTypeId,
