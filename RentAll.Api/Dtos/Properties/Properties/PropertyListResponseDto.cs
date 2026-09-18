@@ -47,7 +47,7 @@ public class PropertyListResponseDto
     public DateOnly? offInspectingDate { get; set; }
     public bool OnlineChecked { get; set; }
     public bool OfflineChecked { get; set; }
-    public string? ExternalCalendar { get; set; }
+    public List<string> ExternalCalendars { get; set; } = [];
 
     public bool IsActive { get; set; }
 
@@ -96,7 +96,7 @@ public class PropertyListResponseDto
         offInspectingDate = propertyList.offInspectingDate;
         OnlineChecked = propertyList.OnlineChecked;
         OfflineChecked = propertyList.OfflineChecked;
-        ExternalCalendar = propertyList.ExternalCalendar;
+        ExternalCalendars = PropertyICalDto.Normalize(propertyList.ExternalCalendars);
         IsActive = propertyList.IsActive;
     }
 }

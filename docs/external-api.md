@@ -257,7 +257,7 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 - `noticeToVacateId`, `noticeStatusId` (integer | null)
 - `buildingId`, `regionId`, `areaId` (integer | null)
 - `latitude`, `longitude` (number | null)
-- `externalCalendar` (string | null)
+- `externalCalendars` (array of `{ propertyICalId, iCalUrl }`; `externalCalendar` string is still accepted as one URL)
 - `monthlyRate`, `dailyRate`, `departureFee`, `maidServiceFee`, `petFee` (number | null)
 - `bldgNo` (string | null)
 - `unitLevel`, `bedrooms`, `Accommodates`, `squareFeet` (integer | null)

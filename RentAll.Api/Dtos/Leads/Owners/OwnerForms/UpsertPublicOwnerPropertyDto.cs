@@ -1,3 +1,4 @@
+using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Domain.Models.Leads;
 using System.Globalization;
 
@@ -164,7 +165,7 @@ public class UpsertPublicOwnerPropertyDto
             AreaId = AreaId,
             Latitude = Latitude,
             Longitude = Longitude,
-            ExternalCalendar = TrimOrNull(ExternalCalendar),
+            ExternalCalendars = PropertyICalDto.MergeCalendarInputs(null, ExternalCalendar),
             MonthlyRate = MonthlyRate ?? 0,
             DailyRate = DailyRate ?? 0,
             DepartureFee = DepartureFee ?? 0,

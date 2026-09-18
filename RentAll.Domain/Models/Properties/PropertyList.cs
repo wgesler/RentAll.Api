@@ -1,4 +1,5 @@
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Domain.Models;
 
@@ -49,7 +50,7 @@ public class PropertyList
     public DateOnly? offInspectingDate { get; set; }
     public bool OnlineChecked { get; set; }
     public bool OfflineChecked { get; set; }
-    public string? ExternalCalendar { get; set; }
+    public List<string> ExternalCalendars { get; set; } = [];
 
     public bool IsActive { get; set; }
 }

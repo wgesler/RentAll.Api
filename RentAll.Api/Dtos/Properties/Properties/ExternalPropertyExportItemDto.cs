@@ -29,7 +29,7 @@ public class ExternalPropertyExportItemDto
     public decimal? MaidServiceFee { get; set; }
     public decimal? PetFee { get; set; }
 
-    public string ExternalCalendar { get; set; } = string.Empty;
+    public List<string> ExternalCalendars { get; set; } = [];
     public string Description { get; set; } = string.Empty;
 
     public bool? IsActive { get; set; }
@@ -107,7 +107,7 @@ public class ExternalPropertyExportItemDto
             DepartureFee = property.DepartureFee,
             MaidServiceFee = property.MaidServiceFee,
             PetFee = property.PetFee,
-            ExternalCalendar = property.ExternalCalendar ?? string.Empty,
+            ExternalCalendars = PropertyICalDto.Normalize(property.ExternalCalendars),
             Description = property.Description ?? string.Empty,
             Unfurnished = property.Unfurnished
         };
@@ -142,7 +142,7 @@ public class ExternalPropertyExportItemDto
             DepartureFee = property.DepartureFee,
             MaidServiceFee = property.MaidServiceFee,
             PetFee = property.PetFee,
-            ExternalCalendar = property.ExternalCalendar ?? string.Empty,
+            ExternalCalendars = PropertyICalDto.Normalize(property.ExternalCalendars),
             Description = property.Description ?? string.Empty,
             IsActive = property.IsActive,
             MinStay = property.MinStay,

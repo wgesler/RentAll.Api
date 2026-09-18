@@ -32,6 +32,5 @@ public class ExternalExportPropertyListEntity
     public int PropertyStatusId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
-    public string? ExternalCalendar { get; set; }
     public string? Description { get; set; }
 }

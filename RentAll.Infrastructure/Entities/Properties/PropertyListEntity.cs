@@ -47,7 +47,6 @@ public class PropertyListEntity
     public DateOnly? offInspectingDate { get; set; }
     public bool OnlineChecked { get; set; }
     public bool OfflineChecked { get; set; }
-    public string? ExternalCalendar { get; set; }
 
     public bool IsActive { get; set; }
 }

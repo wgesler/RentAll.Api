@@ -35,7 +35,8 @@ public class CreateExternalPropertyDto
     public decimal? MaidServiceFee { get; set; }
     public decimal? PetFee { get; set; }
 
-    public string ExternalCalendar { get; set; } = string.Empty;
+    public string? ExternalCalendar { get; set; }
+    public List<string> ExternalCalendars { get; set; } = [];
     public string Description { get; set; } = string.Empty;
 
     public bool? IsActive { get; set; }
@@ -175,8 +176,6 @@ public class CreateExternalPropertyDto
         if (PetFee is < 0)
             errors.Add($"petFee must be >= 0. Received {PetFee}.");
 
-        if (ExternalCalendar == null)
-            errors.Add("externalCalendar is required.");
         if (string.IsNullOrWhiteSpace(Description))
             errors.Add("description is required.");
         if (MinStay is < 0)
@@ -243,7 +242,7 @@ public class CreateExternalPropertyDto
             OfficeId = context.OfficeId,
             Latitude = 0m,
             Longitude = 0m,
-            ExternalCalendar = TrimOrNull(ExternalCalendar),
+            ExternalCalendars = PropertyICalDto.MergeCalendarInputs(ExternalCalendars, ExternalCalendar),
             MonthlyRate = MonthlyRate,
             DailyRate = DailyRate,
             DepartureFee = DepartureFee ?? 0m,
@@ -338,7 +337,7 @@ public class CreateExternalPropertyDto
 
         updateDto.PropertyStyleId = PropertyStyleId;
         updateDto.PropertyTypeId = PropertyTypeId;
-        updateDto.ExternalCalendar = TrimOrNull(ExternalCalendar);
+        updateDto.ExternalCalendars = PropertyICalDto.MergeCalendarInputs(ExternalCalendars, ExternalCalendar);
         updateDto.MonthlyRate = MonthlyRate;
         updateDto.DailyRate = DailyRate;
         updateDto.DepartureFee = DepartureFee ?? updateDto.DepartureFee;

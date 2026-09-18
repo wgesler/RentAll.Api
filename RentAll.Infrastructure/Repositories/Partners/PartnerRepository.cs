@@ -9,6 +9,7 @@ using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Partners;
 using RentAll.Infrastructure.Entities.Properties;
+using RentAll.Infrastructure.Repositories.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Partners;
 
@@ -24,37 +25,43 @@ public class PartnerRepository : IPartnerRepository
     public async Task<IEnumerable<PropertyList>> GetAllPropertiesAsync()
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<PropertyListEntity>("Partner.Partner_GetAllProperties");
+        var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Partner.Partner_GetAllProperties");
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<PropertyList>();
-
-        return res.Select(ConvertEntityToModel);
+        return (headers ?? []).Select(header =>
+        {
+            var property = ConvertEntityToModel(header);
+            property.ExternalCalendars = PropertyRepository.MapICalUrls(header.PropertyId, rows);
+            return property;
+        }).ToList();
     }
 
     public async Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListAsync()
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<ExternalExportPropertyListEntity>("Partner.Partner_GetExternalExportList");
+        var (headers, rows) = await db.DapperProcQueryMultipleAsync<ExternalExportPropertyListEntity, PropertyICalEntity>("Partner.Partner_GetExternalExportList");
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<ExternalExportPropertyList>();
-
-        return res.Select(ConvertExternalExportEntityToModel);
+        return (headers ?? []).Select(header =>
+        {
+            var property = ConvertExternalExportEntityToModel(header);
+            property.ExternalCalendars = PropertyRepository.MapICalUrls(header.PropertyId, rows);
+            return property;
+        }).ToList();
     }
 
     public async Task<IEnumerable<PropertyList>> GetActivePropertyListBySelectionCriteriaAsync(Guid userId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<PropertyListEntity>("Partner.Partner_GetActiveListBySelection", new
+        var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Partner.Partner_GetActiveListBySelection", new
         {
             UserId = userId
         });
 
-        if (res == null || !res.Any())
-            return Enumerable.Empty<PropertyList>();
-
-        return res.Select(ConvertEntityToModel);
+        return (headers ?? []).Select(header =>
+        {
+            var property = ConvertEntityToModel(header);
+            property.ExternalCalendars = PropertyRepository.MapICalUrls(header.PropertyId, rows);
+            return property;
+        }).ToList();
     }
 
     public async Task<IEnumerable<PartnerCityState>> GetListOfCitiesAsync()
@@ -126,7 +133,7 @@ public class PartnerRepository : IPartnerRepository
             PropertyStatusId = e.PropertyStatusId,
             Latitude = e.Latitude,
             Longitude = e.Longitude,
-            ExternalCalendar = e.ExternalCalendar,
+            ExternalCalendars = [],
             Description = e.Description
         };
 
@@ -176,7 +183,7 @@ public class PartnerRepository : IPartnerRepository
             offInspectingDate = e.offInspectingDate,
             OnlineChecked = e.OnlineChecked,
             OfflineChecked = e.OfflineChecked,
-            ExternalCalendar = e.ExternalCalendar,
+            ExternalCalendars = [],
             IsActive = e.IsActive
         };
 }

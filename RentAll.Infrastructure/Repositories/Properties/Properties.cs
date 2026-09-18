@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Properties
 {
@@ -11,31 +12,25 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<IEnumerable<PropertyList>> GetPropertyListByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListByOfficeIds", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Property.Property_GetListByOfficeIds", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
             });
 
-            if (res == null || !res.Any())
-                return Enumerable.Empty<PropertyList>();
-
-            return res.Select(ConvertEntityToModel);
+            return MapPropertyListWithICalUrls(headers, rows);
         }
 
         public async Task<IEnumerable<PropertyList>> GetPropertyActiveListByOfficeIdsAsync(Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetActiveListByOfficeIds", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Property.Property_GetActiveListByOfficeIds", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess
             });
 
-            if (res == null || !res.Any())
-                return Enumerable.Empty<PropertyList>();
-
-            return res.Select(ConvertEntityToModel);
+            return MapPropertyListWithICalUrls(headers, rows);
         }
 
         public async Task<IEnumerable<PropertyCodes>> GetPropertyActiveCodesByOfficeIdsAsync(Guid organizationId, string officeAccess)
@@ -56,137 +51,110 @@ namespace RentAll.Infrastructure.Repositories.Properties
         public async Task<IEnumerable<PropertyList>> GetPropertyListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListBySelection", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Property.Property_GetListBySelection", new
             {
                 UserId = userId,
                 OrganizationId = organizationId,
                 Offices = officeAccess
             });
 
-            if (res == null || !res.Any())
-                return Enumerable.Empty<PropertyList>();
-
-            return res.Select(ConvertEntityToModel);
+            return MapPropertyListWithICalUrls(headers, rows);
         }
 
         public async Task<IEnumerable<PropertyList>> GetActivePropertyListBySelectionCriteriaAsync(Guid userId, Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetActiveListBySelection", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Property.Property_GetActiveListBySelection", new
             {
                 UserId = userId,
                 OrganizationId = organizationId,
                 Offices = officeAccess
             });
 
-            if (res == null || !res.Any())
-                return Enumerable.Empty<PropertyList>();
-
-            return res.Select(ConvertEntityToModel);
+            return MapPropertyListWithICalUrls(headers, rows);
         }
 
         public async Task<IEnumerable<PropertyList>> GetPropertyListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyListEntity>("Property.Property_GetListByOwnerId", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Property.Property_GetListByOwnerId", new
             {
                 OrganizationId = organizationId,
                 Offices = officeAccess,
                 OwnerId = ownerId
             });
 
-            if (res == null || !res.Any())
-                return Enumerable.Empty<PropertyList>();
-
-            return res.Select(ConvertEntityToModel);
+            return MapPropertyListWithICalUrls(headers, rows);
         }
 
         public async Task<Property?> GetPropertyByIdAsync(Guid propertyId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_GetById", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyEntity, PropertyICalEntity>("Property.Property_GetById", new
             {
                 PropertyId = propertyId,
                 OrganizationId = organizationId
             });
 
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return MapPropertyWithICalUrls(headers, rows);
         }
 
         public async Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("Partner.Partner_GetPropertyById", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyEntity, PropertyICalEntity>("Partner.Partner_GetPropertyById", new
             {
                 PropertyId = propertyId
             });
 
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return MapPropertyWithICalUrls(headers, rows);
         }
 
         public async Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_GetByCode", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyEntity, PropertyICalEntity>("Property.Property_GetByCode", new
             {
                 PropertyCode = propertyCode,
                 OrganizationId = organizationId
             });
 
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return MapPropertyWithICalUrls(headers, rows);
         }
 
         public async Task<Property?> GetPropertyByCodeIncludingDeletedAsync(string propertyCode, Guid organizationId, int officeId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("Property.Property_GetByCodeIncludingDeleted", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyEntity, PropertyICalEntity>("Property.Property_GetByCodeIncludingDeleted", new
             {
                 PropertyCode = propertyCode,
                 OrganizationId = organizationId,
                 OfficeId = officeId
             });
 
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            return MapPropertyWithICalUrls(headers, rows);
         }
 
         public async Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListByOrganizationIdAsync(Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<ExternalExportPropertyListEntity>("Property.Property_GetExternalExportListByOrganizationId", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<ExternalExportPropertyListEntity, PropertyICalEntity>("Property.Property_GetExternalExportListByOrganizationId", new
             {
                 OrganizationId = organizationId
             });
 
-            if (res == null || !res.Any())
-                return Enumerable.Empty<ExternalExportPropertyList>();
-
-            return res.Select(ConvertExternalExportEntityToModel);
+            return MapExportListWithICalUrls(headers, rows);
         }
 
         public async Task<Property?> GetPartnerExternalExportByCodeAsync(string propertyCode)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var res = await db.DapperProcQueryAsync<PropertyEntity>("Partner.Partner_GetExternalExportByCode", new
+            var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyEntity, PropertyICalEntity>("Partner.Partner_GetExternalExportByCode", new
             {
                 PropertyCode = propertyCode
             });
 
-            if (res == null || !res.Any())
-                return null;
-
-            return ConvertEntityToModel(res.First());
+            return MapPropertyWithICalUrls(headers, rows);
         }
 
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)
@@ -233,7 +201,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 AreaId = property.AreaId,
                 Latitude = property.Latitude,
                 Longitude = property.Longitude,
-                ExternalCalendar = property.ExternalCalendar,
                 MonthlyRate = property.MonthlyRate,
                 DailyRate = property.DailyRate,
                 DepartureFee = property.DepartureFee,
@@ -333,7 +300,10 @@ namespace RentAll.Infrastructure.Repositories.Properties
             if (res == null || !res.Any())
                 throw new Exception("Property not found");
 
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            var created = ConvertEntityToModel(res.First());
+            await ReplacePropertyICalsAsync(created.PropertyId, property.ExternalCalendars);
+            created.ExternalCalendars = (await GetPropertyICalsByPropertyIdAsync(created.PropertyId)).ToList();
+            return created;
         }
         #endregion
 
@@ -369,7 +339,6 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 AreaId = property.AreaId,
                 Latitude = property.Latitude,
                 Longitude = property.Longitude,
-                ExternalCalendar = property.ExternalCalendar,
                 MonthlyRate = property.MonthlyRate,
                 DailyRate = property.DailyRate,
                 DepartureFee = property.DepartureFee,
@@ -470,7 +439,10 @@ namespace RentAll.Infrastructure.Repositories.Properties
             if (res == null || !res.Any())
                 throw new Exception("Property not found");
 
-            return ConvertEntityToModel(res.FirstOrDefault()!);
+            var updated = ConvertEntityToModel(res.First());
+            await ReplacePropertyICalsAsync(updated.PropertyId, property.ExternalCalendars);
+            updated.ExternalCalendars = (await GetPropertyICalsByPropertyIdAsync(updated.PropertyId)).ToList();
+            return updated;
         }
         #endregion
 

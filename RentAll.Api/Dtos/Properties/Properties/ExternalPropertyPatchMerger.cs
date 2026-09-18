@@ -162,8 +162,13 @@ public static class ExternalPropertyPatchMerger
             updateDto.PetFee = petFee;
         }
 
-        if (presentFields.Contains("externalCalendar"))
-            updateDto.ExternalCalendar = TryGetTrimmedString(body, "externalCalendar", out var externalCalendar) ? TrimOrNull(externalCalendar) : null;
+        if (presentFields.Contains("externalCalendars") || presentFields.Contains("externalCalendar"))
+        {
+            if (!TryGetExternalCalendars(body, out var calendars, out var calendarError))
+                errors.Add(calendarError ?? "externalCalendars must be an array of iCal URLs.");
+            else
+                updateDto.ExternalCalendars = calendars;
+        }
 
         if (presentFields.Contains("description"))
             updateDto.Description = TryGetTrimmedString(body, "description", out var description) ? description : null;
@@ -326,6 +331,51 @@ public static class ExternalPropertyPatchMerger
 
         value = default;
         return false;
+    }
+
+    private static bool TryGetExternalCalendars(JsonElement body, out List<string> calendars, out string? error)
+    {
+        calendars = [];
+        error = null;
+        var legacyUrl = TryGetTrimmedString(body, "externalCalendar", out var externalCalendar) ? TrimOrNull(externalCalendar) : null;
+        if (!TryGetProperty(body, "externalCalendars", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            calendars = PropertyICalDto.MergeCalendarInputs(null, legacyUrl);
+            return true;
+        }
+
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            error = $"externalCalendars must be an array. Received {ExternalPropertyIntakeErrors.Describe(element)}.";
+            return false;
+        }
+
+        foreach (var item in element.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                var url = item.GetString()?.Trim() ?? string.Empty;
+                if (url.Length > 0)
+                    calendars.Add(url);
+                continue;
+            }
+
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                error = $"externalCalendars items must be iCal URL strings. Received {ExternalPropertyIntakeErrors.Describe(item)}.";
+                return false;
+            }
+
+            if (!TryGetProperty(item, "iCalUrl", out var urlElement) && !TryGetProperty(item, "ICalUrl", out urlElement))
+                continue;
+
+            var parsedUrl = urlElement.ValueKind == JsonValueKind.String ? urlElement.GetString()?.Trim() ?? string.Empty : string.Empty;
+            if (parsedUrl.Length > 0)
+                calendars.Add(parsedUrl);
+        }
+
+        calendars = PropertyICalDto.MergeCalendarInputs(calendars, legacyUrl);
+        return true;
     }
 
     private static bool TryGetTrimmedString(JsonElement body, string name, out string value)

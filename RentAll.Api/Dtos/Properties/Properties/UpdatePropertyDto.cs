@@ -32,7 +32,7 @@ public class UpdatePropertyDto
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
-    public string? ExternalCalendar { get; set; }
+    public List<string> ExternalCalendars { get; set; } = [];
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }
@@ -179,7 +179,7 @@ public class UpdatePropertyDto
             AreaId = property.AreaId,
             Latitude = property.Latitude,
             Longitude = property.Longitude,
-            ExternalCalendar = property.ExternalCalendar,
+            ExternalCalendars = PropertyICalDto.Normalize(property.ExternalCalendars),
             MonthlyRate = property.MonthlyRate,
             DailyRate = property.DailyRate,
             DepartureFee = property.DepartureFee,
@@ -363,7 +363,7 @@ public class UpdatePropertyDto
             AreaId = AreaId,
             Latitude = Latitude,
             Longitude = Longitude,
-            ExternalCalendar = ExternalCalendar,
+            ExternalCalendars = PropertyICalDto.Normalize(ExternalCalendars),
             MonthlyRate = MonthlyRate,
             DailyRate = DailyRate,
             DepartureFee = DepartureFee,

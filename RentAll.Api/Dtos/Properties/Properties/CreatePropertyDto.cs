@@ -31,7 +31,7 @@ public class CreatePropertyDto
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
-    public string? ExternalCalendar { get; set; }
+    public List<string> ExternalCalendars { get; set; } = [];
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }
@@ -224,7 +224,7 @@ public class CreatePropertyDto
             AreaId = AreaId,
             Latitude = Latitude,
             Longitude = Longitude,
-            ExternalCalendar = ExternalCalendar,
+            ExternalCalendars = PropertyICalDto.Normalize(ExternalCalendars),
             MonthlyRate = MonthlyRate,
             DailyRate = DailyRate,
             DepartureFee = DepartureFee,
@@ -352,7 +352,7 @@ public class CreatePropertyDto
             AreaId = AreaId,
             Latitude = Latitude,
             Longitude = Longitude,
-            ExternalCalendar = ExternalCalendar,
+            ExternalCalendars = ExternalCalendars,
             MonthlyRate = MonthlyRate,
             DailyRate = DailyRate,
             DepartureFee = DepartureFee,

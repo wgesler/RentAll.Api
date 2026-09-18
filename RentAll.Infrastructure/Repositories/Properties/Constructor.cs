@@ -51,7 +51,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 AreaId = e.AreaId,
                 Latitude = e.Latitude,
                 Longitude = e.Longitude,
-                ExternalCalendar = e.ExternalCalendar,
+                ExternalCalendars = [],
                 MonthlyRate = e.MonthlyRate,
                 DailyRate = e.DailyRate,
                 DepartureFee = e.DepartureFee,
@@ -202,7 +202,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offInspectingDate = e.offInspectingDate,
                 OnlineChecked = e.OnlineChecked,
                 OfflineChecked = e.OfflineChecked,
-                ExternalCalendar = e.ExternalCalendar,
+                ExternalCalendars = [],
                 IsActive = e.IsActive
             };
         }
@@ -516,7 +516,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyStatusId = e.PropertyStatusId,
                 Latitude = e.Latitude,
                 Longitude = e.Longitude,
-                ExternalCalendar = e.ExternalCalendar,
+                ExternalCalendars = [],
                 Description = e.Description
             };
 

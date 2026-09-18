@@ -1,4 +1,5 @@
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Domain.Models;
 
@@ -35,7 +36,7 @@ public class Property
     public int? AreaId { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
-    public string? ExternalCalendar { get; set; }
+    public List<string> ExternalCalendars { get; set; } = [];
 
     // Rates & Fees
     public decimal MonthlyRate { get; set; }
