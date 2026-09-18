@@ -183,6 +183,7 @@ namespace RentAll.Api.Controllers
 
                 // Delete all documents/receipts as well (TBD)
 
+                await _organizationRepository.DeletePartnerSharesByOrganizationIdAsync(organizationId);
                 await _organizationRepository.DeleteOrganizationByIdAsync(organizationId);
                 return NoContent();
             }

@@ -113,6 +113,9 @@ namespace RentAll.Api.Controllers
 
                 var feature = dto.ToModel();
                 var updatedFeature = await _organizationRepository.UpdateFeatureByIdAsync(feature);
+                if (WasRemovedFromPartnerProgram(existingFeature, updatedFeature))
+                    await _organizationRepository.DeletePartnerSharesByOrganizationIdAsync(existingFeature.OrganizationId);
+
                 return Ok(new FeatureResponseDto(updatedFeature));
             }
             catch (Exception ex)
@@ -142,6 +145,9 @@ namespace RentAll.Api.Controllers
                     return NotFound("Feature not found");
 
                 await _organizationRepository.DeleteFeatureByIdAsync(featureId);
+                if (feature.FeatureTypeId == FeatureType.PartnerIntegration)
+                    await _organizationRepository.DeletePartnerSharesByOrganizationIdAsync(feature.OrganizationId);
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -152,6 +158,13 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
+
+        private static bool WasRemovedFromPartnerProgram(Feature existingFeature, Feature updatedFeature)
+        {
+            var wasPartner = existingFeature.FeatureTypeId == FeatureType.PartnerIntegration;
+            var isPartnerEnabled = updatedFeature.FeatureTypeId == FeatureType.PartnerIntegration && updatedFeature.HasAccess;
+            return wasPartner && !isPartnerEnabled;
+        }
 
     }
 }

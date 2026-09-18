@@ -85,6 +85,17 @@ public interface IOrganizationRepository
     Task DeleteFeatureByIdAsync(int featureId);
     #endregion
 
+    #region Partner Sharing
+    Task<IEnumerable<OrganizationPartnerOption>> GetOrganizationsWithPartnerFeatureAsync(Guid organizationId);
+    Task<IEnumerable<Guid>> GetPartnersInByOrganizationIdAsync(Guid organizationId);
+    Task<IEnumerable<Guid>> GetPartnersOutByOrganizationIdAsync(Guid organizationId);
+    Task AddPartnerInAsync(Guid organizationId, Guid partnerOrganizationId);
+    Task DeletePartnerInAsync(Guid organizationId, Guid partnerOrganizationId);
+    Task AddPartnerOutAsync(Guid organizationId, Guid partnerOrganizationId);
+    Task DeletePartnerOutAsync(Guid organizationId, Guid partnerOrganizationId);
+    Task DeletePartnerSharesByOrganizationIdAsync(Guid organizationId);
+    #endregion
+
     #region Colors
     Task<IEnumerable<Colour>> GetColorsByOrganizationIdAsync(Guid organizationId);
     Task<Colour?> GetColorByIdAsync(int colorId, Guid organizationId);
