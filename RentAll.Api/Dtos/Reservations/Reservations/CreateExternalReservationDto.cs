@@ -1,6 +1,5 @@
 using RentAll.Api.Dtos.External;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
@@ -29,11 +28,8 @@ public class CreateExternalReservationDto
     public decimal? BillingRate { get; set; }
     public decimal? Deposit { get; set; }
     public int? DepositTypeId { get; set; }
-    [JsonPropertyName("depositType")]
-    public int? AlternateDepositTypeId { get; set; }
     public decimal? DepartureFee { get; set; }
     public bool? HasPets { get; set; }
-    public bool? Pets { get; set; }
     public decimal? PetFee { get; set; }
     public int? NumberOfPets { get; set; }
     public string? PetDescription { get; set; }
@@ -65,8 +61,8 @@ public class CreateExternalReservationDto
     public ExternalPropertyContactDto? Company { get; set; }
     public List<CreateExternalReservationExtraFeeDto> ExtraFeeLines { get; set; } = [];
 
-    public bool ResolvedHasPets => HasPets ?? Pets ?? false;
-    public int ResolvedDepositTypeId => DepositTypeId ?? AlternateDepositTypeId ?? (int)DepositType.Deposit;
+    public bool ResolvedHasPets => HasPets ?? false;
+    public int ResolvedDepositTypeId => DepositTypeId ?? (int)DepositType.Deposit;
     public bool RequiresCompany => ReservationTypeId is (int)ReservationType.Corporate or (int)ReservationType.Platform;
     public EntityType ExpectedContactEntityType => ReservationTypeId == (int)ReservationType.Owner ? EntityType.Owner : EntityType.Tenant;
 
@@ -117,7 +113,7 @@ public class CreateExternalReservationDto
             errors.Add("billingRate is required.");
         else if (BillingRate.Value < 0)
             errors.Add("billingRate must be zero or greater.");
-        if (!DepositTypeId.HasValue && !AlternateDepositTypeId.HasValue)
+        if (!DepositTypeId.HasValue)
             errors.Add("depositTypeId is required.");
         else if (!Enum.IsDefined(typeof(DepositType), ResolvedDepositTypeId))
             errors.Add($"depositTypeId must be 0=Deposit, 1=CLR, or 2=SDW. Received {ResolvedDepositTypeId}.");
@@ -206,8 +202,7 @@ public class CreateExternalReservationDto
         ExternalIntakeErrors.CollectRequiredNonNegativeInt(body, "numberOfPeople", errors, $"{prefix}.numberOfPeople is required.");
         ExternalIntakeErrors.CollectRequiredInt(body, "billingTypeId", errors, $"{prefix}.billingTypeId is required.");
         ExternalIntakeErrors.CollectRequiredNonNegativeDecimal(body, "billingRate", errors, $"{prefix}.billingRate is required.");
-        if (!ExternalIntakeErrors.HasProperty(body, "depositTypeId") && !ExternalIntakeErrors.HasProperty(body, "depositType"))
-            errors.Add($"{prefix}.depositTypeId is required.");
+        ExternalIntakeErrors.CollectRequiredInt(body, "depositTypeId", errors, $"{prefix}.depositTypeId is required.");
         CollectDeposit(body, prefix, errors);
         ExternalIntakeErrors.CollectRequiredNonNegativeDecimal(body, "departureFee", errors, $"{prefix}.departureFee is required.");
         ExternalIntakeErrors.CollectOptionalDateOnly(body, "billingStartDate", errors);
@@ -219,7 +214,7 @@ public class CreateExternalReservationDto
         ExternalIntakeErrors.CollectOptionalDateOnly(body, "dCarpetDate", errors);
         ExternalIntakeErrors.CollectOptionalDateOnly(body, "dInspectingDate", errors);
         ExternalIntakeErrors.CollectOptionalNonNegativeDecimal(body, "taxes", errors);
-        ExternalIntakeErrors.CollectOptionalBools(body, ["hasPets", "pets", "maidService", "allowExtensions", "billedToEmployer", "collapseCharges", "isActive"], errors);
+        ExternalIntakeErrors.CollectOptionalBools(body, ["hasPets", "maidService", "allowExtensions", "billedToEmployer", "collapseCharges", "isActive"], errors);
         CollectPetFields(body, prefix, errors);
         CollectMaidFields(body, prefix, errors);
         CollectRequiredContact(body, prefix, "contact", errors);
@@ -414,7 +409,7 @@ public class CreateExternalReservationDto
         && typeId is (int)ReservationType.Corporate or (int)ReservationType.Platform;
 
     private static bool IsClrDeposit(JsonElement body) =>
-        (TryGetIntProperty(body, "depositTypeId", out var depositTypeId) || TryGetIntProperty(body, "depositType", out depositTypeId))
+        TryGetIntProperty(body, "depositTypeId", out var depositTypeId)
         && depositTypeId == (int)DepositType.CLR;
 
     private static bool TryGetIntProperty(JsonElement body, string field, out int value)
@@ -431,9 +426,7 @@ public class CreateExternalReservationDto
 
     private static void CollectPetFields(JsonElement body, string prefix, List<string> errors)
     {
-        var hasPets = ExternalIntakeErrors.TryGetOptionalBool(body, "hasPets", out var petsFlag)
-            ? petsFlag
-            : ExternalIntakeErrors.TryGetOptionalBool(body, "pets", out petsFlag) && petsFlag;
+        var hasPets = ExternalIntakeErrors.TryGetOptionalBool(body, "hasPets", out var petsFlag) && petsFlag;
         if (!hasPets)
         {
             ExternalIntakeErrors.CollectOptionalNonNegativeDecimal(body, "petFee", errors);

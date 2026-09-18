@@ -407,7 +407,7 @@ Send the same `propertyCode` with changed fields inside `properties`:
 - `numberOfPeople`
 - `billingTypeId` (0 Monthly, 1 Daily, 2 Nightly)
 - `billingRate`
-- `depositTypeId` or `depositType` (0 Deposit, 1 CLR, 2 SDW)
+- `depositTypeId` (0 Deposit, 1 CLR, 2 SDW)
 - `deposit` — required unless `depositTypeId` is `1` CLR, which must be `0`
 - `departureFee`
 - `arrivalDate`, `departureDate` (string date `YYYY-MM-DD`; departure must be after arrival)
@@ -419,7 +419,7 @@ Send the same `propertyCode` with changed fields inside `properties`:
 - Dates/times: `billingStartDate`, `billingEndDate`, `checkInTimeId` (optional, default `5` = 4PM), `checkOutTimeId` (optional, default `4` = 11AM)
 - Access: `lockBoxCode`, `unitTenantCode`, `garageCode`
 - Billing: `billingMethodId` (0 Invoice, 1 CreditCard), `prorateTypeId` (optional, default `0` FirstMonth), `taxes`, `invoiceMethodId` (optional, default `0` Create), `collapseCharges`, `billedToEmployer` (Corporate only)
-- Pets: `hasPets` or `pets` (optional, default `false`). If `true`, `petFee`, `numberOfPets`, and `petDescription` are required
+- Pets: `hasPets` (optional, default `false`). If `true`, `petFee`, `numberOfPets`, and `petDescription` are required
 - Maid: `maidService` (optional, default `false`). If `true`, `maidServiceFee`, `frequencyId`, and `maidStartDate` are required. `maidEmail` remains optional
 - Extra fees: `extraFeeLines[]` with `feeDescription` and `costCodeId` required; `feeFrequencyId` defaults to `0` NA
 - Flags: `allowExtensions` (default true), `isActive` (default true), `notes`
