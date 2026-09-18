@@ -118,10 +118,20 @@ public class ExternalPropertyOwnerContactResolver
         contact.State = TryGetTrimmedString(contactElement, "state");
         contact.Zip = TryGetTrimmedString(contactElement, "zip");
         contact.CompanyName = TryGetTrimmedString(contactElement, "companyName");
+        if (TryGetProperty(contactElement, "entityTypeId", out var entityTypeElement)
+            && ExternalPropertyContactDto.TryCoerceContactEntityType(entityTypeElement, out var entityTypeId))
+            contact.EntityTypeId = entityTypeId;
         if (TryGetProperty(contactElement, "ownerTypeId", out var ownerTypeElement) && TryCoerceInt32(ownerTypeElement, out var ownerTypeId))
             contact.OwnerTypeId = ownerTypeId;
+        if (TryGetProperty(contactElement, "vendorTypeId", out var vendorTypeElement) && TryCoerceInt32(vendorTypeElement, out var vendorTypeId))
+            contact.VendorTypeId = vendorTypeId;
+        contact.CardName = TryGetTrimmedString(contactElement, "cardName");
+        contact.CardNumber = TryGetTrimmedString(contactElement, "cardNumber");
+        if (TryGetProperty(contactElement, "cardTypeId", out var cardTypeElement)
+            && ExternalPropertyContactDto.TryCoerceCardType(cardTypeElement, out var cardTypeId))
+            contact.CardTypeId = cardTypeId;
 
-        contact.ContactCard = TryGetContactCard(contactElement);
+        contact.ContactCard = TryGetContactCard(contactElement) ?? contact.GetResolvedContactCard();
 
         return true;
     }
@@ -197,8 +207,9 @@ public class ExternalPropertyOwnerContactResolver
             CardNumber = TryGetTrimmedString(cardElement, "cardNumber") ?? string.Empty
         };
 
-        if (TryGetProperty(cardElement, "cardTypeId", out var typeElement) && TryCoerceInt32(typeElement, out var cardTypeId))
-            card.CardTypeId = cardTypeId;
+        if (TryGetProperty(cardElement, "cardTypeId", out var typeElement)
+            && ExternalPropertyContactDto.TryCoerceCardType(typeElement, out var nestedCardTypeId))
+            card.CardTypeId = nestedCardTypeId;
 
         return card.IsEmpty() ? null : card;
     }
@@ -243,18 +254,20 @@ public class ExternalPropertyOwnerContactResolver
         var existingContact = await _contactRepository.GetContactByEmailAsync(email, organizationId);
         if (existingContact != null)
         {
-            if (existingContact.EntityType != EntityType.Owner)
-                return (false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to Owner.");
+            var entityType = owner.ResolveEntityType(EntityType.Owner);
+            if (existingContact.EntityType != entityType)
+                return (false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
 
             owner.ApplyToExistingOwnerContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
-            await ApplyContactCardAsync(updatedContact, owner.ContactCard, currentUser);
+            await ApplyContactCardAsync(updatedContact, owner.GetResolvedContactCard(), currentUser);
             return (true, updatedContact.ContactId, null);
         }
 
-        var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)EntityType.Owner);
+        var createdType = owner.ResolveEntityType(EntityType.Owner);
+        var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)createdType);
         var createdContact = await _contactRepository.CreateAsync(owner.ToNewOwnerContactModel(organizationId, officeId, code, currentUser));
-        await ApplyContactCardAsync(createdContact, owner.ContactCard, currentUser);
+        await ApplyContactCardAsync(createdContact, owner.GetResolvedContactCard(), currentUser);
         return (true, createdContact.ContactId, null);
     }
 
@@ -268,18 +281,20 @@ public class ExternalPropertyOwnerContactResolver
         var existingContact = await _contactRepository.GetContactByEmailAsync(email, organizationId);
         if (existingContact != null)
         {
-            if (existingContact.EntityType != EntityType.Vendor)
-                return (false, null, $"Vendor email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to Vendor.");
+            var entityType = vendor.ResolveEntityType(EntityType.Vendor);
+            if (existingContact.EntityType != entityType)
+                return (false, null, $"Vendor email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
 
             vendor.ApplyToExistingVendorContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
-            await ApplyContactCardAsync(updatedContact, vendor.ContactCard, currentUser);
+            await ApplyContactCardAsync(updatedContact, vendor.GetResolvedContactCard(), currentUser);
             return (true, updatedContact.ContactId, null);
         }
 
-        var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)EntityType.Vendor);
+        var createdType = vendor.ResolveEntityType(EntityType.Vendor);
+        var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)createdType);
         var createdContact = await _contactRepository.CreateAsync(vendor.ToNewVendorContactModel(organizationId, officeId, code, currentUser));
-        await ApplyContactCardAsync(createdContact, vendor.ContactCard, currentUser);
+        await ApplyContactCardAsync(createdContact, vendor.GetResolvedContactCard(), currentUser);
         return (true, createdContact.ContactId, null);
     }
 

@@ -243,45 +243,76 @@ public static class ExternalPropertyIntakeErrors
         CollectRequiredString(element, contactPrefix, "firstName", errors);
         CollectRequiredString(element, contactPrefix, "lastName", errors);
         CollectRequiredString(element, contactPrefix, "email", errors);
+        CollectRequiredContactEntityType(element, contactPrefix, errors);
         CollectState(element, contactPrefix, "state", errors);
         CollectMaxLength(element, contactPrefix, "zip", 10, errors);
         CollectMaxLength(element, contactPrefix, "phone", 25, errors);
         CollectMaxLength(element, contactPrefix, "address1", 100, errors);
         CollectMaxLength(element, contactPrefix, "city", 100, errors);
-        if (ExternalPropertyIntakeJson.TryGetProperty(element, "ownerTypeId", out var ownerTypeElement) && ownerTypeElement.ValueKind != JsonValueKind.Null && !TryCoerceInt32(ownerTypeElement, out _))
-            errors.Add($"{contactPrefix}.ownerTypeId must be an integer 0=Individual or 1=Company. Received {Describe(ownerTypeElement)}. Invalid values are ignored.");
+        CollectEnum<OwnerType>(element, contactPrefix, "ownerTypeId", errors, "0=Individual or 1=Company");
+        CollectEnum<VendorType>(element, contactPrefix, "vendorTypeId", errors, "0=Individual or 1=Company");
         CollectContactCard(element, contactPrefix, errors);
+    }
+
+    private static void CollectRequiredContactEntityType(JsonElement contact, string contactPrefix, List<string> errors)
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(contact, "entityTypeId", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            errors.Add($"{contactPrefix}.entityTypeId is required. Use 3=Company, 4=Owner, 5=Tenant, or 6=Vendor.");
+            return;
+        }
+
+        if (!ExternalPropertyContactDto.TryCoerceContactEntityType(element, out _))
+            errors.Add($"{contactPrefix}.entityTypeId must be 3=Company, 4=Owner, 5=Tenant, or 6=Vendor. Received {Describe(element)}.");
     }
 
     private static void CollectContactCard(JsonElement contact, string contactPrefix, List<string> errors)
     {
-        if (!ExternalPropertyIntakeJson.TryGetProperty(contact, "contactCard", out var card) || card.ValueKind == JsonValueKind.Null)
-            return;
-
-        if (card.ValueKind != JsonValueKind.Object)
+        var cardSource = contact;
+        if ((!ExternalPropertyIntakeJson.TryGetProperty(contact, "cardTypeId", out var flatType) || flatType.ValueKind == JsonValueKind.Null)
+            && !HasNonEmptyString(contact, "cardName")
+            && !HasNonEmptyString(contact, "cardNumber")
+            && ExternalPropertyIntakeJson.TryGetProperty(contact, "contactCard", out var nested)
+            && nested.ValueKind == JsonValueKind.Object)
+        {
+            cardSource = nested;
+        }
+        else if (ExternalPropertyIntakeJson.TryGetProperty(contact, "contactCard", out var card) && card.ValueKind != JsonValueKind.Null && card.ValueKind != JsonValueKind.Object
+            && !HasCardField(contact))
         {
             errors.Add($"{contactPrefix}.contactCard must be an object. Received {Describe(card)}.");
             return;
         }
 
-        var hasType = ExternalPropertyIntakeJson.TryGetProperty(card, "cardTypeId", out var typeElement) && typeElement.ValueKind != JsonValueKind.Null;
-        var cardName = ExternalPropertyIntakeJson.TryGetProperty(card, "cardName", out var nameElement) && nameElement.ValueKind == JsonValueKind.String
-            ? nameElement.GetString()?.Trim() ?? string.Empty
-            : string.Empty;
-        var cardNumber = ExternalPropertyIntakeJson.TryGetProperty(card, "cardNumber", out var numberElement) && numberElement.ValueKind == JsonValueKind.String
-            ? numberElement.GetString()?.Trim() ?? string.Empty
-            : string.Empty;
+        var hasType = ExternalPropertyIntakeJson.TryGetProperty(cardSource, "cardTypeId", out var typeElement) && typeElement.ValueKind != JsonValueKind.Null;
+        var cardName = HasNonEmptyString(cardSource, "cardName") ? GetTrimmedString(cardSource, "cardName") : string.Empty;
+        var cardNumber = HasNonEmptyString(cardSource, "cardNumber") ? GetTrimmedString(cardSource, "cardNumber") : string.Empty;
 
         if (!hasType && cardName.Length == 0 && cardNumber.Length == 0)
             return;
 
-        if (!hasType || !TryCoerceInt32(typeElement, out var cardTypeId) || !Enum.IsDefined(typeof(CardType), cardTypeId))
-            errors.Add($"{contactPrefix}.contactCard.cardTypeId must be 0=Visa, 1=MasterCard, 2=Discover, or 3=AmericanExpress. Received {(hasType ? Describe(typeElement) : "missing")}.");
+        if (!hasType || !ExternalPropertyContactDto.TryCoerceCardType(typeElement, out _))
+            errors.Add($"{contactPrefix}.cardTypeId must be 0=Visa, 1=MasterCard, 2=Discover, or 3=AmericanExpress. Received {(hasType ? Describe(typeElement) : "missing")}.");
         if (cardName.Length == 0)
-            errors.Add($"{contactPrefix}.contactCard.cardName is required.");
+            errors.Add($"{contactPrefix}.cardName is required.");
         if (cardNumber.Length == 0)
-            errors.Add($"{contactPrefix}.contactCard.cardNumber is required.");
+            errors.Add($"{contactPrefix}.cardNumber is required.");
     }
+
+    private static bool HasCardField(JsonElement contact) =>
+        (ExternalPropertyIntakeJson.TryGetProperty(contact, "cardTypeId", out var typeElement) && typeElement.ValueKind != JsonValueKind.Null)
+        || HasNonEmptyString(contact, "cardName")
+        || HasNonEmptyString(contact, "cardNumber");
+
+    private static bool HasNonEmptyString(JsonElement body, string field) =>
+        ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element)
+        && element.ValueKind == JsonValueKind.String
+        && !string.IsNullOrWhiteSpace(element.GetString());
+
+    private static string GetTrimmedString(JsonElement body, string field) =>
+        ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) && element.ValueKind == JsonValueKind.String
+            ? element.GetString()?.Trim() ?? string.Empty
+            : string.Empty;
 
     private static void CollectPhotos(JsonElement body, string prefix, List<string> errors)
     {
