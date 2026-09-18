@@ -9,19 +9,16 @@ public class ExternalPropertyKeyRequest
 
     public (bool IsValid, string? ErrorMessage) ValidateRequiredKeys()
     {
+        var errors = new List<string>();
         if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
+            errors.Add("OrganizationId is required");
         if (OfficeId <= 0)
-            return (false, "OfficeId is required");
-
+            errors.Add("OfficeId is required");
         if (VendorId == Guid.Empty)
-            return (false, "VendorId is required");
-
+            errors.Add("VendorId is required");
         if (string.IsNullOrWhiteSpace(PropertyCode))
-            return (false, "PropertyCode is required");
-
-        return (true, null);
+            errors.Add("PropertyCode is required");
+        return errors.Count == 0 ? (true, null) : (false, string.Join("\n", errors));
     }
 
     public ExternalPropertyKeyDto ToKeyDto()

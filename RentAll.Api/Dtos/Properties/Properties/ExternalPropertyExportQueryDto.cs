@@ -7,12 +7,11 @@ public class ExternalPropertyExportQueryDto
 
     public (bool IsValid, string? ErrorMessage) Validate()
     {
+        var errors = new List<string>();
         if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
+            errors.Add("OrganizationId is required");
         if (OfficeId <= 0)
-            return (false, "OfficeId is required");
-
-        return (true, null);
+            errors.Add("OfficeId is required");
+        return errors.Count == 0 ? (true, null) : (false, string.Join("\n", errors));
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Tickets.Tickets;
+using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
 
@@ -8,14 +9,11 @@ public partial class TicketController
     #region Create
     [AllowAnonymous]
     [HttpPost("external")]
-    public async Task<IActionResult> CreateExternalTicket([FromBody] CreateExternalTicketDto dto)
+    public async Task<IActionResult> CreateExternalTicket([FromBody] JsonElement body)
     {
-        if (dto == null)
-            return BadRequest("Ticket data is required");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
+        var (parsed, dto, parseError) = CreateExternalTicketDto.TryParseFromBody(body);
+        if (!parsed || dto == null)
+            return BadRequest(parseError ?? "Invalid request data");
 
         var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
         if (organization == null)

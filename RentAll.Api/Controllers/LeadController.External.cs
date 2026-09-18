@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Leads.General;
 using RentAll.Api.Dtos.Leads.Partners;
 using RentAll.Api.Dtos.Leads.Rentals;
+using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
 
@@ -11,14 +12,11 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/general")]
-    public async Task<IActionResult> CreateExternalGeneralLeadAsync([FromBody] CreateExternalLeadGeneralDto dto)
+    public async Task<IActionResult> CreateExternalGeneralLeadAsync([FromBody] JsonElement body)
     {
-        if (dto == null)
-            return BadRequest("General lead data is required");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
+        var (parsed, dto, parseError) = CreateExternalLeadGeneralDto.TryParseFromBody(body);
+        if (!parsed || dto == null)
+            return BadRequest(parseError ?? "Invalid request data");
 
         var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
         if (organization == null)
@@ -49,14 +47,11 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/rentals")]
-    public async Task<IActionResult> CreateExternalRentalLeadAsync([FromBody] CreateExternalLeadRentalDto dto)
+    public async Task<IActionResult> CreateExternalRentalLeadAsync([FromBody] JsonElement body)
     {
-        if (dto == null)
-            return BadRequest("Rental lead data is required");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
+        var (parsed, dto, parseError) = CreateExternalLeadRentalDto.TryParseFromBody(body);
+        if (!parsed || dto == null)
+            return BadRequest(parseError ?? "Invalid request data");
 
         var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
         if (organization == null)
@@ -87,14 +82,11 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/partners")]
-    public async Task<IActionResult> CreateExternalPartnerLeadAsync([FromBody] CreateExternalLeadPartnerDto dto)
+    public async Task<IActionResult> CreateExternalPartnerLeadAsync([FromBody] JsonElement body)
     {
-        if (dto == null)
-            return BadRequest("Partner lead data is required");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
+        var (parsed, dto, parseError) = CreateExternalLeadPartnerDto.TryParseFromBody(body);
+        if (!parsed || dto == null)
+            return BadRequest(parseError ?? "Invalid request data");
 
         var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
         if (organization == null)
@@ -125,14 +117,11 @@ public partial class LeadController
 
     [AllowAnonymous]
     [HttpPost("external/owners")]
-    public async Task<IActionResult> CreateExternalOwnerLeadAsync([FromBody] CreateExternalLeadOwnerDto dto)
+    public async Task<IActionResult> CreateExternalOwnerLeadAsync([FromBody] JsonElement body)
     {
-        if (dto == null)
-            return BadRequest("Owner lead data is required");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
+        var (parsed, dto, parseError) = CreateExternalLeadOwnerDto.TryParseFromBody(body);
+        if (!parsed || dto == null)
+            return BadRequest(parseError ?? "Invalid request data");
 
         var organization = await _organizationRepository.GetOrganizationByIdAsync(dto.OrganizationId);
         if (organization == null)

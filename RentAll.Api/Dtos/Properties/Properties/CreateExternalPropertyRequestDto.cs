@@ -28,14 +28,15 @@ public class CreateExternalPropertyRequestDto
         if (Properties.Count > MaxPropertiesPerRequest)
             return (false, $"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
 
+        var errors = new List<string>();
         for (var index = 0; index < Properties.Count; index++)
         {
             var (itemIsValid, itemError) = Properties[index].IsValid();
             if (!itemIsValid)
-                return (false, $"Properties[{index}]: {itemError}");
+                errors.Add($"Properties[{index}]: {itemError}");
         }
 
-        return (true, null);
+        return errors.Count == 0 ? (true, null) : (false, ExternalPropertyIntakeErrors.Join(errors));
     }
 
     public ExternalPropertyIntakeContext ToIntakeContext()

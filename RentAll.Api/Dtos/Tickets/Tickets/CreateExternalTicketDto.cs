@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json;
+using RentAll.Api.Dtos.External;
 
 namespace RentAll.Api.Dtos.Tickets.Tickets;
 
@@ -19,40 +21,66 @@ public class CreateExternalTicketDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        var errors = new List<string>();
         if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
+            errors.Add("OrganizationId is required");
         if (OfficeId <= 0)
-            return (false, "OfficeId is required");
-
+            errors.Add("OfficeId is required");
         if (string.IsNullOrWhiteSpace(FirstName))
-            return (false, "FirstName is required");
-
+            errors.Add("FirstName is required");
         if (string.IsNullOrWhiteSpace(LastName))
-            return (false, "LastName is required");
-
+            errors.Add("LastName is required");
         if (string.IsNullOrWhiteSpace(Location))
-            return (false, "Location is required");
-
+            errors.Add("Location is required");
         if (string.IsNullOrWhiteSpace(Email))
-            return (false, "Email is required");
-
+            errors.Add("Email is required");
         if (string.IsNullOrWhiteSpace(Phone))
-            return (false, "Phone is required");
-
+            errors.Add("Phone is required");
         if (string.IsNullOrWhiteSpace(Address))
-            return (false, "Address is required");
-
+            errors.Add("Address is required");
         if (HasPermissionToEnter == null)
-            return (false, "HasPermissionToEnter is required");
-
+            errors.Add("HasPermissionToEnter is required");
         if (string.IsNullOrWhiteSpace(IssueDescription))
-            return (false, "IssueDescription is required");
-
+            errors.Add("IssueDescription is required");
         if (CommunicationConsent == null)
-            return (false, "CommunicationConsent is required");
+            errors.Add("CommunicationConsent is required");
+        return errors.Count == 0 ? (true, null) : (false, ExternalIntakeErrors.Join(errors));
+    }
 
-        return (true, null);
+    public static (bool Success, CreateExternalTicketDto? Dto, string? ErrorMessage) TryParseFromBody(JsonElement body)
+    {
+        if (body.ValueKind != JsonValueKind.Object)
+            return (false, null, "Ticket data is required");
+
+        var errors = new List<string>();
+        ExternalIntakeErrors.CollectRequiredGuid(body, "organizationId", errors, "OrganizationId is required");
+        ExternalIntakeErrors.CollectRequiredPositiveInt(body, "officeId", errors, "OfficeId is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "firstName", errors, "FirstName is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "lastName", errors, "LastName is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "location", errors, "Location is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "email", errors, "Email is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "phone", errors, "Phone is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "address", errors, "Address is required");
+        ExternalIntakeErrors.CollectRequiredBool(body, "hasPermissionToEnter", errors, "HasPermissionToEnter is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "issueDescription", errors, "IssueDescription is required");
+        ExternalIntakeErrors.CollectRequiredBool(body, "communicationConsent", errors, "CommunicationConsent is required");
+        ExternalIntakeErrors.CollectOptionalBool(body, "smsConsent", errors);
+        if (errors.Count > 0)
+            return (false, null, ExternalIntakeErrors.Join(errors));
+
+        try
+        {
+            var dto = ExternalIntakeErrors.Deserialize<CreateExternalTicketDto>(body);
+            if (dto == null)
+                return (false, null, "Ticket data is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            return isValid ? (true, dto, null) : (false, null, errorMessage);
+        }
+        catch (JsonException ex)
+        {
+            return (false, null, ExternalIntakeErrors.FromJsonException(ex, body));
+        }
     }
 
     public Ticket ToModel(string code, Guid createdBy)

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using RentAll.Api.Dtos.External;
 using RentAll.Domain.Models.Leads;
 
 namespace RentAll.Api.Dtos.Leads.Owners;
@@ -39,31 +41,58 @@ public class CreateExternalLeadOwnerDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        var errors = new List<string>();
         if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
-
+            errors.Add("OrganizationId is required");
         if (OfficeId <= 0)
-            return (false, "OfficeId is required.");
-
+            errors.Add("OfficeId is required.");
         if (string.IsNullOrWhiteSpace(FirstName))
-            return (false, "FirstName is required");
-
+            errors.Add("FirstName is required");
         if (string.IsNullOrWhiteSpace(LastName))
-            return (false, "LastName is required");
-
+            errors.Add("LastName is required");
         if (string.IsNullOrWhiteSpace(Email))
-            return (false, "Email is required");
-
-        if (!LeadDtoValidation.IsValidEmail(Email))
-            return (false, "Email format is invalid.");
-
+            errors.Add("Email is required");
+        else if (!LeadDtoValidation.IsValidEmail(Email))
+            errors.Add("Email format is invalid.");
         if (string.IsNullOrWhiteSpace(Phone))
-            return (false, "Phone is required");
-
+            errors.Add("Phone is required");
         if (YearsOfExperienceWithRentals.HasValue && YearsOfExperienceWithRentals.Value < 0)
-            return (false, "YearsOfExperienceWithRentals cannot be negative.");
+            errors.Add("YearsOfExperienceWithRentals cannot be negative.");
+        return errors.Count == 0 ? (true, null) : (false, ExternalIntakeErrors.Join(errors));
+    }
 
-        return (true, null);
+    public static (bool Success, CreateExternalLeadOwnerDto? Dto, string? ErrorMessage) TryParseFromBody(JsonElement body)
+    {
+        if (body.ValueKind != JsonValueKind.Object)
+            return (false, null, "Owner lead data is required");
+
+        var errors = new List<string>();
+        ExternalIntakeErrors.CollectRequiredGuid(body, "organizationId", errors, "OrganizationId is required");
+        ExternalIntakeErrors.CollectRequiredPositiveInt(body, "officeId", errors, "OfficeId is required.");
+        ExternalIntakeErrors.CollectRequiredString(body, "firstName", errors, "FirstName is required");
+        ExternalIntakeErrors.CollectRequiredString(body, "lastName", errors, "LastName is required");
+        ExternalIntakeErrors.CollectRequiredEmail(body, "email", errors, "Email is required", "Email format is invalid.");
+        ExternalIntakeErrors.CollectRequiredString(body, "phone", errors, "Phone is required");
+        ExternalIntakeErrors.CollectOptionalNonNegativeInt(body, "yearsOfExperienceWithRentals", errors);
+        ExternalIntakeErrors.CollectOptionalDateOnly(body, "targetRentReadyDate", errors);
+        ExternalIntakeErrors.CollectOptionalStrings(body, ["locationOfProperty", "programInterest", "whatIsPromptingContact", "propertyGoals", "tellUsMoreAboutYourGoals", "tellUsMoreAboutProperty", "address", "city", "state", "zip", "numberOfBeds", "numberOfBaths", "approxSqFootage", "typeOfProperty", "propertyCode", "propertyOffice", "tellUsWhatYouLikeMostAboutYourProperty", "tellUsAnyDrawbacks", "preferredContactMethod", "timeDateForContact", "notes"], errors);
+        ExternalIntakeErrors.CollectOptionalBools(body, ["timeFrame", "emailPhoneConsent", "smsConsent"], errors);
+        if (errors.Count > 0)
+            return (false, null, ExternalIntakeErrors.Join(errors));
+
+        try
+        {
+            var dto = ExternalIntakeErrors.Deserialize<CreateExternalLeadOwnerDto>(body);
+            if (dto == null)
+                return (false, null, "Owner lead data is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            return isValid ? (true, dto, null) : (false, null, errorMessage);
+        }
+        catch (JsonException ex)
+        {
+            return (false, null, ExternalIntakeErrors.FromJsonException(ex, body));
+        }
     }
 
     public LeadOwner ToModel(Guid organizationId) =>
