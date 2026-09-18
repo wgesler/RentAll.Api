@@ -124,7 +124,7 @@ public class CreateExternalReservationDto
         else if (DepartureFee.Value < 0)
             errors.Add("departureFee must be zero or greater.");
         if (CheckInTimeId.HasValue && !Enum.IsDefined(typeof(CheckInTime), CheckInTimeId.Value))
-            errors.Add($"checkInTimeId must be 1=12PM through 6=5PM. Received {CheckInTimeId.Value}.");
+            errors.Add($"checkInTimeId must be 0=11AM through 6=5PM. Received {CheckInTimeId.Value}.");
         if (CheckOutTimeId.HasValue && !Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId.Value))
             errors.Add($"checkOutTimeId must be 1=8AM through 6=1PM. Received {CheckOutTimeId.Value}.");
         if (BillingMethodId.HasValue && !Enum.IsDefined(typeof(BillingMethod), BillingMethodId.Value))

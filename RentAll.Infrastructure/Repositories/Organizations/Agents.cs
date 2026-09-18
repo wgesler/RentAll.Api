@@ -39,17 +39,9 @@ public partial class OrganizationRepository
 
     public async Task<Agent?> GetAgentByCodeAsync(string agentCode, Guid organizationId)
     {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<AgentEntity>("Organization.Agent_GetByCode", new
-        {
-            AgentCode = agentCode,
-            OrganizationId = organizationId
-        });
-
-        if (res == null || !res.Any())
-            return null;
-
-        return ConvertEntityToModel(res.FirstOrDefault()!);
+        var agents = await GetAgentsByOrganizationIdAsync(organizationId);
+        return agents.FirstOrDefault(agent =>
+            string.Equals((agent.AgentCode ?? string.Empty).Trim(), agentCode.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<bool> ExistsAgentByCodeAsync(string agentCode, Guid organizationId)

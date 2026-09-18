@@ -416,7 +416,7 @@ Send the same `propertyCode` with changed fields inside `properties`:
 
 - Identity: `referenceNo` (upsert key)
 - People: `company` contact (`entityTypeId` 3) when not Corporate/Platform
-- Dates/times: `billingStartDate`, `billingEndDate`, `checkInTimeId` (optional, default `5` = 4PM), `checkOutTimeId` (optional, default `4` = 11AM)
+- Dates/times: `billingStartDate`, `billingEndDate`, `checkInTimeId` (optional, default `5` = 4PM; `0` = 11AM through `6` = 5PM), `checkOutTimeId` (optional, default `4` = 11AM)
 - Access: `lockBoxCode`, `unitTenantCode`, `garageCode`
 - Billing: `billingMethodId` (0 Invoice, 1 CreditCard), `prorateTypeId` (optional, default `0` FirstMonth), `taxes`, `invoiceMethodId` (optional, default `0` Create), `collapseCharges`, `billedToEmployer` (Corporate only)
 - Pets: `hasPets` (optional, default `false`). If `true`, `petFee`, `numberOfPets`, and `petDescription` are required
