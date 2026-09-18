@@ -79,7 +79,7 @@ public static class ExternalPropertyIntakeErrors
         CollectEnum<PropertyStyle>(propertyElement, prefix, "propertyStyleId", errors, "0=Standard, 1=Corporate, 2=Vacation");
         CollectPropertyType(propertyElement, prefix, errors);
         CollectEnum<CheckInTime>(propertyElement, prefix, "checkInTimeId", errors, "0=11AM, 1=12PM, 2=1PM, 3=2PM, 4=3PM, 5=4PM, 6=5PM");
-        CollectEnum<CheckOutTime>(propertyElement, prefix, "checkOutTimeId", errors, "1=8AM, 2=9AM, 3=10AM, 4=11AM, 5=12PM, 6=1PM");
+        CollectEnum<CheckOutTime>(propertyElement, prefix, "checkOutTimeId", errors, "1=8AM, 2=9AM, 3=10AM, 4=11AM, 5=12PM, 6=1PM, 7=2PM, 8=3PM");
         CollectBedroomId(propertyElement, prefix, "bedroomId1", errors);
         CollectBedroomId(propertyElement, prefix, "bedroomId2", errors);
         CollectBedroomId(propertyElement, prefix, "bedroomId3", errors);

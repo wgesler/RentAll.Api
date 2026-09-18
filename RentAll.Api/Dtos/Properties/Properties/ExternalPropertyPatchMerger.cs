@@ -208,7 +208,7 @@ public static class ExternalPropertyPatchMerger
         if (presentFields.Contains("checkOutTimeId"))
         {
             if (!TryGetInt(body, "checkOutTimeId", out var checkOutTimeId) || !Enum.IsDefined(typeof(CheckOutTime), checkOutTimeId))
-                errors.Add($"checkOutTimeId must be 1=8AM through 6=1PM. Received {ExternalPropertyIntakeErrors.DescribeField(body, "checkOutTimeId")}.");
+                errors.Add($"checkOutTimeId must be 1=8AM through 8=3PM. Received {ExternalPropertyIntakeErrors.DescribeField(body, "checkOutTimeId")}.");
 
             updateDto.CheckOutTimeId = checkOutTimeId;
         }

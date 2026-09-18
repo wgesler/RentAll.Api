@@ -185,7 +185,7 @@ public class CreateExternalPropertyDto
         if (CheckInTimeId.HasValue && !Enum.IsDefined(typeof(CheckInTime), CheckInTimeId.Value))
             errors.Add($"checkInTimeId must be 0=11AM through 6=5PM. Received {CheckInTimeId.Value}.");
         if (CheckOutTimeId.HasValue && !Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId.Value))
-            errors.Add($"checkOutTimeId must be 1=8AM through 6=1PM. Received {CheckOutTimeId.Value}.");
+            errors.Add($"checkOutTimeId must be 1=8AM through 8=3PM. Received {CheckOutTimeId.Value}.");
 
         AddBedroomIdError(errors, BedroomId1, "bedroomId1");
         AddBedroomIdError(errors, BedroomId2, "bedroomId2");

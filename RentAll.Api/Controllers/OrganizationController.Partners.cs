@@ -14,8 +14,17 @@ public partial class OrganizationController
         try
         {
             var organizations = await _organizationRepository.GetOrganizationsWithPartnerFeatureAsync(resolvedOrganizationId.Value);
-            var partnersIn = await _organizationRepository.GetPartnersInByOrganizationIdAsync(resolvedOrganizationId.Value);
-            var partnersOut = await _organizationRepository.GetPartnersOutByOrganizationIdAsync(resolvedOrganizationId.Value);
+            IEnumerable<Guid> partnersIn = [];
+            IEnumerable<Guid> partnersOut = [];
+            try
+            {
+                partnersIn = await _organizationRepository.GetPartnersInByOrganizationIdAsync(resolvedOrganizationId.Value);
+                partnersOut = await _organizationRepository.GetPartnersOutByOrganizationIdAsync(resolvedOrganizationId.Value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Partner share tables are not available for organization {OrganizationId}", resolvedOrganizationId);
+            }
 
             return Ok(new OrganizationPartnerSettingsResponseDto
             {
@@ -78,7 +87,7 @@ public partial class OrganizationController
 
     private Guid? ResolvePartnerSettingsOrganizationId(Guid organizationId)
     {
-        if (!IsAdmin() && !IsSuperAdmin())
+        if (!IsAdmin() && !IsSuperAdmin() && !HasUserGroup(RoleType.PartnerAdmin))
             return null;
 
         if (IsSuperAdmin())

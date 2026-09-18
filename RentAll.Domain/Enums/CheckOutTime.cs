@@ -7,5 +7,7 @@ public enum CheckOutTime
     TenAM = 3,
     ElevenAM = 4,
     TwelvePM = 5,
-    OnePM = 6
+    OnePM = 6,
+    TwoPM = 7,
+    ThreePM = 8
 }
