@@ -71,7 +71,7 @@ public partial class PropertyRepository
 
     private async Task<Property?> AttachPropertyICalsIfMissingAsync(Property? property)
     {
-        if (property == null || property.ExternalCalendars.Count > 0)
+        if (property == null)
             return property;
 
         property.ExternalCalendars = (await GetPropertyICalsByPropertyIdAsync(property.PropertyId)).ToList();
