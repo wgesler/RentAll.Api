@@ -420,10 +420,10 @@ Send the same `propertyCode` with changed fields inside `properties`:
 - Access: `lockBoxCode`, `unitTenantCode`, `garageCode`
 - Billing: `billingMethodId` (0 Invoice, 1 CreditCard), `prorateTypeId` (optional, default `0` FirstMonth), `taxes`, `invoiceMethodId` (optional, default `0` Create), `collapseCharges`, `billedToEmployer` (Corporate only)
 - Pets: `hasPets` (optional, default `false`). If `true`, `petFee`, `numberOfPets`, and `petDescription` are required
-- Maid: `maidService` (optional, default `false`). If `true`, `maidServiceFee`, `frequencyId`, and `maidStartDate` are required. `maidEmail` remains optional
+- Maid: `maidService` (optional, default `false`). If `true`, `maidServiceFee`, `frequencyId`, and `maidStartDate` are required. Partners do not assign a maid user.
 - Extra fees: `extraFeeLines[]` with `feeDescription` and `costCodeId` required; `feeFrequencyId` defaults to `0` NA
 - Flags: `allowExtensions` (default true), `isActive` (default true), `notes`
-- Turnover: `aCleanerUserId`, `aCleaningDate`, `aCarpetUserId`, `aCarpetDate`, `aInspectorUserId`, `aInspectingDate`, and the matching `d*` departure fields
+- Turnover dates only: `aCleaningDate`, `aCarpetDate`, `aInspectingDate`, and the matching `d*` dates. Maid/inspector/cleaner user ids are not accepted and stay null.
 
 ### Example request
 

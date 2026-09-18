@@ -19,7 +19,7 @@ public class LoggingRepository : ILoggingRepository
     }
 
     #region Accounting Error Log
-    public async Task<List<AccountingError>> GetAllAccountingErrorsByOrganizationIdAsync(Guid organizationId)
+    public async Task<List<AccountingError>> GetAllAccountingErrorsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<AccountingErrorLogEntity>("Logging.AccountingErrorLog_GetAllByOrganizationId", new
@@ -38,7 +38,7 @@ public class LoggingRepository : ILoggingRepository
         }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
-    public async Task<AccountingError?> GetAccountingErrorByIdAsync(Guid accountingErrorId, Guid organizationId)
+    public async Task<AccountingError?> GetAccountingErrorByIdAsync(Guid accountingErrorId, Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<AccountingErrorLogEntity>("Logging.AccountingErrorLog_GetById", new
@@ -71,7 +71,7 @@ public class LoggingRepository : ILoggingRepository
     #endregion
 
     #region Accounting Log
-    public async Task<List<AccountingLog>> GetAllAccountingLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task<List<AccountingLog>> GetAllAccountingLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<AccountingLogEntity>("Logging.AccountingLog_GetAllByOrganizationId", new
@@ -90,7 +90,7 @@ public class LoggingRepository : ILoggingRepository
         }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
-    public async Task<AccountingLog?> GetAccountingLogByIdAsync(int id, Guid organizationId)
+    public async Task<AccountingLog?> GetAccountingLogByIdAsync(int id, Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<AccountingLogEntity>("Logging.AccountingLog_GetById", new
@@ -142,7 +142,7 @@ public class LoggingRepository : ILoggingRepository
         });
     }
 
-    public async Task<List<ApplicationLog>> GetAllApplicationLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task<List<ApplicationLog>> GetAllApplicationLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<ApplicationLogEntity>("Logging.ApplicationLog_GetAllByOrganizationId", new
@@ -161,7 +161,7 @@ public class LoggingRepository : ILoggingRepository
         }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
-    public async Task<ApplicationLog?> GetApplicationLogByIdAsync(int id, Guid organizationId)
+    public async Task<ApplicationLog?> GetApplicationLogByIdAsync(int id, Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<ApplicationLogEntity>("Logging.ApplicationLog_GetById", new
@@ -206,7 +206,7 @@ public class LoggingRepository : ILoggingRepository
         });
     }
 
-    public async Task<List<DatabaseErrorLog>> GetAllDatabaseErrorLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task<List<DatabaseErrorLog>> GetAllDatabaseErrorLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<DatabaseErrorLogEntity>("Logging.DatabaseErrorLog_GetAllByOrganizationId", new
@@ -225,7 +225,7 @@ public class LoggingRepository : ILoggingRepository
         }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
-    public async Task<DatabaseErrorLog?> GetDatabaseErrorLogByIdAsync(int id, Guid organizationId)
+    public async Task<DatabaseErrorLog?> GetDatabaseErrorLogByIdAsync(int id, Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<DatabaseErrorLogEntity>("Logging.DatabaseErrorLog_GetById", new
@@ -270,7 +270,7 @@ public class LoggingRepository : ILoggingRepository
         });
     }
 
-    public async Task<List<LoggingErrorLog>> GetAllGeneralErrorLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task<List<LoggingErrorLog>> GetAllGeneralErrorLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<GeneralErrorLogEntity>("Logging.GeneralErrorLog_GetAllByOrganizationId", new
@@ -289,7 +289,7 @@ public class LoggingRepository : ILoggingRepository
         }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
-    public async Task<LoggingErrorLog?> GetGeneralErrorLogByIdAsync(int id, Guid organizationId)
+    public async Task<LoggingErrorLog?> GetGeneralErrorLogByIdAsync(int id, Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<GeneralErrorLogEntity>("Logging.GeneralErrorLog_GetById", new
@@ -340,7 +340,7 @@ public class LoggingRepository : ILoggingRepository
         });
     }
 
-    public async Task<List<PropertyUploadLog>> GetAllPropertyUploadLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task<List<PropertyUploadLog>> GetAllPropertyUploadLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<PropertyUploadLogEntity>("Logging.PropertyUploadLog_GetAllByOrganizationId", new
@@ -359,7 +359,7 @@ public class LoggingRepository : ILoggingRepository
         }, commandTimeout: BulkDeleteCommandTimeoutSeconds);
     }
 
-    public async Task<PropertyUploadLog?> GetPropertyUploadLogByIdAsync(int id, Guid organizationId)
+    public async Task<PropertyUploadLog?> GetPropertyUploadLogByIdAsync(int id, Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<PropertyUploadLogEntity>("Logging.PropertyUploadLog_GetById", new

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Tickets.Tickets;
+using RentAll.Api.Services;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
@@ -37,6 +38,17 @@ public partial class TicketController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating external ticket intake request");
+            var saveError = ex.InnerException?.Message ?? ex.Message;
+            if (string.IsNullOrWhiteSpace(saveError))
+                saveError = "An error occurred while creating the ticket";
+            await _externalPropertyUploadLogService.LogExternalSaveFailureAsync(
+                dto.OrganizationId,
+                dto.OfficeId,
+                null,
+                null,
+                PropertyUploadLogEvents.TicketCreate,
+                PropertyUploadLogOperations.CreateTicket,
+                saveError);
             return ServerError("An error occurred while creating the ticket");
         }
     }

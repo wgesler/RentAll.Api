@@ -11,6 +11,10 @@ public static class PropertyUploadLogEvents
     public const string PhotoImportQueue = "PhotoImportQueue";
     public const string PhotoImportStatus = "PhotoImportStatus";
     public const string Photo = "Photo";
+    public const string ReservationCreate = "ReservationCreate";
+    public const string ReservationUpdate = "ReservationUpdate";
+    public const string LeadCreate = "LeadCreate";
+    public const string TicketCreate = "TicketCreate";
 }
 
 public static class PropertyUploadLogOperations
@@ -19,6 +23,9 @@ public static class PropertyUploadLogOperations
     public const string UpdateProperty = "PUT /property/external";
     public const string QueuePhotoImport = "POST|PUT /property/external (photos)";
     public const string GetPhotoImportStatus = "GET /property/external/{propertyCode}/photos/import/{importId}";
+    public const string CreateReservation = "POST /reservation/external";
+    public const string CreateLead = "POST /leads/external";
+    public const string CreateTicket = "POST /ticket/external";
 }
 
 public static class PropertyUploadLogStatuses
@@ -142,6 +149,20 @@ public class ExternalPropertyUploadLogService
             Url = TruncateUrl(url),
             Message = TruncateMessage($"Photo failed for {propertyCode} (sort order {sortOrder}): {errorMessage}")
         });
+    }
+
+    public Task LogExternalSaveFailureAsync(Guid organizationId, int? officeId, Guid? vendorId, string? propertyCode, string eventType, string operation, string errorMessage, int httpStatusCode = StatusCodes.Status500InternalServerError)
+    {
+        return LogExternalApiAttemptAsync(new ExternalPropertyApiAttemptLog
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            VendorId = vendorId,
+            PropertyCode = propertyCode,
+            EventType = eventType,
+            Operation = operation,
+            Detail = errorMessage
+        }, httpStatusCode, errorMessage);
     }
 
     public Task LogPhotoImportFinishedAsync(Guid organizationId, int officeId, Guid vendorId, Guid propertyId, string propertyCode, Guid importId, string status, int completedCount, int failedCount)

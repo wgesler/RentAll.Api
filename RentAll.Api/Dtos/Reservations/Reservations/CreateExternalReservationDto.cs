@@ -37,7 +37,6 @@ public class CreateExternalReservationDto
     public decimal? MaidServiceFee { get; set; }
     public int? FrequencyId { get; set; }
     public DateOnly? MaidStartDate { get; set; }
-    public string? MaidEmail { get; set; }
     public decimal? Taxes { get; set; }
     public string? Notes { get; set; }
     public bool? AllowExtensions { get; set; }
@@ -45,17 +44,11 @@ public class CreateExternalReservationDto
     public bool? CollapseCharges { get; set; }
     public int? InvoiceMethodId { get; set; }
     public bool? IsActive { get; set; }
-    public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
-    public Guid? aCarpetUserId { get; set; }
     public DateOnly? aCarpetDate { get; set; }
-    public Guid? aInspectorUserId { get; set; }
     public DateOnly? aInspectingDate { get; set; }
-    public Guid? dCleanerUserId { get; set; }
     public DateOnly? dCleaningDate { get; set; }
-    public Guid? dCarpetUserId { get; set; }
     public DateOnly? dCarpetDate { get; set; }
-    public Guid? dInspectorUserId { get; set; }
     public DateOnly? dInspectingDate { get; set; }
     public ExternalPropertyContactDto? Contact { get; set; }
     public ExternalPropertyContactDto? Company { get; set; }
@@ -234,8 +227,7 @@ public class CreateExternalReservationDto
         Property property,
         IReadOnlyList<Guid> contactIds,
         Guid? companyId,
-        Guid? agentId,
-        Guid? maidUserId)
+        Guid? agentId)
     {
         var billingTypeId = BillingTypeId!.Value;
         var hasPets = ResolvedHasPets;
@@ -281,24 +273,24 @@ public class CreateExternalReservationDto
             MaidServiceFee = maidService ? MaidServiceFee!.Value : 0,
             FrequencyId = maidService ? FrequencyId!.Value : (int)FrequencyType.NA,
             MaidStartDate = maidService ? MaidStartDate!.Value : ArrivalDate,
-            MaidUserId = maidUserId,
+            MaidUserId = null,
             Taxes = Taxes ?? 0,
             Notes = Notes ?? string.Empty,
             AllowExtensions = AllowExtensions ?? true,
             BilledToEmployer = reservationTypeId == (int)ReservationType.Corporate && (BilledToEmployer ?? false),
             CollapseCharges = CollapseCharges ?? false,
             InvoiceMethodId = InvoiceMethodId ?? (int)InvoiceMethod.Create,
-            aCleanerUserId = aCleanerUserId,
+            aCleanerUserId = null,
             aCleaningDate = aCleaningDate,
-            aCarpetUserId = aCarpetUserId,
+            aCarpetUserId = null,
             aCarpetDate = aCarpetDate,
-            aInspectorUserId = aInspectorUserId,
+            aInspectorUserId = null,
             aInspectingDate = aInspectingDate,
-            dCleanerUserId = dCleanerUserId,
+            dCleanerUserId = null,
             dCleaningDate = dCleaningDate,
-            dCarpetUserId = dCarpetUserId,
+            dCarpetUserId = null,
             dCarpetDate = dCarpetDate,
-            dInspectorUserId = dInspectorUserId,
+            dInspectorUserId = null,
             dInspectingDate = dInspectingDate,
             IsActive = IsActive ?? true
         };
@@ -309,10 +301,9 @@ public class CreateExternalReservationDto
         Property property,
         IReadOnlyList<Guid> contactIds,
         Guid? companyId,
-        Guid? agentId,
-        Guid? maidUserId)
+        Guid? agentId)
     {
-        var create = ToCreateReservationDto(reservation.OrganizationId, reservation.OfficeId, property.PropertyId, property, contactIds, companyId, agentId, maidUserId);
+        var create = ToCreateReservationDto(reservation.OrganizationId, reservation.OfficeId, property.PropertyId, property, contactIds, companyId, agentId);
         reservation.AgentId = create.AgentId;
         reservation.ContactIds = create.ContactIds;
         reservation.CompanyId = create.CompanyId;
@@ -346,7 +337,6 @@ public class CreateExternalReservationDto
         reservation.MaidServiceFee = create.MaidServiceFee;
         reservation.Frequency = (FrequencyType)create.FrequencyId;
         reservation.MaidStartDate = create.MaidStartDate;
-        reservation.MaidUserId = create.MaidUserId;
         reservation.Taxes = create.Taxes;
         reservation.Notes = create.Notes;
         reservation.ExtraFeeLines = ExtraFeeLines.Select(line => line.ToModel()).ToList();
@@ -354,17 +344,11 @@ public class CreateExternalReservationDto
         reservation.BilledToEmployer = create.BilledToEmployer;
         reservation.CollapseCharges = create.CollapseCharges;
         reservation.InvoiceMethod = (InvoiceMethod)create.InvoiceMethodId;
-        reservation.aCleanerUserId = create.aCleanerUserId;
         reservation.aCleaningDate = create.aCleaningDate;
-        reservation.aCarpetUserId = create.aCarpetUserId;
         reservation.aCarpetDate = create.aCarpetDate;
-        reservation.aInspectorUserId = create.aInspectorUserId;
         reservation.aInspectingDate = create.aInspectingDate;
-        reservation.dCleanerUserId = create.dCleanerUserId;
         reservation.dCleaningDate = create.dCleaningDate;
-        reservation.dCarpetUserId = create.dCarpetUserId;
         reservation.dCarpetDate = create.dCarpetDate;
-        reservation.dInspectorUserId = create.dInspectorUserId;
         reservation.dInspectingDate = create.dInspectingDate;
         reservation.IsActive = create.IsActive;
     }

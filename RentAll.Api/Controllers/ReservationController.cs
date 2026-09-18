@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Services;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
@@ -18,8 +19,8 @@ namespace RentAll.Api.Controllers
         private readonly IPropertyRepository _propertyRepository;
         private readonly IContactRepository _contactRepository;
         private readonly IContactManager _contactManager;
-        private readonly IUserRepository _userRepository;
         private readonly IExternalApiKeyService _externalApiKeyService;
+        private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
         private readonly ILogger<ReservationController> _logger;
 
         public ReservationController(
@@ -30,8 +31,8 @@ namespace RentAll.Api.Controllers
             IPropertyRepository propertyRepository,
             IContactRepository contactRepository,
             IContactManager contactManager,
-            IUserRepository userRepository,
             IExternalApiKeyService externalApiKeyService,
+            ExternalPropertyUploadLogService externalPropertyUploadLogService,
             ILogger<ReservationController> logger)
         {
             _organizationManager = organizationManager;
@@ -41,8 +42,8 @@ namespace RentAll.Api.Controllers
             _propertyRepository = propertyRepository;
             _contactRepository = contactRepository;
             _contactManager = contactManager;
-            _userRepository = userRepository;
             _externalApiKeyService = externalApiKeyService;
+            _externalPropertyUploadLogService = externalPropertyUploadLogService;
             _logger = logger;
         }
     }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Leads.General;
 using RentAll.Api.Dtos.Leads.Partners;
 using RentAll.Api.Dtos.Leads.Rentals;
+using RentAll.Api.Services;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
@@ -37,6 +38,7 @@ public partial class LeadController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating external general lead intake request");
+            await LogExternalLeadSaveFailureAsync(dto.OrganizationId, dto.OfficeId, ex);
             return ServerError("An error occurred while creating the general lead");
         }
     }
@@ -72,6 +74,7 @@ public partial class LeadController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating external rental lead intake request");
+            await LogExternalLeadSaveFailureAsync(dto.OrganizationId, dto.OfficeId, ex);
             return ServerError("An error occurred while creating the rental lead");
         }
     }
@@ -107,6 +110,7 @@ public partial class LeadController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating external partner lead intake request");
+            await LogExternalLeadSaveFailureAsync(dto.OrganizationId, dto.OfficeId, ex);
             return ServerError("An error occurred while creating the partner lead");
         }
     }
@@ -142,6 +146,7 @@ public partial class LeadController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating external owner lead intake request");
+            await LogExternalLeadSaveFailureAsync(dto.OrganizationId, dto.OfficeId, ex);
             return ServerError("An error occurred while creating the owner lead");
         }
     }
@@ -155,6 +160,22 @@ public partial class LeadController
             return BadRequest("Invalid OfficeId for OrganizationId.");
 
         return null;
+    }
+
+    private Task LogExternalLeadSaveFailureAsync(Guid organizationId, int officeId, Exception ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        if (string.IsNullOrWhiteSpace(message))
+            message = "An error occurred while saving the lead";
+
+        return _externalPropertyUploadLogService.LogExternalSaveFailureAsync(
+            organizationId,
+            officeId,
+            null,
+            null,
+            PropertyUploadLogEvents.LeadCreate,
+            PropertyUploadLogOperations.CreateLead,
+            message);
     }
 
     #endregion

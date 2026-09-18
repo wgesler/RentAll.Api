@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Services;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
@@ -26,6 +27,7 @@ public partial class ReservationController
             return partnerError;
 
         var response = new ExternalReservationBatchResponseDto();
+        var hadException = false;
         for (var index = 0; index < reservations.Count; index++)
         {
             var dto = reservations[index];
@@ -47,17 +49,27 @@ public partial class ReservationController
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting external reservation {PropertyCode} {ReferenceNo}", item.PropertyCode, item.ReferenceNo);
+                hadException = true;
+                _logger.LogError(ex, "[ExternalReservationTrace] Error upserting external reservation {PropertyCode} {ReferenceNo}", item.PropertyCode, item.ReferenceNo);
                 item.Success = false;
-                item.ErrorMessage = "An error occurred while saving the reservation";
+                item.ErrorMessage = GetExternalReservationSaveErrorMessage(ex);
+                await TryLogExternalReservationSaveFailureAsync(context, item, StatusCodes.Status500InternalServerError);
+                response.Results.Add(item);
+                continue;
             }
+
+            if (!item.Success)
+                await TryLogExternalReservationSaveFailureAsync(context, item, StatusCodes.Status400BadRequest);
 
             response.Results.Add(item);
         }
 
         response.SuccessCount = response.Results.Count(result => result.Success);
         response.FailureCount = response.Results.Count - response.SuccessCount;
-        return Ok(response);
+        if (response.FailureCount == 0)
+            return Ok(response);
+
+        return StatusCode(hadException ? StatusCodes.Status500InternalServerError : StatusCodes.Status400BadRequest, response);
     }
 
     private async Task<(bool Success, bool Updated, ReservationResponseDto? Reservation, string? ErrorMessage)> UpsertExternalReservationAsync(
@@ -88,10 +100,6 @@ public partial class ReservationController
         if (!agentOk)
             return (false, false, null, agentError);
 
-        var (maidOk, maidUserId, maidError) = await ResolveExternalMaidAsync(dto, context);
-        if (!maidOk)
-            return (false, false, null, maidError);
-
         var referenceNo = string.IsNullOrWhiteSpace(dto.ReferenceNo) ? null : dto.ReferenceNo.Trim();
         Reservation? existing = null;
         if (referenceNo != null)
@@ -104,13 +112,13 @@ public partial class ReservationController
 
         if (existing != null)
         {
-            dto.ApplyToExisting(existing, property, contactIds, companyId, agentId, maidUserId);
+            dto.ApplyToExisting(existing, property, contactIds, companyId, agentId);
             existing.ModifiedBy = SystemUserId;
             var updated = await _reservationRepository.UpdateByIdAsync(existing);
             return (true, true, new ReservationResponseDto(updated), null);
         }
 
-        var createDto = dto.ToCreateReservationDto(context.OrganizationId, property.OfficeId, property.PropertyId, property, contactIds, companyId, agentId, maidUserId);
+        var createDto = dto.ToCreateReservationDto(context.OrganizationId, property.OfficeId, property.PropertyId, property, contactIds, companyId, agentId);
         createDto.ExtraFeeLines = [];
         var (isValid, validationError) = createDto.IsValid();
         if (!isValid)
@@ -175,21 +183,6 @@ public partial class ReservationController
         return (false, null, "agentCode is required.");
     }
 
-    private async Task<(bool Success, Guid? MaidUserId, string? ErrorMessage)> ResolveExternalMaidAsync(
-        CreateExternalReservationDto dto,
-        ExternalPropertyIntakeContext context)
-    {
-        if (!string.IsNullOrWhiteSpace(dto.MaidEmail))
-        {
-            var user = await _userRepository.GetUserByEmailAsync(dto.MaidEmail.Trim());
-            if (user == null || user.OrganizationId != context.OrganizationId)
-                return (false, null, $"maidEmail '{dto.MaidEmail.Trim()}' was not found.");
-            return (true, user.UserId, null);
-        }
-
-        return (true, null, null);
-    }
-
     private async Task<IActionResult?> ValidateExternalReservationOrganizationAccessAsync(Guid organizationId)
     {
         var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
@@ -227,5 +220,57 @@ public partial class ReservationController
             return BadRequest("Invalid VendorId");
 
         return null;
+    }
+
+    private async Task TryLogExternalReservationSaveFailureAsync(ExternalPropertyIntakeContext context, ExternalReservationBatchItemResultDto item, int httpStatusCode)
+    {
+        var errorMessage = string.IsNullOrWhiteSpace(item.ErrorMessage) ? "Reservation save failed" : item.ErrorMessage;
+        var detail = string.IsNullOrWhiteSpace(item.ReferenceNo)
+            ? errorMessage
+            : $"{errorMessage} ReferenceNo={item.ReferenceNo}.";
+        try
+        {
+            await _externalPropertyUploadLogService.LogExternalSaveFailureAsync(
+                context.OrganizationId,
+                context.OfficeId,
+                context.PartnerVendorId,
+                item.PropertyCode,
+                PropertyUploadLogEvents.ReservationCreate,
+                PropertyUploadLogOperations.CreateReservation,
+                detail,
+                httpStatusCode);
+        }
+        catch (Exception logEx)
+        {
+            _logger.LogError(logEx, "[ExternalReservationTrace] Property Uploads log failed PropertyCode={PropertyCode} ReferenceNo={ReferenceNo}", item.PropertyCode, item.ReferenceNo);
+            item.ErrorMessage = $"{errorMessage} | Property Uploads log failed: {logEx.Message}";
+        }
+    }
+
+    private static string GetExternalReservationSaveErrorMessage(Exception ex)
+    {
+        var parts = new List<string>();
+        CollectExceptionMessages(ex, parts);
+        var message = string.Join(" | ", parts.Distinct(StringComparer.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(message))
+            return ex.GetType().Name;
+
+        return message.Length > 1500 ? message[..1500] : message;
+    }
+
+    private static void CollectExceptionMessages(Exception ex, List<string> parts)
+    {
+        if (ex is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.InnerExceptions)
+                CollectExceptionMessages(inner, parts);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ex.Message))
+            parts.Add(ex.Message);
+
+        if (ex.InnerException != null)
+            CollectExceptionMessages(ex.InnerException, parts);
     }
 }

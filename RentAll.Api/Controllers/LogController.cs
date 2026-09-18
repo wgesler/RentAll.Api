@@ -23,7 +23,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var rows = await _loggingRepository.GetAllAccountingErrorsByOrganizationIdAsync(CurrentOrganizationId);
+            var rows = await _loggingRepository.GetAllAccountingErrorsByOrganizationIdAsync(LogQueryOrganizationId());
             var response = rows.Select(row => new AccountingErrorLogResponseDto(row)).ToList();
             return Ok(response);
         }
@@ -34,7 +34,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var row = await _loggingRepository.GetAccountingErrorByIdAsync(accountingErrorId, CurrentOrganizationId);
+            var row = await _loggingRepository.GetAccountingErrorByIdAsync(accountingErrorId, LogQueryOrganizationId());
             if (row == null)
                 return NotFound("AccountingError record was not found.");
 
@@ -59,7 +59,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var rows = await _loggingRepository.GetAllAccountingLogsByOrganizationIdAsync(CurrentOrganizationId);
+            var rows = await _loggingRepository.GetAllAccountingLogsByOrganizationIdAsync(LogQueryOrganizationId());
             var response = rows.Select(row => new AccountingLogResponseDto(row)).ToList();
             return Ok(response);
         }
@@ -70,7 +70,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var row = await _loggingRepository.GetAccountingLogByIdAsync(id, CurrentOrganizationId);
+            var row = await _loggingRepository.GetAccountingLogByIdAsync(id, LogQueryOrganizationId());
             if (row == null)
                 return NotFound("AccountingLog record was not found.");
 
@@ -95,7 +95,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var rows = await _loggingRepository.GetAllApplicationLogsByOrganizationIdAsync(CurrentOrganizationId);
+            var rows = await _loggingRepository.GetAllApplicationLogsByOrganizationIdAsync(LogQueryOrganizationId());
             var response = rows.Select(row => new ApplicationLogResponseDto(row)).ToList();
             return Ok(response);
         }
@@ -106,7 +106,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var row = await _loggingRepository.GetApplicationLogByIdAsync(id, CurrentOrganizationId);
+            var row = await _loggingRepository.GetApplicationLogByIdAsync(id, LogQueryOrganizationId());
             if (row == null)
                 return NotFound("ApplicationLog record was not found.");
 
@@ -131,7 +131,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var rows = await _loggingRepository.GetAllDatabaseErrorLogsByOrganizationIdAsync(CurrentOrganizationId);
+            var rows = await _loggingRepository.GetAllDatabaseErrorLogsByOrganizationIdAsync(LogQueryOrganizationId());
             var response = rows.Select(row => new DatabaseErrorLogResponseDto(row)).ToList();
             return Ok(response);
         }
@@ -142,7 +142,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var row = await _loggingRepository.GetDatabaseErrorLogByIdAsync(id, CurrentOrganizationId);
+            var row = await _loggingRepository.GetDatabaseErrorLogByIdAsync(id, LogQueryOrganizationId());
             if (row == null)
                 return NotFound("DatabaseError record was not found.");
 
@@ -167,7 +167,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var rows = await _loggingRepository.GetAllGeneralErrorLogsByOrganizationIdAsync(CurrentOrganizationId);
+            var rows = await _loggingRepository.GetAllGeneralErrorLogsByOrganizationIdAsync(LogQueryOrganizationId());
             var response = rows.Select(row => new GeneralErrorLogResponseDto(row)).ToList();
             return Ok(response);
         }
@@ -178,7 +178,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var row = await _loggingRepository.GetGeneralErrorLogByIdAsync(id, CurrentOrganizationId);
+            var row = await _loggingRepository.GetGeneralErrorLogByIdAsync(id, LogQueryOrganizationId());
             if (row == null)
                 return NotFound("GeneralError record was not found.");
 
@@ -203,7 +203,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var rows = await _loggingRepository.GetAllPropertyUploadLogsByOrganizationIdAsync(CurrentOrganizationId);
+            var rows = await _loggingRepository.GetAllPropertyUploadLogsByOrganizationIdAsync(LogQueryOrganizationId());
             var response = rows.Select(row => new PropertyUploadLogResponseDto(row)).ToList();
             return Ok(response);
         }
@@ -214,7 +214,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            var row = await _loggingRepository.GetPropertyUploadLogByIdAsync(id, CurrentOrganizationId);
+            var row = await _loggingRepository.GetPropertyUploadLogByIdAsync(id, LogQueryOrganizationId());
             if (row == null)
                 return NotFound("PropertyUploadLog record was not found.");
 
@@ -236,6 +236,14 @@ namespace RentAll.Api.Controllers
         private bool HasAdminAccess()
         {
             return IsAdmin() || IsSuperAdmin();
+        }
+
+        private Guid? LogQueryOrganizationId()
+        {
+            if (CurrentUser == SystemUserId || CurrentOrganizationId == SystemOrganizationId)
+                return null;
+
+            return CurrentOrganizationId;
         }
         #endregion
     }
