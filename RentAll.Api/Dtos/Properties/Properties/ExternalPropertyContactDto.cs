@@ -1,6 +1,5 @@
+using RentAll.Api.Dtos.Contacts.ContactCards;
 using RentAll.Domain;
-using RentAll.Domain.Enums;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
@@ -17,6 +16,7 @@ public class ExternalPropertyContactDto
     public string? Zip { get; set; }
     public int? OwnerTypeId { get; set; }
     public string? CompanyName { get; set; }
+    public UpsertContactCardDto? ContactCard { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(string fieldLabel)
     {
@@ -39,6 +39,17 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.zip is {Zip.Trim().Length} characters; max is 10. Received \"{Zip.Trim()}\".");
         if (!string.IsNullOrWhiteSpace(Phone) && Phone.Trim().Length > 25)
             errors.Add($"{fieldLabel}.phone is {Phone.Trim().Length} characters; max is 25. Received \"{Phone.Trim()}\".");
+
+        if (ContactCard != null && !ContactCard.IsEmpty())
+        {
+            if (!Enum.IsDefined(typeof(CardType), ContactCard.CardTypeId))
+                errors.Add($"{fieldLabel}.contactCard.cardTypeId must be 0=Visa, 1=MasterCard, 2=Discover, or 3=AmericanExpress. Received {ContactCard.CardTypeId}.");
+            if (string.IsNullOrWhiteSpace(ContactCard.CardName))
+                errors.Add($"{fieldLabel}.contactCard.cardName is required.");
+            if (string.IsNullOrWhiteSpace(ContactCard.CardNumber))
+                errors.Add($"{fieldLabel}.contactCard.cardNumber is required.");
+        }
+
         return errors;
     }
 

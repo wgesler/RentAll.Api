@@ -1,5 +1,4 @@
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Properties;

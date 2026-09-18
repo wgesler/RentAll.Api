@@ -122,7 +122,8 @@ public class AccountingManagerReservationBillingDateTests
             journalEntryRepository: null!,
             organizationManager: null!,
             contactRepository: null!,
-            featureFlagService: new EnabledFeatureFlagService());
+            featureFlagService: new EnabledFeatureFlagService(),
+            healthRepository: null!);
     }
 
     private sealed class EnabledFeatureFlagService : IFeatureFlagService

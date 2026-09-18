@@ -575,7 +575,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 journalEntryRepository.Object,
                 organizationManager.Object,
                 contactRepository: null!,
-                new AccountingManagerJournalEntryTestSupport.EnabledFeatureFlagService());
+                new AccountingManagerJournalEntryTestSupport.EnabledFeatureFlagService(),
+                healthRepository: null!);
         }
 
         private static CostCode ChargeCostCode(

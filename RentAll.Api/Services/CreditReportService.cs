@@ -1,15 +1,12 @@
-using System.Text.Json;
-using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
 using RentAll.Api.Dtos.Maintenances.Receipts;
 using RentAll.Domain.Constants;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Maintenances;
 using RentAll.Infrastructure.Services;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Services;
 

@@ -33,7 +33,8 @@ internal static class AccountingManagerJournalEntryTestSupport
             journalEntryRepository: null!,
             organizationManager: null!,
             contactRepository: null!,
-            featureFlagService: new EnabledFeatureFlagService());
+            featureFlagService: new EnabledFeatureFlagService(),
+            healthRepository: null!);
 
     internal static JournalEntryTestContext CreateJournalEntryTestContext(Reservation reservation)
         => new(reservation);
@@ -386,7 +387,8 @@ internal static class AccountingManagerJournalEntryTestSupport
                 journalEntryRepository.Object,
                 organizationManager.Object,
                 contactRepository: null!,
-                new EnabledFeatureFlagService());
+                new EnabledFeatureFlagService(),
+                healthRepository: null!);
         }
     }
 

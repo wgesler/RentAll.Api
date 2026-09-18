@@ -1,6 +1,6 @@
-using System.Text.Json;
 using RentAll.Api.Dtos.External;
 using RentAll.Domain.Models.Leads;
+using System.Text.Json;
 
 namespace RentAll.Api.Dtos.Leads.General;
 

@@ -1,7 +1,6 @@
+using RentAll.Domain;
 using System.Globalization;
 using System.Text.Json;
-using RentAll.Domain;
-using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
@@ -251,6 +250,37 @@ public static class ExternalPropertyIntakeErrors
         CollectMaxLength(element, contactPrefix, "city", 100, errors);
         if (ExternalPropertyIntakeJson.TryGetProperty(element, "ownerTypeId", out var ownerTypeElement) && ownerTypeElement.ValueKind != JsonValueKind.Null && !TryCoerceInt32(ownerTypeElement, out _))
             errors.Add($"{contactPrefix}.ownerTypeId must be an integer 0=Individual or 1=Company. Received {Describe(ownerTypeElement)}. Invalid values are ignored.");
+        CollectContactCard(element, contactPrefix, errors);
+    }
+
+    private static void CollectContactCard(JsonElement contact, string contactPrefix, List<string> errors)
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(contact, "contactCard", out var card) || card.ValueKind == JsonValueKind.Null)
+            return;
+
+        if (card.ValueKind != JsonValueKind.Object)
+        {
+            errors.Add($"{contactPrefix}.contactCard must be an object. Received {Describe(card)}.");
+            return;
+        }
+
+        var hasType = ExternalPropertyIntakeJson.TryGetProperty(card, "cardTypeId", out var typeElement) && typeElement.ValueKind != JsonValueKind.Null;
+        var cardName = ExternalPropertyIntakeJson.TryGetProperty(card, "cardName", out var nameElement) && nameElement.ValueKind == JsonValueKind.String
+            ? nameElement.GetString()?.Trim() ?? string.Empty
+            : string.Empty;
+        var cardNumber = ExternalPropertyIntakeJson.TryGetProperty(card, "cardNumber", out var numberElement) && numberElement.ValueKind == JsonValueKind.String
+            ? numberElement.GetString()?.Trim() ?? string.Empty
+            : string.Empty;
+
+        if (!hasType && cardName.Length == 0 && cardNumber.Length == 0)
+            return;
+
+        if (!hasType || !TryCoerceInt32(typeElement, out var cardTypeId) || !Enum.IsDefined(typeof(CardType), cardTypeId))
+            errors.Add($"{contactPrefix}.contactCard.cardTypeId must be 0=Visa, 1=MasterCard, 2=Discover, or 3=AmericanExpress. Received {(hasType ? Describe(typeElement) : "missing")}.");
+        if (cardName.Length == 0)
+            errors.Add($"{contactPrefix}.contactCard.cardName is required.");
+        if (cardNumber.Length == 0)
+            errors.Add($"{contactPrefix}.contactCard.cardNumber is required.");
     }
 
     private static void CollectPhotos(JsonElement body, string prefix, List<string> errors)

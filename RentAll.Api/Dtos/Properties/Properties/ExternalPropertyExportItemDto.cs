@@ -1,4 +1,3 @@
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Api.Dtos.Properties.Properties;

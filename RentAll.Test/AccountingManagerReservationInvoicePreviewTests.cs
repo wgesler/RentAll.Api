@@ -588,7 +588,8 @@ public class AccountingManagerReservationInvoicePreviewTests
             journalEntryRepository: null!,
             organizationManager: null!,
             contactRepository.Object,
-            new EnabledFeatureFlagService());
+            new EnabledFeatureFlagService(),
+            healthRepository: null!);
     }
 
     private sealed class EnabledFeatureFlagService : IFeatureFlagService

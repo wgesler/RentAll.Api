@@ -1,6 +1,6 @@
+using RentAll.Domain;
 using System.Globalization;
 using System.Text.Json;
-using RentAll.Domain;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 

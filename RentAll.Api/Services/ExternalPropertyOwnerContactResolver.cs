@@ -1,7 +1,7 @@
-using RentAll.Api.Dtos.Properties.Properties;
-using RentAll.Domain.Enums;
+using RentAll.Api.Dtos.Contacts.ContactCards;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Interfaces.Services;
 using System.Text.Json;
 
 namespace RentAll.Api.Services;
@@ -10,11 +10,13 @@ public class ExternalPropertyOwnerContactResolver
 {
     private readonly IContactRepository _contactRepository;
     private readonly IContactManager _contactManager;
+    private readonly IEncryptionService _encryptionService;
 
-    public ExternalPropertyOwnerContactResolver(IContactRepository contactRepository, IContactManager contactManager)
+    public ExternalPropertyOwnerContactResolver(IContactRepository contactRepository, IContactManager contactManager, IEncryptionService encryptionService)
     {
         _contactRepository = contactRepository;
         _contactManager = contactManager;
+        _encryptionService = encryptionService;
     }
 
     public async Task<(bool Success, Guid? Owner1Id, Guid? Owner2Id, Guid? Owner3Id, Guid? PropertyVendorContactId, string? ErrorMessage)> ResolveContactsAsync(CreateExternalPropertyDto dto, ExternalPropertyIntakeContext context, Guid currentUser)
@@ -119,7 +121,92 @@ public class ExternalPropertyOwnerContactResolver
         if (TryGetProperty(contactElement, "ownerTypeId", out var ownerTypeElement) && TryCoerceInt32(ownerTypeElement, out var ownerTypeId))
             contact.OwnerTypeId = ownerTypeId;
 
+        contact.ContactCard = TryGetContactCard(contactElement);
+
         return true;
+    }
+
+    private async Task ApplyContactCardAsync(Contact contact, UpsertContactCardDto? card, Guid currentUser)
+    {
+        if (card == null || card.IsEmpty())
+            return;
+
+        int? cardId;
+        if (contact.ContactCardId is > 0)
+        {
+            var existing = await _contactRepository.GetContactCardByIdAsync(contact.ContactCardId.Value, contact.OrganizationId, contact.OfficeId);
+            if (existing == null)
+                cardId = await CreateContactCardAsync(contact.OrganizationId, contact.OfficeId, card);
+            else
+            {
+                var updateDto = new UpdateContactCardDto
+                {
+                    ContactCardId = existing.ContactCardId,
+                    CardTypeId = card.CardTypeId,
+                    CardName = card.CardName,
+                    CardNumber = card.CardNumber
+                };
+                var model = updateDto.ToModel(contact.OrganizationId, contact.OfficeId);
+                byte[] encrypted;
+                if (string.IsNullOrWhiteSpace(card.CardNumber) || card.CardNumber.Contains('*', StringComparison.Ordinal))
+                {
+                    encrypted = Convert.FromBase64String(existing.CardNumber);
+                    model.LastFour = existing.LastFour;
+                }
+                else
+                {
+                    model.LastFour = ExtractLastFour(card.CardNumber);
+                    encrypted = await _encryptionService.EncryptAsync(card.CardNumber);
+                }
+
+                var updated = await _contactRepository.UpdateContactCardByIdAsync(model, encrypted);
+                cardId = updated.ContactCardId;
+            }
+        }
+        else
+        {
+            cardId = await CreateContactCardAsync(contact.OrganizationId, contact.OfficeId, card);
+        }
+
+        if (contact.ContactCardId == cardId)
+            return;
+
+        contact.ContactCardId = cardId;
+        contact.ModifiedBy = currentUser;
+        await _contactRepository.UpdateByIdAsync(contact);
+    }
+
+    private async Task<int> CreateContactCardAsync(Guid organizationId, int officeId, UpsertContactCardDto card)
+    {
+        var createDto = new CreateContactCardDto { CardTypeId = card.CardTypeId, CardName = card.CardName, CardNumber = card.CardNumber };
+        var model = createDto.ToModel(organizationId, officeId);
+        model.LastFour = ExtractLastFour(model.CardNumber);
+        var encrypted = await _encryptionService.EncryptAsync(model.CardNumber);
+        var created = await _contactRepository.CreateContactCardAsync(model, encrypted);
+        return created.ContactCardId;
+    }
+
+    private static UpsertContactCardDto? TryGetContactCard(JsonElement contactElement)
+    {
+        if (!TryGetProperty(contactElement, "contactCard", out var cardElement) || cardElement.ValueKind != JsonValueKind.Object)
+            return null;
+
+        var card = new UpsertContactCardDto
+        {
+            CardName = TryGetTrimmedString(cardElement, "cardName") ?? string.Empty,
+            CardNumber = TryGetTrimmedString(cardElement, "cardNumber") ?? string.Empty
+        };
+
+        if (TryGetProperty(cardElement, "cardTypeId", out var typeElement) && TryCoerceInt32(typeElement, out var cardTypeId))
+            card.CardTypeId = cardTypeId;
+
+        return card.IsEmpty() ? null : card;
+    }
+
+    private static string ExtractLastFour(string cardNumber)
+    {
+        var digits = new string((cardNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+        return digits.Length <= 4 ? digits : digits[^4..];
     }
 
     public static (bool Success, ExternalPropertyIntakeContext? Context, string? ErrorMessage) TryParseIntakeContext(JsonElement body)
@@ -161,11 +248,13 @@ public class ExternalPropertyOwnerContactResolver
 
             owner.ApplyToExistingOwnerContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
+            await ApplyContactCardAsync(updatedContact, owner.ContactCard, currentUser);
             return (true, updatedContact.ContactId, null);
         }
 
         var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)EntityType.Owner);
         var createdContact = await _contactRepository.CreateAsync(owner.ToNewOwnerContactModel(organizationId, officeId, code, currentUser));
+        await ApplyContactCardAsync(createdContact, owner.ContactCard, currentUser);
         return (true, createdContact.ContactId, null);
     }
 
@@ -184,11 +273,13 @@ public class ExternalPropertyOwnerContactResolver
 
             vendor.ApplyToExistingVendorContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
+            await ApplyContactCardAsync(updatedContact, vendor.ContactCard, currentUser);
             return (true, updatedContact.ContactId, null);
         }
 
         var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)EntityType.Vendor);
         var createdContact = await _contactRepository.CreateAsync(vendor.ToNewVendorContactModel(organizationId, officeId, code, currentUser));
+        await ApplyContactCardAsync(createdContact, vendor.ContactCard, currentUser);
         return (true, createdContact.ContactId, null);
     }
 

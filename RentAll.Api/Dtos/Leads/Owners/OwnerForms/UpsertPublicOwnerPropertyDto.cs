@@ -1,4 +1,3 @@
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Domain.Models.Leads;
 using System.Globalization;
 

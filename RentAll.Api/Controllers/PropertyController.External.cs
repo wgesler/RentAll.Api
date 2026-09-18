@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
 using RentAll.Api.Services;
 using System.Text.Json;

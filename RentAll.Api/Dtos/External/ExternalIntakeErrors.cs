@@ -1,7 +1,7 @@
+using RentAll.Api.Dtos.Leads;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using RentAll.Api.Dtos.Leads;
 
 namespace RentAll.Api.Dtos.External;
 

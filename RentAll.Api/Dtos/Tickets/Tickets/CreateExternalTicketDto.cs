@@ -1,6 +1,6 @@
+using RentAll.Api.Dtos.External;
 using System.Net;
 using System.Text.Json;
-using RentAll.Api.Dtos.External;
 
 namespace RentAll.Api.Dtos.Tickets.Tickets;
 

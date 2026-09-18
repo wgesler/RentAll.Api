@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Domain.Models;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Properties;

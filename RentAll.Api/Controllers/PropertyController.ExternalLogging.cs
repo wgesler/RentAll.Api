@@ -1,4 +1,3 @@
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Services;
 using System.Text.Json;
 
