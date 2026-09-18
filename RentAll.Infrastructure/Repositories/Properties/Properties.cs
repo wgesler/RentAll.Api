@@ -96,7 +96,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 OrganizationId = organizationId
             });
 
-            return MapPropertyWithICalUrls(headers, rows);
+            return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));
         }
 
         public async Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId)
@@ -107,7 +107,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyId = propertyId
             });
 
-            return MapPropertyWithICalUrls(headers, rows);
+            return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));
         }
 
         public async Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId)
@@ -119,7 +119,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 OrganizationId = organizationId
             });
 
-            return MapPropertyWithICalUrls(headers, rows);
+            return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));
         }
 
         public async Task<Property?> GetPropertyByCodeIncludingDeletedAsync(string propertyCode, Guid organizationId, int officeId)
@@ -132,7 +132,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 OfficeId = officeId
             });
 
-            return MapPropertyWithICalUrls(headers, rows);
+            return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));
         }
 
         public async Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListByOrganizationIdAsync(Guid organizationId)
@@ -154,7 +154,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 PropertyCode = propertyCode
             });
 
-            return MapPropertyWithICalUrls(headers, rows);
+            return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));
         }
 
         public async Task<bool> ExistsByPropertyCodeAsync(string propertyCode, Guid organizationId)

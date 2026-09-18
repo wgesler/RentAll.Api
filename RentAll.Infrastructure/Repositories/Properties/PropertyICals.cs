@@ -69,6 +69,15 @@ public partial class PropertyRepository
         }).ToList();
     }
 
+    private async Task<Property?> AttachPropertyICalsIfMissingAsync(Property? property)
+    {
+        if (property == null || property.ExternalCalendars.Count > 0)
+            return property;
+
+        property.ExternalCalendars = (await GetPropertyICalsByPropertyIdAsync(property.PropertyId)).ToList();
+        return property;
+    }
+
     internal static List<string> MapICalUrls(Guid propertyId, IEnumerable<PropertyICalEntity>? rows)
     {
         return NormalizeICalUrls((rows ?? []).Where(row => row.PropertyId == propertyId).Select(row => row.ICalUrl));
