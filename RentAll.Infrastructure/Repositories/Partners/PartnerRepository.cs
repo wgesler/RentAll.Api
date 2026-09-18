@@ -23,10 +23,13 @@ public class PartnerRepository : IPartnerRepository
         _dbConnectionString = appSettings.Value.DbConnections.Find(o => o.DbName.Equals("rentall", StringComparison.CurrentCultureIgnoreCase))!.ConnectionString;
     }
 
-    public async Task<IEnumerable<PropertyList>> GetAllPropertiesAsync()
+    public async Task<IEnumerable<PropertyList>> GetAllPropertiesAsync(Guid userId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Partner.Partner_GetAllProperties");
+        var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyListEntity, PropertyICalEntity>("Partner.Partner_GetAllProperties", new
+        {
+            UserId = userId
+        });
 
         return (headers ?? []).Select(header =>
         {
@@ -94,12 +97,13 @@ public class PartnerRepository : IPartnerRepository
         });
     }
 
-    public async Task<PartnerContact?> GetPartnerContactAsync(Guid propertyId)
+    public async Task<PartnerContact?> GetPartnerContactAsync(Guid propertyId, Guid userId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var res = await db.DapperProcQueryAsync<PartnerContactEntity>("Partner.Partner_GetPartnerContact", new
         {
-            PropertyId = propertyId
+            PropertyId = propertyId,
+            UserId = userId
         });
 
         var contact = res?.FirstOrDefault();

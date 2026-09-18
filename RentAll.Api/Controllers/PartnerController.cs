@@ -38,7 +38,7 @@ public class PartnerController : BaseController
     {
         try
         {
-            var properties = await _partnerRepository.GetAllPropertiesAsync();
+            var properties = await _partnerRepository.GetAllPropertiesAsync(CurrentUser);
             return Ok(properties.Select(p => new PropertyListResponseDto(p)));
         }
         catch (Exception ex)
@@ -92,7 +92,7 @@ public class PartnerController : BaseController
 
         try
         {
-            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId);
+            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId, CurrentUser);
             if (property == null)
                 return NotFound("Partner property not found");
 
@@ -113,7 +113,7 @@ public class PartnerController : BaseController
 
         try
         {
-            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId);
+            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId, CurrentUser);
             if (property == null)
                 return NotFound("Partner property not found");
 
@@ -149,7 +149,7 @@ public class PartnerController : BaseController
 
         try
         {
-            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId);
+            var property = await _propertyRepository.GetPartnerPropertyByIdAsync(propertyId, CurrentUser);
             if (property == null)
                 return NotFound("Partner property not found");
 
@@ -205,7 +205,7 @@ public class PartnerController : BaseController
 
         try
         {
-            var contact = await _partnerRepository.GetPartnerContactAsync(propertyId);
+            var contact = await _partnerRepository.GetPartnerContactAsync(propertyId, CurrentUser);
             if (contact == null)
                 return NotFound("Partner property contact not found");
 

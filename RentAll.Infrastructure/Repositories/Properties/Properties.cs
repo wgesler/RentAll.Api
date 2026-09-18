@@ -99,12 +99,13 @@ namespace RentAll.Infrastructure.Repositories.Properties
             return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));
         }
 
-        public async Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId)
+        public async Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId, Guid userId)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var (headers, rows) = await db.DapperProcQueryMultipleAsync<PropertyEntity, PropertyICalEntity>("Partner.Partner_GetPropertyById", new
             {
-                PropertyId = propertyId
+                PropertyId = propertyId,
+                UserId = userId
             });
 
             return await AttachPropertyICalsIfMissingAsync(MapPropertyWithICalUrls(headers, rows));

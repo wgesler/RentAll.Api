@@ -15,7 +15,7 @@ public interface IPropertyRepository
     Task<IEnumerable<PropertyList>> GetPropertyListByOwnerIdAsync(Guid ownerId, Guid organizationId, string officeAccess);
     Task<IEnumerable<PropertyReportData>> GetPropertyReportDataAsync(Guid organizationId, string officeIds, Guid? propertyId = null);
     Task<Property?> GetPropertyByIdAsync(Guid propertyId, Guid organizationId);
-    Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId);
+    Task<Property?> GetPartnerPropertyByIdAsync(Guid propertyId, Guid userId);
     Task<Property?> GetPropertyByCodeAsync(string propertyCode, Guid organizationId);
     Task<Property?> GetPropertyByCodeIncludingDeletedAsync(string propertyCode, Guid organizationId, int officeId);
     Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListByOrganizationIdAsync(Guid organizationId);
