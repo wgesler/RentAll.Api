@@ -9,6 +9,7 @@ using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Partners;
 using RentAll.Infrastructure.Entities.Properties;
+using RentAll.Infrastructure.Entities.Reservations;
 using RentAll.Infrastructure.Repositories.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Partners;
@@ -64,6 +65,20 @@ public class PartnerRepository : IPartnerRepository
         }).ToList();
     }
 
+    public async Task<IEnumerable<ReservationList>> GetReservationListByUserIdAsync(Guid userId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<ReservationListEntity>("Partner.Partner_GetReservationList", new
+        {
+            UserId = userId
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<ReservationList>();
+
+        return res.Select(ConvertReservationListEntityToModel);
+    }
+
     public async Task<IEnumerable<PartnerCityState>> GetListOfCitiesAsync()
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -99,6 +114,53 @@ public class PartnerRepository : IPartnerRepository
             Email = contact.Email
         };
     }
+
+    private static ReservationList ConvertReservationListEntityToModel(ReservationListEntity e) =>
+        new()
+        {
+            ReservationId = e.ReservationId,
+            ReservationCode = e.ReservationCode,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            NoticeStatusId = e.NoticeStatusId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            ContactId = e.ContactId,
+            ContactName = e.ContactName,
+            CompanyId = e.CompanyId,
+            TenantName = e.TenantName,
+            CompanyName = e.CompanyName,
+            AgentCode = e.AgentCode,
+            MonthlyRate = e.MonthlyRate,
+            DailyRate = e.DailyRate,
+            BillingRate = e.BillingRate,
+            BillingTypeId = e.BillingTypeId,
+            ArrivalDate = e.ArrivalDate,
+            DepartureDate = e.DepartureDate,
+            ReservationType = (ReservationType)e.ReservationTypeId,
+            ReservationStatus = (ReservationStatus)e.ReservationStatusId,
+            ReservationNotice = (ReservationNotice)e.ReservationNoticeId,
+            CurrentInvoiceNo = e.CurrentInvoiceNo,
+            HasPets = e.HasPets,
+            MaidUserId = e.MaidUserId,
+            MaidStartDate = e.MaidStartDate,
+            Frequency = (FrequencyType)e.FrequencyId,
+            MaidServiceFee = e.MaidServiceFee,
+            IsActive = e.IsActive,
+            CreatedOn = e.CreatedOn,
+            aCleanerUserId = e.aCleanerUserId,
+            aCleaningDate = e.aCleaningDate,
+            aCarpetUserId = e.aCarpetUserId,
+            aCarpetDate = e.aCarpetDate,
+            aInspectorUserId = e.aInspectorUserId,
+            aInspectingDate = e.aInspectingDate,
+            dCleanerUserId = e.dCleanerUserId,
+            dCleaningDate = e.dCleaningDate,
+            dCarpetUserId = e.dCarpetUserId,
+            dCarpetDate = e.dCarpetDate,
+            dInspectorUserId = e.dInspectorUserId,
+            dInspectingDate = e.dInspectingDate
+        };
 
     private static ExternalExportPropertyList ConvertExternalExportEntityToModel(ExternalExportPropertyListEntity e) =>
         new()

@@ -9,6 +9,7 @@ public interface IPartnerRepository
     Task<IEnumerable<PropertyList>> GetAllPropertiesAsync();
     Task<IEnumerable<ExternalExportPropertyList>> GetExternalExportListAsync();
     Task<IEnumerable<PropertyList>> GetActivePropertyListBySelectionCriteriaAsync(Guid userId);
+    Task<IEnumerable<ReservationList>> GetReservationListByUserIdAsync(Guid userId);
     Task<IEnumerable<PartnerCityState>> GetListOfCitiesAsync();
     Task<PartnerContact?> GetPartnerContactAsync(Guid propertyId);
 }

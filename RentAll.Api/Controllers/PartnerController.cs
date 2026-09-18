@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Partners;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
 using RentAll.Api.Dtos.Properties.PropertyShares;
+using RentAll.Api.Dtos.Reservations.Reservations;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Properties;
@@ -62,6 +63,24 @@ public class PartnerController : BaseController
         {
             _logger.LogError(ex, "Error getting partner properties by selection for user: {UserId}", CurrentUser);
             return ServerError("An error occurred while retrieving partner properties");
+        }
+    }
+
+    [HttpGet("reservations/user/{userId:guid}")]
+    public async Task<IActionResult> GetReservationListByUserSelection(Guid userId)
+    {
+        if (CurrentUser == Guid.Empty || CurrentUser != userId)
+            return Unauthorized();
+
+        try
+        {
+            var reservations = await _partnerRepository.GetReservationListByUserIdAsync(CurrentUser);
+            return Ok(reservations.Select(reservation => new ReservationListResponseDto(reservation)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting partner reservations by selection for user: {UserId}", CurrentUser);
+            return ServerError("An error occurred while retrieving partner reservations");
         }
     }
 
