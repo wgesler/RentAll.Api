@@ -39,6 +39,7 @@ namespace RentAll.Api.Controllers
 
                 var response = new OrganizationResponseDto(org);
                 response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(org.OrganizationId, null, org.LogoPath, ImageType.Logos);
+                await AttachCodeSequencesAsync(response);
 
                 return Ok(response);
             }
@@ -271,6 +272,14 @@ namespace RentAll.Api.Controllers
                 IsActive = true,
                 CreatedBy = CurrentUser
             });
+        }
+
+        private async Task AttachCodeSequencesAsync(OrganizationResponseDto response)
+        {
+            var sequences = await _organizationManager.GetCodeSequencesAsync(response.OrganizationId);
+            response.CodeSequences = (sequences ?? [])
+                .Select(sequence => new CodeSequenceResponseDto(sequence))
+                .ToList();
         }
         #endregion
     }

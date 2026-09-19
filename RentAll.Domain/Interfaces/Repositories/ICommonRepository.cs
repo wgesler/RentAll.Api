@@ -9,6 +9,7 @@ public interface ICommonRepository
     #endregion
 
     #region Code Sequence
+    Task<IEnumerable<CodeSequence>> GetCodeSequencesAsync(Guid organizationId);
     Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType);
     Task ResetCodeSequenceAsync(Guid organizationId, int entityTypeId, string entityType, int nextNumber = 0);
     #endregion

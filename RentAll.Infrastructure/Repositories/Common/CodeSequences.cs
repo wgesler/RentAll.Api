@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using RentAll.Domain.Models.Common;
 using RentAll.Infrastructure.Configuration;
 
 namespace RentAll.Infrastructure.Repositories.Common
@@ -6,6 +7,17 @@ namespace RentAll.Infrastructure.Repositories.Common
     public partial class CommonRepository
     {
         #region Selects
+        public async Task<IEnumerable<CodeSequence>> GetCodeSequencesAsync(Guid organizationId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<CodeSequence>("Organization.CodeSequence_Get", new
+            {
+                OrganizationId = organizationId
+            });
+
+            return res ?? Enumerable.Empty<CodeSequence>();
+        }
+
         public Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType)
         {
             return SqlDeadlockRetry.ExecuteAsync(async () =>

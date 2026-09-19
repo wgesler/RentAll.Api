@@ -27,6 +27,7 @@ public class OrganizationResponseDto
     public string? SendGridName { get; set; }
     public string? SuffixKeyName { get; set; }
     public bool IsActive { get; set; }
+    public List<CodeSequenceResponseDto> CodeSequences { get; set; } = [];
 
     public OrganizationResponseDto(Organization org)
     {

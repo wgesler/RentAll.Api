@@ -1,12 +1,14 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Domain.Models.Common;
 
 namespace RentAll.Domain.Managers;
 
 public class OrganizationManager : IOrganizationManager
 {
-    private const int CodeSequenceResetThreshold = 1_000_000;
+    private const int UniqueCodeAttemptLimit = 1_000_000;
+    private const int CodeSequenceResetThreshold = 1_000_000_000;
     private readonly Guid systemOrganizationId = Guid.Empty;
     private readonly ICommonRepository _commonRepository;
     private readonly IOrganizationRepository _organizationRepository;
@@ -21,7 +23,7 @@ public class OrganizationManager : IOrganizationManager
     {
         EntityType entityType = EntityType.Organization;
         var prefix = entityType.ToCode();
-        for (var attempt = 0; attempt < CodeSequenceResetThreshold; attempt++)
+        for (var attempt = 0; attempt < UniqueCodeAttemptLimit; attempt++)
         {
             int nextNumber = await GetNextEntityCodeNumberAsync(systemOrganizationId, entityType);
             var code = EntityCodeFormatting.Format(prefix, nextNumber);
@@ -39,6 +41,12 @@ public class OrganizationManager : IOrganizationManager
         var code = EntityCodeFormatting.Format(prefix, nextNumber);
 
         return code;
+    }
+
+    public async Task<IReadOnlyList<CodeSequence>> GetCodeSequencesAsync(Guid organizationId)
+    {
+        var sequences = await _commonRepository.GetCodeSequencesAsync(organizationId);
+        return (sequences ?? []).ToList();
     }
 
     public async Task ResetEntityCodeSequenceAsync(Guid organizationId, EntityType entityType, int nextNumber = 0)
