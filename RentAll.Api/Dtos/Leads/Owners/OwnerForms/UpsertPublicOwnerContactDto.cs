@@ -39,7 +39,7 @@ public class UpsertPublicOwnerContactDto
             Email = ResolveRequiredValue(Email, owner.Email),
             Rating = 0,
             IsInternational = false,
-            Markup = 25,
+            Markup = 0,
             RevenueSplitOwner = 75,
             RevenueSplitOffice = 25,
             WorkingCapitalBalance = 0,

@@ -263,7 +263,7 @@ namespace RentAll.Api.Controllers
                 Zip = organization.Zip,
                 Phone = organization.Phone,
                 Email = email,
-                Markup = 25,
+                Markup = 0,
                 RevenueSplitOwner = 75,
                 RevenueSplitOffice = 25,
                 WorkingCapitalBalance = 0,

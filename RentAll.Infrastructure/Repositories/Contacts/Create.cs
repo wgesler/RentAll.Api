@@ -51,7 +51,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 W9Path = contact.W9Path,
                 InsurancePath = contact.InsurancePath,
                 InsuranceExpiration = contact.InsuranceExpiration,
-                Markup = contact.Markup ?? 25,
+                Markup = contact.Markup ?? 0,
                 RevenueSplitOwner = contact.RevenueSplitOwner ?? 75,
                 RevenueSplitOffice = contact.RevenueSplitOffice ?? 25,
                 WorkingCapitalBalance = contact.WorkingCapitalBalance ?? 0,
