@@ -48,9 +48,6 @@ public static class EntityCodeFormatting
     {
         yield return trimmed;
 
-        if (trimmed.StartsWith("WO-", StringComparison.OrdinalIgnoreCase))
-            yield break;
-
         var padded = PadToNineDigits(trimmed);
         if (padded != null)
             yield return padded;
@@ -72,9 +69,6 @@ public static class EntityCodeFormatting
 
         var trimmed = code?.Trim();
         if (string.IsNullOrEmpty(trimmed))
-            return false;
-
-        if (trimmed.StartsWith("WO-", StringComparison.OrdinalIgnoreCase))
             return false;
 
         var firstHyphen = trimmed.IndexOf('-');

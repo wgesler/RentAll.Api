@@ -18,12 +18,15 @@ public class EntityCodeFormattingTests
             Assert.Contains(value, alternates);
     }
 
-    [Fact]
-    public void GetLoginPasswordAlternates_SkipsWorkOrderCodes()
+    [Theory]
+    [InlineData("WO-00123", "WO-00123", "WO-000000123", "WO-000123")]
+    [InlineData("WO-000000123", "WO-000000123", "WO-000123")]
+    public void GetLoginPasswordAlternates_IncludesWorkOrderSixAndNineDigitForms(string input, params string[] expected)
     {
-        var alternates = EntityCodeFormatting.GetLoginPasswordAlternates("WO-00123").ToArray();
+        var alternates = EntityCodeFormatting.GetLoginPasswordAlternates(input).ToArray();
 
-        Assert.Single(alternates);
-        Assert.Equal("WO-00123", alternates[0]);
+        Assert.Equal(expected.Length, alternates.Length);
+        foreach (var value in expected)
+            Assert.Contains(value, alternates);
     }
 }
