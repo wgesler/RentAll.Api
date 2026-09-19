@@ -168,6 +168,7 @@ public partial class AccountingManager
             ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
         }
 
+        await TryAddCompanyMarkupLedgerLineAsync(reservation, ledgerLines, costCodeById);
         return ledgerLines;
     }
 
@@ -237,6 +238,71 @@ public partial class AccountingManager
         if (ledgerLine.CostCodeId > 0 && costCodeById.TryGetValue(ledgerLine.CostCodeId, out var costCode))
             ledgerLine.TransactionType = costCode.TransactionType;
     }
+
+    private async Task TryAddCompanyMarkupLedgerLineAsync(
+        Reservation reservation,
+        List<LedgerLine> ledgerLines,
+        IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
+        if (companyId == null || ledgerLines.Count == 0)
+            return;
+
+        if (ledgerLines.Any(IsCompanyMarkupLedgerLine))
+            return;
+
+        var rentLines = ledgerLines.Where(IsRentalFeeLedgerLine).ToList();
+        if (rentLines.Count == 0)
+            return;
+
+        var companyContact = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
+        var markupPercent = companyContact?.Markup ?? 0;
+        if (markupPercent <= 0)
+            return;
+
+        var rentAmount = rentLines.Sum(line => line.Amount);
+        var markupAmount = Math.Round(rentAmount * markupPercent / 100m, 2, MidpointRounding.AwayFromZero);
+        if (markupAmount == 0)
+            return;
+
+        var rentLine = rentLines[^1];
+        var markupLine = new LedgerLine
+        {
+            ReservationId = reservation.ReservationId,
+            CostCodeId = rentLine.CostCodeId,
+            Amount = markupAmount,
+            Description = $"Company Markup {markupPercent}%",
+            LedgerLineDate = rentLine.LedgerLineDate
+        };
+        ApplyTransactionTypeFromCostCode(markupLine, costCodeById);
+
+        ledgerLines.Insert(ledgerLines.IndexOf(rentLine) + 1, markupLine);
+        for (var i = 0; i < ledgerLines.Count; i++)
+            ledgerLines[i].LineNumber = i + 1;
+    }
+
+    private async Task EnsureCompanyMarkupLedgerLineOnInvoiceAsync(Invoice invoice)
+    {
+        if (invoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
+            return;
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+        if (reservation == null)
+            return;
+
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var amountBefore = invoice.LedgerLines.Sum(line => line.Amount);
+        await TryAddCompanyMarkupLedgerLineAsync(reservation, invoice.LedgerLines, costCodeById);
+        var delta = invoice.LedgerLines.Sum(line => line.Amount) - amountBefore;
+        if (delta != 0)
+            invoice.TotalAmount += delta;
+    }
+
+    private static bool IsRentalFeeLedgerLine(LedgerLine line)
+        => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal);
+
+    private static bool IsCompanyMarkupLedgerLine(LedgerLine line)
+        => line.Description.StartsWith("Company Markup", StringComparison.Ordinal);
 
     public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId)
     {

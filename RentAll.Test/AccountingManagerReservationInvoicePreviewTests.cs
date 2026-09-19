@@ -364,6 +364,44 @@ public class AccountingManagerReservationInvoicePreviewTests
     }
 
     [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_CorporateReservation_AddsCompanyMarkupOnEachInvoice()
+    {
+        var companyId = Guid.NewGuid();
+        var reservation = CreatePreviewReservation();
+        reservation.ReservationType = ReservationType.Corporate;
+        reservation.CompanyId = companyId;
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureContactRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetContactByIdsAsync(companyId, AccountingManagerJournalEntryTestSupport.OrganizationId))
+                    .ReturnsAsync(new Contact
+                    {
+                        ContactId = companyId,
+                        OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        EntityType = EntityType.Company,
+                        Markup = 10
+                    });
+            });
+
+        var previews = await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.NotEmpty(previews);
+        Assert.All(previews, preview =>
+        {
+            var rent = Assert.Single(preview.LedgerLines, line => line.Description.StartsWith("Rental Fee"));
+            var markup = Assert.Single(preview.LedgerLines, line => line.Description == "Company Markup 10%");
+            Assert.Equal(rent.CostCodeId, markup.CostCodeId);
+            Assert.Equal(rent.LedgerLineDate, markup.LedgerLineDate);
+            Assert.Equal(Math.Round(rent.Amount * 0.10m, 2, MidpointRounding.AwayFromZero), markup.Amount);
+        });
+    }
+
+    [Fact]
     public async Task GetMissingInvoicesAsync_LoadsExistingInvoicesWithIncludePaid()
     {
         var reservation = CreatePreviewReservation();

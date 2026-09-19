@@ -9,6 +9,7 @@ public partial class AccountingManager
 
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser)
     {
+        await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
         var created = await _accountingRepository.CreateAsync(invoice);
         var createdPaymentIds = await CreateAndLinkPaymentDocumentsForUnlinkedInvoiceLinesAsync(created, currentUser);
         try
@@ -39,6 +40,7 @@ public partial class AccountingManager
 
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
         invoice.PostingStatusId = postingStatusId;
+        await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
         await ValidateInvoiceUpdatePreservesDepositedPaymentsAsync(invoice, existingInvoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
