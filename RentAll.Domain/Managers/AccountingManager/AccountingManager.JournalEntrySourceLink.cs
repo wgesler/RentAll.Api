@@ -419,6 +419,12 @@ public partial class AccountingManager
            && entry.SourceTypeId == (int)SourceType.Invoice
            && !entry.IsCashOnly;
 
+    private static bool IsInvoicePaymentCashJournalEntry(JournalEntry entry)
+        => entry.JournalEntryKindId == JournalEntryKind.Payment
+           && !entry.IsCashOnly
+           && (entry.SourceTypeId == (int)SourceType.Invoice
+               || entry.SourceTypeId == (int)SourceType.InvoicePayment);
+
     private static bool IsStandardInvoicePaymentJournalEntry(JournalEntry entry, int prePaymentAccountId)
         => IsStandardInvoicePaymentJournalEntry(entry);
 
