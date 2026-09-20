@@ -17,6 +17,17 @@ namespace RentAll.Infrastructure.Repositories.Common
 
             return res.Select(ConvertEntityToModel);
         }
+
+        public async Task<SidebarAttentionCounts> GetSidebarAttentionCountsAsync(Guid organizationId, string officeAccess, Guid userId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            return await db.DapperProcQueryScalarAsync<SidebarAttentionCounts>("Organization.SidebarAttention_Get", new
+            {
+                OrganizationId = organizationId,
+                Offices = officeAccess,
+                UserId = userId
+            }) ?? new SidebarAttentionCounts();
+        }
         #endregion
     }
 }

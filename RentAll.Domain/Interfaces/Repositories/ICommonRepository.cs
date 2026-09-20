@@ -13,4 +13,6 @@ public interface ICommonRepository
     Task<int> GetNextCodeAsync(Guid organizationId, int entityTypeId, string entityType);
     Task ResetCodeSequenceAsync(Guid organizationId, int entityTypeId, string entityType, int nextNumber = 0);
     #endregion
+
+    Task<SidebarAttentionCounts> GetSidebarAttentionCountsAsync(Guid organizationId, string officeAccess, Guid userId);
 }
