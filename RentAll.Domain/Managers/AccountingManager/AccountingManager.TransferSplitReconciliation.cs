@@ -87,13 +87,6 @@ public partial class AccountingManager
                 continue;
             }
 
-            if (referenceLineId is { } existingLineId && existingLineId != Guid.Empty)
-            {
-                assignedLineIds.Add(existingLineId);
-                trail?.Note($"Rematch keep existing: {groupLabel} amount={groupAmount:0.00} line={existingLineId}");
-                continue;
-            }
-
             // Primary: invoice in transfer description → deposit payment split → deposit escrow JE line.
             Guid? resolvedLineId = ResolveTransferSplitGroupEscrowLineFromDepositInvoice(
                 transfer,

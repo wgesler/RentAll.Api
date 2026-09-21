@@ -570,7 +570,19 @@ public partial class AccountingManager
             }
 
             if (depositId == null || depositId == Guid.Empty)
-                throw new Exception("Transfer split journal entry line must belong to a journal entry with a deposit link.");
+            {
+                var paymentId = NormalizeOptionalGuid(depositJournalEntry.PaymentId);
+                if (paymentId is { } linkedPaymentId)
+                {
+                    var payment = await _accountingRepository.GetPaymentByIdAsync(
+                        linkedPaymentId,
+                        transfer.OrganizationId);
+                    depositId = NormalizeOptionalGuid(payment?.DepositId);
+                }
+            }
+
+            if (depositId == null || depositId == Guid.Empty)
+                continue;
 
             depositIds.Add(depositId.Value);
         }
