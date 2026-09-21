@@ -23,6 +23,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             OrganizationId = e.OrganizationId,
             OrganizationCode = e.OrganizationCode,
             Name = e.Name,
+            DisplayName = e.DisplayName,
             OrganizationType = (OrganizationType)e.OrganizationTypeId,
             Address1 = e.Address1,
             Address2 = e.Address2,

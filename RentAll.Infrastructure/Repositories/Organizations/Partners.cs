@@ -31,7 +31,8 @@ public partial class OrganizationRepository
             {
                 OrganizationId = organization.OrganizationId,
                 OrganizationCode = organization.OrganizationCode,
-                Name = organization.Name
+                Name = organization.Name,
+                DisplayName = organization.DisplayName
             });
         }
 

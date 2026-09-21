@@ -12,6 +12,7 @@ public class OrganizationPartnerOptionResponseDto
     public Guid OrganizationId { get; set; }
     public string OrganizationCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
 
     public OrganizationPartnerOptionResponseDto()
     {
@@ -22,5 +23,6 @@ public class OrganizationPartnerOptionResponseDto
         OrganizationId = organization.OrganizationId;
         OrganizationCode = organization.OrganizationCode;
         Name = organization.Name;
+        DisplayName = organization.DisplayName;
     }
 }

@@ -7,6 +7,7 @@ public class UpdateOrganizationDto
     public Guid OrganizationId { get; set; }
     public string OrganizationCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
     public int OrganizationTypeId { get; set; }
     public string Address1 { get; set; } = string.Empty;
     public string? Address2 { get; set; }
@@ -39,6 +40,9 @@ public class UpdateOrganizationDto
         if (string.IsNullOrWhiteSpace(Name))
             return (false, "Name is required");
 
+        if (!string.IsNullOrWhiteSpace(DisplayName) && DisplayName.Trim().Length > 25)
+            return (false, "DisplayName cannot exceed 25 characters");
+
         if (OrganizationTypeId <= 0)
             return (false, "OrganizationTypeId is required");
 
@@ -64,6 +68,7 @@ public class UpdateOrganizationDto
             OrganizationId = OrganizationId,
             OrganizationCode = OrganizationCode,
             Name = Name,
+            DisplayName = string.IsNullOrWhiteSpace(DisplayName) ? null : DisplayName.Trim(),
             OrganizationType = (OrganizationType)OrganizationTypeId,
             Address1 = Address1,
             Address2 = Address2,
