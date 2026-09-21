@@ -560,6 +560,56 @@ public partial class AccountingManager
             }
         }
 
+        var unlinkedSplitAmounts = new List<decimal>();
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (Math.Abs(split.Amount) <= 0.005m
+                || !IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty
+                && await GetJournalEntryLineByIdCachedAsync(existingLineId) != null)
+                continue;
+
+            unlinkedSplitAmounts.Add(Math.Abs(RoundCurrency(split.Amount)));
+        }
+
+        if (unlinkedSplitAmounts.Count > 0)
+        {
+            var neededSum = unlinkedSplitAmounts.Sum();
+            var amountMatches = new List<Guid>();
+            foreach (var candidate in officePayments.Where(candidate =>
+                         candidate.IsActive && candidate.PaymentKindId == (int)PaymentKind.Invoice))
+            {
+                if (candidate.DepositId is { } stampedDepositId
+                    && stampedDepositId != Guid.Empty
+                    && stampedDepositId != deposit.DepositId)
+                    continue;
+
+                var candidatePayment = candidate.LedgerLines is { Count: > 0 }
+                    ? candidate
+                    : await _accountingRepository.GetPaymentByIdAsync(candidate.PaymentId, organizationId) ?? candidate;
+                var ledgerAmounts = (candidatePayment.LedgerLines ?? [])
+                    .Where(line => Math.Abs(line.Amount) > 0.005m)
+                    .Select(line => Math.Abs(RoundCurrency(line.Amount)))
+                    .ToList();
+                if (ledgerAmounts.Count == 0)
+                    continue;
+
+                if (Math.Abs(Math.Abs(RoundCurrency(candidatePayment.Amount)) - neededSum) > 0.005m)
+                    continue;
+
+                if (unlinkedSplitAmounts.All(splitAmount =>
+                        ledgerAmounts.Any(ledgerAmount => Math.Abs(ledgerAmount - splitAmount) <= 0.005m)))
+                {
+                    amountMatches.Add(candidate.PaymentId);
+                }
+            }
+
+            if (amountMatches.Count == 1)
+                paymentIds.Add(amountMatches[0]);
+        }
+
         return paymentIds;
     }
 
