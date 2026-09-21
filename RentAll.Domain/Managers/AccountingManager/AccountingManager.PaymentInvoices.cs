@@ -1040,16 +1040,27 @@ public partial class AccountingManager
 
     private async Task<Payment> ApplyInvoicePaymentWithAutoSplitAsync(Payment payment, IReadOnlyList<Guid> invoiceIds, string officeAccess, Guid currentUser)
     {
-        await EnsurePaymentCodeAsync(payment);
-        var createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
+        Payment? createdPayment = null;
+        try
+        {
+            await EnsurePaymentCodeAsync(payment);
+            createdPayment = await _accountingRepository.CreatePaymentAsync(payment);
 
-        var invoicePayment = await ApplyPaymentToInvoicesAsync(invoiceIds.ToList(), payment.OrganizationId, officeAccess, payment.CostCodeId, payment.Description, payment.Amount, payment.PaymentDate, currentUser);
+            var invoicePayment = await ApplyPaymentToInvoicesAsync(invoiceIds.ToList(), payment.OrganizationId, officeAccess, payment.CostCodeId, payment.Description, payment.Amount, payment.PaymentDate, currentUser);
 
-        await LinkInvoicePaymentApplicationsAsync(createdPayment.PaymentId, invoicePayment, currentUser);
-        await CreateJournalEntriesFromInvoicePaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
-        await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
+            await LinkInvoicePaymentApplicationsAsync(createdPayment.PaymentId, invoicePayment, currentUser);
+            await CreateJournalEntriesFromInvoicePaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
+        }
+        catch
+        {
+            if (createdPayment != null)
+                await TryDeleteIncompletePaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
 
-        return await _accountingRepository.GetPaymentByIdAsync(createdPayment.PaymentId, payment.OrganizationId)
+            throw;
+        }
+
+        return await _accountingRepository.GetPaymentByIdAsync(createdPayment!.PaymentId, payment.OrganizationId)
             ?? createdPayment;
     }
 

@@ -238,9 +238,17 @@ public partial class AccountingManager
 
             await EnsurePaymentCodeAsync(payment);
             var createdPayment = await _accountingRepository.CreatePaymentWithBillAllocationsAsync(payment, [allocation], currentUser);
-            await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
-            await CreateJournalEntriesFromBillPaymentDocumentAsync(createdPayment.PaymentId, bill.OrganizationId, currentUser);
-            await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
+            try
+            {
+                await DeleteLegacyBillPaymentJournalEntriesForReceiptAsync(bill);
+                await CreateJournalEntriesFromBillPaymentDocumentAsync(createdPayment.PaymentId, bill.OrganizationId, currentUser);
+                await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
+            }
+            catch
+            {
+                await TryDeleteIncompleteBillPaymentAsync(createdPayment.PaymentId, bill.OrganizationId, currentUser);
+                throw;
+            }
         }
         catch (Exception ex)
         {
@@ -514,11 +522,23 @@ public partial class AccountingManager
     public async Task<Deposit> CreateDepositAsync(Deposit deposit, Guid currentUser)
     {
         await PrepareDepositForSaveAsync(deposit);
-        var created = await _accountingRepository.CreateDepositAsync(deposit);
-        await SyncPaymentDepositIdsForDepositAsync(created, currentUser);
-        await CreateJournalEntryFromDepositAsync(created, currentUser);
-        await EnsureDepositPostingStatusComplianceAsync(created, currentUser);
-        return created;
+
+        Deposit? created = null;
+        try
+        {
+            created = await _accountingRepository.CreateDepositAsync(deposit);
+            await SyncPaymentDepositIdsForDepositAsync(created, currentUser);
+            await CreateJournalEntryFromDepositAsync(created, currentUser);
+            await EnsureDepositPostingStatusComplianceAsync(created, currentUser);
+            return created;
+        }
+        catch
+        {
+            if (created != null)
+                await TryDeleteIncompleteDepositAsync(created.DepositId, created.OrganizationId, currentUser);
+
+            throw;
+        }
     }
 
     public async Task<Deposit> UpdateDepositAsync(Deposit deposit, Guid currentUser)
@@ -533,17 +553,26 @@ public partial class AccountingManager
         deposit.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, deposit.DepositDate, deposit.AccountingPeriod, currentUser, () => LoadJournalEntriesForDepositDocumentAsync(existing.OrganizationId, existing));
 
         await PrepareDepositForSaveAsync(deposit);
-        await _accountingRepository.UpdateDepositAsync(deposit);
 
-        var freshDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, deposit.OrganizationId)
-            ?? throw new Exception("Deposit not found after update");
+        try
+        {
+            await _accountingRepository.UpdateDepositAsync(deposit);
 
-        await SyncPaymentDepositIdsForDepositAsync(freshDeposit, currentUser);
-        await TryReplaceJournalEntriesFromDepositAsync(freshDeposit, currentUser);
-        await EnsureDepositPostingStatusComplianceAsync(freshDeposit, currentUser);
+            var freshDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, deposit.OrganizationId)
+                ?? throw new Exception("Deposit not found after update");
 
-        return await _accountingRepository.GetDepositByIdAsync(freshDeposit.DepositId, freshDeposit.OrganizationId)
-            ?? freshDeposit;
+            await SyncPaymentDepositIdsForDepositAsync(freshDeposit, currentUser);
+            await TryReplaceJournalEntriesFromDepositAsync(freshDeposit, currentUser);
+            await EnsureDepositPostingStatusComplianceAsync(freshDeposit, currentUser);
+
+            return await _accountingRepository.GetDepositByIdAsync(freshDeposit.DepositId, freshDeposit.OrganizationId)
+                ?? freshDeposit;
+        }
+        catch
+        {
+            await TryRevertDepositUpdateAsync(existing, currentUser);
+            throw;
+        }
     }
 
     public async Task DeleteDepositAsync(Guid depositId, Guid organizationId, Guid currentUser)
@@ -562,6 +591,37 @@ public partial class AccountingManager
             currentUser);
         await DeleteJournalEntriesForDepositAsync(deposit);
         await _accountingRepository.DeleteDepositByIdAsync(depositId, organizationId, currentUser);
+    }
+
+    private async Task TryDeleteIncompleteDepositAsync(Guid depositId, Guid organizationId, Guid currentUser)
+    {
+        try
+        {
+            var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+            if (deposit == null)
+                return;
+
+            await DeleteDepositAsync(depositId, organizationId, currentUser);
+        }
+        catch
+        {
+            // Keep the original create failure.
+        }
+    }
+
+    private async Task TryRevertDepositUpdateAsync(Deposit existing, Guid currentUser)
+    {
+        try
+        {
+            existing.ModifiedBy = currentUser;
+            await _accountingRepository.UpdateDepositAsync(existing);
+            await SyncPaymentDepositIdsForDepositAsync(existing, currentUser);
+            await TryReplaceJournalEntriesFromDepositAsync(existing, currentUser);
+        }
+        catch
+        {
+            // Keep the original update failure.
+        }
     }
 
     #endregion
@@ -593,16 +653,7 @@ public partial class AccountingManager
         catch
         {
             if (created != null)
-            {
-                try
-                {
-                    await DeleteTransferAsync(created.TransferId, created.OrganizationId, currentUser);
-                }
-                catch
-                {
-                    // Keep the original create failure.
-                }
-            }
+                await TryDeleteIncompleteTransferAsync(created.TransferId, created.OrganizationId, currentUser);
 
             throw;
         }
@@ -619,17 +670,30 @@ public partial class AccountingManager
         transfer.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, transfer.TransferDate, transfer.AccountingPeriod, currentUser, () => LoadJournalEntriesForTransferDocumentAsync(existing.OrganizationId, existing));
 
         await PrepareTransferForSaveAsync(transfer);
-        await _accountingRepository.UpdateTransferAsync(transfer);
 
-        var freshTransfer = await _accountingRepository.GetTransferByIdAsync(transfer.TransferId, transfer.OrganizationId)
-            ?? throw new Exception("Transfer not found after update");
+        var unresolved = await GetUnresolvedTransferSplitMessagesAsync(transfer);
+        if (unresolved.Count > 0)
+            throw new Exception(string.Join(" ", unresolved));
 
-        await SyncDepositTransferIdsForTransferAsync(freshTransfer, currentUser);
-        await TryReplaceJournalEntriesFromTransferAsync(freshTransfer, currentUser);
-        await EnsureTransferPostingStatusComplianceAsync(freshTransfer, currentUser);
+        try
+        {
+            await _accountingRepository.UpdateTransferAsync(transfer);
 
-        return await _accountingRepository.GetTransferByIdAsync(freshTransfer.TransferId, freshTransfer.OrganizationId)
-            ?? freshTransfer;
+            var freshTransfer = await _accountingRepository.GetTransferByIdAsync(transfer.TransferId, transfer.OrganizationId)
+                ?? throw new Exception("Transfer not found after update");
+
+            await SyncDepositTransferIdsForTransferAsync(freshTransfer, currentUser);
+            await TryReplaceJournalEntriesFromTransferAsync(freshTransfer, currentUser);
+            await EnsureTransferPostingStatusComplianceAsync(freshTransfer, currentUser);
+
+            return await _accountingRepository.GetTransferByIdAsync(freshTransfer.TransferId, freshTransfer.OrganizationId)
+                ?? freshTransfer;
+        }
+        catch
+        {
+            await TryRevertTransferUpdateAsync(existing, currentUser);
+            throw;
+        }
     }
 
     public async Task<Transfer> PostTransferReportAsync(Guid transferId, Guid organizationId, Guid currentUser)
@@ -659,32 +723,45 @@ public partial class AccountingManager
         if (escrowDepositAccountId <= 0)
             throw new Exception("Default escrow deposit account is not configured for this office");
 
-        transfer.BankAccountId = escrowDepositAccountId;
-        transfer.ModifiedBy = currentUser;
-        await _accountingRepository.UpdateTransferAsync(transfer);
+        var originalBankAccountId = transfer.BankAccountId;
+        var originalHasBeenTransfered = transfer.HasBeenTransfered;
+        try
+        {
+            transfer.BankAccountId = escrowDepositAccountId;
+            transfer.ModifiedBy = currentUser;
+            await _accountingRepository.UpdateTransferAsync(transfer);
 
-        var refreshedTransfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
-            ?? throw new Exception("Transfer not found after update");
+            var refreshedTransfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
+                ?? throw new Exception("Transfer not found after update");
 
-        await TryReplaceJournalEntriesFromTransferAsync(refreshedTransfer, currentUser);
+            await TryReplaceJournalEntriesFromTransferAsync(refreshedTransfer, currentUser);
 
-        refreshedTransfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
-            ?? throw new Exception("Transfer not found after journal entry refresh");
+            refreshedTransfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
+                ?? throw new Exception("Transfer not found after journal entry refresh");
 
-        var transferJournalEntries = await GetJournalEntriesForSourceAsync(
-            refreshedTransfer.OrganizationId,
-            refreshedTransfer.OfficeId,
-            SourceType.Transfer,
-            transferId);
-        if (!transferJournalEntries.Any(entry => entry.JournalEntryId != Guid.Empty))
-            throw new Exception("Unable to create transfer journal entry");
+            var transferJournalEntries = await GetJournalEntriesForSourceAsync(
+                refreshedTransfer.OrganizationId,
+                refreshedTransfer.OfficeId,
+                SourceType.Transfer,
+                transferId);
+            if (!transferJournalEntries.Any(entry => entry.JournalEntryId != Guid.Empty))
+                throw new Exception("Unable to create transfer journal entry");
 
-        refreshedTransfer.HasBeenTransfered = true;
-        refreshedTransfer.ModifiedBy = currentUser;
-        await _accountingRepository.UpdateTransferAsync(refreshedTransfer);
+            refreshedTransfer.HasBeenTransfered = true;
+            refreshedTransfer.ModifiedBy = currentUser;
+            await _accountingRepository.UpdateTransferAsync(refreshedTransfer);
 
-        return await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
-            ?? refreshedTransfer;
+            return await _accountingRepository.GetTransferByIdAsync(transferId, organizationId)
+                ?? refreshedTransfer;
+        }
+        catch
+        {
+            transfer.BankAccountId = originalBankAccountId;
+            transfer.HasBeenTransfered = originalHasBeenTransfered;
+            transfer.ModifiedBy = currentUser;
+            await TryRevertTransferUpdateAsync(transfer, currentUser);
+            throw;
+        }
     }
 
     public async Task DeleteTransferAsync(Guid transferId, Guid organizationId, Guid currentUser)
@@ -703,6 +780,37 @@ public partial class AccountingManager
             currentUser);
         await DeleteJournalEntriesForTransferAsync(transfer);
         await _accountingRepository.DeleteTransferByIdAsync(transferId, organizationId, currentUser);
+    }
+
+    private async Task TryDeleteIncompleteTransferAsync(Guid transferId, Guid organizationId, Guid currentUser)
+    {
+        try
+        {
+            var transfer = await _accountingRepository.GetTransferByIdAsync(transferId, organizationId);
+            if (transfer == null)
+                return;
+
+            await DeleteTransferAsync(transferId, organizationId, currentUser);
+        }
+        catch
+        {
+            // Keep the original create failure.
+        }
+    }
+
+    private async Task TryRevertTransferUpdateAsync(Transfer existing, Guid currentUser)
+    {
+        try
+        {
+            existing.ModifiedBy = currentUser;
+            await _accountingRepository.UpdateTransferAsync(existing);
+            await SyncDepositTransferIdsForTransferAsync(existing, currentUser);
+            await TryReplaceJournalEntriesFromTransferAsync(existing, currentUser);
+        }
+        catch
+        {
+            // Keep the original update failure.
+        }
     }
 
     #endregion

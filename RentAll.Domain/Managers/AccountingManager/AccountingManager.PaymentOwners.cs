@@ -143,15 +143,46 @@ public partial class AccountingManager
         payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, payment.PaymentDate, default, currentUser, () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
         payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
 
-        await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-        await DeleteJournalEntriesForPaymentAsync(existing);
+        var revertAllocations = existing.OwnerAllocations.ToList();
+        var revertPayment = existing;
 
-        var updatedPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
-        await CreateJournalEntriesFromOwnerPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
-        await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
+        try
+        {
+            await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
+            await DeleteJournalEntriesForPaymentAsync(existing);
 
-        return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
-            ?? updatedPayment;
+            var updatedPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
+            await CreateJournalEntriesFromOwnerPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
+            await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
+
+            return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
+                ?? updatedPayment;
+        }
+        catch
+        {
+            await TryRevertOwnerPaymentUpdateAsync(revertPayment, revertAllocations, currentUser);
+            throw;
+        }
+    }
+
+    private async Task TryRevertOwnerPaymentUpdateAsync(Payment revertPayment, IReadOnlyList<PaymentOwnerAllocation> revertAllocations, Guid currentUser)
+    {
+        try
+        {
+            var current = await _accountingRepository.GetPaymentByIdAsync(revertPayment.PaymentId, revertPayment.OrganizationId);
+            if (current == null)
+                return;
+
+            await ClearPaymentDocumentLinksAsync(current.OrganizationId, current.PaymentId, currentUser);
+            await DeleteJournalEntriesForPaymentAsync(current);
+
+            var restoredPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(revertPayment, revertAllocations, currentUser);
+            await CreateJournalEntriesFromOwnerPaymentDocumentAsync(restoredPayment.PaymentId, revertPayment.OrganizationId, currentUser);
+        }
+        catch
+        {
+            // Best-effort revert after a failed owner payment update.
+        }
     }
 
     private async Task<List<PaymentOwnerAllocation>> ResolveOwnerPaymentAllocationsAsync(Payment payment, IReadOnlyList<PaymentOwnerAllocation> allocations)
