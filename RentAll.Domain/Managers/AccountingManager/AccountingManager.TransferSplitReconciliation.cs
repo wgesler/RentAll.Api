@@ -91,6 +91,13 @@ public partial class AccountingManager
                 continue;
             }
 
+            if (referenceLineId is { } existingLineId && existingLineId != Guid.Empty)
+            {
+                assignedLineIds.Add(existingLineId);
+                trail?.Note($"Rematch keep existing: {groupLabel} amount={groupAmount:0.00} line={existingLineId}");
+                continue;
+            }
+
             // Primary: invoice in transfer description → deposit payment split → deposit escrow JE line.
             Guid? resolvedLineId = ResolveTransferSplitGroupEscrowLineFromDepositInvoice(
                 transfer,
@@ -120,21 +127,7 @@ public partial class AccountingManager
                 continue;
             }
 
-            // Stale after clear/resync: clear so callers rematch instead of treating as valid.
-            var clearedStale = false;
-            foreach (var split in splitGroup)
-            {
-                if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
-                {
-                    split.JournalEntryLineId = null;
-                    clearedStale = true;
-                }
-            }
-
-            if (clearedStale)
-                trail?.Bail($"Rematch cleared stale lines on {groupLabel} amount={groupAmount:0.00}");
-            else
-                trail?.Bail($"Rematch failed: {groupLabel} amount={groupAmount:0.00} (no escrow deposit line).");
+            trail?.Bail($"Rematch failed: {groupLabel} amount={groupAmount:0.00} (no escrow deposit line).");
         }
 
         // Multi-invoice transfers often share one deposit escrow line (full deposit amount) while

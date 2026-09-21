@@ -71,6 +71,13 @@ public partial class AccountingManager
                 continue;
             }
 
+            if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
+            {
+                assignedLineIds.Add(existingLineId);
+                trail?.Note($"Rematch keep existing: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                continue;
+            }
+
             Guid? resolvedLineId = null;
             if (paymentLineCandidates.Count > 0)
             {
@@ -118,15 +125,7 @@ public partial class AccountingManager
                 continue;
             }
 
-            if (split.JournalEntryLineId is { } staleLineId && staleLineId != Guid.Empty)
-            {
-                trail?.Bail($"Rematch cleared stale line on {splitLabel} amount={split.Amount:0.00} was={staleLineId}");
-                split.JournalEntryLineId = null;
-            }
-            else
-            {
-                trail?.Bail($"Rematch failed: {splitLabel} amount={split.Amount:0.00} (no UF payment line).");
-            }
+            trail?.Bail($"Rematch failed: {splitLabel} amount={split.Amount:0.00} (no UF payment line).");
         }
     }
 

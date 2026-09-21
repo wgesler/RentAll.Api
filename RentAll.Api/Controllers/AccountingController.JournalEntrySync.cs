@@ -422,10 +422,8 @@ public partial class AccountingController
             return NotFound("Sync job not found");
 
         JournalEntrySyncJobStatusDto status;
-        var isCompleted = false;
         lock (job.SyncRoot)
         {
-            isCompleted = job.IsCompleted;
             status = new JournalEntrySyncJobStatusDto
             {
                 JobId = job.JobId,
@@ -438,9 +436,6 @@ public partial class AccountingController
                     .ToList()
             };
         }
-
-        if (isCompleted)
-            SyncJobs.TryRemove(job.JobId, out _);
 
         return Ok(status);
     }
