@@ -139,7 +139,6 @@ public partial class AccountingManager
                 progress));
         }
 
-        await ClearRefundPaymentDepositStampsForHealthFixIssuesAsync(scan.Issues, organizationId, currentUser, result);
         await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(scan.Issues, organizationId, currentUser, result);
         if ((scan.Issues ?? []).Any(issue =>
                 (issue.Issue ?? string.Empty).Contains("accounting period mismatch", StringComparison.OrdinalIgnoreCase)))
@@ -222,33 +221,6 @@ public partial class AccountingManager
                 ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, processed >= total ? "Completed" : "Running");
             }
         });
-    }
-
-    private async Task ClearRefundPaymentDepositStampsForHealthFixIssuesAsync(
-        IReadOnlyList<DocumentHealthIssue> issues,
-        Guid organizationId,
-        Guid currentUser,
-        JournalEntrySyncResult result)
-    {
-        foreach (var issue in issues ?? [])
-        {
-            var issueText = (issue.Issue ?? string.Empty).Trim();
-            if (!issueText.Contains("Deposited payment missing deposit split link", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (issue.Amount is not { } amount || amount > -0.005m)
-                continue;
-
-            if (issue.DocumentId == Guid.Empty)
-                continue;
-
-            var payment = await _accountingRepository.GetPaymentByIdAsync(issue.DocumentId, organizationId);
-            if (payment?.DepositId is not { } depositId || depositId == Guid.Empty)
-                continue;
-
-            await _accountingRepository.SetPaymentDepositIdAsync(payment.PaymentId, organizationId, null, currentUser);
-            result.DocumentsProcessed++;
-        }
     }
 
     private static void MergeSyncResults(JournalEntrySyncResult target, JournalEntrySyncResult source)

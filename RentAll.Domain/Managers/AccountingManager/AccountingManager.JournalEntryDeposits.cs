@@ -751,7 +751,7 @@ public partial class AccountingManager
             else
                 payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
 
-            if (payment == null || payment.Amount <= -0.005m)
+            if (payment == null)
                 continue;
 
             if (payment.DepositId is { } existingDepositId

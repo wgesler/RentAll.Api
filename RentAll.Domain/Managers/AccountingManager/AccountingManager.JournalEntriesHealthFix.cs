@@ -490,9 +490,6 @@ public partial class AccountingManager
         Guid organizationId,
         Guid currentUser)
     {
-        if (payment.Amount <= -0.005m)
-            return;
-
         if (payment.DepositId is not { } depositId || depositId == Guid.Empty)
             return;
 
