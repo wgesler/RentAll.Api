@@ -27,8 +27,9 @@ public partial class AccountingManager
             await CreateJournalEntriesFromBillPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("CreatePaymentBill", ex.Message, ex, payment.OrganizationId, payment.OfficeId);
             if (createdPayment != null)
                 await TryDeleteIncompleteBillPaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
 

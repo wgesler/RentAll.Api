@@ -189,8 +189,7 @@ public partial class AccountingController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating transfer");
-            return ServerError("An error occurred while creating the transfer");
+            return ServerErrorFromException(ex, "CreateTransfer", "An error occurred while creating the transfer", dto.OfficeId);
         }
     }
 

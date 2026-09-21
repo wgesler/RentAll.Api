@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
+using RentAll.Api.Logging;
 
 namespace RentAll.Api.Filters;
 
@@ -35,6 +36,10 @@ public class ControllerExceptionLoggingFilter : IAsyncActionFilter
         var method = context.HttpContext.Request.Method;
         var path = context.HttpContext.Request.Path.Value ?? string.Empty;
 
-        _logger.LogError(ex, "Unhandled controller exception in {Controller}.{Action} for {Method} {Path}", controller, action, method, path);
+        ApplicationErrorLogger.Log(
+            _logger,
+            ex,
+            operation: $"{controller}.{action} {method} {path}",
+            httpContext: context.HttpContext);
     }
 }

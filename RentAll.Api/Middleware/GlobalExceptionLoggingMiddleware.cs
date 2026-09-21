@@ -1,4 +1,4 @@
-using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Api.Logging;
 using System.Text;
 using System.Text.Json;
 
@@ -6,7 +6,6 @@ namespace RentAll.Api.Middleware;
 
 public class GlobalExceptionLoggingMiddleware
 {
-    private const int MaxMessageLength = 2500;
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionLoggingMiddleware> _logger;
 
@@ -16,7 +15,7 @@ public class GlobalExceptionLoggingMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, ILoggingRepository loggingRepository)
+    public async Task InvokeAsync(HttpContext context)
     {
         try
         {
@@ -24,34 +23,16 @@ public class GlobalExceptionLoggingMiddleware
         }
         catch (Exception ex)
         {
-            try
-            {
-                var errorLog = BuildErrorLog(context, ex);
-                await loggingRepository.AddErrorLogAsync(errorLog);
-            }
-            catch (Exception logException)
-            {
-                _logger.LogError(logException, "Failed to persist API exception to Logging.GeneralErrorLog.");
-            }
+            ApplicationErrorLogger.Log(
+                _logger,
+                ex,
+                operation: $"{context.Request.Method} {context.Request.Path}",
+                organizationId: ResolveOrganizationId(context),
+                officeId: ResolveInt(context, "officeId"),
+                httpContext: context);
 
             throw;
         }
-    }
-
-    private static LoggingErrorLog BuildErrorLog(HttpContext context, Exception ex)
-    {
-        return new LoggingErrorLog
-        {
-            OrganizationId = ResolveOrganizationId(context),
-            OfficeId = ResolveInt(context, "officeId"),
-            ReservationId = ResolveGuid(context, "reservationId"),
-            PropertyId = ResolveGuid(context, "propertyId"),
-            InvoiceId = ResolveGuid(context, "invoiceId"),
-            ReceiptId = ResolveGuid(context, "receiptId"),
-            JournalEntryId = ResolveGuid(context, "journalEntryId"),
-            Message = Truncate(ex.Message, MaxMessageLength),
-            Exception = ex.ToString()
-        };
     }
 
     private static Guid? ResolveOrganizationId(HttpContext context)
@@ -147,11 +128,4 @@ public class GlobalExceptionLoggingMiddleware
         return false;
     }
 
-    private static string Truncate(string value, int maxLength)
-    {
-        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
-            return value;
-
-        return value[..maxLength];
-    }
 }

@@ -77,8 +77,9 @@ public partial class AccountingManager
                 await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
                 journalEntries.AddRange(createdEntries);
             }
-            catch
+            catch (Exception ex)
             {
+                LogApplicationDiagnostic("CreatePaymentOwner", ex.Message, ex, organizationId, payment.OfficeId);
                 if (createdPayment != null)
                     await TryDeleteIncompleteOwnerPaymentAsync(createdPayment.PaymentId, organizationId, currentUser);
 
@@ -108,8 +109,9 @@ public partial class AccountingManager
             await CreateJournalEntriesFromOwnerPaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("CreatePaymentOwner", ex.Message, ex, payment.OrganizationId, payment.OfficeId);
             if (createdPayment != null)
                 await TryDeleteIncompleteOwnerPaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
 

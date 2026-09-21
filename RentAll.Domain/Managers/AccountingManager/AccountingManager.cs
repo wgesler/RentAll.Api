@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
@@ -25,11 +27,12 @@ public partial class AccountingManager : IAccountingManager
     private readonly IContactRepository _contactRepository;
     private readonly IFeatureFlagService _featureFlagService;
     private readonly IHealthRepository _healthRepository;
+    private readonly ILogger<AccountingManager> _logger;
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<(List<ChartOfAccount> ChartOfAccounts, AccountingOffice? AccountingOffice)>> _accountContextCache = new();
     private readonly ConcurrentDictionary<OfficeContextCacheKey, Task<IReadOnlyDictionary<int, CostCode>>> _costCodeByOfficeCache = new();
     private readonly ConcurrentDictionary<AccountResolverCacheKey, int> _defaultAccountIdCache = new();
 
-    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService, IHealthRepository healthRepository)
+    public AccountingManager(IOrganizationRepository organizationRepository, IPropertyRepository propertyRepository, IAccountingRepository accountingRepository, IMaintenanceRepository maintenanceRepository, IReservationRepository reservationRepository, IJournalEntryRepository journalEntryRepository, IOrganizationManager organizationManager, IContactRepository contactRepository, IFeatureFlagService featureFlagService, IHealthRepository healthRepository, ILogger<AccountingManager>? logger = null)
     {
         _organizationRepository = organizationRepository;
         _propertyRepository = propertyRepository;
@@ -41,6 +44,7 @@ public partial class AccountingManager : IAccountingManager
         _contactRepository = contactRepository;
         _featureFlagService = featureFlagService;
         _healthRepository = healthRepository;
+        _logger = logger ?? NullLogger<AccountingManager>.Instance;
     }
 
     private Task<bool> IsAccountingFeatureEnabledAsync(Guid organizationId)

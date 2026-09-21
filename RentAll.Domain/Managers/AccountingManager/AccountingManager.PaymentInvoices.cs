@@ -1052,8 +1052,9 @@ public partial class AccountingManager
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("CreatePaymentInvoice", ex.Message, ex, payment.OrganizationId, payment.OfficeId);
             if (createdPayment != null)
                 await TryDeleteIncompletePaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
 
@@ -1076,8 +1077,9 @@ public partial class AccountingManager
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(createdPayment, currentUser);
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("CreatePaymentInvoice", ex.Message, ex, payment.OrganizationId, payment.OfficeId);
             if (createdPayment != null)
                 await TryDeleteIncompletePaymentAsync(createdPayment.PaymentId, payment.OrganizationId, currentUser);
 

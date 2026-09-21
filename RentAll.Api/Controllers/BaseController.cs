@@ -93,6 +93,31 @@ namespace RentAll.Api.Controllers
             ApplicationLogContext.Set(HttpContext, organizationId, officeId);
         }
 
+        protected ILogger GetApplicationLogger()
+            => HttpContext.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger(GetType());
+
+        protected void LogApplicationError(Exception exception, string operation, int? officeId = null)
+        {
+            ApplicationErrorLogger.Log(
+                GetApplicationLogger(),
+                exception,
+                operation,
+                CurrentOrganizationId,
+                officeId,
+                HttpContext);
+        }
+
+        protected IActionResult ServerErrorFromException(Exception exception, string operation, string? fallbackMessage = null, int? officeId = null)
+        {
+            LogApplicationError(exception, operation, officeId);
+            var message = string.IsNullOrWhiteSpace(exception.Message)
+                ? fallbackMessage ?? "An error occurred"
+                : exception.Message;
+            return ServerError(message);
+        }
+
         private (Guid UserId, Guid OrganizationId, string OfficeAccess, string UserGroups, string Properties) GetUserInfoFromJwt()
         {
             // Return cached value if available

@@ -429,8 +429,9 @@ public partial class AccountingManager
             await ReconcileDepositSplitsForPaymentAsync(freshPayment, currentUser);
             return freshPayment;
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("UpdatePaymentInvoice", ex.Message, ex, payment.OrganizationId, payment.OfficeId);
             existing.ModifiedBy = currentUser;
             await _accountingRepository.UpdatePaymentAsync(existing);
             await SynchronizeInvoicePaymentLinesFromPaymentAsync(existing, currentUser);
@@ -532,8 +533,15 @@ public partial class AccountingManager
             await EnsureDepositPostingStatusComplianceAsync(created, currentUser);
             return created;
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic(
+                "CreateDeposit",
+                ex.Message,
+                ex,
+                created?.OrganizationId ?? deposit.OrganizationId,
+                created?.OfficeId ?? deposit.OfficeId);
+
             if (created != null)
                 await TryDeleteIncompleteDepositAsync(created.DepositId, created.OrganizationId, currentUser);
 
@@ -568,8 +576,9 @@ public partial class AccountingManager
             return await _accountingRepository.GetDepositByIdAsync(freshDeposit.DepositId, freshDeposit.OrganizationId)
                 ?? freshDeposit;
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("UpdateDeposit", ex.Message, ex, deposit.OrganizationId, deposit.OfficeId);
             await TryRevertDepositUpdateAsync(existing, currentUser);
             throw;
         }
@@ -634,7 +643,11 @@ public partial class AccountingManager
 
         var unresolved = await GetUnresolvedTransferSplitMessagesAsync(transfer);
         if (unresolved.Count > 0)
-            throw new Exception(string.Join(" ", unresolved));
+        {
+            var validationMessage = string.Join(" ", unresolved);
+            LogApplicationDiagnostic("CreateTransfer", validationMessage, organizationId: transfer.OrganizationId, officeId: transfer.OfficeId);
+            throw new Exception(validationMessage);
+        }
 
         Transfer? created = null;
         try
@@ -650,8 +663,15 @@ public partial class AccountingManager
             return await _accountingRepository.GetTransferByIdAsync(created.TransferId, created.OrganizationId)
                 ?? created;
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic(
+                "CreateTransfer",
+                ex.Message,
+                ex,
+                created?.OrganizationId ?? transfer.OrganizationId,
+                created?.OfficeId ?? transfer.OfficeId);
+
             if (created != null)
                 await TryDeleteIncompleteTransferAsync(created.TransferId, created.OrganizationId, currentUser);
 
@@ -673,7 +693,11 @@ public partial class AccountingManager
 
         var unresolved = await GetUnresolvedTransferSplitMessagesAsync(transfer);
         if (unresolved.Count > 0)
-            throw new Exception(string.Join(" ", unresolved));
+        {
+            var validationMessage = string.Join(" ", unresolved);
+            LogApplicationDiagnostic("UpdateTransfer", validationMessage, organizationId: transfer.OrganizationId, officeId: transfer.OfficeId);
+            throw new Exception(validationMessage);
+        }
 
         try
         {
@@ -689,8 +713,9 @@ public partial class AccountingManager
             return await _accountingRepository.GetTransferByIdAsync(freshTransfer.TransferId, freshTransfer.OrganizationId)
                 ?? freshTransfer;
         }
-        catch
+        catch (Exception ex)
         {
+            LogApplicationDiagnostic("UpdateTransfer", ex.Message, ex, transfer.OrganizationId, transfer.OfficeId);
             await TryRevertTransferUpdateAsync(existing, currentUser);
             throw;
         }
