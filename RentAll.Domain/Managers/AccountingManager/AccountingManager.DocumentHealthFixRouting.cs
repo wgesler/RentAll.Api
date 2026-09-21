@@ -98,6 +98,12 @@ public partial class AccountingManager
                 return;
             }
 
+            if (normalizedIssue.Contains("Transfer deposit accounting period mismatch", StringComparison.OrdinalIgnoreCase))
+            {
+                depositIds.Add(id);
+                return;
+            }
+
             RouteDocumentId(id, issueText ?? string.Empty, paymentIds, depositIds, transferIds);
         }
 
@@ -140,6 +146,7 @@ public partial class AccountingManager
                 && !issueText.Contains("Deposited payment", StringComparison.OrdinalIgnoreCase);
 
         private static bool IsTransferIssue(string issueText)
-            => issueText.Contains("Transfer split", StringComparison.OrdinalIgnoreCase);
+            => issueText.Contains("Transfer split", StringComparison.OrdinalIgnoreCase)
+                || issueText.Contains("Transfer deposit accounting period mismatch", StringComparison.OrdinalIgnoreCase);
     }
 }

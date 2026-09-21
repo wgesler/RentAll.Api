@@ -142,11 +142,22 @@ public partial class AccountingManager
         return new DateOnly(date.Year, date.Month, 1);
     }
 
-    private static bool MatchesAccountingPeriodMonth(DateOnly leftPeriod, DateOnly leftFallback, DateOnly rightPeriod, DateOnly rightFallback)
-        => ToAccountingMonth(leftPeriod, leftFallback) == ToAccountingMonth(rightPeriod, rightFallback);
+    private static bool PaymentAccountingMonthIsOnOrBeforeDeposit(
+        DateOnly paymentPeriod,
+        DateOnly paymentFallback,
+        DateOnly depositPeriod,
+        DateOnly depositFallback)
+        => ToAccountingMonth(paymentPeriod, paymentFallback) <= ToAccountingMonth(depositPeriod, depositFallback);
+
+    private static bool DepositAccountingMonthIsOnOrBeforeTransfer(
+        DateOnly depositPeriod,
+        DateOnly depositFallback,
+        DateOnly transferPeriod,
+        DateOnly transferFallback)
+        => ToAccountingMonth(depositPeriod, depositFallback) <= ToAccountingMonth(transferPeriod, transferFallback);
 
     private static bool JournalEntryMatchesDepositAccountingMonth(JournalEntry entry, Deposit deposit)
-        => MatchesAccountingPeriodMonth(
+        => PaymentAccountingMonthIsOnOrBeforeDeposit(
             entry.AccountingPeriod,
             entry.TransactionDate,
             deposit.AccountingPeriod,

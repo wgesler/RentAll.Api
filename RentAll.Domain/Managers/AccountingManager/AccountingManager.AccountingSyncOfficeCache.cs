@@ -408,7 +408,8 @@ public partial class AccountingManager
                         ContactId = NormalizeOptionalGuid(line.ContactId),
                         DepositId = NormalizeOptionalGuid(depositEntry.DepositId)
                             ?? NormalizeOptionalGuid(depositEntry.SourceId),
-                        TransactionDate = depositEntry.TransactionDate
+                        TransactionDate = depositEntry.TransactionDate,
+                        AccountingPeriod = depositEntry.AccountingPeriod
                     });
                 }
             }

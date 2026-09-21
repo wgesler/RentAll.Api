@@ -141,6 +141,14 @@ public partial class AccountingManager
 
         await ClearRefundPaymentDepositStampsForHealthFixIssuesAsync(scan.Issues, organizationId, currentUser, result);
         await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(scan.Issues, organizationId, currentUser, result);
+        if ((scan.Issues ?? []).Any(issue =>
+                (issue.Issue ?? string.Empty).Contains("accounting period mismatch", StringComparison.OrdinalIgnoreCase)))
+        {
+            MergeSyncResults(
+                result,
+                await RepairDepositAndTransferSplitLinksAsync(organizationId, officeIds, currentUser, progress));
+        }
+
         await SyncDocumentLinksForHealthFixTargetsAsync(
             organizationId,
             officeIds,

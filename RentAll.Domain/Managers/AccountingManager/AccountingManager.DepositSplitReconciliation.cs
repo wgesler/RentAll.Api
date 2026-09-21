@@ -47,7 +47,7 @@ public partial class AccountingManager
         var paymentLineCandidates = (await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId))
             .Where(candidate =>
                 IsPaymentDepositStampAvailableForDeposit(candidate.DepositId, deposit.DepositId)
-                && MatchesAccountingPeriodMonth(
+                && PaymentAccountingMonthIsOnOrBeforeDeposit(
                     candidate.AccountingPeriod,
                     candidate.TransactionDate,
                     deposit.AccountingPeriod,
@@ -605,6 +605,9 @@ public partial class AccountingManager
 
             foreach (var paymentEntry in paymentEntries)
             {
+                if (!JournalEntryMatchesDepositAccountingMonth(paymentEntry, deposit))
+                    continue;
+
                 var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
                 foreach (var line in paymentEntry.JournalEntryLines ?? [])
                 {
