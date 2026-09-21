@@ -732,13 +732,13 @@ public partial class AccountingManager
         if (deposit.DepositId == Guid.Empty)
             return;
 
-        if (paymentIds.Count == 0)
-            return;
-
         await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
             deposit.OrganizationId,
             deposit.DepositId,
             currentUser);
+
+        if (paymentIds.Count == 0)
+            return;
 
         foreach (var paymentId in paymentIds)
         {
