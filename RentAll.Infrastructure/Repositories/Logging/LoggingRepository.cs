@@ -29,7 +29,7 @@ public class LoggingRepository : ILoggingRepository
         return rows?.Select(ConvertEntityToAccountingErrorModel).ToList() ?? [];
     }
 
-    public async Task DeleteAllAccountingErrorsByOrganizationIdAsync(Guid organizationId)
+    public async Task DeleteAllAccountingErrorsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Logging.AccountingErrorLog_DeleteAllByOrganizationId", new
@@ -81,7 +81,7 @@ public class LoggingRepository : ILoggingRepository
         return rows?.Select(ConvertEntityToAccountingLogModel).ToList() ?? [];
     }
 
-    public async Task DeleteAllAccountingLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task DeleteAllAccountingLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Logging.AccountingLog_DeleteAllByOrganizationId", new
@@ -152,7 +152,7 @@ public class LoggingRepository : ILoggingRepository
         return rows?.Select(ConvertEntityToApplicationLogModel).ToList() ?? [];
     }
 
-    public async Task DeleteAllApplicationLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task DeleteAllApplicationLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Logging.ApplicationLog_DeleteAllByOrganizationId", new
@@ -216,7 +216,7 @@ public class LoggingRepository : ILoggingRepository
         return rows?.Select(ConvertEntityToDatabaseErrorLogModel).ToList() ?? [];
     }
 
-    public async Task DeleteAllDatabaseErrorLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task DeleteAllDatabaseErrorLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Logging.DatabaseErrorLog_DeleteAllByOrganizationId", new
@@ -280,7 +280,7 @@ public class LoggingRepository : ILoggingRepository
         return rows?.Select(ConvertEntityToGeneralErrorLogModel).ToList() ?? [];
     }
 
-    public async Task DeleteAllGeneralErrorLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task DeleteAllGeneralErrorLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Logging.GeneralErrorLog_DeleteAllByOrganizationId", new
@@ -350,7 +350,7 @@ public class LoggingRepository : ILoggingRepository
         return rows?.Select(ConvertEntityToPropertyUploadLogModel).ToList() ?? [];
     }
 
-    public async Task DeleteAllPropertyUploadLogsByOrganizationIdAsync(Guid organizationId)
+    public async Task DeleteAllPropertyUploadLogsByOrganizationIdAsync(Guid? organizationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         await db.DapperProcExecuteAsync("Logging.PropertyUploadLog_DeleteAllByOrganizationId", new

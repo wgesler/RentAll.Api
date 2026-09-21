@@ -47,7 +47,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            await _loggingRepository.DeleteAllAccountingErrorsByOrganizationIdAsync(CurrentOrganizationId);
+            await _loggingRepository.DeleteAllAccountingErrorsByOrganizationIdAsync(LogQueryOrganizationId());
             return Ok();
         }
         #endregion
@@ -83,7 +83,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            await _loggingRepository.DeleteAllAccountingLogsByOrganizationIdAsync(CurrentOrganizationId);
+            await _loggingRepository.DeleteAllAccountingLogsByOrganizationIdAsync(LogQueryOrganizationId());
             return Ok();
         }
         #endregion
@@ -119,7 +119,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            await _loggingRepository.DeleteAllApplicationLogsByOrganizationIdAsync(CurrentOrganizationId);
+            await _loggingRepository.DeleteAllApplicationLogsByOrganizationIdAsync(LogQueryOrganizationId());
             return Ok();
         }
         #endregion
@@ -155,7 +155,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            await _loggingRepository.DeleteAllDatabaseErrorLogsByOrganizationIdAsync(CurrentOrganizationId);
+            await _loggingRepository.DeleteAllDatabaseErrorLogsByOrganizationIdAsync(LogQueryOrganizationId());
             return Ok();
         }
         #endregion
@@ -191,7 +191,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            await _loggingRepository.DeleteAllGeneralErrorLogsByOrganizationIdAsync(CurrentOrganizationId);
+            await _loggingRepository.DeleteAllGeneralErrorLogsByOrganizationIdAsync(LogQueryOrganizationId());
             return Ok();
         }
         #endregion
@@ -227,7 +227,7 @@ namespace RentAll.Api.Controllers
             if (!HasAdminAccess())
                 return Unauthorized("Only Admin or SuperAdmin can access logs.");
 
-            await _loggingRepository.DeleteAllPropertyUploadLogsByOrganizationIdAsync(CurrentOrganizationId);
+            await _loggingRepository.DeleteAllPropertyUploadLogsByOrganizationIdAsync(LogQueryOrganizationId());
             return Ok();
         }
         #endregion

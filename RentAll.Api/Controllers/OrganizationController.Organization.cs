@@ -145,6 +145,7 @@ namespace RentAll.Api.Controllers
                     return Conflict("OrganizationCode cannot change");
 
                 var model = dto.ToModel(CurrentUser);
+                model.CurrentInvoiceNo = existing.CurrentInvoiceNo;
 
                 model.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                     existing.OrganizationId, null, dto.FileDetails, ImageType.Logos, existing.LogoPath, dto.LogoPath);
