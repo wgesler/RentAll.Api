@@ -436,8 +436,17 @@ public partial class AccountingManager
             organizationId,
             currentUser);
 
+        if (paymentSummary.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty)
+            payment.DepositId = stampedDepositId;
+
         var hadHealthPaymentJournalEntry = await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId);
-        if (forcePaymentJournalEntryUpsert || !hadHealthPaymentJournalEntry)
+        var hasDepositUfLine = payment.DepositId is { } depositId
+            && depositId != Guid.Empty
+            && await PaymentHasUndepositedFundsLineEqualToAmountAsync(payment);
+        var needsPaymentJournalEntry = payment.DepositId is { } depositedId && depositedId != Guid.Empty
+            ? !hasDepositUfLine
+            : !hadHealthPaymentJournalEntry;
+        if (forcePaymentJournalEntryUpsert || needsPaymentJournalEntry)
         {
             var createResult = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
                 payment.PaymentId,

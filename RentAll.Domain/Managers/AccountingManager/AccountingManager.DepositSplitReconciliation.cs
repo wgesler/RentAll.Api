@@ -543,6 +543,42 @@ public partial class AccountingManager
         return true;
     }
 
+    private async Task<bool> PaymentHasUndepositedFundsLineEqualToAmountAsync(Payment payment)
+    {
+        if (payment.PaymentId == Guid.Empty || payment.Amount == 0)
+            return false;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(payment.OrganizationId, payment.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, payment.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0)
+            return false;
+
+        var paymentAmount = Math.Abs(RoundCurrency(payment.Amount));
+        var paymentEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
+            new JournalEntryGetByPaymentIdCriteria
+            {
+                OrganizationId = payment.OrganizationId,
+                PaymentId = payment.PaymentId
+            })).ToList();
+
+        foreach (var paymentEntry in paymentEntries)
+        {
+            if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                continue;
+
+            foreach (var line in paymentEntry.JournalEntryLines ?? [])
+            {
+                if (line.ChartOfAccountId != undepositedFundsAccountId || line.JournalEntryLineId == Guid.Empty)
+                    continue;
+
+                if (Math.Abs(Math.Abs(line.Debit - line.Credit) - paymentAmount) <= 0.005m)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
     private async Task ReconcileDepositSplitsForPaymentAsync(Payment payment, Guid currentUser)
     {
         if (payment.DepositId is not { } depositId || depositId == Guid.Empty)
