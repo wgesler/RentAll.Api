@@ -94,6 +94,16 @@ public partial class AccountingManager
                 invoiceDepositMatches,
                 claimedLineIds);
 
+            // Payment code in description (PY-xxx) → stamped deposit → deposit escrow JE line.
+            if (resolvedLineId is null || resolvedLineId == Guid.Empty)
+            {
+                resolvedLineId = await ResolveTransferSplitGroupEscrowLineFromDepositedPaymentAsync(
+                    transfer,
+                    splitGroup,
+                    escrowDepositAccountId,
+                    claimedLineIds);
+            }
+
             // Fallback: amount match among escrow deposit lines (non-invoice / legacy).
             if (resolvedLineId is null || resolvedLineId == Guid.Empty)
             {
@@ -163,6 +173,49 @@ public partial class AccountingManager
             .ToList();
 
         return ranked[0].EscrowJournalEntryLineId;
+    }
+
+    private async Task<Guid?> ResolveTransferSplitGroupEscrowLineFromDepositedPaymentAsync(
+        Transfer transfer,
+        IReadOnlyList<TransferSplit> splitGroup,
+        int escrowDepositAccountId,
+        IReadOnlySet<Guid> claimedLineIds)
+    {
+        var paymentSourceCode = ResolveTransferSplitGroupPaymentSourceCode(splitGroup);
+        if (string.IsNullOrWhiteSpace(paymentSourceCode))
+            return null;
+
+        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
+        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+            transfer.OrganizationId,
+            transfer.OfficeId.ToString(),
+            (int)PaymentKind.Invoice)).ToList();
+
+        var payment = payments
+            .Where(row =>
+                row.IsActive
+                && row.DepositId is { } depositId
+                && depositId != Guid.Empty
+                && EntityCodeFormatting.CodesMatch(row.PaymentCode, paymentSourceCode)
+                && Math.Abs(row.Amount - groupAmount) <= 0.005m)
+            .OrderByDescending(row => row.PaymentDate)
+            .FirstOrDefault();
+
+        if (payment?.DepositId is not { } linkedDepositId || linkedDepositId == Guid.Empty)
+            return null;
+
+        var deposit = await _accountingRepository.GetDepositByIdAsync(linkedDepositId, transfer.OrganizationId);
+        if (deposit == null || deposit.IsActive == false)
+            return null;
+
+        if (!DepositAccountingMonthIsOnOrBeforeTransfer(deposit.DepositDate, transfer.TransferDate))
+            return null;
+
+        var escrowLine = await TryGetDepositEscrowJournalEntryLineAsync(deposit, escrowDepositAccountId);
+        if (escrowLine == null || claimedLineIds.Contains(escrowLine.JournalEntryLineId))
+            return null;
+
+        return escrowLine.JournalEntryLineId;
     }
 
     private async Task<List<TransferDepositInvoiceEscrowMatch>> BuildTransferDepositInvoiceEscrowMatchesAsync(
@@ -544,7 +597,10 @@ public partial class AccountingManager
 
         var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
         var lineAmount = Math.Abs(RoundCurrency(line.Debit - line.Credit));
-        return groupAmount <= 0.005m || Math.Abs(groupAmount - lineAmount) <= 0.005m;
+        // One deposit escrow line backs the full deposit; transfer groups are per-invoice slices.
+        return groupAmount <= 0.005m
+            || Math.Abs(groupAmount - lineAmount) <= 0.005m
+            || groupAmount <= lineAmount + 0.005m;
     }
 
     private static Guid? ResolveTransferSplitGroupJournalEntryLineId(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<EscrowDepositLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
@@ -606,6 +662,32 @@ public partial class AccountingManager
             if (!string.IsNullOrWhiteSpace(tail))
                 return tail;
         }
+
+        return null;
+    }
+
+    private static string? ResolveTransferSplitGroupPaymentSourceCode(IReadOnlyList<TransferSplit> splitGroup)
+    {
+        foreach (var split in splitGroup)
+        {
+            var paymentSourceCode = ResolveTransferSplitPaymentSourceCode(split);
+            if (!string.IsNullOrWhiteSpace(paymentSourceCode))
+                return paymentSourceCode;
+        }
+
+        return null;
+    }
+
+    private static string? ResolveTransferSplitPaymentSourceCode(TransferSplit split)
+    {
+        var description = (split.Description ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(description))
+            return null;
+
+        var documentSourceCode = TryParseDocumentSourceCodeFromMemo(description);
+        if (!string.IsNullOrWhiteSpace(documentSourceCode)
+            && documentSourceCode.StartsWith("PY-", StringComparison.OrdinalIgnoreCase))
+            return documentSourceCode;
 
         return null;
     }
