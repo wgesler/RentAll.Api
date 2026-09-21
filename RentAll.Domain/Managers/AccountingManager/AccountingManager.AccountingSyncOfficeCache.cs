@@ -371,7 +371,8 @@ public partial class AccountingManager
                         InvoiceSourceCode = invoiceSourceCode,
                         PropertyId = NormalizeOptionalGuid(split.PropertyId),
                         DepositSplitAmount = RoundCurrency(split.Amount),
-                        DepositDate = deposit.DepositDate
+                        DepositDate = deposit.DepositDate,
+                        DepositAccountingPeriod = deposit.AccountingPeriod
                     });
                 }
             }

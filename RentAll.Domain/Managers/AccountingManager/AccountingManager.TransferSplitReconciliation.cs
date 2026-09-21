@@ -26,6 +26,7 @@ public partial class AccountingManager
         public Guid? PropertyId { get; init; }
         public decimal DepositSplitAmount { get; init; }
         public DateOnly DepositDate { get; init; }
+        public DateOnly DepositAccountingPeriod { get; init; }
     }
 
     private Task ReconcileTransferSplitJournalEntryLineIdsAsync(Transfer transfer)
@@ -152,6 +153,11 @@ public partial class AccountingManager
             .Where(match =>
                 !claimedLineIds.Contains(match.EscrowJournalEntryLineId)
                 && string.Equals(match.InvoiceSourceCode, invoiceSourceCode, StringComparison.OrdinalIgnoreCase)
+                && MatchesAccountingPeriodMonth(
+                    transfer.AccountingPeriod,
+                    transfer.TransferDate,
+                    match.DepositAccountingPeriod,
+                    match.DepositDate)
                 && (splitPropertyId == null || TransferSplitGuidEquals(splitPropertyId, match.PropertyId)))
             .ToList();
 
@@ -223,7 +229,8 @@ public partial class AccountingManager
                     InvoiceSourceCode = invoiceSourceCode,
                     PropertyId = NormalizeOptionalGuid(split.PropertyId),
                     DepositSplitAmount = RoundCurrency(split.Amount),
-                    DepositDate = deposit.DepositDate
+                    DepositDate = deposit.DepositDate,
+                    DepositAccountingPeriod = deposit.AccountingPeriod
                 });
             }
         }

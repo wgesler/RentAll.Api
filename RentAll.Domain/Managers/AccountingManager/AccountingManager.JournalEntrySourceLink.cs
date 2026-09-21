@@ -136,6 +136,22 @@ public partial class AccountingManager
     private async Task<List<JournalEntry>> GetAllJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
         => await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId);
 
+    private static DateOnly ToAccountingMonth(DateOnly period, DateOnly fallback)
+    {
+        var date = period != default ? period : fallback;
+        return new DateOnly(date.Year, date.Month, 1);
+    }
+
+    private static bool MatchesAccountingPeriodMonth(DateOnly leftPeriod, DateOnly leftFallback, DateOnly rightPeriod, DateOnly rightFallback)
+        => ToAccountingMonth(leftPeriod, leftFallback) == ToAccountingMonth(rightPeriod, rightFallback);
+
+    private static bool JournalEntryMatchesDepositAccountingMonth(JournalEntry entry, Deposit deposit)
+        => MatchesAccountingPeriodMonth(
+            entry.AccountingPeriod,
+            entry.TransactionDate,
+            deposit.AccountingPeriod,
+            deposit.DepositDate);
+
     private static bool MatchesJournalEntryAccountingPeriod(JournalEntry entry, DateOnly accountingPeriod)
     {
         if (entry.AccountingPeriod != default)
