@@ -1107,8 +1107,11 @@ public partial class AccountingManager
 
         try
         {
-            await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-            await DeleteJournalEntriesForPaymentAsync(existing);
+            if (existing.DepositId is not { } depositedId || depositedId == Guid.Empty)
+            {
+                await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
+                await DeleteJournalEntriesForPaymentAsync(existing);
+            }
 
             var updatedPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);

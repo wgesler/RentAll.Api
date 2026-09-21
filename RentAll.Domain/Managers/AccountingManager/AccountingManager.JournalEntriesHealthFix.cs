@@ -381,6 +381,18 @@ public partial class AccountingManager
         Guid currentUser,
         JournalEntrySyncResult result)
     {
+        var stampPaymentIds = await CollectPaymentIdsToStampForDepositHealthFixAsync(deposit, organizationId);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, stampPaymentIds, currentUser, unstampMissing: false);
+
+        if (_officeSyncCache != null)
+        {
+            foreach (var paymentId in stampPaymentIds)
+            {
+                if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                    cachedPayment.DepositId = deposit.DepositId;
+            }
+        }
+
         var paymentIds = await CollectPaymentIdsForDepositHealthFixAsync(deposit, organizationId);
 
         foreach (var paymentId in paymentIds)
@@ -394,19 +406,10 @@ public partial class AccountingManager
             if (payment == null || !payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
                 continue;
 
+            if (stampPaymentIds.Contains(paymentId))
+                payment.DepositId = deposit.DepositId;
+
             await SyncInvoicePaymentForHealthFixAsync(payment, organizationId, currentUser, result);
-        }
-
-        var stampPaymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
-        await SyncPaymentDepositIdsForDepositAsync(deposit, stampPaymentIds, currentUser);
-
-        if (_officeSyncCache != null)
-        {
-            foreach (var paymentId in stampPaymentIds)
-            {
-                if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
-                    cachedPayment.DepositId = deposit.DepositId;
-            }
         }
 
         var reloadedDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
@@ -472,8 +475,8 @@ public partial class AccountingManager
 
     async Task StampPaymentDepositIdsAfterSplitReconcileAsync(Deposit deposit, Guid organizationId, Guid currentUser)
     {
-        var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
-        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
+        var paymentIds = await CollectPaymentIdsToStampForDepositHealthFixAsync(deposit, organizationId);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser, unstampMissing: false);
 
         if (_officeSyncCache == null)
             return;

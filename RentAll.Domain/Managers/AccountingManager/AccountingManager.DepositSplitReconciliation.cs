@@ -561,7 +561,13 @@ public partial class AccountingManager
             return;
 
         var ufLines = new List<(Guid LineId, decimal Amount)>();
-        foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId))
+        var paymentEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
+            new JournalEntryGetByPaymentIdCriteria
+            {
+                OrganizationId = deposit.OrganizationId,
+                PaymentId = payment.PaymentId
+            })).ToList();
+        foreach (var paymentEntry in paymentEntries)
         {
             if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                 continue;

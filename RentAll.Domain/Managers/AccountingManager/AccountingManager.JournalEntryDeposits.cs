@@ -508,6 +508,61 @@ public partial class AccountingManager
         return paymentIds;
     }
 
+    private async Task<HashSet<Guid>> CollectPaymentIdsToStampForDepositHealthFixAsync(Deposit deposit, Guid organizationId)
+    {
+        var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
+
+        var officePayments = _officeSyncCache != null
+            ? _officeSyncCache.Payments
+            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                organizationId,
+                deposit.OfficeId.ToString(),
+                (int)PaymentKind.Invoice)).ToList();
+
+        foreach (var payment in officePayments)
+        {
+            if (payment.IsActive
+                && payment.PaymentKindId == (int)PaymentKind.Invoice
+                && payment.DepositId == deposit.DepositId)
+            {
+                paymentIds.Add(payment.PaymentId);
+            }
+        }
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (Math.Abs(split.Amount) <= 0.005m
+                || !IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+            if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+                continue;
+
+            foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(organizationId, deposit.OfficeId, invoiceSourceCode))
+            {
+                Payment? payment = null;
+                if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                    payment = cachedPayment;
+                else
+                    payment = officePayments.FirstOrDefault(candidate => candidate.PaymentId == paymentId)
+                        ?? await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
+                if (payment?.DepositId is { } stampedDepositId
+                    && stampedDepositId != Guid.Empty
+                    && stampedDepositId != deposit.DepositId)
+                    continue;
+
+                paymentIds.Add(paymentId);
+            }
+        }
+
+        return paymentIds;
+    }
+
     private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(
         Guid organizationId,
         int officeId,
@@ -725,15 +780,22 @@ public partial class AccountingManager
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
     }
 
-    private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, IReadOnlyCollection<Guid> paymentIds, Guid currentUser)
+    private async Task SyncPaymentDepositIdsForDepositAsync(
+        Deposit deposit,
+        IReadOnlyCollection<Guid> paymentIds,
+        Guid currentUser,
+        bool unstampMissing = true)
     {
         if (deposit.DepositId == Guid.Empty)
             return;
 
-        await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
-            deposit.OrganizationId,
-            deposit.DepositId,
-            currentUser);
+        if (unstampMissing)
+        {
+            await _accountingRepository.ClearPaymentDepositIdsByDepositIdAsync(
+                deposit.OrganizationId,
+                deposit.DepositId,
+                currentUser);
+        }
 
         if (paymentIds.Count == 0)
             return;
