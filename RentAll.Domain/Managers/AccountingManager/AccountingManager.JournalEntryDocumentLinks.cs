@@ -278,7 +278,7 @@ public partial class AccountingManager
                 foreach (var journalEntry in paymentEntries)
                 {
                     if (journalEntry.PaymentId == payment.PaymentId
-                        && string.Equals(journalEntry.PaymentCode, payment.PaymentCode, StringComparison.Ordinal))
+                        && EntityCodeFormatting.CodesMatch(journalEntry.PaymentCode, payment.PaymentCode))
                     {
                         continue;
                     }

@@ -44,6 +44,27 @@ public static class EntityCodeFormatting
         return $"{prefix}-{numValue.ToString($"D{LegacyNumberDigits}")}{suffix}";
     }
 
+    public static bool CodesMatch(string? left, string? right)
+    {
+        var leftTrimmed = left?.Trim();
+        var rightTrimmed = right?.Trim();
+        if (string.IsNullOrWhiteSpace(leftTrimmed) || string.IsNullOrWhiteSpace(rightTrimmed))
+            return false;
+
+        if (string.Equals(leftTrimmed, rightTrimmed, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (!TryParseFirstNumericSegment(leftTrimmed, out var leftPrefix, out var leftNumber, out var leftSuffix)
+            || !TryParseFirstNumericSegment(rightTrimmed, out var rightPrefix, out var rightNumber, out var rightSuffix))
+        {
+            return false;
+        }
+
+        return leftNumber == rightNumber
+            && string.Equals(leftPrefix, rightPrefix, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(leftSuffix, rightSuffix, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IEnumerable<string> BuildLoginPasswordAlternates(string trimmed)
     {
         yield return trimmed;

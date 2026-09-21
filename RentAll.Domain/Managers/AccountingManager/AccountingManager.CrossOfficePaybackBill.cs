@@ -99,7 +99,7 @@ public partial class AccountingManager
 
         return bills.FirstOrDefault(bill =>
             bill.BankCardId is not > 0 &&
-            string.Equals(bill.BillNumber?.Trim(), sourceReceiptCode, StringComparison.OrdinalIgnoreCase));
+            EntityCodeFormatting.CodesMatch(bill.BillNumber, sourceReceiptCode));
     }
 
 }

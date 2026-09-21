@@ -600,7 +600,7 @@ public partial class AccountingManager
         var existingJournalEntryIds = mergedEntries.Select(entry => entry.JournalEntryId).ToHashSet();
         var invoiceChargeJournalEntries = (await GetAllJournalEntriesForInvoiceAsync(organizationId, officeId, invoiceId))
             .Where(entry => entry.JournalEntryKindId == JournalEntryKind.Charge
-                && string.Equals(entry.SourceCode, allocationScope.SourceCode, StringComparison.OrdinalIgnoreCase)
+                && EntityCodeFormatting.CodesMatch(entry.SourceCode, allocationScope.SourceCode)
                 && MatchesTransferDepositInvoiceChargeJournalEntry(entry, allocationScope));
 
         foreach (var invoiceChargeJournalEntry in invoiceChargeJournalEntries)
@@ -696,7 +696,7 @@ public partial class AccountingManager
         if (entry.SourceTypeId == (int)SourceType.Deposit)
             return false;
 
-        if (!string.Equals(entry.SourceCode, scope.SourceCode, StringComparison.OrdinalIgnoreCase))
+        if (!EntityCodeFormatting.CodesMatch(entry.SourceCode, scope.SourceCode))
             return false;
 
         if (entry.JournalEntryKindId == JournalEntryKind.Charge
@@ -742,7 +742,7 @@ public partial class AccountingManager
             return false;
 
         var chargePrefix = memo.Split(':', 2, StringSplitOptions.None)[0].Trim();
-        return string.Equals(chargePrefix, scope.PaymentMemoSourceCode, StringComparison.OrdinalIgnoreCase);
+        return EntityCodeFormatting.CodesMatch(chargePrefix, scope.PaymentMemoSourceCode);
     }
 
     private static void AccumulateTransferDepositClassification(JournalEntry entry, TransferDepositRecapAccountContext recapContext, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw, bool includeOwnerEscrow, bool preferChargeSecurityDeposit = true, bool preferChargeSdw = true)

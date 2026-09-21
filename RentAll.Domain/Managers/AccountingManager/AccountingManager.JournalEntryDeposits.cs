@@ -522,7 +522,7 @@ public partial class AccountingManager
         if (_officeSyncCache != null)
         {
             var cacheMatchedInvoiceIds = _officeSyncCache.InvoicesById.Values
-                .Where(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+                .Where(invoice => EntityCodeFormatting.CodesMatch(invoice.InvoiceCode, normalizedSourceCode))
                 .Select(invoice => invoice.InvoiceId)
                 .ToHashSet();
 
@@ -553,7 +553,7 @@ public partial class AccountingManager
         })).ToList();
 
         var repoMatchedInvoiceIds = invoices
-            .Where(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+            .Where(invoice => EntityCodeFormatting.CodesMatch(invoice.InvoiceCode, normalizedSourceCode))
             .Select(invoice => invoice.InvoiceId)
             .ToHashSet();
 
@@ -589,10 +589,9 @@ public partial class AccountingManager
                     if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                         continue;
 
-                    if (string.Equals(
+                    if (EntityCodeFormatting.CodesMatch(
                             ResolvePaymentJournalEntrySourceCode(paymentEntry),
-                            normalizedSourceCode,
-                            StringComparison.OrdinalIgnoreCase))
+                            normalizedSourceCode))
                     {
                         paymentIds.Add(payment.PaymentId);
                         break;
@@ -681,10 +680,9 @@ public partial class AccountingManager
                 if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                     continue;
 
-                if (string.Equals(
+                if (EntityCodeFormatting.CodesMatch(
                         ResolvePaymentJournalEntrySourceCode(paymentEntry),
-                        invoiceSourceCode,
-                        StringComparison.OrdinalIgnoreCase))
+                        invoiceSourceCode))
                 {
                     yield return payment.PaymentId;
                     break;
@@ -712,7 +710,7 @@ public partial class AccountingManager
 
     private static bool PaymentLedgerLineMatchesInvoiceSourceCode(PaymentLedgerLine line, string invoiceSourceCode)
     {
-        if (string.Equals(line.InvoiceCode?.Trim(), invoiceSourceCode, StringComparison.OrdinalIgnoreCase))
+        if (EntityCodeFormatting.CodesMatch(line.InvoiceCode, invoiceSourceCode))
             return true;
 
         return false;
@@ -860,7 +858,7 @@ public partial class AccountingManager
 
             foreach (var chargeEntry in await GetAllJournalEntriesForInvoiceAsync(organizationId, officeId, invoiceId))
             {
-                if (!string.Equals(chargeEntry.SourceCode, allocationScope.SourceCode, StringComparison.OrdinalIgnoreCase))
+                if (!EntityCodeFormatting.CodesMatch(chargeEntry.SourceCode, allocationScope.SourceCode))
                     continue;
 
                 if (!MatchesTransferDepositInvoiceChargeJournalEntry(chargeEntry, allocationScope))

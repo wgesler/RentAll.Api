@@ -333,7 +333,7 @@ public partial class AccountingManager
             return;
 
         var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
-        var sourceMatches = string.Equals(paymentSourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase);
+        var sourceMatches = EntityCodeFormatting.CodesMatch(paymentSourceCode, splitSourceCode);
 
         foreach (var line in paymentEntry.JournalEntryLines ?? [])
         {
@@ -367,7 +367,7 @@ public partial class AccountingManager
         if (_officeSyncCache != null)
         {
             var cachedInvoice = _officeSyncCache.InvoicesById.Values.FirstOrDefault(invoice =>
-                string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase));
+                EntityCodeFormatting.CodesMatch(invoice.InvoiceCode, normalizedSourceCode));
             return cachedInvoice?.InvoiceId ?? Guid.Empty;
         }
 
@@ -380,7 +380,7 @@ public partial class AccountingManager
         });
 
         return invoices
-            .FirstOrDefault(invoice => string.Equals(invoice.InvoiceCode, normalizedSourceCode, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(invoice => EntityCodeFormatting.CodesMatch(invoice.InvoiceCode, normalizedSourceCode))
             ?.InvoiceId ?? Guid.Empty;
     }
 
@@ -628,7 +628,7 @@ public partial class AccountingManager
 
                     var rank = 0;
                     if (!string.IsNullOrWhiteSpace(splitSourceCode)
-                        && string.Equals(paymentSourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
+                        && EntityCodeFormatting.CodesMatch(paymentSourceCode, splitSourceCode))
                     {
                         rank -= 2;
                     }
@@ -680,7 +680,7 @@ public partial class AccountingManager
                 && !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
                 && Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount) <= 0.005m
-                && string.Equals(candidate.SourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
+                && EntityCodeFormatting.CodesMatch(candidate.SourceCode, splitSourceCode))
             .ToList();
 
         if (invoiceAmountMatches.Count == 0)
@@ -690,7 +690,7 @@ public partial class AccountingManager
                     IsPaymentDepositStampAvailableForDeposit(candidate.DepositId, deposit.DepositId)
                     && !claimedLineIds.Contains(candidate.JournalEntryLineId)
                     && !assignedLineIds.Contains(candidate.JournalEntryLineId)
-                    && string.Equals(candidate.SourceCode, splitSourceCode, StringComparison.OrdinalIgnoreCase))
+                    && EntityCodeFormatting.CodesMatch(candidate.SourceCode, splitSourceCode))
                 .ToList();
 
             if (invoiceOnlyMatches.Count == 1)
@@ -914,7 +914,7 @@ public partial class AccountingManager
         {
             foreach (var invoice in _officeSyncCache.InvoicesById.Values)
             {
-                if (!string.Equals(invoice.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase))
+                if (!EntityCodeFormatting.CodesMatch(invoice.ReservationCode, reservationSourceCode))
                     continue;
 
                 if (invoice.ReservationId is { } cachedReservationId && cachedReservationId != Guid.Empty)
@@ -934,7 +934,7 @@ public partial class AccountingManager
             deposit.OfficeId.ToString());
 
         var activeMatch = reservations.FirstOrDefault(reservation =>
-            string.Equals(reservation.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase));
+            EntityCodeFormatting.CodesMatch(reservation.ReservationCode, reservationSourceCode));
         if (activeMatch?.ReservationId is { } activeReservationId && activeReservationId != Guid.Empty)
         {
             return new DepositSplitReservationContext
@@ -949,7 +949,7 @@ public partial class AccountingManager
             deposit.OfficeId.ToString());
 
         var listedMatch = reservationLists.FirstOrDefault(reservation =>
-            string.Equals(reservation.ReservationCode, reservationSourceCode, StringComparison.OrdinalIgnoreCase));
+            EntityCodeFormatting.CodesMatch(reservation.ReservationCode, reservationSourceCode));
         if (listedMatch?.ReservationId is { } listedReservationId && listedReservationId != Guid.Empty)
         {
             return new DepositSplitReservationContext

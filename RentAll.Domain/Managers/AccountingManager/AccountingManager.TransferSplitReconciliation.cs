@@ -153,7 +153,7 @@ public partial class AccountingManager
         var matches = invoiceDepositMatches
             .Where(match =>
                 !claimedLineIds.Contains(match.EscrowJournalEntryLineId)
-                && string.Equals(match.InvoiceSourceCode, invoiceSourceCode, StringComparison.OrdinalIgnoreCase)
+                && EntityCodeFormatting.CodesMatch(match.InvoiceSourceCode, invoiceSourceCode)
                 && DepositAccountingMonthIsOnOrBeforeTransfer(
                     match.DepositAccountingPeriod,
                     match.DepositDate,

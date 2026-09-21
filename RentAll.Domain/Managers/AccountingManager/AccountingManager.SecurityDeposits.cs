@@ -819,7 +819,7 @@ public partial class AccountingManager
         if (descriptionReservationCode == null)
             return;
 
-        if (!string.Equals(descriptionReservationCode, reservation.ReservationCode.Trim(), StringComparison.OrdinalIgnoreCase))
+        if (!EntityCodeFormatting.CodesMatch(descriptionReservationCode, reservation.ReservationCode))
             throw new Exception($"Security deposit return description reservation {descriptionReservationCode} does not match selected reservation {reservation.ReservationCode}.");
     }
 
@@ -839,7 +839,7 @@ public partial class AccountingManager
 
         var descriptionReservationCode = ExtractReservationCodeFromReturnDescription(description);
         if (descriptionReservationCode != null
-            && string.Equals(descriptionReservationCode, normalizedReservationCode, StringComparison.OrdinalIgnoreCase))
+            && EntityCodeFormatting.CodesMatch(descriptionReservationCode, normalizedReservationCode))
         {
             var memo = description.Contains(':') ? description.Trim() : defaultMemo;
             return AppendPaymentTypeToMemo(memo, paymentTypeLabel);
@@ -879,7 +879,7 @@ public partial class AccountingManager
 
         var descriptionReservationCode = ExtractReservationCodeFromReturnDescription(description);
         if (descriptionReservationCode != null
-            && string.Equals(descriptionReservationCode, normalizedReservationCode, StringComparison.OrdinalIgnoreCase))
+            && EntityCodeFormatting.CodesMatch(descriptionReservationCode, normalizedReservationCode))
             return description.Trim();
 
         return defaultMemo;
