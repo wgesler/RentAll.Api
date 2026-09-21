@@ -1113,6 +1113,7 @@ public partial class AccountingManager
             var updatedPayment = await _accountingRepository.UpdatePaymentWithInvoiceAllocationsAsync(payment, allocations, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
+            await ReconcileDepositSplitsForPaymentAsync(updatedPayment, currentUser);
 
             return await _accountingRepository.GetPaymentByIdAsync(updatedPayment.PaymentId, payment.OrganizationId)
                 ?? updatedPayment;

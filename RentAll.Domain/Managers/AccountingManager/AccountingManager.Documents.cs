@@ -418,6 +418,7 @@ public partial class AccountingManager
             await SynchronizeInvoicePaymentLinesFromPaymentAsync(freshPayment, currentUser);
             await CreateJournalEntriesFromInvoicePaymentDocumentAsync(freshPayment.PaymentId, freshPayment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(freshPayment, currentUser);
+            await ReconcileDepositSplitsForPaymentAsync(freshPayment, currentUser);
             return freshPayment;
         }
         catch

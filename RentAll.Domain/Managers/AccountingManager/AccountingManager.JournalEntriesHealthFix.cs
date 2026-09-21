@@ -489,27 +489,7 @@ public partial class AccountingManager
         Payment payment,
         Guid organizationId,
         Guid currentUser)
-    {
-        if (payment.DepositId is not { } depositId || depositId == Guid.Empty)
-            return;
-
-        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
-        if (deposit == null)
-            return;
-
-        var trail = new AccountingSyncBailTrail();
-        var originalSplitLineIds = (deposit.Splits ?? [])
-            .Select(split => split.JournalEntryLineId)
-            .ToList();
-        await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail);
-        if (!DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
-            return;
-
-        deposit.ModifiedBy = currentUser;
-        var updated = await _accountingRepository.UpdateDepositAsync(deposit);
-        deposit.Splits = updated.Splits;
-        _officeSyncCache?.ReplaceDeposit(deposit);
-    }
+        => await ReconcileDepositSplitsForPaymentAsync(payment, currentUser);
 
     async Task SyncDepositForHealthFixAsync(Guid organizationId, Guid depositId, Guid currentUser, JournalEntrySyncResult result)
     {
