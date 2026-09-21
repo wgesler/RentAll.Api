@@ -117,6 +117,8 @@ public partial class AccountingManager
             }
 
             trail?.Bail($"Rematch failed: {groupLabel} amount={groupAmount:0.00} (no escrow deposit line).");
+            foreach (var split in splitGroup)
+                split.JournalEntryLineId = null;
         }
 
         // Multi-invoice transfers often share one deposit escrow line (full deposit amount) while

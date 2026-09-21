@@ -571,16 +571,41 @@ public partial class AccountingManager
     public async Task<Transfer> CreateTransferAsync(Transfer transfer, Guid currentUser)
     {
         await PrepareTransferForSaveAsync(transfer);
-        var created = await _accountingRepository.CreateTransferAsync(transfer);
 
-        // Stamp Deposit.TransferId/TransferCode for every deposit included on this transfer.
-        await SyncDepositTransferIdsForTransferAsync(created, currentUser);
+        var unresolved = await GetUnresolvedTransferSplitMessagesAsync(transfer);
+        if (unresolved.Count > 0)
+            throw new Exception(string.Join(" ", unresolved));
 
-        await CreateJournalEntryFromTransferAsync(created, currentUser);
-        await EnsureTransferPostingStatusComplianceAsync(created, currentUser);
+        Transfer? created = null;
+        try
+        {
+            created = await _accountingRepository.CreateTransferAsync(transfer);
 
-        return await _accountingRepository.GetTransferByIdAsync(created.TransferId, created.OrganizationId)
-            ?? created;
+            // Stamp Deposit.TransferId/TransferCode for every deposit included on this transfer.
+            await SyncDepositTransferIdsForTransferAsync(created, currentUser);
+
+            await CreateJournalEntryFromTransferAsync(created, currentUser);
+            await EnsureTransferPostingStatusComplianceAsync(created, currentUser);
+
+            return await _accountingRepository.GetTransferByIdAsync(created.TransferId, created.OrganizationId)
+                ?? created;
+        }
+        catch
+        {
+            if (created != null)
+            {
+                try
+                {
+                    await DeleteTransferAsync(created.TransferId, created.OrganizationId, currentUser);
+                }
+                catch
+                {
+                    // Keep the original create failure.
+                }
+            }
+
+            throw;
+        }
     }
 
     public async Task<Transfer> UpdateTransferAsync(Transfer transfer, Guid currentUser)
