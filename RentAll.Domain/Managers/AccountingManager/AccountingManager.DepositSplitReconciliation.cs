@@ -47,11 +47,7 @@ public partial class AccountingManager
         var paymentLineCandidates = (await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId))
             .Where(candidate =>
                 IsPaymentDepositStampAvailableForDeposit(candidate.DepositId, deposit.DepositId)
-                && PaymentAccountingMonthIsOnOrBeforeDeposit(
-                    candidate.AccountingPeriod,
-                    candidate.TransactionDate,
-                    deposit.AccountingPeriod,
-                    deposit.DepositDate))
+                && PaymentAccountingMonthIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate))
             .ToList();
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherDepositsAsync(deposit);
         var assignedLineIds = new HashSet<Guid>();
@@ -213,6 +209,7 @@ public partial class AccountingManager
         var matches = new List<(Guid LineId, int Rank)>();
         foreach (var paymentId in paymentIds)
         {
+            var paymentDate = await GetDocumentPaymentDateAsync(paymentId, deposit.OrganizationId);
             foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId))
                 CollectUndepositedFundsLineMatches(
                     paymentEntry,
@@ -222,7 +219,8 @@ public partial class AccountingManager
                     splitAmount,
                     claimedLineIds,
                     assignedLineIds,
-                    matches);
+                    matches,
+                    paymentDate);
         }
 
         var invoiceId = !string.IsNullOrWhiteSpace(splitSourceCode)
@@ -237,6 +235,10 @@ public partial class AccountingManager
                          invoiceId,
                          JournalEntryKind.Payment))
             {
+                var invoicePaymentDate = await GetDocumentPaymentDateAsync(
+                    paymentEntry.PaymentId ?? Guid.Empty,
+                    deposit.OrganizationId);
+
                 CollectUndepositedFundsLineMatches(
                     paymentEntry,
                     deposit,
@@ -245,7 +247,8 @@ public partial class AccountingManager
                     splitAmount,
                     claimedLineIds,
                     assignedLineIds,
-                    matches);
+                    matches,
+                    invoicePaymentDate);
             }
         }
 
@@ -285,12 +288,13 @@ public partial class AccountingManager
 
         foreach (var paymentId in paymentIds)
         {
+            var paymentDate = await GetDocumentPaymentDateAsync(paymentId, deposit.OrganizationId);
             foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId))
             {
                 if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                     continue;
 
-                if (!JournalEntryMatchesDepositAccountingMonth(paymentEntry, deposit))
+                if (!JournalEntryMatchesDepositAccountingMonth(deposit, paymentDate))
                     continue;
 
                 foreach (var line in paymentEntry.JournalEntryLines ?? [])
@@ -324,12 +328,13 @@ public partial class AccountingManager
         decimal splitAmount,
         IReadOnlySet<Guid> claimedLineIds,
         IReadOnlySet<Guid> assignedLineIds,
-        ICollection<(Guid LineId, int Rank)> matches)
+        ICollection<(Guid LineId, int Rank)> matches,
+        DateOnly paymentDate)
     {
         if (paymentEntry.JournalEntryKindId is not (JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive))
             return;
 
-        if (!JournalEntryMatchesDepositAccountingMonth(paymentEntry, deposit))
+        if (!JournalEntryMatchesDepositAccountingMonth(deposit, paymentDate))
             return;
 
         var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
@@ -412,7 +417,8 @@ public partial class AccountingManager
                     candidates,
                     paymentEntry,
                     undepositedFundsAccountId,
-                    payment.DepositId);
+                    payment.DepositId,
+                    payment.PaymentDate);
             }
         }
 
@@ -423,8 +429,12 @@ public partial class AccountingManager
         ICollection<UndepositedPaymentLineCandidate> candidates,
         JournalEntry paymentEntry,
         int undepositedFundsAccountId,
-        Guid? paymentDepositId)
+        Guid? paymentDepositId,
+        DateOnly paymentDate)
     {
+        if (paymentDate == default)
+            return;
+
         var sourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
         if (string.IsNullOrWhiteSpace(sourceCode))
             return;
@@ -447,7 +457,7 @@ public partial class AccountingManager
                 ContactId = NormalizeOptionalGuid(line.ContactId),
                 DepositId = NormalizeOptionalGuid(paymentEntry.DepositId ?? paymentDepositId),
                 SourceCode = sourceCode,
-                TransactionDate = paymentEntry.TransactionDate,
+                TransactionDate = paymentDate,
                 AccountingPeriod = paymentEntry.AccountingPeriod
             });
         }
@@ -505,11 +515,18 @@ public partial class AccountingManager
         if (paymentId == Guid.Empty)
             return false;
 
-        if (await PaymentDepositStampConflictsWithDepositAsync(deposit, paymentId))
+        Payment? payment = null;
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            payment = cachedPayment;
+        else
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
+
+        if (payment?.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty && stampedDepositId != deposit.DepositId)
             return false;
 
         var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
-        if (paymentJournalEntry == null || !JournalEntryMatchesDepositAccountingMonth(paymentJournalEntry, deposit))
+        if (paymentJournalEntry == null
+            || !JournalEntryMatchesDepositAccountingMonth(deposit, payment?.PaymentDate))
             return false;
 
         var splitPropertyId = NormalizeOptionalGuid(split.PropertyId);
@@ -526,6 +543,18 @@ public partial class AccountingManager
             return true;
 
         return stampedDepositId == depositId;
+    }
+
+    private async Task<DateOnly> GetDocumentPaymentDateAsync(Guid paymentId, Guid organizationId)
+    {
+        if (paymentId == Guid.Empty)
+            return default;
+
+        if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            return cachedPayment.PaymentDate;
+
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        return payment?.PaymentDate ?? default;
     }
 
     private async Task<bool> PaymentDepositStampConflictsWithDepositAsync(Deposit deposit, Guid paymentId)
@@ -604,7 +633,7 @@ public partial class AccountingManager
 
             foreach (var paymentEntry in paymentEntries)
             {
-                if (!JournalEntryMatchesDepositAccountingMonth(paymentEntry, deposit))
+                if (!JournalEntryMatchesDepositAccountingMonth(deposit, payment.PaymentDate))
                     continue;
 
                 var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);

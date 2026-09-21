@@ -60,11 +60,7 @@ public partial class AccountingManager
         var invoiceDepositMatches = await BuildTransferDepositInvoiceEscrowMatchesAsync(transfer, escrowDepositAccountId);
         var escrowLineCandidates = (await BuildEscrowDepositLineCandidatesAsync(transfer, escrowDepositAccountId))
             .Where(candidate =>
-                DepositAccountingMonthIsOnOrBeforeTransfer(
-                    candidate.AccountingPeriod,
-                    candidate.TransactionDate,
-                    transfer.AccountingPeriod,
-                    transfer.TransferDate))
+                DepositAccountingMonthIsOnOrBeforeTransfer(candidate.TransactionDate, transfer.TransferDate))
             .ToList();
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherTransfersAsync(transfer);
         var assignedLineIds = new HashSet<Guid>();
@@ -154,11 +150,7 @@ public partial class AccountingManager
             .Where(match =>
                 !claimedLineIds.Contains(match.EscrowJournalEntryLineId)
                 && EntityCodeFormatting.CodesMatch(match.InvoiceSourceCode, invoiceSourceCode)
-                && DepositAccountingMonthIsOnOrBeforeTransfer(
-                    match.DepositAccountingPeriod,
-                    match.DepositDate,
-                    transfer.AccountingPeriod,
-                    transfer.TransferDate)
+                && DepositAccountingMonthIsOnOrBeforeTransfer(match.DepositDate, transfer.TransferDate)
                 && (splitPropertyId == null || TransferSplitGuidEquals(splitPropertyId, match.PropertyId)))
             .ToList();
 
@@ -459,6 +451,13 @@ public partial class AccountingManager
         var candidates = new List<EscrowDepositLineCandidate>();
         foreach (var depositEntry in depositEntries)
         {
+            if (depositEntry.DepositId is not { } escrowDepositId || escrowDepositId == Guid.Empty)
+                continue;
+
+            var depositDate = await GetDocumentDepositDateAsync(escrowDepositId, transfer.OrganizationId);
+            if (depositDate == default)
+                continue;
+
             foreach (var line in depositEntry.JournalEntryLines)
             {
                 if (line.ChartOfAccountId != escrowDepositAccountId)
@@ -475,8 +474,8 @@ public partial class AccountingManager
                     PropertyId = NormalizeOptionalGuid(line.PropertyId),
                     ReservationId = NormalizeOptionalGuid(line.ReservationId),
                     ContactId = NormalizeOptionalGuid(line.ContactId),
-                    DepositId = NormalizeOptionalGuid(depositEntry.DepositId),
-                    TransactionDate = depositEntry.TransactionDate,
+                    DepositId = escrowDepositId,
+                    TransactionDate = depositDate,
                     AccountingPeriod = depositEntry.AccountingPeriod
                 });
             }
@@ -514,6 +513,18 @@ public partial class AccountingManager
         return claimedLineIds;
     }
 
+    private async Task<DateOnly> GetDocumentDepositDateAsync(Guid depositId, Guid organizationId)
+    {
+        if (depositId == Guid.Empty)
+            return default;
+
+        if (_officeSyncCache != null && _officeSyncCache.DepositsById.TryGetValue(depositId, out var cachedDeposit))
+            return cachedDeposit.DepositDate;
+
+        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+        return deposit?.DepositDate ?? default;
+    }
+
     private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(
         Transfer transfer,
         IReadOnlyList<TransferSplit> splitGroup,
@@ -529,15 +540,12 @@ public partial class AccountingManager
             return false;
 
         var depositJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, transfer.OrganizationId);
-        if (depositJournalEntry == null
-            || !DepositAccountingMonthIsOnOrBeforeTransfer(
-                depositJournalEntry.AccountingPeriod,
-                depositJournalEntry.TransactionDate,
-                transfer.AccountingPeriod,
-                transfer.TransferDate))
-        {
+        if (depositJournalEntry?.DepositId is not { } depositId || depositId == Guid.Empty)
             return false;
-        }
+
+        var depositDate = await GetDocumentDepositDateAsync(depositId, transfer.OrganizationId);
+        if (!DepositAccountingMonthIsOnOrBeforeTransfer(depositDate, transfer.TransferDate))
+            return false;
 
         var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
         var lineAmount = Math.Abs(RoundCurrency(line.Debit - line.Credit));

@@ -136,32 +136,22 @@ public partial class AccountingManager
     private async Task<List<JournalEntry>> GetAllJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
         => await GetJournalEntriesForSourceAsync(organizationId, officeId, SourceType.Invoice, invoiceId);
 
-    private static DateOnly ToAccountingMonth(DateOnly period, DateOnly fallback)
-    {
-        var date = period != default ? period : fallback;
-        return new DateOnly(date.Year, date.Month, 1);
-    }
+    private static DateOnly ToMoneyMonth(DateOnly date)
+        => new(date.Year, date.Month, 1);
 
-    private static bool PaymentAccountingMonthIsOnOrBeforeDeposit(
-        DateOnly paymentPeriod,
-        DateOnly paymentFallback,
-        DateOnly depositPeriod,
-        DateOnly depositFallback)
-        => ToAccountingMonth(paymentPeriod, paymentFallback) <= ToAccountingMonth(depositPeriod, depositFallback);
+    private static bool MoneyDateMonthIsOnOrBefore(DateOnly earlier, DateOnly later)
+        => earlier != default
+            && later != default
+            && ToMoneyMonth(earlier) <= ToMoneyMonth(later);
 
-    private static bool DepositAccountingMonthIsOnOrBeforeTransfer(
-        DateOnly depositPeriod,
-        DateOnly depositFallback,
-        DateOnly transferPeriod,
-        DateOnly transferFallback)
-        => ToAccountingMonth(depositPeriod, depositFallback) <= ToAccountingMonth(transferPeriod, transferFallback);
+    private static bool PaymentAccountingMonthIsOnOrBeforeDeposit(DateOnly paymentDate, DateOnly depositDate)
+        => MoneyDateMonthIsOnOrBefore(paymentDate, depositDate);
 
-    private static bool JournalEntryMatchesDepositAccountingMonth(JournalEntry entry, Deposit deposit)
-        => PaymentAccountingMonthIsOnOrBeforeDeposit(
-            entry.AccountingPeriod,
-            entry.TransactionDate,
-            deposit.AccountingPeriod,
-            deposit.DepositDate);
+    private static bool DepositAccountingMonthIsOnOrBeforeTransfer(DateOnly depositDate, DateOnly transferDate)
+        => MoneyDateMonthIsOnOrBefore(depositDate, transferDate);
+
+    private static bool JournalEntryMatchesDepositAccountingMonth(Deposit deposit, DateOnly? paymentDate)
+        => paymentDate is { } date && PaymentAccountingMonthIsOnOrBeforeDeposit(date, deposit.DepositDate);
 
     private static bool MatchesJournalEntryAccountingPeriod(JournalEntry entry, DateOnly accountingPeriod)
     {

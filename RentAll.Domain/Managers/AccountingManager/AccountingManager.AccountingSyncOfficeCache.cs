@@ -390,6 +390,12 @@ public partial class AccountingManager
             var candidates = new List<EscrowDepositLineCandidate>();
             foreach (var depositEntry in GetBySourceType((int)SourceType.Deposit, transfer.OfficeId))
             {
+                if ((depositEntry.DepositId ?? depositEntry.SourceId) is not { } escrowDepositId
+                    || escrowDepositId == Guid.Empty
+                    || !DepositsById.TryGetValue(escrowDepositId, out var escrowDeposit)
+                    || escrowDeposit.DepositDate == default)
+                    continue;
+
                 foreach (var line in depositEntry.JournalEntryLines ?? [])
                 {
                     if (line.ChartOfAccountId != escrowDepositAccountId)
@@ -406,9 +412,8 @@ public partial class AccountingManager
                         PropertyId = NormalizeOptionalGuid(line.PropertyId),
                         ReservationId = NormalizeOptionalGuid(line.ReservationId),
                         ContactId = NormalizeOptionalGuid(line.ContactId),
-                        DepositId = NormalizeOptionalGuid(depositEntry.DepositId)
-                            ?? NormalizeOptionalGuid(depositEntry.SourceId),
-                        TransactionDate = depositEntry.TransactionDate,
+                        DepositId = escrowDepositId,
+                        TransactionDate = escrowDeposit.DepositDate,
                         AccountingPeriod = depositEntry.AccountingPeriod
                     });
                 }
@@ -438,7 +443,8 @@ public partial class AccountingManager
                         candidates,
                         paymentEntry,
                         undepositedFundsAccountId,
-                        payment.DepositId);
+                        payment.DepositId,
+                        payment.PaymentDate);
                 }
             }
 
