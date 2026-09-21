@@ -270,6 +270,7 @@ public partial class AccountingController
 
         var jobId = Guid.NewGuid().ToString("N");
         var job = CreateDocumentTypeSyncJob(jobId, syncType);
+        PruneCompletedSyncJobs();
         SyncJobs[jobId] = job;
 
         _ = Task.Run(() => RunDocumentTypeJournalEntriesSyncJobAsync(
@@ -301,6 +302,7 @@ public partial class AccountingController
 
         var jobId = Guid.NewGuid().ToString("N");
         var job = CreateTransferSyncJob(jobId);
+        PruneCompletedSyncJobs();
         SyncJobs[jobId] = job;
 
         _ = Task.Run(() => RunTransferJournalEntriesSyncJobAsync(job, CurrentOrganizationId, officeIds, CurrentUser));
@@ -324,6 +326,7 @@ public partial class AccountingController
 
         var jobId = Guid.NewGuid().ToString("N");
         var job = CreateSyncJob(jobId);
+        PruneCompletedSyncJobs();
         SyncJobs[jobId] = job;
 
         _ = Task.Run(() => RunDocumentLinksRepairJobAsync(job, CurrentOrganizationId, officeIds, CurrentUser));
@@ -399,6 +402,7 @@ public partial class AccountingController
 
         var jobId = Guid.NewGuid().ToString("N");
         var job = CreateSyncJob(jobId);
+        PruneCompletedSyncJobs();
         SyncJobs[jobId] = job;
 
         _ = Task.Run(() => RunAllJournalEntriesSyncJobAsync(job, CurrentOrganizationId, officeIds, dto.StartDate, dto.EndDate, CurrentUser));
@@ -412,12 +416,17 @@ public partial class AccountingController
         if (string.IsNullOrWhiteSpace(jobId))
             return BadRequest("Job ID is required");
 
+        PruneCompletedSyncJobs();
+
         if (!SyncJobs.TryGetValue(jobId.Trim(), out var job))
             return NotFound("Sync job not found");
 
+        JournalEntrySyncJobStatusDto status;
+        var isCompleted = false;
         lock (job.SyncRoot)
         {
-            return Ok(new JournalEntrySyncJobStatusDto
+            isCompleted = job.IsCompleted;
+            status = new JournalEntrySyncJobStatusDto
             {
                 JobId = job.JobId,
                 IsRunning = job.IsRunning,
@@ -427,8 +436,13 @@ public partial class AccountingController
                     .OrderBy(t => GetSyncTypeSortOrder(t.Type))
                     .Select(CloneSyncTypeStatus)
                     .ToList()
-            });
+            };
         }
+
+        if (isCompleted)
+            SyncJobs.TryRemove(job.JobId, out _);
+
+        return Ok(status);
     }
 
     [HttpPost("journal-entry/clear/receipts")]
@@ -659,11 +673,7 @@ public partial class AccountingController
         }
         finally
         {
-            lock (job.SyncRoot)
-            {
-                job.IsRunning = false;
-                job.IsCompleted = true;
-            }
+            CompleteSyncJob(job);
         }
     }
 
@@ -707,11 +717,7 @@ public partial class AccountingController
         }
         finally
         {
-            lock (job.SyncRoot)
-            {
-                job.IsRunning = false;
-                job.IsCompleted = true;
-            }
+            CompleteSyncJob(job);
         }
     }
 
@@ -742,11 +748,7 @@ public partial class AccountingController
         }
         finally
         {
-            lock (job.SyncRoot)
-            {
-                job.IsRunning = false;
-                job.IsCompleted = true;
-            }
+            CompleteSyncJob(job);
         }
     }
 
@@ -793,11 +795,7 @@ public partial class AccountingController
         }
         finally
         {
-            lock (job.SyncRoot)
-            {
-                job.IsRunning = false;
-                job.IsCompleted = true;
-            }
+            CompleteSyncJob(job);
         }
     }
 
@@ -806,6 +804,32 @@ public partial class AccountingController
         using var scope = _serviceScopeFactory.CreateScope();
         var scopedAccountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
         await syncAction(scopedAccountingManager);
+    }
+
+    private static void CompleteSyncJob(JournalEntrySyncJobState job)
+    {
+        lock (job.SyncRoot)
+        {
+            job.IsRunning = false;
+            job.IsCompleted = true;
+            job.CompletedUtc = DateTime.UtcNow;
+        }
+    }
+
+    private static void PruneCompletedSyncJobs()
+    {
+        var cutoffUtc = DateTime.UtcNow.AddMinutes(-10);
+        foreach (var pair in SyncJobs)
+        {
+            var shouldRemove = false;
+            lock (pair.Value.SyncRoot)
+            {
+                shouldRemove = pair.Value.IsCompleted && pair.Value.CompletedUtc is DateTime completedUtc && completedUtc <= cutoffUtc;
+            }
+
+            if (shouldRemove)
+                SyncJobs.TryRemove(pair.Key, out _);
+        }
     }
 
     private static void SetSyncJobMessage(JournalEntrySyncJobState job, string message)

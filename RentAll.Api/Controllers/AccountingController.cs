@@ -61,6 +61,7 @@ namespace RentAll.Api.Controllers
             public required string JobId { get; init; }
             public bool IsRunning { get; set; }
             public bool IsCompleted { get; set; }
+            public DateTime? CompletedUtc { get; set; }
             public string? Message { get; set; }
             public Dictionary<string, JournalEntrySyncJobTypeStatusDto> Types { get; } = new(StringComparer.OrdinalIgnoreCase);
             public object SyncRoot { get; } = new();
