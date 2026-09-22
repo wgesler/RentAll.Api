@@ -471,7 +471,7 @@ public partial class AccountingManager
             .Select(split => split.SourceJournalEntryLineAmount)
             .FirstOrDefault(value => value.HasValue && Math.Abs(value.Value) > 0.005m);
         if (sourceAmount.HasValue)
-            return RoundCurrency(Math.Abs(sourceAmount.Value));
+            return RoundCurrency(sourceAmount.Value);
 
         return destinationTotal;
     }
