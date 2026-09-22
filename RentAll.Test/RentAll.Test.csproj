@@ -24,4 +24,8 @@
     <ProjectReference Include="..\RentAll.Infrastructure\RentAll.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\RentAll.Api\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\RentAll.Api\appsettings.json')" />
+  </ItemGroup>
+
 </Project>

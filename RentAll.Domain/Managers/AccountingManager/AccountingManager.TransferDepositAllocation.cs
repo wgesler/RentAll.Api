@@ -94,8 +94,8 @@ public partial class AccountingManager
                 {
                     DepositId = item.DepositId,
                     EscrowAmount = Math.Abs(RoundCurrency(item.EscrowAmount)) > 0.005m
-                        ? item.EscrowAmount
-                        : singleSplit.Amount,
+                        ? NormalizeTransferEscrowAmount(item.EscrowAmount)
+                        : NormalizeTransferEscrowAmount(singleSplit.Amount),
                     JournalEntryLineId = item.JournalEntryLineId,
                     DepositSplitId = singleSplit.DepositSplitId > 0 ? singleSplit.DepositSplitId : item.DepositSplitId
                 });
@@ -115,7 +115,7 @@ public partial class AccountingManager
                 expandedItems.Add(new TransferDepositAllocationRequestItem
                 {
                     DepositId = item.DepositId,
-                    EscrowAmount = item.EscrowAmount,
+                    EscrowAmount = NormalizeTransferEscrowAmount(item.EscrowAmount),
                     JournalEntryLineId = item.JournalEntryLineId,
                     DepositSplitId = item.DepositSplitId
                 });
@@ -127,7 +127,7 @@ public partial class AccountingManager
                 expandedItems.Add(new TransferDepositAllocationRequestItem
                 {
                     DepositId = item.DepositId,
-                    EscrowAmount = split.Amount,
+                    EscrowAmount = NormalizeTransferEscrowAmount(split.Amount),
                     JournalEntryLineId = item.JournalEntryLineId,
                     DepositSplitId = split.DepositSplitId > 0 ? split.DepositSplitId : null
                 });
@@ -143,6 +143,7 @@ public partial class AccountingManager
 
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationForEscrowLineAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>> depositJournalEntryCache)
     {
+        escrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
         var expandedSplits = ExpandEscrowDepositSplits(deposit, escrowAmount);
         if (expandedSplits.Count <= 1)
         {
@@ -191,7 +192,7 @@ public partial class AccountingManager
                 description = part.Description;
         }
 
-        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        var normalizedEscrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
         // Business is always the deposit residual (company rent + fees). FeesActual is not the Business split amount.
         var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw);
 
@@ -260,6 +261,7 @@ public partial class AccountingManager
 
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>>? depositJournalEntryCache, int? depositSplitId = null)
     {
+        escrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
         var depositId = deposit.DepositId;
         var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId);
 
@@ -336,7 +338,7 @@ public partial class AccountingManager
 
     private static TransferDepositAllocationResult BuildNonPaymentTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, Deposit deposit, DepositSplit split)
     {
-        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        var normalizedEscrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
         var description = ResolveTransferDepositAllocationDescription(split.Description, deposit.DepositCode);
 
         return new TransferDepositAllocationResult
@@ -657,7 +659,7 @@ public partial class AccountingManager
 
     private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, TransferDepositAllocationScope allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, string description)
     {
-        var normalizedEscrowAmount = RoundCurrency(escrowAmount);
+        var normalizedEscrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
         var fullSplitAmount = RoundCurrency(Math.Abs(allocationScope.SplitAmount));
 
         if (fullSplitAmount != 0 && Math.Abs(normalizedEscrowAmount - fullSplitAmount) > 0.005m)
@@ -822,6 +824,11 @@ public partial class AccountingManager
     private static decimal RoundCurrency(decimal value)
     {
         return Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static decimal NormalizeTransferEscrowAmount(decimal escrowAmount)
+    {
+        return RoundCurrency(Math.Abs(escrowAmount));
     }
 
     private static string ResolveTransferDepositAllocationDescription(string? splitDescription, string? depositCode)

@@ -582,7 +582,7 @@ public partial class AccountingManager
             }
 
             if (depositId == null || depositId == Guid.Empty)
-                continue;
+                throw new Exception("Transfer split journal entry line must belong to a journal entry with a deposit link.");
 
             depositIds.Add(depositId.Value);
         }
