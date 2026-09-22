@@ -101,7 +101,8 @@ public partial class AccountingManager
                     transfer,
                     splitGroup,
                     escrowDepositAccountId,
-                    claimedLineIds);
+                    claimedLineIds,
+                    assignedLineIds);
             }
 
             // Fallback: amount match among escrow deposit lines (non-invoice / legacy).
@@ -179,13 +180,13 @@ public partial class AccountingManager
         Transfer transfer,
         IReadOnlyList<TransferSplit> splitGroup,
         int escrowDepositAccountId,
-        IReadOnlySet<Guid> claimedLineIds)
+        IReadOnlySet<Guid> claimedLineIds,
+        IReadOnlySet<Guid> assignedLineIds)
     {
         var paymentSourceCode = ResolveTransferSplitGroupPaymentSourceCode(splitGroup);
         if (string.IsNullOrWhiteSpace(paymentSourceCode))
             return null;
 
-        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
         var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
             transfer.OrganizationId,
             transfer.OfficeId.ToString(),
@@ -196,8 +197,7 @@ public partial class AccountingManager
                 row.IsActive
                 && row.DepositId is { } depositId
                 && depositId != Guid.Empty
-                && EntityCodeFormatting.CodesMatch(row.PaymentCode, paymentSourceCode)
-                && Math.Abs(Math.Abs(row.Amount) - groupAmount) <= 0.005m)
+                && EntityCodeFormatting.CodesMatch(row.PaymentCode, paymentSourceCode))
             .OrderByDescending(row => row.PaymentDate)
             .FirstOrDefault();
 
@@ -212,7 +212,11 @@ public partial class AccountingManager
             return null;
 
         var escrowLine = await TryGetDepositEscrowJournalEntryLineAsync(deposit, escrowDepositAccountId);
-        if (escrowLine == null || claimedLineIds.Contains(escrowLine.JournalEntryLineId))
+        if (escrowLine == null)
+            return null;
+
+        if (claimedLineIds.Contains(escrowLine.JournalEntryLineId)
+            && !assignedLineIds.Contains(escrowLine.JournalEntryLineId))
             return null;
 
         return escrowLine.JournalEntryLineId;
@@ -363,9 +367,10 @@ public partial class AccountingManager
             if (groupAmount <= 0.005m)
                 continue;
 
-            var sharedCandidate = candidates
+            var sharedCandidate = escrowLineCandidates
                 .Where(candidate =>
                     assignedLineIds.Contains(candidate.JournalEntryLineId)
+                    && !claimedLineIds.Contains(candidate.JournalEntryLineId)
                     && groupAmount <= Math.Abs(candidate.NetAmount) + 0.005m)
                 .OrderByDescending(candidate => Math.Abs(candidate.NetAmount))
                 .ThenBy(candidate => candidate.JournalEntryLineId)
