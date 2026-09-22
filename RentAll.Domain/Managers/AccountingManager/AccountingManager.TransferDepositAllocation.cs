@@ -300,6 +300,10 @@ public partial class AccountingManager
             depositJournalEntryCache?.Add(depositId, depositJournalEntries);
         }
 
+        depositJournalEntries = await MergeTransferDepositPaymentJournalEntriesAsync(
+            organizationId,
+            depositJournalEntries,
+            allocationScope);
         depositJournalEntries = await MergeTransferDepositInvoiceChargeJournalEntriesAsync(organizationId, deposit.OfficeId, depositJournalEntries, allocationScope);
 
         var scopedDepositJournalEntries = FilterDepositLinkedJournalEntriesForScope(depositJournalEntries, allocationScope);
@@ -309,9 +313,14 @@ public partial class AccountingManager
                 $"No deposit-linked journal entries matched payment {allocationScope.SourceCode} for deposit {deposit.DepositCode}.");
         }
 
-        var (ownerEscrow, secDep, sdw, description) =
-            ClassifyTransferDepositAllocation(scopedDepositJournalEntries, allocationScope, recapContext);
+        var (ownerEscrow, secDep, sdw) =
+            ClassifyTransferDepositAllocation(scopedDepositJournalEntries, recapContext);
         AlignTransferDepositClassificationWithSplitSign(allocationScope.SplitAmount, ref ownerEscrow, ref secDep, ref sdw);
+        var description = await ResolveTransferDepositAllocationDisplaySourceAsync(
+            organizationId,
+            allocationScope,
+            matchedSplit,
+            scopedDepositJournalEntries);
 
         return BuildTransferDepositAllocationResult(
             depositId,
@@ -386,13 +395,15 @@ public partial class AccountingManager
         var linkedGroups = (transfer.Splits ?? [])
             .Where(split => Math.Abs(split.Amount) > 0.005m
                 && split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
-            .GroupBy(split => split.JournalEntryLineId!.Value);
+            .GroupBy(split => BuildTransferReportSplitGroupKey(split));
 
         foreach (var group in linkedGroups)
         {
+            var sampleSplit = group.First();
+            var journalEntryLineId = sampleSplit.JournalEntryLineId ?? Guid.Empty;
             results.Add(BuildTransferReportLineAllocationFromSplits(
                 group.ToList(),
-                group.Key,
+                journalEntryLineId,
                 ownersAccountId,
                 secDepAccountId,
                 sdwAccountId,
@@ -428,6 +439,22 @@ public partial class AccountingManager
                     : item.split.Description.Trim(),
                 StringComparer.OrdinalIgnoreCase)
             .Select(group => group.Select(item => item.split).ToList());
+    }
+
+    private static string BuildTransferReportSplitGroupKey(TransferSplit split)
+    {
+        var lineId = split.JournalEntryLineId ?? Guid.Empty;
+        var description = (split.Description ?? string.Empty).Trim();
+        if (lineId != Guid.Empty && description.Length > 0)
+            return $"{lineId:N}|{description}";
+
+        if (lineId != Guid.Empty)
+            return lineId.ToString("N");
+
+        if (description.Length > 0)
+            return description;
+
+        return $"ctx:{split.PropertyId}:{split.ReservationId}:{split.ContactId}";
     }
 
     private static TransferReportLineAllocationResult BuildTransferReportLineAllocationFromSplits(
@@ -594,6 +621,34 @@ public partial class AccountingManager
 
     #region Deposit-Linked Journal Entry Selection
 
+    private async Task<List<JournalEntry>> MergeTransferDepositPaymentJournalEntriesAsync(
+        Guid organizationId,
+        IReadOnlyList<JournalEntry> depositJournalEntries,
+        TransferDepositAllocationScope allocationScope)
+    {
+        var mergedEntries = depositJournalEntries.ToList();
+        if (allocationScope.PaymentId == Guid.Empty)
+            return mergedEntries;
+
+        var existingJournalEntryIds = mergedEntries.Select(entry => entry.JournalEntryId).ToHashSet();
+        var paymentJournalEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
+        {
+            OrganizationId = organizationId,
+            PaymentId = allocationScope.PaymentId
+        });
+
+        foreach (var paymentJournalEntry in paymentJournalEntries)
+        {
+            if (paymentJournalEntry.SourceTypeId == (int)SourceType.Deposit)
+                continue;
+
+            if (existingJournalEntryIds.Add(paymentJournalEntry.JournalEntryId))
+                mergedEntries.Add(paymentJournalEntry);
+        }
+
+        return mergedEntries;
+    }
+
     private async Task<List<JournalEntry>> MergeTransferDepositInvoiceChargeJournalEntriesAsync(Guid organizationId, int officeId, IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope allocationScope)
     {
         var mergedEntries = depositJournalEntries.ToList();
@@ -626,7 +681,9 @@ public partial class AccountingManager
 
     #region Recap Classification
 
-    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw, string Description) ClassifyTransferDepositAllocation(IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositAllocationScope allocationScope, TransferDepositRecapAccountContext recapContext)
+    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw) ClassifyTransferDepositAllocation(
+        IReadOnlyList<JournalEntry> scopedDepositJournalEntries,
+        TransferDepositRecapAccountContext recapContext)
     {
         var ownerEscrow = 0m;
         var secDep = 0m;
@@ -650,8 +707,7 @@ public partial class AccountingManager
         return (
             RoundCurrency(ownerEscrow),
             RoundCurrency(secDep),
-            RoundCurrency(sdw),
-            allocationScope.SourceCode);
+            RoundCurrency(sdw));
     }
 
     #endregion
@@ -699,6 +755,10 @@ public partial class AccountingManager
         if (entry.SourceTypeId == (int)SourceType.Deposit)
             return false;
 
+        // Owner/SD/SDW actuals keep invoice/reservation source codes — link by PaymentId, not PY-xxx SourceCode.
+        if (entry.PaymentId == scope.PaymentId && scope.PaymentId != Guid.Empty)
+            return true;
+
         if (!EntityCodeFormatting.CodesMatch(entry.SourceCode, scope.SourceCode))
             return false;
 
@@ -708,7 +768,7 @@ public partial class AccountingManager
             return MatchesTransferDepositInvoiceChargeJournalEntry(entry, scope);
         }
 
-        return entry.PaymentId == scope.PaymentId;
+        return EntityCodeFormatting.CodesMatch(entry.SourceCode, scope.SourceCode);
     }
 
     private static string ResolveTransferDepositPaymentMemoSourceCode(JournalEntry paymentJournalEntry, JournalEntryLine? paymentLine = null)
@@ -862,6 +922,101 @@ public partial class AccountingManager
 
         return depositCode?.Trim() ?? string.Empty;
     }
+
+    private async Task<string> ResolveTransferDepositAllocationDisplaySourceAsync(
+        Guid organizationId,
+        TransferDepositAllocationScope scope,
+        DepositSplit split,
+        IReadOnlyList<JournalEntry> scopedDepositJournalEntries)
+    {
+        var fromSplit = ResolveDepositSplitInvoiceSourceCode(split);
+        if (IsReservationOrInvoiceSourceCode(fromSplit))
+            return fromSplit!;
+
+        if (IsReservationOrInvoiceSourceCode(scope.PaymentMemoSourceCode))
+            return scope.PaymentMemoSourceCode.Trim();
+
+        var fromScoped = ResolveDominantInvoiceSourceCodeFromScopedJournalEntries(scopedDepositJournalEntries);
+        if (!string.IsNullOrWhiteSpace(fromScoped))
+            return fromScoped;
+
+        if (scope.SourceCode.StartsWith("PY-", StringComparison.OrdinalIgnoreCase))
+        {
+            var fromPayment = await ResolveDominantPaymentInvoiceCodeAsync(scope.PaymentId, organizationId);
+            if (!string.IsNullOrWhiteSpace(fromPayment))
+                return fromPayment;
+
+            var reservationCode = await ResolveReservationCodeForTransferDisplayAsync(scope.ReservationId, organizationId)
+                ?? await ResolveReservationCodeForTransferDisplayAsync(split.ReservationId, organizationId);
+            if (!string.IsNullOrWhiteSpace(reservationCode))
+                return reservationCode;
+        }
+
+        if (IsReservationOrInvoiceSourceCode(scope.SourceCode))
+            return scope.SourceCode.Trim();
+
+        return scope.SourceCode.Trim();
+    }
+
+    internal async Task<string?> ResolvePaymentBackedDepositSplitInvoiceSourceCodeAsync(
+        Guid organizationId,
+        DepositSplit split)
+    {
+        if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+            return null;
+
+        var paymentLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(lineId);
+        if (paymentLine == null)
+            return null;
+
+        var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(paymentLine.JournalEntryId, organizationId);
+        if (paymentJournalEntry?.PaymentId is not { } paymentId || paymentId == Guid.Empty)
+            return null;
+
+        return await ResolveDominantPaymentInvoiceCodeAsync(paymentId, organizationId);
+    }
+
+    private async Task<string?> ResolveDominantPaymentInvoiceCodeAsync(Guid paymentId, Guid organizationId)
+    {
+        if (paymentId == Guid.Empty)
+            return null;
+
+        var ledgerLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
+        if (ledgerLines == null || ledgerLines.Count == 0)
+            return null;
+
+        return ledgerLines
+            .Where(line => IsReservationOrInvoiceSourceCode(line.InvoiceCode))
+            .OrderByDescending(line => Math.Abs(line.Amount))
+            .Select(line => line.InvoiceCode.Trim())
+            .FirstOrDefault();
+    }
+
+    private async Task<string?> ResolveReservationCodeForTransferDisplayAsync(Guid? reservationId, Guid organizationId)
+    {
+        if (reservationId is not { } id || id == Guid.Empty)
+            return null;
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(id, organizationId);
+        return string.IsNullOrWhiteSpace(reservation?.ReservationCode)
+            ? null
+            : reservation.ReservationCode.Trim();
+    }
+
+    private static string? ResolveDominantInvoiceSourceCodeFromScopedJournalEntries(IReadOnlyList<JournalEntry> scopedDepositJournalEntries)
+    {
+        return scopedDepositJournalEntries
+            .Where(entry => IsReservationOrInvoiceSourceCode(entry.SourceCode))
+            .GroupBy(entry => entry.SourceCode!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(group => group.Sum(entry =>
+                (entry.JournalEntryLines ?? []).Sum(line => Math.Abs(line.Debit - line.Credit))))
+            .Select(group => group.Key)
+            .FirstOrDefault();
+    }
+
+    private static bool IsReservationOrInvoiceSourceCode(string? sourceCode)
+        => !string.IsNullOrWhiteSpace(sourceCode)
+            && sourceCode.Trim().StartsWith("R-", StringComparison.OrdinalIgnoreCase);
 
     #endregion
 }

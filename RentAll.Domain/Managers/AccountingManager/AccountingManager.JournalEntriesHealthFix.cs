@@ -549,6 +549,10 @@ public partial class AccountingManager
 
         if (await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId))
         {
+            // Deposit JE exists — still re-stamp PaymentId/DepositId on all payment-linked JEs
+            // (Owner/SDW/Prepayment actuals are linked by PaymentId, not only the UF posting line).
+            await SyncDepositDocumentLinksAsync(deposit, currentUser);
+
             if (hadDepositJournalEntry)
                 result.JournalEntriesSkipped++;
             else

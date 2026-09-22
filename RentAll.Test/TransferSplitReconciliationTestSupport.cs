@@ -18,6 +18,13 @@ internal static class TransferSplitReconciliationTestSupport
     internal const int EscrowDepositAccountId = 9100;
     internal const int EscrowOwnersAccountId = 9101;
     internal const int UndepositedFundsAccountId = 9102;
+    internal const int OwnerPayableAccountId = 9103;
+    internal const int EscrowSdwAccountId = 9104;
+    internal const int TenantIncomeAccountId = 9105;
+    internal const int PrePayAccountId = 9106;
+    internal const int ActRcvableAccountId = 9107;
+    internal const int OwnerExpenseAccountId = 9108;
+    internal const int EscrowSecDepAccountId = 9109;
 
     internal static readonly Guid OrganizationId = Guid.Parse("280cd8da-f1be-41f2-ae6e-b45008cf3896");
     internal static readonly Guid CurrentUser = Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -27,9 +34,13 @@ internal static class TransferSplitReconciliationTestSupport
     internal static readonly Guid EscrowLineId = Guid.Parse("00000004-0000-0000-0000-000000000001");
     internal static readonly Guid Payment953UfLineId = Guid.Parse("00000005-0000-0000-0000-000000000953");
     internal static readonly Guid Payment953JeId = Guid.Parse("00000006-0000-0000-0000-000000000953");
+    internal static readonly Guid Py953OwnerActualJeId = Guid.Parse("0000000a-0000-0000-0000-000000000953");
+    internal static readonly Guid Py953SdwActualJeId = Guid.Parse("0000000b-0000-0000-0000-000000000953");
     internal static readonly Guid R093UfLineId = Guid.Parse("00000007-0000-0000-0000-000000000093");
     internal static readonly Guid R093PaymentJeId = Guid.Parse("00000008-0000-0000-0000-000000000093");
     internal static readonly Guid CreatedTransferId = Guid.Parse("00000009-0000-0000-0000-000000000001");
+    internal static readonly Guid R093PropertyId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    internal static readonly Guid Py953PropertyId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
     internal sealed class PostInsertProbe
     {
@@ -59,14 +70,16 @@ internal static class TransferSplitReconciliationTestSupport
                     Amount = 7750m,
                     Description = "Transfer to Escrow Accounts - R-000000093-005",
                     ChartOfAccountId = EscrowOwnersAccountId,
-                    JournalEntryLineId = Payment953UfLineId
+                    JournalEntryLineId = Payment953UfLineId,
+                    PropertyId = R093PropertyId
                 },
                 new TransferSplit
                 {
                     Amount = 4060m,
                     Description = "Transfer to Escrow Accounts - PY-000000953",
                     ChartOfAccountId = EscrowOwnersAccountId,
-                    JournalEntryLineId = Payment953UfLineId
+                    JournalEntryLineId = Payment953UfLineId,
+                    PropertyId = Py953PropertyId
                 }
             ]
         };
@@ -120,7 +133,15 @@ internal static class TransferSplitReconciliationTestSupport
                 OrganizationId = OrganizationId,
                 OfficeId = OfficeId,
                 DefaultEscrowDepositAccountId = EscrowDepositAccountId,
-                DefaultEscrowOwnersAccountId = EscrowOwnersAccountId
+                DefaultEscrowOwnersAccountId = EscrowOwnersAccountId,
+                DefaultOwnActPayableAccountId = OwnerPayableAccountId,
+                DefaultEscrowSdwAccountId = EscrowSdwAccountId,
+                DefaultTenantIncAccountId = TenantIncomeAccountId,
+                DefaultPrePayAccountId = PrePayAccountId,
+                DefaultActRcvableAccountId = ActRcvableAccountId,
+                DefaultOwnerExpAccountId = OwnerExpenseAccountId,
+                DefaultEscrowSecDepAccountId = EscrowSecDepAccountId,
+                DefaultBankAccountId = UndepositedFundsAccountId
             });
 
         accountingRepository
@@ -141,8 +162,13 @@ internal static class TransferSplitReconciliationTestSupport
             .Setup(repo => repo.GetPaymentsByOfficeIdsAsync(OrganizationId, OfficeId.ToString(), (int)PaymentKind.Invoice))
             .ReturnsAsync(BuildPayments());
         accountingRepository
+            .Setup(repo => repo.GetPaymentByIdAsync(Payment953Id, OrganizationId))
+            .ReturnsAsync(BuildPayments()[0]);
+        accountingRepository
             .Setup(repo => repo.GetTransfersByCriteriaAsync(It.IsAny<TransferGetCriteria>()))
             .ReturnsAsync([]);
+
+        SetupPaymentLedgerLineMocks(accountingRepository);
 
         accountingRepository
             .Setup(repo => repo.CreateTransferAsync(It.IsAny<Transfer>()))
@@ -150,12 +176,19 @@ internal static class TransferSplitReconciliationTestSupport
 
         var journalEntryRepository = new Mock<IJournalEntryRepository>(MockBehavior.Strict);
         var depositJournalEntry = BuildDepositJournalEntry();
+        var paymentJournalEntry = BuildPaymentJournalEntry();
         journalEntryRepository
             .Setup(repo => repo.GetJournalEntriesAsync(It.IsAny<JournalEntryGetCriteria>()))
             .ReturnsAsync([depositJournalEntry]);
         journalEntryRepository
             .Setup(repo => repo.GetJournalEntriesByDepositIdAsync(It.IsAny<JournalEntryGetByDepositIdCriteria>()))
-            .ReturnsAsync([depositJournalEntry]);
+            .ReturnsAsync([depositJournalEntry, paymentJournalEntry]);
+        journalEntryRepository
+            .Setup(repo => repo.GetJournalEntriesByPaymentIdAsync(It.IsAny<JournalEntryGetByPaymentIdCriteria>()))
+            .ReturnsAsync((JournalEntryGetByPaymentIdCriteria criteria) =>
+                criteria.PaymentId == Payment953Id
+                    ? BuildPy953PaymentJournalEntries()
+                    : []);
         journalEntryRepository
             .Setup(repo => repo.GetJournalEntryLineByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync((Guid lineId) => BuildLineById(lineId));
@@ -220,6 +253,8 @@ internal static class TransferSplitReconciliationTestSupport
         accountingRepository
             .Setup(repo => repo.GetTransfersByCriteriaAsync(It.IsAny<TransferGetCriteria>()))
             .ReturnsAsync([]);
+
+        SetupPaymentLedgerLineMocks(accountingRepository);
 
         accountingRepository
             .Setup(repo => repo.GetPaymentByIdAsync(Payment953Id, OrganizationId))
@@ -303,6 +338,9 @@ internal static class TransferSplitReconciliationTestSupport
             .Setup(repo => repo.GetJournalEntriesByDepositIdAsync(It.IsAny<JournalEntryGetByDepositIdCriteria>()))
             .ReturnsAsync([depositJournalEntry]);
         journalEntryRepository
+            .Setup(repo => repo.GetJournalEntriesByPaymentIdAsync(It.IsAny<JournalEntryGetByPaymentIdCriteria>()))
+            .ReturnsAsync([]);
+        journalEntryRepository
             .Setup(repo => repo.GetJournalEntryLineByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync((Guid lineId) => BuildLineById(lineId));
         journalEntryRepository
@@ -366,6 +404,62 @@ internal static class TransferSplitReconciliationTestSupport
                 OfficeId = OfficeId,
                 Name = "Undeposited Funds",
                 AccountType = AccountType.OtherCurrentAsset
+            },
+            new ChartOfAccount
+            {
+                AccountId = OwnerPayableAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Owner Payable",
+                AccountType = AccountType.AccountsPayable
+            },
+            new ChartOfAccount
+            {
+                AccountId = EscrowSdwAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Escrow SDW",
+                AccountType = AccountType.OtherCurrentLiability
+            },
+            new ChartOfAccount
+            {
+                AccountId = TenantIncomeAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Tenant Income",
+                AccountType = AccountType.Income
+            },
+            new ChartOfAccount
+            {
+                AccountId = PrePayAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Customer Prepayments",
+                AccountType = AccountType.OtherCurrentLiability
+            },
+            new ChartOfAccount
+            {
+                AccountId = ActRcvableAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Accounts Receivable",
+                AccountType = AccountType.AccountsReceivable
+            },
+            new ChartOfAccount
+            {
+                AccountId = OwnerExpenseAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Owner Expense",
+                AccountType = AccountType.Expense
+            },
+            new ChartOfAccount
+            {
+                AccountId = EscrowSecDepAccountId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                Name = "Escrow Sec Dep",
+                AccountType = AccountType.OtherCurrentLiability
             }
         ];
 
@@ -389,7 +483,7 @@ internal static class TransferSplitReconciliationTestSupport
                     Amount = 4060m,
                     ChartOfAccountId = UndepositedFundsAccountId,
                     JournalEntryLineId = Payment953UfLineId,
-                    Description = "PY-000000953: Payment: check 9626943"
+                    Description = "Payment: Ck 96296943 - 09/07-10/06"
                 },
                 new DepositSplit
                 {
@@ -453,8 +547,11 @@ internal static class TransferSplitReconciliationTestSupport
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             PaymentId = Payment953Id,
+            DepositId = Deposit156Id,
+            JournalEntryKindId = JournalEntryKind.Payment,
             SourceTypeId = (int)SourceType.InvoicePayment,
             SourceCode = "PY-000000953",
+            Memo = "Payment: Ck 96296943 - 09/07-10/06",
             JournalEntryLines =
             [
                 new JournalEntryLine
@@ -468,6 +565,70 @@ internal static class TransferSplitReconciliationTestSupport
             ]
         };
     }
+
+    private static List<JournalEntry> BuildPy953PaymentJournalEntries()
+        =>
+        [
+            BuildPaymentJournalEntry(),
+            new JournalEntry
+            {
+                JournalEntryId = Py953OwnerActualJeId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                PaymentId = Payment953Id,
+                JournalEntryKindId = JournalEntryKind.OwnerActual,
+                SourceTypeId = (int)SourceType.Invoice,
+                SourceCode = "R-000000396-002",
+                JournalEntryLines =
+                [
+                    new JournalEntryLine
+                    {
+                        JournalEntryLineId = Guid.Parse("0000000c-0000-0000-0000-000000000953"),
+                        JournalEntryId = Py953OwnerActualJeId,
+                        ChartOfAccountId = OwnerPayableAccountId,
+                        Debit = 0m,
+                        Credit = 2808.40m
+                    },
+                    new JournalEntryLine
+                    {
+                        JournalEntryLineId = Guid.Parse("0000000d-0000-0000-0000-000000000953"),
+                        JournalEntryId = Py953OwnerActualJeId,
+                        ChartOfAccountId = TenantIncomeAccountId,
+                        Debit = 2808.40m,
+                        Credit = 0m
+                    }
+                ]
+            },
+            new JournalEntry
+            {
+                JournalEntryId = Py953SdwActualJeId,
+                OrganizationId = OrganizationId,
+                OfficeId = OfficeId,
+                PaymentId = Payment953Id,
+                JournalEntryKindId = JournalEntryKind.SecurityDepositWaiverActual,
+                SourceTypeId = (int)SourceType.Invoice,
+                SourceCode = "R-000000396-002",
+                JournalEntryLines =
+                [
+                    new JournalEntryLine
+                    {
+                        JournalEntryLineId = Guid.Parse("0000000e-0000-0000-0000-000000000953"),
+                        JournalEntryId = Py953SdwActualJeId,
+                        ChartOfAccountId = EscrowSdwAccountId,
+                        Debit = 0m,
+                        Credit = 48m
+                    },
+                    new JournalEntryLine
+                    {
+                        JournalEntryLineId = Guid.Parse("0000000f-0000-0000-0000-000000000953"),
+                        JournalEntryId = Py953SdwActualJeId,
+                        ChartOfAccountId = TenantIncomeAccountId,
+                        Debit = 48m,
+                        Credit = 0m
+                    }
+                ]
+            }
+        ];
 
     private static JournalEntry BuildReservationPaymentJournalEntry()
     {
@@ -531,6 +692,30 @@ internal static class TransferSplitReconciliationTestSupport
         }
 
         throw new InvalidOperationException($"Unexpected journal entry line id in test: {lineId}");
+    }
+
+    private static void SetupPaymentLedgerLineMocks(Mock<IAccountingRepository> accountingRepository)
+    {
+        accountingRepository
+            .Setup(repo => repo.GetLedgerLinesByPaymentIdAsync(It.IsAny<Guid>(), OrganizationId))
+            .ReturnsAsync((Guid paymentId, Guid _) =>
+                paymentId == Payment953Id
+                    ?
+                    [
+                        new PaymentLedgerLine
+                        {
+                            PaymentId = Payment953Id,
+                            InvoiceCode = "R-000000396-002",
+                            Amount = 3248m
+                        },
+                        new PaymentLedgerLine
+                        {
+                            PaymentId = Payment953Id,
+                            InvoiceCode = "R-000000396-003",
+                            Amount = 812m
+                        }
+                    ]
+                    : []);
     }
 
     private sealed class TestEnabledFeatureFlagService : IFeatureFlagService

@@ -75,6 +75,14 @@ public partial class AccountingManager
 
             ApplyJournalEntryLineContextToTransferSplit(split, sourceLine);
 
+            if (escrowDepositAccountId > 0 && sourceLine.ChartOfAccountId == escrowDepositAccountId)
+            {
+                // Shared deposit escrow lines back multiple payment slices — do not stamp the full line net on every split.
+                continue;
+            }
+
+            split.SourceJournalEntryLineAmount = sourceLine.Debit - sourceLine.Credit;
+
             if (escrowDepositAccountId > 0)
             {
                 var escrowSourceAmount = await ResolveTransferEscrowDepositSourceAmountAsync(
@@ -136,10 +144,13 @@ public partial class AccountingManager
 
     private static void ApplyJournalEntryLineContextToTransferSplit(TransferSplit split, JournalEntryLine sourceLine)
     {
-        split.PropertyId = NormalizeOptionalGuid(sourceLine.PropertyId);
-        split.ReservationId = NormalizeOptionalGuid(sourceLine.ReservationId);
-        split.ContactId = NormalizeOptionalGuid(sourceLine.ContactId);
-        split.SourceJournalEntryLineAmount = sourceLine.Debit - sourceLine.Credit;
+        // Deposit allocation sets payment-scoped context before rematch links a shared escrow line.
+        if (!split.PropertyId.HasValue || split.PropertyId == Guid.Empty)
+            split.PropertyId = NormalizeOptionalGuid(sourceLine.PropertyId);
+        if (!split.ReservationId.HasValue || split.ReservationId == Guid.Empty)
+            split.ReservationId = NormalizeOptionalGuid(sourceLine.ReservationId);
+        if (!split.ContactId.HasValue || split.ContactId == Guid.Empty)
+            split.ContactId = NormalizeOptionalGuid(sourceLine.ContactId);
     }
 
     public Task EnrichTransferSplitsForDisplayAsync(Transfer transfer)

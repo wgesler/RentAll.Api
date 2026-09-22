@@ -262,7 +262,14 @@ public partial class AccountingManager
                     continue;
 
                 var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-                if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+                if (!IsReservationOrInvoiceSourceCode(invoiceSourceCode))
+                {
+                    invoiceSourceCode = await ResolvePaymentBackedDepositSplitInvoiceSourceCodeAsync(
+                        deposit.OrganizationId,
+                        split);
+                }
+
+                if (!IsReservationOrInvoiceSourceCode(invoiceSourceCode))
                     continue;
 
                 matches.Add(new TransferDepositInvoiceEscrowMatch
@@ -488,11 +495,15 @@ public partial class AccountingManager
 
         foreach (var split in splits)
         {
-            // Keep Owner/SD/SDW/Business together: same escrow line, else same description, else context.
-            // Description matters after clear/resync clears line ids — context alone can split the group.
+            // Keep Owner/SD/SDW/Business together: same payment slice (description), even when rematched to a shared escrow line.
             string key;
-            if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
-                key = $"line:{lineId}";
+            if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty
+                && !string.IsNullOrWhiteSpace(split.Description))
+            {
+                key = $"line:{lineId}:desc:{split.Description.Trim()}";
+            }
+            else if (split.JournalEntryLineId is { } lineIdOnly && lineIdOnly != Guid.Empty)
+                key = $"line:{lineIdOnly}";
             else if (!string.IsNullOrWhiteSpace(split.Description))
                 key = $"desc:{split.Description.Trim()}";
             else

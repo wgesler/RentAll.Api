@@ -20,6 +20,15 @@ public class AccountingManagerTransferSplitReconciliationTests
             Assert.NotEqual(Guid.Empty, split.JournalEntryLineId);
             Assert.Equal(TransferSplitReconciliationTestSupport.EscrowLineId, split.JournalEntryLineId);
         });
+
+        var r093Split = transfer.Splits!.First(split =>
+            (split.Description ?? string.Empty).Contains("R-000000093", StringComparison.OrdinalIgnoreCase));
+        var py953Split = transfer.Splits!.First(split =>
+            (split.Description ?? string.Empty).Contains("PY-000000953", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(TransferSplitReconciliationTestSupport.R093PropertyId, r093Split.PropertyId);
+        Assert.Equal(TransferSplitReconciliationTestSupport.Py953PropertyId, py953Split.PropertyId);
+        Assert.Null(r093Split.SourceJournalEntryLineAmount);
+        Assert.Null(py953Split.SourceJournalEntryLineAmount);
     }
 
     /// <summary>

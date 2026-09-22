@@ -454,9 +454,50 @@ public partial class AccountingManager
             return cachedEntryPaymentId;
 
         paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
-        return paymentJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty
-            ? paymentId
-            : Guid.Empty;
+        if (paymentJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty)
+            return paymentId;
+
+        var payment = await FindInvoicePaymentByDepositedJournalEntryAsync(paymentJournalEntry, organizationId);
+        return payment?.PaymentId ?? Guid.Empty;
+    }
+
+    private async Task<Payment?> FindInvoicePaymentByDepositedJournalEntryAsync(JournalEntry? journalEntry, Guid organizationId)
+    {
+        if (journalEntry == null)
+            return null;
+
+        var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(journalEntry);
+        if (string.IsNullOrWhiteSpace(paymentSourceCode)
+            || !paymentSourceCode.StartsWith("PY-", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return await FindInvoicePaymentByPaymentCodeAsync(organizationId, journalEntry.OfficeId, paymentSourceCode);
+    }
+
+    private async Task<Payment?> FindInvoicePaymentByPaymentCodeAsync(Guid organizationId, int officeId, string paymentCode)
+    {
+        var normalizedPaymentCode = paymentCode.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedPaymentCode))
+            return null;
+
+        if (_officeSyncCache != null)
+        {
+            return _officeSyncCache.Payments.FirstOrDefault(payment =>
+                payment.IsActive
+                && payment.PaymentKindId == (int)PaymentKind.Invoice
+                && EntityCodeFormatting.CodesMatch(payment.PaymentCode, normalizedPaymentCode));
+        }
+
+        var payments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+            organizationId,
+            officeId.ToString(),
+            (int)PaymentKind.Invoice);
+
+        return payments.FirstOrDefault(payment =>
+            payment.IsActive
+            && EntityCodeFormatting.CodesMatch(payment.PaymentCode, normalizedPaymentCode));
     }
 
     private async Task<HashSet<Guid>> CollectPaymentIdsForDepositHealthFixAsync(Deposit deposit, Guid organizationId)
@@ -916,6 +957,13 @@ public partial class AccountingManager
 
         if (!string.IsNullOrWhiteSpace(journalEntry.PaymentCode))
             return;
+
+        var payment = await FindInvoicePaymentByDepositedJournalEntryAsync(journalEntry, journalEntry.OrganizationId);
+        if (payment != null)
+        {
+            ApplyPaymentDocumentLink(journalEntry, payment);
+            return;
+        }
 
         if (journalEntry.SourceTypeId != (int)SourceType.Invoice
             || journalEntry.SourceId is not { } invoiceId
