@@ -396,7 +396,61 @@ public class InvoiceJournalEntryGapCoverageTests
     }
 
     [Fact]
-    public async Task PrePayment_CrossMonthRentPlusDepartureFee_CreatesFeesActualOnApply()
+    public async Task PrePayment_CrossMonthRentPlusDepartureFee_DoesNotCreateFeesActualWhenSecurityDepositConsumesPayment()
+    {
+        const decimal rentAmount = 2550m;
+        const decimal departureFee = 350m;
+        const decimal securityDeposit = 500m;
+        const decimal paymentAmount = rentAmount + departureFee;
+        var accountingPeriod = new DateOnly(2026, 8, 1);
+        var paymentDate = new DateOnly(2026, 7, 15);
+
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2026, 8, 31),
+            new DateOnly(2026, 9, 29),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            deposit: securityDeposit,
+            hasPets: false,
+            departureFee: departureFee,
+            billingRate: 2550m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            accountingPeriod,
+            new DateOnly(2026, 8, 31));
+        var manager = context.CreateManager();
+
+        var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal));
+        rentalLine.Description = "Rental Fee (08/31-09/29)";
+        rentalLine.Amount = rentAmount;
+        var departureLine = Assert.Single(invoice.LedgerLines, line => line.Description == "Departure Fee");
+        departureLine.Amount = departureFee;
+        invoice.TotalAmount = paymentAmount + securityDeposit;
+
+        await manager.CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            invoice,
+            amount: paymentAmount,
+            paymentDate: paymentDate,
+            description: "CC - 08/31-09/29");
+        invoice.LedgerLines.Add(payment);
+
+        await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Contains(invoice.LedgerLines, line => line.Description == "Security Deposit" && line.Amount == securityDeposit);
+        Assert.DoesNotContain(
+            context.ActiveJournalEntries,
+            entry => entry.JournalEntryKindId == JournalEntryKind.FeesActual);
+        Assert.Contains(
+            context.ActiveJournalEntries,
+            entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositActual);
+    }
+
+    [Fact]
+    public async Task PrePayment_CrossMonthRentPlusDepartureFee_CreatesFeesActualWhenNoSecurityDeposit()
     {
         const decimal rentAmount = 2550m;
         const decimal departureFee = 350m;
@@ -410,6 +464,8 @@ public class InvoiceJournalEntryGapCoverageTests
             ProrateType.FirstMonth,
             BillingType.Monthly,
             maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.CLR,
+            deposit: 0m,
             hasPets: false,
             departureFee: departureFee,
             billingRate: 2550m);
@@ -419,6 +475,8 @@ public class InvoiceJournalEntryGapCoverageTests
             accountingPeriod,
             new DateOnly(2026, 8, 31));
         var manager = context.CreateManager();
+
+        Assert.DoesNotContain(invoice.LedgerLines, line => line.Description == "Security Deposit");
 
         var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal));
         rentalLine.Description = "Rental Fee (08/31-09/29)";
@@ -437,6 +495,10 @@ public class InvoiceJournalEntryGapCoverageTests
         invoice.LedgerLines.Add(payment);
 
         await manager.CreateJournalEntryFromPaymentAsync(invoice, payment, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.DoesNotContain(
+            context.ActiveJournalEntries,
+            entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositActual);
 
         var feesActualEntry = Assert.Single(
             context.ActiveJournalEntries,
