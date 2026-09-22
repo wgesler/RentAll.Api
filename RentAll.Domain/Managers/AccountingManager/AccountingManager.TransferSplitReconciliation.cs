@@ -148,7 +148,7 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(invoiceSourceCode))
             return null;
 
-        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
+        var groupAmount = RoundCurrency(splitGroup.Sum(split => split.Amount));
         var splitPropertyId = NormalizeOptionalGuid(
             splitGroup.Select(split => split.PropertyId).FirstOrDefault(id => id is { } propertyId && propertyId != Guid.Empty));
 
@@ -165,7 +165,7 @@ public partial class AccountingManager
 
         // Prefer deposit payment split amount == transfer invoice group total when unique.
         var amountMatches = matches
-            .Where(match => Math.Abs(Math.Abs(match.DepositSplitAmount) - groupAmount) <= 0.005m)
+            .Where(match => Math.Abs(match.DepositSplitAmount - groupAmount) <= 0.005m)
             .ToList();
 
         var ranked = (amountMatches.Count > 0 ? amountMatches : matches)
@@ -626,18 +626,36 @@ public partial class AccountingManager
         if (!DepositAccountingMonthIsOnOrBeforeTransfer(depositDate, transfer.TransferDate))
             return false;
 
-        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
-        var lineAmount = Math.Abs(RoundCurrency(line.Debit - line.Credit));
-        // One deposit escrow line backs the full deposit; transfer groups are per-invoice slices.
-        return groupAmount <= 0.005m
-            || Math.Abs(groupAmount - lineAmount) <= 0.005m
-            || groupAmount <= lineAmount + 0.005m;
+        var groupAmount = RoundCurrency(splitGroup.Sum(split => split.Amount));
+        var lineAmount = RoundCurrency(line.Debit - line.Credit);
+        if (Math.Abs(groupAmount) <= 0.005m)
+            return false;
+
+        if (Math.Abs(groupAmount - lineAmount) <= 0.005m)
+            return true;
+
+        // Shared deposit escrow line: per-invoice slices (including refund/credit splits) match a deposit split.
+        var invoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup);
+        if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
+        {
+            var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, transfer.OrganizationId);
+            var matchingSplit = (deposit?.Splits ?? [])
+                .FirstOrDefault(split =>
+                    Math.Abs(split.Amount) > 0.005m
+                    && EntityCodeFormatting.CodesMatch(ResolveDepositSplitInvoiceSourceCode(split), invoiceSourceCode)
+                    && Math.Abs(RoundCurrency(split.Amount - groupAmount)) <= 0.005m);
+            if (matchingSplit != null)
+                return true;
+        }
+
+        // Positive deposit partial slice still covered by the single escrow line.
+        return groupAmount > 0 && lineAmount > 0 && groupAmount <= lineAmount + 0.005m;
     }
 
     private static Guid? ResolveTransferSplitGroupJournalEntryLineId(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<EscrowDepositLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
-        var groupAmount = Math.Abs(RoundCurrency(splitGroup.Sum(split => split.Amount)));
-        if (groupAmount <= 0.005m)
+        var groupAmount = RoundCurrency(splitGroup.Sum(split => split.Amount));
+        if (Math.Abs(groupAmount) <= 0.005m)
             return null;
 
         // Amount match among unclaimed lines — always pick the best candidate (never leave ties unresolved).
@@ -645,7 +663,7 @@ public partial class AccountingManager
             .Where(candidate =>
                 !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
-                && Math.Abs(Math.Abs(candidate.NetAmount) - groupAmount) <= 0.005m)
+                && Math.Abs(candidate.NetAmount - groupAmount) <= 0.005m)
             .ToList();
 
         if (amountMatches.Count == 0)

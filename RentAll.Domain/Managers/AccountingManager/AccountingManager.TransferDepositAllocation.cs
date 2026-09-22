@@ -94,28 +94,28 @@ public partial class AccountingManager
                 {
                     DepositId = item.DepositId,
                     EscrowAmount = Math.Abs(RoundCurrency(item.EscrowAmount)) > 0.005m
-                        ? NormalizeTransferEscrowAmount(item.EscrowAmount)
-                        : NormalizeTransferEscrowAmount(singleSplit.Amount),
+                        ? RoundTransferEscrowAmount(item.EscrowAmount)
+                        : RoundTransferEscrowAmount(singleSplit.Amount),
                     JournalEntryLineId = item.JournalEntryLineId,
                     DepositSplitId = singleSplit.DepositSplitId > 0 ? singleSplit.DepositSplitId : item.DepositSplitId
                 });
                 continue;
             }
 
-            var normalizedAmount = RoundCurrency(Math.Abs(item.EscrowAmount));
-            var depositAmount = RoundCurrency(Math.Abs(deposit.Amount));
+            var requestAmount = RoundTransferEscrowAmount(item.EscrowAmount);
+            var depositAmount = RoundCurrency(deposit.Amount);
             var splitTotal = RoundCurrency(deposit.Splits
                 .Where(split => Math.Abs(split.Amount) > 0.005m)
-                .Sum(split => Math.Abs(split.Amount)));
-            var matchesFullDepositAmount = normalizedAmount != 0
-                && (Math.Abs(normalizedAmount - depositAmount) <= 0.005m
-                    || (splitTotal > 0 && Math.Abs(normalizedAmount - splitTotal) <= 0.005m));
+                .Sum(split => split.Amount));
+            var matchesFullDepositAmount = Math.Abs(requestAmount) > 0.005m
+                && (Math.Abs(requestAmount - depositAmount) <= 0.005m
+                    || Math.Abs(requestAmount - splitTotal) <= 0.005m);
             if (!matchesFullDepositAmount)
             {
                 expandedItems.Add(new TransferDepositAllocationRequestItem
                 {
                     DepositId = item.DepositId,
-                    EscrowAmount = NormalizeTransferEscrowAmount(item.EscrowAmount),
+                    EscrowAmount = RoundTransferEscrowAmount(item.EscrowAmount),
                     JournalEntryLineId = item.JournalEntryLineId,
                     DepositSplitId = item.DepositSplitId
                 });
@@ -127,7 +127,7 @@ public partial class AccountingManager
                 expandedItems.Add(new TransferDepositAllocationRequestItem
                 {
                     DepositId = item.DepositId,
-                    EscrowAmount = NormalizeTransferEscrowAmount(split.Amount),
+                    EscrowAmount = RoundTransferEscrowAmount(split.Amount),
                     JournalEntryLineId = item.JournalEntryLineId,
                     DepositSplitId = split.DepositSplitId > 0 ? split.DepositSplitId : null
                 });
@@ -143,7 +143,7 @@ public partial class AccountingManager
 
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationForEscrowLineAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>> depositJournalEntryCache)
     {
-        escrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
+        escrowAmount = RoundTransferEscrowAmount(escrowAmount);
         var expandedSplits = ExpandEscrowDepositSplits(deposit, escrowAmount);
         if (expandedSplits.Count <= 1)
         {
@@ -192,15 +192,15 @@ public partial class AccountingManager
                 description = part.Description;
         }
 
-        var normalizedEscrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
+        var roundedEscrowAmount = RoundTransferEscrowAmount(escrowAmount);
         // Business is always the deposit residual (company rent + fees). FeesActual is not the Business split amount.
-        var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw);
+        var business = RoundCurrency(roundedEscrowAmount - ownerEscrow - secDep - sdw);
 
         return new TransferDepositAllocationResult
         {
             DepositId = deposit.DepositId,
             JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
-            EscrowAmount = normalizedEscrowAmount,
+            EscrowAmount = roundedEscrowAmount,
             OwnerEscrow = ownerEscrow,
             SecDep = secDep,
             Sdw = sdw,
@@ -224,12 +224,12 @@ public partial class AccountingManager
         if (splits.Count == 1)
             return splits;
 
-        var normalizedAmount = RoundCurrency(Math.Abs(escrowAmount));
-        var depositAmount = RoundCurrency(Math.Abs(deposit.Amount));
-        var splitTotal = RoundCurrency(splits.Sum(split => Math.Abs(split.Amount)));
-        var matchesFullDepositAmount = normalizedAmount != 0
-            && (Math.Abs(normalizedAmount - depositAmount) <= 0.005m
-                || (splitTotal > 0 && Math.Abs(normalizedAmount - splitTotal) <= 0.005m));
+        var requestAmount = RoundTransferEscrowAmount(escrowAmount);
+        var depositAmount = RoundCurrency(deposit.Amount);
+        var splitTotal = RoundCurrency(splits.Sum(split => split.Amount));
+        var matchesFullDepositAmount = Math.Abs(requestAmount) > 0.005m
+            && (Math.Abs(requestAmount - depositAmount) <= 0.005m
+                || Math.Abs(requestAmount - splitTotal) <= 0.005m);
 
         if (matchesFullDepositAmount)
             return splits;
@@ -261,7 +261,7 @@ public partial class AccountingManager
 
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>>? depositJournalEntryCache, int? depositSplitId = null)
     {
-        escrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
+        escrowAmount = RoundTransferEscrowAmount(escrowAmount);
         var depositId = deposit.DepositId;
         var matchedSplit = RequireTransferDepositSplit(deposit, escrowAmount, depositSplitId);
 
@@ -311,6 +311,7 @@ public partial class AccountingManager
 
         var (ownerEscrow, secDep, sdw, description) =
             ClassifyTransferDepositAllocation(scopedDepositJournalEntries, allocationScope, recapContext);
+        AlignTransferDepositClassificationWithSplitSign(allocationScope.SplitAmount, ref ownerEscrow, ref secDep, ref sdw);
 
         return BuildTransferDepositAllocationResult(
             depositId,
@@ -338,18 +339,18 @@ public partial class AccountingManager
 
     private static TransferDepositAllocationResult BuildNonPaymentTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, Deposit deposit, DepositSplit split)
     {
-        var normalizedEscrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
+        var roundedEscrowAmount = RoundTransferEscrowAmount(escrowAmount);
         var description = ResolveTransferDepositAllocationDescription(split.Description, deposit.DepositCode);
 
         return new TransferDepositAllocationResult
         {
             DepositId = depositId,
             JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
-            EscrowAmount = normalizedEscrowAmount,
+            EscrowAmount = roundedEscrowAmount,
             OwnerEscrow = 0m,
             SecDep = 0m,
             Sdw = 0m,
-            Business = normalizedEscrowAmount,
+            Business = roundedEscrowAmount,
             PropertyId = split.PropertyId,
             ReservationId = split.ReservationId,
             ContactId = split.ContactId,
@@ -507,11 +508,11 @@ public partial class AccountingManager
         }
 
         // Deposit splits link to UF payment lines — disambiguate by invoice + property + amount.
-        var normalizedEscrowAmount = RoundCurrency(Math.Abs(escrowAmount));
-        if (normalizedEscrowAmount != 0)
+        var roundedEscrowAmount = RoundTransferEscrowAmount(escrowAmount);
+        if (Math.Abs(roundedEscrowAmount) > 0.005m)
         {
             var amountMatches = splits
-                .Where(split => Math.Abs(Math.Abs(split.Amount) - normalizedEscrowAmount) <= 0.005m)
+                .Where(split => Math.Abs(RoundCurrency(split.Amount - roundedEscrowAmount)) <= 0.005m)
                 .ToList();
 
             if (amountMatches.Count == 1)
@@ -520,7 +521,7 @@ public partial class AccountingManager
             if (amountMatches.Count > 1)
             {
                 throw new InvalidOperationException(
-                    $"Deposit {deposit.DepositCode} has multiple splits matching escrow amount {normalizedEscrowAmount:0.00}.");
+                    $"Deposit {deposit.DepositCode} has multiple splits matching escrow amount {roundedEscrowAmount:0.00}.");
             }
         }
 
@@ -659,25 +660,25 @@ public partial class AccountingManager
 
     private static TransferDepositAllocationResult BuildTransferDepositAllocationResult(Guid depositId, Guid? escrowJournalEntryLineId, decimal escrowAmount, TransferDepositAllocationScope allocationScope, decimal ownerEscrow, decimal secDep, decimal sdw, string description)
     {
-        var normalizedEscrowAmount = NormalizeTransferEscrowAmount(escrowAmount);
-        var fullSplitAmount = RoundCurrency(Math.Abs(allocationScope.SplitAmount));
+        var roundedEscrowAmount = RoundTransferEscrowAmount(escrowAmount);
+        var fullSplitAmount = RoundCurrency(allocationScope.SplitAmount);
 
-        if (fullSplitAmount != 0 && Math.Abs(normalizedEscrowAmount - fullSplitAmount) > 0.005m)
+        if (Math.Abs(fullSplitAmount) > 0.005m && Math.Abs(roundedEscrowAmount - fullSplitAmount) > 0.005m)
         {
-            var ratio = normalizedEscrowAmount / fullSplitAmount;
+            var ratio = roundedEscrowAmount / fullSplitAmount;
             ownerEscrow = RoundCurrency(ownerEscrow * ratio);
             secDep = RoundCurrency(secDep * ratio);
             sdw = RoundCurrency(sdw * ratio);
         }
 
         // Business is always the deposit residual (company rent + fees). FeesActual is not the Business split amount.
-        var business = RoundCurrency(normalizedEscrowAmount - ownerEscrow - secDep - sdw);
+        var business = RoundCurrency(roundedEscrowAmount - ownerEscrow - secDep - sdw);
 
         return new TransferDepositAllocationResult
         {
             DepositId = depositId,
             JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
-            EscrowAmount = normalizedEscrowAmount,
+            EscrowAmount = roundedEscrowAmount,
             OwnerEscrow = ownerEscrow,
             SecDep = secDep,
             Sdw = sdw,
@@ -826,9 +827,25 @@ public partial class AccountingManager
         return Math.Round(value, 2, MidpointRounding.AwayFromZero);
     }
 
-    private static decimal NormalizeTransferEscrowAmount(decimal escrowAmount)
+    private static decimal RoundTransferEscrowAmount(decimal escrowAmount)
+        => RoundCurrency(escrowAmount);
+
+    private static void AlignTransferDepositClassificationWithSplitSign(
+        decimal splitAmount,
+        ref decimal ownerEscrow,
+        ref decimal secDep,
+        ref decimal sdw)
     {
-        return RoundCurrency(Math.Abs(escrowAmount));
+        if (Math.Abs(splitAmount) <= 0.005m)
+            return;
+
+        var splitSign = Math.Sign(splitAmount);
+        if (Math.Abs(ownerEscrow) > 0.005m && Math.Sign(ownerEscrow) != splitSign)
+            ownerEscrow = RoundCurrency(-ownerEscrow);
+        if (Math.Abs(secDep) > 0.005m && Math.Sign(secDep) != splitSign)
+            secDep = RoundCurrency(-secDep);
+        if (Math.Abs(sdw) > 0.005m && Math.Sign(sdw) != splitSign)
+            sdw = RoundCurrency(-sdw);
     }
 
     private static string ResolveTransferDepositAllocationDescription(string? splitDescription, string? depositCode)

@@ -354,11 +354,10 @@ public class InvoiceJournalEntryGapCoverageTests
             invoice,
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.NotNull(journalEntry);
-        Assert.NotEqual(Guid.Empty, journalEntry.JournalEntryId);
-        Assert.Equal((int)SourceType.Invoice, journalEntry.SourceTypeId);
-        Assert.Equal(invoice.InvoiceId, journalEntry.SourceId);
-        Assert.DoesNotContain(journalEntry.JournalEntryLines, line => line.Debit != 0 || line.Credit != 0);
+        Assert.Null(journalEntry);
+        Assert.DoesNotContain(
+            context.ActiveJournalEntries,
+            entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.SourceId == invoice.InvoiceId);
     }
 
     [Fact]
@@ -483,7 +482,8 @@ public class InvoiceJournalEntryGapCoverageTests
 
         var ownerActualEntry = Assert.Single(ownerActualEntries);
         Assert.Equal(invoice.InvoiceId, ownerActualEntry.SourceId);
-        Assert.Equal(new DateOnly(2026, 2, 1), ownerActualEntry.TransactionDate);
+        Assert.Equal(paymentDate, ownerActualEntry.TransactionDate);
+        Assert.Equal(accountingPeriod, ownerActualEntry.AccountingPeriod);
         AssertBalancedJournalEntry(ownerActualEntry);
 
         const decimal expectedOwnerActual = 640m;
@@ -1147,7 +1147,7 @@ public class InvoiceJournalEntryGapCoverageTests
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
-                && entry.TransactionDate == accountingPeriod);
+                && entry.AccountingPeriod == accountingPeriod);
 
         var actualOwnerRent = ownerActualEntry.JournalEntryLines
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
@@ -1239,13 +1239,14 @@ public class InvoiceJournalEntryGapCoverageTests
         var ownerActualEntry = Assert.Single(
             context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual
-                && entry.TransactionDate == accountingPeriod);
+                && entry.AccountingPeriod == accountingPeriod);
 
         var actualOwnerRent = ownerActualEntry.JournalEntryLines
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId)
             .Sum(line => line.Credit);
 
         Assert.Equal(Math.Round(expectedOwnerRent, 2, MidpointRounding.AwayFromZero), actualOwnerRent);
+        Assert.Equal(paymentDate, ownerActualEntry.TransactionDate);
     }
 
     private static void AssertBalancedJournalEntry(JournalEntry journalEntry)

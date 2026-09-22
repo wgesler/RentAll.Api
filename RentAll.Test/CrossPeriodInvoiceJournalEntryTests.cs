@@ -295,8 +295,8 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
-        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility (02/04-03/05)") && line.Credit == 250m);
-        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility (02/04-03/05)") && line.Credit == 50m);
+        Assert.Contains(chargeEntries[0].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility (02/04-02/28)") && line.Credit == 250m);
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Manual Utility (03/01-03/05)") && line.Credit == 50m);
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 
@@ -366,15 +366,16 @@ public class CrossPeriodInvoiceJournalEntryTests
             .ToList();
 
         Assert.Equal(2, chargeEntries.Count);
-        var taxCreditsByPeriod = chargeEntries
-            .Select(entry => entry.JournalEntryLines
-                .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Taxes - 16.75% (02/04-03/05)"))
-                .Sum(line => line.Credit))
-            .ToList();
+        var febTaxCredit = chargeEntries[0].JournalEntryLines
+            .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Taxes - 16.75% (02/04-02/28)"))
+            .Sum(line => line.Credit);
+        var marTaxCredit = chargeEntries[1].JournalEntryLines
+            .Where(line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemo(line.Memo, "Taxes - 16.75% (03/01-03/05)"))
+            .Sum(line => line.Credit);
 
-        Assert.True(taxCreditsByPeriod[0] > 0m);
-        Assert.True(taxCreditsByPeriod[1] > 0m);
-        Assert.Equal(408.70m, taxCreditsByPeriod.Sum());
+        Assert.True(febTaxCredit > 0m);
+        Assert.True(marTaxCredit > 0m);
+        Assert.Equal(408.70m, febTaxCredit + marTaxCredit);
         AccountingManagerJournalEntryTestSupport.AssertJournalEntriesBalanceInvoice(chargeEntries, invoice);
     }
 

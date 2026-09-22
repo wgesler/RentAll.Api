@@ -11,7 +11,8 @@ public class AccountingManagerTransferCreateIntegrationTests
     [Fact]
     public async Task CreateTransfer_SelectedDeposits137156142141_SucceedsViaStoredProcs()
     {
-        TransferCreateIntegrationTestSupport.EnsureEnabled();
+        if (!TransferCreateIntegrationTestSupport.EnsureEnabled())
+            return;
 
         var services = TransferCreateIntegrationTestSupport.CreateServices();
         var scenario = await TransferCreateIntegrationTestSupport.LoadScenarioAsync(
@@ -27,7 +28,7 @@ public class AccountingManagerTransferCreateIntegrationTests
             currentUser);
 
         Assert.NotEmpty(transfer.Splits);
-        Assert.True(transfer.Amount > 0m);
+        Assert.NotEqual(0m, transfer.Amount);
 
         Transfer? created = null;
         try
@@ -42,22 +43,25 @@ public class AccountingManagerTransferCreateIntegrationTests
                 Assert.NotEqual(Guid.Empty, split.JournalEntryLineId);
             });
 
-            var dp156EscrowLineId = scenario.EscrowLines
-                .First(context => ParseDepositInt(context.Deposit.DepositCode) == TransferCreateIntegrationTestSupport.SelectedDepositInts.First(depositInt => depositInt == 156))
-                .JournalEntryLineId;
+            if (TransferCreateIntegrationTestSupport.SelectedDepositInts.Contains(156))
+            {
+                var dp156EscrowLineId = scenario.EscrowLines
+                    .First(context => ParseDepositInt(context.Deposit.DepositCode) == 156)
+                    .JournalEntryLineId;
 
-            var dp156Splits = (created.Splits ?? [])
-                .Where(split => (split.Description ?? string.Empty).Contains("093", StringComparison.OrdinalIgnoreCase)
-                    || (split.Description ?? string.Empty).Contains("953", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                var dp156Splits = (created.Splits ?? [])
+                    .Where(split => (split.Description ?? string.Empty).Contains("093", StringComparison.OrdinalIgnoreCase)
+                        || (split.Description ?? string.Empty).Contains("953", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-            Assert.NotEmpty(dp156Splits);
-            Assert.All(dp156Splits, split => Assert.Equal(dp156EscrowLineId, split.JournalEntryLineId));
+                Assert.NotEmpty(dp156Splits);
+                Assert.All(dp156Splits, split => Assert.Equal(dp156EscrowLineId, split.JournalEntryLineId));
 
-            var py953Split = (created.Splits ?? [])
-                .FirstOrDefault(split => (split.Description ?? string.Empty).Contains("PY-000000953", StringComparison.OrdinalIgnoreCase));
-            Assert.NotNull(py953Split);
-            Assert.Equal(4060m, py953Split.Amount);
+                var py953Split = (created.Splits ?? [])
+                    .FirstOrDefault(split => (split.Description ?? string.Empty).Contains("PY-000000953", StringComparison.OrdinalIgnoreCase));
+                Assert.NotNull(py953Split);
+                Assert.Equal(4060m, py953Split.Amount);
+            }
 
             var health = await services.HealthRepository.RunTransferHealthCheckAsync(scenario.OrganizationId, scenario.OfficeId.ToString());
             var transferIssues = (health.Issues ?? [])
@@ -80,7 +84,8 @@ public class AccountingManagerTransferCreateIntegrationTests
     [Fact]
     public async Task SqlPreflight_SelectedDepositsAndPy953Path_IsReady()
     {
-        TransferCreateIntegrationTestSupport.EnsureEnabled();
+        if (!TransferCreateIntegrationTestSupport.EnsureEnabled())
+            return;
 
         var services = TransferCreateIntegrationTestSupport.CreateServices();
         var scenario = await TransferCreateIntegrationTestSupport.LoadScenarioAsync(
@@ -93,7 +98,7 @@ public class AccountingManagerTransferCreateIntegrationTests
             scenario.AccountingOffice.DefaultEscrowDepositAccountId
                 ?? throw new InvalidOperationException("Escrow deposit account is not configured."));
 
-        Assert.Equal(4, scenario.Deposits.Count);
+        Assert.Equal(TransferCreateIntegrationTestSupport.SelectedDepositInts.Length, scenario.Deposits.Count);
         Assert.Equal(TransferCreateIntegrationTestSupport.SelectedDepositInts.Length, scenario.EscrowLines.Count);
         Assert.All(scenario.Deposits, deposit =>
         {

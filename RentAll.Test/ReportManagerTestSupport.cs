@@ -171,7 +171,7 @@ internal static class ReportManagerTestSupport
                 .Setup(repository => repository.GetEscrowReportBundleDataAsync(It.IsAny<JournalEntryRecapGetCriteria>(), It.IsAny<bool>()))
                 .ReturnsAsync((JournalEntryRecapGetCriteria criteria, bool includeDrillDownLines) => new EscrowReportBundleData
                 {
-                    Properties = [CreateEscrowPropertyReportData(_escrowPropertyApBalance)],
+                    Properties = [CreateEscrowPropertyReportData(_escrowPropertyApBalance, _escrowPrepaidPropertyBalances, _escrowNotCollectedPropertyBalances)],
                     PrepaidPropertyBalances = _escrowPrepaidPropertyBalances,
                     NotCollectedPropertyBalances = _escrowNotCollectedPropertyBalances,
                     EscrowOfficeBalances =
@@ -306,8 +306,17 @@ internal static class ReportManagerTestSupport
             return line.TransactionDate >= startDate.Value && line.TransactionDate <= endDate.Value;
         }
 
-        private static EscrowPropertyReportData CreateEscrowPropertyReportData(decimal apBalance = 0m)
+        private static EscrowPropertyReportData CreateEscrowPropertyReportData(
+            decimal apBalance = 0m,
+            IReadOnlyList<EscrowPrepaidPropertyBalance>? prepaidPropertyBalances = null,
+            IReadOnlyList<EscrowNotCollectedPropertyBalance>? notCollectedPropertyBalances = null)
         {
+            var prepaids = (prepaidPropertyBalances ?? [])
+                .Where(detail => detail.PropertyId == PropertyId)
+                .Sum(detail => detail.Prepaids);
+            var notCollectedDetail = (notCollectedPropertyBalances ?? [])
+                .FirstOrDefault(detail => detail.PropertyId == PropertyId);
+
             return new EscrowPropertyReportData
             {
                 PropertyId = PropertyId,
@@ -317,7 +326,11 @@ internal static class ReportManagerTestSupport
                 PropertyLeaseType = PropertyLeaseType.PropertyManagement,
                 PrimaryOwnerId = OwnerId,
                 WorkingCapitalBalance = 0m,
-                ApBalance = apBalance
+                ApBalance = apBalance,
+                Prepaids = prepaids,
+                ExpectedIncome = notCollectedDetail?.ExpectedIncome ?? 0m,
+                ActualIncome = notCollectedDetail?.ActualIncome ?? 0m,
+                NotCollectedAmount = notCollectedDetail?.NotCollectedAmount ?? 0m
             };
         }
 

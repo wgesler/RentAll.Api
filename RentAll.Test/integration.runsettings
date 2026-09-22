@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <RENTALL_INTEGRATION_TESTS>1</RENTALL_INTEGRATION_TESTS>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

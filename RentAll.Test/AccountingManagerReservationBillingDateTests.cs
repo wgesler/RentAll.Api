@@ -77,6 +77,26 @@ public class AccountingManagerReservationBillingDateTests
         accountingRepository
             .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
             .ReturnsAsync([]);
+        accountingRepository
+            .Setup(r => r.GetCostCodesByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
+            .ReturnsAsync([
+                new CostCode
+                {
+                    CostCodeId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    Code = "4000",
+                    Description = "Rent",
+                    TransactionType = TransactionType.ChargeProrate,
+                    IsActive = true
+                }
+            ]);
+        accountingRepository
+            .Setup(r => r.GetChartOfAccountsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
+            .ReturnsAsync([]);
+        accountingRepository
+            .Setup(r => r.GetBankCardsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
+            .ReturnsAsync([]);
 
         var organizationRepository = new Mock<IOrganizationRepository>();
         organizationRepository

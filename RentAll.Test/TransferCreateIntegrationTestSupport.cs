@@ -47,13 +47,9 @@ internal static class TransferCreateIntegrationTestSupport
     internal static bool IsEnabled =>
         string.Equals(Environment.GetEnvironmentVariable("RENTALL_INTEGRATION_TESTS"), "1", StringComparison.OrdinalIgnoreCase);
 
-    internal static void EnsureEnabled()
+    internal static bool EnsureEnabled()
     {
-        if (!IsEnabled)
-        {
-            throw new InvalidOperationException(
-                "Integration test skipped. Set RENTALL_INTEGRATION_TESTS=1 and ensure GESLER/RentAll is reachable.");
-        }
+        return IsEnabled;
     }
 
     internal sealed class TransferEscrowLineContext
@@ -184,7 +180,7 @@ internal static class TransferCreateIntegrationTestSupport
                 Deposit = deposit,
                 JournalEntryLineId = escrowLine.JournalEntryLineId,
                 JournalEntryId = depositJournalEntry.JournalEntryId,
-                EscrowAmount = RoundCurrency(Math.Abs(escrowLine.Debit - escrowLine.Credit))
+                EscrowAmount = RoundCurrency(escrowLine.Debit - escrowLine.Credit)
             });
         }
 
@@ -359,20 +355,20 @@ internal static class TransferCreateIntegrationTestSupport
                 .ToList();
 
             var lineAmount = RoundCurrency(contextLine.EscrowAmount);
-            var depositAmount = RoundCurrency(Math.Abs(deposit.Amount));
+            var depositAmount = RoundCurrency(deposit.Amount);
             var splitTotal = paymentSplits.Count > 0
-                ? RoundCurrency(paymentSplits.Sum(split => Math.Abs(split.Amount)))
+                ? RoundCurrency(paymentSplits.Sum(split => split.Amount))
                 : 0m;
 
             var shouldExpandToPaymentSplits = paymentSplits.Count > 1 && (
                 Math.Abs(lineAmount - depositAmount) <= 0.005m
-                || (splitTotal > 0 && Math.Abs(lineAmount - splitTotal) <= 0.005m));
+                || Math.Abs(lineAmount - splitTotal) <= 0.005m);
 
             if (shouldExpandToPaymentSplits)
             {
                 foreach (var split in paymentSplits)
                 {
-                    var escrowAmount = NormalizeTransferEscrowAmount(split.Amount);
+                    var escrowAmount = RoundTransferEscrowAmount(split.Amount);
                     if (Math.Abs(escrowAmount) <= 0.005m)
                         continue;
 
@@ -389,7 +385,7 @@ internal static class TransferCreateIntegrationTestSupport
             }
 
             var matchingSplit = paymentSplits.FirstOrDefault(split =>
-                Math.Abs(RoundCurrency(Math.Abs(split.Amount)) - lineAmount) <= 0.005m
+                Math.Abs(RoundCurrency(split.Amount) - lineAmount) <= 0.005m
                 || split.JournalEntryLineId == contextLine.JournalEntryLineId);
 
             workItems.Add(new TransferAllocationWorkItem
@@ -498,7 +494,7 @@ internal static class TransferCreateIntegrationTestSupport
             {
                 var escrowAmount = RoundCurrency(allocation.EscrowAmount);
                 var depositSplit = (workItem.ContextLine.Deposit.Splits ?? []).FirstOrDefault(split =>
-                    Math.Abs(RoundCurrency(Math.Abs(split.Amount)) - escrowAmount) <= 0.005m
+                    Math.Abs(RoundCurrency(split.Amount) - escrowAmount) <= 0.005m
                     || split.JournalEntryLineId == allocation.JournalEntryLineId);
 
                 return new ResolvedTransferAllocation(allocation, depositSplit, escrowAmount);
@@ -583,10 +579,10 @@ internal static class TransferCreateIntegrationTestSupport
 
     private static string BuildTransferAllocationMatchKey(Guid depositId, decimal escrowAmount, Guid? journalEntryLineId)
     {
-        var normalizedAmount = NormalizeTransferEscrowAmount(escrowAmount);
+        var roundedAmount = RoundTransferEscrowAmount(escrowAmount);
         return journalEntryLineId is { } lineId && lineId != Guid.Empty
-            ? $"{depositId:N}|{normalizedAmount}|{lineId:N}"
-            : $"{depositId:N}|{normalizedAmount}";
+            ? $"{depositId:N}|{roundedAmount}|{lineId:N}"
+            : $"{depositId:N}|{roundedAmount}";
     }
 
     private static string ExtractTransferSourceLabel(string? description)
@@ -611,8 +607,8 @@ internal static class TransferCreateIntegrationTestSupport
     private static decimal RoundCurrency(decimal value)
         => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
-    private static decimal NormalizeTransferEscrowAmount(decimal escrowAmount)
-        => RoundCurrency(Math.Abs(escrowAmount));
+    private static decimal RoundTransferEscrowAmount(decimal escrowAmount)
+        => RoundCurrency(escrowAmount);
 
     private static AppSettings LoadAppSettings()
     {
