@@ -197,7 +197,7 @@ public partial class AccountingManager
                 && row.DepositId is { } depositId
                 && depositId != Guid.Empty
                 && EntityCodeFormatting.CodesMatch(row.PaymentCode, paymentSourceCode)
-                && Math.Abs(row.Amount - groupAmount) <= 0.005m)
+                && Math.Abs(Math.Abs(row.Amount) - groupAmount) <= 0.005m)
             .OrderByDescending(row => row.PaymentDate)
             .FirstOrDefault();
 
@@ -355,6 +355,30 @@ public partial class AccountingManager
 
             assignedLineIds.Add(candidate.JournalEntryLineId);
         }
+
+        // Remaining slices (e.g. PY-953 $4060) share a deposit escrow line already used by another group on this transfer.
+        foreach (var group in remainingGroups.ToList())
+        {
+            var groupAmount = Math.Abs(RoundCurrency(group.Sum(split => split.Amount)));
+            if (groupAmount <= 0.005m)
+                continue;
+
+            var sharedCandidate = candidates
+                .Where(candidate =>
+                    assignedLineIds.Contains(candidate.JournalEntryLineId)
+                    && groupAmount <= Math.Abs(candidate.NetAmount) + 0.005m)
+                .OrderByDescending(candidate => Math.Abs(candidate.NetAmount))
+                .ThenBy(candidate => candidate.JournalEntryLineId)
+                .FirstOrDefault();
+
+            if (sharedCandidate == null)
+                continue;
+
+            foreach (var split in group)
+                split.JournalEntryLineId = sharedCandidate.JournalEntryLineId;
+
+            remainingGroups.Remove(group);
+        }
     }
 
     private static List<List<TransferSplit>>? FindTransferSplitGroupsSummingTo(IReadOnlyList<List<TransferSplit>> groups, decimal targetAmount)
@@ -443,9 +467,11 @@ public partial class AccountingManager
                 continue;
             }
 
-            var invoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup) ?? "(missing invoice code)";
+            var groupLabel = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup)
+                ?? ResolveTransferSplitGroupPaymentSourceCode(splitGroup)
+                ?? "(missing source code)";
             messages.Add(
-                $"Transfer {transferLabel}: split group {invoiceSourceCode} amount {groupAmount:0.00} is not linked to a valid escrow deposit journal entry line.");
+                $"Transfer {transferLabel}: split group {groupLabel} amount {groupAmount:0.00} is not linked to a valid escrow deposit journal entry line.");
         }
 
         return messages;
