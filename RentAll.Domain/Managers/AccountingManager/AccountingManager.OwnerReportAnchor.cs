@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Owner Report Anchor
     private static bool IsOwnerReportAnchorAffectingJournalEntry(JournalEntry journalEntry)
     {
         if (journalEntry.JournalEntryKindId is JournalEntryKind.OwnerExpected or JournalEntryKind.OwnerActual)
@@ -89,4 +90,5 @@ public partial class AccountingManager
             }
         }
     }
+    #endregion
 }

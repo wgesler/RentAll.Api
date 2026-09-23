@@ -18,9 +18,7 @@ public partial class AccountingManager
     public async Task<JournalEntry?> CreateJournalEntryFromInvoiceAsync(Invoice invoice, Guid currentUser)
         => (await CreateJournalEntryFromInvoiceWithResultAsync(invoice, currentUser)).JournalEntry;
 
-    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromInvoiceWithResultAsync(
-        Invoice invoice,
-        Guid currentUser)
+    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromInvoiceWithResultAsync(Invoice invoice, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(invoice.OrganizationId))
             return AccountingJournalEntryResult.Success();

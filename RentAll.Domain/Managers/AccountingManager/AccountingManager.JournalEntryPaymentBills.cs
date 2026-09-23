@@ -154,11 +154,7 @@ public partial class AccountingManager
             await DeleteOpenJournalEntryAsync(journalEntry.JournalEntryId, bill.OrganizationId);
     }
 
-    private async Task SyncBillPaymentJournalEntryAsync(
-        Payment paymentSummary,
-        Guid organizationId,
-        Guid currentUser,
-        JournalEntrySyncResult result)
+    private async Task SyncBillPaymentJournalEntryAsync(Payment paymentSummary, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
         if (paymentSummary.BillAllocations.Count == 0)
         {
@@ -199,18 +195,6 @@ public partial class AccountingManager
     #endregion
 
     #region Helpers
-    private async Task DeleteBillPaymentJournalEntriesAsync(Payment payment)
-    {
-        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId);
-        foreach (var journalEntry in linkedEntries)
-            await DeleteOpenJournalEntryAsync(journalEntry.JournalEntryId, payment.OrganizationId);
-
-        var documentEntries = await GetJournalEntriesForSourceAsync(payment.OrganizationId, payment.OfficeId, SourceType.BillPayment, payment.PaymentId);
-
-        foreach (var journalEntry in documentEntries)
-            await DeleteOpenJournalEntryAsync(journalEntry.JournalEntryId, payment.OrganizationId);
-    }
-
     private async Task<JournalEntry> BuildConsolidatedBillPaymentJournalEntryAsync(Payment payment, IReadOnlyList<BillPaymentApplication> applications, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Guid currentUser)
     {
         if (payment.Amount == 0)

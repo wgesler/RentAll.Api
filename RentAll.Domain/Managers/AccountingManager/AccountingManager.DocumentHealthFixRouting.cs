@@ -4,15 +4,12 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Document Health Fix Routing
     private static class DocumentHealthFixRouting
     {
         private static readonly Guid EmptyGuid = Guid.Empty;
 
-        internal static void CollectFixTargets(
-            IEnumerable<DocumentHealthIssue> issues,
-            ISet<Guid> paymentIds,
-            ISet<Guid> depositIds,
-            ISet<Guid> transferIds)
+        internal static void CollectFixTargets(IEnumerable<DocumentHealthIssue> issues, ISet<Guid> paymentIds, ISet<Guid> depositIds, ISet<Guid> transferIds)
         {
             foreach (var issue in issues ?? [])
                 CollectFixTarget(issue, paymentIds, depositIds, transferIds);
@@ -45,22 +42,13 @@ public partial class AccountingManager
             return ids.OrderBy(id => id).ToList();
         }
 
-        private static void CollectFixTarget(
-            DocumentHealthIssue issue,
-            ISet<Guid> paymentIds,
-            ISet<Guid> depositIds,
-            ISet<Guid> transferIds)
+        private static void CollectFixTarget(DocumentHealthIssue issue, ISet<Guid> paymentIds, ISet<Guid> depositIds, ISet<Guid> transferIds)
         {
             AddDocumentId(issue.DocumentId, issue.Issue, paymentIds, depositIds, transferIds);
             AddRelatedId(issue.RelatedId, issue.Issue, paymentIds, depositIds, transferIds);
         }
 
-        private static void AddDocumentId(
-            Guid documentId,
-            string issueText,
-            ISet<Guid> paymentIds,
-            ISet<Guid> depositIds,
-            ISet<Guid> transferIds)
+        private static void AddDocumentId(Guid documentId, string issueText, ISet<Guid> paymentIds, ISet<Guid> depositIds, ISet<Guid> transferIds)
         {
             if (documentId == EmptyGuid)
                 return;
@@ -68,12 +56,7 @@ public partial class AccountingManager
             RouteDocumentId(documentId, issueText, paymentIds, depositIds, transferIds);
         }
 
-        private static void AddRelatedId(
-            Guid? relatedId,
-            string issueText,
-            ISet<Guid> paymentIds,
-            ISet<Guid> depositIds,
-            ISet<Guid> transferIds)
+        private static void AddRelatedId(Guid? relatedId, string issueText, ISet<Guid> paymentIds, ISet<Guid> depositIds, ISet<Guid> transferIds)
         {
             if (relatedId is not { } id || id == EmptyGuid)
                 return;
@@ -107,12 +90,7 @@ public partial class AccountingManager
             RouteDocumentId(id, issueText ?? string.Empty, paymentIds, depositIds, transferIds);
         }
 
-        private static void RouteDocumentId(
-            Guid documentId,
-            string issueText,
-            ISet<Guid> paymentIds,
-            ISet<Guid> depositIds,
-            ISet<Guid> transferIds)
+        private static void RouteDocumentId(Guid documentId, string issueText, ISet<Guid> paymentIds, ISet<Guid> depositIds, ISet<Guid> transferIds)
         {
             var normalizedIssue = (issueText ?? string.Empty).Trim();
 
@@ -149,4 +127,5 @@ public partial class AccountingManager
             => issueText.Contains("Transfer split", StringComparison.OrdinalIgnoreCase)
                 || issueText.Contains("Transfer deposit accounting period mismatch", StringComparison.OrdinalIgnoreCase);
     }
+    #endregion
 }

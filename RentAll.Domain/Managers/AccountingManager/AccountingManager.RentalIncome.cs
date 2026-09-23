@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Rental Income
     /// <summary>
     /// Rent/4000 and owner-share rent base: sum invoice lines whose cost code maps to an explicit
     /// chart-of-account in the office rental income tree from GetRentalIncomeAccounts.
@@ -84,14 +85,6 @@ public partial class AccountingManager
     public static bool IsRentPlus4000JournalCreditLine(int? sourceTypeId, decimal credit, bool isRentalIncomeAccount)
         => sourceTypeId == (int)SourceType.Invoice && credit > 0 && isRentalIncomeAccount;
 
-    private static bool IsCostCodeInRentalIncomeTree(CostCode costCode, List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
-    {
-        var rentalIncomeAccountIds = GetRentalIncomeAccounts(chartOfAccounts, officeId, office, costCodeById, accountingOffice)
-            .Select(account => account.AccountId)
-            .ToHashSet();
-        return IsCostCodeMappedToRentalIncomeAccount(costCode, chartOfAccounts, officeId, rentalIncomeAccountIds);
-    }
-
     private static bool IsInvoiceLineRentalIncome(CostCode? costCode, List<ChartOfAccount> chartOfAccounts, int officeId, IReadOnlySet<int> rentalIncomeAccountIds)
     {
         if (costCode == null || IsPaymentLedgerLine(costCode))
@@ -117,4 +110,5 @@ public partial class AccountingManager
 
         return rentalIncomeAccountIds.Contains(account.AccountId);
     }
+    #endregion
 }

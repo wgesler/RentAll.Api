@@ -954,11 +954,7 @@ public partial class AccountingManager : IAccountingManager
         return (bill.PaymentDescription ?? string.Empty).Trim();
     }
 
-    private static int? ResolveCostCodeIdByChartOfAccountId(
-        List<ChartOfAccount> chartOfAccounts,
-        int officeId,
-        IReadOnlyDictionary<int, CostCode> costCodeById,
-        int chartOfAccountId)
+    private static int? ResolveCostCodeIdByChartOfAccountId(List<ChartOfAccount> chartOfAccounts, int officeId, IReadOnlyDictionary<int, CostCode> costCodeById, int chartOfAccountId)
     {
         if (chartOfAccountId <= 0)
             return null;

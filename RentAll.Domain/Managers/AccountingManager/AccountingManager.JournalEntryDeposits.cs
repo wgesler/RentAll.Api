@@ -23,10 +23,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromDepositWithDiagnosticsAsync(
-        Deposit deposit,
-        Guid currentUser,
-        AccountingSyncBailTrail trail)
+    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromDepositWithDiagnosticsAsync(Deposit deposit, Guid currentUser, AccountingSyncBailTrail trail)
     {
         var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
             ? deposit.DepositId.ToString()
@@ -94,10 +91,7 @@ public partial class AccountingManager
     private async Task TryReplaceJournalEntriesFromDepositAsync(Deposit deposit, Guid currentUser)
         => await TryReplaceJournalEntriesFromDepositWithDiagnosticsAsync(deposit, currentUser, new AccountingSyncBailTrail());
 
-    private async Task TryReplaceJournalEntriesFromDepositWithDiagnosticsAsync(
-        Deposit deposit,
-        Guid currentUser,
-        AccountingSyncBailTrail trail)
+    private async Task TryReplaceJournalEntriesFromDepositWithDiagnosticsAsync(Deposit deposit, Guid currentUser, AccountingSyncBailTrail trail)
     {
         var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
             ? deposit.DepositId.ToString()
@@ -500,55 +494,6 @@ public partial class AccountingManager
             && EntityCodeFormatting.CodesMatch(payment.PaymentCode, normalizedPaymentCode));
     }
 
-    private async Task<HashSet<Guid>> CollectPaymentIdsForDepositHealthFixAsync(Deposit deposit, Guid organizationId)
-    {
-        var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, deposit.OfficeId);
-        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
-
-        foreach (var split in deposit.Splits ?? [])
-        {
-            if (Math.Abs(split.Amount) <= 0.005m)
-                continue;
-
-            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
-                continue;
-
-            var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-            if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
-            {
-                foreach (var paymentId in await FindInvoicePaymentIdsBySourceCodeAsync(organizationId, deposit.OfficeId, invoiceSourceCode))
-                    paymentIds.Add(paymentId);
-            }
-
-            if (split.ReservationId is { } reservationId && reservationId != Guid.Empty)
-            {
-                foreach (var paymentId in await FindInvoicePaymentIdsByReservationIdAsync(organizationId, deposit.OfficeId, reservationId))
-                    paymentIds.Add(paymentId);
-            }
-        }
-
-        var officePayments = _officeSyncCache != null
-            ? _officeSyncCache.Payments
-            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                organizationId,
-                deposit.OfficeId.ToString(),
-                (int)PaymentKind.Invoice)).ToList();
-
-        foreach (var payment in officePayments)
-        {
-            if (payment.IsActive
-                && payment.PaymentKindId == (int)PaymentKind.Invoice
-                && payment.DepositId == deposit.DepositId)
-            {
-                paymentIds.Add(payment.PaymentId);
-            }
-        }
-
-        return paymentIds;
-    }
-
     private async Task<HashSet<Guid>> CollectPaymentIdsToStampForDepositHealthFixAsync(Deposit deposit, Guid organizationId)
     {
         var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
@@ -654,10 +599,7 @@ public partial class AccountingManager
         return paymentIds;
     }
 
-    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(
-        Guid organizationId,
-        int officeId,
-        string invoiceSourceCode)
+    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(Guid organizationId, int officeId, string invoiceSourceCode)
     {
         var normalizedSourceCode = invoiceSourceCode.Trim();
         if (string.IsNullOrWhiteSpace(normalizedSourceCode))
@@ -749,10 +691,7 @@ public partial class AccountingManager
         return paymentIds.ToList();
     }
 
-    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsByReservationIdAsync(
-        Guid organizationId,
-        int officeId,
-        Guid reservationId)
+    private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsByReservationIdAsync(Guid organizationId, int officeId, Guid reservationId)
     {
         if (reservationId == Guid.Empty)
             return [];
@@ -837,10 +776,7 @@ public partial class AccountingManager
         }
     }
 
-    private static bool PaymentMatchesInvoiceSourceCode(
-        Payment payment,
-        string invoiceSourceCode,
-        IReadOnlySet<Guid> invoiceIds)
+    private static bool PaymentMatchesInvoiceSourceCode(Payment payment, string invoiceSourceCode, IReadOnlySet<Guid> invoiceIds)
     {
         foreach (var line in payment.LedgerLines ?? [])
         {
@@ -871,11 +807,7 @@ public partial class AccountingManager
         await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
     }
 
-    private async Task SyncPaymentDepositIdsForDepositAsync(
-        Deposit deposit,
-        IReadOnlyCollection<Guid> paymentIds,
-        Guid currentUser,
-        bool unstampMissing = true)
+    private async Task SyncPaymentDepositIdsForDepositAsync(Deposit deposit, IReadOnlyCollection<Guid> paymentIds, Guid currentUser, bool unstampMissing = true)
     {
         if (deposit.DepositId == Guid.Empty)
             return;

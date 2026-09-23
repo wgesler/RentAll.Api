@@ -5,11 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private async Task ReconnectDuplicateJournalEntryLinksAsync(
-        JournalEntry retainedEntry,
-        JournalEntry duplicateEntry,
-        Guid organizationId,
-        Guid currentUser)
+    #region Journal Entry Duplicate Repair
+    private async Task ReconnectDuplicateJournalEntryLinksAsync(JournalEntry retainedEntry, JournalEntry duplicateEntry, Guid organizationId, Guid currentUser)
     {
         if (currentUser == Guid.Empty)
             return;
@@ -70,9 +67,7 @@ public partial class AccountingManager
         await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(retained, requireActiveLines: true);
     }
 
-    private static Dictionary<Guid, Guid> BuildDuplicateToRetainedJournalEntryLineMap(
-        IReadOnlyList<JournalEntryLine> retainedLines,
-        IReadOnlyList<JournalEntryLine> duplicateLines)
+    private static Dictionary<Guid, Guid> BuildDuplicateToRetainedJournalEntryLineMap(IReadOnlyList<JournalEntryLine> retainedLines, IReadOnlyList<JournalEntryLine> duplicateLines)
     {
         var map = new Dictionary<Guid, Guid>();
         var availableRetained = retainedLines.ToList();
@@ -101,11 +96,7 @@ public partial class AccountingManager
         return map;
     }
 
-    private async Task RepointDepositTransferSplitJournalEntryLineIdsAsync(
-        Guid organizationId,
-        int officeId,
-        IReadOnlyDictionary<Guid, Guid> lineMap,
-        Guid currentUser)
+    private async Task RepointDepositTransferSplitJournalEntryLineIdsAsync(Guid organizationId, int officeId, IReadOnlyDictionary<Guid, Guid> lineMap, Guid currentUser)
     {
         if (lineMap.Count == 0)
             return;
@@ -241,10 +232,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<bool> IsAnyJournalEntryLineClaimedByDepositSplitAsync(
-        Guid organizationId,
-        int officeId,
-        IEnumerable<Guid> lineIds)
+    private async Task<bool> IsAnyJournalEntryLineClaimedByDepositSplitAsync(Guid organizationId, int officeId, IEnumerable<Guid> lineIds)
     {
         var lineIdSet = lineIds.Where(lineId => lineId != Guid.Empty).ToHashSet();
         if (lineIdSet.Count == 0)
@@ -258,11 +246,7 @@ public partial class AccountingManager
                 split.JournalEntryLineId is { } lineId && lineIdSet.Contains(lineId)));
     }
 
-    private async Task<int> PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(
-        Guid paymentId,
-        Guid organizationId,
-        Guid currentUser,
-        bool removeOrphanPrePayReceive = true)
+    private async Task<int> PruneDuplicateOpenInvoicePaymentJournalEntriesByPaymentIdAsync(Guid paymentId, Guid organizationId, Guid currentUser, bool removeOrphanPrePayReceive = true)
     {
         if (paymentId == Guid.Empty)
             return 0;
@@ -312,10 +296,7 @@ public partial class AccountingManager
         => entry.SourceTypeId == (int)SourceType.Deposit
             || entry.JournalEntryKindId == JournalEntryKind.Deposit;
 
-    private async Task<int> PruneDuplicateOpenDepositJournalEntriesByDepositIdAsync(
-        Guid depositId,
-        Guid organizationId,
-        Guid currentUser)
+    private async Task<int> PruneDuplicateOpenDepositJournalEntriesByDepositIdAsync(Guid depositId, Guid organizationId, Guid currentUser)
     {
         if (depositId == Guid.Empty)
             return 0;
@@ -359,4 +340,5 @@ public partial class AccountingManager
 
         return deleted;
     }
+    #endregion
 }

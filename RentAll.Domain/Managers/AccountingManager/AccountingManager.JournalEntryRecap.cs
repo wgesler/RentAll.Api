@@ -2,6 +2,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Journal Entry Recap
     public async Task<string> GetRentalIncomeParentAccountIdsAsync(Guid organizationId, string officeIds)
     {
         var parents = await ResolveRentalIncomeParentAccountsAsync(organizationId, officeIds);
@@ -51,4 +52,5 @@ public partial class AccountingManager
             .Select(pair => (pair.Key, pair.Value))
             .ToList();
     }
+    #endregion
 }

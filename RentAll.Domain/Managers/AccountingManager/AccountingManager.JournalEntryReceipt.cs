@@ -223,60 +223,6 @@ public partial class AccountingManager
         }, JournalEntryKind.CrossOfficeCreditCard);
     }
 
-    private JournalEntry BuildCrossOfficeBankCardLiabilityJournalEntryFromReceiptAsync(Receipt receipt, int bankCardOfficeId, List<ChartOfAccount> bankCardOfficeChartOfAccounts, AccountingOffice? bankCardAccountingOffice, BankCard bankCard, Guid? receiptOfficeVendorId, string receiptOfficeName, JournalEntryLineContext defaultLineContext, Guid currentUser)
-    {
-        // AGENT-NOTE: DO NOT TOUCH.
-        // CROSS-OFFICE-RECEIPT-LIABILITY-JE-ACCOUNTS (bank card office)
-        // Line 1 — Debit: Inter-Office (GetDefaultInterOfficeAccount) to the receipt office.
-        // Line 2 — Credit: Credit card account on the bank card (BankCard.ChartOfAccountId).
-        // END CROSS-OFFICE-RECEIPT-LIABILITY-JE-ACCOUNTS
-
-        var splitLines = ResolveReceiptSplitLines(receipt);
-        var interOfficeAccountId = GetDefaultInterOfficeAccount(bankCardOfficeChartOfAccounts, bankCardOfficeId, bankCardAccountingOffice);
-        var creditCardAccountId = GetCreditCardAccountId(bankCard);
-        var transactionDate = ResolveBillOrReceiptJournalEntryDate(receipt);
-        var receiptCode = receipt.ReceiptCode.Trim();
-        var bankCardDisplayName = receipt.BankCardDisplayName.Trim();
-        var firstEligibleSplit = splitLines
-            .Where(IsJournalEligibleReceiptSplit)
-            .FirstOrDefault(split => !string.IsNullOrWhiteSpace(split.Description));
-        var headerMemo = BuildReceiptHeaderMemo(receipt, firstEligibleSplit);
-        var totalAmount = splitLines.Where(IsJournalEligibleReceiptSplit).Sum(s => s.Amount);
-        var officeVendorContext = defaultLineContext with { ContactId = receiptOfficeVendorId };
-        var interOfficeLine = new JournalEntryLine
-        {
-            ChartOfAccountId = interOfficeAccountId,
-            Debit = totalAmount > 0 ? totalAmount : 0,
-            Credit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
-            Memo = BuildReceiptOfficeMemo(receiptCode, receiptOfficeName),
-            CreatedBy = currentUser
-        };
-        ApplyJournalEntryLineContext(interOfficeLine, officeVendorContext);
-        var creditCardLine = new JournalEntryLine
-        {
-            ChartOfAccountId = creditCardAccountId,
-            Debit = totalAmount < 0 ? Math.Abs(totalAmount) : 0,
-            Credit = totalAmount > 0 ? totalAmount : 0,
-            Memo = BuildReceiptOfficeMemo(receiptCode, bankCardDisplayName),
-            CreatedBy = currentUser
-        };
-        ApplyJournalEntryLineContext(creditCardLine, officeVendorContext);
-        var journalEntryLines = new List<JournalEntryLine> { interOfficeLine, creditCardLine };
-
-        return ClassifyJournalEntryKind(new JournalEntry
-        {
-            OrganizationId = receipt.OrganizationId,
-            OfficeId = bankCardOfficeId,
-            TransactionDate = transactionDate,
-            SourceTypeId = (int)SourceType.CreditCard,
-            SourceId = receipt.ReceiptId,
-            SourceCode = ResolveJournalEntrySourceCodeFromReceipt(receipt),
-            Memo = headerMemo,
-            JournalEntryLines = journalEntryLines,
-            CreatedBy = currentUser
-        }, JournalEntryKind.CrossOfficeCreditCard);
-    }
-
     private async Task SyncCrossOfficeReceiptCompanionJournalEntryAsync(Receipt receipt, AccountingOffice? receiptAccountingOffice, BankCard bankCard, Guid currentUser)
     {
         await DeleteAllCrossOfficeReceiptCompanionEntriesAsync(receipt);

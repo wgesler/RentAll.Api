@@ -1063,9 +1063,7 @@ public partial class AccountingManager
         return chargeEntries;
     }
 
-    private static Dictionary<Guid, decimal> CalculateSecurityDepositPaymentAmountsByLedgerLine(
-        Invoice invoice,
-        IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static Dictionary<Guid, decimal> CalculateSecurityDepositPaymentAmountsByLedgerLine(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         var chargeLines = invoice.LedgerLines
             .Where(line => line.Amount != 0m)
@@ -1133,10 +1131,7 @@ public partial class AccountingManager
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
-    private static (Guid? JournalEntryId, string JournalEntryCode) ResolvePaymentJournalEntryForLedgerLine(
-        Guid paymentLedgerLineId,
-        IReadOnlyDictionary<Guid, List<JournalEntry>> journalEntriesBySourceId,
-        int undepositedFundsAccountId)
+    private static (Guid? JournalEntryId, string JournalEntryCode) ResolvePaymentJournalEntryForLedgerLine(Guid paymentLedgerLineId, IReadOnlyDictionary<Guid, List<JournalEntry>> journalEntriesBySourceId, int undepositedFundsAccountId)
     {
         if (!journalEntriesBySourceId.TryGetValue(paymentLedgerLineId, out var journalEntries) || journalEntries.Count == 0)
             return (null, string.Empty);

@@ -54,15 +54,6 @@ public partial class AccountingManager
         return $"{invoice.InvoiceCode.Trim()}: {line.Description.Trim()}";
     }
 
-    // Example: Payment: Check #123
-    public static string BuildPaymentDocumentMemo(string paymentDescription)
-    {
-        if (string.IsNullOrWhiteSpace(paymentDescription))
-            throw new ArgumentException("Payment description is required.", nameof(paymentDescription));
-
-        return $"Payment: {paymentDescription.Trim()}";
-    }
-
     // Example: R-001053-001: Payment: Check #123
     public static string BuildInvoicePaymentMemo(string invoiceCode, string ledgerLineDescription)
     {
@@ -360,23 +351,6 @@ public partial class AccountingManager
         };
     }
 
-    public static JournalEntryMemoMatch MatchOwnerRentMemo(string? journalMemo, string? lineMemo = null)
-        => MatchOwnerExpectedRentMemo(journalMemo, lineMemo);
-
-    public static JournalEntryMemoMatch MatchOwnerRentMemo(string? memo)
-        => MatchOwnerExpectedRentMemo(memo);
-
-    // Example: R-001053-001: Owner: Payment: Check #1234
-    public static string BuildOwnerPaymentMemo(string invoiceCode, string checkOrAchNumber)
-    {
-        if (string.IsNullOrWhiteSpace(invoiceCode))
-            throw new ArgumentException("Invoice code is required.", nameof(invoiceCode));
-        if (string.IsNullOrWhiteSpace(checkOrAchNumber))
-            throw new ArgumentException("Check or ACH number is required.", nameof(checkOrAchNumber));
-
-        return $"{invoiceCode.Trim()}: Owner: Payment: {checkOrAchNumber.Trim()}";
-    }
-
     // Example: R-001053-001: Owner: Payment: Check #1234
     public static JournalEntryMemoMatch MatchOwnerPaymentMemo(string? journalMemo, string? lineMemo = null)
         => MatchOwnerPaymentMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
@@ -489,24 +463,6 @@ public partial class AccountingManager
         };
     }
 
-    public static JournalEntryMemoMatch MatchOwnerExpenseMemo(string? journalMemo, string? lineMemo = null)
-    {
-        var billMatch = MatchOwnerBillMemo(journalMemo, lineMemo);
-        if (billMatch.IsMatch)
-            return billMatch;
-
-        return MatchOwnerWorkOrderMemo(journalMemo, lineMemo);
-    }
-
-    // Example: BAR505: Owner: BAL-03-2026
-    public static string BuildOwnerStartingBalanceMemo(string propertyCode, DateOnly accountingPeriod)
-    {
-        if (string.IsNullOrWhiteSpace(propertyCode))
-            throw new ArgumentException("Property code is required.", nameof(propertyCode));
-
-        return $"{propertyCode.Trim()}: Owner: BAL-{accountingPeriod:MM}-{accountingPeriod:yyyy}";
-    }
-
     public static JournalEntryMemoMatch MatchOwnerStartingBalanceMemo(string? journalMemo, string? lineMemo = null)
         => MatchOwnerStartingBalanceMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));
 
@@ -541,10 +497,6 @@ public partial class AccountingManager
             Detail = normalizedMemo
         };
     }
-
-    public static bool IsOfficeOpeningBalanceSheetJournalEntry(JournalEntry journalEntry)
-        => journalEntry.SourceTypeId == (int)SourceType.Journal
-            && journalEntry.JournalEntryKindId == JournalEntryKind.OpeningBalanceSheet;
 
     // Example: BAR505: Owner: Monthly Linen & Towel
     public static string BuildOwnerLinenAndTowelMemo(string propertyCode, bool isMonthly)

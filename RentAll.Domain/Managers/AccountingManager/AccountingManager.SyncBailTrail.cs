@@ -2,6 +2,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Sync Bail Trail
     /// <summary>
     /// Ordered diagnostic notes for Sync create/replace paths (payments, deposits, transfers).
     /// </summary>
@@ -18,4 +19,5 @@ public partial class AccountingManager
                 ? "(no trail)"
                 : string.Join(Environment.NewLine, Trail.Select((line, index) => $"{index + 1}. {line}"));
     }
+    #endregion
 }

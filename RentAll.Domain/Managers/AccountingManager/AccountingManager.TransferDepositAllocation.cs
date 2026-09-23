@@ -141,102 +141,6 @@ public partial class AccountingManager
 
     #region Resolve Single Deposit Allocation
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationForEscrowLineAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>> depositJournalEntryCache)
-    {
-        escrowAmount = RoundTransferEscrowAmount(escrowAmount);
-        var expandedSplits = ExpandEscrowDepositSplits(deposit, escrowAmount);
-        if (expandedSplits.Count <= 1)
-        {
-            var preferredSplit = expandedSplits.Count == 1 ? expandedSplits[0] : null;
-            var singleAmount = preferredSplit != null ? preferredSplit.Amount : escrowAmount;
-            return await ResolveTransferDepositAllocationAsync(
-                organizationId,
-                officeId,
-                deposit,
-                singleAmount,
-                recapContext,
-                escrowJournalEntryLineId,
-                undepositedFundsAccountId,
-                depositJournalEntryCache,
-                preferredSplit?.DepositSplitId > 0 ? preferredSplit.DepositSplitId : null);
-        }
-
-        var ownerEscrow = 0m;
-        var secDep = 0m;
-        var sdw = 0m;
-        Guid? propertyId = null;
-        Guid? reservationId = null;
-        Guid? contactId = null;
-        var description = string.Empty;
-
-        foreach (var split in expandedSplits)
-        {
-            var part = await ResolveTransferDepositAllocationAsync(
-                organizationId,
-                officeId,
-                deposit,
-                split.Amount,
-                recapContext,
-                null,
-                undepositedFundsAccountId,
-                depositJournalEntryCache,
-                split.DepositSplitId > 0 ? split.DepositSplitId : null);
-
-            ownerEscrow = RoundCurrency(ownerEscrow + part.OwnerEscrow);
-            secDep = RoundCurrency(secDep + part.SecDep);
-            sdw = RoundCurrency(sdw + part.Sdw);
-            propertyId ??= part.PropertyId;
-            reservationId ??= part.ReservationId;
-            contactId ??= part.ContactId;
-            if (string.IsNullOrWhiteSpace(description) && !string.IsNullOrWhiteSpace(part.Description))
-                description = part.Description;
-        }
-
-        var roundedEscrowAmount = RoundTransferEscrowAmount(escrowAmount);
-        // Business is always the deposit residual (company rent + fees). FeesActual is not the Business split amount.
-        var business = RoundCurrency(roundedEscrowAmount - ownerEscrow - secDep - sdw);
-
-        return new TransferDepositAllocationResult
-        {
-            DepositId = deposit.DepositId,
-            JournalEntryLineId = escrowJournalEntryLineId is { } lineId && lineId != Guid.Empty ? lineId : null,
-            EscrowAmount = roundedEscrowAmount,
-            OwnerEscrow = ownerEscrow,
-            SecDep = secDep,
-            Sdw = sdw,
-            Business = business,
-            PropertyId = propertyId,
-            ReservationId = reservationId,
-            ContactId = contactId,
-            Description = description
-        };
-    }
-
-    private static List<DepositSplit> ExpandEscrowDepositSplits(Deposit deposit, decimal escrowAmount)
-    {
-        var splits = (deposit.Splits ?? [])
-            .Where(split => Math.Abs(split.Amount) > 0.005m)
-            .ToList();
-
-        if (splits.Count == 0)
-            return [];
-
-        if (splits.Count == 1)
-            return splits;
-
-        var requestAmount = RoundTransferEscrowAmount(escrowAmount);
-        var depositAmount = RoundCurrency(deposit.Amount);
-        var splitTotal = RoundCurrency(splits.Sum(split => split.Amount));
-        var matchesFullDepositAmount = Math.Abs(requestAmount) > 0.005m
-            && (Math.Abs(requestAmount - depositAmount) <= 0.005m
-                || Math.Abs(requestAmount - splitTotal) <= 0.005m);
-
-        if (matchesFullDepositAmount)
-            return splits;
-
-        return [];
-    }
-
     private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null, int? depositSplitId = null)
     {
         var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId)
@@ -457,13 +361,7 @@ public partial class AccountingManager
         return $"ctx:{split.PropertyId}:{split.ReservationId}:{split.ContactId}";
     }
 
-    private static TransferReportLineAllocationResult BuildTransferReportLineAllocationFromSplits(
-        IReadOnlyList<TransferSplit> splits,
-        Guid journalEntryLineId,
-        int? ownersAccountId,
-        int? secDepAccountId,
-        int? sdwAccountId,
-        int? businessAccountId)
+    private static TransferReportLineAllocationResult BuildTransferReportLineAllocationFromSplits(IReadOnlyList<TransferSplit> splits, Guid journalEntryLineId, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
     {
         var contextSplit = splits[0];
         var description = splits
@@ -621,10 +519,7 @@ public partial class AccountingManager
 
     #region Deposit-Linked Journal Entry Selection
 
-    private async Task<List<JournalEntry>> MergeTransferDepositPaymentJournalEntriesAsync(
-        Guid organizationId,
-        IReadOnlyList<JournalEntry> depositJournalEntries,
-        TransferDepositAllocationScope allocationScope)
+    private async Task<List<JournalEntry>> MergeTransferDepositPaymentJournalEntriesAsync(Guid organizationId, IReadOnlyList<JournalEntry> depositJournalEntries, TransferDepositAllocationScope allocationScope)
     {
         var mergedEntries = depositJournalEntries.ToList();
         if (allocationScope.PaymentId == Guid.Empty)
@@ -681,9 +576,7 @@ public partial class AccountingManager
 
     #region Recap Classification
 
-    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw) ClassifyTransferDepositAllocation(
-        IReadOnlyList<JournalEntry> scopedDepositJournalEntries,
-        TransferDepositRecapAccountContext recapContext)
+    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw) ClassifyTransferDepositAllocation(IReadOnlyList<JournalEntry> scopedDepositJournalEntries, TransferDepositRecapAccountContext recapContext)
     {
         var ownerEscrow = 0m;
         var secDep = 0m;
@@ -890,11 +783,7 @@ public partial class AccountingManager
     private static decimal RoundTransferEscrowAmount(decimal escrowAmount)
         => RoundCurrency(escrowAmount);
 
-    private static void AlignTransferDepositClassificationWithSplitSign(
-        decimal splitAmount,
-        ref decimal ownerEscrow,
-        ref decimal secDep,
-        ref decimal sdw)
+    private static void AlignTransferDepositClassificationWithSplitSign(decimal splitAmount, ref decimal ownerEscrow, ref decimal secDep, ref decimal sdw)
     {
         if (Math.Abs(splitAmount) <= 0.005m)
             return;
@@ -923,11 +812,7 @@ public partial class AccountingManager
         return depositCode?.Trim() ?? string.Empty;
     }
 
-    private async Task<string> ResolveTransferDepositAllocationDisplaySourceAsync(
-        Guid organizationId,
-        TransferDepositAllocationScope scope,
-        DepositSplit split,
-        IReadOnlyList<JournalEntry> scopedDepositJournalEntries)
+    private async Task<string> ResolveTransferDepositAllocationDisplaySourceAsync(Guid organizationId, TransferDepositAllocationScope scope, DepositSplit split, IReadOnlyList<JournalEntry> scopedDepositJournalEntries)
     {
         var fromSplit = ResolveDepositSplitInvoiceSourceCode(split);
         if (IsReservationOrInvoiceSourceCode(fromSplit))
@@ -958,9 +843,7 @@ public partial class AccountingManager
         return scope.SourceCode.Trim();
     }
 
-    internal async Task<string?> ResolvePaymentBackedDepositSplitInvoiceSourceCodeAsync(
-        Guid organizationId,
-        DepositSplit split)
+    internal async Task<string?> ResolvePaymentBackedDepositSplitInvoiceSourceCodeAsync(Guid organizationId, DepositSplit split)
     {
         if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
             return null;

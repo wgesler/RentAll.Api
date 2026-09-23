@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Cross Office Payback Bill
     private async Task CreateCrossOfficePaybackBillAsync(Receipt receipt, BankCard bankCard, Guid currentUser)
     {
         receipt = await LoadReceiptWithSplitsAsync(receipt);
@@ -102,4 +103,5 @@ public partial class AccountingManager
             EntityCodeFormatting.CodesMatch(bill.BillNumber, sourceReceiptCode));
     }
 
+    #endregion
 }

@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Journal Entries Sync
     public async Task<JournalEntrySyncResult> SyncInvoiceJournalEntriesAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         return await WithOfficeSyncCacheAsync(organizationId, officeIds, async () =>
@@ -1023,4 +1024,5 @@ public partial class AccountingManager
 
         return dates;
     }
+    #endregion
 }

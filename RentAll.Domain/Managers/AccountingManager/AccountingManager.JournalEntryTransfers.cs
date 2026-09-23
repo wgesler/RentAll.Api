@@ -27,10 +27,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromTransferWithDiagnosticsAsync(
-        Transfer transfer,
-        Guid currentUser,
-        AccountingSyncBailTrail trail)
+    private async Task<AccountingJournalEntryResult> CreateJournalEntryFromTransferWithDiagnosticsAsync(Transfer transfer, Guid currentUser, AccountingSyncBailTrail trail)
     {
         var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
             ? transfer.TransferId.ToString()
@@ -98,10 +95,7 @@ public partial class AccountingManager
     private async Task TryReplaceJournalEntriesFromTransferAsync(Transfer transfer, Guid currentUser)
         => await TryReplaceJournalEntriesFromTransferWithDiagnosticsAsync(transfer, currentUser, new AccountingSyncBailTrail());
 
-    private async Task TryReplaceJournalEntriesFromTransferWithDiagnosticsAsync(
-        Transfer transfer,
-        Guid currentUser,
-        AccountingSyncBailTrail trail)
+    private async Task TryReplaceJournalEntriesFromTransferWithDiagnosticsAsync(Transfer transfer, Guid currentUser, AccountingSyncBailTrail trail)
     {
         var transferLabel = string.IsNullOrWhiteSpace(transfer.TransferCode)
             ? transfer.TransferId.ToString()
@@ -408,9 +402,7 @@ public partial class AccountingManager
         return 99;
     }
 
-    private static JournalEntryLineContext ResolveAggregatedTransferSplitLineContext(
-        IReadOnlyList<TransferSplit> splits,
-        TransferSplit fallbackSplit)
+    private static JournalEntryLineContext ResolveAggregatedTransferSplitLineContext(IReadOnlyList<TransferSplit> splits, TransferSplit fallbackSplit)
     {
         if (splits.Count == 0)
             return CreateJournalEntryLineContextFromTransferSplit(fallbackSplit);
@@ -517,11 +509,7 @@ public partial class AccountingManager
     /// Document-link updates must reload lines from SQL. Cache stubs with empty JournalEntryLines
     /// would fail requireActiveLines or wipe lines on update.
     /// </summary>
-    private async Task UpdateJournalEntryTransferDocumentLinkAsync(
-        Guid journalEntryId,
-        Guid organizationId,
-        Guid currentUser,
-        Action<JournalEntry> applyLink)
+    private async Task UpdateJournalEntryTransferDocumentLinkAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, Action<JournalEntry> applyLink)
     {
         if (journalEntryId == Guid.Empty)
             return;

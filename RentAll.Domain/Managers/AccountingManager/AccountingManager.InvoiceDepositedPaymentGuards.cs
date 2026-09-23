@@ -4,6 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Invoice Deposited Payment Guards
     private sealed record DepositedPaymentLockContext(Payment Payment, Deposit? Deposit);
 
     private async Task ValidateInvoiceUpdatePreservesDepositedPaymentsAsync(Invoice incoming, Invoice existing)
@@ -225,4 +226,5 @@ public partial class AccountingManager
 
         return $"Invoice {invoiceCode}: payment {paymentLabel} is linked to deposit {depositLabel}.{transferSuffix} {detail}";
     }
+    #endregion
 }

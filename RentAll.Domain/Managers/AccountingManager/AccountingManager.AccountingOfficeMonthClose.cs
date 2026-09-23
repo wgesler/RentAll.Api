@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Accounting Office Month Close
     public async Task<CloseAccountingPeriodResult> ResyncAccountingOfficePostingStatusAsync(Guid organizationId, int officeId, int softClosedMonth, int softClosedYear, int hardClosedMonth, int hardClosedYear, int startMonth, int startYear, Guid currentUser)
     {
         var result = new CloseAccountingPeriodResult();
@@ -127,9 +128,6 @@ public partial class AccountingManager
     internal static DateOnly GetAccountingOfficeClosedEndDate(int closedYear, int closedMonth)
         => new(closedYear, closedMonth, DateTime.DaysInMonth(closedYear, closedMonth));
 
-    internal static bool IsJournalEntryInAccountingOfficeClosePeriod(JournalEntry journalEntry, DateOnly closedEndDate)
-        => IsDocumentInAccountingOfficeClosePeriod(journalEntry.TransactionDate, journalEntry.AccountingPeriod, closedEndDate);
-
     internal static bool IsDocumentInAccountingOfficeClosePeriod(DateOnly transactionDate, DateOnly accountingPeriod, DateOnly closedEndDate)
     {
         var closedEndMonth = new DateOnly(closedEndDate.Year, closedEndDate.Month, 1);
@@ -198,4 +196,5 @@ public partial class AccountingManager
 
         return null;
     }
+    #endregion
 }

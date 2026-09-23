@@ -5,11 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(
-        Guid organizationId,
-        DateOnly endDate,
-        IReadOnlyList<OwnerStatementMonthCloseLine> lines,
-        Guid currentUser)
+    #region Owner Statement Month Close
+    public async Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(Guid organizationId, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
             throw new Exception("Accounting is not enabled for this organization.");
@@ -26,12 +23,7 @@ public partial class AccountingManager
         };
     }
 
-    public async Task<CloseAccountingPeriodResult> SoftCloseOwnerApJournalEntriesForOwnerStatementMonthAsync(
-        Guid organizationId,
-        DateOnly? startDate,
-        DateOnly endDate,
-        IReadOnlyList<OwnerStatementMonthCloseLine> lines,
-        Guid currentUser)
+    public async Task<CloseAccountingPeriodResult> SoftCloseOwnerApJournalEntriesForOwnerStatementMonthAsync(Guid organizationId, DateOnly? startDate, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser)
     {
         var result = new CloseAccountingPeriodResult();
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
@@ -70,11 +62,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task<OwnerStatementMonthSoftCloseTargets> ResolveOwnerStatementMonthSoftCloseTargetsAsync(
-        Guid organizationId,
-        DateOnly periodStart,
-        DateOnly endDate,
-        IReadOnlyList<OwnerStatementMonthCloseLine> lines)
+    private async Task<OwnerStatementMonthSoftCloseTargets> ResolveOwnerStatementMonthSoftCloseTargetsAsync(Guid organizationId, DateOnly periodStart, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines)
     {
         var targets = new OwnerStatementMonthSoftCloseTargets();
         var closedPropertyKeys = lines
@@ -110,11 +98,7 @@ public partial class AccountingManager
         return targets;
     }
 
-    private static void ClassifyOwnerStatementMonthSoftCloseTarget(
-        JournalEntryLineSearchResult line,
-        DateOnly periodStart,
-        DateOnly endDate,
-        OwnerStatementMonthSoftCloseTargets targets)
+    private static void ClassifyOwnerStatementMonthSoftCloseTarget(JournalEntryLineSearchResult line, DateOnly periodStart, DateOnly endDate, OwnerStatementMonthSoftCloseTargets targets)
     {
         var kind = (JournalEntryKind)line.JournalEntryKindId;
         var sourceType = line.SourceTypeId is int sourceTypeId && sourceTypeId >= 0
@@ -190,11 +174,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TrySoftCloseOwnerStatementJournalEntryAsync(
-        Guid journalEntryId,
-        Guid organizationId,
-        Guid currentUser,
-        CloseAccountingPeriodResult result)
+    private async Task TrySoftCloseOwnerStatementJournalEntryAsync(Guid journalEntryId, Guid organizationId, Guid currentUser, CloseAccountingPeriodResult result)
     {
         try
         {
@@ -208,12 +188,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TrySoftCloseOwnerStatementInvoicePaymentDocumentAsync(
-        Guid organizationId,
-        int officeId,
-        Guid paymentId,
-        Guid currentUser,
-        CloseAccountingPeriodResult result)
+    private async Task TrySoftCloseOwnerStatementInvoicePaymentDocumentAsync(Guid organizationId, int officeId, Guid paymentId, Guid currentUser, CloseAccountingPeriodResult result)
     {
         try
         {
@@ -229,12 +204,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TrySoftCloseOwnerStatementBillReceiptDocumentAsync(
-        Guid organizationId,
-        int officeId,
-        Guid receiptId,
-        Guid currentUser,
-        CloseAccountingPeriodResult result)
+    private async Task TrySoftCloseOwnerStatementBillReceiptDocumentAsync(Guid organizationId, int officeId, Guid receiptId, Guid currentUser, CloseAccountingPeriodResult result)
     {
         try
         {
@@ -251,12 +221,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task TrySoftCloseOwnerStatementWorkOrderDocumentAsync(
-        Guid organizationId,
-        int officeId,
-        Guid workOrderId,
-        Guid currentUser,
-        CloseAccountingPeriodResult result)
+    private async Task TrySoftCloseOwnerStatementWorkOrderDocumentAsync(Guid organizationId, int officeId, Guid workOrderId, Guid currentUser, CloseAccountingPeriodResult result)
     {
         try
         {
@@ -282,12 +247,7 @@ public partial class AccountingManager
         await _maintenanceRepository.UpdateWorkOrderAsync(workOrder);
     }
 
-    private async Task TrySoftCloseOwnerStatementOwnerPaymentDocumentAsync(
-        Guid organizationId,
-        int officeId,
-        Guid paymentId,
-        Guid currentUser,
-        CloseAccountingPeriodResult result)
+    private async Task TrySoftCloseOwnerStatementOwnerPaymentDocumentAsync(Guid organizationId, int officeId, Guid paymentId, Guid currentUser, CloseAccountingPeriodResult result)
     {
         try
         {
@@ -303,13 +263,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task SoftCloseJournalEntriesForSourceAsync(
-        Guid organizationId,
-        int officeId,
-        SourceType sourceType,
-        Guid sourceId,
-        Guid currentOrganizationId,
-        Guid currentUser)
+    private async Task SoftCloseJournalEntriesForSourceAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, Guid currentOrganizationId, Guid currentUser)
     {
         var journalEntries = await GetJournalEntriesForSourceAsync(organizationId, officeId, sourceType, sourceId);
         foreach (var journalEntry in journalEntries)
@@ -353,4 +307,5 @@ public partial class AccountingManager
         public HashSet<(int OfficeId, Guid PaymentId)> OwnerPaymentDocuments { get; } = [];
         public HashSet<(int OfficeId, Guid WorkOrderId)> WorkOrderDocuments { get; } = [];
     }
+    #endregion
 }

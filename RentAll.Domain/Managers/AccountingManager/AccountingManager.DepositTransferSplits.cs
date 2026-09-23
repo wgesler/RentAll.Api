@@ -4,6 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Deposit Transfer Splits
     private async Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit)
     {
         await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
@@ -95,10 +96,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<decimal?> ResolveTransferEscrowDepositSourceAmountAsync(
-        Guid organizationId,
-        JournalEntryLine linkedSourceLine,
-        int escrowDepositAccountId)
+    private async Task<decimal?> ResolveTransferEscrowDepositSourceAmountAsync(Guid organizationId, JournalEntryLine linkedSourceLine, int escrowDepositAccountId)
     {
         if (linkedSourceLine.ChartOfAccountId == escrowDepositAccountId)
             return linkedSourceLine.Debit - linkedSourceLine.Credit;
@@ -179,4 +177,5 @@ public partial class AccountingManager
 
     private static Guid? NormalizeOptionalGuid(Guid? value)
         => value is { } id && id != Guid.Empty ? id : null;
+    #endregion
 }

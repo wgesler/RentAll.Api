@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Journal Entries
     public async Task<JournalEntry?> CreateJournalEntryAsync(JournalEntry journalEntry)
     {
         if (!await IsAccountingFeatureEnabledAsync(journalEntry.OrganizationId))
@@ -501,4 +502,5 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(journalEntry.TransferCode))
             journalEntry.TransferCode = existing.TransferCode;
     }
+    #endregion
 }

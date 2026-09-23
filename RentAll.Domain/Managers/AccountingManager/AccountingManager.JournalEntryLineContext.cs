@@ -6,13 +6,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private readonly record struct JournalEntryLineContext(
-        Guid? PropertyId = null,
-        string? PropertyCode = null,
-        Guid? ReservationId = null,
-        string? ReservationCode = null,
-        Guid? ContactId = null,
-        string? ContactName = null);
+    private readonly record struct JournalEntryLineContext(Guid? PropertyId = null, string? PropertyCode = null, Guid? ReservationId = null, string? ReservationCode = null, Guid? ContactId = null, string? ContactName = null);
 
     #region Helpers
     private static void ApplyJournalEntryLineContext(JournalEntryLine line, JournalEntryLineContext context)

@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Accounting Sync Office Cache
     /// <summary>
     /// Active only during Sync / Repair / document-link passes.
     /// JE get helpers prefer this over per-document repository round-trips.
@@ -41,11 +42,7 @@ public partial class AccountingManager
         private readonly Dictionary<(int OfficeId, int EscrowAccountId), List<EscrowDepositLineCandidate>> _escrowCandidates = new();
         private readonly Dictionary<(int OfficeId, int UndepositedFundsAccountId), List<UndepositedPaymentLineCandidate>> _undepositedCandidates = new();
 
-        public void IndexDocuments(
-            IEnumerable<Payment> payments,
-            IEnumerable<Deposit> deposits,
-            IEnumerable<Transfer> transfers,
-            IEnumerable<Invoice>? invoices = null)
+        public void IndexDocuments(IEnumerable<Payment> payments, IEnumerable<Deposit> deposits, IEnumerable<Transfer> transfers, IEnumerable<Invoice>? invoices = null)
         {
             Payments.Clear();
             Deposits.Clear();
@@ -325,10 +322,7 @@ public partial class AccountingManager
             return claimedLineIds;
         }
 
-        public List<TransferDepositInvoiceEscrowMatch> GetOrBuildTransferInvoiceMatches(
-            Transfer transfer,
-            int escrowDepositAccountId,
-            Func<Deposit, int, JournalEntryLine?> resolveEscrowLine)
+        public List<TransferDepositInvoiceEscrowMatch> GetOrBuildTransferInvoiceMatches(Transfer transfer, int escrowDepositAccountId, Func<Deposit, int, JournalEntryLine?> resolveEscrowLine)
         {
             var key = (transfer.OfficeId, escrowDepositAccountId);
             if (_transferInvoiceMatches.TryGetValue(key, out var cached))
@@ -423,9 +417,7 @@ public partial class AccountingManager
             return candidates.ToList();
         }
 
-        public List<UndepositedPaymentLineCandidate> GetOrBuildUndepositedCandidates(
-            Deposit deposit,
-            int undepositedFundsAccountId)
+        public List<UndepositedPaymentLineCandidate> GetOrBuildUndepositedCandidates(Deposit deposit, int undepositedFundsAccountId)
         {
             var key = (deposit.OfficeId, undepositedFundsAccountId);
             if (_undepositedCandidates.TryGetValue(key, out var cached))
@@ -489,10 +481,7 @@ public partial class AccountingManager
                 index.Remove(key);
         }
 
-        private static void RemoveFromIndex(
-            Dictionary<(int SourceTypeId, Guid SourceId), List<JournalEntry>> index,
-            (int SourceTypeId, Guid SourceId) key,
-            Guid journalEntryId)
+        private static void RemoveFromIndex(Dictionary<(int SourceTypeId, Guid SourceId), List<JournalEntry>> index, (int SourceTypeId, Guid SourceId) key, Guid journalEntryId)
         {
             if (!index.TryGetValue(key, out var list))
                 return;
@@ -503,12 +492,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task EnsureOfficeSyncCacheAsync(
-        Guid organizationId,
-        string officeIds,
-        IReadOnlyList<Payment>? paymentsAlreadyLoaded = null,
-        IReadOnlyList<Deposit>? depositsAlreadyLoaded = null,
-        IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
+    private async Task EnsureOfficeSyncCacheAsync(Guid organizationId, string officeIds, IReadOnlyList<Payment>? paymentsAlreadyLoaded = null, IReadOnlyList<Deposit>? depositsAlreadyLoaded = null, IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
     {
         if (_officeSyncCache != null
             && _officeSyncCache.OrganizationId == organizationId
@@ -528,13 +512,7 @@ public partial class AccountingManager
     private void ClearOfficeSyncCache()
         => _officeSyncCache = null;
 
-    private async Task WithOfficeSyncCacheAsync(
-        Guid organizationId,
-        string officeIds,
-        Func<Task> action,
-        IReadOnlyList<Payment>? paymentsAlreadyLoaded = null,
-        IReadOnlyList<Deposit>? depositsAlreadyLoaded = null,
-        IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
+    private async Task WithOfficeSyncCacheAsync(Guid organizationId, string officeIds, Func<Task> action, IReadOnlyList<Payment>? paymentsAlreadyLoaded = null, IReadOnlyList<Deposit>? depositsAlreadyLoaded = null, IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
     {
         var ownsCache = _officeSyncCache == null;
         try
@@ -554,13 +532,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<T> WithOfficeSyncCacheAsync<T>(
-        Guid organizationId,
-        string officeIds,
-        Func<Task<T>> action,
-        IReadOnlyList<Payment>? paymentsAlreadyLoaded = null,
-        IReadOnlyList<Deposit>? depositsAlreadyLoaded = null,
-        IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
+    private async Task<T> WithOfficeSyncCacheAsync<T>(Guid organizationId, string officeIds, Func<Task<T>> action, IReadOnlyList<Payment>? paymentsAlreadyLoaded = null, IReadOnlyList<Deposit>? depositsAlreadyLoaded = null, IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
     {
         var ownsCache = _officeSyncCache == null;
         try
@@ -580,12 +552,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<AccountingSyncOfficeCache> BuildAccountingSyncOfficeCacheAsync(
-        Guid organizationId,
-        string officeIds,
-        IReadOnlyList<Payment>? paymentsAlreadyLoaded = null,
-        IReadOnlyList<Deposit>? depositsAlreadyLoaded = null,
-        IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
+    private async Task<AccountingSyncOfficeCache> BuildAccountingSyncOfficeCacheAsync(Guid organizationId, string officeIds, IReadOnlyList<Payment>? paymentsAlreadyLoaded = null, IReadOnlyList<Deposit>? depositsAlreadyLoaded = null, IReadOnlyList<Transfer>? transfersAlreadyLoaded = null)
     {
         var payments = paymentsAlreadyLoaded?.ToList()
             ?? (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice)).ToList();
@@ -705,4 +672,5 @@ public partial class AccountingManager
 
         return null;
     }
+    #endregion
 }

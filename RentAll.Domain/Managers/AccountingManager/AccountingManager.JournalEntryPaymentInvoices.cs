@@ -298,11 +298,7 @@ public partial class AccountingManager
     #endregion
 
     #region Helpers
-    private async Task CreateJournalEntriesFromPaymentApplicationsAsync(
-        Payment payment,
-        IReadOnlyList<PaymentApplicationContext> applications,
-        Guid currentUser,
-        PaymentJournalEntryCreateResult result)
+    private async Task CreateJournalEntriesFromPaymentApplicationsAsync(Payment payment, IReadOnlyList<PaymentApplicationContext> applications, Guid currentUser, PaymentJournalEntryCreateResult result)
     {
         var existingPaymentDocumentEntries = await GetJournalEntriesForSourceAsync(
             payment.OrganizationId,
@@ -399,10 +395,7 @@ public partial class AccountingManager
         result.Note("SyncPaymentDocumentLinksAsync completed.");
     }
 
-    private async Task<JournalEntry> CreateConsolidatedInvoicePaymentJournalEntryAsync(
-        Payment payment,
-        IReadOnlyList<PaymentApplicationContext> applications,
-        Guid currentUser)
+    private async Task<JournalEntry> CreateConsolidatedInvoicePaymentJournalEntryAsync(Payment payment, IReadOnlyList<PaymentApplicationContext> applications, Guid currentUser)
     {
         if (payment.Amount == 0)
             throw new Exception("Payment amount cannot be zero");
@@ -672,10 +665,7 @@ public partial class AccountingManager
         public string FormatBailTrail() => _trail.FormatBailTrail();
     }
 
-    private static void AppendPaymentLedgerLineIssuesToBail(
-        PaymentJournalEntryCreateResult result,
-        string heading,
-        IReadOnlyList<PaymentLedgerLineLoadIssue> issues)
+    private static void AppendPaymentLedgerLineIssuesToBail(PaymentJournalEntryCreateResult result, string heading, IReadOnlyList<PaymentLedgerLineLoadIssue> issues)
     {
         if (issues.Count == 0)
             return;

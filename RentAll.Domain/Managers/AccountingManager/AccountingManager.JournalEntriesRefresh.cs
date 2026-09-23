@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Journal Entries Refresh
     private async Task TryReplaceJournalEntriesFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser)
     {
         try
@@ -361,4 +362,5 @@ public partial class AccountingManager
 
         return offsetLine?.ChartOfAccountId;
     }
+    #endregion
 }

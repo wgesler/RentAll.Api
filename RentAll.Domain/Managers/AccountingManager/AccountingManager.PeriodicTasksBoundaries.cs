@@ -4,6 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Periodic Tasks Boundaries
     private static DateOnly GetAccountingOfficeStartDate(AccountingOffice office)
         => AccountingOfficePeriodBoundary.GetStartMonth(office);
 
@@ -28,10 +29,7 @@ public partial class AccountingManager
         return startDate.Value < earliestOfficeStart ? earliestOfficeStart : startDate;
     }
 
-    private static (DateOnly? StartDate, DateOnly? EndDate) ClampPeriodicSyncDateRange(
-        DateOnly? startDate,
-        DateOnly? endDate,
-        IReadOnlyCollection<AccountingOffice> accountingOffices)
+    private static (DateOnly? StartDate, DateOnly? EndDate) ClampPeriodicSyncDateRange(DateOnly? startDate, DateOnly? endDate, IReadOnlyCollection<AccountingOffice> accountingOffices)
     {
         if (!startDate.HasValue && !endDate.HasValue)
             return (startDate, endDate);
@@ -46,4 +44,5 @@ public partial class AccountingManager
 
     private static bool ShouldProcessPeriodicTaskMonthForOffice(AccountingOffice? accountingOffice, DateOnly processingDate)
         => accountingOffice == null || IsAccountingMonthOnOrAfterOfficeStart(accountingOffice, processingDate);
+    #endregion
 }

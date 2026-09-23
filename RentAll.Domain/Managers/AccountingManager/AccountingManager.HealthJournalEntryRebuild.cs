@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Health Journal Entry Rebuild
     public async Task StampHealthIssuePostedJournalEntriesAsync(Guid organizationId, string officeIds, DocumentHealthResult result)
     {
         if (result.Issues.Count == 0)
@@ -428,4 +429,5 @@ public partial class AccountingManager
         public Dictionary<Guid, Deposit> DepositsById { get; }
         public Dictionary<Guid, Transfer> TransfersById { get; }
     }
+    #endregion
 }

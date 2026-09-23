@@ -6,6 +6,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Deposit Split Reconciliation
     private sealed class UndepositedPaymentLineCandidate
     {
         public Guid JournalEntryLineId { get; init; }
@@ -127,43 +128,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<IReadOnlyList<string>> GetUnresolvedPaymentBackedDepositSplitMessagesAsync(Deposit deposit)
-    {
-        if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
-            return [];
-
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
-        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
-        if (undepositedFundsAccountId <= 0)
-            return [];
-
-        var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
-            ? deposit.DepositId.ToString()
-            : deposit.DepositCode.Trim();
-        var messages = new List<string>();
-
-        foreach (var split in deposit.Splits.Where(split => Math.Abs(split.Amount) > 0.005m))
-        {
-            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
-                continue;
-
-            if (await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
-                continue;
-
-            var sourceCode = ResolveDepositSplitInvoiceSourceCode(split) ?? "(missing invoice code)";
-            messages.Add(
-                $"Deposit {depositLabel}: could not rematch {sourceCode} (${split.Amount:0.00}) to a payment undeposited-funds JE line. If journal entries were cleared, run Sync All first, then Repair (R).");
-        }
-
-        return messages;
-    }
-
-    private async Task<Guid?> ResolveHealthFixDepositSplitLineIdAsync(
-        Deposit deposit,
-        DepositSplit split,
-        int undepositedFundsAccountId,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private async Task<Guid?> ResolveHealthFixDepositSplitLineIdAsync(Deposit deposit, DepositSplit split, int undepositedFundsAccountId, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
             return null;
@@ -275,13 +240,7 @@ public partial class AccountingManager
             .LineId;
     }
 
-    private async Task<List<(Guid LineId, int Rank)>> CollectUndepositedFundsLineMatchesByPaymentAmountAsync(
-        IReadOnlyCollection<Guid> paymentIds,
-        Deposit deposit,
-        DepositSplit split,
-        int undepositedFundsAccountId,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private async Task<List<(Guid LineId, int Rank)>> CollectUndepositedFundsLineMatchesByPaymentAmountAsync(IReadOnlyCollection<Guid> paymentIds, Deposit deposit, DepositSplit split, int undepositedFundsAccountId, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         var matches = new List<(Guid LineId, int Rank)>();
         var splitAmount = Math.Abs(RoundCurrency(split.Amount));
@@ -322,16 +281,7 @@ public partial class AccountingManager
         return matches;
     }
 
-    private static void CollectUndepositedFundsLineMatches(
-        JournalEntry paymentEntry,
-        Deposit deposit,
-        int undepositedFundsAccountId,
-        string splitSourceCode,
-        decimal splitAmount,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds,
-        ICollection<(Guid LineId, int Rank)> matches,
-        DateOnly paymentDate)
+    private static void CollectUndepositedFundsLineMatches(JournalEntry paymentEntry, Deposit deposit, int undepositedFundsAccountId, string splitSourceCode, decimal splitAmount, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds, ICollection<(Guid LineId, int Rank)> matches, DateOnly paymentDate)
     {
         if (!IsPaymentLinkedJournalEntryForDepositUfRematch(paymentEntry))
             return;
@@ -437,12 +387,7 @@ public partial class AccountingManager
         return candidates;
     }
 
-    private static void AppendUndepositedPaymentLineCandidates(
-        ICollection<UndepositedPaymentLineCandidate> candidates,
-        JournalEntry paymentEntry,
-        int undepositedFundsAccountId,
-        Guid? paymentDepositId,
-        DateOnly paymentDate)
+    private static void AppendUndepositedPaymentLineCandidates(ICollection<UndepositedPaymentLineCandidate> candidates, JournalEntry paymentEntry, int undepositedFundsAccountId, Guid? paymentDepositId, DateOnly paymentDate)
     {
         if (paymentDate == default)
             return;
@@ -534,9 +479,7 @@ public partial class AccountingManager
             return false;
 
         var lineNet = line.Debit - line.Credit;
-        var sharedPaymentLine = payment != null
-            && Math.Abs(Math.Abs(lineNet) - Math.Abs(RoundCurrency(payment.Amount))) <= 0.005m;
-        if (!sharedPaymentLine && !DepositSplitMatchesUndepositedLineAmount(split, lineNet))
+        if (!DepositSplitMatchesUndepositedLineAmount(split, lineNet))
             return false;
 
         var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
@@ -694,14 +637,25 @@ public partial class AccountingManager
             if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
                 continue;
 
+            var splitAmount = Math.Abs(RoundCurrency(split.Amount));
             if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
             {
                 var existingLine = await GetJournalEntryLineByIdCachedAsync(existingLineId);
                 if (existingLine != null)
-                    continue;
+                {
+                    var existingNet = Math.Abs(existingLine.Debit - existingLine.Credit);
+                    if (Math.Abs(existingNet - splitAmount) <= 0.005m
+                        && Math.Abs(existingNet - paymentAmount) <= 0.005m)
+                        continue;
+
+                    split.JournalEntryLineId = null;
+                    changed = true;
+                }
             }
 
-            var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+            if (Math.Abs(splitAmount - paymentAmount) > 0.005m)
+                continue;
+
             var amountMatchesThis = applicationAmounts.Any(amount => Math.Abs(amount - splitAmount) <= 0.005m);
             var amountMatchesOther = otherApplicationAmounts.Any(amount => Math.Abs(amount - splitAmount) <= 0.005m);
 
@@ -761,9 +715,7 @@ public partial class AccountingManager
         return paymentDepositId != deposit.DepositId;
     }
 
-    private async Task<HashSet<Guid>> FilterPaymentIdsAvailableForDepositRematchAsync(
-        Deposit deposit,
-        IReadOnlyCollection<Guid> paymentIds)
+    private async Task<HashSet<Guid>> FilterPaymentIdsAvailableForDepositRematchAsync(Deposit deposit, IReadOnlyCollection<Guid> paymentIds)
     {
         var eligible = new HashSet<Guid>();
         foreach (var paymentId in paymentIds)
@@ -792,12 +744,7 @@ public partial class AccountingManager
         return paymentJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty;
     }
 
-    private async Task<Guid?> ResolveDepositSplitByDepositedPaymentStampAsync(
-        Deposit deposit,
-        DepositSplit split,
-        int undepositedFundsAccountId,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private async Task<Guid?> ResolveDepositSplitByDepositedPaymentStampAsync(Deposit deposit, DepositSplit split, int undepositedFundsAccountId, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
             return null;
@@ -966,12 +913,7 @@ public partial class AccountingManager
         return ResolveUniqueDepositStampedAmountLineMatch(deposit, splitAmount, candidates, claimedLineIds, assignedLineIds);
     }
 
-    private static Guid? ResolveUniqueDepositStampedAmountLineMatch(
-        Deposit deposit,
-        decimal splitAmount,
-        IReadOnlyList<UndepositedPaymentLineCandidate> candidates,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private static Guid? ResolveUniqueDepositStampedAmountLineMatch(Deposit deposit, decimal splitAmount, IReadOnlyList<UndepositedPaymentLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         var stampedAmountMatches = candidates
             .Where(candidate =>
@@ -1076,9 +1018,7 @@ public partial class AccountingManager
         return (await ResolveDepositSplitReservationContextAsync(deposit, split))?.ReservationId;
     }
 
-    private async Task<DepositSplitReservationContext?> ResolveDepositSplitReservationContextAsync(
-        Deposit deposit,
-        DepositSplit split)
+    private async Task<DepositSplitReservationContext?> ResolveDepositSplitReservationContextAsync(Deposit deposit, DepositSplit split)
     {
         var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
         if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
@@ -1271,9 +1211,7 @@ public partial class AccountingManager
         return false;
     }
 
-    private static bool DepositSplitReservationIdsChanged(
-        IReadOnlyList<Guid?> originalReservationIds,
-        IReadOnlyList<DepositSplit>? reconciledSplits)
+    private static bool DepositSplitReservationIdsChanged(IReadOnlyList<Guid?> originalReservationIds, IReadOnlyList<DepositSplit>? reconciledSplits)
     {
         var currentReservationIds = (reconciledSplits ?? [])
             .Select(split => split.ReservationId)
@@ -1291,9 +1229,7 @@ public partial class AccountingManager
         return false;
     }
 
-    private static bool DepositSplitPropertyIdsChanged(
-        IReadOnlyList<Guid?> originalPropertyIds,
-        IReadOnlyList<DepositSplit>? reconciledSplits)
+    private static bool DepositSplitPropertyIdsChanged(IReadOnlyList<Guid?> originalPropertyIds, IReadOnlyList<DepositSplit>? reconciledSplits)
     {
         var currentPropertyIds = (reconciledSplits ?? [])
             .Select(split => split.PropertyId)
@@ -1311,12 +1247,9 @@ public partial class AccountingManager
         return false;
     }
 
-    private static bool DepositSplitReconciliationChanged(
-        IReadOnlyList<Guid?> originalLineIds,
-        IReadOnlyList<Guid?> originalReservationIds,
-        IReadOnlyList<Guid?> originalPropertyIds,
-        IReadOnlyList<DepositSplit>? reconciledSplits)
+        private static bool DepositSplitReconciliationChanged(IReadOnlyList<Guid?> originalLineIds, IReadOnlyList<Guid?> originalReservationIds, IReadOnlyList<Guid?> originalPropertyIds, IReadOnlyList<DepositSplit>? reconciledSplits)
         => DepositSplitJournalEntryLineIdsChanged(originalLineIds, reconciledSplits)
             || DepositSplitReservationIdsChanged(originalReservationIds, reconciledSplits)
             || DepositSplitPropertyIdsChanged(originalPropertyIds, reconciledSplits);
+    #endregion
 }

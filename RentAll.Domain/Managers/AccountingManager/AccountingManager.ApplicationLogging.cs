@@ -4,12 +4,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private void LogApplicationDiagnostic(
-        string operation,
-        string message,
-        Exception? exception = null,
-        Guid? organizationId = null,
-        int? officeId = null)
+    #region Application Logging
+    private void LogApplicationDiagnostic(string operation, string message, Exception? exception = null, Guid? organizationId = null, int? officeId = null)
     {
         if (exception != null)
         {
@@ -30,4 +26,5 @@ public partial class AccountingManager
             officeId,
             message);
     }
+    #endregion
 }

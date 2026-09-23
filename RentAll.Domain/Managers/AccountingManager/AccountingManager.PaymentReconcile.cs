@@ -6,6 +6,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Payment Reconcile
     private sealed record UnlinkedPaymentLineGroupKey(Guid OrganizationId, int OfficeId, DateOnly PaymentDate, int CostCodeId, string Description, Guid CreatedBy, DateTimeOffset CreatedOnBatch);
 
     private sealed class UnlinkedPaymentLineGroup
@@ -319,4 +320,5 @@ public partial class AccountingManager
 
         return createdPaymentIds;
     }
+    #endregion
 }

@@ -32,9 +32,7 @@ public partial class AccountingManager
             await MarkDocumentSoftClosedFromReconcileCompleteAsync(sourceType, sourceId, organizationId, currentUser);
     }
 
-    private async Task<ClearedReconcileLineTargets> ResolveClearedLineTargetsAsync(
-        IReadOnlyList<ReconcileJournalEntryLineMark> lines,
-        Guid organizationId)
+    private async Task<ClearedReconcileLineTargets> ResolveClearedLineTargetsAsync(IReadOnlyList<ReconcileJournalEntryLineMark> lines, Guid organizationId)
     {
         var result = new ClearedReconcileLineTargets();
         if (lines.Count == 0)
@@ -115,15 +113,6 @@ public partial class AccountingManager
             return;
 
         await SoftCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
-    }
-
-    private async Task HardCloseJournalEntryIfEligibleAsync(Guid journalEntryId, Guid organizationId, Guid currentUser)
-    {
-        var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, organizationId);
-        if (journalEntry?.PostingStatusId == PostingStatus.HardClosed)
-            return;
-
-        await HardCloseJournalEntryAsync(journalEntryId, organizationId, currentUser);
     }
 
     private async Task MarkDocumentPostedFromReconcileAsync(SourceType sourceType, Guid sourceId, Guid organizationId, Guid currentUser)

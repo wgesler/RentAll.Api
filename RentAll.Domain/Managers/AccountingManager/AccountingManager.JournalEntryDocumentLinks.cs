@@ -5,11 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public async Task SyncDocumentLinksAsync(
-        Guid organizationId,
-        string officeIds,
-        Guid currentUser,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    #region Journal Entry Document Links
+    public async Task SyncDocumentLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         if (organizationId == Guid.Empty)
             throw new ArgumentException("OrganizationId is required.", nameof(organizationId));
@@ -80,11 +77,7 @@ public partial class AccountingManager
         });
     }
 
-    public async Task<JournalEntrySyncResult> RepairDocumentLinksForHealthFixAsync(
-        Guid organizationId,
-        string officeIds,
-        Guid currentUser,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    public async Task<JournalEntrySyncResult> RepairDocumentLinksForHealthFixAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         if (organizationId == Guid.Empty)
             throw new ArgumentException("OrganizationId is required.", nameof(organizationId));
@@ -159,14 +152,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task SyncDocumentLinksForHealthFixTargetsAsync(
-        Guid organizationId,
-        string officeIds,
-        IReadOnlySet<Guid> paymentIds,
-        IReadOnlySet<Guid> depositIds,
-        IReadOnlySet<Guid> transferIds,
-        Guid currentUser,
-        IProgress<JournalEntrySyncProgress>? progress)
+    private async Task SyncDocumentLinksForHealthFixTargetsAsync(Guid organizationId, string officeIds, IReadOnlySet<Guid> paymentIds, IReadOnlySet<Guid> depositIds, IReadOnlySet<Guid> transferIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress)
     {
         if (paymentIds.Count == 0 && depositIds.Count == 0 && transferIds.Count == 0)
             return;
@@ -301,4 +287,5 @@ public partial class AccountingManager
         payment.ModifiedBy = currentUser;
         await _accountingRepository.UpdatePaymentAsync(payment);
     }
+    #endregion
 }

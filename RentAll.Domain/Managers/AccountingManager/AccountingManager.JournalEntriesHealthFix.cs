@@ -5,14 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public Task<JournalEntrySyncResult> SyncJournalEntriesForHealthFixAsync(
-        Guid organizationId,
-        string officeIds,
-        string syncType,
-        IReadOnlyList<Guid> documentIds,
-        int? paymentKindId,
-        Guid currentUser,
-        IProgress<JournalEntrySyncProgress>? progress = null)
+    #region Journal Entries Health Fix
+    public Task<JournalEntrySyncResult> SyncJournalEntriesForHealthFixAsync(Guid organizationId, string officeIds, string syncType, IReadOnlyList<Guid> documentIds, int? paymentKindId, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         if (organizationId == Guid.Empty)
             throw new ArgumentException("OrganizationId is required.", nameof(organizationId));
@@ -31,14 +25,7 @@ public partial class AccountingManager
                 progress));
     }
 
-    private async Task<JournalEntrySyncResult> RunHealthFixForDocumentsAsync(
-        Guid organizationId,
-        string officeIds,
-        string syncType,
-        IReadOnlyList<Guid> documentIds,
-        int? paymentKindId,
-        Guid currentUser,
-        IProgress<JournalEntrySyncProgress>? progress)
+    private async Task<JournalEntrySyncResult> RunHealthFixForDocumentsAsync(Guid organizationId, string officeIds, string syncType, IReadOnlyList<Guid> documentIds, int? paymentKindId, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress)
     {
         // Always scan the office health-check proc first; issues drive the one-by-one repair list.
         var distinctIds = await ResolveBrokenDocumentIdsFromHealthScanAsync(organizationId, officeIds, syncType, paymentKindId);
@@ -123,11 +110,7 @@ public partial class AccountingManager
         return result;
     }
 
-    private async Task<List<Guid>> ResolveBrokenDocumentIdsFromHealthScanAsync(
-        Guid organizationId,
-        string officeIds,
-        string syncType,
-        int? paymentKindId)
+    private async Task<List<Guid>> ResolveBrokenDocumentIdsFromHealthScanAsync(Guid organizationId, string officeIds, string syncType, int? paymentKindId)
     {
         var scan = syncType switch
         {
@@ -149,13 +132,7 @@ public partial class AccountingManager
             : DocumentHealthFixRouting.CollectFixDocumentIds(scan.Issues).ToList();
     }
 
-    private async Task RunHealthFixBulkPruneAsync(
-        string syncType,
-        int? paymentKindId,
-        Guid organizationId,
-        string officeIds,
-        IReadOnlyList<Guid> targetedDocumentIds,
-        JournalEntrySyncResult result)
+    private async Task RunHealthFixBulkPruneAsync(string syncType, int? paymentKindId, Guid organizationId, string officeIds, IReadOnlyList<Guid> targetedDocumentIds, JournalEntrySyncResult result)
     {
         if (targetedDocumentIds.Count == 0)
             return;
@@ -373,48 +350,6 @@ public partial class AccountingManager
                 result.JournalEntriesSkipped++;
                 break;
         }
-    }
-
-    async Task SyncDepositedInvoicePaymentsForDepositHealthFixAsync(
-        Deposit deposit,
-        Guid organizationId,
-        Guid currentUser,
-        JournalEntrySyncResult result)
-    {
-        var stampPaymentIds = await CollectPaymentIdsToStampForDepositHealthFixAsync(deposit, organizationId);
-        await SyncPaymentDepositIdsForDepositAsync(deposit, stampPaymentIds, currentUser, unstampMissing: false);
-
-        if (_officeSyncCache != null)
-        {
-            foreach (var paymentId in stampPaymentIds)
-            {
-                if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
-                    cachedPayment.DepositId = deposit.DepositId;
-            }
-        }
-
-        var paymentIds = await CollectPaymentIdsForDepositHealthFixAsync(deposit, organizationId);
-
-        foreach (var paymentId in paymentIds)
-        {
-            Payment? payment = null;
-            if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
-                payment = cachedPayment;
-            else
-                payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
-
-            if (payment == null || !payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
-                continue;
-
-            if (stampPaymentIds.Contains(paymentId))
-                payment.DepositId = deposit.DepositId;
-
-            await SyncInvoicePaymentForHealthFixAsync(payment, organizationId, currentUser, result);
-        }
-
-        var reloadedDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
-        if (reloadedDeposit?.Splits != null)
-            deposit.Splits = reloadedDeposit.Splits;
     }
 
     async Task SyncInvoicePaymentForHealthFixAsync(
@@ -674,4 +609,5 @@ public partial class AccountingManager
             result.Errors.Add($"Transfer {transferLabel}: no transfer JE after fix.");
         }
     }
+    #endregion
 }

@@ -10,12 +10,7 @@ public partial class AccountingManager
     /// Loads every JE for a document source with no accounting-office start-date window and no
     /// IsCashOnly exclusion — aligned with Health Check procs. Always hits the repository.
     /// </summary>
-    private async Task<List<JournalEntry>> GetDocumentJournalEntriesForSyncAsync(
-        Guid organizationId,
-        int officeId,
-        SourceType sourceType,
-        Guid sourceId,
-        JournalEntryKind? journalEntryKind = null)
+    private async Task<List<JournalEntry>> GetDocumentJournalEntriesForSyncAsync(Guid organizationId, int officeId, SourceType sourceType, Guid sourceId, JournalEntryKind? journalEntryKind = null)
     {
         var entries = (await _journalEntryRepository.GetJournalEntriesBySourceIdAsync(new JournalEntryGetBySourceIdCriteria
         {
@@ -103,28 +98,6 @@ public partial class AccountingManager
             return cached;
 
         return await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
-    }
-
-    private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByCriteriaCachedAsync(JournalEntryGetCriteria criteria)
-    {
-        if (_officeSyncCache != null
-            && criteria.SourceTypeId is int sourceTypeId
-            && criteria.SourceId is { } sourceId
-            && sourceId != Guid.Empty)
-        {
-            var officeIdFilter = int.TryParse(criteria.OfficeIds?.Split(',')[0], out var officeId) ? officeId : (int?)null;
-            return _officeSyncCache.GetBySource(sourceTypeId, sourceId)
-                .Where(entry => officeIdFilter is null or <= 0 || entry.OfficeId == officeIdFilter.Value)
-                .ToList();
-        }
-
-        if (_officeSyncCache != null && criteria.SourceTypeId is int sourceTypeOnly)
-        {
-            var officeIdFilter = int.TryParse(criteria.OfficeIds?.Split(',')[0], out var officeId) ? officeId : (int?)null;
-            return _officeSyncCache.GetBySourceType(sourceTypeOnly, officeIdFilter is > 0 ? officeIdFilter : null);
-        }
-
-        return (await _journalEntryRepository.GetJournalEntriesAsync(criteria)).ToList();
     }
 
     private Task<List<JournalEntry>> GetOwnerActualJournalEntriesForInvoiceAsync(Guid organizationId, int officeId, Guid invoiceId)
@@ -310,9 +283,7 @@ public partial class AccountingManager
         PreserveRebuiltJournalEntryLineIds(rebuilt.JournalEntryLines, existing.JournalEntryLines ?? []);
     }
 
-    private static void PreserveRebuiltJournalEntryLineIds(
-        IReadOnlyList<JournalEntryLine> rebuiltLines,
-        IReadOnlyList<JournalEntryLine> existingLines)
+    private static void PreserveRebuiltJournalEntryLineIds(IReadOnlyList<JournalEntryLine> rebuiltLines, IReadOnlyList<JournalEntryLine> existingLines)
     {
         var availableExisting = existingLines.ToList();
         foreach (var rebuiltLine in rebuiltLines)
@@ -474,10 +445,6 @@ public partial class AccountingManager
            && entry.SourceId == invoice.InvoiceId
            && MatchesJournalEntryAccountingPeriod(entry, invoice.AccountingPeriod);
 
-    private static bool IsOwnerActualJournalEntryForPaymentLedgerLine(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
-        => IsOwnerActualJournalEntryForInvoice(entry, invoice)
-           && MatchesOwnerActualPaymentJournalEntryMemo(entry, invoice, paymentLedgerLine);
-
     private static bool IsInvoiceOwnerActualPaymentJournalEntry(JournalEntry entry, Invoice invoice, LedgerLine paymentLedgerLine)
         => IsInvoiceOwnerActualPaymentJournalEntry(entry)
            && MatchesInvoicePaymentLedgerLineMemo(entry, invoice, paymentLedgerLine);
@@ -486,12 +453,7 @@ public partial class AccountingManager
         => entry.JournalEntryKindId == JournalEntryKind.PrePaymentReceive
            && entry.SourceTypeId == (int)SourceType.Invoice;
 
-    private static bool MatchesInvoicePrePaymentReceivedUpsert(
-        JournalEntry entry,
-        int prePaymentAccountId,
-        Invoice invoice,
-        LedgerLine paymentLedgerLine,
-        DateOnly? targetAccountingPeriod = null)
+    private static bool MatchesInvoicePrePaymentReceivedUpsert(JournalEntry entry, int prePaymentAccountId, Invoice invoice, LedgerLine paymentLedgerLine, DateOnly? targetAccountingPeriod = null)
     {
         if (!IsInvoicePrePaymentReceivedJournalEntry(entry, prePaymentAccountId))
             return false;

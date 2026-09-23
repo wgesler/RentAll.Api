@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Owner Invoice Outstanding
     private static bool IsOwnerInvoiceRentJournalEntry(JournalEntry journalEntry)
         => journalEntry.SourceTypeId == (int)SourceType.Invoice
             && journalEntry.SourceId is { } sourceId
@@ -108,4 +109,5 @@ public partial class AccountingManager
                 currentUser: journalEntry.ModifiedBy != Guid.Empty ? journalEntry.ModifiedBy : journalEntry.CreatedBy);
         }
     }
+    #endregion
 }

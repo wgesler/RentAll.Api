@@ -1209,9 +1209,6 @@ public partial class AccountingManager
         return int.TryParse(description.AsSpan(open + 1, close - open - 1), out visitCount);
     }
 
-    private static LedgerLine CreateApportionedRentalLine(LedgerLine template, decimal amount, DateOnly start, DateOnly end)
-        => CreateApportionedDatedChargeLine(template, amount, start, end);
-
     private static LedgerLine CreateApportionedDatedChargeLine(LedgerLine template, decimal amount, DateOnly start, DateOnly end)
         => new()
         {

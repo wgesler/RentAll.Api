@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Transfer Split Reconciliation
     private sealed class EscrowDepositLineCandidate
     {
         public Guid JournalEntryLineId { get; init; }
@@ -138,11 +139,7 @@ public partial class AccountingManager
         trail?.Note("Rematch: PackUnlinkedTransferSplitsOntoEscrowLines completed.");
     }
 
-    private static Guid? ResolveTransferSplitGroupEscrowLineFromDepositInvoice(
-        Transfer transfer,
-        IReadOnlyList<TransferSplit> splitGroup,
-        IReadOnlyList<TransferDepositInvoiceEscrowMatch> invoiceDepositMatches,
-        IReadOnlySet<Guid> claimedLineIds)
+    private static Guid? ResolveTransferSplitGroupEscrowLineFromDepositInvoice(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<TransferDepositInvoiceEscrowMatch> invoiceDepositMatches, IReadOnlySet<Guid> claimedLineIds)
     {
         var invoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup);
         if (string.IsNullOrWhiteSpace(invoiceSourceCode))
@@ -163,25 +160,18 @@ public partial class AccountingManager
         if (matches.Count == 0)
             return null;
 
-        // Prefer deposit payment split amount == transfer invoice group total when unique.
         var amountMatches = matches
-            .Where(match => Math.Abs(match.DepositSplitAmount - groupAmount) <= 0.005m)
-            .ToList();
-
-        var ranked = (amountMatches.Count > 0 ? amountMatches : matches)
+            .Where(match =>
+                Math.Abs(match.DepositSplitAmount - groupAmount) <= 0.005m
+                && Math.Abs(match.EscrowLineAmount - groupAmount) <= 0.005m)
             .OrderBy(match => Math.Abs(match.DepositDate.DayNumber - transfer.TransferDate.DayNumber))
             .ThenBy(match => match.EscrowJournalEntryLineId)
             .ToList();
 
-        return ranked[0].EscrowJournalEntryLineId;
+        return amountMatches.Count == 0 ? null : amountMatches[0].EscrowJournalEntryLineId;
     }
 
-    private async Task<Guid?> ResolveTransferSplitGroupEscrowLineFromDepositedPaymentAsync(
-        Transfer transfer,
-        IReadOnlyList<TransferSplit> splitGroup,
-        int escrowDepositAccountId,
-        IReadOnlySet<Guid> claimedLineIds,
-        IReadOnlySet<Guid> assignedLineIds)
+    private async Task<Guid?> ResolveTransferSplitGroupEscrowLineFromDepositedPaymentAsync(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, int escrowDepositAccountId, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
     {
         var paymentSourceCode = ResolveTransferSplitGroupPaymentSourceCode(splitGroup);
         if (string.IsNullOrWhiteSpace(paymentSourceCode))
@@ -215,6 +205,10 @@ public partial class AccountingManager
         if (escrowLine == null)
             return null;
 
+        var groupAmount = RoundCurrency(splitGroup.Sum(split => split.Amount));
+        if (Math.Abs(Math.Abs(escrowLine.Debit - escrowLine.Credit) - Math.Abs(groupAmount)) > 0.005m)
+            return null;
+
         if (claimedLineIds.Contains(escrowLine.JournalEntryLineId)
             && !assignedLineIds.Contains(escrowLine.JournalEntryLineId))
             return null;
@@ -222,9 +216,7 @@ public partial class AccountingManager
         return escrowLine.JournalEntryLineId;
     }
 
-    private async Task<List<TransferDepositInvoiceEscrowMatch>> BuildTransferDepositInvoiceEscrowMatchesAsync(
-        Transfer transfer,
-        int escrowDepositAccountId)
+    private async Task<List<TransferDepositInvoiceEscrowMatch>> BuildTransferDepositInvoiceEscrowMatchesAsync(Transfer transfer, int escrowDepositAccountId)
     {
         if (_officeSyncCache != null)
         {
@@ -352,97 +344,16 @@ public partial class AccountingManager
                 break;
 
             var targetAmount = Math.Abs(RoundCurrency(candidate.NetAmount));
-            var packed = FindTransferSplitGroupsSummingTo(remainingGroups, targetAmount);
-            if (packed == null || packed.Count == 0)
+            var match = remainingGroups.FirstOrDefault(group =>
+                group.Count == 1
+                && Math.Abs(Math.Abs(RoundCurrency(group[0].Amount)) - targetAmount) <= 0.005m);
+            if (match == null)
                 continue;
 
-            foreach (var group in packed)
-            {
-                foreach (var split in group)
-                    split.JournalEntryLineId = candidate.JournalEntryLineId;
-
-                remainingGroups.Remove(group);
-            }
-
+            match[0].JournalEntryLineId = candidate.JournalEntryLineId;
+            remainingGroups.Remove(match);
             assignedLineIds.Add(candidate.JournalEntryLineId);
         }
-
-        // Remaining slices (e.g. PY-953 $4060) share a deposit escrow line already used by another group on this transfer.
-        foreach (var group in remainingGroups.ToList())
-        {
-            var groupAmount = Math.Abs(RoundCurrency(group.Sum(split => split.Amount)));
-            if (groupAmount <= 0.005m)
-                continue;
-
-            var sharedCandidate = escrowLineCandidates
-                .Where(candidate =>
-                    assignedLineIds.Contains(candidate.JournalEntryLineId)
-                    && !claimedLineIds.Contains(candidate.JournalEntryLineId)
-                    && groupAmount <= Math.Abs(candidate.NetAmount) + 0.005m)
-                .OrderByDescending(candidate => Math.Abs(candidate.NetAmount))
-                .ThenBy(candidate => candidate.JournalEntryLineId)
-                .FirstOrDefault();
-
-            if (sharedCandidate == null)
-                continue;
-
-            foreach (var split in group)
-                split.JournalEntryLineId = sharedCandidate.JournalEntryLineId;
-
-            remainingGroups.Remove(group);
-        }
-    }
-
-    private static List<List<TransferSplit>>? FindTransferSplitGroupsSummingTo(IReadOnlyList<List<TransferSplit>> groups, decimal targetAmount)
-    {
-        if (targetAmount <= 0.005m || groups.Count == 0)
-            return null;
-
-        var amounts = groups
-            .Select(group => Math.Abs(RoundCurrency(group.Sum(split => split.Amount))))
-            .ToList();
-
-        // Exact single-group match first.
-        for (var index = 0; index < groups.Count; index++)
-        {
-            if (Math.Abs(amounts[index] - targetAmount) <= 0.005m)
-                return [groups[index]];
-        }
-
-        // Subset sum for small group counts (typical transfer source packing).
-        if (groups.Count > 16)
-            return null;
-
-        List<List<TransferSplit>>? best = null;
-        void Search(int startIndex, decimal remaining, List<List<TransferSplit>> chosen)
-        {
-            if (best != null)
-                return;
-
-            if (Math.Abs(remaining) <= 0.005m)
-            {
-                best = chosen.ToList();
-                return;
-            }
-
-            if (remaining < -0.005m || startIndex >= groups.Count)
-                return;
-
-            for (var index = startIndex; index < groups.Count; index++)
-            {
-                if (amounts[index] - remaining > 0.005m)
-                    continue;
-
-                chosen.Add(groups[index]);
-                Search(index + 1, RoundCurrency(remaining - amounts[index]), chosen);
-                chosen.RemoveAt(chosen.Count - 1);
-                if (best != null)
-                    return;
-            }
-        }
-
-        Search(0, targetAmount, []);
-        return best;
     }
 
     private async Task<IReadOnlyList<string>> GetUnresolvedTransferSplitMessagesAsync(Transfer transfer)
@@ -521,9 +432,7 @@ public partial class AccountingManager
         return groups.Values;
     }
 
-    private async Task<List<EscrowDepositLineCandidate>> BuildEscrowDepositLineCandidatesAsync(
-        Transfer transfer,
-        int escrowDepositAccountId)
+    private async Task<List<EscrowDepositLineCandidate>> BuildEscrowDepositLineCandidatesAsync(Transfer transfer, int escrowDepositAccountId)
     {
         if (_officeSyncCache != null)
             return _officeSyncCache.GetOrBuildEscrowCandidates(transfer, escrowDepositAccountId);
@@ -615,11 +524,7 @@ public partial class AccountingManager
         return deposit?.DepositDate ?? default;
     }
 
-    private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(
-        Transfer transfer,
-        IReadOnlyList<TransferSplit> splitGroup,
-        Guid journalEntryLineId,
-        int escrowDepositAccountId)
+    private async Task<bool> IsValidTransferSplitGroupJournalEntryLineAsync(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, Guid journalEntryLineId, int escrowDepositAccountId)
     {
         var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
 
@@ -642,25 +547,7 @@ public partial class AccountingManager
         if (Math.Abs(groupAmount) <= 0.005m)
             return false;
 
-        if (Math.Abs(groupAmount - lineAmount) <= 0.005m)
-            return true;
-
-        // Shared deposit escrow line: per-invoice slices (including refund/credit splits) match a deposit split.
-        var invoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup);
-        if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
-        {
-            var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, transfer.OrganizationId);
-            var matchingSplit = (deposit?.Splits ?? [])
-                .FirstOrDefault(split =>
-                    Math.Abs(split.Amount) > 0.005m
-                    && EntityCodeFormatting.CodesMatch(ResolveDepositSplitInvoiceSourceCode(split), invoiceSourceCode)
-                    && Math.Abs(RoundCurrency(split.Amount - groupAmount)) <= 0.005m);
-            if (matchingSplit != null)
-                return true;
-        }
-
-        // Positive deposit partial slice still covered by the single escrow line.
-        return groupAmount > 0 && lineAmount > 0 && groupAmount <= lineAmount + 0.005m;
+        return Math.Abs(groupAmount - lineAmount) <= 0.005m;
     }
 
     private static Guid? ResolveTransferSplitGroupJournalEntryLineId(Transfer transfer, IReadOnlyList<TransferSplit> splitGroup, IReadOnlyList<EscrowDepositLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
@@ -771,33 +658,6 @@ public partial class AccountingManager
         return normalizedLeft != null && normalizedRight != null && normalizedLeft == normalizedRight;
     }
 
-    private static bool TransferSplitContextMatchesLine(TransferSplit split, JournalEntryLine line)
-        => TransferSplitContextMatches(split, line.PropertyId, line.ReservationId, line.ContactId);
-
-    private static bool TransferSplitContextMatchesCandidate(TransferSplit split, EscrowDepositLineCandidate candidate)
-        => TransferSplitContextMatches(split, candidate.PropertyId, candidate.ReservationId, candidate.ContactId);
-
-    private static bool TransferSplitContextMatches(TransferSplit split, Guid? propertyId, Guid? reservationId, Guid? contactId)
-    {
-        if (!TransferSplitGuidMatches(split.PropertyId, propertyId))
-            return false;
-
-        if (!TransferSplitGuidMatches(split.ReservationId, reservationId))
-            return false;
-
-        return TransferSplitGuidMatches(split.ContactId, contactId);
-    }
-
-    private static bool TransferSplitGuidMatches(Guid? expected, Guid? actual)
-    {
-        var normalizedExpected = NormalizeOptionalGuid(expected);
-        var normalizedActual = NormalizeOptionalGuid(actual);
-        if (normalizedExpected == null || normalizedActual == null)
-            return true;
-
-        return normalizedExpected == normalizedActual;
-    }
-
     private static bool TransferSplitJournalEntryLineIdsChanged(IReadOnlyList<Guid?> originalLineIds, IReadOnlyList<TransferSplit>? reconciledSplits)
     {
         var currentLineIds = (reconciledSplits ?? [])
@@ -815,4 +675,5 @@ public partial class AccountingManager
 
         return false;
     }
+    #endregion
 }

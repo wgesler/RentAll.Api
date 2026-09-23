@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Owner Ap Aging
     /// <summary>
     /// Owner AP Aging: load owner A/P lines via database proc (opening balance sheet cutoff), then API double-check.
     /// Cash-only journal entries are excluded by the proc.
@@ -56,9 +57,7 @@ public partial class AccountingManager
         return ApplyOwnerApOpeningBalanceCutoffFilter(lineList, cutoffs);
     }
 
-    private async Task<Dictionary<int, DateOnly>> ResolveOwnerApOpeningBalanceCutoffByOfficeAsync(
-        Guid organizationId,
-        IReadOnlyList<JournalEntryLineSearchResult> lines)
+    private async Task<Dictionary<int, DateOnly>> ResolveOwnerApOpeningBalanceCutoffByOfficeAsync(Guid organizationId, IReadOnlyList<JournalEntryLineSearchResult> lines)
     {
         var officeIds = lines
             .Select(line => line.OfficeId)
@@ -138,4 +137,5 @@ public partial class AccountingManager
 
         return accountIds.ToList();
     }
+    #endregion
 }

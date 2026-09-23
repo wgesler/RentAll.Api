@@ -213,11 +213,7 @@ public partial class AccountingManager
             descriptionContains: "Parking");
     }
 
-    private static int ResolveDefaultCostCodeId(
-        IReadOnlyDictionary<int, CostCode> costCodeById,
-        int configuredCostCodeId,
-        string descriptionContains,
-        string? descriptionExcludes = null)
+    private static int ResolveDefaultCostCodeId(IReadOnlyDictionary<int, CostCode> costCodeById, int configuredCostCodeId, string descriptionContains, string? descriptionExcludes = null)
     {
         if (configuredCostCodeId > 0 && costCodeById.ContainsKey(configuredCostCodeId))
             return configuredCostCodeId;
@@ -239,10 +235,7 @@ public partial class AccountingManager
             ledgerLine.TransactionType = costCode.TransactionType;
     }
 
-    private async Task TryAddCompanyMarkupLedgerLineAsync(
-        Reservation reservation,
-        List<LedgerLine> ledgerLines,
-        IReadOnlyDictionary<int, CostCode> costCodeById)
+    private async Task TryAddCompanyMarkupLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         var companyId = NormalizeOptionalGuid(reservation.CompanyId);
         if (companyId == null || ledgerLines.Count == 0)

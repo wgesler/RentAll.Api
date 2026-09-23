@@ -5,11 +5,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    private async Task ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(
-        IEnumerable<DocumentHealthIssue> issues,
-        Guid organizationId,
-        Guid currentUser,
-        JournalEntrySyncResult result)
+    #region Duplicate Payment Documents
+    private async Task ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(IEnumerable<DocumentHealthIssue> issues, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
         var processedPairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -37,12 +34,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task ReconcileDuplicateInvoicePaymentDocumentPairAsync(
-        Guid firstPaymentId,
-        Guid secondPaymentId,
-        Guid organizationId,
-        Guid currentUser,
-        JournalEntrySyncResult result)
+    private async Task ReconcileDuplicateInvoicePaymentDocumentPairAsync(Guid firstPaymentId, Guid secondPaymentId, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
         var first = await _accountingRepository.GetPaymentByIdAsync(firstPaymentId, organizationId);
         var second = await _accountingRepository.GetPaymentByIdAsync(secondPaymentId, organizationId);
@@ -81,10 +73,7 @@ public partial class AccountingManager
         }
     }
 
-    private async Task<Payment> SelectDuplicateInvoicePaymentDocumentKeeperAsync(
-        Payment first,
-        Payment second,
-        Guid organizationId)
+    private async Task<Payment> SelectDuplicateInvoicePaymentDocumentKeeperAsync(Payment first, Payment second, Guid organizationId)
     {
         var firstScore = await ScoreDuplicateInvoicePaymentDocumentRetentionAsync(first, organizationId);
         var secondScore = await ScoreDuplicateInvoicePaymentDocumentRetentionAsync(second, organizationId);
@@ -112,4 +101,5 @@ public partial class AccountingManager
 
         return score;
     }
+    #endregion
 }

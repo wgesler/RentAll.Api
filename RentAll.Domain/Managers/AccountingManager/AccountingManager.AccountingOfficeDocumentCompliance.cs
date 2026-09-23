@@ -5,6 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    #region Accounting Office Document Compliance
     internal static int ApplyAccountingOfficeClosedPostingStatusComplianceToDocument(int currentPostingStatusId, PostingStatus? requiredStatus)
     {
         if (requiredStatus == null)
@@ -131,4 +132,5 @@ public partial class AccountingManager
         transfer.ModifiedBy = currentUser;
         await _accountingRepository.UpdateTransferAsync(transfer);
     }
+    #endregion
 }
