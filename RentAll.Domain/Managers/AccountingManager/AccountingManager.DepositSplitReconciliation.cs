@@ -70,14 +70,10 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
             {
                 var existingLine = await GetJournalEntryLineByIdCachedAsync(existingLineId);
-                if (existingLine != null)
-                {
-                    assignedLineIds.Add(existingLineId);
-                    trail?.Note($"Rematch keep existing: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
-                    continue;
-                }
-
-                trail?.Note($"Rematch dead line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                trail?.Note(existingLine == null
+                    ? $"Rematch dead line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}"
+                    : $"Rematch clear invalid line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                split.JournalEntryLineId = null;
             }
 
             Guid? resolvedLineId = null;
@@ -297,7 +293,7 @@ public partial class AccountingManager
             var paymentDate = await GetDocumentPaymentDateAsync(paymentId, deposit.OrganizationId);
             foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId))
             {
-                if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                if (!IsPaymentLinkedJournalEntryForDepositUfRematch(paymentEntry))
                     continue;
 
                 if (!JournalEntryMatchesDepositAccountingMonth(deposit, paymentDate))
@@ -337,7 +333,7 @@ public partial class AccountingManager
         ICollection<(Guid LineId, int Rank)> matches,
         DateOnly paymentDate)
     {
-        if (paymentEntry.JournalEntryKindId is not (JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive))
+        if (!IsPaymentLinkedJournalEntryForDepositUfRematch(paymentEntry))
             return;
 
         if (!JournalEntryMatchesDepositAccountingMonth(deposit, paymentDate))
@@ -358,13 +354,13 @@ public partial class AccountingManager
             if (claimedLineIds.Contains(line.JournalEntryLineId) || assignedLineIds.Contains(line.JournalEntryLineId))
                 continue;
 
-            var rank = 0;
-            if (sourceMatches)
-                rank -= 5;
+            if (Math.Abs(netAmount - splitAmount) > 0.005m)
+                continue;
 
-            if (Math.Abs(netAmount - splitAmount) <= 0.005m)
-                rank -= 10;
+            if (!string.IsNullOrWhiteSpace(splitSourceCode) && !sourceMatches)
+                continue;
 
+            var rank = sourceMatches ? -5 : 0;
             matches.Add((line.JournalEntryLineId, rank));
         }
     }
@@ -400,6 +396,16 @@ public partial class AccountingManager
             && paymentId != Guid.Empty
             && entry.JournalEntryKindId is JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive;
 
+    private static bool IsPaymentLinkedJournalEntryForDepositUfRematch(JournalEntry entry)
+        => entry.PaymentId is { } paymentId
+            && paymentId != Guid.Empty
+            && entry.JournalEntryKindId is JournalEntryKind.Payment
+                or JournalEntryKind.PrePaymentReceive
+                or JournalEntryKind.FeesActual
+                or JournalEntryKind.OwnerActual
+                or JournalEntryKind.SecurityDepositActual
+                or JournalEntryKind.SecurityDepositWaiverActual;
+
     private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(Deposit deposit, int undepositedFundsAccountId)
     {
         if (_officeSyncCache != null)
@@ -416,7 +422,7 @@ public partial class AccountingManager
             var paymentEntries = await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId);
             foreach (var paymentEntry in paymentEntries)
             {
-                if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                if (!IsPaymentLinkedJournalEntryForDepositUfRematch(paymentEntry))
                     continue;
 
                 AppendUndepositedPaymentLineCandidates(
@@ -511,9 +517,6 @@ public partial class AccountingManager
         if (line.ChartOfAccountId != accountId)
             return false;
 
-        if (!DepositSplitMatchesUndepositedLineAmount(split, line.Debit - line.Credit))
-            return false;
-
         if (!await DepositSplitLineStillPointsAtPaymentAsync(deposit.OrganizationId, journalEntryLineId))
             return false;
 
@@ -528,6 +531,12 @@ public partial class AccountingManager
             payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
 
         if (payment?.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty && stampedDepositId != deposit.DepositId)
+            return false;
+
+        var lineNet = line.Debit - line.Credit;
+        var sharedPaymentLine = payment != null
+            && Math.Abs(Math.Abs(lineNet) - Math.Abs(RoundCurrency(payment.Amount))) <= 0.005m;
+        if (!sharedPaymentLine && !DepositSplitMatchesUndepositedLineAmount(split, lineNet))
             return false;
 
         var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
@@ -561,6 +570,7 @@ public partial class AccountingManager
                 PaymentId = payment.PaymentId
             })).ToList();
 
+        var undepositedFundsTotal = 0m;
         foreach (var paymentEntry in paymentEntries)
         {
             if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
@@ -571,12 +581,11 @@ public partial class AccountingManager
                 if (line.ChartOfAccountId != undepositedFundsAccountId || line.JournalEntryLineId == Guid.Empty)
                     continue;
 
-                if (Math.Abs(Math.Abs(line.Debit - line.Credit) - paymentAmount) <= 0.005m)
-                    return true;
+                undepositedFundsTotal += line.Debit - line.Credit;
             }
         }
 
-        return false;
+        return Math.Abs(undepositedFundsTotal - paymentAmount) <= 0.005m;
     }
 
     private async Task ReconcileDepositSplitsForPaymentAsync(Payment payment, Guid currentUser)
@@ -807,7 +816,7 @@ public partial class AccountingManager
                 continue;
 
             var paymentEntries = (await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId))
-                .Where(IsRematchableHealthInvoicePaymentJournalEntry);
+                .Where(IsPaymentLinkedJournalEntryForDepositUfRematch);
 
             foreach (var paymentEntry in paymentEntries)
             {

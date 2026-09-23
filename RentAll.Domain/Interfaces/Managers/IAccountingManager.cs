@@ -159,6 +159,8 @@ public interface IAccountingManager
         int? paymentKindId,
         Guid currentUser,
         IProgress<JournalEntrySyncProgress>? progress = null);
+    Task StampHealthIssuePostedJournalEntriesAsync(Guid organizationId, string officeIds, DocumentHealthResult result);
+    Task<JournalEntrySyncResult> RebuildHealthDocumentJournalEntriesAsync(Guid organizationId, int officeId, string documentType, Guid documentId, Guid? relatedId, Guid currentUser);
     #endregion
 
     #region Periodic Tasks

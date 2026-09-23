@@ -436,7 +436,7 @@ public partial class AccountingManager
             {
                 foreach (var paymentEntry in GetByPaymentId(payment.PaymentId))
                 {
-                    if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                    if (!IsPaymentLinkedJournalEntryForDepositUfRematch(paymentEntry))
                         continue;
 
                     AppendUndepositedPaymentLineCandidates(

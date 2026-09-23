@@ -29,3 +29,23 @@ public class PaymentHealthCheckRequestDto : HealthCheckRequestDto
         return (true, null);
     }
 }
+
+public class HealthRebuildRequestDto
+{
+    public int OfficeId { get; set; }
+    public string DocumentType { get; set; } = string.Empty;
+    public Guid DocumentId { get; set; }
+    public Guid? RelatedId { get; set; }
+
+    public (bool IsValid, string? ErrorMessage) IsValid()
+    {
+        if (OfficeId <= 0)
+            return (false, "OfficeId is required");
+        if (DocumentId == Guid.Empty)
+            return (false, "DocumentId is required");
+        if (string.IsNullOrWhiteSpace(DocumentType))
+            return (false, "DocumentType is required");
+
+        return (true, null);
+    }
+}

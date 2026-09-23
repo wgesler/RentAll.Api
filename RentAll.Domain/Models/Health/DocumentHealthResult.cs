@@ -23,6 +23,7 @@ public class DocumentHealthIssue
     public decimal? Amount { get; set; }
     public DateOnly? TransactionDate { get; set; }
     public string? Detail { get; set; }
+    public bool HasPostedJournalEntry { get; set; }
 }
 
 public class DocumentHealthResult

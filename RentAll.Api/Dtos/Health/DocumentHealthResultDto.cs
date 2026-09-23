@@ -38,6 +38,7 @@ public class DocumentHealthIssueDto
     public decimal? Amount { get; set; }
     public DateOnly? TransactionDate { get; set; }
     public string? Detail { get; set; }
+    public bool HasPostedJournalEntry { get; set; }
 
     public DocumentHealthIssueDto()
     {
@@ -55,6 +56,7 @@ public class DocumentHealthIssueDto
         Amount = issue.Amount;
         TransactionDate = issue.TransactionDate;
         Detail = issue.Detail;
+        HasPostedJournalEntry = issue.HasPostedJournalEntry;
     }
 }
 

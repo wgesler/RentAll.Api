@@ -114,6 +114,36 @@ public class HealthController : BaseController
     public Task<IActionResult> FixDocumentLinks([FromBody] HealthCheckRequestDto dto)
         => RunDocumentLinksHealthFixAsync(dto);
 
+    [HttpPost("rebuild")]
+    public async Task<IActionResult> RebuildDocumentJournalEntries([FromBody] HealthRebuildRequestDto dto)
+    {
+        if (!HasAdminAccess())
+            return Unauthorized("Only Admin or SuperAdmin can run health checks.");
+
+        if (dto == null)
+            return BadRequest("Request data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var allowedOfficeIds = (CurrentOfficeAccess ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(value => int.TryParse(value, out var id) ? id : 0).Where(id => id > 0).ToHashSet();
+        if (!allowedOfficeIds.Contains(dto.OfficeId))
+            return Forbid();
+
+        try
+        {
+            var result = await _accountingManager.RebuildHealthDocumentJournalEntriesAsync(CurrentOrganizationId, dto.OfficeId, dto.DocumentType, dto.DocumentId, dto.RelatedId, CurrentUser);
+            return Ok(new JournalEntrySyncResultDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rebuilding journal entries for health document {DocumentId}", dto.DocumentId);
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ServerError(string.IsNullOrWhiteSpace(detail) ? "An error occurred while rebuilding journal entries" : $"Journal entry rebuild failed: {detail}");
+        }
+    }
+
     private async Task<IActionResult> RunHealthFixAsync(
         HealthCheckRequestDto dto,
         string syncType,
@@ -249,6 +279,7 @@ public class HealthController : BaseController
         try
         {
             var result = await runCheck(CurrentOrganizationId, officeIds);
+            await _accountingManager.StampHealthIssuePostedJournalEntriesAsync(CurrentOrganizationId, officeIds, result);
             return Ok(new DocumentHealthResultDto(result));
         }
         catch (Exception ex)
