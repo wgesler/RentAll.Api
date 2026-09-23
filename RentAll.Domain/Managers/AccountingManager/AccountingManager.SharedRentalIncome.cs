@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Rental Income
+    #region Shared Rental Income
     /// <summary>
     /// Rent/4000 and owner-share rent base: sum invoice lines whose cost code maps to an explicit
     /// chart-of-account in the office rental income tree from GetRentalIncomeAccounts.

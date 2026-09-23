@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Accounting Office Document Compliance
+    #region Bank Document Month Close
     internal static int ApplyAccountingOfficeClosedPostingStatusComplianceToDocument(int currentPostingStatusId, PostingStatus? requiredStatus)
     {
         if (requiredStatus == null)

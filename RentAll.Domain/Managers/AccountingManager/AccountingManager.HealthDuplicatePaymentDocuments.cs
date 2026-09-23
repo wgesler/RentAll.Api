@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Duplicate Payment Documents
+    #region Health Duplicate Payment Documents
     private async Task ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(IEnumerable<DocumentHealthIssue> issues, Guid organizationId, Guid currentUser, JournalEntrySyncResult result)
     {
         var processedPairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

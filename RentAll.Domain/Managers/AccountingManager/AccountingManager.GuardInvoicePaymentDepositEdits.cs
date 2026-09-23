@@ -4,7 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Invoice Deposited Payment Guards
+    #region Guard Invoice Payment Deposit Edits
     private sealed record DepositedPaymentLockContext(Payment Payment, Deposit? Deposit);
 
     private async Task ValidateInvoiceUpdatePreservesDepositedPaymentsAsync(Invoice incoming, Invoice existing)

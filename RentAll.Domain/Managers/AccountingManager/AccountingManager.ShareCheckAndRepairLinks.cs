@@ -4,7 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Deposit Transfer Splits
+    #region Share Check And Repair Links
     private async Task<Deposit> PrepareDepositForSaveAsync(Deposit deposit)
     {
         await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
