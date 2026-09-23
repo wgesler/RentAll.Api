@@ -563,7 +563,7 @@ public partial class AccountingManager
         if (unlinkedSplitAmounts.Count > 0)
         {
             var neededSum = unlinkedSplitAmounts.Sum();
-            var amountMatches = new List<Guid>();
+            var batchPaymentMatches = new List<Guid>();
             foreach (var candidate in officePayments.Where(candidate =>
                          candidate.IsActive && candidate.PaymentKindId == (int)PaymentKind.Invoice))
             {
@@ -572,31 +572,38 @@ public partial class AccountingManager
                     && stampedDepositId != deposit.DepositId)
                     continue;
 
-                var candidatePayment = candidate.LedgerLines is { Count: > 0 }
-                    ? candidate
-                    : await _accountingRepository.GetPaymentByIdAsync(candidate.PaymentId, organizationId) ?? candidate;
-                var ledgerAmounts = (candidatePayment.LedgerLines ?? [])
-                    .Where(line => Math.Abs(line.Amount) > 0.005m)
-                    .Select(line => Math.Abs(RoundCurrency(line.Amount)))
-                    .ToList();
-                if (ledgerAmounts.Count == 0)
+                if (Math.Abs(Math.Abs(RoundCurrency(candidate.Amount)) - neededSum) > 0.005m)
                     continue;
 
-                if (Math.Abs(Math.Abs(RoundCurrency(candidatePayment.Amount)) - neededSum) > 0.005m)
-                    continue;
-
-                if (unlinkedSplitAmounts.All(splitAmount =>
-                        ledgerAmounts.Any(ledgerAmount => Math.Abs(ledgerAmount - splitAmount) <= 0.005m)))
-                {
-                    amountMatches.Add(candidate.PaymentId);
-                }
+                batchPaymentMatches.Add(candidate.PaymentId);
             }
 
-            if (amountMatches.Count == 1)
-                paymentIds.Add(amountMatches[0]);
+            if (batchPaymentMatches.Count == 1)
+                paymentIds.Add(batchPaymentMatches[0]);
         }
 
         return paymentIds;
+    }
+
+    private async Task TryStampBatchPaymentForDepositHealthFixAsync(Deposit deposit, Guid organizationId, Guid currentUser)
+    {
+        var paymentIds = await CollectPaymentIdsToStampForDepositHealthFixAsync(deposit, organizationId);
+        if (paymentIds.Count == 0)
+            return;
+
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser, unstampMissing: false);
+
+        if (_officeSyncCache == null)
+            return;
+
+        foreach (var paymentId in paymentIds)
+        {
+            if (_officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+            {
+                cachedPayment.DepositId = deposit.DepositId;
+                cachedPayment.DepositCode = deposit.DepositCode;
+            }
+        }
     }
 
     private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(Guid organizationId, int officeId, string invoiceSourceCode)

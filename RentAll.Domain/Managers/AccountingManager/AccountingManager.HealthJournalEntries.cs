@@ -369,6 +369,9 @@ public partial class AccountingManager
         if (paymentSummary.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty)
             payment.DepositId = stampedDepositId;
 
+        if (await TryUnlinkInvoicePaymentFromInvalidDepositForHealthFixAsync(payment, organizationId, currentUser, result))
+            payment = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, organizationId) ?? payment;
+
         var hadHealthPaymentJournalEntry = await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId);
         var hasDepositUfLine = payment.DepositId is { } depositId
             && depositId != Guid.Empty
@@ -401,21 +404,38 @@ public partial class AccountingManager
             else
             {
                 result.JournalEntriesSkipped++;
-                var paymentCode = ResolvePaymentDocumentCode(payment, paymentSummary);
-                var detail = payment.DepositId is { } missingUfDepositId && missingUfDepositId != Guid.Empty
-                    ? "deposited payment missing undeposited-funds JE coverage after fix."
-                    : "no Health Payment JE after fix.";
-                result.Errors.Add($"{paymentCode}: {detail}");
+                var definitiveError = MapPaymentJeCreateBailToAction(payment, createResult);
+                result.Errors.Add(definitiveError);
+                await LogHealthPaymentFixFailureAsync(
+                    payment,
+                    currentUser,
+                    step: "PaymentJeCreate",
+                    reason: createResult.FormatBailTrail(),
+                    definitiveAction: definitiveError,
+                    detail: payment.DepositId is { } missingUfDepositId && missingUfDepositId != Guid.Empty
+                        ? "Deposited payment still missing UF JE coverage after create attempt."
+                        : "Payment still missing Health Payment JE (kind 13/14 with PaymentId) after create attempt.");
             }
         }
-        else
+        else if (payment.LedgerLines.Count == 0)
         {
             result.JournalEntriesSkipped++;
+            var orphanAction = await ClassifyOrphanInvoicePaymentActionAsync(payment, organizationId)
+                ?? BuildHealthPaymentFixError(payment.PaymentCode, "MANUAL REVIEW", "Orphan payment with no ledger lines.");
+            result.Errors.Add(orphanAction);
+            await LogHealthPaymentFixFailureAsync(
+                payment,
+                currentUser,
+                step: "OrphanPayment",
+                reason: "Payment header has no linked invoice ledger lines.",
+                definitiveAction: orphanAction);
         }
+        else
+            result.JournalEntriesSkipped++;
 
         payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
-        if (payment != null)
-            await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser);
+        if (payment?.DepositId is { } linkedDepositId && linkedDepositId != Guid.Empty)
+            await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser, result);
     }
 
     async Task StampPaymentDepositIdsAfterSplitReconcileAsync(Deposit deposit, Guid organizationId, Guid currentUser)
@@ -436,8 +456,96 @@ public partial class AccountingManager
     async Task ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(
         Payment payment,
         Guid organizationId,
-        Guid currentUser)
-        => await ReconcileDepositSplitsForPaymentAsync(payment, currentUser);
+        Guid currentUser,
+        JournalEntrySyncResult result)
+    {
+        var trail = new AccountingSyncBailTrail();
+        var deposit = payment.DepositId is { } depositId && depositId != Guid.Empty
+            ? await _accountingRepository.GetDepositByIdAsync(depositId, payment.OrganizationId)
+            : null;
+        if (deposit != null)
+        {
+            var unlinkedAmountMismatches = await UnlinkAmountMismatchedDepositSplitLinksForDepositHealthFixAsync(deposit, currentUser, trail);
+            if (unlinkedAmountMismatches)
+            {
+                LogHealthPaymentFixTrace(
+                    payment,
+                    step: "UnlinkAmountMismatch",
+                    reason: trail.FormatBailTrail(),
+                    detail: $"Deposit={deposit.DepositCode} — cleared split links where line amount <> split amount.");
+            }
+
+            var prunedWrongLinks = await PruneWrongDepositSplitLinksForPaymentHealthFixAsync(payment, deposit, currentUser, trail);
+            if (prunedWrongLinks)
+            {
+                LogHealthPaymentFixTrace(
+                    payment,
+                    step: "ClearWrongDepositSplitLink",
+                    reason: trail.FormatBailTrail(),
+                    detail: $"Deposit={deposit.DepositCode} — cleared wrong link(s), re-linking next.");
+            }
+        }
+
+        await ReconcileDepositSplitsForPaymentAsync(payment, currentUser, trail);
+
+        if (trail.Trail.Any(line => line.StartsWith("Applied deposit split link updates", StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        deposit ??= payment.DepositId is { } missingDepositId && missingDepositId != Guid.Empty
+            ? await _accountingRepository.GetDepositByIdAsync(missingDepositId, payment.OrganizationId)
+            : null;
+        if (deposit == null)
+            return;
+
+        var stillMissingSplitLink = !await PaymentHasDepositSplitLinkForHealthCheckAsync(payment, deposit);
+        if (!stillMissingSplitLink)
+            return;
+
+        var definitiveError = MapDepositSplitReconcileBailToAction(payment, deposit, trail);
+        result.Errors.Add(definitiveError);
+        await LogHealthPaymentFixFailureAsync(
+            payment,
+            currentUser,
+            step: "DepositSplitLink",
+            reason: trail.FormatBailTrail(),
+            definitiveAction: definitiveError,
+            detail: $"Deposit={deposit.DepositCode}");
+    }
+
+    private async Task<bool> PaymentHasDepositSplitLinkForHealthCheckAsync(Payment payment, Deposit deposit)
+    {
+        if (payment.DepositId is not { } depositId || depositId == Guid.Empty)
+            return true;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(payment.OrganizationId, payment.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, payment.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0)
+            return false;
+
+        var paymentEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
+            new JournalEntryGetByPaymentIdCriteria
+            {
+                OrganizationId = payment.OrganizationId,
+                PaymentId = payment.PaymentId
+            });
+
+        foreach (var paymentEntry in paymentEntries)
+        {
+            if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
+                continue;
+
+            foreach (var line in paymentEntry.JournalEntryLines ?? [])
+            {
+                if (line.JournalEntryLineId == Guid.Empty || Math.Abs(line.Debit - line.Credit) <= 0.005m)
+                    continue;
+
+                if ((deposit.Splits ?? []).Any(split => split.JournalEntryLineId == line.JournalEntryLineId))
+                    return true;
+            }
+        }
+
+        return false;
+    }
 
     async Task ResyncStampedPaymentsForDepositHealthFixAsync(
         Deposit deposit,
@@ -481,6 +589,8 @@ public partial class AccountingManager
             depositId,
             organizationId,
             currentUser);
+
+        await TryStampBatchPaymentForDepositHealthFixAsync(deposit, organizationId, currentUser);
 
         var originalSplitLineIds = (deposit.Splits ?? [])
             .Select(split => split.JournalEntryLineId)
@@ -574,6 +684,18 @@ public partial class AccountingManager
         var trail = new AccountingSyncBailTrail();
         var hadTransferJournalEntry = await TransferHasHealthJournalEntryAsync(organizationId, transfer.OfficeId, transfer.TransferId);
 
+        var unlinkedAmountMismatches = await UnlinkAmountMismatchedTransferSplitLinksForTransferHealthFixAsync(transfer, currentUser, trail);
+        if (unlinkedAmountMismatches)
+        {
+            LogHealthTransferFixTrace(
+                transfer,
+                step: "UnlinkAmountMismatch",
+                reason: trail.FormatBailTrail(),
+                detail: "Cleared transfer split links where allocated amount <> escrow line amount.");
+        }
+
+        await TryStampDepositsForTransferHealthFixAsync(transfer, currentUser);
+
         var originalSplitLineIds = (transfer.Splits ?? [])
             .Select(split => split.JournalEntryLineId)
             .ToList();
@@ -585,8 +707,12 @@ public partial class AccountingManager
             transfer.Splits = updated.Splits;
         }
 
+        await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
+
         if (await TransferHasHealthJournalEntryAsync(organizationId, transfer.OfficeId, transfer.TransferId))
         {
+            await SyncTransferDocumentLinksAsync(transfer, currentUser);
+
             if (hadTransferJournalEntry)
                 result.JournalEntriesSkipped++;
             else
@@ -598,6 +724,8 @@ public partial class AccountingManager
 
         if (await TransferHasHealthJournalEntryAsync(organizationId, transfer.OfficeId, transfer.TransferId))
         {
+            await SyncTransferDocumentLinksAsync(transfer, currentUser);
+
             if (hadTransferJournalEntry)
                 result.JournalEntriesSkipped++;
             else

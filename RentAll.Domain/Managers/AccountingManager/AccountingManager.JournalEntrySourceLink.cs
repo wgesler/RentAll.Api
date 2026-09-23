@@ -126,6 +126,29 @@ public partial class AccountingManager
     private static bool JournalEntryMatchesDepositAccountingMonth(Deposit deposit, DateOnly? paymentDate)
         => paymentDate is { } date && PaymentAccountingMonthIsOnOrBeforeDeposit(date, deposit.DepositDate);
 
+    /// <summary>
+    /// Strict split-to-line context: when the split has property or reservation set, the line must match exactly.
+    /// </summary>
+    private static bool SplitLineContextMatches(
+        Guid? splitPropertyId,
+        Guid? splitReservationId,
+        Guid? linePropertyId,
+        Guid? lineReservationId)
+    {
+        splitPropertyId = NormalizeOptionalGuid(splitPropertyId);
+        splitReservationId = NormalizeOptionalGuid(splitReservationId);
+        linePropertyId = NormalizeOptionalGuid(linePropertyId);
+        lineReservationId = NormalizeOptionalGuid(lineReservationId);
+
+        if (splitPropertyId != null && splitPropertyId != linePropertyId)
+            return false;
+
+        if (splitReservationId != null && splitReservationId != lineReservationId)
+            return false;
+
+        return true;
+    }
+
     private static bool MatchesJournalEntryAccountingPeriod(JournalEntry entry, DateOnly accountingPeriod)
     {
         if (entry.AccountingPeriod != default)

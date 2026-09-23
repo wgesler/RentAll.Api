@@ -381,5 +381,263 @@ public partial class AccountingManager
             resolvedContactId,
             resolvedContactName);
     }
+
+    private readonly record struct JournalEntryLineLinkContext(Guid? PropertyId, Guid? ReservationId);
+
+    private sealed class JournalEntryLineLinkContextHints
+    {
+        public string? InvoiceSourceCode { get; init; }
+        public decimal? TargetAmount { get; init; }
+    }
+
+    private static JournalEntryLineLinkContext ToLinkContext(JournalEntryLineContext context)
+        => new(context.PropertyId, context.ReservationId);
+
+    private static JournalEntryLineLinkContextHints BuildLinkContextHintsFromDepositSplit(DepositSplit split)
+        => new()
+        {
+            InvoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split),
+            TargetAmount = split.Amount
+        };
+
+    private async Task<JournalEntryLineLinkContext> ResolveDepositSplitLinkContextAsync(
+        Deposit deposit,
+        DepositSplit split,
+        Guid organizationId)
+    {
+        var propertyId = NormalizeOptionalGuid(split.PropertyId);
+        var reservationId = NormalizeOptionalGuid(split.ReservationId);
+        if (propertyId != null || reservationId != null)
+            return new(propertyId, reservationId);
+
+        var hints = BuildLinkContextHintsFromDepositSplit(split);
+        if (!string.IsNullOrWhiteSpace(hints.InvoiceSourceCode))
+        {
+            var invoiceId = await ResolveInvoiceIdBySourceCodeAsync(
+                organizationId,
+                deposit.OfficeId,
+                hints.InvoiceSourceCode);
+            if (invoiceId != Guid.Empty)
+            {
+                return await ResolveJournalEntryLineLinkContextFromInvoiceAsync(
+                    invoiceId,
+                    organizationId,
+                    hints);
+            }
+        }
+
+        if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
+        {
+            var line = await GetJournalEntryLineByIdCachedAsync(lineId);
+            if (line != null)
+                return await ResolveJournalEntryLineLinkContextAsync(line, organizationId, hints: hints);
+        }
+
+        return default;
+    }
+
+    private static JournalEntryLineLinkContextHints BuildLinkContextHintsFromTransferSplitGroup(IReadOnlyList<TransferSplit> splitGroup)
+        => new()
+        {
+            InvoiceSourceCode = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup)
+                ?? ResolveTransferSplitGroupPaymentSourceCode(splitGroup),
+            TargetAmount = RoundCurrency(splitGroup.Sum(split => split.Amount))
+        };
+
+    private async Task<JournalEntryLineLinkContext> ResolveJournalEntryLineLinkContextAsync(
+        JournalEntryLine line,
+        Guid organizationId,
+        JournalEntry? journalEntry = null,
+        JournalEntryLineLinkContextHints? hints = null)
+    {
+        var propertyId = NormalizeOptionalGuid(line.PropertyId);
+        var reservationId = NormalizeOptionalGuid(line.ReservationId);
+
+        if (reservationId != null && propertyId == null)
+            propertyId = await ResolvePropertyIdFromReservationAsync(reservationId.Value, organizationId);
+
+        if (propertyId != null || reservationId != null)
+            return new(propertyId, reservationId);
+
+        journalEntry ??= await GetJournalEntryByIdCachedAsync(line.JournalEntryId, organizationId);
+        if (journalEntry == null)
+            return default;
+
+        if (journalEntry.PaymentId is { } paymentId && paymentId != Guid.Empty)
+        {
+            var fromPayment = await ResolveJournalEntryLineLinkContextFromPaymentAsync(paymentId, organizationId, hints);
+            if (fromPayment.PropertyId != null || fromPayment.ReservationId != null)
+                return fromPayment;
+        }
+
+        if (journalEntry.SourceTypeId == (int)SourceType.Invoice
+            && journalEntry.SourceId is { } invoiceId
+            && invoiceId != Guid.Empty)
+        {
+            return await ResolveJournalEntryLineLinkContextFromInvoiceAsync(invoiceId, organizationId, hints);
+        }
+
+        if (journalEntry.DepositId is { } depositId && depositId != Guid.Empty)
+        {
+            return await ResolveJournalEntryLineLinkContextFromDepositAsync(depositId, organizationId, hints);
+        }
+
+        return default;
+    }
+
+    private async Task<Guid?> ResolvePropertyIdFromReservationAsync(Guid reservationId, Guid organizationId)
+    {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId);
+        return NormalizeOptionalGuid(reservation?.PropertyId);
+    }
+
+    private async Task<JournalEntryLineLinkContext> ResolveJournalEntryLineLinkContextFromPaymentAsync(
+        Guid paymentId,
+        Guid organizationId,
+        JournalEntryLineLinkContextHints? hints)
+    {
+        var paymentLines = await _accountingRepository.GetLedgerLinesByPaymentIdAsync(paymentId, organizationId);
+        var matchedLines = FilterPaymentLedgerLinesForLinkHints(paymentLines, hints);
+        if (matchedLines.Count != 1)
+            return default;
+
+        var invoice = await _accountingRepository.GetInvoiceByIdAsync(matchedLines[0].InvoiceId, organizationId);
+        if (invoice == null)
+            return default;
+
+        return ToLinkContext(await ResolveInvoiceJournalEntryLineContextAsync(
+            invoice,
+            ToInvoiceLedgerLine(matchedLines[0])));
+    }
+
+    private static List<PaymentLedgerLine> FilterPaymentLedgerLinesForLinkHints(
+        IReadOnlyList<PaymentLedgerLine> ledgerLines,
+        JournalEntryLineLinkContextHints? hints)
+    {
+        IEnumerable<PaymentLedgerLine> filtered = ledgerLines.Where(line => Math.Abs(line.Amount) > 0.005m);
+        if (hints?.TargetAmount is { } targetAmount)
+        {
+            filtered = filtered.Where(line =>
+                Math.Abs(Math.Abs(line.Amount) - Math.Abs(RoundCurrency(targetAmount))) <= 0.005m);
+        }
+
+        if (!string.IsNullOrWhiteSpace(hints?.InvoiceSourceCode))
+        {
+            filtered = filtered.Where(line =>
+                EntityCodeFormatting.CodesMatch(line.InvoiceCode, hints.InvoiceSourceCode));
+        }
+
+        return filtered.ToList();
+    }
+
+    private static LedgerLine ToInvoiceLedgerLine(PaymentLedgerLine paymentLine)
+        => new()
+        {
+            LedgerLineId = paymentLine.LedgerLineId,
+            InvoiceId = paymentLine.InvoiceId,
+            LineNumber = paymentLine.LineNumber,
+            ReservationId = paymentLine.ReservationId,
+            CostCodeId = paymentLine.CostCodeId,
+            TransactionType = paymentLine.TransactionType,
+            Amount = paymentLine.Amount,
+            Description = paymentLine.Description,
+            LedgerLineDate = paymentLine.LedgerLineDate,
+            PaymentId = paymentLine.PaymentId,
+            CreatedOn = paymentLine.CreatedOn,
+            CreatedBy = paymentLine.CreatedBy,
+            ModifiedOn = paymentLine.ModifiedOn,
+            ModifiedBy = paymentLine.ModifiedBy
+        };
+
+    private async Task<JournalEntryLineLinkContext> ResolveJournalEntryLineLinkContextFromInvoiceAsync(
+        Guid invoiceId,
+        Guid organizationId,
+        JournalEntryLineLinkContextHints? hints)
+    {
+        var invoice = await _accountingRepository.GetInvoiceByIdAsync(invoiceId, organizationId);
+        if (invoice == null)
+            return default;
+
+        LedgerLine? paymentLine = null;
+        if (invoice.LedgerLines is { Count: > 0 } ledgerLines)
+        {
+            var matched = ledgerLines
+                .Where(line => Math.Abs(line.Amount) > 0.005m)
+                .ToList();
+
+            if (hints?.TargetAmount is { } targetAmount)
+            {
+                matched = matched
+                    .Where(line => Math.Abs(Math.Abs(line.Amount) - Math.Abs(RoundCurrency(targetAmount))) <= 0.005m)
+                    .ToList();
+            }
+
+            if (matched.Count == 1)
+                paymentLine = matched[0];
+        }
+
+        return ToLinkContext(await ResolveInvoiceJournalEntryLineContextAsync(invoice, paymentLine));
+    }
+
+    private async Task<JournalEntryLineLinkContext> ResolveJournalEntryLineLinkContextFromDepositAsync(
+        Guid depositId,
+        Guid organizationId,
+        JournalEntryLineLinkContextHints? hints)
+    {
+        var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+        if (deposit?.Splits == null || deposit.Splits.Count == 0)
+            return default;
+
+        IEnumerable<DepositSplit> splits = deposit.Splits;
+        if (!string.IsNullOrWhiteSpace(hints?.InvoiceSourceCode))
+        {
+            splits = splits.Where(split =>
+                EntityCodeFormatting.CodesMatch(
+                    ResolveDepositSplitInvoiceSourceCode(split) ?? string.Empty,
+                    hints.InvoiceSourceCode));
+        }
+
+        if (hints?.TargetAmount is { } targetAmount)
+        {
+            splits = splits.Where(split =>
+                Math.Abs(Math.Abs(split.Amount) - Math.Abs(RoundCurrency(targetAmount))) <= 0.005m);
+        }
+
+        var matched = splits.ToList();
+        if (matched.Count != 1)
+            return default;
+
+        var split = matched[0];
+        if (NormalizeOptionalGuid(split.PropertyId) != null || NormalizeOptionalGuid(split.ReservationId) != null)
+        {
+            return new(
+                NormalizeOptionalGuid(split.PropertyId),
+                NormalizeOptionalGuid(split.ReservationId));
+        }
+
+        if (string.IsNullOrWhiteSpace(hints?.InvoiceSourceCode))
+            return default;
+
+        var invoiceId = await ResolveInvoiceIdBySourceCodeAsync(
+            organizationId,
+            deposit.OfficeId,
+            hints.InvoiceSourceCode);
+        if (invoiceId == Guid.Empty)
+            return default;
+
+        return await ResolveJournalEntryLineLinkContextFromInvoiceAsync(invoiceId, organizationId, hints);
+    }
+
+    private async Task<bool> SplitLineContextMatchesResolvedLineAsync(
+        Guid? splitPropertyId,
+        Guid? splitReservationId,
+        JournalEntryLine line,
+        Guid organizationId,
+        JournalEntryLineLinkContextHints? hints = null,
+        JournalEntry? journalEntry = null)
+    {
+        var resolved = await ResolveJournalEntryLineLinkContextAsync(line, organizationId, journalEntry, hints);
+        return SplitLineContextMatches(splitPropertyId, splitReservationId, resolved.PropertyId, resolved.ReservationId);
+    }
     #endregion
 }

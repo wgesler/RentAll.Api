@@ -356,6 +356,7 @@ public partial class AccountingManager
                     if (string.IsNullOrWhiteSpace(invoiceSourceCode))
                         continue;
 
+                    // Cache path: raw split fields only; full invoice/ledger resolution runs on cache miss.
                     matches.Add(new TransferDepositInvoiceEscrowMatch
                     {
                         DepositId = deposit.DepositId,
@@ -364,6 +365,7 @@ public partial class AccountingManager
                         EscrowLineAmount = escrowAmount,
                         InvoiceSourceCode = invoiceSourceCode,
                         PropertyId = NormalizeOptionalGuid(split.PropertyId),
+                        ReservationId = NormalizeOptionalGuid(split.ReservationId),
                         DepositSplitAmount = RoundCurrency(split.Amount),
                         DepositDate = deposit.DepositDate,
                         DepositAccountingPeriod = deposit.AccountingPeriod
