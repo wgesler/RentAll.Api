@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Checks And Repairs Transfer Links
+    #region Links Check And Repair Transfers
     private sealed class EscrowDepositLineCandidate
     {
         public Guid JournalEntryLineId { get; init; }

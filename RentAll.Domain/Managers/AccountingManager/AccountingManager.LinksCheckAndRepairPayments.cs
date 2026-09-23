@@ -6,7 +6,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Checks And Repair Payment Links
+    #region Links Check And Repair Payments
     private sealed record UnlinkedPaymentLineGroupKey(Guid OrganizationId, int OfficeId, DateOnly PaymentDate, int CostCodeId, string Description, Guid CreatedBy, DateTimeOffset CreatedOnBatch);
 
     private sealed class UnlinkedPaymentLineGroup
