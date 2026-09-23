@@ -116,6 +116,9 @@ public partial class AccountingManager
             await DeleteInvoiceAsync(invoice.InvoiceId, organizationId);
     }
 
+    private Task RestoreInvoiceSnapshotAsync(Invoice snapshot)
+        => _accountingRepository.UpdateByIdAsync(snapshot);
+
     #endregion
 
     #region Receipt
@@ -339,6 +342,16 @@ public partial class AccountingManager
         await _maintenanceRepository.DeleteReceiptByIdAsync(receiptId, organizationId, currentUser);
     }
 
+    private async Task<Receipt> LoadReceiptSnapshotForRevertAsync(Guid receiptId, Guid organizationId)
+    {
+        var receipt = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, organizationId)
+            ?? throw new Exception("Receipt not found");
+        return await LoadReceiptWithSplitsAsync(receipt);
+    }
+
+    private Task RestoreReceiptSnapshotAsync(Receipt snapshot)
+        => _maintenanceRepository.UpdateReceiptAsync(snapshot);
+
     #endregion
 
     #region Work Order
@@ -397,6 +410,15 @@ public partial class AccountingManager
         await DeleteJournalEntriesForWorkOrderAsync(workOrder);
         await _maintenanceRepository.DeleteWorkOrderByIdAsync(workOrderId, organizationId, currentUser);
     }
+
+    private async Task<WorkOrder> LoadWorkOrderSnapshotForRevertAsync(Guid workOrderId, Guid organizationId)
+    {
+        return await _maintenanceRepository.GetWorkOrderByIdAsync(workOrderId, organizationId)
+            ?? throw new Exception("Work order not found");
+    }
+
+    private Task RestoreWorkOrderSnapshotAsync(WorkOrder snapshot)
+        => _maintenanceRepository.UpdateWorkOrderAsync(snapshot);
 
     #endregion
 
