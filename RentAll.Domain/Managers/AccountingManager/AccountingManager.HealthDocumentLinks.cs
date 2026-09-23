@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Journal Entry Document Links
+    #region Health Document Links
     public async Task SyncDocumentLinksAsync(Guid organizationId, string officeIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         if (organizationId == Guid.Empty)
@@ -94,7 +94,7 @@ public partial class AccountingManager
         var paymentIds = new HashSet<Guid>();
         var depositIds = new HashSet<Guid>();
         var transferIds = new HashSet<Guid>();
-        DocumentHealthFixRouting.CollectFixTargets(scan.Issues, paymentIds, depositIds, transferIds);
+        HealthDocumentTypeIdentification.CollectFixTargets(scan.Issues, paymentIds, depositIds, transferIds);
 
         if (paymentIds.Count > 0)
         {

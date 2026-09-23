@@ -6,7 +6,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Deposit Split Reconciliation
+    #region Check And Repair Deposit Links
     private sealed class UndepositedPaymentLineCandidate
     {
         public Guid JournalEntryLineId { get; init; }

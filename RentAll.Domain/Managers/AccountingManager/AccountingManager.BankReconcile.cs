@@ -4,7 +4,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Reconcile
+    #region Bank Reconcile
     public async Task<Reconcile?> RemoveLastReconcileAsync(Guid organizationId, int officeId, int accountId)
     {
         var reconciles = await _accountingRepository.GetReconcilesByAccountIdAsync(organizationId, officeId, accountId);

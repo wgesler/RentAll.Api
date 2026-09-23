@@ -4,8 +4,8 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Document Health Fix Routing
-    private static class DocumentHealthFixRouting
+    #region Health Document Type Identification
+    private static class HealthDocumentTypeIdentification
     {
         private static readonly Guid EmptyGuid = Guid.Empty;
 

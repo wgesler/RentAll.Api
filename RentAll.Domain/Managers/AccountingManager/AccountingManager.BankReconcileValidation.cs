@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Reconcile Invalidation
+    #region Bank Reconcile Validation
     private static bool ShouldInvalidateReconcileOnDocumentEdit(PostingStatus postingStatus)
         => postingStatus is PostingStatus.Posted or PostingStatus.SoftClosed;
 

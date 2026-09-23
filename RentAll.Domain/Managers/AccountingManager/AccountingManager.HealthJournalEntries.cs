@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Journal Entries Health Fix
+    #region Health Journal Entries
     public Task<JournalEntrySyncResult> SyncJournalEntriesForHealthFixAsync(Guid organizationId, string officeIds, string syncType, IReadOnlyList<Guid> documentIds, int? paymentKindId, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress = null)
     {
         if (organizationId == Guid.Empty)
@@ -128,8 +128,8 @@ public partial class AccountingManager
             return [];
 
         return syncType == "payment"
-            ? DocumentHealthFixRouting.CollectPaymentFixIds(scan.Issues).ToList()
-            : DocumentHealthFixRouting.CollectFixDocumentIds(scan.Issues).ToList();
+            ? HealthDocumentTypeIdentification.CollectPaymentFixIds(scan.Issues).ToList()
+            : HealthDocumentTypeIdentification.CollectFixDocumentIds(scan.Issues).ToList();
     }
 
     private async Task RunHealthFixBulkPruneAsync(string syncType, int? paymentKindId, Guid organizationId, string officeIds, IReadOnlyList<Guid> targetedDocumentIds, JournalEntrySyncResult result)

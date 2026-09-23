@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Owner Statement Month Close
+    #region Bank Owner Statement Month Close
     public async Task<CloseOwnerStatementMonthResult> CloseOwnerStatementMonthAsync(Guid organizationId, DateOnly endDate, IReadOnlyList<OwnerStatementMonthCloseLine> lines, Guid currentUser)
     {
         if (!await IsAccountingFeatureEnabledAsync(organizationId))

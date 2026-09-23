@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Reconcile Documents
+    #region Bank Reconcile Documents
     public async Task ApplyReconcileClearPostingAsync(IReadOnlyList<ReconcileJournalEntryLineMark> lines, Guid organizationId, Guid currentUser)
     {
         var targets = await ResolveClearedLineTargetsAsync(lines, organizationId);

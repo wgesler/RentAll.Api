@@ -5,7 +5,7 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    #region Accounting Office Month Close
+    #region Bank Month Close
     public async Task<CloseAccountingPeriodResult> ResyncAccountingOfficePostingStatusAsync(Guid organizationId, int officeId, int softClosedMonth, int softClosedYear, int hardClosedMonth, int hardClosedYear, int startMonth, int startYear, Guid currentUser)
     {
         var result = new CloseAccountingPeriodResult();
