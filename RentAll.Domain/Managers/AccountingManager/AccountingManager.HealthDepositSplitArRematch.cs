@@ -53,7 +53,7 @@ public partial class AccountingManager
             if (match.ArJournalEntryLineId is not { } arLineId || arLineId == Guid.Empty)
                 continue;
 
-            if (split.JournalEntryLineId == arLineId)
+            if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
                 continue;
 
             split.JournalEntryLineId = arLineId;
