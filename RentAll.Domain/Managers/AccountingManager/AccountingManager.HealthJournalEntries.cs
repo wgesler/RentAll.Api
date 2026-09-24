@@ -597,12 +597,6 @@ public partial class AccountingManager
             return;
         }
 
-        if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
-        {
-            result.JournalEntriesSkipped++;
-            return;
-        }
-
         var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
             ? deposit.DepositId.ToString()
             : deposit.DepositCode.Trim();

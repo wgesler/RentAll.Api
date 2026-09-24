@@ -653,12 +653,6 @@ public partial class AccountingManager
                     : deposit.DepositCode.Trim();
                 try
                 {
-                    if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
-                    {
-                        _officeSyncCache?.ReplaceDeposit(deposit);
-                        continue;
-                    }
-
                     var trail = new AccountingSyncBailTrail();
                     await RepairDepositUfSplitLinksForHealthFixAsync(
                         deposit,

@@ -22,9 +22,6 @@ public partial class AccountingManager
         if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
             return;
 
-        if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
-            return;
-
         if (!await IsAccountingFeatureEnabledAsync(organizationId))
         {
             trail?.Bail("Repair exit: accounting feature disabled.");
@@ -53,6 +50,9 @@ public partial class AccountingManager
 
             foreach (var split in deposit.Splits)
             {
+                if (IsDepositSplitExcludedFromArRematchScopeByMemo(split))
+                    continue;
+
                 if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
                     continue;
 
@@ -224,9 +224,6 @@ public partial class AccountingManager
             if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
                 continue;
 
-            if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
-                continue;
-
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, deposit.OfficeId);
             var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
             if (undepositedFundsAccountId <= 0)
@@ -239,6 +236,9 @@ public partial class AccountingManager
 
             foreach (var split in deposit.Splits)
             {
+                if (IsDepositSplitExcludedFromArRematchScopeByMemo(split))
+                    continue;
+
                 if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
                     continue;
 
@@ -418,9 +418,6 @@ public partial class AccountingManager
             if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
                 continue;
 
-            if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
-                continue;
-
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, deposit.OfficeId);
             var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
             if (undepositedFundsAccountId <= 0)
@@ -433,6 +430,9 @@ public partial class AccountingManager
 
             foreach (var split in deposit.Splits)
             {
+                if (IsDepositSplitExcludedFromArRematchScopeByMemo(split))
+                    continue;
+
                 if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
                     continue;
 
@@ -500,30 +500,23 @@ public partial class AccountingManager
         => string.IsNullOrWhiteSpace(deposit.DepositCode) ? deposit.DepositId.ToString() : deposit.DepositCode.Trim();
 
     /// <summary>
-    /// Deposits omitted from Fix_DepositSplit / DepositSplit_ArRematchCandidates when any split Description matches.
+    /// Per-split memo exclusions (same patterns as Fix_DepositSplit_ArRematchAndStamp.sql).
     /// </summary>
-    private static bool IsDepositExcludedFromArRematchScopeBySplitMemo(Deposit deposit)
+    private static bool IsDepositSplitExcludedFromArRematchScopeByMemo(DepositSplit split)
     {
-        if (deposit.Splits == null || deposit.Splits.Count == 0)
+        var description = (split.Description ?? string.Empty).Trim();
+        if (description.Length == 0)
             return false;
 
-        foreach (var split in deposit.Splits)
-        {
-            var description = (split.Description ?? string.Empty).Trim();
-            if (description.Length == 0)
-                continue;
-
-            if (description.StartsWith("Intentional books", StringComparison.OrdinalIgnoreCase)
-                || description.StartsWith("Opening Balance", StringComparison.OrdinalIgnoreCase)
-                || description.StartsWith("Real Estate Closing", StringComparison.OrdinalIgnoreCase)
-                || description.Contains("Paymentech", StringComparison.OrdinalIgnoreCase)
-                || description.Contains("Reimbursement", StringComparison.OrdinalIgnoreCase)
-                || description.Contains("repayment", StringComparison.OrdinalIgnoreCase)
-                || description.Contains("STL Accounting July 2026", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        var lower = description.ToLowerInvariant();
+        return lower.StartsWith("intentional books", StringComparison.Ordinal)
+            || lower.StartsWith("opening balance", StringComparison.Ordinal)
+            || lower.StartsWith("real estate closing", StringComparison.Ordinal)
+            || lower.Contains("paymentech", StringComparison.Ordinal)
+            || lower.Contains("reimbursement", StringComparison.Ordinal)
+            || lower.Contains("rebate", StringComparison.Ordinal)
+            || lower.Contains("stl accounting", StringComparison.Ordinal)
+            || lower.Contains("repayment", StringComparison.Ordinal);
     }
 
     private void LogHealthDepositFixTrace(Deposit deposit, string step, string? detail = null)
