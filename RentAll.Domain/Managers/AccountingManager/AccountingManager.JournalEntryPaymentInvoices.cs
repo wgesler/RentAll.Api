@@ -417,6 +417,7 @@ public partial class AccountingManager
         var journalEntryLines = new List<JournalEntryLine>();
         JournalEntryLineContext? ufLineContext = null;
         var applicationMemos = new List<string>();
+        var consolidatedInvoiceCodes = new List<string>();
 
         foreach (var application in applications)
         {
@@ -430,6 +431,9 @@ public partial class AccountingManager
             ufLineContext ??= lineContext;
 
             var arMemo = BuildAccountsReceivableMemo(application.Invoice.InvoiceCode);
+            var invoiceCode = application.Invoice.InvoiceCode.Trim();
+            if (!consolidatedInvoiceCodes.Any(code => string.Equals(code, invoiceCode, StringComparison.OrdinalIgnoreCase)))
+                consolidatedInvoiceCodes.Add(invoiceCode);
             applicationMemos.Add($"{application.Invoice.InvoiceCode} {amount:0.00}");
 
             var accountsReceivableLine = new JournalEntryLine
@@ -450,7 +454,7 @@ public partial class AccountingManager
         var ufAmount = payment.Amount;
         var ufMemo = string.IsNullOrWhiteSpace(payment.Description)
             ? string.Join("; ", applicationMemos)
-            : $"Payment: {payment.Description.Trim()}";
+            : BuildInvoicePaymentMemo(consolidatedInvoiceCodes, payment.Description);
 
         var undepositedFundsLine = new JournalEntryLine
         {
@@ -784,11 +788,18 @@ public partial class AccountingManager
 
         await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
 
+        Deposit? depositedOn = null;
+        if (payment.DepositId is { } depositId && depositId != Guid.Empty)
+            depositedOn = await _accountingRepository.GetDepositByIdAsync(depositId, payment.OrganizationId);
+
         var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId);
 
         foreach (var journalEntry in linkedEntries)
         {
             ApplyPaymentDocumentLink(journalEntry, payment);
+            if (depositedOn != null)
+                ApplyDepositDocumentLink(journalEntry, depositedOn);
+
             journalEntry.ModifiedBy = currentUser;
             await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
         }
@@ -833,6 +844,9 @@ public partial class AccountingManager
 
         foreach (var journalEntry in linkedEntries)
         {
+            if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
+                continue;
+
             ClearPaymentDocumentLink(journalEntry);
             journalEntry.ModifiedBy = currentUser;
             await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);

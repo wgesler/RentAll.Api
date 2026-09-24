@@ -333,12 +333,22 @@ public partial class AccountingManager
 
     private async Task TryUpdateJournalEntryDepositDocumentLinkAsync(JournalEntry journalEntry, Deposit deposit, Guid currentUser)
     {
-        if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
-            return;
-
         ApplyDepositDocumentLink(journalEntry, deposit);
         journalEntry.ModifiedBy = currentUser;
         await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
+    }
+
+    private async Task<bool> IsJournalEntryLineOnClosedJournalEntryAsync(Guid organizationId, Guid journalEntryLineId)
+    {
+        if (journalEntryLineId == Guid.Empty)
+            return false;
+
+        var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+        if (line?.JournalEntryId is not { } journalEntryId || journalEntryId == Guid.Empty)
+            return false;
+
+        var journalEntry = await GetJournalEntryByIdCachedAsync(journalEntryId, organizationId);
+        return journalEntry != null && IsClosedJournalEntryForDepositLinkUpdate(journalEntry);
     }
 
     private async Task TryClearJournalEntryDepositDocumentLinkAsync(JournalEntry journalEntry, Guid currentUser)
@@ -366,7 +376,7 @@ public partial class AccountingManager
         journalEntry.DepositCode = null;
     }
 
-    private async Task SyncDepositDocumentLinksAsync(Deposit deposit, Guid currentUser)
+    private async Task SyncDepositDocumentLinksAsync(Deposit deposit, Guid currentUser, bool unstampMissingPayments = true)
     {
         if (deposit.DepositId == Guid.Empty || !deposit.IsActive)
             return;
@@ -379,7 +389,7 @@ public partial class AccountingManager
         await ApplyDepositDocumentLinksFromDepositSplitsAsync(deposit, currentUser);
 
         var paymentIds = await CollectPaymentIdsFromDepositSplitsAsync(deposit);
-        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser);
+        await SyncPaymentDepositIdsForDepositAsync(deposit, paymentIds, currentUser, unstampMissingPayments);
         foreach (var paymentId in paymentIds)
         {
             var paymentJournalEntries = await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, paymentId);
@@ -509,7 +519,8 @@ public partial class AccountingManager
         {
             if (payment.IsActive
                 && payment.PaymentKindId == (int)PaymentKind.Invoice
-                && payment.DepositId == deposit.DepositId)
+                && payment.DepositId == deposit.DepositId
+                && PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
             {
                 paymentIds.Add(payment.PaymentId);
             }
@@ -542,6 +553,9 @@ public partial class AccountingManager
                     && stampedDepositId != deposit.DepositId)
                     continue;
 
+                if (payment == null || !PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
+                    continue;
+
                 paymentIds.Add(paymentId);
             }
         }
@@ -572,6 +586,9 @@ public partial class AccountingManager
                     && stampedDepositId != deposit.DepositId)
                     continue;
 
+                if (!PaymentMatchesDepositTransactionDate(deposit, candidate.PaymentDate))
+                    continue;
+
                 if (Math.Abs(Math.Abs(RoundCurrency(candidate.Amount)) - neededSum) > 0.005m)
                     continue;
 
@@ -582,7 +599,24 @@ public partial class AccountingManager
                 paymentIds.Add(batchPaymentMatches[0]);
         }
 
-        return paymentIds;
+        var eligiblePaymentIds = new HashSet<Guid>();
+        foreach (var paymentId in paymentIds)
+        {
+            if (paymentId == Guid.Empty)
+                continue;
+
+            Payment? payment = null;
+            if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(paymentId, out var cachedPayment))
+                payment = cachedPayment;
+            else
+                payment = officePayments.FirstOrDefault(candidate => candidate.PaymentId == paymentId)
+                    ?? await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
+            if (payment != null && PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
+                eligiblePaymentIds.Add(paymentId);
+        }
+
+        return eligiblePaymentIds;
     }
 
     private async Task TryStampBatchPaymentForDepositHealthFixAsync(Deposit deposit, Guid organizationId, Guid currentUser)
@@ -604,6 +638,8 @@ public partial class AccountingManager
                 cachedPayment.DepositCode = deposit.DepositCode;
             }
         }
+
+        _officeSyncCache.InvalidateRematchIndexes();
     }
 
     private async Task<IReadOnlyList<Guid>> FindInvoicePaymentIdsBySourceCodeAsync(Guid organizationId, int officeId, string invoiceSourceCode)
@@ -630,11 +666,8 @@ public partial class AccountingManager
                     paymentIds.Add(payment.PaymentId);
             }
 
-            if (paymentIds.Count == 0)
-            {
-                foreach (var paymentId in FindPaymentIdsByJournalEntryInvoiceSourceCode(normalizedSourceCode))
-                    paymentIds.Add(paymentId);
-            }
+            foreach (var paymentId in FindPaymentIdsByJournalEntryInvoiceSourceCode(normalizedSourceCode))
+                paymentIds.Add(paymentId);
 
             return paymentIds.ToList();
         }
@@ -669,28 +702,25 @@ public partial class AccountingManager
             }
         }
 
-        if (paymentIds.Count == 0)
+        foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                     organizationId,
+                     officeId.ToString(),
+                     (int)PaymentKind.Invoice))
         {
-            foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                         organizationId,
-                         officeId.ToString(),
-                         (int)PaymentKind.Invoice))
+            if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                continue;
+
+            foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId))
             {
-                if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                     continue;
 
-                foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId))
+                if (EntityCodeFormatting.CodesMatch(
+                        ResolvePaymentJournalEntrySourceCode(paymentEntry),
+                        normalizedSourceCode))
                 {
-                    if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
-                        continue;
-
-                    if (EntityCodeFormatting.CodesMatch(
-                            ResolvePaymentJournalEntrySourceCode(paymentEntry),
-                            normalizedSourceCode))
-                    {
-                        paymentIds.Add(payment.PaymentId);
-                        break;
-                    }
+                    paymentIds.Add(payment.PaymentId);
+                    break;
                 }
             }
         }
@@ -877,9 +907,6 @@ public partial class AccountingManager
 
             var journalEntry = await GetJournalEntryByIdCachedAsync(journalEntryId, deposit.OrganizationId);
             if (journalEntry == null)
-                continue;
-
-            if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
                 continue;
 
             ApplyDepositDocumentLink(journalEntry, deposit);

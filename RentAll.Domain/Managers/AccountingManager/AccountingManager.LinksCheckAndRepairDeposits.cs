@@ -185,9 +185,12 @@ public partial class AccountingManager
 
     #region Check Each Deposit Split Link And Keep Replace Or Clear It
     private Task ReconcileDepositSplitJournalEntryLineIdsAsync(Deposit deposit)
-        => ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail: null);
+        => ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail: null, rematchPaymentIds: null);
 
-    private async Task ReconcileDepositSplitJournalEntryLineIdsAsync(Deposit deposit, AccountingSyncBailTrail? trail)
+    private async Task ReconcileDepositSplitJournalEntryLineIdsAsync(
+        Deposit deposit,
+        AccountingSyncBailTrail? trail,
+        IReadOnlySet<Guid>? rematchPaymentIds = null)
     {
         if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
         {
@@ -203,20 +206,31 @@ public partial class AccountingManager
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
         if (undepositedFundsAccountId <= 0)
         {
             trail?.Bail("Rematch exit: DefaultUndepFundsAccountId missing.");
             return;
         }
 
-        var paymentLineCandidates = (await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId))
+        if (accountsReceivableAccountId <= 0)
+        {
+            trail?.Bail("Rematch exit: DefaultActRcvableAccountId missing.");
+            return;
+        }
+
+        var paymentLineCandidates = rematchPaymentIds is { Count: > 0 }
+            ? await BuildStampedDepositPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId, accountsReceivableAccountId, rematchPaymentIds)
+            : await BuildUndepositedPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId, accountsReceivableAccountId);
+
+        paymentLineCandidates = paymentLineCandidates
             .Where(candidate =>
                 IsPaymentDepositStampAvailableForDeposit(candidate.DepositId, deposit.DepositId)
-                && PaymentAccountingMonthIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate))
+                && PaymentTransactionDateIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate))
             .ToList();
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherDepositsAsync(deposit);
         var assignedLineIds = new HashSet<Guid>();
-        trail?.Note($"Rematch: UF account={undepositedFundsAccountId} candidates={paymentLineCandidates.Count} claimedByOthers={claimedLineIds.Count}");
+        trail?.Note($"Rematch: AR account={accountsReceivableAccountId} candidates={paymentLineCandidates.Count} claimedByOthers={claimedLineIds.Count}");
 
         await EnsureDepositSplitReservationContextAsync(deposit, trail);
 
@@ -235,10 +249,24 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
             {
                 var existingLine = await GetJournalEntryLineByIdCachedAsync(existingLineId);
-                trail?.Note(existingLine == null
-                    ? $"Rematch dead line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}"
-                    : $"Rematch clear invalid line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
-                split.JournalEntryLineId = null;
+                if (existingLine != null && existingLine.ChartOfAccountId == undepositedFundsAccountId)
+                {
+                    trail?.Note($"Rematch clear UF line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                    split.JournalEntryLineId = null;
+                }
+                else if (await IsJournalEntryLineOnClosedJournalEntryAsync(deposit.OrganizationId, existingLineId))
+                {
+                    assignedLineIds.Add(existingLineId);
+                    trail?.Note($"Rematch keep posted line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                    continue;
+                }
+                else
+                {
+                    trail?.Note(existingLine == null
+                        ? $"Rematch dead line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}"
+                        : $"Rematch clear invalid line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
+                    split.JournalEntryLineId = null;
+                }
             }
 
             var resolvedLineId = paymentLineCandidates.Count > 0
@@ -258,7 +286,7 @@ public partial class AccountingManager
                 continue;
             }
 
-            trail?.Bail($"Rematch failed: {splitLabel} amount={split.Amount:0.00} (no exact UF line match).");
+            trail?.Bail($"Rematch failed: {splitLabel} amount={split.Amount:0.00} (no exact AR allocation line match).");
         }
     }
 
@@ -289,17 +317,19 @@ public partial class AccountingManager
 
         var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
         if (paymentJournalEntry == null
-            || !JournalEntryMatchesDepositAccountingMonth(deposit, payment?.PaymentDate))
+            || payment?.PaymentDate is not { } paymentDate
+            || !PaymentMatchesDepositTransactionDate(deposit, paymentDate))
             return false;
 
-        var accountId = split.ChartOfAccountId is > 0 ? split.ChartOfAccountId.Value : undepositedFundsAccountId;
-        var lineNet = line.Debit - line.Credit;
-        if (line.ChartOfAccountId == accountId)
-        {
-            if (!DepositSplitMatchesUndepositedLineAmount(split, lineNet))
-                return false;
-        }
-        else if (!IsValidPaymentAllocationDepositSplitLinkLine(split, line, paymentJournalEntry))
+        if (line.ChartOfAccountId == undepositedFundsAccountId)
+            return false;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (accountsReceivableAccountId <= 0 || line.ChartOfAccountId != accountsReceivableAccountId)
+            return false;
+
+        if (!IsValidPaymentAllocationDepositSplitLinkLine(split, line, paymentJournalEntry))
             return false;
 
         if (!await SplitLineContextMatchesResolvedLineAsync(
@@ -319,15 +349,48 @@ public partial class AccountingManager
         if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentJournalEntry))
             return false;
 
-        var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-        var lineSourceCode = ResolveJournalEntryLineInvoiceSourceCode(line, paymentJournalEntry);
-        if (string.IsNullOrWhiteSpace(splitSourceCode) || string.IsNullOrWhiteSpace(lineSourceCode))
-            return false;
-
-        if (!EntityCodeFormatting.CodesMatch(lineSourceCode, splitSourceCode))
+        if (!DepositSplitSourceCodeMatchesPaymentJournalEntry(split, paymentJournalEntry, line))
             return false;
 
         return DepositSplitMatchesUndepositedLineAmount(split, line.Debit - line.Credit);
+    }
+
+    private static bool DepositSplitSourceCodeMatchesPaymentJournalEntry(
+        DepositSplit split,
+        JournalEntry paymentJournalEntry,
+        JournalEntryLine? allocationLine = null)
+    {
+        var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+        if (string.IsNullOrWhiteSpace(splitSourceCode))
+            return true;
+
+        var paymentMemo = CoalesceJournalEntryMemo(
+            paymentJournalEntry.Memo,
+            paymentJournalEntry.JournalEntryLines?.FirstOrDefault()?.Memo);
+        if (PaymentMemoMatchesInvoiceSourceCode(split.Description, splitSourceCode)
+            && PaymentMemoMatchesInvoiceSourceCode(paymentMemo, splitSourceCode))
+        {
+            return true;
+        }
+
+        var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentJournalEntry);
+        if (!string.IsNullOrWhiteSpace(paymentSourceCode)
+            && EntityCodeFormatting.CodesMatch(paymentSourceCode, splitSourceCode))
+        {
+            return true;
+        }
+
+        if (allocationLine != null)
+        {
+            var lineSourceCode = ResolveJournalEntryLineInvoiceSourceCode(allocationLine, paymentJournalEntry);
+            if (!string.IsNullOrWhiteSpace(lineSourceCode)
+                && EntityCodeFormatting.CodesMatch(lineSourceCode, splitSourceCode))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<bool> PaymentHasUndepositedFundsLineEqualToAmountAsync(Payment payment)
@@ -388,10 +451,21 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
                 continue;
 
+            if (await IsJournalEntryLineOnClosedJournalEntryAsync(deposit.OrganizationId, lineId))
+                continue;
+
             var line = await GetJournalEntryLineByIdCachedAsync(lineId);
             if (line == null)
             {
                 trail?.Note($"Step1 unlink: split {split.DepositSplitId} pointed at missing line {lineId}.");
+                split.JournalEntryLineId = null;
+                changed = true;
+                continue;
+            }
+
+            if (line.ChartOfAccountId == undepositedFundsAccountId)
+            {
+                trail?.Note($"Step1 unlink: split {split.DepositSplitId} pointed at payment UF line {lineId}.");
                 split.JournalEntryLineId = null;
                 changed = true;
                 continue;
@@ -410,7 +484,7 @@ public partial class AccountingManager
             }
 
             var amountMismatch = Math.Abs(lineNet - splitAmount) > 0.005m;
-            var dateMismatch = payment != null && !JournalEntryMatchesDepositAccountingMonth(deposit, payment.PaymentDate);
+            var dateMismatch = payment != null && !PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate);
             var contextMismatch = !await SplitLineContextMatchesResolvedLineAsync(
                 split.PropertyId,
                 split.ReservationId,
@@ -509,18 +583,21 @@ public partial class AccountingManager
             && linkedPaymentId != Guid.Empty
             && linkedPaymentId == payment.PaymentId)
         {
-            if (line.ChartOfAccountId != undepositedFundsAccountId)
-                return $"split {split.DepositSplitId} linked to {journalEntryCode} on non-UF account.";
-
             if (!IsRematchableHealthInvoicePaymentJournalEntry(journalEntry))
                 return $"split {split.DepositSplitId} linked to {journalEntryCode} which is not a payment/pre-payment-receive JE.";
 
-            var lineNet = Math.Abs(line.Debit - line.Credit);
-            if (Math.Abs(lineNet - splitAmount) > 0.005m)
-                return $"split {split.DepositSplitId} linked to {journalEntryCode} amount {lineNet:0.00} does not match split {splitAmount:0.00}.";
+            if (line.ChartOfAccountId == undepositedFundsAccountId)
+            {
+                return $"split {split.DepositSplitId} linked to payment UF line {journalEntryCode}; deposit splits must link to AR allocation lines.";
+            }
 
-            if (!JournalEntryMatchesDepositAccountingMonth(deposit, payment.PaymentDate))
-                return $"split {split.DepositSplitId} linked to {journalEntryCode} but payment date is after deposit date.";
+            if (!IsValidPaymentAllocationDepositSplitLinkLine(split, line, journalEntry))
+            {
+                return $"split {split.DepositSplitId} linked to {journalEntryCode} which is not a valid payment AR allocation line for this split.";
+            }
+
+            if (!PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
+                return $"split {split.DepositSplitId} linked to {journalEntryCode} but payment date {payment.PaymentDate:yyyy-MM-dd} is after deposit date {deposit.DepositDate:yyyy-MM-dd}.";
 
             if (!await SplitLineContextMatchesResolvedLineAsync(
                     split.PropertyId,
@@ -563,21 +640,28 @@ public partial class AccountingManager
             return;
         }
 
-        if (!PaymentAccountingMonthIsOnOrBeforeDeposit(payment.PaymentDate, deposit.DepositDate))
+        if (!PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
         {
-            trail?.Bail($"Exit: Payment month is after deposit month (payment {payment.PaymentDate:yyyy-MM-dd}, deposit {deposit.DepositDate:yyyy-MM-dd}).");
+            trail?.Bail($"Exit: Payment date is after deposit date (payment {payment.PaymentDate:yyyy-MM-dd}, deposit {deposit.DepositDate:yyyy-MM-dd}).");
             return;
         }
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
         if (undepositedFundsAccountId <= 0)
         {
             trail?.Bail("Exit: No default Undeposited Funds account configured for office.");
             return;
         }
 
-        var ufLines = new List<(Guid LineId, decimal Amount, JournalEntryLine Line, JournalEntry? JournalEntry)>();
+        if (accountsReceivableAccountId <= 0)
+        {
+            trail?.Bail("Exit: No default Accounts Receivable account configured for office.");
+            return;
+        }
+
+        var paymentLineCandidates = new List<UndepositedPaymentLineCandidate>();
         var paymentEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
             new JournalEntryGetByPaymentIdCriteria
             {
@@ -589,26 +673,18 @@ public partial class AccountingManager
             if (!IsRematchableHealthInvoicePaymentJournalEntry(paymentEntry))
                 continue;
 
-            foreach (var line in paymentEntry.JournalEntryLines ?? [])
-            {
-                if (line.ChartOfAccountId != undepositedFundsAccountId || line.JournalEntryLineId == Guid.Empty)
-                    continue;
-
-                var netAmount = Math.Abs(line.Debit - line.Credit);
-                if (netAmount <= 0.005m)
-                    continue;
-
-                ufLines.Add((
-                    line.JournalEntryLineId,
-                    netAmount,
-                    line,
-                    paymentEntry));
-            }
+            AppendUndepositedPaymentLineCandidates(
+                paymentLineCandidates,
+                paymentEntry,
+                undepositedFundsAccountId,
+                accountsReceivableAccountId,
+                payment.DepositId,
+                payment.PaymentDate);
         }
 
-        if (ufLines.Count == 0)
+        if (paymentLineCandidates.Count == 0)
         {
-            trail?.Bail("Exit: No UF lines on payment journal entries (kind 13/14 with PaymentId).");
+            trail?.Bail("Exit: No rematchable payment JE lines on payment journal entries (kind 13/14 with PaymentId).");
             return;
         }
 
@@ -623,50 +699,43 @@ public partial class AccountingManager
             if (!DepositSplitTargetsPayment(split, payment))
                 continue;
 
-            var splitAmount = Math.Abs(RoundCurrency(split.Amount));
             if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
             {
-                var existingLine = await GetJournalEntryLineByIdCachedAsync(existingLineId);
-                if (existingLine != null)
+                if (await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
                 {
-                    var existingNet = Math.Abs(existingLine.Debit - existingLine.Credit);
-                    var existingJe = await GetJournalEntryByIdCachedAsync(existingLine.JournalEntryId, payment.OrganizationId);
-                    if (existingJe?.PaymentId == payment.PaymentId
-                        && Math.Abs(existingNet - splitAmount) <= 0.005m
-                        && JournalEntryMatchesDepositAccountingMonth(deposit, payment.PaymentDate)
-                        && await SplitLineContextMatchesResolvedLineAsync(
-                            split.PropertyId,
-                            split.ReservationId,
-                            existingLine,
-                            payment.OrganizationId,
-                            BuildLinkContextHintsFromDepositSplit(split),
-                            existingJe))
-                    {
-                        assignedLineIds.Add(existingLineId);
-                        continue;
-                    }
+                    assignedLineIds.Add(existingLineId);
+                    continue;
                 }
 
                 split.JournalEntryLineId = null;
                 changed = true;
             }
 
-            var amountMatches = ufLines
-                .Where(line =>
-                    Math.Abs(line.Amount - splitAmount) <= 0.005m
-                    && !claimedByOtherDeposits.Contains(line.LineId)
-                    && !assignedLineIds.Contains(line.LineId))
+            var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+            var amountMatches = paymentLineCandidates
+                .Where(candidate =>
+                    !claimedByOtherDeposits.Contains(candidate.JournalEntryLineId)
+                    && !assignedLineIds.Contains(candidate.JournalEntryLineId)
+                    && Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount) <= 0.005m
+                    && PaymentTransactionDateIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate)
+                    && DepositSplitSourceCodeMatchesCandidateLine(
+                        split,
+                        ResolveDepositSplitInvoiceSourceCode(split, candidate.SourceCode),
+                        candidate.SourceCode))
                 .ToList();
-            var exactLineMatches = new List<(Guid LineId, decimal Amount, JournalEntryLine Line, JournalEntry? JournalEntry)>();
+            var exactLineMatches = new List<UndepositedPaymentLineCandidate>();
             foreach (var candidate in amountMatches)
             {
+                var line = await GetJournalEntryLineByIdCachedAsync(candidate.JournalEntryLineId);
+                if (line == null)
+                    continue;
+
                 if (await SplitLineContextMatchesResolvedLineAsync(
                         split.PropertyId,
                         split.ReservationId,
-                        candidate.Line,
+                        line,
                         payment.OrganizationId,
-                        BuildLinkContextHintsFromDepositSplit(split),
-                        candidate.JournalEntry))
+                        BuildLinkContextHintsFromDepositSplit(split)))
                 {
                     exactLineMatches.Add(candidate);
                 }
@@ -675,14 +744,14 @@ public partial class AccountingManager
             if (exactLineMatches.Count != 1)
                 continue;
 
-            split.JournalEntryLineId = exactLineMatches[0].LineId;
-            assignedLineIds.Add(exactLineMatches[0].LineId);
+            split.JournalEntryLineId = exactLineMatches[0].JournalEntryLineId;
+            assignedLineIds.Add(exactLineMatches[0].JournalEntryLineId);
             changed = true;
         }
 
         if (!changed)
         {
-            trail?.Bail("Exit: No deposit split changes applied — no exact split-to-UF-line match for this payment.");
+            trail?.Bail("Exit: No deposit split changes applied — no exact split-to-payment-line match for this payment.");
             return;
         }
 
@@ -690,7 +759,7 @@ public partial class AccountingManager
         var updated = await _accountingRepository.UpdateDepositAsync(deposit);
         deposit.Splits = updated.Splits;
         _officeSyncCache?.ReplaceDeposit(deposit);
-        trail?.Note("Applied deposit split link updates for payment UF line.");
+        trail?.Note("Applied deposit split link updates for payment JE line.");
     }
 
     private async Task<bool> DepositSplitLineStillPointsAtPaymentAsync(Guid organizationId, Guid journalEntryLineId)
@@ -828,19 +897,43 @@ public partial class AccountingManager
     private static bool IsPaymentLinkedJournalEntryForDepositUfRematch(JournalEntry entry)
         => IsRematchableHealthInvoicePaymentJournalEntry(entry);
 
-    private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(Deposit deposit, int undepositedFundsAccountId)
+    private async Task<List<UndepositedPaymentLineCandidate>> BuildUndepositedPaymentLineCandidatesAsync(
+        Deposit deposit,
+        int undepositedFundsAccountId,
+        int accountsReceivableAccountId)
     {
         if (_officeSyncCache != null)
-            return _officeSyncCache.GetOrBuildUndepositedCandidates(deposit, undepositedFundsAccountId);
+            return _officeSyncCache.GetOrBuildUndepositedCandidates(deposit, undepositedFundsAccountId, accountsReceivableAccountId);
 
+        return await BuildDepositPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId, accountsReceivableAccountId, rematchPaymentIds: null);
+    }
+
+    private async Task<List<UndepositedPaymentLineCandidate>> BuildStampedDepositPaymentLineCandidatesAsync(
+        Deposit deposit,
+        int undepositedFundsAccountId,
+        int accountsReceivableAccountId,
+        IReadOnlySet<Guid> rematchPaymentIds)
+        => await BuildDepositPaymentLineCandidatesAsync(deposit, undepositedFundsAccountId, accountsReceivableAccountId, rematchPaymentIds);
+
+    private async Task<List<UndepositedPaymentLineCandidate>> BuildDepositPaymentLineCandidatesAsync(
+        Deposit deposit,
+        int undepositedFundsAccountId,
+        int accountsReceivableAccountId,
+        IReadOnlySet<Guid>? rematchPaymentIds)
+    {
         var candidates = new List<UndepositedPaymentLineCandidate>();
-        var payments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-            deposit.OrganizationId,
-            deposit.OfficeId.ToString(),
-            (int)PaymentKind.Invoice);
+        var payments = _officeSyncCache != null
+            ? _officeSyncCache.Payments
+            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
+                deposit.OrganizationId,
+                deposit.OfficeId.ToString(),
+                (int)PaymentKind.Invoice)).ToList();
 
-        foreach (var payment in payments.Where(payment => payment.IsActive))
+        foreach (var payment in payments.Where(payment => payment.IsActive && payment.PaymentKindId == (int)PaymentKind.Invoice))
         {
+            if (rematchPaymentIds is { Count: > 0 } && !rematchPaymentIds.Contains(payment.PaymentId))
+                continue;
+
             var paymentEntries = await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId);
             foreach (var paymentEntry in paymentEntries)
             {
@@ -851,6 +944,7 @@ public partial class AccountingManager
                     candidates,
                     paymentEntry,
                     undepositedFundsAccountId,
+                    accountsReceivableAccountId,
                     payment.DepositId,
                     payment.PaymentDate);
             }
@@ -859,12 +953,33 @@ public partial class AccountingManager
         return candidates;
     }
 
-    private static void AppendUndepositedPaymentLineCandidates(ICollection<UndepositedPaymentLineCandidate> candidates, JournalEntry paymentEntry, int undepositedFundsAccountId, Guid? paymentDepositId, DateOnly paymentDate)
+    private static bool DepositSplitSourceCodeMatchesCandidateLine(
+        DepositSplit split,
+        string? splitSourceCode,
+        string candidateSourceCode)
+    {
+        if (string.IsNullOrWhiteSpace(candidateSourceCode))
+            return string.IsNullOrWhiteSpace(splitSourceCode);
+
+        if (!string.IsNullOrWhiteSpace(splitSourceCode)
+            && EntityCodeFormatting.CodesMatch(candidateSourceCode, splitSourceCode))
+        {
+            return true;
+        }
+
+        return PaymentMemoMatchesInvoiceSourceCode(split.Description, candidateSourceCode);
+    }
+
+    private static void AppendUndepositedPaymentLineCandidates(
+        ICollection<UndepositedPaymentLineCandidate> candidates,
+        JournalEntry paymentEntry,
+        int undepositedFundsAccountId,
+        int accountsReceivableAccountId,
+        Guid? paymentDepositId,
+        DateOnly paymentDate)
     {
         if (paymentDate == default || !IsPaymentLinkedJournalEntryForDepositUfRematch(paymentEntry))
             return;
-
-        var paymentSourceCode = ResolvePaymentJournalEntrySourceCode(paymentEntry);
 
         foreach (var line in paymentEntry.JournalEntryLines ?? [])
         {
@@ -872,11 +987,13 @@ public partial class AccountingManager
             if (Math.Abs(netAmount) <= 0.005m)
                 continue;
 
-            var isUndepositedFundsLine = line.ChartOfAccountId == undepositedFundsAccountId;
-            var sourceCode = isUndepositedFundsLine
-                ? paymentSourceCode
-                : ResolveJournalEntryLineInvoiceSourceCode(line, paymentEntry);
+            if (line.ChartOfAccountId == undepositedFundsAccountId)
+                continue;
 
+            if (line.ChartOfAccountId != accountsReceivableAccountId)
+                continue;
+
+            var sourceCode = ResolveJournalEntryLineInvoiceSourceCode(line, paymentEntry);
             if (string.IsNullOrWhiteSpace(sourceCode))
                 continue;
 
@@ -897,26 +1014,45 @@ public partial class AccountingManager
 
     private async Task<HashSet<Guid>> GetJournalEntryLineIdsClaimedByOtherDepositsAsync(Deposit deposit)
     {
-        if (_officeSyncCache != null)
-            return _officeSyncCache.GetClaimedDepositLineIdsExcluding(deposit.DepositId);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
+
+        var otherDeposits = _officeSyncCache != null
+            ? _officeSyncCache.Deposits.Where(otherDeposit =>
+                otherDeposit.IsActive && otherDeposit.DepositId != deposit.DepositId).ToList()
+            : (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+            {
+                OrganizationId = deposit.OrganizationId,
+                OfficeIds = deposit.OfficeId.ToString(),
+                IsActive = true,
+                IncludeInactive = false
+            })).Where(otherDeposit => otherDeposit.DepositId != deposit.DepositId).ToList();
 
         var claimedLineIds = new HashSet<Guid>();
-        var deposits = (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        foreach (var otherDeposit in otherDeposits)
         {
-            OrganizationId = deposit.OrganizationId,
-            OfficeIds = deposit.OfficeId.ToString(),
-            IsActive = true,
-            IncludeInactive = false
-        })).ToList();
-
-        foreach (var otherDeposit in deposits)
-        {
-            if (otherDeposit.DepositId == deposit.DepositId || otherDeposit.IsActive == false)
-                continue;
-
             foreach (var split in otherDeposit.Splits ?? [])
             {
-                if (split.JournalEntryLineId is { } journalEntryLineId && journalEntryLineId != Guid.Empty)
+                if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
+                    continue;
+
+                if (undepositedFundsAccountId <= 0
+                    || accountsReceivableAccountId <= 0
+                    || !IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                {
+                    continue;
+                }
+
+                var linkedLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+                if (linkedLine == null
+                    || linkedLine.ChartOfAccountId == undepositedFundsAccountId
+                    || linkedLine.ChartOfAccountId != accountsReceivableAccountId)
+                {
+                    continue;
+                }
+
+                if (await IsValidDepositSplitJournalEntryLineAsync(otherDeposit, split, undepositedFundsAccountId))
                     claimedLineIds.Add(journalEntryLineId);
             }
         }
@@ -1007,7 +1143,6 @@ public partial class AccountingManager
         if (splitAmount <= 0.005m)
             return null;
 
-        var splitSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
         var hints = BuildLinkContextHintsFromDepositSplit(split);
 
         var amountMatches = candidates
@@ -1016,10 +1151,18 @@ public partial class AccountingManager
                 && !claimedLineIds.Contains(candidate.JournalEntryLineId)
                 && !assignedLineIds.Contains(candidate.JournalEntryLineId)
                 && Math.Abs(Math.Abs(candidate.NetAmount) - splitAmount) <= 0.005m
-                && PaymentAccountingMonthIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate)
-                && (string.IsNullOrWhiteSpace(splitSourceCode)
-                    || EntityCodeFormatting.CodesMatch(candidate.SourceCode, splitSourceCode)))
+                && PaymentTransactionDateIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate)
+                && DepositSplitSourceCodeMatchesCandidateLine(
+                    split,
+                    ResolveDepositSplitInvoiceSourceCode(split, candidate.SourceCode),
+                    candidate.SourceCode))
             .ToList();
+
+        if (amountMatches.Count == 1)
+            return amountMatches[0].JournalEntryLineId;
+
+        if (amountMatches.Count == 0)
+            return null;
 
         var contextMatches = new List<UndepositedPaymentLineCandidate>();
         foreach (var candidate in amountMatches)
@@ -1042,15 +1185,49 @@ public partial class AccountingManager
         return contextMatches.Count == 1 ? contextMatches[0].JournalEntryLineId : null;
     }
 
-    private static string? ResolveDepositSplitInvoiceSourceCode(DepositSplit split)
+    private static IReadOnlyList<string> ResolveDepositSplitPaymentMemoInvoiceSourceCodes(DepositSplit split)
+    {
+        var description = (split.Description ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(description))
+            return Array.Empty<string>();
+
+        var paymentMemoMatch = MatchPaymentMemo(description);
+        if (paymentMemoMatch.IsMatch && paymentMemoMatch.SourceCodes.Count > 0)
+            return paymentMemoMatch.SourceCodes;
+
+        return Array.Empty<string>();
+    }
+
+    private static string? ResolveDepositSplitInvoiceSourceCode(
+        DepositSplit split,
+        string? matchingInvoiceSourceCode = null)
     {
         var description = (split.Description ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(description))
             return null;
 
         var paymentMemoMatch = MatchPaymentMemo(description);
-        if (paymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(paymentMemoMatch.SourceCode))
-            return paymentMemoMatch.SourceCode.Trim();
+        if (paymentMemoMatch.IsMatch)
+        {
+            if (paymentMemoMatch.SourceCodes.Count == 1)
+                return paymentMemoMatch.SourceCodes[0].Trim();
+
+            if (paymentMemoMatch.SourceCodes.Count > 1)
+            {
+                if (!string.IsNullOrWhiteSpace(matchingInvoiceSourceCode))
+                {
+                    foreach (var code in paymentMemoMatch.SourceCodes)
+                    {
+                        if (EntityCodeFormatting.CodesMatch(code, matchingInvoiceSourceCode))
+                            return code.Trim();
+                    }
+
+                    return null;
+                }
+
+                return null;
+            }
+        }
 
         var prepaymentMemoMatch = MatchPrePaymentMemo(description);
         if (prepaymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(prepaymentMemoMatch.SourceCode))
@@ -1073,8 +1250,14 @@ public partial class AccountingManager
             return string.Empty;
 
         var paymentMemoMatch = MatchPaymentMemo(memo);
-        if (paymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(paymentMemoMatch.SourceCode))
-            return paymentMemoMatch.SourceCode.Trim();
+        if (paymentMemoMatch.IsMatch)
+        {
+            if (paymentMemoMatch.SourceCodes.Count == 1)
+                return paymentMemoMatch.SourceCodes[0].Trim();
+
+            if (paymentMemoMatch.SourceCodes.Count > 1)
+                return string.Empty;
+        }
 
         var prepaymentMemoMatch = MatchPrePaymentMemo(memo);
         if (prepaymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(prepaymentMemoMatch.SourceCode))
@@ -1093,8 +1276,8 @@ public partial class AccountingManager
             return paymentEntry.SourceCode.Trim();
 
         var memoMatch = MatchPaymentMemo(paymentEntry.Memo, paymentEntry.JournalEntryLines?.FirstOrDefault()?.Memo);
-        if (memoMatch.IsMatch && !string.IsNullOrWhiteSpace(memoMatch.SourceCode))
-            return memoMatch.SourceCode.Trim();
+        if (memoMatch.IsMatch && memoMatch.SourceCodes.Count == 1)
+            return memoMatch.SourceCodes[0].Trim();
 
         var prepaymentMemoMatch = MatchPrePaymentMemo(paymentEntry.Memo, paymentEntry.JournalEntryLines?.FirstOrDefault()?.Memo);
         if (prepaymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(prepaymentMemoMatch.SourceCode))
@@ -1171,45 +1354,37 @@ public partial class AccountingManager
 
     private async Task<DepositSplitReservationContext?> ResolveDepositSplitReservationContextAsync(Deposit deposit, DepositSplit split)
     {
-        var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
-        if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
+        var paymentMemoInvoiceCodes = ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split);
+        if (paymentMemoInvoiceCodes.Count > 1)
         {
-            var invoiceId = await ResolveInvoiceIdBySourceCodeAsync(
-                deposit.OrganizationId,
-                deposit.OfficeId,
-                invoiceSourceCode);
-            if (invoiceId != Guid.Empty)
+            DepositSplitReservationContext? soleMatch = null;
+            foreach (var invoiceSourceCode in paymentMemoInvoiceCodes)
             {
-                if (_officeSyncCache != null
-                    && _officeSyncCache.InvoicesById.TryGetValue(invoiceId, out var cachedInvoice)
-                    && cachedInvoice.ReservationId is { } cachedReservationId
-                    && cachedReservationId != Guid.Empty)
-                {
-                    return new DepositSplitReservationContext
-                    {
-                        ReservationId = cachedReservationId,
-                        PropertyId = NormalizeOptionalGuid(cachedInvoice.PropertyId)
-                            ?? await ResolvePropertyIdForReservationAsync(cachedReservationId, deposit.OrganizationId)
-                    };
-                }
+                var context = await TryResolveDepositSplitReservationContextFromInvoiceSourceCodeAsync(
+                    deposit,
+                    invoiceSourceCode);
+                if (context == null)
+                    continue;
 
-                var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-                {
-                    OrganizationId = deposit.OrganizationId,
-                    OfficeIds = deposit.OfficeId.ToString(),
-                    IncludeInactive = true,
-                    IncludePaid = true
-                });
-                var invoice = invoices.FirstOrDefault(item => item.InvoiceId == invoiceId);
-                if (invoice?.ReservationId is { } resolvedFromInvoice && resolvedFromInvoice != Guid.Empty)
-                {
-                    return new DepositSplitReservationContext
-                    {
-                        ReservationId = resolvedFromInvoice,
-                        PropertyId = NormalizeOptionalGuid(invoice.PropertyId)
-                            ?? await ResolvePropertyIdForReservationAsync(resolvedFromInvoice, deposit.OrganizationId)
-                    };
-                }
+                if (soleMatch != null && soleMatch.ReservationId != context.ReservationId)
+                    return null;
+
+                soleMatch = context;
+            }
+
+            if (soleMatch != null)
+                return soleMatch;
+        }
+        else
+        {
+            var invoiceSourceCode = ResolveDepositSplitInvoiceSourceCode(split);
+            if (!string.IsNullOrWhiteSpace(invoiceSourceCode))
+            {
+                var context = await TryResolveDepositSplitReservationContextFromInvoiceSourceCodeAsync(
+                    deposit,
+                    invoiceSourceCode);
+                if (context != null)
+                    return context;
             }
         }
 
@@ -1267,6 +1442,52 @@ public partial class AccountingManager
         }
 
         return null;
+    }
+
+    private async Task<DepositSplitReservationContext?> TryResolveDepositSplitReservationContextFromInvoiceSourceCodeAsync(
+        Deposit deposit,
+        string invoiceSourceCode)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+            return null;
+
+        var invoiceId = await ResolveInvoiceIdBySourceCodeAsync(
+            deposit.OrganizationId,
+            deposit.OfficeId,
+            invoiceSourceCode);
+        if (invoiceId == Guid.Empty)
+            return null;
+
+        if (_officeSyncCache != null
+            && _officeSyncCache.InvoicesById.TryGetValue(invoiceId, out var cachedInvoice)
+            && cachedInvoice.ReservationId is { } cachedReservationId
+            && cachedReservationId != Guid.Empty)
+        {
+            return new DepositSplitReservationContext
+            {
+                ReservationId = cachedReservationId,
+                PropertyId = NormalizeOptionalGuid(cachedInvoice.PropertyId)
+                    ?? await ResolvePropertyIdForReservationAsync(cachedReservationId, deposit.OrganizationId)
+            };
+        }
+
+        var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = deposit.OrganizationId,
+            OfficeIds = deposit.OfficeId.ToString(),
+            IncludeInactive = true,
+            IncludePaid = true
+        });
+        var invoice = invoices.FirstOrDefault(item => item.InvoiceId == invoiceId);
+        if (invoice?.ReservationId is not { } resolvedFromInvoice || resolvedFromInvoice == Guid.Empty)
+            return null;
+
+        return new DepositSplitReservationContext
+        {
+            ReservationId = resolvedFromInvoice,
+            PropertyId = NormalizeOptionalGuid(invoice.PropertyId)
+                ?? await ResolvePropertyIdForReservationAsync(resolvedFromInvoice, deposit.OrganizationId)
+        };
     }
 
     private async Task<Guid?> ResolvePropertyIdForReservationAsync(Guid reservationId, Guid organizationId)
@@ -1339,7 +1560,8 @@ public partial class AccountingManager
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, payment.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, payment.OfficeId, accountingOffice);
-        var paymentUndepositedFundsLineIds = CollectPaymentUndepositedFundsLineIds(paymentJournalEntries, undepositedFundsAccountId);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, payment.OfficeId, accountingOffice);
+        var paymentAllocationLineIds = CollectPaymentAccountsReceivableLineIds(paymentJournalEntries, accountsReceivableAccountId);
 
         var depositChanged = false;
         foreach (var split in deposit.Splits ?? [])
@@ -1348,7 +1570,7 @@ public partial class AccountingManager
                     split,
                     payment,
                     undepositedFundsAccountId,
-                    paymentUndepositedFundsLineIds,
+                    paymentAllocationLineIds,
                     organizationId))
             {
                 continue;
@@ -1427,11 +1649,35 @@ public partial class AccountingManager
         return lineIds;
     }
 
+    private static HashSet<Guid> CollectPaymentAccountsReceivableLineIds(
+        IReadOnlyList<JournalEntry> paymentJournalEntries,
+        int accountsReceivableAccountId)
+    {
+        var lineIds = new HashSet<Guid>();
+        if (accountsReceivableAccountId <= 0)
+            return lineIds;
+
+        foreach (var journalEntry in paymentJournalEntries)
+        {
+            foreach (var line in journalEntry.JournalEntryLines ?? [])
+            {
+                if (line.JournalEntryLineId != Guid.Empty
+                    && line.ChartOfAccountId == accountsReceivableAccountId
+                    && Math.Abs(line.Debit - line.Credit) > 0.005m)
+                {
+                    lineIds.Add(line.JournalEntryLineId);
+                }
+            }
+        }
+
+        return lineIds;
+    }
+
     private async Task<bool> DepositSplitLinksToInvoicePaymentAsync(
         DepositSplit split,
         Payment payment,
         int undepositedFundsAccountId,
-        IReadOnlySet<Guid> paymentUndepositedFundsLineIds,
+        IReadOnlySet<Guid> paymentAllocationLineIds,
         Guid organizationId)
     {
         if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
@@ -1440,7 +1686,7 @@ public partial class AccountingManager
         if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
             return false;
 
-        if (paymentUndepositedFundsLineIds.Contains(lineId))
+        if (paymentAllocationLineIds.Contains(lineId))
             return true;
 
         if (await ResolvePaymentIdFromDepositSplitLineAsync(split, organizationId) == payment.PaymentId)

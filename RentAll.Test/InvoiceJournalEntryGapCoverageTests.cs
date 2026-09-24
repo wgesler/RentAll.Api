@@ -83,7 +83,31 @@ public class InvoiceJournalEntryGapCoverageTests
         var memo = AccountingManager.BuildInvoicePaymentMemo(invoiceCode, paymentDescription);
 
         Assert.Equal($"{invoiceCode}: Payment: {paymentDescription}", memo);
-        Assert.True(AccountingManager.MatchPaymentMemo(memo).IsMatch);
+        var match = AccountingManager.MatchPaymentMemo(memo);
+        Assert.True(match.IsMatch);
+        Assert.Single(match.SourceCodes);
+        Assert.Equal(invoiceCode, match.SourceCode);
+    }
+
+    [Fact]
+    public void ConsolidatedPaymentDocument_UndepositedFundsMemo_ListsAllInvoicesBeforePaymentDetail()
+    {
+        var memo = AccountingManager.BuildInvoicePaymentMemo(
+            new[] { "R-000008-005", "R-000008-006", "R-000008-008" },
+            "Check #123");
+
+        Assert.Equal("R-000008-005: R-000008-006: R-000008-008: Payment: Check #123", memo);
+        var match = AccountingManager.MatchPaymentMemo(memo);
+        Assert.True(match.IsMatch);
+        Assert.Equal(3, match.SourceCodes.Count);
+        Assert.Equal(string.Empty, match.SourceCode);
+        Assert.True(AccountingManager.PaymentMemoMatchesInvoiceSourceCode(memo, "R-000008-006"));
+
+        var memoFromPaymentPrefix = AccountingManager.BuildInvoicePaymentMemo(
+            new[] { "R-000008-005", "R-000008-006" },
+            "Payment: Check #123");
+
+        Assert.Equal("R-000008-005: R-000008-006: Payment: Check #123", memoFromPaymentPrefix);
     }
 
     [Fact]

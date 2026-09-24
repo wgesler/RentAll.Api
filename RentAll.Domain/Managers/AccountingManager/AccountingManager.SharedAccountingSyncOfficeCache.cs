@@ -40,7 +40,7 @@ public partial class AccountingManager
 
         private readonly Dictionary<(int OfficeId, int EscrowAccountId), List<TransferDepositInvoiceEscrowMatch>> _transferInvoiceMatches = new();
         private readonly Dictionary<(int OfficeId, int EscrowAccountId), List<EscrowDepositLineCandidate>> _escrowCandidates = new();
-        private readonly Dictionary<(int OfficeId, int UndepositedFundsAccountId), List<UndepositedPaymentLineCandidate>> _undepositedCandidates = new();
+        private readonly Dictionary<(int OfficeId, int AccountsReceivableAccountId), List<UndepositedPaymentLineCandidate>> _undepositedCandidates = new();
 
         public void IndexDocuments(IEnumerable<Payment> payments, IEnumerable<Deposit> deposits, IEnumerable<Transfer> transfers, IEnumerable<Invoice>? invoices = null)
         {
@@ -199,6 +199,8 @@ public partial class AccountingManager
             _escrowCandidates.Clear();
             _undepositedCandidates.Clear();
         }
+
+        public void InvalidateRematchIndexes() => InvalidateDerivedRematchIndexes();
 
         public void ReplaceDeposit(Deposit deposit)
         {
@@ -419,9 +421,12 @@ public partial class AccountingManager
             return candidates.ToList();
         }
 
-        public List<UndepositedPaymentLineCandidate> GetOrBuildUndepositedCandidates(Deposit deposit, int undepositedFundsAccountId)
+        public List<UndepositedPaymentLineCandidate> GetOrBuildUndepositedCandidates(
+            Deposit deposit,
+            int undepositedFundsAccountId,
+            int accountsReceivableAccountId)
         {
-            var key = (deposit.OfficeId, undepositedFundsAccountId);
+            var key = (deposit.OfficeId, accountsReceivableAccountId);
             if (_undepositedCandidates.TryGetValue(key, out var cached))
                 return cached.ToList();
 
@@ -437,6 +442,7 @@ public partial class AccountingManager
                         candidates,
                         paymentEntry,
                         undepositedFundsAccountId,
+                        accountsReceivableAccountId,
                         payment.DepositId,
                         payment.PaymentDate);
                 }

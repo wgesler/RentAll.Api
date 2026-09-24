@@ -648,31 +648,31 @@ public partial class AccountingManager
             foreach (var deposit in deposits)
             {
                 result.DocumentsProcessed++;
+                var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
+                    ? deposit.DepositId.ToString()
+                    : deposit.DepositCode.Trim();
                 try
                 {
-                    var originalSplitLineIds = (deposit.Splits ?? [])
-                        .Select(split => split.JournalEntryLineId)
-                        .ToList();
-                    await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit);
-                    if (DepositSplitJournalEntryLineIdsChanged(originalSplitLineIds, deposit.Splits))
-                    {
-                        deposit.ModifiedBy = currentUser;
-                        var updated = await _accountingRepository.UpdateDepositAsync(deposit);
-                        deposit.Splits = updated.Splits;
-                        _officeSyncCache?.ReplaceDeposit(deposit);
-                    }
-                    else
+                    if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
                     {
                         _officeSyncCache?.ReplaceDeposit(deposit);
+                        continue;
                     }
 
-                    await SyncPaymentDepositIdsForDepositAsync(deposit, currentUser);
+                    var trail = new AccountingSyncBailTrail();
+                    await RepairDepositUfSplitLinksForHealthFixAsync(
+                        deposit,
+                        organizationId,
+                        currentUser,
+                        result,
+                        trail);
+
+                    var refreshedDeposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
+                    _officeSyncCache?.ReplaceDeposit(refreshedDeposit);
+                    await SyncPaymentDepositIdsForDepositAsync(refreshedDeposit, currentUser);
                 }
                 catch (Exception ex)
                 {
-                    var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
-                        ? deposit.DepositId.ToString()
-                        : deposit.DepositCode.Trim();
                     result.Errors.Add($"Deposit {depositLabel} split-link repair: {ex.Message}");
                 }
 

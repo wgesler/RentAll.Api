@@ -91,6 +91,7 @@ public interface IAccountingRepository
     Task<IEnumerable<Deposit>> GetDepositsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<Deposit>> GetDepositsByPropertyIdAsync(Guid propertyId, Guid organizationId, string officeAccess);
     Task<Deposit?> GetDepositByIdAsync(Guid depositId, Guid organizationId);
+    Task<DepositSplitArRematchCandidates> GetDepositSplitArRematchCandidatesAsync(Guid organizationId, Guid depositId);
     #endregion
 
     #region Post

@@ -28,6 +28,7 @@ public partial class AccountingManager
         public Guid? InvoiceId { get; init; }
         public string SourceCode { get; init; } = string.Empty;
         public string PaymentMemoSourceCode { get; init; } = string.Empty;
+        public string PaymentMemo { get; init; } = string.Empty;
         public decimal SplitAmount { get; init; }
         public Guid? PropertyId { get; init; }
         public Guid? ReservationId { get; init; }
@@ -508,6 +509,7 @@ public partial class AccountingManager
             InvoiceId = invoiceId,
             SourceCode = paymentJournalEntry.SourceCode.Trim(),
             PaymentMemoSourceCode = ResolveTransferDepositPaymentMemoSourceCode(paymentJournalEntry, paymentLine),
+            PaymentMemo = CoalesceJournalEntryMemo(paymentJournalEntry.Memo, paymentLine?.Memo),
             SplitAmount = split.Amount,
             PropertyId = split.PropertyId,
             ReservationId = split.ReservationId,
@@ -667,8 +669,8 @@ public partial class AccountingManager
     private static string ResolveTransferDepositPaymentMemoSourceCode(JournalEntry paymentJournalEntry, JournalEntryLine? paymentLine = null)
     {
         var paymentMemoMatch = MatchPaymentMemo(paymentJournalEntry.Memo, paymentLine?.Memo);
-        if (paymentMemoMatch.IsMatch && !string.IsNullOrWhiteSpace(paymentMemoMatch.SourceCode))
-            return paymentMemoMatch.SourceCode.Trim();
+        if (paymentMemoMatch.IsMatch && paymentMemoMatch.SourceCodes.Count == 1)
+            return paymentMemoMatch.SourceCodes[0].Trim();
 
         return paymentJournalEntry.SourceCode?.Trim() ?? string.Empty;
     }
@@ -698,6 +700,9 @@ public partial class AccountingManager
             return false;
 
         var chargePrefix = memo.Split(':', 2, StringSplitOptions.None)[0].Trim();
+        if (!string.IsNullOrWhiteSpace(scope.PaymentMemo))
+            return PaymentMemoMatchesInvoiceSourceCode(scope.PaymentMemo, chargePrefix);
+
         return EntityCodeFormatting.CodesMatch(chargePrefix, scope.PaymentMemoSourceCode);
     }
 

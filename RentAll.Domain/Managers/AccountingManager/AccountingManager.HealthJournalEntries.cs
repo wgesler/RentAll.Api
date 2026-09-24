@@ -27,8 +27,21 @@ public partial class AccountingManager
 
     private async Task<JournalEntrySyncResult> RunHealthFixForDocumentsAsync(Guid organizationId, string officeIds, string syncType, IReadOnlyList<Guid> documentIds, int? paymentKindId, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress)
     {
-        // Always scan the office health-check proc first; issues drive the one-by-one repair list.
-        var distinctIds = await ResolveBrokenDocumentIdsFromHealthScanAsync(organizationId, officeIds, syncType, paymentKindId);
+        var scannedIds = await ResolveBrokenDocumentIdsFromHealthScanAsync(organizationId, officeIds, syncType, paymentKindId);
+        var distinctIds = documentIds.Count > 0
+            ? documentIds.Where(id => id != Guid.Empty).Concat(scannedIds).Distinct().ToList()
+            : scannedIds;
+        if (syncType == "deposit")
+        {
+            await ClearInvalidOfficeDepositSplitLinksForHealthFixAsync(organizationId, officeIds, currentUser);
+            await ClearDepositPaymentDateViolationsForOfficeHealthFixAsync(organizationId, officeIds, currentUser);
+            await ReleaseMisstampedInvoicePaymentsForOfficeHealthFixAsync(organizationId, officeIds, currentUser);
+            distinctIds = await OrderDepositIdsForHealthFixAsync(organizationId, distinctIds);
+        }
+        else if (syncType == "transfer")
+        {
+            await ClearTransferDepositDateViolationsForOfficeHealthFixAsync(organizationId, officeIds, currentUser);
+        }
 
         var result = new JournalEntrySyncResult();
         if (distinctIds.Count == 0)
@@ -484,12 +497,11 @@ public partial class AccountingManager
                     reason: trail.FormatBailTrail(),
                     detail: $"Deposit={deposit.DepositCode} — cleared wrong link(s), re-linking next.");
             }
+
+            deposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
+            await RepairDepositUfSplitLinksForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
+            deposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
         }
-
-        await ReconcileDepositSplitsForPaymentAsync(payment, currentUser, trail);
-
-        if (trail.Trail.Any(line => line.StartsWith("Applied deposit split link updates", StringComparison.OrdinalIgnoreCase)))
-            return;
 
         deposit ??= payment.DepositId is { } missingDepositId && missingDepositId != Guid.Empty
             ? await _accountingRepository.GetDepositByIdAsync(missingDepositId, payment.OrganizationId)
@@ -519,7 +531,8 @@ public partial class AccountingManager
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(payment.OrganizationId, payment.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, payment.OfficeId, accountingOffice);
-        if (undepositedFundsAccountId <= 0)
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, payment.OfficeId, accountingOffice);
+        if (undepositedFundsAccountId <= 0 || accountsReceivableAccountId <= 0)
             return false;
 
         var paymentEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
@@ -539,7 +552,12 @@ public partial class AccountingManager
                 if (line.JournalEntryLineId == Guid.Empty || Math.Abs(line.Debit - line.Credit) <= 0.005m)
                     continue;
 
-                if ((deposit.Splits ?? []).Any(split => split.JournalEntryLineId == line.JournalEntryLineId))
+                if (line.ChartOfAccountId != accountsReceivableAccountId)
+                    continue;
+
+                if ((deposit.Splits ?? []).Any(split =>
+                        split.JournalEntryLineId == line.JournalEntryLineId
+                        && IsPaymentBackedDepositSplit(split, undepositedFundsAccountId)))
                     return true;
             }
         }
@@ -579,6 +597,12 @@ public partial class AccountingManager
             return;
         }
 
+        if (IsDepositExcludedFromArRematchScopeBySplitMemo(deposit))
+        {
+            result.JournalEntriesSkipped++;
+            return;
+        }
+
         var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
             ? deposit.DepositId.ToString()
             : deposit.DepositCode.Trim();
@@ -590,55 +614,7 @@ public partial class AccountingManager
             organizationId,
             currentUser);
 
-        await TryStampBatchPaymentForDepositHealthFixAsync(deposit, organizationId, currentUser);
-
-        var originalSplitLineIds = (deposit.Splits ?? [])
-            .Select(split => split.JournalEntryLineId)
-            .ToList();
-        var originalSplitReservationIds = (deposit.Splits ?? [])
-            .Select(split => split.ReservationId)
-            .ToList();
-        var originalSplitPropertyIds = (deposit.Splits ?? [])
-            .Select(split => split.PropertyId)
-            .ToList();
-        await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail);
-        if (DepositSplitReconciliationChanged(
-                originalSplitLineIds,
-                originalSplitReservationIds,
-                originalSplitPropertyIds,
-                deposit.Splits))
-        {
-            deposit.ModifiedBy = currentUser;
-            var updated = await _accountingRepository.UpdateDepositAsync(deposit);
-            deposit.Splits = updated.Splits;
-            _officeSyncCache?.ReplaceDeposit(deposit);
-        }
-
-        await StampPaymentDepositIdsAfterSplitReconcileAsync(deposit, organizationId, currentUser);
-
-        await ResyncStampedPaymentsForDepositHealthFixAsync(deposit, organizationId, currentUser, result);
-
-        originalSplitLineIds = (deposit.Splits ?? [])
-            .Select(split => split.JournalEntryLineId)
-            .ToList();
-        originalSplitReservationIds = (deposit.Splits ?? [])
-            .Select(split => split.ReservationId)
-            .ToList();
-        originalSplitPropertyIds = (deposit.Splits ?? [])
-            .Select(split => split.PropertyId)
-            .ToList();
-        await ReconcileDepositSplitJournalEntryLineIdsAsync(deposit, trail);
-        if (DepositSplitReconciliationChanged(
-                originalSplitLineIds,
-                originalSplitReservationIds,
-                originalSplitPropertyIds,
-                deposit.Splits))
-        {
-            deposit.ModifiedBy = currentUser;
-            var updated = await _accountingRepository.UpdateDepositAsync(deposit);
-            deposit.Splits = updated.Splits;
-            _officeSyncCache?.ReplaceDeposit(deposit);
-        }
+        await RepairDepositUfSplitLinksForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
 
         if (await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId))
         {

@@ -51,7 +51,22 @@ public partial class AccountingManager
     private async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesByPaymentIdCachedAsync(Guid organizationId, Guid paymentId)
     {
         if (_officeSyncCache != null)
-            return _officeSyncCache.GetByPaymentId(paymentId);
+        {
+            var cached = _officeSyncCache.GetByPaymentId(paymentId);
+            if (cached.Count > 0)
+                return cached;
+
+            var loaded = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
+            {
+                OrganizationId = organizationId,
+                PaymentId = paymentId
+            })).ToList();
+
+            if (loaded.Count > 0)
+                _officeSyncCache.IndexJournalEntries(loaded);
+
+            return loaded;
+        }
 
         return (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
         {
@@ -120,11 +135,26 @@ public partial class AccountingManager
     private static bool PaymentAccountingMonthIsOnOrBeforeDeposit(DateOnly paymentDate, DateOnly depositDate)
         => MoneyDateMonthIsOnOrBefore(paymentDate, depositDate);
 
+    private static bool PaymentTransactionDateIsOnOrBeforeDeposit(DateOnly paymentDate, DateOnly depositDate)
+        => paymentDate != default && depositDate != default && paymentDate <= depositDate;
+
     private static bool DepositAccountingMonthIsOnOrBeforeTransfer(DateOnly depositDate, DateOnly transferDate)
         => MoneyDateMonthIsOnOrBefore(depositDate, transferDate);
 
+    private static bool DepositTransactionDateIsOnOrBeforeTransfer(DateOnly depositDate, DateOnly transferDate)
+        => depositDate != default && transferDate != default && depositDate <= transferDate;
+
+    private static bool DepositMatchesTransferTransactionDate(Transfer transfer, DateOnly depositDate)
+        => DepositTransactionDateIsOnOrBeforeTransfer(depositDate, transfer.TransferDate);
+
+    private static bool DepositMatchesTransferTransactionDate(Transfer transfer, Deposit deposit)
+        => DepositMatchesTransferTransactionDate(transfer, deposit.DepositDate);
+
     private static bool JournalEntryMatchesDepositAccountingMonth(Deposit deposit, DateOnly? paymentDate)
         => paymentDate is { } date && PaymentAccountingMonthIsOnOrBeforeDeposit(date, deposit.DepositDate);
+
+    private static bool PaymentMatchesDepositTransactionDate(Deposit deposit, DateOnly paymentDate)
+        => PaymentTransactionDateIsOnOrBeforeDeposit(paymentDate, deposit.DepositDate);
 
     /// <summary>
     /// Strict split-to-line context: when the split has property or reservation set, the line must match exactly.

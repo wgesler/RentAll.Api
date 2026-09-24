@@ -91,22 +91,15 @@ public partial class AccountingManager
         var scan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
         var result = new JournalEntrySyncResult();
 
+        if (scan.Summary.IsClean)
+            return result;
+
         var paymentIds = new HashSet<Guid>();
         var depositIds = new HashSet<Guid>();
         var transferIds = new HashSet<Guid>();
         HealthDocumentTypeIdentification.CollectFixTargets(scan.Issues, paymentIds, depositIds, transferIds);
-
-        if (paymentIds.Count > 0)
-        {
-            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
-                organizationId,
-                officeIds,
-                "payment",
-                paymentIds.ToList(),
-                (int)PaymentKind.Invoice,
-                currentUser,
-                progress));
-        }
+        await CollectDepositedPaymentDepositIdsForDocumentLinkFixAsync(organizationId, scan.Issues, paymentIds, depositIds);
+        CollectDepositIdsFromUfSplitDocumentLinkIssues(scan.Issues, depositIds);
 
         if (depositIds.Count > 0)
         {
@@ -116,6 +109,18 @@ public partial class AccountingManager
                 "deposit",
                 depositIds.ToList(),
                 paymentKindId: null,
+                currentUser,
+                progress));
+        }
+
+        if (paymentIds.Count > 0)
+        {
+            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
+                organizationId,
+                officeIds,
+                "payment",
+                paymentIds.ToList(),
+                (int)PaymentKind.Invoice,
                 currentUser,
                 progress));
         }
@@ -133,13 +138,6 @@ public partial class AccountingManager
         }
 
         await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(scan.Issues, organizationId, currentUser, result);
-        if ((scan.Issues ?? []).Any(issue =>
-                (issue.Issue ?? string.Empty).Contains("accounting period mismatch", StringComparison.OrdinalIgnoreCase)))
-        {
-            MergeSyncResults(
-                result,
-                await RepairDepositAndTransferSplitLinksAsync(organizationId, officeIds, currentUser, progress));
-        }
 
         await SyncDocumentLinksForHealthFixTargetsAsync(
             organizationId,
@@ -149,7 +147,22 @@ public partial class AccountingManager
             transferIds,
             currentUser,
             progress);
+
         return result;
+    }
+
+    private static void CollectDepositIdsFromUfSplitDocumentLinkIssues(
+        IReadOnlyList<DocumentHealthIssue>? issues,
+        ISet<Guid> depositIds)
+    {
+        foreach (var issue in issues ?? [])
+        {
+            if (!(issue.Issue ?? string.Empty).Contains("Deposit UF split", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (issue.DocumentId != Guid.Empty)
+                depositIds.Add(issue.DocumentId);
+        }
     }
 
     private async Task SyncDocumentLinksForHealthFixTargetsAsync(Guid organizationId, string officeIds, IReadOnlySet<Guid> paymentIds, IReadOnlySet<Guid> depositIds, IReadOnlySet<Guid> transferIds, Guid currentUser, IProgress<JournalEntrySyncProgress>? progress)
@@ -207,6 +220,35 @@ public partial class AccountingManager
                 ReportSyncProgress(progress, "documentLinkTransfer", total, processed, linkResult, processed >= total ? "Completed" : "Running");
             }
         });
+    }
+
+    private async Task CollectDepositedPaymentDepositIdsForDocumentLinkFixAsync(
+        Guid organizationId,
+        IReadOnlyList<DocumentHealthIssue>? issues,
+        ISet<Guid> paymentIds,
+        ISet<Guid> depositIds)
+    {
+        foreach (var issue in issues ?? [])
+        {
+            if (!(issue.Issue ?? string.Empty).Contains(
+                    "Deposited payment journal entry missing deposit stamp",
+                    StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (issue.DocumentId == Guid.Empty)
+                continue;
+
+            paymentIds.Add(issue.DocumentId);
+
+            Payment? payment = null;
+            if (_officeSyncCache != null && _officeSyncCache.PaymentsById.TryGetValue(issue.DocumentId, out var cachedPayment))
+                payment = cachedPayment;
+            else
+                payment = await _accountingRepository.GetPaymentByIdAsync(issue.DocumentId, organizationId);
+
+            if (payment?.DepositId is { } depositId && depositId != Guid.Empty)
+                depositIds.Add(depositId);
+        }
     }
 
     private static void MergeSyncResults(JournalEntrySyncResult target, JournalEntrySyncResult source)

@@ -1,6 +1,7 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Text.RegularExpressions;
+using EntityCodeFormatting = RentAll.Domain.EntityCodeFormatting;
 
 namespace RentAll.Domain.Managers;
 
@@ -54,7 +55,8 @@ public partial class AccountingManager
         return $"{invoice.InvoiceCode.Trim()}: {line.Description.Trim()}";
     }
 
-    // Example: R-001053-001: Payment: Check #123
+    // Example (one invoice): R-001053-001: Payment: Check #123
+    // Example (multi): R-000008-005: R-000008-006: R-000008-008: Payment: Check #123
     public static string BuildInvoicePaymentMemo(string invoiceCode, string ledgerLineDescription)
     {
         if (string.IsNullOrWhiteSpace(invoiceCode))
@@ -62,7 +64,62 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(ledgerLineDescription))
             throw new ArgumentException("Ledger line description is required.", nameof(ledgerLineDescription));
 
-        return $"{invoiceCode.Trim()}: Payment: {ledgerLineDescription.Trim()}";
+        return BuildInvoicePaymentMemo(new[] { invoiceCode }, ledgerLineDescription);
+    }
+
+    public static string BuildInvoicePaymentMemo(IEnumerable<string> invoiceCodes, string? paymentOrLedgerDescription)
+    {
+        if (invoiceCodes == null)
+            throw new ArgumentNullException(nameof(invoiceCodes));
+
+        var codes = new List<string>();
+        foreach (var invoiceCode in invoiceCodes)
+        {
+            var trimmed = (invoiceCode ?? string.Empty).Trim();
+            if (trimmed.Length == 0)
+                continue;
+
+            if (codes.Any(existing => string.Equals(existing, trimmed, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            codes.Add(trimmed);
+        }
+
+        if (codes.Count == 0)
+            throw new ArgumentException("At least one invoice code is required.", nameof(invoiceCodes));
+
+        var paymentTail = ResolveConsolidatedPaymentDescriptionTail(paymentOrLedgerDescription);
+        if (codes.Count == 1 && paymentTail.Length == 0)
+            return codes[0];
+
+        if (codes.Count == 1)
+            return $"{codes[0]}: Payment: {paymentTail}";
+
+        return $"{string.Join(": ", codes)}: Payment: {paymentTail}";
+    }
+
+    public static string BuildConsolidatedInvoicePaymentUndepositedFundsMemo(
+        IEnumerable<string> invoiceCodes,
+        string? paymentDescription)
+        => BuildInvoicePaymentMemo(invoiceCodes, paymentDescription);
+
+    /// <summary>
+    /// Keeps the user-entered payment text; strips a leading invoice memo prefix when re-building consolidated UF memos.
+    /// </summary>
+    public static string ResolveConsolidatedPaymentDescriptionTail(string? paymentDescription)
+    {
+        var raw = (paymentDescription ?? string.Empty).Trim();
+        if (raw.Length == 0)
+            return raw;
+
+        var paymentSectionIndex = raw.IndexOf(": Payment:", StringComparison.Ordinal);
+        if (paymentSectionIndex >= 0)
+            return raw[(paymentSectionIndex + ": Payment:".Length)..].Trim();
+
+        if (raw.StartsWith("Payment:", StringComparison.OrdinalIgnoreCase))
+            return raw["Payment:".Length..].Trim();
+
+        return raw;
     }
 
     // Example: R-001053-001: Payment: Check #123
@@ -75,17 +132,73 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(normalizedMemo) || !normalizedMemo.Contains(": Payment:", StringComparison.Ordinal))
             return JournalEntryMemoMatch.None;
 
-        var sourceCode = normalizedMemo.Split(": Payment:", 2, StringSplitOptions.None)[0].Trim();
-        var detail = normalizedMemo.Split(": Payment:", 2, StringSplitOptions.None).Length > 1
-            ? normalizedMemo.Split(": Payment:", 2, StringSplitOptions.None)[1].Trim()
-            : string.Empty;
+        var paymentParts = normalizedMemo.Split(": Payment:", 2, StringSplitOptions.None);
+        var sourceCodes = ParsePaymentMemoInvoiceSourceCodesFromPrefix(paymentParts[0].Trim());
+        var detail = paymentParts.Length > 1 ? paymentParts[1].Trim() : string.Empty;
+        var sourceCode = sourceCodes.Count switch
+        {
+            0 => paymentParts[0].Trim(),
+            1 => sourceCodes[0],
+            _ => string.Empty
+        };
 
         return new JournalEntryMemoMatch
         {
             Category = JournalEntryMemoCategory.Payment,
             SourceCode = sourceCode,
+            SourceCodes = sourceCodes,
             Detail = detail
         };
+    }
+
+    /// <summary>True when <paramref name="paymentMemo"/> is a payment memo that includes <paramref name="invoiceSourceCode"/>.</summary>
+    public static bool PaymentMemoMatchesInvoiceSourceCode(string? paymentMemo, string? invoiceSourceCode)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceSourceCode))
+            return false;
+
+        var paymentMemoMatch = MatchPaymentMemo(paymentMemo);
+        if (paymentMemoMatch.IsMatch)
+        {
+            foreach (var code in paymentMemoMatch.SourceCodes)
+            {
+                if (EntityCodeFormatting.CodesMatch(code, invoiceSourceCode))
+                    return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(paymentMemoMatch.SourceCode)
+                && EntityCodeFormatting.CodesMatch(paymentMemoMatch.SourceCode, invoiceSourceCode))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        return TryParseInvoiceSourceCodeFromMemo(paymentMemo, out var parsed)
+            && EntityCodeFormatting.CodesMatch(parsed, invoiceSourceCode);
+    }
+
+    private static IReadOnlyList<string> ParsePaymentMemoInvoiceSourceCodesFromPrefix(string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return Array.Empty<string>();
+
+        var trimmedPrefix = prefix.Trim();
+        var segments = trimmedPrefix.Split(": ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var codes = new List<string>();
+        foreach (var segment in segments)
+        {
+            if (!InvoiceSourceCodePattern.IsMatch(segment))
+                break;
+
+            codes.Add(segment);
+        }
+
+        if (codes.Count == 0 && InvoiceSourceCodePattern.IsMatch(trimmedPrefix))
+            codes.Add(trimmedPrefix);
+
+        return codes;
     }
 
     // Example: R-001053-001: Prepayment: Check #123

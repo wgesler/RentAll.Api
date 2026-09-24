@@ -58,11 +58,9 @@ public partial class AccountingManager
         }
 
         var entries = await LoadChainJournalEntriesAsync(organizationId, chain);
-        var posted = entries.FirstOrDefault(entry => entry.PostingStatusId != PostingStatus.Open);
-        if (posted != null)
+        if (entries.Any(entry => entry.PostingStatusId != PostingStatus.Open))
         {
-            var postedCode = string.IsNullOrWhiteSpace(posted.JournalEntryCode) ? posted.JournalEntryId.ToString() : posted.JournalEntryCode;
-            result.Errors.Add($"Posted journal entry {postedCode} blocks Fix.");
+            await RepairPostedHealthDocumentChainAsync(organizationId, chain, currentUser, result);
             return result;
         }
 
@@ -90,6 +88,31 @@ public partial class AccountingManager
             await ResaveTransferForHealthRebuildAsync(organizationId, transferId, currentUser, result);
 
         return result;
+    }
+
+    private async Task RepairPostedHealthDocumentChainAsync(
+        Guid organizationId,
+        HealthDocumentChain chain,
+        Guid currentUser,
+        JournalEntrySyncResult result)
+    {
+        foreach (var depositId in chain.DepositIds)
+            await SyncDepositForHealthFixAsync(organizationId, depositId, currentUser, result);
+
+        foreach (var paymentId in chain.PaymentIds)
+        {
+            Payment? payment = null;
+            if (_officeSyncCache?.PaymentsById.TryGetValue(paymentId, out var cachedPayment) == true)
+                payment = cachedPayment;
+            else
+                payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+
+            var paymentKindId = payment?.PaymentKindId;
+            await SyncPaymentForHealthFixAsync(organizationId, paymentId, paymentKindId, currentUser, result);
+        }
+
+        foreach (var transferId in chain.TransferIds)
+            await SyncTransferForHealthFixAsync(organizationId, transferId, currentUser, result);
     }
 
     private async Task ResaveDepositForHealthRebuildAsync(Guid organizationId, Guid depositId, Guid currentUser, JournalEntrySyncResult result)

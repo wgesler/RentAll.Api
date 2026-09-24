@@ -75,11 +75,8 @@ public partial class AccountingManager
                 return;
             }
 
-            if (normalizedIssue.Contains("Deposited payment", StringComparison.OrdinalIgnoreCase))
-            {
-                depositIds.Add(id);
+            if (normalizedIssue.Contains("Deposited payment journal entry missing deposit stamp", StringComparison.OrdinalIgnoreCase))
                 return;
-            }
 
             if (normalizedIssue.Contains("Transfer deposit accounting period mismatch", StringComparison.OrdinalIgnoreCase))
             {

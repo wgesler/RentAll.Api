@@ -62,7 +62,7 @@ public partial class AccountingManager
         var invoiceDepositMatches = await BuildTransferDepositInvoiceEscrowMatchesAsync(transfer, escrowDepositAccountId);
         var escrowLineCandidates = (await BuildEscrowDepositLineCandidatesAsync(transfer, escrowDepositAccountId))
             .Where(candidate =>
-                DepositAccountingMonthIsOnOrBeforeTransfer(candidate.TransactionDate, transfer.TransferDate))
+                DepositTransactionDateIsOnOrBeforeTransfer(candidate.TransactionDate, transfer.TransferDate))
             .ToList();
         var claimedLineIds = await GetJournalEntryLineIdsClaimedByOtherTransfersAsync(transfer);
         var assignedLineIds = new HashSet<Guid>();
@@ -142,7 +142,7 @@ public partial class AccountingManager
                     continue;
                 if (!EntityCodeFormatting.CodesMatch(match.InvoiceSourceCode, invoiceSourceCode))
                     continue;
-                if (!DepositAccountingMonthIsOnOrBeforeTransfer(match.DepositDate, transfer.TransferDate))
+                if (!DepositTransactionDateIsOnOrBeforeTransfer(match.DepositDate, transfer.TransferDate))
                     continue;
                 if (!SplitLineContextMatches(splitPropertyId, splitReservationId, match.PropertyId, match.ReservationId))
                     continue;
@@ -171,7 +171,7 @@ public partial class AccountingManager
                 if (claimedLineIds.Contains(candidate.JournalEntryLineId)
                     || assignedLineIds.Contains(candidate.JournalEntryLineId))
                     continue;
-                if (!DepositAccountingMonthIsOnOrBeforeTransfer(candidate.TransactionDate, transfer.TransferDate))
+                if (!DepositTransactionDateIsOnOrBeforeTransfer(candidate.TransactionDate, transfer.TransferDate))
                     continue;
                 if (Math.Abs(Math.Abs(candidate.NetAmount) - groupAmount) > 0.005m)
                     continue;
@@ -220,7 +220,7 @@ public partial class AccountingManager
         if (deposit == null || deposit.IsActive == false)
             return null;
 
-        if (!DepositAccountingMonthIsOnOrBeforeTransfer(deposit.DepositDate, transfer.TransferDate))
+        if (!DepositTransactionDateIsOnOrBeforeTransfer(deposit.DepositDate, transfer.TransferDate))
             return null;
 
         var escrowLine = await TryGetDepositEscrowJournalEntryLineAsync(deposit, escrowDepositAccountId);
@@ -554,7 +554,7 @@ public partial class AccountingManager
 
             var amountMismatch = Math.Abs(lineNet - allocatedAmount) > 0.005m;
             var dateMismatch = depositDate != default
-                && !DepositAccountingMonthIsOnOrBeforeTransfer(depositDate, transfer.TransferDate);
+                && !DepositTransactionDateIsOnOrBeforeTransfer(depositDate, transfer.TransferDate);
             if (amountMismatch || dateMismatch)
             {
                 foreach (var split in lineGroup)
@@ -616,7 +616,7 @@ public partial class AccountingManager
             return false;
 
         var depositDate = await GetDocumentDepositDateAsync(depositId, transfer.OrganizationId);
-        if (!DepositAccountingMonthIsOnOrBeforeTransfer(depositDate, transfer.TransferDate))
+        if (!DepositTransactionDateIsOnOrBeforeTransfer(depositDate, transfer.TransferDate))
             return false;
 
         if (!TransferSplitLineAllocationMatches(transfer.Splits ?? [], journalEntryLineId, line))
@@ -759,7 +759,9 @@ public partial class AccountingManager
         {
             foreach (var deposit in _officeSyncCache.Deposits)
             {
-                if (deposit.IsActive && deposit.TransferId == transfer.TransferId)
+                if (deposit.IsActive
+                    && deposit.TransferId == transfer.TransferId
+                    && DepositMatchesTransferTransactionDate(transfer, deposit))
                     depositIds.Add(deposit.DepositId);
             }
         }
@@ -773,7 +775,9 @@ public partial class AccountingManager
                 IncludeInactive = false
             });
 
-            foreach (var deposit in deposits.Where(deposit => deposit.TransferId == transfer.TransferId))
+            foreach (var deposit in deposits.Where(deposit =>
+                         deposit.TransferId == transfer.TransferId
+                         && DepositMatchesTransferTransactionDate(transfer, deposit)))
                 depositIds.Add(deposit.DepositId);
         }
 
@@ -782,7 +786,7 @@ public partial class AccountingManager
             ? transfer.BankAccountId.Value
             : GetDefaultEscrowDepositAccount(chartOfAccounts, transfer.OfficeId, accountingOffice);
         if (escrowDepositAccountId <= 0)
-            return depositIds;
+            return await FilterDepositIdsForTransferTransactionDateAsync(transfer, depositIds);
 
         var invoiceDepositMatches = await BuildTransferDepositInvoiceEscrowMatchesAsync(transfer, escrowDepositAccountId);
         foreach (var splitGroup in GroupTransferSplitsForReconciliation(transfer.Splits ?? []))
@@ -798,7 +802,7 @@ public partial class AccountingManager
                     .Where(match =>
                         EntityCodeFormatting.CodesMatch(match.InvoiceSourceCode, invoiceSourceCode)
                         && Math.Abs(match.DepositSplitAmount - groupAmount) <= 0.005m
-                        && DepositAccountingMonthIsOnOrBeforeTransfer(match.DepositDate, transfer.TransferDate))
+                        && DepositTransactionDateIsOnOrBeforeTransfer(match.DepositDate, transfer.TransferDate))
                     .Select(match => match.DepositId)
                     .Distinct()
                     .ToList();
@@ -832,10 +836,118 @@ public partial class AccountingManager
                 .FirstOrDefault();
 
             if (payment?.DepositId is { } paymentDepositId && paymentDepositId != Guid.Empty)
-                depositIds.Add(paymentDepositId);
+            {
+                var paymentDepositDate = await GetDocumentDepositDateAsync(paymentDepositId, transfer.OrganizationId);
+                if (DepositMatchesTransferTransactionDate(transfer, paymentDepositDate))
+                    depositIds.Add(paymentDepositId);
+            }
         }
 
-        return depositIds;
+        return await FilterDepositIdsForTransferTransactionDateAsync(transfer, depositIds);
+    }
+
+    private async Task<HashSet<Guid>> FilterDepositIdsForTransferTransactionDateAsync(
+        Transfer transfer,
+        IReadOnlyCollection<Guid> depositIds)
+    {
+        var filteredDepositIds = new HashSet<Guid>();
+        foreach (var depositId in depositIds)
+        {
+            if (depositId == Guid.Empty)
+                continue;
+
+            var depositDate = await GetDocumentDepositDateAsync(depositId, transfer.OrganizationId);
+            if (DepositMatchesTransferTransactionDate(transfer, depositDate))
+                filteredDepositIds.Add(depositId);
+        }
+
+        return filteredDepositIds;
+    }
+
+    private async Task ClearTransferDepositDateViolationsForOfficeHealthFixAsync(
+        Guid organizationId,
+        string officeIds,
+        Guid currentUser)
+    {
+        var transfers = (await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeIds,
+            IsActive = true,
+            IncludeInactive = false
+        }))
+            .OrderBy(transfer => transfer.TransferDate)
+            .ThenBy(transfer => transfer.TransferCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var transfer in transfers)
+        {
+            if (transfer.Splits == null || transfer.Splits.Count == 0)
+                continue;
+
+            var originalLineIds = transfer.Splits.Select(split => split.JournalEntryLineId).ToList();
+            var transferChanged = false;
+
+            foreach (var split in transfer.Splits)
+            {
+                if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                    continue;
+
+                var depositId = await TryResolveDepositIdFromTransferSplitLineAsync(split, organizationId);
+                if (depositId == Guid.Empty)
+                    continue;
+
+                var depositDate = await GetDocumentDepositDateAsync(depositId, organizationId);
+                if (DepositMatchesTransferTransactionDate(transfer, depositDate))
+                    continue;
+
+                split.JournalEntryLineId = null;
+                transferChanged = true;
+            }
+
+            if (transferChanged && TransferSplitJournalEntryLineIdsChanged(originalLineIds, transfer.Splits))
+            {
+                transfer.ModifiedBy = currentUser;
+                var updated = await _accountingRepository.UpdateTransferAsync(transfer);
+                transfer.Splits = updated.Splits;
+                _officeSyncCache?.ReplaceTransfer(transfer);
+            }
+
+            var stampedDeposits = _officeSyncCache != null
+                ? _officeSyncCache.Deposits
+                    .Where(deposit => deposit.IsActive && deposit.TransferId == transfer.TransferId)
+                    .ToList()
+                : (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+                {
+                    OrganizationId = organizationId,
+                    OfficeIds = transfer.OfficeId.ToString(),
+                    IsActive = true,
+                    IncludeInactive = false
+                }))
+                    .Where(deposit => deposit.TransferId == transfer.TransferId)
+                    .ToList();
+
+            foreach (var deposit in stampedDeposits)
+            {
+                if (DepositMatchesTransferTransactionDate(transfer, deposit))
+                    continue;
+
+                await _accountingRepository.SetDepositTransferIdAsync(
+                    deposit.DepositId,
+                    organizationId,
+                    null,
+                    currentUser);
+
+                if (_officeSyncCache != null
+                    && _officeSyncCache.DepositsById.TryGetValue(deposit.DepositId, out var cachedDeposit))
+                {
+                    cachedDeposit.TransferId = null;
+                    cachedDeposit.TransferCode = string.Empty;
+                }
+            }
+        }
+
+        _officeSyncCache?.InvalidateRematchIndexes();
     }
 
     private async Task<Guid> TryResolveDepositIdFromTransferSplitLineAsync(TransferSplit split, Guid organizationId)
