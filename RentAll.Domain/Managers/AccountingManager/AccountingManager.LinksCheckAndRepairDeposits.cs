@@ -435,8 +435,17 @@ public partial class AccountingManager
     private async Task<bool> UnlinkAmountMismatchedDepositSplitLinksForDepositHealthFixAsync(
         Deposit deposit,
         Guid currentUser,
-        AccountingSyncBailTrail? trail)
+        AccountingSyncBailTrail? trail,
+        DepositSplitArRematchCandidates? rematchCandidates = null)
     {
+        rematchCandidates ??= await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+            deposit.OrganizationId,
+            deposit.DepositId);
+
+        var exactRematchLineBySplitId = rematchCandidates.ExactMatches
+            .Where(match => match.ArJournalEntryLineId is { } lineId && lineId != Guid.Empty)
+            .ToDictionary(match => match.DepositSplitId, match => match.ArJournalEntryLineId!.Value);
+
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
         if (undepositedFundsAccountId <= 0)
@@ -465,6 +474,12 @@ public partial class AccountingManager
 
             if (line.ChartOfAccountId == undepositedFundsAccountId)
             {
+                if (!exactRematchLineBySplitId.ContainsKey(split.DepositSplitId))
+                {
+                    trail?.Note($"Step1 skip unlink UF line (no rematch): split {split.DepositSplitId} line={lineId}.");
+                    continue;
+                }
+
                 trail?.Note($"Step1 unlink: split {split.DepositSplitId} pointed at payment UF line {lineId}.");
                 split.JournalEntryLineId = null;
                 changed = true;
@@ -494,9 +509,18 @@ public partial class AccountingManager
             if (!amountMismatch && !dateMismatch && !contextMismatch)
                 continue;
 
+            if (!exactRematchLineBySplitId.ContainsKey(split.DepositSplitId))
+            {
+                trail?.Note(
+                    $"Step1 skip unlink (no rematch): split {split.DepositSplitId} amount={splitAmount:0.00} line={lineId} "
+                    + $"amountMismatch={amountMismatch} dateMismatch={dateMismatch} contextMismatch={contextMismatch}.");
+                continue;
+            }
+
             trail?.Note(
                 $"Step1 unlink invalid link: split {split.DepositSplitId} amount={splitAmount:0.00} line={lineId} lineAmount={lineNet:0.00} "
-                + $"amountMismatch={amountMismatch} dateMismatch={dateMismatch} contextMismatch={contextMismatch}.");
+                + $"amountMismatch={amountMismatch} dateMismatch={dateMismatch} contextMismatch={contextMismatch} "
+                + $"rematchLine={exactRematchLineBySplitId[split.DepositSplitId]}.");
             split.JournalEntryLineId = null;
             changed = true;
         }
@@ -1198,6 +1222,38 @@ public partial class AccountingManager
         return Array.Empty<string>();
     }
 
+    /// <summary>
+    /// When a deposit split memo lists multiple invoices, use the linked AR line memo (after deposit rematch).
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ResolveDepositSplitInvoiceSourceCodesForTransferEscrowMatchAsync(
+        Guid organizationId,
+        DepositSplit split)
+    {
+        if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
+        {
+            var line = await GetJournalEntryLineByIdCachedAsync(lineId);
+            if (line != null)
+            {
+                var journalEntry = line.JournalEntryId != Guid.Empty
+                    ? await GetJournalEntryByIdCachedAsync(line.JournalEntryId, organizationId)
+                    : null;
+                var fromLine = ResolveJournalEntryLineInvoiceSourceCode(line, journalEntry ?? new JournalEntry());
+                if (IsReservationOrInvoiceSourceCode(fromLine))
+                    return [fromLine.Trim()];
+            }
+        }
+
+        var memoCodes = ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split);
+        if (memoCodes.Count == 1)
+            return [memoCodes[0].Trim()];
+
+        var single = ResolveDepositSplitInvoiceSourceCode(split);
+        if (IsReservationOrInvoiceSourceCode(single))
+            return [single!.Trim()];
+
+        return [];
+    }
+
     private static string? ResolveDepositSplitInvoiceSourceCode(
         DepositSplit split,
         string? matchingInvoiceSourceCode = null)
@@ -1698,6 +1754,38 @@ public partial class AccountingManager
 
         var journalEntry = await GetJournalEntryByIdCachedAsync(journalEntryId, organizationId);
         return journalEntry?.PaymentId == payment.PaymentId;
+    }
+
+    private async Task ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+        Payment payment,
+        Guid organizationId,
+        Guid currentUser)
+    {
+        if (payment.DepositId is not { } depositId || depositId == Guid.Empty)
+            return;
+
+        var paymentJournalEntries = (await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId)).ToList();
+        if (paymentJournalEntries.Count == 0)
+        {
+            paymentJournalEntries = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
+                new JournalEntryGetByPaymentIdCriteria
+                {
+                    OrganizationId = organizationId,
+                    PaymentId = payment.PaymentId
+                })).ToList();
+        }
+
+        foreach (var journalEntry in paymentJournalEntries)
+            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser);
+
+        var invoiceChargeJournalEntries = await LoadDepositInvoiceChargeJournalEntriesForPaymentJournalEntriesAsync(
+            organizationId,
+            payment.OfficeId,
+            paymentJournalEntries);
+        foreach (var journalEntry in invoiceChargeJournalEntries)
+            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser);
+
+        await ClearInvoicePaymentDepositStampAsync(payment, organizationId, currentUser);
     }
 
     private async Task ClearInvoicePaymentDepositStampAsync(Payment payment, Guid organizationId, Guid currentUser)

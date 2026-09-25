@@ -135,9 +135,12 @@ public partial class AccountingManager
             return BuildHealthPaymentFixError(payment.PaymentCode, "Configure Default Undeposited Funds for this office", trailText);
 
         if (trailText.Contains("No deposit split changes applied", StringComparison.OrdinalIgnoreCase))
-            return BuildHealthPaymentFixError(payment.PaymentCode, "MANUAL REVIEW — deposit split amounts/rules blocked auto-link", trailText);
+            return BuildHealthPaymentFixError(payment.PaymentCode, "Run Deposits Fix — deposit split amounts/rules blocked auto-link", trailText);
 
-        return BuildHealthPaymentFixError(payment.PaymentCode, "MANUAL REVIEW — deposit split link could not be auto-repaired", trailText);
+        return BuildHealthPaymentFixError(
+            payment.PaymentCode,
+            $"Run Deposits Fix — no deposit split links this payment JE on {deposit.DepositCode}",
+            trailText);
     }
 
     private static string MapPaymentJeCreateBailToAction(Payment payment, PaymentJournalEntryCreateResult createResult)

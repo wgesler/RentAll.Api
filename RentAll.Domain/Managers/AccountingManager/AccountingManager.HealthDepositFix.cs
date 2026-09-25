@@ -10,20 +10,125 @@ public partial class AccountingManager
     private const int HealthDepositFixMaxPasses = 2;
 
     /// <summary>
-    /// Legacy entry name — same apply as Fix_DepositSplit_ArRematchAndStamp.sql @Commit = 1 (no unlink).
+    /// Per-deposit health repair: unlink only invalid split lines, AR rematch + stamp, then document links (idempotent).
     /// </summary>
+    private async Task RepairDepositForHealthFixAsync(
+        Deposit deposit,
+        Guid organizationId,
+        Guid currentUser,
+        JournalEntrySyncResult result,
+        AccountingSyncBailTrail? trail = null)
+    {
+        trail ??= new AccountingSyncBailTrail();
+
+        for (var pass = 0; pass < HealthDepositFixMaxPasses; pass++)
+        {
+            var reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+            if (reloaded == null)
+                return;
+
+            deposit = reloaded;
+
+            var rematchCandidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+                organizationId,
+                deposit.DepositId);
+
+            await UnlinkAmountMismatchedDepositSplitLinksForDepositHealthFixAsync(
+                deposit,
+                currentUser,
+                trail,
+                rematchCandidates);
+
+            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+            if (reloaded != null)
+                deposit = reloaded;
+
+            await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
+                deposit,
+                organizationId,
+                currentUser,
+                result,
+                trail);
+
+            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+            if (reloaded != null)
+                deposit = reloaded;
+
+            await SyncDepositDocumentLinksAsync(deposit, currentUser, unstampMissingPayments: true);
+
+            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+            if (reloaded != null)
+                deposit = reloaded;
+
+            var postRepairCandidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+                organizationId,
+                deposit.DepositId);
+            await RecordUnrepairedDepositSplitLinksForHealthFixAsync(
+                deposit,
+                postRepairCandidates,
+                result,
+                trail);
+
+            var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(deposit);
+            if (undepositedFundsAccountId <= 0
+                || await CountDepositSplitsNeedingHealthFixLinkRepairAsync(deposit, undepositedFundsAccountId) == 0)
+            {
+                break;
+            }
+        }
+    }
+
+    private async Task<int> ResolveUndepositedFundsAccountIdAsync(Deposit deposit)
+    {
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        return GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+    }
+
+    private async Task RecordUnrepairedDepositSplitLinksForHealthFixAsync(
+        Deposit deposit,
+        DepositSplitArRematchCandidates rematchCandidates,
+        JournalEntrySyncResult result,
+        AccountingSyncBailTrail trail)
+    {
+        var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(deposit);
+        if (undepositedFundsAccountId <= 0)
+            return;
+
+        var noMatchBySplitId = rematchCandidates.NoMatches.ToDictionary(row => row.DepositSplitId);
+
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty
+                && await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
+                continue;
+
+            var detail = noMatchBySplitId.TryGetValue(split.DepositSplitId, out var noMatch)
+                ? $"Rematch no-match: {noMatch.MatchOutcome}"
+                : "Split still missing a valid payment AR line link after health repair.";
+
+            var message = BuildHealthDepositFixError(deposit.DepositCode, split.Amount, detail);
+            result.Errors.Add(message);
+            trail.Note(message);
+            LogHealthDepositFixTrace(deposit, "UnrepairedSplitLink", detail);
+        }
+    }
+
+    private static string BuildHealthDepositFixError(string depositCode, decimal splitAmount, string detail)
+    {
+        var amount = Math.Abs(RoundCurrency(splitAmount));
+        return $"Deposit {depositCode} {amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}: {detail}";
+    }
+
     private Task RepairDepositUfSplitLinksForHealthFixAsync(
         Deposit deposit,
         Guid organizationId,
         Guid currentUser,
         JournalEntrySyncResult result,
         AccountingSyncBailTrail trail)
-        => ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
-            deposit,
-            organizationId,
-            currentUser,
-            result,
-            trail);
+        => RepairDepositForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
 
     private async Task RepairPostedDepositSplitStampForHealthFixAsync(
         Deposit deposit,

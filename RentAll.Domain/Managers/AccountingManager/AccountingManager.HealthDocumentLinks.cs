@@ -101,42 +101,7 @@ public partial class AccountingManager
         await CollectDepositedPaymentDepositIdsForDocumentLinkFixAsync(organizationId, scan.Issues, paymentIds, depositIds);
         CollectDepositIdsFromUfSplitDocumentLinkIssues(scan.Issues, depositIds);
 
-        if (depositIds.Count > 0)
-        {
-            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
-                organizationId,
-                officeIds,
-                "deposit",
-                depositIds.ToList(),
-                paymentKindId: null,
-                currentUser,
-                progress));
-        }
-
-        if (paymentIds.Count > 0)
-        {
-            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
-                organizationId,
-                officeIds,
-                "payment",
-                paymentIds.ToList(),
-                (int)PaymentKind.Invoice,
-                currentUser,
-                progress));
-        }
-
-        if (transferIds.Count > 0)
-        {
-            MergeSyncResults(result, await SyncJournalEntriesForHealthFixAsync(
-                organizationId,
-                officeIds,
-                "transfer",
-                transferIds.ToList(),
-                paymentKindId: null,
-                currentUser,
-                progress));
-        }
-
+        // Link fix realigns JE/document stamps from current splits — do not run deposit/payment/transfer rematch here (that belongs on those Fix tabs).
         await ReconcileDuplicateInvoicePaymentDocumentsForIssuesAsync(scan.Issues, organizationId, currentUser, result);
 
         await SyncDocumentLinksForHealthFixTargetsAsync(
@@ -200,7 +165,8 @@ public partial class AccountingManager
 
             foreach (var deposit in deposits)
             {
-                await SyncDepositDocumentLinksAsync(deposit, currentUser);
+                var reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
+                await SyncDepositDocumentLinksAsync(reloaded, currentUser, unstampMissingPayments: false);
                 processed++;
                 ReportSyncProgress(progress, "documentLinkDeposit", total, processed, linkResult, processed >= total ? "Completed" : "Running");
             }

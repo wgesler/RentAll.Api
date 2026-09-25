@@ -878,8 +878,12 @@ public partial class AccountingManager
                 && existingDepositId != Guid.Empty
                 && existingDepositId != deposit.DepositId)
             {
-                continue;
+                await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(payment, organizationId: deposit.OrganizationId, currentUser);
+                payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId) ?? payment;
             }
+
+            if (payment.DepositId == deposit.DepositId)
+                continue;
 
             await _accountingRepository.SetPaymentDepositIdAsync(
                 paymentId,

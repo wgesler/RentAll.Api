@@ -42,6 +42,17 @@ var manager = new AccountingManager(
     new EnabledFeatureFlags(),
     health);
 
+if (args.Contains("tr047", StringComparer.OrdinalIgnoreCase))
+{
+    var trId = Guid.Parse("FCCBBFC7-D020-4DA2-A1D1-3443A005A084");
+    var trFix = await manager.SyncJournalEntriesForHealthFixAsync(orgId, officeIds, "transfer", [trId], null, userId);
+    Console.WriteLine($"TR-047 fix Errors={trFix.Errors.Count}");
+    foreach (var error in trFix.Errors)
+        Console.WriteLine($"  {error}");
+    await PrintRowAsync("Transfers", await health.RunTransferHealthCheckAsync(orgId, officeIds));
+    return;
+}
+
 Console.WriteLine("=== SF (office 2) BEFORE ===");
 await PrintHealthAsync(health, orgId, officeIds);
 
@@ -54,6 +65,8 @@ for (var pass = 1; pass <= 3; pass++)
     Console.WriteLine($"=== Pass {pass}: Fix Transfers ===");
     var transferFix = await manager.SyncJournalEntriesForHealthFixAsync(orgId, officeIds, "transfer", [], null, userId);
     Console.WriteLine($"Transfers Errors={transferFix.Errors.Count} Processed={transferFix.DocumentsProcessed}");
+    foreach (var error in transferFix.Errors)
+        Console.WriteLine($"  TransferFix: {error}");
 
     Console.WriteLine($"=== Pass {pass}: Fix Document Links ===");
     var linkFix = await manager.RepairDocumentLinksForHealthFixAsync(orgId, officeIds, userId);

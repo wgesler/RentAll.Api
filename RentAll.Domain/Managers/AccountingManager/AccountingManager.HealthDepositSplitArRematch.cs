@@ -39,6 +39,18 @@ public partial class AccountingManager
             if (paymentId == Guid.Empty || !stampedPaymentIds.Add(paymentId))
                 continue;
 
+            var paymentToStamp = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+            if (paymentToStamp != null
+                && paymentToStamp.DepositId is { } stampedDepositId
+                && stampedDepositId != Guid.Empty
+                && stampedDepositId != deposit.DepositId)
+            {
+                await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+                    paymentToStamp,
+                    organizationId,
+                    currentUser);
+            }
+
             await _accountingRepository.SetPaymentDepositIdAsync(
                 paymentId,
                 organizationId,
@@ -78,6 +90,9 @@ public partial class AccountingManager
 
             var split = deposit.Splits?.FirstOrDefault(row => row.DepositSplitId == match.DepositSplitId);
             if (split == null)
+                continue;
+
+            if (split.JournalEntryLineId == arLineId)
                 continue;
 
             split.JournalEntryLineId = arLineId;

@@ -121,14 +121,18 @@ public partial class AccountingManager
 
     private async Task<List<Guid>> ResolveBrokenDocumentIdsFromHealthScanAsync(Guid organizationId, string officeIds, string syncType, int? paymentKindId)
     {
+        if (syncType == "deposit")
+            return await ResolveDepositFixDocumentIdsAsync(organizationId, officeIds);
+
+        if (syncType == "payment")
+            return await ResolvePaymentFixDocumentIdsAsync(organizationId, officeIds, paymentKindId);
+
         var scan = syncType switch
         {
             "receipt" => await _healthRepository.RunReceiptHealthCheckAsync(organizationId, officeIds),
             "bill" => await _healthRepository.RunBillHealthCheckAsync(organizationId, officeIds),
             "workOrder" => await _healthRepository.RunWorkOrderHealthCheckAsync(organizationId, officeIds),
             "invoice" => await _healthRepository.RunInvoiceHealthCheckAsync(organizationId, officeIds),
-            "payment" => await _healthRepository.RunPaymentHealthCheckAsync(organizationId, officeIds, paymentKindId),
-            "deposit" => await _healthRepository.RunDepositHealthCheckAsync(organizationId, officeIds),
             "transfer" => await _healthRepository.RunTransferHealthCheckAsync(organizationId, officeIds),
             _ => throw new Exception($"Sync type '{syncType}' is not supported for health fix scan.")
         };
@@ -136,9 +140,62 @@ public partial class AccountingManager
         if (scan.Summary.IsClean)
             return [];
 
-        return syncType == "payment"
-            ? HealthDocumentTypeIdentification.CollectPaymentFixIds(scan.Issues).ToList()
-            : HealthDocumentTypeIdentification.CollectFixDocumentIds(scan.Issues).ToList();
+        return HealthDocumentTypeIdentification.CollectFixDocumentIds(scan.Issues).ToList();
+    }
+
+    private async Task<List<Guid>> ResolvePaymentFixDocumentIdsAsync(Guid organizationId, string officeIds, int? paymentKindId)
+    {
+        var ids = new HashSet<Guid>();
+
+        var paymentScan = await _healthRepository.RunPaymentHealthCheckAsync(organizationId, officeIds, paymentKindId);
+        if (!paymentScan.Summary.IsClean)
+        {
+            foreach (var id in HealthDocumentTypeIdentification.CollectPaymentFixIds(paymentScan.Issues))
+                ids.Add(id);
+        }
+
+        if (paymentKindId == (int)PaymentKind.Invoice)
+        {
+            var linksScan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
+            if (!linksScan.Summary.IsClean)
+            {
+                foreach (var id in HealthDocumentTypeIdentification.CollectPaymentFixIds(linksScan.Issues))
+                    ids.Add(id);
+            }
+        }
+
+        return ids.OrderBy(id => id).ToList();
+    }
+
+    private async Task<List<Guid>> ResolveDepositFixDocumentIdsAsync(Guid organizationId, string officeIds)
+    {
+        var ids = new HashSet<Guid>();
+
+        var depositScan = await _healthRepository.RunDepositHealthCheckAsync(organizationId, officeIds);
+        if (!depositScan.Summary.IsClean)
+        {
+            foreach (var id in HealthDocumentTypeIdentification.CollectFixDocumentIds(depositScan.Issues))
+                ids.Add(id);
+        }
+
+        var linksScan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
+        if (!linksScan.Summary.IsClean)
+        {
+            foreach (var issue in linksScan.Issues)
+            {
+                var issueText = issue.Issue ?? string.Empty;
+                if (!issueText.Contains("Deposit", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (issueText.Contains("Deposited payment", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (issue.DocumentId != Guid.Empty)
+                    ids.Add(issue.DocumentId);
+            }
+        }
+
+        return ids.OrderBy(id => id).ToList();
     }
 
     private async Task RunHealthFixBulkPruneAsync(string syncType, int? paymentKindId, Guid organizationId, string officeIds, IReadOnlyList<Guid> targetedDocumentIds, JournalEntrySyncResult result)
@@ -359,6 +416,20 @@ public partial class AccountingManager
                 result.JournalEntriesSkipped++;
                 break;
         }
+
+        payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+        if (payment == null)
+            return;
+
+        await SyncPaymentDocumentLinksAsync(payment, currentUser);
+
+        if ((PaymentKind)payment.PaymentKindId == PaymentKind.Invoice
+            && payment.DepositId is { } linkedDepositId
+            && linkedDepositId != Guid.Empty)
+        {
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId) ?? payment;
+            await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser, result);
+        }
     }
 
     async Task SyncInvoicePaymentForHealthFixAsync(
@@ -441,10 +512,6 @@ public partial class AccountingManager
         }
         else
             result.JournalEntriesSkipped++;
-
-        payment = await _accountingRepository.GetPaymentByIdAsync(paymentSummary.PaymentId, organizationId);
-        if (payment?.DepositId is { } linkedDepositId && linkedDepositId != Guid.Empty)
-            await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser, result);
     }
 
     async Task StampPaymentDepositIdsAfterSplitReconcileAsync(Deposit deposit, Guid organizationId, Guid currentUser)
@@ -474,12 +541,7 @@ public partial class AccountingManager
             : null;
         if (deposit != null)
         {
-            await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
-                deposit,
-                organizationId,
-                currentUser,
-                result,
-                trail);
+            await PruneWrongDepositSplitLinksForPaymentHealthFixAsync(payment, deposit, currentUser, trail);
             deposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
         }
 
@@ -578,12 +640,7 @@ public partial class AccountingManager
         }
 
         var trail = new AccountingSyncBailTrail();
-        await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
-            deposit,
-            organizationId,
-            currentUser,
-            result,
-            trail);
+        await RepairDepositForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
     }
 
     async Task SyncTransferForHealthFixAsync(Guid organizationId, Guid transferId, Guid currentUser, JournalEntrySyncResult result)
@@ -623,6 +680,9 @@ public partial class AccountingManager
             var updated = await _accountingRepository.UpdateTransferAsync(transfer);
             transfer.Splits = updated.Splits;
         }
+
+        foreach (var message in await GetUnresolvedTransferSplitMessagesAsync(transfer))
+            result.Errors.Add(message);
 
         await SyncDepositTransferIdsForTransferAsync(transfer, currentUser);
 
