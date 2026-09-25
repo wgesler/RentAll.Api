@@ -243,7 +243,26 @@ public partial class AccountingManager
                         splitContext.ReservationId))
                     continue;
 
-                return escrowLine.JournalEntryLineId;
+                if (depositSplit.JournalEntryLineId is { } depositSplitLineId && depositSplitLineId != Guid.Empty)
+                {
+                    if (claimedLineIds.Contains(depositSplitLineId))
+                        continue;
+
+                    var depositSplitLine = await GetJournalEntryLineByIdCachedAsync(depositSplitLineId);
+                    var depositSplitEntry = depositSplitLine == null
+                        ? null
+                        : await GetJournalEntryByIdCachedAsync(depositSplitLine.JournalEntryId, transfer.OrganizationId);
+                    if (depositSplitLine != null
+                        && depositSplitEntry?.DepositId is { } splitLineDepositId
+                        && splitLineDepositId != Guid.Empty
+                        && splitLineDepositId == deposit.DepositId
+                        && Math.Abs(Math.Abs(RoundCurrency(depositSplitLine.Debit - depositSplitLine.Credit)) - groupAmount) <= 0.005m)
+                        return depositSplitLineId;
+                }
+
+                var escrowAmountAbs = Math.Abs(RoundCurrency(escrowLine.Debit - escrowLine.Credit));
+                if (Math.Abs(escrowAmountAbs - groupAmount) <= 0.005m)
+                    return escrowLine.JournalEntryLineId;
             }
         }
 
@@ -479,18 +498,27 @@ public partial class AccountingManager
                     continue;
 
                 var splitContext = await ResolveDepositSplitLinkContextAsync(deposit, split, deposit.OrganizationId);
+                var splitAmount = RoundCurrency(split.Amount);
+                var escrowLineIdForMatch = split.JournalEntryLineId is { } splitEscrowLineId && splitEscrowLineId != Guid.Empty
+                    ? splitEscrowLineId
+                    : Math.Abs(splitAmount - escrowAmount) <= 0.005m
+                        ? escrowLine.JournalEntryLineId
+                        : Guid.Empty;
+                if (escrowLineIdForMatch == Guid.Empty)
+                    continue;
+
                 foreach (var invoiceSourceCode in invoiceSourceCodes)
                 {
                     matches.Add(new TransferDepositInvoiceEscrowMatch
                     {
                         DepositId = deposit.DepositId,
                         DepositCode = deposit.DepositCode ?? string.Empty,
-                        EscrowJournalEntryLineId = escrowLine.JournalEntryLineId,
+                        EscrowJournalEntryLineId = escrowLineIdForMatch,
                         EscrowLineAmount = escrowAmount,
                         InvoiceSourceCode = invoiceSourceCode,
                         PropertyId = splitContext.PropertyId,
                         ReservationId = splitContext.ReservationId,
-                        DepositSplitAmount = RoundCurrency(split.Amount),
+                        DepositSplitAmount = splitAmount,
                         DepositDate = deposit.DepositDate,
                         DepositAccountingPeriod = deposit.AccountingPeriod
                     });
@@ -728,18 +756,21 @@ public partial class AccountingManager
                 continue;
             }
 
-            if (line.ChartOfAccountId != escrowDepositAccountId)
+            var allocatedAmount = Math.Abs(lineGroup.Sum(split => RoundCurrency(split.Amount)));
+            var lineNet = Math.Abs(RoundCurrency(line.Debit - line.Credit));
+            var depositJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, transfer.OrganizationId);
+            var linkedDepositId = NormalizeOptionalGuid(depositJournalEntry?.DepositId);
+            var onDepositJournalEntry = linkedDepositId.HasValue && linkedDepositId.Value != Guid.Empty;
+            var isEscrowBankLine = line.ChartOfAccountId == escrowDepositAccountId;
+            if (!isEscrowBankLine && !onDepositJournalEntry)
                 continue;
 
-            var allocatedAmount = Math.Abs(lineGroup.Sum(split => RoundCurrency(split.Amount)));
-            var lineNet = Math.Abs(line.Debit - line.Credit);
-            var depositJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, transfer.OrganizationId);
             DateOnly depositDate = default;
-            if (depositJournalEntry?.DepositId is { } depositId && depositId != Guid.Empty)
-                depositDate = await GetDocumentDepositDateAsync(depositId, transfer.OrganizationId);
+            if (onDepositJournalEntry && linkedDepositId is { } depositIdForDate)
+                depositDate = await GetDocumentDepositDateAsync(depositIdForDate, transfer.OrganizationId);
 
-            // Shared deposit escrow lines: several transfer slices link to one line; sum may be less until all slices are linked.
-            var amountMismatch = allocatedAmount > lineNet + 0.005m;
+            // Align with Transfer_HealthCheck: net split total on this line must equal the linked JE line amount.
+            var amountMismatch = Math.Abs(allocatedAmount - lineNet) > 0.005m;
             var dateMismatch = depositDate != default
                 && !DepositTransactionDateIsOnOrBeforeTransfer(depositDate, transfer.TransferDate);
             if (amountMismatch || dateMismatch)
@@ -749,33 +780,6 @@ public partial class AccountingManager
                     trail?.Note(
                         $"Step1 unlink invalid link: transfer split {split.TransferSplitId} allocated={allocatedAmount:0.00} line={lineId} lineAmount={lineNet:0.00} "
                         + $"amountMismatch={amountMismatch} dateMismatch={dateMismatch}.");
-                    split.JournalEntryLineId = null;
-                    changed = true;
-                }
-
-                continue;
-            }
-
-            if (line.ChartOfAccountId == escrowDepositAccountId)
-                continue;
-
-            foreach (var split in lineGroup)
-            {
-                var contextMismatch = !await SplitLineContextMatchesResolvedLineAsync(
-                    split.PropertyId,
-                    split.ReservationId,
-                    line,
-                    transfer.OrganizationId,
-                    new JournalEntryLineLinkContextHints
-                    {
-                        InvoiceSourceCode = ResolveTransferSplitInvoiceSourceCode(split)
-                            ?? ResolveTransferSplitPaymentSourceCode(split),
-                        TargetAmount = split.Amount
-                    });
-                if (contextMismatch)
-                {
-                    trail?.Note(
-                        $"Step1 unlink invalid link: transfer split {split.TransferSplitId} amount={Math.Abs(RoundCurrency(split.Amount)):0.00} line={lineId} contextMismatch=true.");
                     split.JournalEntryLineId = null;
                     changed = true;
                 }
@@ -798,9 +802,6 @@ public partial class AccountingManager
         if (line == null)
             return false;
 
-        if (line.ChartOfAccountId != escrowDepositAccountId)
-            return false;
-
         var depositJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, transfer.OrganizationId);
         if (depositJournalEntry?.DepositId is not { } depositId || depositId == Guid.Empty)
             return false;
@@ -821,8 +822,9 @@ public partial class AccountingManager
                 BuildLinkContextHintsFromTransferSplitGroup(splitGroup)))
             return true;
 
-        // Deposit escrow bank lines usually do not carry reservation/property; invoice+amount matching is enforced in rematch.
-        return line.ChartOfAccountId == escrowDepositAccountId;
+        // Escrow bank line or any line on the deposit JE when net split total matches the line (Health_01 exact).
+        return line.ChartOfAccountId == escrowDepositAccountId
+            || depositJournalEntry.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty;
     }
 
     private static (Guid? PropertyId, Guid? ReservationId) ResolveTransferSplitGroupContext(IReadOnlyList<TransferSplit> splitGroup)
@@ -938,7 +940,7 @@ public partial class AccountingManager
         if (allocatedAmount <= 0.005m)
             return false;
 
-        return allocatedAmount <= lineAmount + 0.005m;
+        return Math.Abs(allocatedAmount - lineAmount) <= 0.005m;
     }
 
     private async Task<HashSet<Guid>> CollectDepositIdsToStampForTransferHealthFixAsync(Transfer transfer)

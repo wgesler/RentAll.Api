@@ -150,6 +150,34 @@ if (args.Contains("tr047", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("tr022-fix", StringComparer.OrdinalIgnoreCase))
+{
+    var trId = Guid.Parse("247CC2AC-A092-437C-BB24-AA2FEE26CF1A");
+    for (var attempt = 1; attempt <= 3; attempt++)
+    {
+        Console.WriteLine($"=== TR-022 fix attempt {attempt} ===");
+        var trFix = await manager.SyncJournalEntriesForHealthFixAsync(orgId, officeIds, "transfer", [trId], null, userId);
+        Console.WriteLine($"Errors={trFix.Errors.Count} Processed={trFix.DocumentsProcessed}");
+        foreach (var error in trFix.Errors)
+            Console.WriteLine($"  {error}");
+
+        var transfers = await health.RunTransferHealthCheckAsync(orgId, officeIds);
+        var r090 = transfers.Issues.Where(i =>
+            (i.DocumentCode?.Contains("022", StringComparison.OrdinalIgnoreCase) ?? false)
+            || (i.Detail?.Contains("090", StringComparison.OrdinalIgnoreCase) ?? false)
+            || (i.RelatedCode?.Contains("090", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+        foreach (var issue in transfers.Issues.Where(i => i.DocumentCode == "TR-000000022"))
+            Console.WriteLine($"  Issue: {issue.Issue} | {issue.Detail}");
+        if (!transfers.Issues.Any(i => i.DocumentCode == "TR-000000022"))
+        {
+            Console.WriteLine("TR-022 transfer issues cleared.");
+            break;
+        }
+    }
+
+    return;
+}
+
 Console.WriteLine("=== SF (office 2) BEFORE ===");
 await PrintHealthAsync(health, orgId, officeIds);
 
