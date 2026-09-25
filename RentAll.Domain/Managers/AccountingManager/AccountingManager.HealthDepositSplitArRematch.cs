@@ -4,6 +4,9 @@ namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
+    /// <summary>
+    /// Same apply as Fix_DepositSplit_ArRematchAndStamp.sql @Commit = 1 (ExactApply only).
+    /// </summary>
     private async Task ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
         Deposit deposit,
         Guid organizationId,
@@ -20,40 +23,61 @@ public partial class AccountingManager
             "ArRematchProc",
             $"Exact={candidates.ExactMatches.Count} NoMatch={candidates.NoMatches.Count}");
 
-        var depositChanged = false;
-        var stampedPaymentIds = new HashSet<Guid>();
+        if (candidates.ExactMatches.Count == 0 && candidates.NoMatches.Count == 0)
+        {
+            result.JournalEntriesSkipped++;
+            return;
+        }
 
+        var stampedPaymentIds = new HashSet<Guid>();
+        var paymentIdsToStamp = candidates.StampPaymentIds.Count > 0
+            ? candidates.StampPaymentIds
+            : candidates.ExactMatches.Select(match => match.PaymentId).Where(id => id != Guid.Empty);
+
+        foreach (var paymentId in paymentIdsToStamp)
+        {
+            if (paymentId == Guid.Empty || !stampedPaymentIds.Add(paymentId))
+                continue;
+
+            await _accountingRepository.SetPaymentDepositIdAsync(
+                paymentId,
+                organizationId,
+                deposit.DepositId,
+                currentUser);
+            trail?.Note($"ArRematch restamp payment {paymentId} -> deposit {deposit.DepositCode}.");
+        }
+
+        foreach (var paymentId in stampedPaymentIds)
+        {
+            var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+            if (payment == null || !payment.IsActive)
+                continue;
+
+            payment.DepositId = deposit.DepositId;
+            payment.DepositCode = deposit.DepositCode;
+
+            var paymentEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
+                new JournalEntryGetByPaymentIdCriteria
+                {
+                    OrganizationId = organizationId,
+                    PaymentId = paymentId
+                });
+
+            foreach (var journalEntry in paymentEntries)
+            {
+                await TryUpdateJournalEntryDepositDocumentLinkAsync(journalEntry, deposit, currentUser);
+                await TryUpdateJournalEntryPaymentDocumentLinkAsync(journalEntry, payment, currentUser);
+            }
+        }
+
+        var depositChanged = false;
         foreach (var match in candidates.ExactMatches)
         {
-            var split = deposit.Splits?.FirstOrDefault(row => row.DepositSplitId == match.DepositSplitId);
-            if (split == null)
-                continue;
-
-            if (match.PaymentId != Guid.Empty)
-            {
-                var needsStamp = match.PaymentDepositId is null
-                    || match.PaymentDepositId == Guid.Empty
-                    || match.PaymentDepositId != deposit.DepositId;
-
-                if (needsStamp && stampedPaymentIds.Add(match.PaymentId))
-                {
-                    await _accountingRepository.SetPaymentDepositIdAsync(
-                        match.PaymentId,
-                        organizationId,
-                        deposit.DepositId,
-                        currentUser);
-                    trail?.Note(
-                        $"ArRematch stamp payment {match.PaymentCode ?? match.PaymentId.ToString()} -> deposit {deposit.DepositCode}.");
-                }
-            }
-
-            if (match.IsConsolidatedPaymentTotal)
-                continue;
-
             if (match.ArJournalEntryLineId is not { } arLineId || arLineId == Guid.Empty)
                 continue;
 
-            if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
+            var split = deposit.Splits?.FirstOrDefault(row => row.DepositSplitId == match.DepositSplitId);
+            if (split == null)
                 continue;
 
             split.JournalEntryLineId = arLineId;
@@ -69,16 +93,6 @@ public partial class AccountingManager
             _officeSyncCache?.ReplaceDeposit(deposit);
         }
 
-        foreach (var failure in candidates.NoMatches)
-        {
-            var label = FormatDepositLabel(deposit);
-            var detail = string.IsNullOrWhiteSpace(failure.SplitDescription)
-                ? failure.MatchOutcome
-                : $"{failure.MatchOutcome} — {failure.SplitDescription.Trim()}";
-            result.Errors.Add($"Deposit {label}: UF split {failure.DepositSplitId} — {detail} (manual review).");
-            trail?.Bail($"ArRematch no match: split {failure.DepositSplitId} — {failure.MatchOutcome}.");
-        }
-
         if (_officeSyncCache != null && stampedPaymentIds.Count > 0)
         {
             foreach (var paymentId in stampedPaymentIds)
@@ -92,5 +106,8 @@ public partial class AccountingManager
 
             _officeSyncCache.InvalidateRematchIndexes();
         }
+
+        if (candidates.ExactMatches.Count > 0)
+            result.JournalEntriesCreated += candidates.ExactMatches.Count;
     }
 }

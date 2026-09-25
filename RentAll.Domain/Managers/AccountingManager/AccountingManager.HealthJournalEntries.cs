@@ -32,12 +32,7 @@ public partial class AccountingManager
             ? documentIds.Where(id => id != Guid.Empty).Concat(scannedIds).Distinct().ToList()
             : scannedIds;
         if (syncType == "deposit")
-        {
-            await ClearInvalidOfficeDepositSplitLinksForHealthFixAsync(organizationId, officeIds, currentUser);
-            await ClearDepositPaymentDateViolationsForOfficeHealthFixAsync(organizationId, officeIds, currentUser);
-            await ReleaseMisstampedInvoicePaymentsForOfficeHealthFixAsync(organizationId, officeIds, currentUser);
             distinctIds = await OrderDepositIdsForHealthFixAsync(organizationId, distinctIds);
-        }
         else if (syncType == "transfer")
         {
             await ClearTransferDepositDateViolationsForOfficeHealthFixAsync(organizationId, officeIds, currentUser);
@@ -50,7 +45,8 @@ public partial class AccountingManager
             return result;
         }
 
-        await RunHealthFixBulkPruneAsync(syncType, paymentKindId, organizationId, officeIds, distinctIds, result);
+        if (syncType != "deposit")
+            await RunHealthFixBulkPruneAsync(syncType, paymentKindId, organizationId, officeIds, distinctIds, result);
 
         var total = distinctIds.Count;
         var processed = 0;
@@ -478,28 +474,12 @@ public partial class AccountingManager
             : null;
         if (deposit != null)
         {
-            var unlinkedAmountMismatches = await UnlinkAmountMismatchedDepositSplitLinksForDepositHealthFixAsync(deposit, currentUser, trail);
-            if (unlinkedAmountMismatches)
-            {
-                LogHealthPaymentFixTrace(
-                    payment,
-                    step: "UnlinkAmountMismatch",
-                    reason: trail.FormatBailTrail(),
-                    detail: $"Deposit={deposit.DepositCode} — cleared split links where line amount <> split amount.");
-            }
-
-            var prunedWrongLinks = await PruneWrongDepositSplitLinksForPaymentHealthFixAsync(payment, deposit, currentUser, trail);
-            if (prunedWrongLinks)
-            {
-                LogHealthPaymentFixTrace(
-                    payment,
-                    step: "ClearWrongDepositSplitLink",
-                    reason: trail.FormatBailTrail(),
-                    detail: $"Deposit={deposit.DepositCode} — cleared wrong link(s), re-linking next.");
-            }
-
-            deposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
-            await RepairDepositUfSplitLinksForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
+            await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
+                deposit,
+                organizationId,
+                currentUser,
+                result,
+                trail);
             deposit = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId) ?? deposit;
         }
 
@@ -597,46 +577,13 @@ public partial class AccountingManager
             return;
         }
 
-        var depositLabel = string.IsNullOrWhiteSpace(deposit.DepositCode)
-            ? deposit.DepositId.ToString()
-            : deposit.DepositCode.Trim();
         var trail = new AccountingSyncBailTrail();
-        var hadDepositJournalEntry = await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId);
-
-        result.JournalEntriesDeleted += await PruneDuplicateOpenDepositJournalEntriesByDepositIdAsync(
-            depositId,
+        await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
+            deposit,
             organizationId,
-            currentUser);
-
-        await RepairDepositUfSplitLinksForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
-
-        if (await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId))
-        {
-            // Deposit JE exists — still re-stamp PaymentId/DepositId on all payment-linked JEs
-            // (Owner/SDW/Prepayment actuals are linked by PaymentId, not only the UF posting line).
-            await SyncDepositDocumentLinksAsync(deposit, currentUser);
-
-            if (hadDepositJournalEntry)
-                result.JournalEntriesSkipped++;
-            else
-                result.JournalEntriesCreated++;
-            return;
-        }
-
-        await TryReplaceJournalEntriesFromDepositWithDiagnosticsAsync(deposit, currentUser, trail);
-
-        if (await DepositHasHealthJournalEntryAsync(organizationId, deposit.OfficeId, deposit.DepositId))
-        {
-            if (hadDepositJournalEntry)
-                result.JournalEntriesSkipped++;
-            else
-                result.JournalEntriesCreated++;
-        }
-        else
-        {
-            result.JournalEntriesSkipped++;
-            result.Errors.Add($"Deposit {depositLabel}: no deposit JE after fix.");
-        }
+            currentUser,
+            result,
+            trail);
     }
 
     async Task SyncTransferForHealthFixAsync(Guid organizationId, Guid transferId, Guid currentUser, JournalEntrySyncResult result)

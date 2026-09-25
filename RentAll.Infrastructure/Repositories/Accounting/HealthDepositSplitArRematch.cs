@@ -12,8 +12,9 @@ public partial class AccountingRepository
         Guid depositId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var (exact, noMatch) = await db.DapperProcQueryMultipleAsync<
+        var (exact, stampPayments, noMatch) = await db.DapperProcQueryTripleAsync<
             DepositSplitArRematchMatchEntity,
+            DepositSplitArRematchStampPaymentEntity,
             DepositSplitArRematchNoMatchEntity>(
             "Accounting.DepositSplit_ArRematchCandidates",
             new { OrganizationId = organizationId, DepositId = depositId });
@@ -21,6 +22,7 @@ public partial class AccountingRepository
         return new DepositSplitArRematchCandidates
         {
             ExactMatches = (exact ?? []).Select(MapArRematchMatch).ToList(),
+            StampPaymentIds = (stampPayments ?? []).Select(row => row.PaymentId).Where(id => id != Guid.Empty).Distinct().ToList(),
             NoMatches = (noMatch ?? []).Select(MapArRematchNoMatch).ToList()
         };
     }

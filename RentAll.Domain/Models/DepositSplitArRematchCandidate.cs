@@ -24,5 +24,6 @@ public sealed class DepositSplitArRematchNoMatch
 public sealed class DepositSplitArRematchCandidates
 {
     public IReadOnlyList<DepositSplitArRematchMatch> ExactMatches { get; init; } = [];
+    public IReadOnlyList<Guid> StampPaymentIds { get; init; } = [];
     public IReadOnlyList<DepositSplitArRematchNoMatch> NoMatches { get; init; } = [];
 }
