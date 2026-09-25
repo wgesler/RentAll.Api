@@ -29,7 +29,7 @@ public partial class AccountingManager
     {
         var scannedIds = await ResolveBrokenDocumentIdsFromHealthScanAsync(organizationId, officeIds, syncType, paymentKindId);
         var distinctIds = documentIds.Count > 0
-            ? documentIds.Where(id => id != Guid.Empty).Concat(scannedIds).Distinct().ToList()
+            ? documentIds.Where(id => id != Guid.Empty).Distinct().ToList()
             : scannedIds;
         if (syncType == "deposit")
             distinctIds = await OrderDepositIdsForHealthFixAsync(organizationId, distinctIds);
@@ -92,6 +92,18 @@ public partial class AccountingManager
 
             processed++;
             ReportSyncProgress(progress, syncType, total, processed, result, processed >= total ? "Completed" : "Running");
+        }
+
+        if (syncType == "deposit")
+        {
+            var depositIdsNeedingPaymentStamp = await ResolveDepositFixDocumentIdsAsync(organizationId, officeIds);
+            if (depositIdsNeedingPaymentStamp.Count > 0)
+            {
+                await RestampInvoicePaymentsFromLinkedUfSplitsForDepositsHealthFixAsync(
+                    organizationId,
+                    depositIdsNeedingPaymentStamp,
+                    currentUser);
+            }
         }
 
         if (syncType == "payment" && paymentKindId == (int)PaymentKind.Invoice)

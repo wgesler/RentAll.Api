@@ -451,13 +451,14 @@ public partial class AccountingManager
 
         var sourceLine = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
         if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
-            return Guid.Empty;
+        {
+            sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(journalEntryLineId);
+            if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
+                return Guid.Empty;
+        }
 
-        var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(sourceLine.JournalEntryId, organizationId);
-        if (paymentJournalEntry?.PaymentId is { } cachedEntryPaymentId && cachedEntryPaymentId != Guid.Empty)
-            return cachedEntryPaymentId;
-
-        paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
+        // Always load payment JE from DB — office sync cache entries may omit PaymentId.
+        var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
         if (paymentJournalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty)
             return paymentId;
 
@@ -547,11 +548,6 @@ public partial class AccountingManager
                 else
                     payment = officePayments.FirstOrDefault(candidate => candidate.PaymentId == paymentId)
                         ?? await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
-
-                if (payment?.DepositId is { } stampedDepositId
-                    && stampedDepositId != Guid.Empty
-                    && stampedDepositId != deposit.DepositId)
-                    continue;
 
                 if (payment == null || !PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
                     continue;
@@ -873,14 +869,6 @@ public partial class AccountingManager
 
             if (payment == null)
                 continue;
-
-            if (payment.DepositId is { } existingDepositId
-                && existingDepositId != Guid.Empty
-                && existingDepositId != deposit.DepositId)
-            {
-                await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(payment, organizationId: deposit.OrganizationId, currentUser);
-                payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId) ?? payment;
-            }
 
             if (payment.DepositId == deposit.DepositId)
                 continue;

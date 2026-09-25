@@ -312,10 +312,8 @@ public partial class AccountingManager
         else
             payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
 
-        if (payment?.DepositId is { } stampedDepositId && stampedDepositId != Guid.Empty && stampedDepositId != deposit.DepositId)
-            return false;
-
-        var paymentJournalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
+        // Payment.DepositId is deposit-owned; do not treat stamp mismatch as an invalid split line (health fix restamps).
+        var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(line.JournalEntryId, deposit.OrganizationId);
         if (paymentJournalEntry == null
             || payment?.PaymentDate is not { } paymentDate
             || !PaymentMatchesDepositTransactionDate(deposit, paymentDate))
@@ -330,7 +328,15 @@ public partial class AccountingManager
             return false;
 
         if (!IsValidPaymentAllocationDepositSplitLinkLine(split, line, paymentJournalEntry))
-            return false;
+        {
+            if (paymentId != Guid.Empty
+                && await DepositSplitConsolidatedInvoiceLedgerTotalMatchesAsync(deposit, split, paymentId))
+            {
+                // Linked AR line may be one invoice line; split total matches all listed invoices on the payment.
+            }
+            else
+                return false;
+        }
 
         if (!await SplitLineContextMatchesResolvedLineAsync(
                 split.PropertyId,
@@ -499,6 +505,13 @@ public partial class AccountingManager
             }
 
             var amountMismatch = Math.Abs(lineNet - splitAmount) > 0.005m;
+            if (amountMismatch
+                && paymentId != Guid.Empty
+                && await DepositSplitConsolidatedInvoiceLedgerTotalMatchesAsync(deposit, split, paymentId))
+            {
+                amountMismatch = false;
+            }
+
             var dateMismatch = payment != null && !PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate);
             var contextMismatch = !await SplitLineContextMatchesResolvedLineAsync(
                 split.PropertyId,
@@ -812,6 +825,38 @@ public partial class AccountingManager
 
     private static bool DepositSplitMatchesUndepositedLineAmount(DepositSplit split, decimal lineNetAmount)
         => Math.Abs(Math.Abs(lineNetAmount) - Math.Abs(RoundCurrency(split.Amount))) <= 0.005m;
+
+    /// <summary>
+    /// Deposit split memo lists multiple invoices (R-…-001: R-…-002: …); split amount = sum of those payment ledger lines.
+    /// </summary>
+    private async Task<bool> DepositSplitConsolidatedInvoiceLedgerTotalMatchesAsync(
+        Deposit deposit,
+        DepositSplit split,
+        Guid paymentId)
+    {
+        var invoiceCodes = ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split);
+        if (invoiceCodes.Count < 2 || paymentId == Guid.Empty)
+            return false;
+
+        var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, deposit.OrganizationId);
+        if (payment?.LedgerLines == null || payment.LedgerLines.Count == 0)
+            return false;
+
+        var splitAmount = Math.Abs(RoundCurrency(split.Amount));
+        var ledgerSum = 0m;
+        foreach (var invoiceCode in invoiceCodes)
+        {
+            var matchedLines = payment.LedgerLines
+                .Where(line => EntityCodeFormatting.CodesMatch(line.InvoiceCode, invoiceCode))
+                .ToList();
+            if (matchedLines.Count == 0)
+                return false;
+
+            ledgerSum += matchedLines.Sum(line => Math.Abs(RoundCurrency(line.Amount)));
+        }
+
+        return Math.Abs(ledgerSum - splitAmount) <= 0.005m;
+    }
 
     private static bool DepositSplitTargetsPayment(DepositSplit split, Payment payment)
     {

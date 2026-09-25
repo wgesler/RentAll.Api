@@ -17,6 +17,7 @@ public sealed class DepositSplitArRematchNoMatchEntity
     public int DepositSplitId { get; set; }
     public string? SplitDescription { get; set; }
     public string MatchOutcome { get; set; } = string.Empty;
+    public Guid? PaymentId { get; set; }
     public string? PaymentCode { get; set; }
     public string? InvoiceCode { get; set; }
 }

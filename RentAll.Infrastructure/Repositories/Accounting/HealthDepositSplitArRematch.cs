@@ -46,6 +46,7 @@ public partial class AccountingRepository
             DepositSplitId = entity.DepositSplitId,
             SplitDescription = entity.SplitDescription,
             MatchOutcome = entity.MatchOutcome,
+            PaymentId = entity.PaymentId,
             PaymentCode = entity.PaymentCode,
             InvoiceCode = entity.InvoiceCode
         };

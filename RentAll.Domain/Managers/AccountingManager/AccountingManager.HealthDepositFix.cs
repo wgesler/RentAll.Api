@@ -7,10 +7,8 @@ namespace RentAll.Domain.Managers;
 public partial class AccountingManager
 {
     private const string HealthDepositFixTracePrefix = "[DepositHealthFixTrace]";
-    private const int HealthDepositFixMaxPasses = 2;
-
     /// <summary>
-    /// Per-deposit health repair: unlink only invalid split lines, AR rematch + stamp, then document links (idempotent).
+    /// Per-deposit health repair — clear bad UF links / amount mismatches, then one manual-style rematch apply (@Commit = 1).
     /// </summary>
     private async Task RepairDepositForHealthFixAsync(
         Deposit deposit,
@@ -21,66 +19,266 @@ public partial class AccountingManager
     {
         trail ??= new AccountingSyncBailTrail();
 
-        for (var pass = 0; pass < HealthDepositFixMaxPasses; pass++)
-        {
-            var reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
-            if (reloaded == null)
-                return;
+        var reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded == null)
+            return;
 
+        deposit = reloaded;
+
+        var paymentsRestampedBeforeClear = await RestampInvoicePaymentsFromLinkedUfSplitsForHealthFixAsync(
+            deposit,
+            organizationId,
+            currentUser);
+        if (paymentsRestampedBeforeClear > 0)
+        {
+            LogHealthDepositFixTrace(
+                deposit,
+                "RestampFromLinkedSplits",
+                $"PaymentsRestamped={paymentsRestampedBeforeClear} (before clear/rematch)");
+            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+            if (reloaded != null)
+                deposit = reloaded;
+        }
+
+        await ClearInvalidDepositSplitLinksForDepositHealthFixAsync(deposit, currentUser, trail);
+
+        reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded != null)
             deposit = reloaded;
 
-            await ClearInvalidDepositSplitLinksForDepositHealthFixAsync(deposit, currentUser, trail);
+        await RepairStalePaymentStampsFromLinkedSplitsForHealthFixAsync(deposit, organizationId, currentUser, trail);
 
-            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
-            if (reloaded != null)
-                deposit = reloaded;
+        reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded != null)
+            deposit = reloaded;
 
-            var rematchCandidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+        var rematchCandidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+            organizationId,
+            deposit.DepositId);
+
+        await UnlinkAmountMismatchedDepositSplitLinksForDepositHealthFixAsync(
+            deposit,
+            currentUser,
+            trail,
+            rematchCandidates);
+
+        reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded != null)
+            deposit = reloaded;
+
+        await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
+            deposit,
+            organizationId,
+            currentUser,
+            result,
+            trail);
+
+        reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded == null)
+            return;
+
+        deposit = reloaded;
+
+        await RestampInvoicePaymentsFromLinkedUfSplitsForHealthFixAsync(
+            deposit,
+            organizationId,
+            currentUser);
+
+        reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded != null)
+            deposit = reloaded;
+
+        var postApplyCandidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
+            organizationId,
+            deposit.DepositId);
+        await RestampInvoicePaymentsFromLinkedUfSplitsForHealthFixAsync(
+            deposit,
+            organizationId,
+            currentUser);
+
+        await ClearOrphanDepositedInvoicePaymentsForDepositHealthFixAsync(
+            deposit,
+            organizationId,
+            currentUser,
+            trail);
+
+        await RestampInvoicePaymentsFromLinkedUfSplitsForHealthFixAsync(
+            deposit,
+            organizationId,
+            currentUser);
+
+        await RecordUnrepairedDepositSplitLinksForHealthFixAsync(
+            deposit,
+            postApplyCandidates,
+            result,
+            trail);
+    }
+
+    /// <summary>
+    /// Payment stamped to this deposit but no UF split on this deposit links its payment JE (health: missing split link).
+    /// </summary>
+    private async Task ClearOrphanDepositedInvoicePaymentsForDepositHealthFixAsync(
+        Deposit deposit,
+        Guid organizationId,
+        Guid currentUser,
+        AccountingSyncBailTrail? trail)
+    {
+        var officePayments = _officeSyncCache != null
+            ? _officeSyncCache.Payments
+            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
                 organizationId,
-                deposit.DepositId);
+                deposit.OfficeId.ToString(),
+                (int)PaymentKind.Invoice)).ToList();
 
-            await UnlinkAmountMismatchedDepositSplitLinksForDepositHealthFixAsync(
-                deposit,
-                currentUser,
-                trail,
-                rematchCandidates);
+        foreach (var payment in officePayments)
+        {
+            if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                continue;
 
-            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
-            if (reloaded != null)
-                deposit = reloaded;
+            if (payment.DepositId != deposit.DepositId)
+                continue;
 
-            await ApplyDepositSplitArRematchCandidatesForHealthFixAsync(
-                deposit,
-                organizationId,
-                currentUser,
-                result,
-                trail);
+            if (await DepositHasUfSplitLinkedToPaymentAsync(deposit, payment.PaymentId, organizationId))
+                continue;
 
-            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
-            if (reloaded != null)
-                deposit = reloaded;
+            await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(payment, organizationId, currentUser);
+            trail?.Note(
+                $"Cleared orphan deposit stamp on {payment.PaymentCode} (no UF split on {deposit.DepositCode} links its payment JE).");
+        }
+    }
 
-            await SyncDepositDocumentLinksAsync(deposit, currentUser, unstampMissingPayments: false);
+    private async Task<bool> DepositHasUfSplitLinkedToPaymentAsync(
+        Deposit deposit,
+        Guid paymentId,
+        Guid organizationId)
+    {
+        if (paymentId == Guid.Empty)
+            return false;
 
-            reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
-            if (reloaded != null)
-                deposit = reloaded;
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                continue;
 
-            var postRepairCandidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(
-                organizationId,
-                deposit.DepositId);
-            await RecordUnrepairedDepositSplitLinksForHealthFixAsync(
-                deposit,
-                postRepairCandidates,
-                result,
-                trail);
+            var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(lineId);
+            if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
+                continue;
 
-            var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(deposit);
-            if (undepositedFundsAccountId <= 0
-                || await CountDepositSplitsNeedingHealthFixLinkRepairAsync(deposit, undepositedFundsAccountId) == 0)
+            var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(
+                sourceLine.JournalEntryId,
+                organizationId);
+            if (paymentJournalEntry?.PaymentId == paymentId)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// When UF splits already link to a payment JE AR line but Payment.DepositId points elsewhere
+    /// (rematch proc skips HasPaymentOnLinkedJe), restamp payment + payment JEs to this deposit.
+    /// </summary>
+    private async Task<int> RestampInvoicePaymentsFromLinkedUfSplitsForHealthFixAsync(
+        Deposit deposit,
+        Guid organizationId,
+        Guid currentUser)
+    {
+        var linkedSplitCount = (deposit.Splits ?? [])
+            .Count(split => split.JournalEntryLineId is { } lineId && lineId != Guid.Empty);
+        var paymentIds = new HashSet<Guid>();
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                continue;
+
+            var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(lineId);
+            if (sourceLine == null || sourceLine.JournalEntryId == Guid.Empty)
+                continue;
+
+            var paymentJournalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(
+                sourceLine.JournalEntryId,
+                organizationId);
+            if (paymentJournalEntry?.PaymentId is { } resolvedPaymentId && resolvedPaymentId != Guid.Empty)
+                paymentIds.Add(resolvedPaymentId);
+        }
+
+        if (paymentIds.Count == 0)
+            return 0;
+
+        var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(deposit);
+        var stampedPaymentIds = new HashSet<Guid>();
+        foreach (var paymentId in paymentIds)
+        {
+            if (paymentId == Guid.Empty || !stampedPaymentIds.Add(paymentId))
+                continue;
+
+            var paymentToStamp = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+            if (paymentToStamp == null || !paymentToStamp.IsActive || paymentToStamp.PaymentKindId != (int)PaymentKind.Invoice)
+                continue;
+
+            if (paymentToStamp.DepositId != deposit.DepositId)
             {
-                break;
+                await _accountingRepository.SetPaymentDepositIdAsync(
+                    paymentId,
+                    organizationId,
+                    deposit.DepositId,
+                    currentUser);
+
+                paymentToStamp = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
+                if (paymentToStamp == null)
+                    continue;
+
+                paymentToStamp.DepositId = deposit.DepositId;
+                paymentToStamp.DepositCode = deposit.DepositCode;
             }
+
+            var paymentEntries = await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(
+                new JournalEntryGetByPaymentIdCriteria
+                {
+                    OrganizationId = organizationId,
+                    PaymentId = paymentId
+                });
+
+            foreach (var journalEntry in paymentEntries)
+            {
+                await TryUpdateJournalEntryDepositDocumentLinkAsync(journalEntry, deposit, currentUser);
+                await TryUpdateJournalEntryPaymentDocumentLinkAsync(journalEntry, paymentToStamp, currentUser);
+            }
+
+        }
+
+        if (_officeSyncCache != null && stampedPaymentIds.Count > 0)
+        {
+            foreach (var stampedPaymentId in stampedPaymentIds)
+            {
+                if (_officeSyncCache.PaymentsById.TryGetValue(stampedPaymentId, out var cachedPayment))
+                {
+                    cachedPayment.DepositId = deposit.DepositId;
+                    cachedPayment.DepositCode = deposit.DepositCode;
+                }
+            }
+
+            _officeSyncCache.InvalidateRematchIndexes();
+        }
+
+        return stampedPaymentIds.Count;
+    }
+
+    private async Task RestampInvoicePaymentsFromLinkedUfSplitsForDepositsHealthFixAsync(
+        Guid organizationId,
+        IReadOnlyList<Guid> depositIds,
+        Guid currentUser)
+    {
+        foreach (var depositId in depositIds)
+        {
+            if (depositId == Guid.Empty)
+                continue;
+
+            var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId);
+            if (deposit?.Splits == null || deposit.Splits.Count == 0)
+                continue;
+
+            await RestampInvoicePaymentsFromLinkedUfSplitsForHealthFixAsync(deposit, organizationId, currentUser);
         }
     }
 
@@ -88,6 +286,116 @@ public partial class AccountingManager
     {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         return GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+    }
+
+    private async Task RepairStalePaymentStampsFromLinkedSplitsForHealthFixAsync(
+        Deposit deposit,
+        Guid organizationId,
+        Guid currentUser,
+        AccountingSyncBailTrail trail)
+    {
+        var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(deposit);
+        if (undepositedFundsAccountId <= 0)
+            return;
+
+        foreach (var split in deposit.Splits ?? [])
+        {
+            if (IsDepositSplitExcludedFromArRematchScopeByMemo(split))
+                continue;
+
+            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                continue;
+
+            if (!await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
+                continue;
+
+            await ClearInvalidDepositSplitLinksOnOtherDepositsForPaymentHealthFixAsync(
+                deposit,
+                split,
+                organizationId,
+                currentUser,
+                trail);
+
+            await RepairPostedDepositSplitStampForHealthFixAsync(
+                deposit,
+                split,
+                organizationId,
+                currentUser,
+                trail);
+        }
+    }
+
+    /// <summary>
+    /// Drop bogus UF-line or invalid links on other deposits that block restamping the payment to this deposit.
+    /// </summary>
+    private async Task ClearInvalidDepositSplitLinksOnOtherDepositsForPaymentHealthFixAsync(
+        Deposit deposit,
+        DepositSplit split,
+        Guid organizationId,
+        Guid currentUser,
+        AccountingSyncBailTrail trail)
+    {
+        var paymentId = await ResolvePaymentIdFromDepositSplitLineAsync(split, organizationId);
+        if (paymentId == Guid.Empty)
+            return;
+
+        var officeDeposits = _officeSyncCache != null
+            ? _officeSyncCache.Deposits
+            : (await _accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+            {
+                OrganizationId = organizationId,
+                OfficeIds = deposit.OfficeId.ToString(),
+                IsActive = true,
+                IncludeInactive = false
+            })).ToList();
+
+        foreach (var otherDeposit in officeDeposits)
+        {
+            if (otherDeposit.DepositId == deposit.DepositId || otherDeposit.Splits == null || otherDeposit.Splits.Count == 0)
+                continue;
+
+            var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(otherDeposit);
+            if (undepositedFundsAccountId <= 0)
+                continue;
+
+            var originalSplitLineIds = otherDeposit.Splits.Select(row => row.JournalEntryLineId).ToList();
+            var originalSplitReservationIds = otherDeposit.Splits.Select(row => row.ReservationId).ToList();
+            var originalSplitPropertyIds = otherDeposit.Splits.Select(row => row.PropertyId).ToList();
+            var changed = false;
+
+            foreach (var otherSplit in otherDeposit.Splits)
+            {
+                if (otherSplit.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
+                    continue;
+
+                var otherPaymentId = await ResolvePaymentIdFromDepositSplitLineAsync(otherSplit, organizationId);
+                if (otherPaymentId != paymentId)
+                    continue;
+
+                if (await IsValidDepositSplitJournalEntryLineAsync(otherDeposit, otherSplit, undepositedFundsAccountId))
+                    continue;
+
+                otherSplit.JournalEntryLineId = null;
+                changed = true;
+                trail.Note(
+                    $"Cleared invalid split {otherSplit.DepositSplitId} on {otherDeposit.DepositCode} (conflicts with {deposit.DepositCode} payment link).");
+            }
+
+            if (!changed || !DepositSplitReconciliationChanged(
+                    originalSplitLineIds,
+                    originalSplitReservationIds,
+                    originalSplitPropertyIds,
+                    otherDeposit.Splits))
+                continue;
+
+            otherDeposit.ModifiedBy = currentUser;
+            var updated = await _accountingRepository.UpdateDepositAsync(otherDeposit);
+            otherDeposit.Splits = updated.Splits;
+            _officeSyncCache?.ReplaceDeposit(otherDeposit);
+        }
     }
 
     private async Task RecordUnrepairedDepositSplitLinksForHealthFixAsync(
@@ -111,15 +419,30 @@ public partial class AccountingManager
                 && await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
                 continue;
 
+            if (split.JournalEntryLineId is { } linkedLineId && linkedLineId != Guid.Empty
+                && await DepositSplitLinkedJournalEntryHasPaymentAsync(linkedLineId, deposit.OrganizationId))
+                continue;
+
             var detail = noMatchBySplitId.TryGetValue(split.DepositSplitId, out var noMatch)
                 ? $"Rematch no-match: {noMatch.MatchOutcome}"
                 : "Split still missing a valid payment AR line link after health repair.";
 
             var message = BuildHealthDepositFixError(deposit.DepositCode, split.Amount, detail);
-            result.Errors.Add(message);
+            if (!result.Errors.Contains(message))
+                result.Errors.Add(message);
             trail.Note(message);
             LogHealthDepositFixTrace(deposit, "UnrepairedSplitLink", detail);
         }
+    }
+
+    private async Task<bool> DepositSplitLinkedJournalEntryHasPaymentAsync(Guid journalEntryLineId, Guid organizationId)
+    {
+        var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
+        if (line == null)
+            return false;
+
+        var journalEntry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, organizationId);
+        return journalEntry?.PaymentId is { } paymentId && paymentId != Guid.Empty;
     }
 
     private static string BuildHealthDepositFixError(string depositCode, decimal splitAmount, string detail)
@@ -158,7 +481,8 @@ public partial class AccountingManager
             && stampedDepositId != Guid.Empty
             && stampedDepositId != deposit.DepositId)
         {
-            return;
+            await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(payment, organizationId, currentUser);
+            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId) ?? payment;
         }
 
         if (payment.DepositId != deposit.DepositId)
