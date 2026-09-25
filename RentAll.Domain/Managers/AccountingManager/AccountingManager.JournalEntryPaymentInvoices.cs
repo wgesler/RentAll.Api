@@ -792,10 +792,13 @@ public partial class AccountingManager
         if (payment.DepositId is { } depositId && depositId != Guid.Empty)
             depositedOn = await _accountingRepository.GetDepositByIdAsync(depositId, payment.OrganizationId);
 
-        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId);
+        var stampedEntryIds = new HashSet<Guid>();
 
-        foreach (var journalEntry in linkedEntries)
+        async Task StampPaymentDocumentLinkAsync(JournalEntry journalEntry)
         {
+            if (journalEntry.JournalEntryId == Guid.Empty || !stampedEntryIds.Add(journalEntry.JournalEntryId))
+                return;
+
             ApplyPaymentDocumentLink(journalEntry, payment);
             if (depositedOn != null)
                 ApplyDepositDocumentLink(journalEntry, depositedOn);
@@ -803,6 +806,22 @@ public partial class AccountingManager
             journalEntry.ModifiedBy = currentUser;
             await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
         }
+
+        /* Consolidated invoice payment JEs (SourceType.InvoicePayment) are not returned by PaymentId lookup after clear. */
+        foreach (var journalEntry in await GetJournalEntriesForSourceAsync(
+                     payment.OrganizationId,
+                     payment.OfficeId,
+                     SourceType.InvoicePayment,
+                     payment.PaymentId))
+        {
+            if (journalEntry.JournalEntryKindId is not (JournalEntryKind.Payment or JournalEntryKind.PrePaymentReceive))
+                continue;
+
+            await StampPaymentDocumentLinkAsync(journalEntry);
+        }
+
+        foreach (var journalEntry in await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId))
+            await StampPaymentDocumentLinkAsync(journalEntry);
 
         foreach (var paymentLine in payment.LedgerLines.Where(line => line.Amount != 0))
         {
@@ -827,11 +846,7 @@ public partial class AccountingManager
                 ledgerLine);
 
             foreach (var journalEntry in paymentEntries)
-            {
-                ApplyPaymentDocumentLink(journalEntry, payment);
-                journalEntry.ModifiedBy = currentUser;
-                await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
-            }
+                await StampPaymentDocumentLinkAsync(journalEntry);
         }
     }
 
