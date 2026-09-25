@@ -254,7 +254,10 @@ public partial class AccountingManager
                     trail?.Note($"Rematch clear UF line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
                     split.JournalEntryLineId = null;
                 }
-                else if (await IsJournalEntryLineOnClosedJournalEntryAsync(deposit.OrganizationId, existingLineId))
+                else if (await IsJournalEntryLineOnClosedJournalEntryAsync(
+                             deposit.OrganizationId,
+                             existingLineId,
+                             trail?.IgnorePostingStatusForLinkRepair == true))
                 {
                     assignedLineIds.Add(existingLineId);
                     trail?.Note($"Rematch keep posted line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
@@ -466,7 +469,10 @@ public partial class AccountingManager
             if (split.JournalEntryLineId is not { } lineId || lineId == Guid.Empty)
                 continue;
 
-            if (await IsJournalEntryLineOnClosedJournalEntryAsync(deposit.OrganizationId, lineId))
+            if (await IsJournalEntryLineOnClosedJournalEntryAsync(
+                    deposit.OrganizationId,
+                    lineId,
+                    ignorePostingStatusForLinkRepair: true))
                 continue;
 
             var line = await GetJournalEntryLineByIdCachedAsync(lineId);
@@ -1812,10 +1818,21 @@ public partial class AccountingManager
         return journalEntry?.PaymentId == payment.PaymentId;
     }
 
-    private async Task ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+    private Task ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
         Payment payment,
         Guid organizationId,
         Guid currentUser)
+        => ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+            payment,
+            organizationId,
+            currentUser,
+            ignorePostingStatusForLinkRepair: false);
+
+    private async Task ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+        Payment payment,
+        Guid organizationId,
+        Guid currentUser,
+        bool ignorePostingStatusForLinkRepair)
     {
         if (payment.DepositId is not { } depositId || depositId == Guid.Empty)
             return;
@@ -1832,14 +1849,14 @@ public partial class AccountingManager
         }
 
         foreach (var journalEntry in paymentJournalEntries)
-            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser);
+            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser, ignorePostingStatusForLinkRepair);
 
         var invoiceChargeJournalEntries = await LoadDepositInvoiceChargeJournalEntriesForPaymentJournalEntriesAsync(
             organizationId,
             payment.OfficeId,
             paymentJournalEntries);
         foreach (var journalEntry in invoiceChargeJournalEntries)
-            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser);
+            await TryClearJournalEntryDepositDocumentLinkAsync(journalEntry, currentUser, ignorePostingStatusForLinkRepair);
 
         await ClearInvoicePaymentDepositStampAsync(payment, organizationId, currentUser);
     }

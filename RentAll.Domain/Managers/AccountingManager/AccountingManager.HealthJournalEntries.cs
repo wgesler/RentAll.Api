@@ -622,7 +622,7 @@ public partial class AccountingManager
             return;
         }
 
-        var trail = new AccountingSyncBailTrail();
+        var trail = new AccountingSyncBailTrail { IgnorePostingStatusForLinkRepair = true };
         await RepairDepositForHealthFixAsync(deposit, organizationId, currentUser, result, trail);
     }
 

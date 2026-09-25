@@ -338,9 +338,12 @@ public partial class AccountingManager
         await UpdateJournalEntryWithoutRetainedEarningsRefreshAsync(journalEntry, requireActiveLines: true);
     }
 
-    private async Task<bool> IsJournalEntryLineOnClosedJournalEntryAsync(Guid organizationId, Guid journalEntryLineId)
+    private async Task<bool> IsJournalEntryLineOnClosedJournalEntryAsync(
+        Guid organizationId,
+        Guid journalEntryLineId,
+        bool ignorePostingStatusForLinkRepair = false)
     {
-        if (journalEntryLineId == Guid.Empty)
+        if (ignorePostingStatusForLinkRepair || journalEntryLineId == Guid.Empty)
             return false;
 
         var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
@@ -351,9 +354,12 @@ public partial class AccountingManager
         return journalEntry != null && IsClosedJournalEntryForDepositLinkUpdate(journalEntry);
     }
 
-    private async Task TryClearJournalEntryDepositDocumentLinkAsync(JournalEntry journalEntry, Guid currentUser)
+    private async Task TryClearJournalEntryDepositDocumentLinkAsync(
+        JournalEntry journalEntry,
+        Guid currentUser,
+        bool ignorePostingStatusForLinkRepair = false)
     {
-        if (IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
+        if (!ignorePostingStatusForLinkRepair && IsClosedJournalEntryForDepositLinkUpdate(journalEntry))
             return;
 
         ClearDepositDocumentLink(journalEntry);

@@ -8,6 +8,9 @@ public partial class AccountingManager
     /// </summary>
     private sealed class AccountingSyncBailTrail
     {
+        /// <summary>Health fix only adjusts document links/stamps — never block on JE posting status.</summary>
+        public bool IgnorePostingStatusForLinkRepair { get; init; }
+
         public List<string> Trail { get; } = [];
 
         public void Note(string message) => Trail.Add(message);

@@ -141,7 +141,11 @@ public partial class AccountingManager
             if (await DepositHasUfSplitLinkedToPaymentAsync(deposit, payment.PaymentId, organizationId))
                 continue;
 
-            await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(payment, organizationId, currentUser);
+            await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+                payment,
+                organizationId,
+                currentUser,
+                ignorePostingStatusForLinkRepair: true);
             trail?.Note(
                 $"Cleared orphan deposit stamp on {payment.PaymentCode} (no UF split on {deposit.DepositCode} links its payment JE).");
         }
@@ -481,7 +485,11 @@ public partial class AccountingManager
             && stampedDepositId != Guid.Empty
             && stampedDepositId != deposit.DepositId)
         {
-            await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(payment, organizationId, currentUser);
+            await ReleaseInvoicePaymentDepositStampForDepositSyncAsync(
+                payment,
+                organizationId,
+                currentUser,
+                ignorePostingStatusForLinkRepair: true);
             payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId) ?? payment;
         }
 
@@ -562,7 +570,7 @@ public partial class AccountingManager
             if (await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
                 continue;
 
-            if (await IsJournalEntryLineOnClosedJournalEntryAsync(deposit.OrganizationId, lineId))
+            if (await IsJournalEntryLineOnClosedJournalEntryAsync(deposit.OrganizationId, lineId, ignorePostingStatusForLinkRepair: true))
                 continue;
 
             trail?.Note($"Clear invalid link: split {split.DepositSplitId} failed UF/payment line validation (line {lineId}).");
@@ -850,7 +858,7 @@ public partial class AccountingManager
                 if (await IsValidDepositSplitJournalEntryLineAsync(deposit, split, undepositedFundsAccountId))
                     continue;
 
-                if (await IsJournalEntryLineOnClosedJournalEntryAsync(organizationId, lineId))
+                if (await IsJournalEntryLineOnClosedJournalEntryAsync(organizationId, lineId, ignorePostingStatusForLinkRepair: true))
                     continue;
 
                 split.JournalEntryLineId = null;
