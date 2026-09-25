@@ -127,13 +127,15 @@ public partial class AccountingManager
         if (syncType == "payment")
             return await ResolvePaymentFixDocumentIdsAsync(organizationId, officeIds, paymentKindId);
 
+        if (syncType == "transfer")
+            return await ResolveTransferFixDocumentIdsAsync(organizationId, officeIds);
+
         var scan = syncType switch
         {
             "receipt" => await _healthRepository.RunReceiptHealthCheckAsync(organizationId, officeIds),
             "bill" => await _healthRepository.RunBillHealthCheckAsync(organizationId, officeIds),
             "workOrder" => await _healthRepository.RunWorkOrderHealthCheckAsync(organizationId, officeIds),
             "invoice" => await _healthRepository.RunInvoiceHealthCheckAsync(organizationId, officeIds),
-            "transfer" => await _healthRepository.RunTransferHealthCheckAsync(organizationId, officeIds),
             _ => throw new Exception($"Sync type '{syncType}' is not supported for health fix scan.")
         };
 
@@ -154,48 +156,25 @@ public partial class AccountingManager
                 ids.Add(id);
         }
 
-        if (paymentKindId == (int)PaymentKind.Invoice)
-        {
-            var linksScan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
-            if (!linksScan.Summary.IsClean)
-            {
-                foreach (var id in HealthDocumentTypeIdentification.CollectPaymentFixIds(linksScan.Issues))
-                    ids.Add(id);
-            }
-        }
-
         return ids.OrderBy(id => id).ToList();
     }
 
     private async Task<List<Guid>> ResolveDepositFixDocumentIdsAsync(Guid organizationId, string officeIds)
     {
-        var ids = new HashSet<Guid>();
-
         var depositScan = await _healthRepository.RunDepositHealthCheckAsync(organizationId, officeIds);
-        if (!depositScan.Summary.IsClean)
-        {
-            foreach (var id in HealthDocumentTypeIdentification.CollectFixDocumentIds(depositScan.Issues))
-                ids.Add(id);
-        }
+        if (depositScan.Summary.IsClean)
+            return [];
 
-        var linksScan = await _healthRepository.RunDocumentLinksHealthCheckAsync(organizationId, officeIds);
-        if (!linksScan.Summary.IsClean)
-        {
-            foreach (var issue in linksScan.Issues)
-            {
-                var issueText = issue.Issue ?? string.Empty;
-                if (!issueText.Contains("Deposit", StringComparison.OrdinalIgnoreCase))
-                    continue;
+        return HealthDocumentTypeIdentification.CollectFixDocumentIds(depositScan.Issues).ToList();
+    }
 
-                if (issueText.Contains("Deposited payment", StringComparison.OrdinalIgnoreCase))
-                    continue;
+    private async Task<List<Guid>> ResolveTransferFixDocumentIdsAsync(Guid organizationId, string officeIds)
+    {
+        var transferScan = await _healthRepository.RunTransferHealthCheckAsync(organizationId, officeIds);
+        if (transferScan.Summary.IsClean)
+            return [];
 
-                if (issue.DocumentId != Guid.Empty)
-                    ids.Add(issue.DocumentId);
-            }
-        }
-
-        return ids.OrderBy(id => id).ToList();
+        return HealthDocumentTypeIdentification.CollectFixDocumentIds(transferScan.Issues).ToList();
     }
 
     private async Task RunHealthFixBulkPruneAsync(string syncType, int? paymentKindId, Guid organizationId, string officeIds, IReadOnlyList<Guid> targetedDocumentIds, JournalEntrySyncResult result)
@@ -422,14 +401,6 @@ public partial class AccountingManager
             return;
 
         await SyncPaymentDocumentLinksAsync(payment, currentUser);
-
-        if ((PaymentKind)payment.PaymentKindId == PaymentKind.Invoice
-            && payment.DepositId is { } linkedDepositId
-            && linkedDepositId != Guid.Empty)
-        {
-            payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId) ?? payment;
-            await ReconcileDepositSplitLinksForDepositedPaymentHealthFixAsync(payment, organizationId, currentUser, result);
-        }
     }
 
     async Task SyncInvoicePaymentForHealthFixAsync(

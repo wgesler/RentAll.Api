@@ -509,7 +509,16 @@ public partial class AccountingManager
             if (!amountMismatch && !dateMismatch && !contextMismatch)
                 continue;
 
-            if (!exactRematchLineBySplitId.ContainsKey(split.DepositSplitId))
+            var paymentStampMismatch = payment != null
+                && payment.DepositId is { } stampedDepositId
+                && stampedDepositId != Guid.Empty
+                && stampedDepositId != deposit.DepositId;
+
+            if (!exactRematchLineBySplitId.ContainsKey(split.DepositSplitId)
+                && !paymentStampMismatch
+                && !amountMismatch
+                && !dateMismatch
+                && !contextMismatch)
             {
                 trail?.Note(
                     $"Step1 skip unlink (no rematch): split {split.DepositSplitId} amount={splitAmount:0.00} line={lineId} "
@@ -520,7 +529,8 @@ public partial class AccountingManager
             trail?.Note(
                 $"Step1 unlink invalid link: split {split.DepositSplitId} amount={splitAmount:0.00} line={lineId} lineAmount={lineNet:0.00} "
                 + $"amountMismatch={amountMismatch} dateMismatch={dateMismatch} contextMismatch={contextMismatch} "
-                + $"rematchLine={exactRematchLineBySplitId[split.DepositSplitId]}.");
+                + $"paymentStampMismatch={paymentStampMismatch} "
+                + $"rematchLine={(exactRematchLineBySplitId.TryGetValue(split.DepositSplitId, out var rematchLine) ? rematchLine.ToString() : "none")}.");
             split.JournalEntryLineId = null;
             changed = true;
         }
@@ -1589,7 +1599,8 @@ public partial class AccountingManager
             return true;
         }
 
-        if (!PaymentTransactionDateIsAfterDepositDate(payment, deposit))
+        if (!PaymentTransactionDateIsAfterDepositDate(payment, deposit)
+            && PaymentAccountingMonthIsOnOrBeforeDeposit(payment.PaymentDate, deposit.DepositDate))
             return false;
 
         await UnlinkInvoicePaymentFromDepositAsync(payment, deposit, organizationId, currentUser);
