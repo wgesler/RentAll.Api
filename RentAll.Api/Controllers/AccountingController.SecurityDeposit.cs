@@ -108,5 +108,20 @@ public partial class AccountingController
         }
     }
 
+    [HttpPut("security-deposit/{reservationId:guid}/undo")]
+    public async Task<IActionResult> UndoSecurityDepositAsync(Guid reservationId)
+    {
+        try
+        {
+            var updatedReservation = await _accountingManager.UndoSecurityDepositAsync(reservationId, CurrentOrganizationId, CurrentOfficeAccess, CurrentUser);
+            return Ok(new ReservationResponseDto(updatedReservation));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error undoing security deposit for reservation: {ReservationId}", reservationId);
+            return ServerError(ex.Message);
+        }
+    }
+
     #endregion
 }

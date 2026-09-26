@@ -456,6 +456,17 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ModifiedBy = modifiedBy
             });
         }
+
+        public async Task ClearDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Property.Reservation_ClearDepositReturned", new
+            {
+                ReservationId = reservationId,
+                OrganizationId = organizationId,
+                ModifiedBy = modifiedBy
+            });
+        }
         #endregion
 
         #region Deletes

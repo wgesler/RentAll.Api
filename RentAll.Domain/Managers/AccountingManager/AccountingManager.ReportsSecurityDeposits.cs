@@ -276,6 +276,56 @@ public partial class AccountingManager
         return reservation;
     }
 
+    public async Task<Reservation> UndoSecurityDepositAsync(Guid reservationId, Guid organizationId, string officeAccess, Guid currentUser)
+    {
+        _ = officeAccess;
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
+            ?? throw new Exception("Reservation not found");
+
+        var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, organizationId)
+            ?? throw new Exception("Property not found");
+
+        var departure = BuildSecurityDepositDeparture(reservation, property);
+        var rows = new List<ReservationDeparture> { departure };
+        await EnrichSecurityDepositJournalEntryDataAsync(organizationId, rows);
+        departure = rows[0];
+
+        var depositReturned = reservation.DepositReturned;
+        var depositComplete = IsSecurityDepositComplete(departure);
+        if (!depositReturned && !depositComplete)
+            throw new Exception("Nothing to undo for this security deposit");
+
+        var entries = await GetSecurityDepositJournalEntriesForReservationAsync(organizationId, reservation);
+        var didUndo = false;
+
+        if (depositComplete)
+        {
+            foreach (var entry in entries.Where(IsSecurityDepositTransferJournalEntry))
+            {
+                await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+                didUndo = true;
+            }
+        }
+
+        if (depositReturned)
+        {
+            foreach (var entry in entries.Where(entry => !IsSecurityDepositTransferJournalEntry(entry)))
+            {
+                await DeleteJournalEntryAsync(entry.JournalEntryId, organizationId);
+                didUndo = true;
+            }
+
+            await _reservationRepository.ClearDepositReturnedAsync(reservation.ReservationId, organizationId, currentUser);
+            reservation.DepositReturned = false;
+            didUndo = true;
+        }
+
+        if (!didUndo)
+            throw new Exception("Nothing to undo for this security deposit");
+
+        return reservation;
+    }
+
     #endregion
 
     #region Journal Entry
@@ -786,8 +836,33 @@ public partial class AccountingManager
                 group => RoundSecurityDepositAmount(group.Sum(CalculateSecurityDepositReturnJournalEntryAmount)));
     }
 
+    private static bool IsSecurityDepositComplete(ReservationDeparture departure)
+    {
+        var deposit = RoundSecurityDepositAmount(departure.Deposit);
+        var collected = RoundSecurityDepositAmount(departure.CollectedAmount);
+        var settled = RoundSecurityDepositAmount(departure.ReturnedAmount + departure.TransferredAmount);
+        return deposit > 0m && collected > 0m && collected == settled;
+    }
+
+    private async Task<List<JournalEntry>> GetSecurityDepositJournalEntriesForReservationAsync(Guid organizationId, Reservation reservation)
+    {
+        var entries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = reservation.OfficeId.ToString(CultureInfo.InvariantCulture),
+            SourceTypeId = (int)SourceType.SecurityDeposit,
+            SourceId = reservation.ReservationId,
+            IncludeUnposted = true
+        });
+
+        return (entries ?? []).ToList();
+    }
+
     private static bool IsSecurityDepositTransferJournalEntry(JournalEntry journalEntry)
     {
+        if (journalEntry.JournalEntryKindId == JournalEntryKind.SecurityDepositTransfer)
+            return true;
+
         var memo = journalEntry.Memo?.Trim() ?? string.Empty;
         return memo.Contains("Security Deposit Transfer", StringComparison.OrdinalIgnoreCase);
     }

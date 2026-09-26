@@ -23,6 +23,7 @@ public interface IAccountingManager
     Task<List<JournalEntry>> CreateJournalEntriesFromOwnerPaymentAsync(OwnerPaymentBatch ownerPaymentBatch, Guid currentUser);
     Task<Reservation> ApplySecurityDepositReturnAsync(Guid reservationId, Guid organizationId, string officeAccess, int chartOfAccountId, string description, decimal amount, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
     Task<Reservation> ApplySecurityDepositTransferAsync(Guid reservationId, Guid organizationId, string officeAccess, int chartOfAccountId, string description, decimal amount, DateOnly paymentDate, PaymentType paymentType, Guid currentUser);
+    Task<Reservation> UndoSecurityDepositAsync(Guid reservationId, Guid organizationId, string officeAccess, Guid currentUser);
     Task<UnreturnedSecurityDepositsResult> GetUnreturnedSecurityDepositsAsync(Guid organizationId, string officeAccess, int? officeId = null);
     Task<SecurityDepositDetailResult> GetSecurityDepositDetailAsync(Guid reservationId, Guid organizationId, string officeAccess);
     #endregion
