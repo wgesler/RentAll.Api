@@ -739,6 +739,48 @@ public partial class AccountingManager
 
         return false;
     }
+
+    private async Task<bool> PaymentCashJournalEntryArLinesMatchApplicationsAsync(Payment payment, Guid organizationId)
+    {
+        var loadResult = await LoadPaymentApplicationsAsync(payment, organizationId, strict: false);
+        if (loadResult.Applications.Count == 0)
+            return payment.LedgerLines.All(line => line.Amount == 0);
+
+        var cashEntries = (await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId))
+            .Where(IsInvoicePaymentCashJournalEntry)
+            .ToList();
+        if (cashEntries.Count == 0)
+            return false;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(payment.OrganizationId, payment.OfficeId);
+        var arAccountId = GetDefaultAccountsReceivable(chartOfAccounts, payment.OfficeId, accountingOffice);
+        if (arAccountId <= 0)
+            return false;
+
+        var arAmounts = cashEntries
+            .SelectMany(entry => entry.JournalEntryLines ?? [])
+            .Where(line => line.ChartOfAccountId == arAccountId)
+            .Select(line => Math.Abs(RoundCurrency(line.Debit - line.Credit)))
+            .Where(amount => amount > 0.005m)
+            .OrderBy(amount => amount)
+            .ToList();
+
+        var applicationAmounts = loadResult.Applications
+            .Select(application => Math.Abs(RoundCurrency(application.PaymentLedgerLine.Amount)))
+            .OrderBy(amount => amount)
+            .ToList();
+
+        if (arAmounts.Count != applicationAmounts.Count)
+            return false;
+
+        for (var index = 0; index < arAmounts.Count; index++)
+        {
+            if (Math.Abs(arAmounts[index] - applicationAmounts[index]) > 0.005m)
+                return false;
+        }
+
+        return true;
+    }
     #endregion
 
     #region Document Link

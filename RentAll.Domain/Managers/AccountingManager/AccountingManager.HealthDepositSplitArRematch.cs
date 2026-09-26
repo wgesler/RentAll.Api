@@ -71,10 +71,17 @@ public partial class AccountingManager
         }
 
         var depositChanged = false;
-        foreach (var match in candidates.ExactMatches)
+        var claimedLineIds = new HashSet<Guid>();
+        foreach (var match in candidates.ExactMatches.OrderBy(row => row.DepositSplitId))
         {
             if (match.ArJournalEntryLineId is not { } arLineId || arLineId == Guid.Empty)
                 continue;
+
+            if (!claimedLineIds.Add(arLineId))
+            {
+                trail?.Note($"ArRematch skip split {match.DepositSplitId}: line {arLineId} already claimed on this deposit apply.");
+                continue;
+            }
 
             var split = deposit.Splits?.FirstOrDefault(row => row.DepositSplitId == match.DepositSplitId);
             if (split == null)

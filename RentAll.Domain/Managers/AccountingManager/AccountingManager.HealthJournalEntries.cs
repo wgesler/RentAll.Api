@@ -436,12 +436,13 @@ public partial class AccountingManager
             payment = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, organizationId) ?? payment;
 
         var hadHealthPaymentJournalEntry = await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId);
+        var applicationsCoveredByArLines = await PaymentCashJournalEntryArLinesMatchApplicationsAsync(payment, organizationId);
         var hasDepositUfLine = payment.DepositId is { } depositId
             && depositId != Guid.Empty
             && await PaymentHasUndepositedFundsLineEqualToAmountAsync(payment);
         var needsPaymentJournalEntry = payment.DepositId is { } depositedId && depositedId != Guid.Empty
-            ? !hasDepositUfLine
-            : !hadHealthPaymentJournalEntry;
+            ? !hasDepositUfLine || !applicationsCoveredByArLines
+            : !hadHealthPaymentJournalEntry || !applicationsCoveredByArLines;
         if (forcePaymentJournalEntryUpsert || needsPaymentJournalEntry)
         {
             var createResult = await CreateJournalEntriesFromInvoicePaymentDocumentWithDiagnosticsAsync(
@@ -453,7 +454,9 @@ public partial class AccountingManager
             payment = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, organizationId) ?? payment;
             var paymentHealthyAfterFix = payment.DepositId is { } depositedPaymentId && depositedPaymentId != Guid.Empty
                 ? await PaymentHasUndepositedFundsLineEqualToAmountAsync(payment)
-                : await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId);
+                    && await PaymentCashJournalEntryArLinesMatchApplicationsAsync(payment, organizationId)
+                : await PaymentHasHealthPaymentJournalEntryAsync(payment.PaymentId, organizationId)
+                    && await PaymentCashJournalEntryArLinesMatchApplicationsAsync(payment, organizationId);
 
             if (paymentHealthyAfterFix)
             {
