@@ -519,6 +519,86 @@ public class AccountingManagerReservationInvoicePreviewTests
         Assert.DoesNotContain(previews, preview => preview.AccountingPeriod < new DateOnly(2026, 1, 1));
     }
 
+    [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_ExtendedStay_BillsOnlyUncoveredDays()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2026, 9, 22),
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        reservation.ReservationCode = "R-EXTEND";
+        reservation.CurrentInvoiceNo = 1;
+        reservation.OfficeName = "Test Office";
+        var existingInvoice = CreateExistingInvoice(reservation, "R-EXTEND-001", new DateOnly(2026, 9, 1));
+        existingInvoice.InvoicePeriod = "09/01/2026 - 09/15/2026";
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync([existingInvoice]);
+            });
+
+        var previews = await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.Single(previews);
+        Assert.Equal(new DateOnly(2026, 9, 1), previews[0].AccountingPeriod);
+        Assert.Equal("09/16/2026 - 09/22/2026", previews[0].InvoicePeriod);
+        Assert.Equal(700m, previews[0].TotalAmount);
+        Assert.Contains(previews[0].LedgerLines, line => line.Description == "Rental Fee (09/16-09/22)" && line.Amount == 700m);
+    }
+
+    [Fact]
+    public async Task GetMissingInvoicesAsync_ExtendedStay_IncludesUncoveredDaysOfCurrentMonth()
+    {
+        var monthStart = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var coveredThrough = monthStart.AddDays(14);
+        var departure = monthStart.AddDays(21);
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            monthStart,
+            departure,
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        reservation.ReservationCode = "R-EXTEND-MISSING";
+        reservation.CurrentInvoiceNo = 1;
+        reservation.OfficeName = "Test Office";
+        var existingInvoice = CreateExistingInvoice(reservation, "R-EXTEND-MISSING-001", monthStart);
+        existingInvoice.InvoicePeriod = $"{monthStart:MM/dd/yyyy} - {coveredThrough:MM/dd/yyyy}";
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureReservationRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                        AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+                    .ReturnsAsync([reservation]);
+            },
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync([existingInvoice]);
+            });
+
+        var previews = await manager.GetMissingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+
+        Assert.Single(previews);
+        Assert.Equal(monthStart, previews[0].AccountingPeriod);
+        Assert.Equal($"{coveredThrough.AddDays(1):MM/dd/yyyy} - {departure:MM/dd/yyyy}", previews[0].InvoicePeriod);
+        Assert.Equal(700m, previews[0].TotalAmount);
+    }
+
     private static Invoice CreateExistingInvoice(Reservation reservation, string invoiceCode, DateOnly accountingPeriod)
         => new()
         {
