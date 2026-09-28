@@ -12,7 +12,7 @@ public interface IAccountingManager
     Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly invoiceDate, DateOnly startDate, DateOnly endDate);
     List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId);
     Task<IReadOnlyList<Invoice>> GetPreBillingInvoicesAsync(Guid organizationId, string officeIds, DateOnly billingMonth);
-    Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser, bool includeIgnored = false);
+    Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser, bool missingOnly = true);
     Task RebuildReservationBilledMatchupAsync(Guid organizationId, string officeIds, Guid currentUser);
     Task<IReadOnlyList<Billed>> GetBilledMatchupAsync(Guid organizationId, string officeIds);
     Task<IReadOnlyList<Billed>> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);

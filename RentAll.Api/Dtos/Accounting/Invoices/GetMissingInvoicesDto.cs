@@ -4,8 +4,8 @@ public class GetMissingInvoicesDto
 {
     public int[] OfficeIds { get; set; } = [];
 
-    /// <summary>When true, return only ignored billed mismatch rows; when false, only non-ignored.</summary>
-    public bool IncludeIgnored { get; set; }
+    /// <summary>When true (default), non-ignored mismatches only; when false, all billed rows for active reservations through the current month.</summary>
+    public bool MissingOnly { get; set; } = true;
 
     public string ResolvedOfficeIds => string.Join(",", OfficeIds);
 

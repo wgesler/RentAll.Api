@@ -45,7 +45,7 @@ namespace RentAll.Api.Controllers
                     CurrentOrganizationId,
                     dto.ResolvedOfficeIds,
                     CurrentUser,
-                    dto.IncludeIgnored);
+                    dto.MissingOnly);
                 var response = invoices.Select(invoice => new InvoiceResponseDto(invoice)).ToList();
                 return Ok(response);
             }

@@ -34,6 +34,8 @@ public class Invoice
     public DateOnly? BilledMonthEnd { get; set; }
     public DateOnly? BilledPeriodStart { get; set; }
     public DateOnly? BilledPeriodEnd { get; set; }
+    public DateOnly? BilledStartDate { get; set; }
+    public DateOnly? BilledEndDate { get; set; }
     public string? BilledRentalFeeLines { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
