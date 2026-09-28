@@ -63,8 +63,6 @@ public interface IAccountingManager
     Task<JournalEntry?> CreateJournalEntryFromDepositAsync(Deposit deposit, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromTransferAsync(Transfer transfer, Guid currentUser);
     Task<JournalEntry?> CreateJournalEntryFromWorkOrderAsync(WorkOrder workOrder, Guid currentUser);
-    Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
-    Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
     #endregion
 
     #region Document Lifecycle

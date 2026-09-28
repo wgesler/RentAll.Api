@@ -13,8 +13,7 @@ public interface IAccountingRepository
     Task<Invoice> CreateAsync(Invoice invoice);
     Task<Invoice> UpdateByIdAsync(Invoice invoice, bool allowPaymentLinkedLineDeletion = false);
     Task<IReadOnlyList<Invoice>> UpdateByIdsInTransactionAsync(IReadOnlyList<Invoice> invoices);
-    Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
-    Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy);
+    Task<bool> SetInvoiceActiveByIdAsync(Guid organizationId, Guid invoiceId, bool isActive, Guid modifiedBy);
     Task DeleteInvoiceByIdAsync(Guid invoiceId, Guid organizationId);
     #endregion
 

@@ -247,6 +247,50 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPut("invoice/{invoiceId}/deactivate")]
+        public async Task<IActionResult> DeactivateInvoiceById(Guid invoiceId)
+        {
+            if (invoiceId == Guid.Empty)
+                return BadRequest("Invoice ID is required");
+
+            try
+            {
+                var updated = await _accountingRepository.SetInvoiceActiveByIdAsync(
+                    CurrentOrganizationId, invoiceId, isActive: false, CurrentUser);
+                if (!updated)
+                    return NotFound("Invoice not found or already inactive");
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deactivating invoice: {InvoiceId}", invoiceId);
+                return ServerError("An error occurred while deactivating the invoice");
+            }
+        }
+
+        [HttpPut("invoice/{invoiceId}/activate")]
+        public async Task<IActionResult> ActivateInvoiceById(Guid invoiceId)
+        {
+            if (invoiceId == Guid.Empty)
+                return BadRequest("Invoice ID is required");
+
+            try
+            {
+                var updated = await _accountingRepository.SetInvoiceActiveByIdAsync(
+                    CurrentOrganizationId, invoiceId, isActive: true, CurrentUser);
+                if (!updated)
+                    return NotFound("Invoice not found or already active");
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error activating invoice: {InvoiceId}", invoiceId);
+                return ServerError("An error occurred while activating the invoice");
+            }
+        }
+
         [HttpPut("invoice/reservation/{reservationId}/deactivate")]
         public async Task<IActionResult> DeactivateInvoicesByReservationId(Guid reservationId)
         {
@@ -255,9 +299,12 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var deactivatedCount = await _accountingManager.DeactivateInvoicesByReservationIdAsync(
-                    CurrentOrganizationId, reservationId, CurrentUser);
-                return Ok(new { deactivatedCount });
+                var updated = await _reservationRepository.SetReservationActiveStateAsync(
+                    CurrentOrganizationId, reservationId, isActive: false, CurrentUser);
+                if (!updated)
+                    return NotFound("Reservation not found");
+
+                return NoContent();
             }
             catch (Exception ex)
             {
@@ -274,9 +321,12 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var reactivatedCount = await _accountingManager.ReactivateInvoicesByReservationIdAsync(
-                    CurrentOrganizationId, reservationId, CurrentUser);
-                return Ok(new { reactivatedCount });
+                var updated = await _reservationRepository.SetReservationActiveStateAsync(
+                    CurrentOrganizationId, reservationId, isActive: true, CurrentUser);
+                if (!updated)
+                    return NotFound("Reservation not found");
+
+                return NoContent();
             }
             catch (Exception ex)
             {

@@ -191,6 +191,50 @@ namespace RentAll.Api.Controllers
             }
         }
 
+        [HttpPut("{reservationId}/deactivate")]
+        public async Task<IActionResult> DeactivateReservationById(Guid reservationId)
+        {
+            if (reservationId == Guid.Empty)
+                return BadRequest("Reservation ID is required");
+
+            try
+            {
+                var updated = await _reservationRepository.SetReservationActiveStateAsync(
+                    CurrentOrganizationId, reservationId, isActive: false, CurrentUser);
+                if (!updated)
+                    return NotFound("Reservation not found");
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deactivating reservation: {ReservationId}", reservationId);
+                return ServerError("An error occurred while deactivating the reservation");
+            }
+        }
+
+        [HttpPut("{reservationId}/activate")]
+        public async Task<IActionResult> ActivateReservationById(Guid reservationId)
+        {
+            if (reservationId == Guid.Empty)
+                return BadRequest("Reservation ID is required");
+
+            try
+            {
+                var updated = await _reservationRepository.SetReservationActiveStateAsync(
+                    CurrentOrganizationId, reservationId, isActive: true, CurrentUser);
+                if (!updated)
+                    return NotFound("Reservation not found");
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error activating reservation: {ReservationId}", reservationId);
+                return ServerError("An error occurred while activating the reservation");
+            }
+        }
+
         #endregion
 
         #region Delete

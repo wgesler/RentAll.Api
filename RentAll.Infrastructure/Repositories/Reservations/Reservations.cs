@@ -467,6 +467,33 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ModifiedBy = modifiedBy
             });
         }
+
+        public async Task<bool> SetReservationActiveStateAsync(Guid organizationId, Guid reservationId, bool isActive, Guid modifiedBy)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var (summary, _) = await db.DapperProcQueryMultipleAsync<
+                ReservationSetActiveStateSummaryRow,
+                ReservationSetActiveStateInvoiceKeyRow>("Property.Reservation_SetActiveState", new
+            {
+                OrganizationId = organizationId,
+                ReservationId = reservationId,
+                IsActive = isActive,
+                ModifiedBy = modifiedBy
+            });
+
+            return (summary?.FirstOrDefault()?.ReservationUpdated ?? 0) > 0;
+        }
+
+        private sealed class ReservationSetActiveStateSummaryRow
+        {
+            public int ReservationUpdated { get; set; }
+        }
+
+        private sealed class ReservationSetActiveStateInvoiceKeyRow
+        {
+            public Guid? InvoiceId { get; set; }
+            public int? OfficeId { get; set; }
+        }
         #endregion
 
         #region Deletes

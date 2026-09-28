@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using RentAll.Infrastructure.Entities.Accounting;
 using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Accounting;
@@ -387,30 +388,18 @@ public partial class AccountingRepository
 
         return invoices;
     }
-    public async Task<int> DeactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
+    public async Task<bool> SetInvoiceActiveByIdAsync(Guid organizationId, Guid invoiceId, bool isActive, Guid modifiedBy)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<int>("Accounting.Invoice_DeactivateByReservationId", new
+        var res = await db.DapperProcQueryAsync<InvoiceSetActiveByIdResultEntity>("Accounting.Invoice_SetActiveById", new
         {
             OrganizationId = organizationId,
-            ReservationId = reservationId,
+            InvoiceId = invoiceId,
+            IsActive = isActive,
             ModifiedBy = modifiedBy
         });
 
-        return res?.FirstOrDefault() ?? 0;
-    }
-
-    public async Task<int> ReactivateInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid modifiedBy)
-    {
-        await using var db = new SqlConnection(_dbConnectionString);
-        var res = await db.DapperProcQueryAsync<int>("Accounting.Invoice_ReactivateByReservationId", new
-        {
-            OrganizationId = organizationId,
-            ReservationId = reservationId,
-            ModifiedBy = modifiedBy
-        });
-
-        return res?.FirstOrDefault() ?? 0;
+        return (res?.FirstOrDefault()?.InvoiceUpdated ?? 0) > 0;
     }
     #endregion
 
