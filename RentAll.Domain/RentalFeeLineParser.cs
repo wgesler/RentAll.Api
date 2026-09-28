@@ -156,6 +156,46 @@ public static class RentalFeeLineParser
         return merged;
     }
 
+    public static IReadOnlyList<(DateOnly Start, DateOnly End)> FindUncoveredRentalFeeBillingRanges(
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        IReadOnlyList<Invoice> monthInvoices,
+        DateOnly invoiceStartDate)
+    {
+        var covered = new List<(DateOnly Start, DateOnly End)>();
+
+        foreach (var invoice in FilterInvoicesOnOrAfterAccountingStart(monthInvoices.ToList(), invoiceStartDate))
+        {
+            var referenceYear = invoice.AccountingPeriod != default
+                ? invoice.AccountingPeriod.Year
+                : invoice.InvoiceDate.Year;
+
+            foreach (var line in invoice.LedgerLines ?? [])
+            {
+                if (line.Amount == 0)
+                    continue;
+
+                if (!TryParseRentalFeePeriod(line.Description, referenceYear, out var lineStart, out var lineEnd))
+                    continue;
+
+                var clippedToInvoiceStart = ClipRangeToInvoiceStart(lineStart, lineEnd, invoiceStartDate);
+                if (!clippedToInvoiceStart.HasValue)
+                    continue;
+
+                (lineStart, lineEnd) = clippedToInvoiceStart.Value;
+                var clippedStart = lineStart < periodStart ? periodStart : lineStart;
+                var clippedEnd = lineEnd > periodEnd ? periodEnd : lineEnd;
+                if (clippedEnd >= clippedStart)
+                    covered.Add((clippedStart, clippedEnd));
+            }
+        }
+
+        return FindUncoveredRangesInPeriod(periodStart, periodEnd, covered);
+    }
+
+    public static bool IsAccountingPeriodOnOrAfterInvoiceStart(Invoice invoice, DateOnly invoiceStartDate)
+        => InvoiceOnOrAfterInvoiceStart(invoice, invoiceStartDate);
+
     private static bool InvoiceOnOrAfterInvoiceStart(Invoice invoice, DateOnly invoiceStartDate)
     {
         var invoiceMonthStart = invoice.AccountingPeriod != default
@@ -164,6 +204,34 @@ public static class RentalFeeLineParser
 
         var invoiceMonthEnd = ReservationStayDays.LastDayOfMonth(invoiceMonthStart);
         return invoiceMonthEnd >= invoiceStartDate;
+    }
+
+    private static List<(DateOnly Start, DateOnly End)> FindUncoveredRangesInPeriod(
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        IReadOnlyList<(DateOnly Start, DateOnly End)> covered)
+    {
+        if (covered.Count == 0)
+            return [(periodStart, periodEnd)];
+
+        var merged = MergeDateRanges(covered);
+        var gaps = new List<(DateOnly Start, DateOnly End)>();
+        var cursor = periodStart;
+
+        foreach (var range in merged)
+        {
+            if (range.Start > cursor)
+                gaps.Add((cursor, range.Start.AddDays(-1)));
+
+            var nextCursor = range.End.AddDays(1);
+            if (nextCursor > cursor)
+                cursor = nextCursor;
+        }
+
+        if (cursor <= periodEnd)
+            gaps.Add((cursor, periodEnd));
+
+        return gaps;
     }
 
     private static (DateOnly Start, DateOnly End)? ClipRangeToInvoiceStart(

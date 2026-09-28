@@ -11,7 +11,7 @@ public partial class AccountingRepository
     private static readonly JsonSerializerOptions BilledJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     #region Billed Selects
-    public async Task<Billed?> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId)
+    public async Task<List<Billed>> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
         var rows = await db.DapperProcQueryAsync<BilledEntity>("Accounting.Billed_GetByReservationId", new
@@ -20,7 +20,10 @@ public partial class AccountingRepository
             ReservationId = reservationId
         });
 
-        return rows?.FirstOrDefault() is { } entity ? ConvertBilledEntityToModel(entity) : null;
+        if (rows == null || !rows.Any())
+            return [];
+
+        return rows.Select(ConvertBilledEntityToModel).ToList();
     }
 
     public async Task<List<Billed>> GetBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds)
@@ -40,6 +43,19 @@ public partial class AccountingRepository
     #endregion
 
     #region Billed Creates
+    public async Task ReplaceBilledMonthlyRowsForReservationAsync(
+        Guid organizationId,
+        Guid reservationId,
+        IReadOnlyList<Billed> billedRows)
+    {
+        await DeleteBilledByReservationIdAsync(organizationId, reservationId);
+
+        foreach (var billed in billedRows ?? [])
+        {
+            await CreateBilledAsync(billed);
+        }
+    }
+
     public async Task<Billed> UpsertBilledByReservationIdAsync(Billed billed)
     {
         await using var db = new SqlConnection(_dbConnectionString);
@@ -53,8 +69,10 @@ public partial class AccountingRepository
             EndDate = billed.EndDate,
             InvoiceStart = billed.InvoiceStart,
             BillingTypeId = (int)billed.BillingType,
-            TotalNumberOfDays = billed.TotalNumberOfDays,
-            DaysSinceStart = billed.DaysSinceStart,
+            MonthStart = billed.MonthStart,
+            MonthEnd = billed.MonthEnd,
+            PeriodStart = billed.PeriodStart,
+            PeriodEnd = billed.PeriodEnd,
             DaysStayed = billed.DaysStayed,
             DaysBilled = billed.DaysBilled,
             RentalFeeLines = SerializeBilledRentalFeeLines(billed.RentalFeeLines),
@@ -64,7 +82,7 @@ public partial class AccountingRepository
         if (rows == null || !rows.Any())
             throw new Exception("Billed row not upserted");
 
-        return ConvertBilledEntityToModel(rows.First());
+        return ConvertBilledEntityToModel(rows.First(row => row.MonthStart == billed.MonthStart));
     }
 
     public async Task<Billed> CreateBilledAsync(Billed billed)
@@ -80,8 +98,10 @@ public partial class AccountingRepository
             EndDate = billed.EndDate,
             InvoiceStart = billed.InvoiceStart,
             BillingTypeId = (int)billed.BillingType,
-            TotalNumberOfDays = billed.TotalNumberOfDays,
-            DaysSinceStart = billed.DaysSinceStart,
+            MonthStart = billed.MonthStart,
+            MonthEnd = billed.MonthEnd,
+            PeriodStart = billed.PeriodStart,
+            PeriodEnd = billed.PeriodEnd,
             DaysStayed = billed.DaysStayed,
             DaysBilled = billed.DaysBilled,
             RentalFeeLines = SerializeBilledRentalFeeLines(billed.RentalFeeLines),
@@ -91,7 +111,7 @@ public partial class AccountingRepository
         if (rows == null || !rows.Any())
             throw new Exception("Billed row not created");
 
-        return ConvertBilledEntityToModel(rows.First());
+        return ConvertBilledEntityToModel(rows.First(row => row.MonthStart == billed.MonthStart));
     }
     #endregion
 
@@ -109,15 +129,19 @@ public partial class AccountingRepository
             EndDate = billed.EndDate,
             InvoiceStart = billed.InvoiceStart,
             BillingTypeId = (int)billed.BillingType,
-            TotalNumberOfDays = billed.TotalNumberOfDays,
-            DaysSinceStart = billed.DaysSinceStart,
+            MonthStart = billed.MonthStart,
+            MonthEnd = billed.MonthEnd,
+            PeriodStart = billed.PeriodStart,
+            PeriodEnd = billed.PeriodEnd,
             DaysStayed = billed.DaysStayed,
             DaysBilled = billed.DaysBilled,
             RentalFeeLines = SerializeBilledRentalFeeLines(billed.RentalFeeLines),
             ModifiedBy = billed.ModifiedBy
         });
 
-        return rows?.FirstOrDefault() is { } entity ? ConvertBilledEntityToModel(entity) : null;
+        return rows?.FirstOrDefault(row => row.MonthStart == billed.MonthStart) is { } entity
+            ? ConvertBilledEntityToModel(entity)
+            : null;
     }
     #endregion
 
@@ -176,8 +200,10 @@ public partial class AccountingRepository
             BillingType = Enum.IsDefined(typeof(BillingType), entity.BillingTypeId)
                 ? (BillingType)entity.BillingTypeId
                 : BillingType.Monthly,
-            TotalNumberOfDays = entity.TotalNumberOfDays,
-            DaysSinceStart = entity.DaysSinceStart,
+            MonthStart = entity.MonthStart,
+            MonthEnd = entity.MonthEnd,
+            PeriodStart = entity.PeriodStart,
+            PeriodEnd = entity.PeriodEnd,
             DaysStayed = entity.DaysStayed,
             DaysBilled = entity.DaysBilled,
             RentalFeeLines = DeserializeBilledRentalFeeLines(entity.RentalFeeLines),

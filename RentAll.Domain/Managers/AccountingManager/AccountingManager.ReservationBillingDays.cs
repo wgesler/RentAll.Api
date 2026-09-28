@@ -1,10 +1,11 @@
+using RentAll.Domain;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;
 
 public partial class AccountingManager
 {
-    public Billed BuildBilledMatchupRow(
+    public IReadOnlyList<Billed> BuildBilledMatchupMonthlyRows(
         Reservation reservation,
         Guid organizationId,
         Guid currentUser,
@@ -19,46 +20,71 @@ public partial class AccountingManager
         var invoiceStart = accountingOffice != null
             ? AccountingOfficePeriodBoundary.GetInvoiceStart(accountingOffice)
             : BilledMatchupInvoiceStart.InvoiceStart;
-        var rentalCostCodeId = ResolveRentalCostCodeIdForMatchup(reservation);
+        var scanThroughDate = referenceDate <= billingStayEndDate ? referenceDate : billingStayEndDate;
+        var throughMonth = FirstDayOfMonth(scanThroughDate);
 
-        var endOfThisMonth = ReservationStayDays.LastDayOfMonth(referenceDate);
-        var daysSinceStart = SumGetChargesRentalDaysInMatchupWindow(
-            reservation,
-            invoiceStart,
-            endOfThisMonth,
-            rentalCostCodeId);
-
-        var effectiveStayEnd = billingStayEndDate <= endOfThisMonth ? billingStayEndDate : endOfThisMonth;
-        var daysStayed = SumGetChargesRentalDaysInMatchupWindow(
-            reservation,
-            invoiceStart,
-            effectiveStayEnd,
-            rentalCostCodeId);
-
-        var rentalFeeLines = RentalFeeLineParser.CollectRentalFeeLineDescriptions(invoices, invoiceStart).ToList();
-        var daysBilled = RentalFeeLineParser.CalculateDaysBilledFromInvoices(
-            invoices,
-            reservation,
-            invoiceStart,
-            billingStayEndDate);
-
-        return new Billed
+        var rows = new List<Billed>();
+        foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth, invoiceStart))
         {
-            OrganizationId = organizationId,
-            OfficeId = reservation.OfficeId,
-            ReservationId = reservation.ReservationId,
-            ReservationCode = (reservation.ReservationCode ?? string.Empty).Trim(),
-            StartDate = billingStayStartDate,
-            EndDate = billingStayEndDate,
-            InvoiceStart = invoiceStart,
-            BillingType = reservation.BillingType,
-            TotalNumberOfDays = ReservationStayDays.GetNumberOfStayDays(reservation),
-            DaysSinceStart = daysSinceStart,
-            DaysStayed = daysStayed,
-            DaysBilled = daysBilled,
-            RentalFeeLines = rentalFeeLines,
-            CreatedBy = currentUser,
-            ModifiedBy = currentUser
-        };
+            var monthEnd = LastDayOfMonth(billingMonth);
+            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
+            var monthInvoices = invoices
+                .Where(invoice => FirstDayOfMonth(invoice.AccountingPeriod) == billingMonth)
+                .ToList();
+
+            var daysStayed = CalculateBillableDaysInPeriod(
+                reservation,
+                periodStart,
+                periodEnd,
+                billingStayEndDate);
+            var daysBilled = RentalFeeLineParser.CalculateDaysBilledFromInvoices(
+                monthInvoices,
+                reservation,
+                invoiceStart,
+                billingStayEndDate);
+            var rentalFeeLines = RentalFeeLineParser.CollectRentalFeeLineDescriptions(monthInvoices, invoiceStart).ToList();
+
+            rows.Add(new Billed
+            {
+                OrganizationId = organizationId,
+                OfficeId = reservation.OfficeId,
+                ReservationId = reservation.ReservationId,
+                ReservationCode = (reservation.ReservationCode ?? string.Empty).Trim(),
+                StartDate = billingStayStartDate,
+                EndDate = billingStayEndDate,
+                InvoiceStart = invoiceStart,
+                BillingType = reservation.BillingType,
+                MonthStart = billingMonth,
+                MonthEnd = monthEnd,
+                PeriodStart = periodStart,
+                PeriodEnd = periodEnd,
+                DaysStayed = daysStayed,
+                DaysBilled = daysBilled,
+                RentalFeeLines = rentalFeeLines,
+                CreatedBy = currentUser,
+                ModifiedBy = currentUser
+            });
+        }
+
+        return rows;
+    }
+
+    private static int CalculateBillableDaysInPeriod(
+        Reservation reservation,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        DateOnly billingDepartureDate)
+    {
+        if (periodEnd < periodStart)
+            return 0;
+
+        var isDepartureMonthYear = InvoiceBillingDays.IsDepartureMonthYear(periodEnd, billingDepartureDate);
+        var isLastDayOfMonth = InvoiceBillingDays.IsLastDayOfMonth(periodEnd);
+        return InvoiceBillingDays.CalculateNumberOfDays(
+            periodStart,
+            periodEnd,
+            reservation.BillingType,
+            isDepartureMonthYear,
+            isLastDayOfMonth);
     }
 }

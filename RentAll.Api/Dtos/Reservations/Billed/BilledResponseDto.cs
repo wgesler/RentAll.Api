@@ -13,8 +13,10 @@ public class BilledResponseDto
     public DateOnly EndDate { get; set; }
     public DateOnly InvoiceStart { get; set; }
     public BillingType BillingType { get; set; }
-    public int TotalNumberOfDays { get; set; }
-    public int DaysSinceStart { get; set; }
+    public DateOnly MonthStart { get; set; }
+    public DateOnly MonthEnd { get; set; }
+    public DateOnly PeriodStart { get; set; }
+    public DateOnly PeriodEnd { get; set; }
     public int DaysStayed { get; set; }
     public int DaysBilled { get; set; }
     public IReadOnlyList<string> RentalFeeLines { get; set; } = Array.Empty<string>();
@@ -34,8 +36,10 @@ public class BilledResponseDto
         EndDate = billed.EndDate;
         InvoiceStart = billed.InvoiceStart;
         BillingType = billed.BillingType;
-        TotalNumberOfDays = billed.TotalNumberOfDays;
-        DaysSinceStart = billed.DaysSinceStart;
+        MonthStart = billed.MonthStart;
+        MonthEnd = billed.MonthEnd;
+        PeriodStart = billed.PeriodStart;
+        PeriodEnd = billed.PeriodEnd;
         DaysStayed = billed.DaysStayed;
         DaysBilled = billed.DaysBilled;
         RentalFeeLines = billed.RentalFeeLines ?? [];

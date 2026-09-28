@@ -198,8 +198,9 @@ public interface IAccountingRepository
     #endregion
 
     #region Billed
-    Task<Billed?> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task<List<Billed>> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
     Task<List<Billed>> GetBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task ReplaceBilledMonthlyRowsForReservationAsync(Guid organizationId, Guid reservationId, IReadOnlyList<Billed> billedRows);
     Task<Billed> CreateBilledAsync(Billed billed);
     Task<Billed> UpsertBilledByReservationIdAsync(Billed billed);
     Task<Billed?> UpdateBilledByReservationIdAsync(Billed billed);

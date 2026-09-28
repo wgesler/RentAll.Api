@@ -1,4 +1,5 @@
 using Moq;
+using RentAll.Domain;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
@@ -438,8 +439,8 @@ public class AccountingManagerReservationInvoicePreviewTests
     public async Task GetMissingInvoicesAsync_SkipsMonthsWithFullyPaidExistingInvoices()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
-            new DateOnly(2026, 1, 1),
-            new DateOnly(2026, 3, 31),
+            new DateOnly(2026, 6, 1),
+            new DateOnly(2026, 8, 31),
             ProrateType.FirstMonth,
             BillingType.Monthly,
             3000m);
@@ -448,7 +449,7 @@ public class AccountingManagerReservationInvoicePreviewTests
         reservation.OfficeName = "Test Office";
         var existingInvoices = new[]
         {
-            CreateExistingInvoice(reservation, "R-PREVIEW-PAID-001", new DateOnly(2026, 1, 1))
+            CreateExistingInvoice(reservation, "R-PREVIEW-PAID-001", new DateOnly(2026, 6, 1))
         };
         existingInvoices[0].TotalAmount = 3000m;
         existingInvoices[0].PaidAmount = 3000m;
@@ -469,6 +470,12 @@ public class AccountingManagerReservationInvoicePreviewTests
                     .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
                     .ReturnsAsync((InvoiceGetCriteria criteria) =>
                         criteria.IncludePaid ? existingInvoices : []);
+                repo
+                    .Setup(r => r.GetBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                    .ReturnsAsync([
+                        CreateBilledMismatchRow(reservation, new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 31), 31, 0),
+                        CreateBilledMismatchRow(reservation, new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31), 31, 0)
+                    ]);
             });
 
         var previews = await manager.GetMissingInvoicesAsync(
@@ -476,14 +483,14 @@ public class AccountingManagerReservationInvoicePreviewTests
             AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 1, 1));
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 6, 1));
         Assert.Equal(2, previews.Count);
-        Assert.Contains(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 2, 1));
-        Assert.Contains(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 3, 1));
+        Assert.Contains(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+        Assert.Contains(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 8, 1));
     }
 
     [Fact]
-    public async Task GetMissingInvoicesAsync_DoesNotScanMonthsBeforeAccountingStart()
+    public async Task GetMissingInvoicesAsync_DoesNotScanMonthsBeforeInvoiceStart()
     {
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
             new DateOnly(2018, 3, 1),
@@ -510,6 +517,18 @@ public class AccountingManagerReservationInvoicePreviewTests
                 repo
                     .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
                     .ReturnsAsync([]);
+                repo
+                    .Setup(r => r.GetBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                    .ReturnsAsync(
+                        Enumerable.Range(6, 5)
+                            .Select(month => CreateBilledMismatchRow(
+                                reservation,
+                                new DateOnly(2026, month, 1),
+                                new DateOnly(2026, month, 1),
+                                ReservationStayDays.LastDayOfMonth(new DateOnly(2026, month, 1)),
+                                30,
+                                0))
+                            .ToList());
             });
 
         var previews = await manager.GetMissingInvoicesAsync(
@@ -518,8 +537,8 @@ public class AccountingManagerReservationInvoicePreviewTests
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.NotEmpty(previews);
-        Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= new DateOnly(2026, 1, 1)));
-        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod < new DateOnly(2026, 1, 1));
+        Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= new DateOnly(2026, 6, 1)));
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod < new DateOnly(2026, 6, 1));
     }
 
     [Fact]
@@ -574,6 +593,14 @@ public class AccountingManagerReservationInvoicePreviewTests
         reservation.OfficeName = "Test Office";
         var existingInvoice = CreateExistingInvoice(reservation, "R-EXTEND-MISSING-001", monthStart);
         existingInvoice.InvoicePeriod = $"{monthStart:MM/dd/yyyy} - {coveredThrough:MM/dd/yyyy}";
+        existingInvoice.LedgerLines =
+        [
+            new LedgerLine
+            {
+                Description = $"Rental Fee ({monthStart:MM/dd}-{coveredThrough:MM/dd})",
+                Amount = 2300m
+            }
+        ];
 
         var manager = CreatePreviewManager(
             reservation,
@@ -590,6 +617,17 @@ public class AccountingManagerReservationInvoicePreviewTests
                 repo
                     .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
                     .ReturnsAsync([existingInvoice]);
+                repo
+                    .Setup(r => r.GetBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                    .ReturnsAsync([
+                        CreateBilledMismatchRow(
+                            reservation,
+                            monthStart,
+                            monthStart,
+                            departure,
+                            22,
+                            15)
+                    ]);
             });
 
         var previews = await manager.GetMissingInvoicesAsync(
@@ -614,6 +652,31 @@ public class AccountingManagerReservationInvoicePreviewTests
             InvoiceCode = invoiceCode,
             AccountingPeriod = accountingPeriod,
             IsActive = true
+        };
+
+    private static Billed CreateBilledMismatchRow(
+        Reservation reservation,
+        DateOnly monthStart,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        int daysStayed,
+        int daysBilled)
+        => new()
+        {
+            OrganizationId = reservation.OrganizationId,
+            OfficeId = reservation.OfficeId,
+            ReservationId = reservation.ReservationId,
+            ReservationCode = reservation.ReservationCode ?? string.Empty,
+            StartDate = reservation.ArrivalDate,
+            EndDate = reservation.DepartureDate,
+            InvoiceStart = new DateOnly(2026, 6, 1),
+            BillingType = reservation.BillingType,
+            MonthStart = monthStart,
+            MonthEnd = ReservationStayDays.LastDayOfMonth(monthStart),
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
+            DaysStayed = daysStayed,
+            DaysBilled = daysBilled
         };
 
     private static Reservation CreatePreviewReservation()
@@ -664,18 +727,20 @@ public class AccountingManagerReservationInvoicePreviewTests
             .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
             .Returns(Task.CompletedTask);
         accountingRepository
-            .Setup(r => r.UpsertBilledByReservationIdAsync(It.IsAny<Billed>()))
-            .ReturnsAsync((Billed billed) =>
-            {
-                billed.BilledId = 1;
-                return billed;
-            });
+            .Setup(r => r.ReplaceBilledMonthlyRowsForReservationAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<IReadOnlyList<Billed>>()))
+            .Returns(Task.CompletedTask);
         accountingRepository
             .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<IReadOnlyCollection<Guid>>()))
             .Returns(Task.CompletedTask);
+        accountingRepository
+            .Setup(r => r.GetBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+            .ReturnsAsync([]);
         configureAccountingRepository?.Invoke(accountingRepository);
 
         var organizationRepository = new Mock<IOrganizationRepository>();
@@ -688,15 +753,23 @@ public class AccountingManagerReservationInvoicePreviewTests
                 FurnishedRentChargeCcId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
                 UnfurnishedRentChargeCcId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId
             });
+        var accountingOffice = new AccountingOffice
+        {
+            OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+            OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+            StartMonth = 1,
+            StartYear = 2026,
+            InvoiceStartMonth = 6,
+            InvoiceStartYear = 2026
+        };
         organizationRepository
             .Setup(r => r.GetAccountingOfficeByIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
-            .ReturnsAsync(new AccountingOffice
-            {
-                OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
-                OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
-                StartMonth = 1,
-                StartYear = 2026
-            });
+            .ReturnsAsync(accountingOffice);
+        organizationRepository
+            .Setup(r => r.GetAccountingOfficesByOfficeIdsAsync(
+                AccountingManagerJournalEntryTestSupport.OrganizationId,
+                It.IsAny<string>()))
+            .ReturnsAsync([accountingOffice]);
 
         var propertyRepository = new Mock<IPropertyRepository>();
         propertyRepository

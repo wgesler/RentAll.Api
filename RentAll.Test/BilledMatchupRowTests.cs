@@ -1,6 +1,5 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces;
-using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
@@ -25,31 +24,7 @@ public class BilledMatchupRowTests
     }
 
     [Fact]
-    public void BuildBilledMatchupRow_DaysStayed_UsesGetChargesLogicThroughSeptember()
-    {
-        var reservation = CreateLongStayReservation(new DateOnly(2026, 12, 31));
-        reservation.ReservationId = Guid.Parse("AC1F7A72-40C6-4B73-BD14-181AFBF16A14");
-        reservation.ReservationCode = "R-000000042";
-        reservation.OfficeId = 3;
-        var asOf = new DateOnly(2026, 9, 28);
-        var manager = CreateManager();
-
-        var row = manager.BuildBilledMatchupRow(
-            reservation,
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            [],
-            asOf);
-
-        Assert.Equal(623, row.TotalNumberOfDays);
-        Assert.Equal(BilledMatchupInvoiceStart.InvoiceStart, row.InvoiceStart);
-        Assert.Equal(122, row.DaysSinceStart);
-        Assert.Equal(120, row.DaysStayed);
-        Assert.Equal(new DateOnly(2025, 4, 18), row.StartDate);
-    }
-
-    [Fact]
-    public void BuildBilledMatchupRow_DaysSinceStart_ExtendsThroughMonthEnd_WhenGuestLeavesMidMonth()
+    public void BuildBilledMatchupMonthlyRows_EmitsOneRowPerBillableMonthFromInvoiceStart()
     {
         var reservation = CreateLongStayReservation(new DateOnly(2026, 9, 15));
         reservation.ReservationId = Guid.NewGuid();
@@ -58,16 +33,19 @@ public class BilledMatchupRowTests
         var asOf = new DateOnly(2026, 9, 28);
         var manager = CreateManager();
 
-        var row = manager.BuildBilledMatchupRow(
+        var rows = manager.BuildBilledMatchupMonthlyRows(
             reservation,
             Guid.NewGuid(),
             Guid.NewGuid(),
             [],
             asOf);
 
-        Assert.Equal(BilledMatchupInvoiceStart.InvoiceStart, row.InvoiceStart);
-        Assert.Equal(107, row.DaysSinceStart);
-        Assert.Equal(107, row.DaysStayed);
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(row.MonthStart >= BilledMatchupInvoiceStart.InvoiceStart));
+        Assert.Equal(new DateOnly(2026, 6, 1), rows[0].MonthStart);
+        Assert.Equal(new DateOnly(2026, 9, 1), rows[^1].MonthStart);
+        var september = Assert.Single(rows, row => row.MonthStart == new DateOnly(2026, 9, 1));
+        Assert.Equal(15, september.DaysStayed);
     }
 
     private static Reservation CreateLongStayReservation(DateOnly departure)

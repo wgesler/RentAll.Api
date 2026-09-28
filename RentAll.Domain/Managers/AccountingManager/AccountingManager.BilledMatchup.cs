@@ -12,6 +12,9 @@ public partial class AccountingManager
         var activeReservations = (await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(organizationId, officeIds))
             .ToList();
 
+        var accountingOfficesByOfficeId = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds))
+            .ToDictionary(office => office.OfficeId);
+
         var existingInvoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
             OrganizationId = organizationId,
@@ -20,6 +23,10 @@ public partial class AccountingManager
             IncludePaid = true
         }))
             .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty)
+            .Where(invoice => accountingOfficesByOfficeId.TryGetValue(invoice.OfficeId, out var invoiceOffice)
+                && RentalFeeLineParser.IsAccountingPeriodOnOrAfterInvoiceStart(
+                    invoice,
+                    AccountingOfficePeriodBoundary.GetInvoiceStart(invoiceOffice)))
             .ToList();
 
         var invoicesByReservationId = existingInvoices
@@ -27,21 +34,22 @@ public partial class AccountingManager
             .ToDictionary(group => group.Key, group => (IReadOnlyList<Invoice>)group.ToList());
 
         var asOfDate = DateOnly.FromDateTime(DateTime.Today);
-        var accountingOfficesByOfficeId = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds))
-            .ToDictionary(office => office.OfficeId);
 
         foreach (var reservation in activeReservations)
         {
             invoicesByReservationId.TryGetValue(reservation.ReservationId, out var reservationInvoices);
             accountingOfficesByOfficeId.TryGetValue(reservation.OfficeId, out var accountingOffice);
-            var billed = BuildBilledMatchupRow(
+            var billedRows = BuildBilledMatchupMonthlyRows(
                 reservation,
                 organizationId,
                 currentUser,
                 reservationInvoices,
                 asOfDate,
                 accountingOffice);
-            await _accountingRepository.UpsertBilledByReservationIdAsync(billed);
+            await _accountingRepository.ReplaceBilledMonthlyRowsForReservationAsync(
+                organizationId,
+                reservation.ReservationId,
+                billedRows);
         }
 
         var activeReservationIds = activeReservations
@@ -56,8 +64,8 @@ public partial class AccountingManager
     public Task<IReadOnlyList<Billed>> GetBilledMatchupAsync(Guid organizationId, string officeIds)
         => GetBilledMatchupInternalAsync(organizationId, officeIds);
 
-    public Task<Billed?> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId)
-        => _accountingRepository.GetBilledByReservationIdAsync(organizationId, reservationId);
+    public async Task<IReadOnlyList<Billed>> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId)
+        => await _accountingRepository.GetBilledByReservationIdAsync(organizationId, reservationId);
 
     public async Task<Billed> CreateBilledAsync(Billed billed, Guid currentUser)
     {

@@ -39,11 +39,11 @@ public partial class ReservationController
             if (reservation == null)
                 return NotFound("Reservation not found");
 
-            var billed = await _accountingManager.GetBilledByReservationIdAsync(CurrentOrganizationId, reservationId);
-            if (billed == null)
-                return NotFound("Billed matchup row not found");
+            var billedRows = await _accountingManager.GetBilledByReservationIdAsync(CurrentOrganizationId, reservationId);
+            if (billedRows.Count == 0)
+                return NotFound("Billed matchup rows not found");
 
-            return Ok(new BilledResponseDto(billed));
+            return Ok(billedRows.Select(row => new BilledResponseDto(row)).ToList());
         }
         catch (Exception ex)
         {
@@ -128,8 +128,10 @@ public partial class ReservationController
                 return NotFound("Reservation not found");
 
             var existing = await _accountingManager.GetBilledByReservationIdAsync(CurrentOrganizationId, reservationId);
-            if (existing == null)
-                return NotFound("Billed matchup row not found");
+            if (existing.Count == 0)
+                return NotFound("Billed matchup rows not found");
+            if (existing.All(row => row.MonthStart != dto.MonthStart))
+                return NotFound("Billed matchup row not found for month");
 
             var updated = await _accountingManager.UpdateBilledByReservationIdAsync(
                 dto.ToModel(CurrentOrganizationId, reservationId, CurrentUser),
@@ -163,8 +165,8 @@ public partial class ReservationController
                 return NotFound("Reservation not found");
 
             var existing = await _accountingManager.GetBilledByReservationIdAsync(CurrentOrganizationId, reservationId);
-            if (existing == null)
-                return NotFound("Billed matchup row not found");
+            if (existing.Count == 0)
+                return NotFound("Billed matchup rows not found");
 
             await _accountingManager.DeleteBilledByReservationIdAsync(CurrentOrganizationId, reservationId);
             return Ok();

@@ -11,8 +11,10 @@ public class BilledEntity
     public DateOnly EndDate { get; set; }
     public DateOnly InvoiceStart { get; set; }
     public int BillingTypeId { get; set; }
-    public int TotalNumberOfDays { get; set; }
-    public int DaysSinceStart { get; set; }
+    public DateOnly MonthStart { get; set; }
+    public DateOnly MonthEnd { get; set; }
+    public DateOnly PeriodStart { get; set; }
+    public DateOnly PeriodEnd { get; set; }
     public int DaysStayed { get; set; }
     public int DaysBilled { get; set; }
     public string? RentalFeeLines { get; set; }

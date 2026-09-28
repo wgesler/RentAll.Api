@@ -15,7 +15,7 @@ public interface IAccountingManager
     Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser);
     Task RebuildReservationBilledMatchupAsync(Guid organizationId, string officeIds, Guid currentUser);
     Task<IReadOnlyList<Billed>> GetBilledMatchupAsync(Guid organizationId, string officeIds);
-    Task<Billed?> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task<IReadOnlyList<Billed>> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
     Task<Billed> CreateBilledAsync(Billed billed, Guid currentUser);
     Task<Billed?> UpdateBilledByReservationIdAsync(Billed billed, Guid currentUser);
     Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
