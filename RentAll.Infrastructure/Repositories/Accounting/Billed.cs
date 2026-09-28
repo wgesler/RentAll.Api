@@ -82,7 +82,7 @@ public partial class AccountingRepository
         if (rows == null || !rows.Any())
             throw new Exception("Billed row not upserted");
 
-        return ConvertBilledEntityToModel(rows.First(row => row.MonthStart == billed.MonthStart));
+        return ConvertBilledEntityToModel(SelectBilledRow(rows, billed.MonthStart));
     }
 
     public async Task<Billed> CreateBilledAsync(Billed billed)
@@ -112,7 +112,7 @@ public partial class AccountingRepository
         if (rows == null || !rows.Any())
             throw new Exception("Billed row not created");
 
-        return ConvertBilledEntityToModel(rows.First(row => row.MonthStart == billed.MonthStart));
+        return ConvertBilledEntityToModel(SelectBilledRow(rows, billed.MonthStart));
     }
     #endregion
 
@@ -143,6 +143,19 @@ public partial class AccountingRepository
         return rows?.FirstOrDefault(row => row.MonthStart == billed.MonthStart) is { } entity
             ? ConvertBilledEntityToModel(entity)
             : null;
+    }
+
+    private static BilledEntity SelectBilledRow(IEnumerable<BilledEntity> rows, DateOnly monthStart)
+    {
+        var match = rows.FirstOrDefault(row => row.MonthStart == monthStart);
+        if (match != null)
+            return match;
+
+        match = rows.FirstOrDefault();
+        if (match != null)
+            return match;
+
+        throw new InvalidOperationException($"Billed row for MonthStart {monthStart:yyyy-MM-dd} was not returned after save.");
     }
     #endregion
 

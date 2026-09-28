@@ -743,7 +743,9 @@ public partial class AccountingManager
         if (billedMismatchRows.Count == 0)
             return Array.Empty<Invoice>();
 
-        var reservationsById = activeReservations.ToDictionary(reservation => reservation.ReservationId);
+        var reservationsById = activeReservations
+            .GroupBy(reservation => reservation.ReservationId)
+            .ToDictionary(group => group.Key, group => group.First());
         var previewInvoices = new List<Invoice>();
 
         foreach (var billedRowsByReservation in billedMismatchRows.GroupBy(row => row.ReservationId))
@@ -759,19 +761,44 @@ public partial class AccountingManager
                 .Where(invoice => invoice.ReservationId == reservation.ReservationId)
                 .ToList();
             var nextSequence = ResolveNextInvoiceSequence(reservation, reservationInvoices);
-            var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
 
-            foreach (var billedRow in billedRowsByReservation.OrderBy(row => row.MonthStart))
+            try
             {
-                nextSequence = await AddMissingInvoicePreviewsForBilledMonthAsync(
+                var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
+
+                foreach (var billedRow in billedRowsByReservation.OrderBy(row => row.MonthStart))
+                {
+                    try
+                    {
+                        nextSequence = await AddMissingInvoicePreviewsForBilledMonthAsync(
+                            organizationId,
+                            reservation,
+                            billedRow,
+                            reservationInvoices,
+                            invoiceStart,
+                            previewInvoices,
+                            nextSequence,
+                            responsibleParty);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogApplicationDiagnostic(
+                            "GetMissingInvoicesPreviewRow",
+                            $"ReservationCode={reservation.ReservationCode} MonthStart={billedRow.MonthStart:yyyy-MM-dd} BilledId={billedRow.BilledId}",
+                            ex,
+                            organizationId,
+                            reservation.OfficeId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogApplicationDiagnostic(
+                    "GetMissingInvoicesPreviewReservation",
+                    $"ReservationCode={reservation.ReservationCode}",
+                    ex,
                     organizationId,
-                    reservation,
-                    billedRow,
-                    reservationInvoices,
-                    invoiceStart,
-                    previewInvoices,
-                    nextSequence,
-                    responsibleParty);
+                    reservation.OfficeId);
             }
         }
 

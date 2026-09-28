@@ -66,7 +66,7 @@ public class InvoiceResponseDto
         TotalAmount = invoice.TotalAmount;
         PaidAmount = invoice.PaidAmount;
         Notes = invoice.Notes;
-        LedgerLines = invoice.LedgerLines.Select(l => new LedgerLineResponseDto(l)).ToList();
+        LedgerLines = (invoice.LedgerLines ?? []).Select(l => new LedgerLineResponseDto(l)).ToList();
         BilledId = invoice.BilledId;
         BilledIgnore = invoice.BilledIgnore;
         BilledDaysStayed = invoice.BilledDaysStayed;
