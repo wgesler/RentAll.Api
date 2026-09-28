@@ -18,6 +18,7 @@ public class BilledEntity
     public int DaysStayed { get; set; }
     public int DaysBilled { get; set; }
     public string? RentalFeeLines { get; set; }
+    public bool Ignore { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

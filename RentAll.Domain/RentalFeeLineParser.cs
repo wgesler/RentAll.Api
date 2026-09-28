@@ -109,6 +109,108 @@ public static class RentalFeeLineParser
         return SumGetChargesDaysForMergedRanges(ranges, billingType, billingDeparture);
     }
 
+    /// <summary>
+    /// Rental fee days for one billed month: clip each line to the billing period (stay in that accounting month).
+    /// Scans all reservation invoices so cross-month lines split (e.g. 06/21-07/20 → 10 June, 20 July).
+    /// </summary>
+    public static int CalculateDaysBilledForBillingPeriod(
+        IReadOnlyList<Invoice> invoices,
+        Reservation reservation,
+        DateOnly invoiceStartDate,
+        DateOnly billingPeriodStart,
+        DateOnly billingPeriodEnd,
+        DateOnly? billingStayEndDate = null)
+    {
+        if (billingPeriodEnd < billingPeriodStart)
+            return 0;
+
+        var scopedInvoices = FilterInvoicesOnOrAfterAccountingStart(invoices, invoiceStartDate);
+        var billingDeparture = billingStayEndDate ?? reservation.DepartureDate;
+        var billingType = reservation.BillingType;
+        var ranges = new List<(DateOnly Start, DateOnly End)>();
+
+        foreach (var invoice in scopedInvoices)
+        {
+            var referenceYear = invoice.AccountingPeriod != default
+                ? invoice.AccountingPeriod.Year
+                : invoice.InvoiceDate.Year;
+
+            foreach (var line in invoice.LedgerLines ?? [])
+            {
+                if (line.Amount == 0)
+                    continue;
+
+                if (!TryParseRentalFeePeriod(line.Description, referenceYear, out var periodStart, out var periodEnd))
+                    continue;
+
+                var clippedToInvoiceStart = ClipRangeToInvoiceStart(periodStart, periodEnd, invoiceStartDate);
+                if (!clippedToInvoiceStart.HasValue)
+                    continue;
+
+                (periodStart, periodEnd) = clippedToInvoiceStart.Value;
+
+                var clipStart = periodStart < billingPeriodStart ? billingPeriodStart : periodStart;
+                var clipEnd = periodEnd > billingPeriodEnd ? billingPeriodEnd : periodEnd;
+                if (clipEnd < clipStart)
+                    continue;
+
+                var isDepartureMonthYear = InvoiceBillingDays.IsDepartureMonthYear(clipEnd, billingDeparture);
+                var countEnd = InvoiceBillingDays.RestoreRentalPeriodEndForGetChargesCount(
+                    clipEnd,
+                    billingType,
+                    isDepartureMonthYear,
+                    billingDeparture);
+
+                ranges.Add((clipStart, countEnd));
+            }
+        }
+
+        return SumGetChargesDaysForMergedRanges(ranges, billingType, billingDeparture);
+    }
+
+    public static IReadOnlyList<string> CollectRentalFeeLineDescriptionsForBillingPeriod(
+        IEnumerable<Invoice> invoices,
+        DateOnly invoiceStartDate,
+        DateOnly billingPeriodStart,
+        DateOnly billingPeriodEnd)
+    {
+        if (billingPeriodEnd < billingPeriodStart)
+            return [];
+
+        var scopedInvoices = FilterInvoicesOnOrAfterAccountingStart(invoices.ToList(), invoiceStartDate);
+        var descriptions = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var invoice in scopedInvoices)
+        {
+            var referenceYear = invoice.AccountingPeriod != default
+                ? invoice.AccountingPeriod.Year
+                : invoice.InvoiceDate.Year;
+
+            foreach (var line in invoice.LedgerLines ?? [])
+            {
+                if (line.Amount == 0)
+                    continue;
+
+                var description = (line.Description ?? string.Empty).Trim();
+                if (!TryParseRentalFeePeriod(description, referenceYear, out var periodStart, out var periodEnd))
+                    continue;
+
+                if (!ClipRangeToInvoiceStart(periodStart, periodEnd, invoiceStartDate).HasValue)
+                    continue;
+
+                if (periodEnd < billingPeriodStart || periodStart > billingPeriodEnd)
+                    continue;
+
+                if (seen.Add(description))
+                    descriptions.Add(description);
+            }
+        }
+
+        descriptions.Sort(StringComparer.OrdinalIgnoreCase);
+        return descriptions;
+    }
+
     private static int SumGetChargesDaysForMergedRanges(
         IReadOnlyList<(DateOnly Start, DateOnly End)> ranges,
         BillingType billingType,

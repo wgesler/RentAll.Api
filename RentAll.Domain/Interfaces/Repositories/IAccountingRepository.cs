@@ -207,6 +207,7 @@ public interface IAccountingRepository
     Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
     Task DeleteBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds);
     Task DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(Guid organizationId, string officeIds, IReadOnlyCollection<Guid> reservationIds);
+    Task<Billed?> SetBilledIgnoreByIdAsync(Guid organizationId, int billedId, bool ignore, Guid modifiedBy);
     #endregion
 
     #region OwnerStatementBalance

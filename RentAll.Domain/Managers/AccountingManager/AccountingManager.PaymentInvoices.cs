@@ -700,7 +700,7 @@ public partial class AccountingManager
     #endregion
 
     #region MissingInvoice
-    public async Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser)
+    public async Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser, bool includeIgnored = false)
     {
         if (string.IsNullOrWhiteSpace(officeIds))
             return Array.Empty<Invoice>();
@@ -734,6 +734,7 @@ public partial class AccountingManager
 
         var billedMismatchRows = (await _accountingRepository.GetBilledByOrganizationAndOfficeIdsAsync(organizationId, officeIds))
             .Where(row => row.DaysStayed > row.DaysBilled)
+            .Where(row => row.Ignore == includeIgnored)
             .Where(row => row.MonthStart <= throughMonth)
             .OrderBy(row => row.ReservationCode)
             .ThenBy(row => row.MonthStart)
@@ -841,43 +842,63 @@ public partial class AccountingManager
         var billingMonth = billedRow.MonthStart;
         var periodStart = billedRow.PeriodStart;
         var periodEnd = billedRow.PeriodEnd;
-        var monthInvoices = reservationInvoices
-            .Where(invoice => FirstDayOfMonth(invoice.AccountingPeriod) == billingMonth)
-            .ToList();
+        var gaps = RentalFeeLineParser.FindUncoveredRentalFeeBillingRanges(
+            periodStart,
+            periodEnd,
+            reservationInvoices,
+            invoiceStart).ToList();
 
-        foreach (var (gapStart, gapEnd) in RentalFeeLineParser.FindUncoveredRentalFeeBillingRanges(
-                     periodStart,
-                     periodEnd,
-                     monthInvoices,
-                     invoiceStart))
+        if (gaps.Count == 0)
+            gaps = [(periodStart, periodEnd)];
+
+        var ledgerLines = new List<LedgerLine>();
+        foreach (var (gapStart, gapEnd) in gaps)
         {
-            var ledgerLines = await CreateLedgerLinesForUncoveredStayAsync(
+            var gapLines = await CreateLedgerLinesForUncoveredStayAsync(
                 reservation,
                 billingMonth,
                 periodStart,
                 periodEnd,
                 gapStart,
                 gapEnd);
-
-            if (ledgerLines.Count == 0)
-                continue;
-
-            var totalAmount = ledgerLines.Sum(line => line.Amount);
-
-            previewInvoices.Add(BuildPreBillingInvoicePreview(
-                organizationId,
-                reservation,
-                billingMonth,
-                gapStart,
-                gapEnd,
-                ledgerLines,
-                totalAmount,
-                nextSequence,
-                responsibleParty));
-            nextSequence++;
+            ledgerLines.AddRange(gapLines);
         }
 
-        return nextSequence;
+        if (ledgerLines.Count == 0)
+            return nextSequence;
+
+        for (var lineIndex = 0; lineIndex < ledgerLines.Count; lineIndex++)
+            ledgerLines[lineIndex].LineNumber = lineIndex + 1;
+
+        var previewStart = gaps.Min(gap => gap.Start);
+        var previewEnd = gaps.Max(gap => gap.End);
+        var totalAmount = ledgerLines.Sum(line => line.Amount);
+        var preview = BuildPreBillingInvoicePreview(
+            organizationId,
+            reservation,
+            billingMonth,
+            previewStart,
+            previewEnd,
+            ledgerLines,
+            totalAmount,
+            nextSequence,
+            responsibleParty);
+
+        preview.BilledId = billedRow.BilledId;
+        preview.BilledIgnore = billedRow.Ignore;
+        preview.BilledDaysStayed = billedRow.DaysStayed;
+        preview.BilledDaysBilled = billedRow.DaysBilled;
+        preview.BilledMonthStart = billedRow.MonthStart;
+        preview.BilledMonthEnd = billedRow.MonthEnd;
+        preview.BilledPeriodStart = billedRow.PeriodStart;
+        preview.BilledPeriodEnd = billedRow.PeriodEnd;
+        preview.BilledRentalFeeLines = billedRow.RentalFeeLines is { Count: > 0 }
+            ? System.Text.Json.JsonSerializer.Serialize(billedRow.RentalFeeLines)
+            : null;
+
+        previewInvoices.Add(preview);
+
+        return nextSequence + 1;
     }
 
     private async Task AddUnbilledPreviewsForReservationAsync(

@@ -28,6 +28,15 @@ public class InvoiceResponseDto
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public List<LedgerLineResponseDto> LedgerLines { get; set; } = new List<LedgerLineResponseDto>();
+    public int? BilledId { get; set; }
+    public bool? BilledIgnore { get; set; }
+    public int? BilledDaysStayed { get; set; }
+    public int? BilledDaysBilled { get; set; }
+    public DateOnly? BilledMonthStart { get; set; }
+    public DateOnly? BilledMonthEnd { get; set; }
+    public DateOnly? BilledPeriodStart { get; set; }
+    public DateOnly? BilledPeriodEnd { get; set; }
+    public string? BilledRentalFeeLines { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -58,6 +67,15 @@ public class InvoiceResponseDto
         PaidAmount = invoice.PaidAmount;
         Notes = invoice.Notes;
         LedgerLines = invoice.LedgerLines.Select(l => new LedgerLineResponseDto(l)).ToList();
+        BilledId = invoice.BilledId;
+        BilledIgnore = invoice.BilledIgnore;
+        BilledDaysStayed = invoice.BilledDaysStayed;
+        BilledDaysBilled = invoice.BilledDaysBilled;
+        BilledMonthStart = invoice.BilledMonthStart;
+        BilledMonthEnd = invoice.BilledMonthEnd;
+        BilledPeriodStart = invoice.BilledPeriodStart;
+        BilledPeriodEnd = invoice.BilledPeriodEnd;
+        BilledRentalFeeLines = invoice.BilledRentalFeeLines;
         IsActive = invoice.IsActive;
         CreatedOn = invoice.CreatedOn;
         CreatedBy = invoice.CreatedBy;

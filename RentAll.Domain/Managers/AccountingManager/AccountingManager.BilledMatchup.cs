@@ -39,6 +39,9 @@ public partial class AccountingManager
         {
             invoicesByReservationId.TryGetValue(reservation.ReservationId, out var reservationInvoices);
             accountingOfficesByOfficeId.TryGetValue(reservation.OfficeId, out var accountingOffice);
+            var existingBilledRows = await _accountingRepository.GetBilledByReservationIdAsync(organizationId, reservation.ReservationId);
+            var ignoreByMonth = existingBilledRows.ToDictionary(row => row.MonthStart, row => row.Ignore);
+
             var billedRows = BuildBilledMatchupMonthlyRows(
                 reservation,
                 organizationId,
@@ -46,6 +49,12 @@ public partial class AccountingManager
                 reservationInvoices,
                 asOfDate,
                 accountingOffice);
+            foreach (var billedRow in billedRows)
+            {
+                if (ignoreByMonth.TryGetValue(billedRow.MonthStart, out var ignore))
+                    billedRow.Ignore = ignore;
+            }
+
             await _accountingRepository.ReplaceBilledMonthlyRowsForReservationAsync(
                 organizationId,
                 reservation.ReservationId,
@@ -82,6 +91,9 @@ public partial class AccountingManager
 
     public Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId)
         => _accountingRepository.DeleteBilledByReservationIdAsync(organizationId, reservationId);
+
+    public Task<Billed?> SetBilledIgnoreByIdAsync(Guid organizationId, int billedId, bool ignore, Guid currentUser)
+        => _accountingRepository.SetBilledIgnoreByIdAsync(organizationId, billedId, ignore, currentUser);
 
     private async Task<IReadOnlyList<Billed>> GetBilledMatchupInternalAsync(Guid organizationId, string officeIds)
     {

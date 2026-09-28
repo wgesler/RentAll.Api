@@ -26,6 +26,15 @@ public class Invoice
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
     public List<LedgerLine> LedgerLines { get; set; } = new List<LedgerLine>();
+    public int? BilledId { get; set; }
+    public bool? BilledIgnore { get; set; }
+    public int? BilledDaysStayed { get; set; }
+    public int? BilledDaysBilled { get; set; }
+    public DateOnly? BilledMonthStart { get; set; }
+    public DateOnly? BilledMonthEnd { get; set; }
+    public DateOnly? BilledPeriodStart { get; set; }
+    public DateOnly? BilledPeriodEnd { get; set; }
+    public string? BilledRentalFeeLines { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

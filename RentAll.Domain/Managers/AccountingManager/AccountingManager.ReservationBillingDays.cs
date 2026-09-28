@@ -28,21 +28,23 @@ public partial class AccountingManager
         {
             var monthEnd = LastDayOfMonth(billingMonth);
             var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
-            var monthInvoices = invoices
-                .Where(invoice => FirstDayOfMonth(invoice.AccountingPeriod) == billingMonth)
-                .ToList();
-
             var daysStayed = CalculateBillableDaysInPeriod(
                 reservation,
                 periodStart,
                 periodEnd,
                 billingStayEndDate);
-            var daysBilled = RentalFeeLineParser.CalculateDaysBilledFromInvoices(
-                monthInvoices,
+            var daysBilled = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
+                invoices,
                 reservation,
                 invoiceStart,
+                periodStart,
+                periodEnd,
                 billingStayEndDate);
-            var rentalFeeLines = RentalFeeLineParser.CollectRentalFeeLineDescriptions(monthInvoices, invoiceStart).ToList();
+            var rentalFeeLines = RentalFeeLineParser.CollectRentalFeeLineDescriptionsForBillingPeriod(
+                invoices,
+                invoiceStart,
+                periodStart,
+                periodEnd).ToList();
 
             rows.Add(new Billed
             {

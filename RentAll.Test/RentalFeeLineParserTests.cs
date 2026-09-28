@@ -113,6 +113,40 @@ public class RentalFeeLineParserTests
     }
 
     [Fact]
+    public void CalculateDaysBilledForBillingPeriod_SplitsCrossMonthRentalLine()
+    {
+        var reservation = CreateReservation(BillingType.Monthly, new DateOnly(2026, 7, 20));
+        reservation.ArrivalDate = new DateOnly(2026, 6, 21);
+        var reservationId = reservation.ReservationId;
+        var invoiceStart = new DateOnly(2026, 6, 1);
+        var invoices = new[]
+        {
+            BuildInvoice(reservationId, new DateOnly(2026, 6, 1), "2026-06-01 - 2026-07-20", [
+                new LedgerLine { Description = "Rental Fee (06/21-07/20)", Amount = 3000m }
+            ])
+        };
+
+        var juneDays = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
+            invoices,
+            reservation,
+            invoiceStart,
+            new DateOnly(2026, 6, 21),
+            new DateOnly(2026, 6, 30),
+            new DateOnly(2026, 7, 20));
+
+        var julyDays = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
+            invoices,
+            reservation,
+            invoiceStart,
+            new DateOnly(2026, 7, 1),
+            new DateOnly(2026, 7, 20),
+            new DateOnly(2026, 7, 20));
+
+        Assert.Equal(10, juneDays);
+        Assert.Equal(20, julyDays);
+    }
+
+    [Fact]
     public void CalculateDaysBilledFromInvoices_IncludesJuneInvoiceWhenInvoiceStartIsJuneFirst()
     {
         var reservation = CreateReservation(BillingType.Monthly);

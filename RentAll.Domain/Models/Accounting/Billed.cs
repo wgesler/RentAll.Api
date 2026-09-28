@@ -20,6 +20,7 @@ public class Billed
     public int DaysStayed { get; set; }
     public int DaysBilled { get; set; }
     public List<string> RentalFeeLines { get; set; } = new();
+    public bool Ignore { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

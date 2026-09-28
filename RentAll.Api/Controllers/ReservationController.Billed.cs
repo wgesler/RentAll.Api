@@ -148,6 +148,37 @@ public partial class ReservationController
         }
     }
 
+    [HttpPut("billed/{billedId:int}/ignore")]
+    public async Task<IActionResult> SetBilledIgnoreById(int billedId, [FromBody] SetBilledIgnoreDto dto)
+    {
+        if (billedId <= 0)
+            return BadRequest("BilledId is required");
+        if (dto == null)
+            return BadRequest("Ignore data is required");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            var updated = await _accountingManager.SetBilledIgnoreByIdAsync(
+                CurrentOrganizationId,
+                billedId,
+                dto.Ignore,
+                CurrentUser);
+            if (updated == null)
+                return NotFound("Billed row not found");
+
+            return Ok(new BilledResponseDto(updated));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting billed ignore for BilledId: {BilledId}", billedId);
+            return ServerError("An error occurred while updating billed ignore");
+        }
+    }
+
     #endregion
 
     #region Billed Delete

@@ -105,6 +105,7 @@ public partial class AccountingRepository
             DaysStayed = billed.DaysStayed,
             DaysBilled = billed.DaysBilled,
             RentalFeeLines = SerializeBilledRentalFeeLines(billed.RentalFeeLines),
+            Ignore = billed.Ignore,
             CreatedBy = billed.CreatedBy
         });
 
@@ -184,6 +185,20 @@ public partial class AccountingRepository
             ReservationIds = reservationIdList.Count == 0 ? null : string.Join(',', reservationIdList)
         });
     }
+    public async Task<Billed?> SetBilledIgnoreByIdAsync(Guid organizationId, int billedId, bool ignore, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<BilledEntity>("Accounting.Billed_SetIgnoreById", new
+        {
+            OrganizationId = organizationId,
+            BilledId = billedId,
+            Ignore = ignore,
+            ModifiedBy = modifiedBy
+        });
+
+        return rows?.FirstOrDefault() is { } entity ? ConvertBilledEntityToModel(entity) : null;
+    }
+
     #endregion
 
     private static Billed ConvertBilledEntityToModel(BilledEntity entity)
@@ -207,6 +222,7 @@ public partial class AccountingRepository
             DaysStayed = entity.DaysStayed,
             DaysBilled = entity.DaysBilled,
             RentalFeeLines = DeserializeBilledRentalFeeLines(entity.RentalFeeLines),
+            Ignore = entity.Ignore,
             CreatedOn = entity.CreatedOn,
             CreatedBy = entity.CreatedBy,
             ModifiedOn = entity.ModifiedOn,

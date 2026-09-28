@@ -20,6 +20,7 @@ public class BilledResponseDto
     public int DaysStayed { get; set; }
     public int DaysBilled { get; set; }
     public IReadOnlyList<string> RentalFeeLines { get; set; } = Array.Empty<string>();
+    public bool Ignore { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -43,6 +44,7 @@ public class BilledResponseDto
         DaysStayed = billed.DaysStayed;
         DaysBilled = billed.DaysBilled;
         RentalFeeLines = billed.RentalFeeLines ?? [];
+        Ignore = billed.Ignore;
         CreatedOn = billed.CreatedOn;
         CreatedBy = billed.CreatedBy;
         ModifiedOn = billed.ModifiedOn;
