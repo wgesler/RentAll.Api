@@ -41,11 +41,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var invoices = await _accountingManager.GetMissingInvoicesAsync(
-                    CurrentOrganizationId,
-                    dto.ResolvedOfficeIds,
-                    CurrentUser,
-                    dto.MissingOnly);
+                var invoices = await _accountingManager.GetMissingInvoicesAsync(CurrentOrganizationId, dto.ResolvedOfficeIds, CurrentUser);
                 var response = invoices.Select(invoice => new InvoiceResponseDto(invoice)).ToList();
                 return Ok(response);
             }
