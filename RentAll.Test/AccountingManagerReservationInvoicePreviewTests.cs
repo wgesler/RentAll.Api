@@ -427,7 +427,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         await manager.GetMissingInvoicesAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.NotNull(capturedCriteria);
         Assert.True(capturedCriteria!.IncludePaid);
@@ -472,7 +473,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetMissingInvoicesAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 1, 1));
         Assert.Equal(2, previews.Count);
@@ -512,7 +514,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetMissingInvoicesAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.NotEmpty(previews);
         Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= new DateOnly(2026, 1, 1)));
@@ -591,7 +594,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetMissingInvoicesAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            AccountingManagerJournalEntryTestSupport.OfficeId.ToString());
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Single(previews);
         Assert.Equal(monthStart, previews[0].AccountingPeriod);
@@ -656,6 +660,22 @@ public class AccountingManagerReservationInvoicePreviewTests
         accountingRepository
             .Setup(r => r.GetBankCardsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
             .ReturnsAsync([]);
+        accountingRepository
+            .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        accountingRepository
+            .Setup(r => r.UpsertBilledByReservationIdAsync(It.IsAny<Billed>()))
+            .ReturnsAsync((Billed billed) =>
+            {
+                billed.BilledId = 1;
+                return billed;
+            });
+        accountingRepository
+            .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(Task.CompletedTask);
         configureAccountingRepository?.Invoke(accountingRepository);
 
         var organizationRepository = new Mock<IOrganizationRepository>();

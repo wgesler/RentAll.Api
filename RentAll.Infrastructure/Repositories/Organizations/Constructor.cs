@@ -160,6 +160,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             BankPhone = e.BankPhone,
             StartMonth = e.StartMonth,
             StartYear = e.StartYear,
+            InvoiceStartMonth = e.InvoiceStartMonth,
+            InvoiceStartYear = e.InvoiceStartYear,
             YearEndMonth = e.YearEndMonth,
             YearEndDay = e.YearEndDay,
             SoftClosedMonth = e.SoftClosedMonth,

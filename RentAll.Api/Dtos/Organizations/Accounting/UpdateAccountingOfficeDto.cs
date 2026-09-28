@@ -25,6 +25,8 @@ public class UpdateAccountingOfficeDto
     public string? BankPhone { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
+    public int InvoiceStartMonth { get; set; } = 6;
+    public int InvoiceStartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;
     public int YearEndDay { get; set; } = 31;
     public int SoftClosedMonth { get; set; } = 12;
@@ -113,6 +115,13 @@ public class UpdateAccountingOfficeDto
         if (!startYearCheck.IsValid)
             return startYearCheck;
 
+        if (InvoiceStartMonth < 1 || InvoiceStartMonth > 12)
+            return (false, "InvoiceStartMonth must be between 1 and 12");
+
+        var invoiceStartYearCheck = AccountingOfficeYearRules.ValidateYear(InvoiceStartYear, nameof(InvoiceStartYear));
+        if (!invoiceStartYearCheck.IsValid)
+            return invoiceStartYearCheck;
+
         if (YearEndMonth < 1 || YearEndMonth > 12)
             return (false, "YearEndMonth must be between 1 and 12");
 
@@ -165,6 +174,8 @@ public class UpdateAccountingOfficeDto
             BankPhone = string.IsNullOrWhiteSpace(BankPhone) ? null : BankPhone,
             StartMonth = StartMonth,
             StartYear = StartYear,
+            InvoiceStartMonth = InvoiceStartMonth,
+            InvoiceStartYear = InvoiceStartYear,
             YearEndMonth = YearEndMonth,
             YearEndDay = YearEndDay,
             SoftClosedMonth = SoftClosedMonth,

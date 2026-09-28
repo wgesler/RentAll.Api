@@ -26,6 +26,8 @@ public class AccountingOfficeResponseDto
     public string? BankPhone { get; set; }
     public int StartMonth { get; set; }
     public int StartYear { get; set; }
+    public int InvoiceStartMonth { get; set; }
+    public int InvoiceStartYear { get; set; }
     public int YearEndMonth { get; set; }
     public int YearEndDay { get; set; }
     public int SoftClosedMonth { get; set; }
@@ -90,6 +92,8 @@ public class AccountingOfficeResponseDto
         BankPhone = accountingOffice.BankPhone;
         StartMonth = accountingOffice.StartMonth;
         StartYear = accountingOffice.StartYear;
+        InvoiceStartMonth = accountingOffice.InvoiceStartMonth;
+        InvoiceStartYear = accountingOffice.InvoiceStartYear;
         YearEndMonth = accountingOffice.YearEndMonth;
         YearEndDay = accountingOffice.YearEndDay;
         SoftClosedMonth = accountingOffice.SoftClosedMonth;

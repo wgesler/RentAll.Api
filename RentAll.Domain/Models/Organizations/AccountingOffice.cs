@@ -23,6 +23,8 @@ public class AccountingOffice
     public string? BankPhone { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
+    public int InvoiceStartMonth { get; set; } = 6;
+    public int InvoiceStartYear { get; set; } = 2026;
     public int YearEndMonth { get; set; } = 12;
     public int YearEndDay { get; set; } = 31;
     public int SoftClosedMonth { get; set; } = 12;

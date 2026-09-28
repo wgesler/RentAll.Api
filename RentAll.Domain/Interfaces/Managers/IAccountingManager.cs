@@ -12,7 +12,13 @@ public interface IAccountingManager
     Task<List<LedgerLine>> CreateLedgerLinesForReservationIdAsync(Reservation reservation, DateOnly invoiceDate, DateOnly startDate, DateOnly endDate);
     List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId);
     Task<IReadOnlyList<Invoice>> GetPreBillingInvoicesAsync(Guid organizationId, string officeIds, DateOnly billingMonth);
-    Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds);
+    Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser);
+    Task RebuildReservationBilledMatchupAsync(Guid organizationId, string officeIds, Guid currentUser);
+    Task<IReadOnlyList<Billed>> GetBilledMatchupAsync(Guid organizationId, string officeIds);
+    Task<Billed?> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task<Billed> CreateBilledAsync(Billed billed, Guid currentUser);
+    Task<Billed?> UpdateBilledByReservationIdAsync(Billed billed, Guid currentUser);
+    Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
     Task<IReadOnlyList<Invoice>> GetReservationInvoicePreviewsAsync(Guid organizationId, Guid reservationId);
     #endregion
 

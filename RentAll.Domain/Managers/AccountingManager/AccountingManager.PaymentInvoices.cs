@@ -1,4 +1,5 @@
 using System.Reflection;
+using RentAll.Domain;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -597,16 +598,7 @@ public partial class AccountingManager
 
     #region Day Calculation Methods
     private static int CalculateNumberOfDays(DateOnly startDate, DateOnly endDate, BillingType billingType, bool isDepartureMonthYear, bool isLastDayOfMonth)
-    {
-        if (endDate < startDate) return 0;
-        if (endDate == startDate) return billingType == BillingType.Nightly && isDepartureMonthYear ? 0 : 1;
-
-        var days = endDate.DayNumber - startDate.DayNumber;
-        if (billingType != BillingType.Nightly ||
-           (billingType == BillingType.Nightly && !isDepartureMonthYear && isLastDayOfMonth))
-            days++;
-        return days;
-    }
+        => InvoiceBillingDays.CalculateNumberOfDays(startDate, endDate, billingType, isDepartureMonthYear, isLastDayOfMonth);
     #endregion
 
     #region PreBilling
@@ -708,7 +700,7 @@ public partial class AccountingManager
     #endregion
 
     #region MissingInvoice
-    public async Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds)
+    public async Task<IReadOnlyList<Invoice>> GetMissingInvoicesAsync(Guid organizationId, string officeIds, Guid currentUser)
     {
         if (string.IsNullOrWhiteSpace(officeIds))
             return Array.Empty<Invoice>();

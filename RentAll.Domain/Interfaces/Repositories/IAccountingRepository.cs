@@ -197,6 +197,17 @@ public interface IAccountingRepository
         Guid? propertyId = null);
     #endregion
 
+    #region Billed
+    Task<Billed?> GetBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task<List<Billed>> GetBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task<Billed> CreateBilledAsync(Billed billed);
+    Task<Billed> UpsertBilledByReservationIdAsync(Billed billed);
+    Task<Billed?> UpdateBilledByReservationIdAsync(Billed billed);
+    Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task DeleteBilledByOrganizationAndOfficeIdsAsync(Guid organizationId, string officeIds);
+    Task DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(Guid organizationId, string officeIds, IReadOnlyCollection<Guid> reservationIds);
+    #endregion
+
     #region OwnerStatementBalance
     Task<IReadOnlyList<OwnerStatementPropertyLedgerBalance>> GetOwnerStatementPropertyLedgersAsync(
         Guid organizationId,
