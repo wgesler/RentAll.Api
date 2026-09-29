@@ -704,11 +704,16 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(officeIds))
             return Array.Empty<Invoice>();
 
-        await RebuildReservationBilledMatchupAsync(organizationId, officeIds, currentUser);
+        var context = await LoadBilledMatchupOfficeContextAsync(organizationId, officeIds);
+        await RebuildBilledRowsAsync(organizationId, context, context.ActiveReservations, currentUser);
+        await _accountingRepository.DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(
+            organizationId,
+            officeIds,
+            context.ActiveReservations.Select(reservation => reservation.ReservationId).ToList());
 
         var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
 
-        var activeReservations = (await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(organizationId, officeIds))
+        var activeReservations = context.ActiveReservations
             .OrderBy(reservation => reservation.OfficeName)
             .ThenBy(reservation => reservation.ReservationCode)
             .ToList();
@@ -716,32 +721,13 @@ public partial class AccountingManager
         if (activeReservations.Count == 0)
             return Array.Empty<Invoice>();
 
-        var accountingOfficesByOfficeId = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(organizationId, officeIds))
-            .ToDictionary(office => office.OfficeId);
-
-        var existingInvoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
-        {
-            OrganizationId = organizationId,
-            OfficeIds = officeIds,
-            IsActive = true,
-            IncludePaid = true
-        }))
-            .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
-            .Where(invoice => accountingOfficesByOfficeId.TryGetValue(invoice.OfficeId, out var invoiceOffice)
-                && RentalFeeLineParser.IsAccountingPeriodOnOrAfterInvoiceStart(
-                    invoice,
-                    AccountingOfficePeriodBoundary.GetInvoiceStart(invoiceOffice)))
-            .ToList();
-
         var activeReservationIds = activeReservations
             .Select(reservation => reservation.ReservationId)
             .ToHashSet();
 
-        var billedThroughMonth = (await _accountingRepository.GetBilledByOrganizationAndOfficeIdsAsync(organizationId, officeIds))
+        var billedReportRows = (await _accountingRepository.GetBilledByOrganizationAndOfficeIdsAsync(organizationId, officeIds))
             .Where(row => row.MonthStart <= currentMonth)
-            .Where(row => activeReservationIds.Contains(row.ReservationId));
-
-        var billedReportRows = billedThroughMonth
+            .Where(row => activeReservationIds.Contains(row.ReservationId))
             .Where(row => row.DaysStayed > row.DaysBilled && !row.Ignore)
             .OrderBy(row => row.ReservationCode)
             .ThenBy(row => row.MonthStart)
@@ -760,13 +746,12 @@ public partial class AccountingManager
             if (!reservationsById.TryGetValue(billedRowsByReservation.Key, out var reservation))
                 continue;
 
-            if (!accountingOfficesByOfficeId.TryGetValue(reservation.OfficeId, out var accountingOffice))
+            if (!context.AccountingOfficesByOfficeId.TryGetValue(reservation.OfficeId, out var accountingOffice))
                 continue;
 
             var invoiceStart = AccountingOfficePeriodBoundary.GetInvoiceStart(accountingOffice);
-            var reservationInvoices = existingInvoices
-                .Where(invoice => invoice.ReservationId == reservation.ReservationId)
-                .ToList();
+            context.InvoicesByReservationId.TryGetValue(reservation.ReservationId, out var reservationInvoices);
+            reservationInvoices ??= [];
 
             try
             {
@@ -804,7 +789,7 @@ public partial class AccountingManager
         if (reservation == null)
             return Array.Empty<Invoice>();
 
-        await RebuildReservationBilledMatchupAsync(organizationId, reservation.OfficeId.ToString(), currentUser);
+        await RebuildReservationBilledMatchupForReservationAsync(organizationId, reservation, currentUser);
 
         var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
 
@@ -879,6 +864,13 @@ public partial class AccountingManager
         var nextSequence = ResolveNextInvoiceSequence(reservation, reservationInvoices);
         var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
 
+        await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(reservation.OrganizationId, reservation.OfficeId);
+        ApplyMissingDefaultCostCodesFromOfficeCostCodes(costCodeById);
+        var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
+        var isFurnished = property == null || !property.Unfurnished;
+        var rentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
+
         foreach (var billedRow in openBilledRows)
         {
             try
@@ -891,7 +883,9 @@ public partial class AccountingManager
                     invoiceStart,
                     previewInvoices,
                     nextSequence,
-                    responsibleParty);
+                    responsibleParty,
+                    costCodeById,
+                    rentalCostCodeId);
             }
             catch (Exception ex)
             {
@@ -913,7 +907,9 @@ public partial class AccountingManager
         DateOnly invoiceStart,
         List<Invoice> previewInvoices,
         int nextSequence,
-        string? responsibleParty)
+        string? responsibleParty,
+        IReadOnlyDictionary<int, CostCode> costCodeById,
+        int rentalCostCodeId)
     {
         var billingMonth = billedRow.MonthStart;
         var periodStart = billedRow.PeriodStart;
@@ -936,7 +932,9 @@ public partial class AccountingManager
                 periodStart,
                 periodEnd,
                 gapStart,
-                gapEnd);
+                gapEnd,
+                costCodeById,
+                rentalCostCodeId);
             ledgerLines.AddRange(gapLines);
         }
 
@@ -972,7 +970,15 @@ public partial class AccountingManager
         return nextSequence + 1;
     }
 
-    private async Task<List<LedgerLine>> CreateLedgerLinesForUncoveredStayAsync(Reservation reservation, DateOnly billingMonth, DateOnly periodStart, DateOnly periodEnd, DateOnly gapStart, DateOnly gapEnd)
+    private async Task<List<LedgerLine>> CreateLedgerLinesForUncoveredStayAsync(
+        Reservation reservation,
+        DateOnly billingMonth,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        DateOnly gapStart,
+        DateOnly gapEnd,
+        IReadOnlyDictionary<int, CostCode>? costCodeById = null,
+        int? rentalCostCodeId = null)
     {
         if (gapStart == periodStart && gapEnd == periodEnd)
         {
@@ -983,23 +989,36 @@ public partial class AccountingManager
                 endDate: periodEnd);
         }
 
-        return await CreateLedgerLinesForBillingGapAsync(reservation, billingMonth, gapStart, gapEnd);
+        return await CreateLedgerLinesForBillingGapAsync(
+            reservation,
+            billingMonth,
+            gapStart,
+            gapEnd,
+            costCodeById,
+            rentalCostCodeId);
     }
 
     private async Task<List<LedgerLine>> CreateLedgerLinesForBillingGapAsync(
         Reservation reservation,
         DateOnly invoiceDate,
         DateOnly gapStart,
-        DateOnly gapEnd)
+        DateOnly gapEnd,
+        IReadOnlyDictionary<int, CostCode>? costCodeById = null,
+        int? rentalCostCodeId = null)
     {
-        await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
+        if (costCodeById == null)
+        {
+            await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
+            costCodeById = await LoadCostCodeByOfficeIdAsync(reservation.OrganizationId, reservation.OfficeId);
+            ApplyMissingDefaultCostCodesFromOfficeCostCodes(costCodeById);
+        }
 
-        var costCodeById = await LoadCostCodeByOfficeIdAsync(reservation.OrganizationId, reservation.OfficeId);
-        ApplyMissingDefaultCostCodesFromOfficeCostCodes(costCodeById);
-
-        var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
-        var isFurnished = property == null || !property.Unfurnished;
-        var rentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
+        if (!rentalCostCodeId.HasValue)
+        {
+            var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
+            var isFurnished = property == null || !property.Unfurnished;
+            rentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
+        }
 
         var lineItems = new List<LedgerLine>();
         var lineNumber = 1;
@@ -1028,7 +1047,7 @@ public partial class AccountingManager
             isLastDayOfMonth,
             lineItems,
             ref lineNumber,
-            rentalCostCodeId);
+            rentalCostCodeId!.Value);
         AddMaidServiceLines(reservation, gapStart, gapEnd, gapStart.Year, gapStart.Month, lineItems, ref lineNumber);
         AddDepartureFeeIfApplicable(reservation, invoiceDate, lineItems, ref lineNumber);
 

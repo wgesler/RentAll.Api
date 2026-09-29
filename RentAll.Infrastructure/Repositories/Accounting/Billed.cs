@@ -48,11 +48,37 @@ public partial class AccountingRepository
         Guid reservationId,
         IReadOnlyList<Billed> billedRows)
     {
-        await DeleteBilledByReservationIdAsync(organizationId, reservationId);
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.OpenAsync();
+
+        await db.DapperProcExecuteAsync("Accounting.Billed_DeleteByReservationId", new
+        {
+            OrganizationId = organizationId,
+            ReservationId = reservationId
+        });
 
         foreach (var billed in billedRows ?? [])
         {
-            await CreateBilledAsync(billed);
+            await db.DapperProcQueryAsync<BilledEntity>("Accounting.Billed_Add", new
+            {
+                OrganizationId = billed.OrganizationId,
+                OfficeId = billed.OfficeId,
+                ReservationId = billed.ReservationId,
+                ReservationCode = billed.ReservationCode,
+                StartDate = billed.StartDate,
+                EndDate = billed.EndDate,
+                InvoiceStart = billed.InvoiceStart,
+                BillingTypeId = (int)billed.BillingType,
+                MonthStart = billed.MonthStart,
+                MonthEnd = billed.MonthEnd,
+                PeriodStart = billed.PeriodStart,
+                PeriodEnd = billed.PeriodEnd,
+                DaysStayed = billed.DaysStayed,
+                DaysBilled = billed.DaysBilled,
+                RentalFeeLines = SerializeBilledRentalFeeLines(billed.RentalFeeLines),
+                Ignore = billed.Ignore,
+                CreatedBy = billed.CreatedBy
+            });
         }
     }
 
