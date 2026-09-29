@@ -20,7 +20,7 @@ public interface IAccountingManager
     Task<Billed?> UpdateBilledByReservationIdAsync(Billed billed, Guid currentUser);
     Task DeleteBilledByReservationIdAsync(Guid organizationId, Guid reservationId);
     Task<Billed?> SetBilledIgnoreByIdAsync(Guid organizationId, int billedId, bool ignore, Guid currentUser);
-    Task<IReadOnlyList<Invoice>> GetReservationInvoicePreviewsAsync(Guid organizationId, Guid reservationId);
+    Task<IReadOnlyList<Invoice>> GetReservationInvoicePreviewsAsync(Guid organizationId, Guid reservationId, Guid currentUser);
     #endregion
 
     #region Payments

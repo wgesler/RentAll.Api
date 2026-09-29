@@ -60,9 +60,18 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.Equal(4, previews.Count);
+        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var expectedCount = 0;
+        for (var month = new DateOnly(2026, 7, 1); month <= new DateOnly(2026, 10, 1); month = month.AddMonths(1))
+        {
+            if (month >= currentMonth)
+                expectedCount++;
+        }
+
+        Assert.Equal(expectedCount, previews.Count);
         Assert.All(previews, preview => Assert.Equal(0m, preview.TotalAmount));
     }
 
@@ -74,13 +83,19 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.Equal(4, previews.Count);
-        Assert.Equal(new DateOnly(2026, 7, 1), previews[0].AccountingPeriod);
-        Assert.Equal(new DateOnly(2026, 8, 1), previews[1].AccountingPeriod);
-        Assert.Equal(new DateOnly(2026, 9, 1), previews[2].AccountingPeriod);
-        Assert.Equal(new DateOnly(2026, 10, 1), previews[3].AccountingPeriod);
+        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var expectedCount = 0;
+        for (var month = new DateOnly(2026, 7, 1); month <= new DateOnly(2026, 10, 1); month = month.AddMonths(1))
+        {
+            if (month >= currentMonth)
+                expectedCount++;
+        }
+
+        Assert.Equal(expectedCount, previews.Count);
+        Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= currentMonth));
     }
 
     [Fact]
@@ -171,7 +186,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.NotNull(capturedCriteria);
         Assert.True(capturedCriteria!.IncludePaid);
@@ -201,7 +217,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Empty(previews);
     }
@@ -229,7 +246,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Single(previews);
         Assert.Equal(new DateOnly(2026, 9, 1), previews[0].AccountingPeriod);
@@ -239,9 +257,12 @@ public class AccountingManagerReservationInvoicePreviewTests
     [Fact]
     public async Task GetReservationInvoicePreviewsAsync_SkipsNightlyCheckoutOnlyDepartureMonth()
     {
+        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var arrival = currentMonth;
+        var departure = currentMonth.AddMonths(3);
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
-            new DateOnly(2026, 4, 1),
-            new DateOnly(2026, 7, 1),
+            arrival,
+            departure,
             ProrateType.FirstMonth,
             BillingType.Nightly,
             100m);
@@ -253,21 +274,25 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Equal(3, previews.Count);
-        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
-        Assert.Equal(new DateOnly(2026, 4, 1), previews[0].AccountingPeriod);
-        Assert.Equal(new DateOnly(2026, 5, 1), previews[1].AccountingPeriod);
-        Assert.Equal(new DateOnly(2026, 6, 1), previews[2].AccountingPeriod);
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(departure.Year, departure.Month, 1));
+        Assert.Equal(currentMonth, previews[0].AccountingPeriod);
+        Assert.Equal(currentMonth.AddMonths(1), previews[1].AccountingPeriod);
+        Assert.Equal(currentMonth.AddMonths(2), previews[2].AccountingPeriod);
     }
 
     [Fact]
     public async Task GetReservationInvoicePreviewsAsync_IncludesCheckoutDayForDailyAndMonthlyDepartureMonth()
     {
+        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var arrival = currentMonth.AddMonths(-1);
+        var departure = currentMonth.AddMonths(1);
         var dailyReservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
-            new DateOnly(2026, 4, 1),
-            new DateOnly(2026, 7, 1),
+            arrival,
+            departure,
             ProrateType.FirstMonth,
             BillingType.Daily,
             100m);
@@ -276,8 +301,8 @@ public class AccountingManagerReservationInvoicePreviewTests
         dailyReservation.OfficeName = "Test Office";
 
         var monthlyReservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
-            new DateOnly(2026, 4, 1),
-            new DateOnly(2026, 7, 1),
+            arrival,
+            departure,
             ProrateType.FirstMonth,
             BillingType.Monthly,
             3000m);
@@ -290,21 +315,26 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var dailyPreviews = await dailyManager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            dailyReservation.ReservationId);
+            dailyReservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
         var monthlyPreviews = await monthlyManager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            monthlyReservation.ReservationId);
+            monthlyReservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.Contains(dailyPreviews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
-        Assert.Contains(monthlyPreviews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+        Assert.Contains(dailyPreviews, preview => preview.AccountingPeriod == new DateOnly(departure.Year, departure.Month, 1));
+        Assert.Contains(monthlyPreviews, preview => preview.AccountingPeriod == new DateOnly(departure.Year, departure.Month, 1));
     }
 
     [Fact]
     public async Task GetReservationInvoicePreviewsAsync_PlatformNightlyCheckoutOnFirst_PutsDepartureFeeOnJuneNotJuly()
     {
+        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var arrival = currentMonth;
+        var departure = currentMonth.AddMonths(3);
         var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
-            new DateOnly(2026, 4, 1),
-            new DateOnly(2026, 7, 1),
+            arrival,
+            departure,
             ProrateType.FirstMonth,
             BillingType.Nightly,
             100m);
@@ -318,13 +348,15 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Equal(3, previews.Count);
-        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 7, 1));
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod == new DateOnly(departure.Year, departure.Month, 1));
 
-        var junePreview = Assert.Single(previews, preview => preview.AccountingPeriod == new DateOnly(2026, 6, 1));
-        Assert.Contains(junePreview.LedgerLines, line => line.Description == "Departure Fee" && line.Amount == 175m);
+        var departureFeeMonth = currentMonth.AddMonths(2);
+        var departureFeePreview = Assert.Single(previews, preview => preview.AccountingPeriod == new DateOnly(departureFeeMonth.Year, departureFeeMonth.Month, 1));
+        Assert.Contains(departureFeePreview.LedgerLines, line => line.Description == "Departure Fee" && line.Amount == 175m);
     }
 
     [Fact]
@@ -354,7 +386,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.NotEmpty(previews);
         Assert.All(previews, preview =>
@@ -389,7 +422,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.NotEmpty(previews);
         Assert.All(previews, preview =>
@@ -575,7 +609,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Single(previews);
         Assert.Equal(new DateOnly(2026, 9, 1), previews[0].AccountingPeriod);
@@ -618,7 +653,8 @@ public class AccountingManagerReservationInvoicePreviewTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
         Assert.Single(previews);
         Assert.Contains(
@@ -796,11 +832,16 @@ public class AccountingManagerReservationInvoicePreviewTests
         accountingRepository
             .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
             .Returns(Task.CompletedTask);
+        var billedRowsByReservationId = new Dictionary<Guid, List<Billed>>();
         accountingRepository
             .Setup(r => r.ReplaceBilledMonthlyRowsForReservationAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<Guid>(),
                 It.IsAny<IReadOnlyList<Billed>>()))
+            .Callback<Guid, Guid, IReadOnlyList<Billed>>((_, reservationId, rows) =>
+            {
+                billedRowsByReservationId[reservationId] = rows.ToList();
+            })
             .Returns(Task.CompletedTask);
         accountingRepository
             .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(
@@ -808,6 +849,12 @@ public class AccountingManagerReservationInvoicePreviewTests
                 It.IsAny<string>(),
                 It.IsAny<IReadOnlyCollection<Guid>>()))
             .Returns(Task.CompletedTask);
+        accountingRepository
+            .Setup(r => r.GetBilledByReservationIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync((Guid _, Guid reservationId) =>
+                billedRowsByReservationId.TryGetValue(reservationId, out var rows)
+                    ? rows
+                    : []);
         accountingRepository
             .Setup(r => r.GetBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
             .ReturnsAsync([]);
@@ -855,6 +902,11 @@ public class AccountingManagerReservationInvoicePreviewTests
         reservationRepository
             .Setup(r => r.GetReservationByIdAsync(reservation.ReservationId, AccountingManagerJournalEntryTestSupport.OrganizationId))
             .ReturnsAsync(reservation);
+        reservationRepository
+            .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                AccountingManagerJournalEntryTestSupport.OrganizationId,
+                AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+            .ReturnsAsync([reservation]);
         configureReservationRepository?.Invoke(reservationRepository);
 
         var contactRepository = new Mock<IContactRepository>();

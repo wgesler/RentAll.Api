@@ -7,7 +7,6 @@ using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
-using System.Text.RegularExpressions;
 
 namespace RentAll.Test;
 
@@ -168,13 +167,16 @@ internal static class AccountingManagerJournalEntryTestSupport
 
     internal static bool InvoiceCrossesAccountingPeriod(Invoice invoice)
     {
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            var match = RentalFeePeriodRegex.Match(line.Description.Trim());
-            if (!match.Success)
+            if (!InvoiceBillingDays.TryParseRentalFeePeriod(line.Description, referenceYear, out var start, out var end))
                 continue;
 
-            if (match.Groups["start"].Value[..2] != match.Groups["end"].Value[..2])
+            if (start.Month != end.Month || start.Year != end.Year)
                 return true;
         }
 
@@ -227,10 +229,6 @@ internal static class AccountingManagerJournalEntryTestSupport
         Console.WriteLine(
             $"[{pathLabel}] {caseLabel} | {rentalDescription} ${rentalAmount:0.##} | {journalEntries.Count} JE | {arSummary}");
     }
-
-    private static readonly Regex RentalFeePeriodRegex = new(
-        @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$",
-        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     internal sealed class JournalEntryTestContext
     {

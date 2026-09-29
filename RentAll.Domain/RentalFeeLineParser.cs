@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -6,10 +5,6 @@ namespace RentAll.Domain;
 
 public static class RentalFeeLineParser
 {
-    private static readonly Regex RentalFeePeriodRegex = new(
-        @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$",
-        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
     public static bool TryParseRentalFeePeriod(string? description, int referenceYear, out DateOnly periodStart, out DateOnly periodEnd)
         => InvoiceBillingDays.TryParseRentalFeePeriod(description, referenceYear, out periodStart, out periodEnd);
 

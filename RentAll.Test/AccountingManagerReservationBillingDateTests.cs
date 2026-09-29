@@ -64,11 +64,18 @@ public class AccountingManagerReservationBillingDateTests
 
         var previews = await manager.GetReservationInvoicePreviewsAsync(
             AccountingManagerJournalEntryTestSupport.OrganizationId,
-            reservation.ReservationId);
+            reservation.ReservationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        Assert.Equal(2, previews.Count);
-        Assert.Equal(new DateOnly(2026, 8, 1), previews[0].AccountingPeriod);
-        Assert.Equal(new DateOnly(2026, 9, 1), previews[1].AccountingPeriod);
+        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var expectedCount = 0;
+        if (new DateOnly(2026, 8, 1) >= currentMonth)
+            expectedCount++;
+        if (new DateOnly(2026, 9, 1) >= currentMonth)
+            expectedCount++;
+
+        Assert.Equal(expectedCount, previews.Count);
+        Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= currentMonth));
     }
 
     private static AccountingManager CreatePreviewManager(Reservation reservation)
@@ -97,6 +104,29 @@ public class AccountingManagerReservationBillingDateTests
         accountingRepository
             .Setup(r => r.GetBankCardsByOfficeIdAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, AccountingManagerJournalEntryTestSupport.OfficeId))
             .ReturnsAsync([]);
+        var billedRowsByReservationId = new Dictionary<Guid, List<Billed>>();
+        accountingRepository
+            .Setup(r => r.ReplaceBilledMonthlyRowsForReservationAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<IReadOnlyList<Billed>>()))
+            .Callback<Guid, Guid, IReadOnlyList<Billed>>((_, reservationId, rows) =>
+            {
+                billedRowsByReservationId[reservationId] = rows.ToList();
+            })
+            .Returns(Task.CompletedTask);
+        accountingRepository
+            .Setup(r => r.DeleteBilledByOrganizationAndOfficeIdsExceptReservationsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(Task.CompletedTask);
+        accountingRepository
+            .Setup(r => r.GetBilledByReservationIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync((Guid _, Guid reservationId) =>
+                billedRowsByReservationId.TryGetValue(reservationId, out var rows)
+                    ? rows
+                    : []);
 
         var organizationRepository = new Mock<IOrganizationRepository>();
         organizationRepository
@@ -115,8 +145,25 @@ public class AccountingManagerReservationBillingDateTests
                 OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
                 OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
                 StartMonth = 1,
-                StartYear = 2026
+                StartYear = 2026,
+                InvoiceStartMonth = 6,
+                InvoiceStartYear = 2026
             });
+        organizationRepository
+            .Setup(r => r.GetAccountingOfficesByOfficeIdsAsync(
+                AccountingManagerJournalEntryTestSupport.OrganizationId,
+                It.IsAny<string>()))
+            .ReturnsAsync([
+                new AccountingOffice
+                {
+                    OrganizationId = AccountingManagerJournalEntryTestSupport.OrganizationId,
+                    OfficeId = AccountingManagerJournalEntryTestSupport.OfficeId,
+                    StartMonth = 1,
+                    StartYear = 2026,
+                    InvoiceStartMonth = 6,
+                    InvoiceStartYear = 2026
+                }
+            ]);
 
         var propertyRepository = new Mock<IPropertyRepository>();
         propertyRepository
@@ -132,6 +179,11 @@ public class AccountingManagerReservationBillingDateTests
         reservationRepository
             .Setup(r => r.GetReservationByIdAsync(reservation.ReservationId, AccountingManagerJournalEntryTestSupport.OrganizationId))
             .ReturnsAsync(reservation);
+        reservationRepository
+            .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                AccountingManagerJournalEntryTestSupport.OrganizationId,
+                AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+            .ReturnsAsync([reservation]);
 
         return new AccountingManager(
             organizationRepository.Object,

@@ -704,7 +704,9 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(officeIds))
             return Array.Empty<Invoice>();
 
-        var throughMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
+        await RebuildReservationBilledMatchupAsync(organizationId, officeIds, currentUser);
+
+        var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
 
         var activeReservations = (await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(organizationId, officeIds))
             .OrderBy(reservation => reservation.OfficeName)
@@ -736,7 +738,7 @@ public partial class AccountingManager
             .ToHashSet();
 
         var billedThroughMonth = (await _accountingRepository.GetBilledByOrganizationAndOfficeIdsAsync(organizationId, officeIds))
-            .Where(row => row.MonthStart <= throughMonth)
+            .Where(row => row.MonthStart <= currentMonth)
             .Where(row => activeReservationIds.Contains(row.ReservationId));
 
         var billedReportRows = billedThroughMonth
@@ -766,36 +768,15 @@ public partial class AccountingManager
                 .Where(invoice => invoice.ReservationId == reservation.ReservationId)
                 .ToList();
 
-            var nextSequence = ResolveNextInvoiceSequence(reservation, reservationInvoices);
-
             try
             {
-                var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
-
-                foreach (var billedRow in billedRowsByReservation.OrderBy(row => row.MonthStart))
-                {
-                    try
-                    {
-                        nextSequence = await AddMissingInvoicePreviewsForBilledMonthAsync(
-                            organizationId,
-                            reservation,
-                            billedRow,
-                            reservationInvoices,
-                            invoiceStart,
-                            previewInvoices,
-                            nextSequence,
-                            responsibleParty);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogApplicationDiagnostic(
-                            "GetMissingInvoicesPreviewRow",
-                            $"ReservationCode={reservation.ReservationCode} MonthStart={billedRow.MonthStart:yyyy-MM-dd} BilledId={billedRow.BilledId}",
-                            ex,
-                            organizationId,
-                            reservation.OfficeId);
-                    }
-                }
+                await AppendInvoicePreviewsForOpenBilledRowsAsync(
+                    organizationId,
+                    reservation,
+                    billedRowsByReservation.OrderBy(row => row.MonthStart).ToList(),
+                    reservationInvoices,
+                    invoiceStart,
+                    previewInvoices);
             }
             catch (Exception ex)
             {
@@ -817,11 +798,25 @@ public partial class AccountingManager
     #endregion
 
     #region ReservationInvoicePreview
-    public async Task<IReadOnlyList<Invoice>> GetReservationInvoicePreviewsAsync(Guid organizationId, Guid reservationId)
+    public async Task<IReadOnlyList<Invoice>> GetReservationInvoicePreviewsAsync(Guid organizationId, Guid reservationId, Guid currentUser)
     {
         var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId);
         if (reservation == null)
             return Array.Empty<Invoice>();
+
+        await RebuildReservationBilledMatchupAsync(organizationId, reservation.OfficeId.ToString(), currentUser);
+
+        var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
+
+        var accountingOfficesByOfficeId = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(
+                organizationId,
+                reservation.OfficeId.ToString()))
+            .ToDictionary(office => office.OfficeId);
+
+        if (!accountingOfficesByOfficeId.TryGetValue(reservation.OfficeId, out var accountingOffice))
+            return Array.Empty<Invoice>();
+
+        var invoiceStart = AccountingOfficePeriodBoundary.GetInvoiceStart(accountingOffice);
 
         var existingInvoices = (await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
         {
@@ -832,34 +827,82 @@ public partial class AccountingManager
             IncludePaid = true
         }))
             .Where(invoice => invoice.ReservationId.HasValue && invoice.ReservationId.Value != Guid.Empty && invoice.AccountingPeriod != default)
+            .Where(invoice => RentalFeeLineParser.IsAccountingPeriodOnOrAfterInvoiceStart(invoice, invoiceStart))
             .ToList();
 
+        var openBilledRows = (await _accountingRepository.GetBilledByReservationIdAsync(organizationId, reservationId))
+            .Where(row => row.MonthStart >= currentMonth)
+            .Where(row => row.DaysStayed > row.DaysBilled && !row.Ignore)
+            .OrderBy(row => row.MonthStart)
+            .ToList();
+
+        if (openBilledRows.Count == 0)
+            return Array.Empty<Invoice>();
+
         var previewInvoices = new List<Invoice>();
-        await AddUnbilledPreviewInvoicesThroughEndOfStayAsync(
-            organizationId,
-            reservation,
-            existingInvoices,
-            previewInvoices);
+        try
+        {
+            await AppendInvoicePreviewsForOpenBilledRowsAsync(
+                organizationId,
+                reservation,
+                openBilledRows,
+                existingInvoices,
+                invoiceStart,
+                previewInvoices);
+        }
+        catch (Exception ex)
+        {
+            LogApplicationDiagnostic(
+                "GetReservationInvoicePreviewsAsync",
+                $"ReservationCode={reservation.ReservationCode}",
+                ex,
+                organizationId,
+                reservation.OfficeId);
+        }
 
         return previewInvoices
             .OrderBy(invoice => invoice.AccountingPeriod)
             .ToList();
     }
 
-    private async Task AddUnbilledPreviewInvoicesThroughEndOfStayAsync(Guid organizationId, Reservation reservation, IReadOnlyList<Invoice> existingReservationInvoices, List<Invoice> previewInvoices)
+    private async Task AppendInvoicePreviewsForOpenBilledRowsAsync(
+        Guid organizationId,
+        Reservation reservation,
+        IReadOnlyList<Billed> openBilledRows,
+        IReadOnlyList<Invoice> reservationInvoices,
+        DateOnly invoiceStart,
+        List<Invoice> previewInvoices)
     {
-        var throughMonth = FirstDayOfMonth(ResolveBillingDepartureDate(reservation));
-        var accountingStart = await TryGetAccountingStartDateAsync(organizationId, reservation.OfficeId);
-        if (!accountingStart.HasValue)
+        if (openBilledRows.Count == 0)
             return;
 
-        await AddUnbilledPreviewsForReservationAsync(
-            organizationId,
-            reservation,
-            throughMonth,
-            existingReservationInvoices,
-            previewInvoices,
-            accountingStart.Value);
+        var nextSequence = ResolveNextInvoiceSequence(reservation, reservationInvoices);
+        var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
+
+        foreach (var billedRow in openBilledRows)
+        {
+            try
+            {
+                nextSequence = await AddMissingInvoicePreviewsForBilledMonthAsync(
+                    organizationId,
+                    reservation,
+                    billedRow,
+                    reservationInvoices,
+                    invoiceStart,
+                    previewInvoices,
+                    nextSequence,
+                    responsibleParty);
+            }
+            catch (Exception ex)
+            {
+                LogApplicationDiagnostic(
+                    "GetMissingInvoicesPreviewRow",
+                    $"ReservationCode={reservation.ReservationCode} MonthStart={billedRow.MonthStart:yyyy-MM-dd} BilledId={billedRow.BilledId}",
+                    ex,
+                    organizationId,
+                    reservation.OfficeId);
+            }
+        }
     }
 
     private async Task<int> AddMissingInvoicePreviewsForBilledMonthAsync(
@@ -922,91 +965,12 @@ public partial class AccountingManager
         preview.BilledRentalFeeLines = billedRow.RentalFeeLines is { Count: > 0 }
             ? System.Text.Json.JsonSerializer.Serialize(billedRow.RentalFeeLines)
             : null;
-        ApplyPreviewListPeriodMetrics(
-            preview,
-            reservation,
-            billingMonth,
-            previewStart,
-            previewEnd,
-            reservationInvoices,
-            invoiceStart);
+        ApplyMissingPreviewBilledGridMetrics(preview, billedRow);
 
         previewInvoices.Add(preview);
 
         return nextSequence + 1;
     }
-
-    private async Task AddUnbilledPreviewsForReservationAsync(
-        Guid organizationId,
-        Reservation reservation,
-        DateOnly throughMonth,
-        IReadOnlyList<Invoice> existingReservationInvoices,
-        List<Invoice> previewInvoices,
-        DateOnly billingWindowStart)
-    {
-        var nextSequence = ResolveNextInvoiceSequence(reservation, existingReservationInvoices);
-        var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
-
-        foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth, billingWindowStart))
-        {
-            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
-            var gaps = ResolveUncoveredBillingGapsForPeriod(
-                periodStart,
-                periodEnd,
-                existingReservationInvoices,
-                billingWindowStart);
-            if (gaps.Count == 0)
-                continue;
-
-            foreach (var (gapStart, gapEnd) in gaps)
-            {
-                var ledgerLines = await CreateLedgerLinesForUncoveredStayAsync(
-                    reservation,
-                    billingMonth,
-                    periodStart,
-                    periodEnd,
-                    gapStart,
-                    gapEnd);
-
-                if (ledgerLines.Count == 0)
-                    continue;
-
-                var totalAmount = ledgerLines.Sum(line => line.Amount);
-
-                var preview = BuildPreBillingInvoicePreview(
-                    organizationId,
-                    reservation,
-                    billingMonth,
-                    gapStart,
-                    gapEnd,
-                    ledgerLines,
-                    totalAmount,
-                    nextSequence,
-                    responsibleParty);
-                ApplyPreviewListPeriodMetrics(
-                    preview,
-                    reservation,
-                    billingMonth,
-                    gapStart,
-                    gapEnd,
-                    existingReservationInvoices,
-                    billingWindowStart);
-                previewInvoices.Add(preview);
-                nextSequence++;
-            }
-        }
-    }
-
-    private static List<(DateOnly Start, DateOnly End)> ResolveUncoveredBillingGapsForPeriod(
-        DateOnly periodStart,
-        DateOnly periodEnd,
-        IReadOnlyList<Invoice> reservationInvoices,
-        DateOnly invoiceStart)
-        => RentalFeeLineParser.FindUncoveredBillingRangesForPeriod(
-            periodStart,
-            periodEnd,
-            reservationInvoices,
-            invoiceStart).ToList();
 
     private async Task<List<LedgerLine>> CreateLedgerLinesForUncoveredStayAsync(Reservation reservation, DateOnly billingMonth, DateOnly periodStart, DateOnly periodEnd, DateOnly gapStart, DateOnly gapEnd)
     {
@@ -1107,6 +1071,51 @@ public partial class AccountingManager
         return (periodStart, periodEnd);
     }
 
+    /// <summary>Missing/preview billed grid only — physical stay through calendar month-end.</summary>
+    private static (DateOnly PeriodStart, DateOnly PeriodEnd) ResolveBilledGridPeriodForMonth(Reservation reservation, DateOnly billingMonth)
+    {
+        var monthStart = billingMonth;
+        var monthEnd = LastDayOfMonth(billingMonth);
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+        var stayDeparture = reservation.DepartureDate;
+        var periodStart = arrivalDate > monthStart ? arrivalDate : monthStart;
+        if (stayDeparture < periodStart)
+            return (periodStart, periodStart.AddDays(-1));
+
+        var periodEnd = stayDeparture > monthEnd ? monthEnd : stayDeparture;
+        return (periodStart, periodEnd);
+    }
+
+    private static IEnumerable<DateOnly> EnumerateBillableMonthsForBilledGrid(
+        Reservation reservation,
+        DateOnly throughMonth,
+        DateOnly accountingStartMonth)
+    {
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+        var stayDeparture = reservation.DepartureDate;
+        var startMonth = FirstDayOfMonth(arrivalDate);
+        if (startMonth < accountingStartMonth)
+            startMonth = accountingStartMonth;
+
+        var departureMonth = FirstDayOfMonth(stayDeparture);
+        var scanThrough = throughMonth <= departureMonth ? throughMonth : departureMonth;
+
+        if (startMonth > scanThrough)
+            yield break;
+
+        for (var month = startMonth; month <= scanThrough; month = month.AddMonths(1))
+        {
+            if (!ReservationOverlapsBillingMonth(arrivalDate, stayDeparture, month, LastDayOfMonth(month)))
+                continue;
+
+            var (periodStart, periodEnd) = ResolveBilledGridPeriodForMonth(reservation, month);
+            if (!HasBillablePreviewPeriod(reservation, periodStart, periodEnd))
+                continue;
+
+            yield return month;
+        }
+    }
+
     private static bool HasBillablePreviewPeriod(Reservation reservation, DateOnly periodStart, DateOnly periodEnd)
     {
         if (periodEnd < periodStart)
@@ -1183,52 +1192,16 @@ public partial class AccountingManager
     private static bool ReservationOverlapsBillingMonth(DateOnly arrivalDate, DateOnly departureDate, DateOnly monthStart, DateOnly monthEnd)
         => arrivalDate <= monthEnd && departureDate >= monthStart;
 
-    private static void ApplyPreviewListPeriodMetrics(
-        Invoice preview,
-        Reservation reservation,
-        DateOnly billingMonth,
-        DateOnly periodStart,
-        DateOnly periodEnd,
-        IReadOnlyList<Invoice> existingReservationInvoices,
-        DateOnly invoiceStart)
+    private static void ApplyMissingPreviewBilledGridMetrics(Invoice preview, Billed billedRow)
     {
-        preview.BilledMonthStart = billingMonth;
-        preview.BilledMonthEnd = LastDayOfMonth(billingMonth);
-        preview.BilledPeriodStart = periodStart;
-        preview.BilledPeriodEnd = periodEnd;
-        preview.BilledStartDate = ResolveBillingArrivalDate(reservation);
-        preview.BilledEndDate = ResolveBillingDepartureDate(reservation);
-
-        var arrivalDate = ResolveBillingArrivalDate(reservation);
-        var departureDate = ResolveBillingDepartureDate(reservation);
-        var stayWindowStart = periodStart < arrivalDate ? arrivalDate : periodStart;
-        var stayWindowEnd = periodEnd > departureDate ? departureDate : periodEnd;
-        if (stayWindowEnd < stayWindowStart)
-        {
-            preview.BilledDaysStayed = 0;
-            preview.BilledDaysBilled = 0;
-            return;
-        }
-
-        var lastDayOfMonth = new DateOnly(
-            stayWindowEnd.Year,
-            stayWindowEnd.Month,
-            DateTime.DaysInMonth(stayWindowEnd.Year, stayWindowEnd.Month));
-        var isDepartureMonthYear = stayWindowEnd.Month == departureDate.Month && stayWindowEnd.Year == departureDate.Year;
-        var isLastDayOfMonth = stayWindowEnd.Day == lastDayOfMonth.Day;
-        preview.BilledDaysStayed = CalculateNumberOfDays(
-            stayWindowStart,
-            stayWindowEnd,
-            reservation.BillingType,
-            isDepartureMonthYear,
-            isLastDayOfMonth);
-        preview.BilledDaysBilled = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
-            existingReservationInvoices,
-            reservation,
-            invoiceStart,
-            periodStart,
-            periodEnd,
-            departureDate);
+        preview.BilledMonthStart = billedRow.MonthStart;
+        preview.BilledMonthEnd = billedRow.MonthEnd;
+        preview.BilledPeriodStart = billedRow.PeriodStart;
+        preview.BilledPeriodEnd = billedRow.PeriodEnd;
+        preview.BilledStartDate = billedRow.StartDate;
+        preview.BilledEndDate = billedRow.EndDate;
+        preview.BilledDaysStayed = billedRow.DaysStayed;
+        preview.BilledDaysBilled = billedRow.DaysBilled;
     }
 
     private static Invoice BuildPreBillingInvoicePreview(Guid organizationId, Reservation reservation, DateOnly billingMonth, DateOnly monthStart, DateOnly monthEnd, List<LedgerLine> ledgerLines, decimal totalAmount, int? invoiceSequence = null, string? responsibleParty = null)
@@ -1249,6 +1222,8 @@ public partial class AccountingManager
             PropertyCode = NormalizeOptionalString(reservation.PropertyCode),
             ContactId = ResolveInvoiceResponsibleContactId(reservation),
             ContactName = responsibleParty,
+            TenantName = NormalizeOptionalString(reservation.TenantName)
+                ?? NormalizeOptionalString(reservation.ContactName),
             CompanyId = reservation.CompanyId,
             CompanyName = reservation.CompanyName,
             ResponsibleParty = responsibleParty,

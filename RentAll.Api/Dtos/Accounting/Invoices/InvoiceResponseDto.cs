@@ -15,6 +15,7 @@ public class InvoiceResponseDto
     public string? PropertyCode { get; set; }
     public Guid? ContactId { get; set; }
     public string? ContactName { get; set; }
+    public string? TenantName { get; set; }
     public Guid? CompanyId { get; set; }
     public string? CompanyName { get; set; }
     public string? ResponsibleParty { get; set; }
@@ -57,6 +58,7 @@ public class InvoiceResponseDto
         PropertyCode = invoice.PropertyCode;
         ContactId = invoice.ContactId;
         ContactName = invoice.ContactName;
+        TenantName = invoice.TenantName;
         CompanyId = invoice.CompanyId;
         CompanyName = invoice.CompanyName;
         ResponsibleParty = invoice.ResponsibleParty;

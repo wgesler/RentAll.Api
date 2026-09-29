@@ -1,3 +1,4 @@
+using RentAll.Domain;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;
@@ -759,13 +760,13 @@ public class CrossPeriodInvoiceJournalEntryTests
         Reservation reservation)
     {
         const int referenceYear = 2026;
-        var match = System.Text.RegularExpressions.Regex.Match(
-            originalRental.Description,
-            @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$");
-        Assert.True(match.Success);
+        Assert.True(
+            InvoiceBillingDays.TryParseRentalFeePeriod(
+                originalRental.Description,
+                referenceYear,
+                out var rentalStart,
+                out var rentalEnd));
 
-        var rentalStart = ParseMonthDay(match.Groups["start"].Value, referenceYear);
-        var rentalEnd = ParseMonthDay(match.Groups["end"].Value, referenceYear);
         if (rentalEnd < rentalStart)
             rentalEnd = rentalEnd.AddYears(1);
 

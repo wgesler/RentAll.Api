@@ -16,30 +16,28 @@ public partial class AccountingManager
         var billingStayStartDate = ResolveBillingArrivalDate(reservation);
         var billingStayEndDate = ResolveBillingDepartureDate(reservation);
         var invoices = reservationInvoices ?? [];
-        var referenceDate = asOfDate ?? DateOnly.FromDateTime(DateTime.Today);
         var invoiceStart = accountingOffice != null
             ? AccountingOfficePeriodBoundary.GetInvoiceStart(accountingOffice)
             : BilledMatchupInvoiceStart.InvoiceStart;
-        var scanThroughDate = referenceDate <= billingStayEndDate ? referenceDate : billingStayEndDate;
-        var throughMonth = FirstDayOfMonth(scanThroughDate);
+        var throughMonth = FirstDayOfMonth(reservation.DepartureDate);
 
         var rows = new List<Billed>();
-        foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth, invoiceStart))
+        foreach (var billingMonth in EnumerateBillableMonthsForBilledGrid(reservation, throughMonth, invoiceStart))
         {
             var monthEnd = LastDayOfMonth(billingMonth);
-            var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
+            var (periodStart, periodEnd) = ResolveBilledGridPeriodForMonth(reservation, billingMonth);
             var daysStayed = CalculateBillableDaysInPeriod(
                 reservation,
                 periodStart,
                 periodEnd,
-                billingStayEndDate);
+                reservation.DepartureDate);
             var daysBilled = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
                 invoices,
                 reservation,
                 invoiceStart,
                 periodStart,
                 periodEnd,
-                billingStayEndDate);
+                reservation.DepartureDate);
             var rentalFeeLines = RentalFeeLineParser.CollectRentalFeeLineDescriptionsForBillingPeriod(
                 invoices,
                 invoiceStart,

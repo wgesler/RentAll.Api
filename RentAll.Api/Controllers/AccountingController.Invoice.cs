@@ -64,7 +64,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var invoices = await _accountingManager.GetReservationInvoicePreviewsAsync(CurrentOrganizationId, dto.ReservationId);
+                var invoices = await _accountingManager.GetReservationInvoicePreviewsAsync(CurrentOrganizationId, dto.ReservationId, CurrentUser);
                 var response = invoices.Select(invoice => new InvoiceResponseDto(invoice)).ToList();
                 return Ok(response);
             }

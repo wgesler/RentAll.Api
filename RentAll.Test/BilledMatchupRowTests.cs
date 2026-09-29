@@ -48,6 +48,61 @@ public class BilledMatchupRowTests
         Assert.Equal(15, september.DaysStayed);
     }
 
+    [Fact]
+    public void BuildBilledMatchupMonthlyRows_FullJuneWhenStayContinuesAfterBillingEnd()
+    {
+        var reservation = CreateLongStayReservation(new DateOnly(2026, 8, 27));
+        reservation.ReservationId = Guid.NewGuid();
+        reservation.ReservationCode = "R-BILLING-END-LAG";
+        reservation.OfficeId = 5;
+        reservation.BillingType = BillingType.Daily;
+        reservation.ArrivalDate = new DateOnly(2026, 6, 1);
+        reservation.DepartureDate = new DateOnly(2026, 8, 27);
+        reservation.BillingEndDate = new DateOnly(2026, 6, 29);
+        var manager = CreateManager();
+
+        var rows = manager.BuildBilledMatchupMonthlyRows(
+            reservation,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            [],
+            new DateOnly(2026, 8, 27));
+
+        var june = Assert.Single(rows, row => row.MonthStart == new DateOnly(2026, 6, 1));
+        Assert.Equal(new DateOnly(2026, 6, 1), june.PeriodStart);
+        Assert.Equal(new DateOnly(2026, 6, 30), june.PeriodEnd);
+        Assert.Equal(30, june.DaysStayed);
+    }
+
+    [Fact]
+    public void BuildBilledMatchupMonthlyRows_R000252Style_JuneJulyFullCalendarMonths()
+    {
+        var reservation = CreateLongStayReservation(new DateOnly(2026, 8, 9));
+        reservation.ReservationId = Guid.NewGuid();
+        reservation.ReservationCode = "R-000252";
+        reservation.OfficeId = 5;
+        reservation.BillingType = BillingType.Daily;
+        reservation.ArrivalDate = new DateOnly(2026, 5, 30);
+        reservation.DepartureDate = new DateOnly(2026, 8, 9);
+        reservation.BillingEndDate = new DateOnly(2026, 7, 30);
+        var manager = CreateManager();
+
+        var rows = manager.BuildBilledMatchupMonthlyRows(
+            reservation,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            [],
+            new DateOnly(2026, 9, 29));
+
+        var june = Assert.Single(rows, row => row.MonthStart == new DateOnly(2026, 6, 1));
+        Assert.Equal(new DateOnly(2026, 6, 30), june.PeriodEnd);
+        Assert.Equal(30, june.DaysStayed);
+
+        var july = Assert.Single(rows, row => row.MonthStart == new DateOnly(2026, 7, 1));
+        Assert.Equal(new DateOnly(2026, 7, 31), july.PeriodEnd);
+        Assert.Equal(31, july.DaysStayed);
+    }
+
     private static Reservation CreateLongStayReservation(DateOnly departure)
         => new()
         {

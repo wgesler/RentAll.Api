@@ -1,3 +1,4 @@
+using RentAll.Domain;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Text.RegularExpressions;
@@ -300,9 +301,13 @@ public partial class AccountingManager
             .Select(f => f.FeeDescription)
             .ToHashSet(StringComparer.Ordinal);
 
+        var referenceYear = invoice.AccountingPeriod != default
+            ? invoice.AccountingPeriod.Year
+            : invoice.InvoiceDate.Year;
+
         foreach (var line in invoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            if (RentalFeePeriodRegex.IsMatch(line.Description.Trim()))
+            if (TryParseRentalFeeDateRange(line.Description, referenceYear, out _, out _))
                 continue;
 
             if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
@@ -490,7 +495,6 @@ public partial class AccountingManager
     #endregion
 
     #region Cross-Period Invoice Journal Entry Static Helpers
-    private static readonly Regex RentalFeePeriodRegex = new(@"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex DescriptionPeriodRegex = new(@"\((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private async Task<bool> TryUseCrossPeriodInvoiceJournalEntryPathAsync(Invoice invoice)
@@ -635,28 +639,7 @@ public partial class AccountingManager
     }
 
     private static bool TryParseRentalFeeDateRange(string? description, int referenceYear, out DateOnly rentalStart, out DateOnly rentalEnd)
-    {
-        rentalStart = default;
-        rentalEnd = default;
-
-        if (string.IsNullOrWhiteSpace(description))
-            return false;
-
-        var match = RentalFeePeriodRegex.Match(description.Trim());
-        if (!match.Success)
-            return false;
-
-        if (!TryParseMonthDay(match.Groups["start"].Value, referenceYear, out rentalStart))
-            return false;
-
-        if (!TryParseMonthDay(match.Groups["end"].Value, referenceYear, out rentalEnd))
-            return false;
-
-        if (rentalEnd < rentalStart)
-            rentalEnd = rentalEnd.AddYears(1);
-
-        return true;
-    }
+        => InvoiceBillingDays.TryParseRentalFeePeriod(description, referenceYear, out rentalStart, out rentalEnd);
 
     private static bool TryParseDescriptionDateRange(string? description, int referenceYear, out DateOnly rangeStart, out DateOnly rangeEnd)
     {
@@ -1120,11 +1103,15 @@ public partial class AccountingManager
             .Select(f => f.FeeDescription)
             .ToHashSet(StringComparer.Ordinal);
 
+        var referenceYear = originalInvoice.AccountingPeriod != default
+            ? originalInvoice.AccountingPeriod.Year
+            : originalInvoice.InvoiceDate.Year;
+
         foreach (var line in originalInvoice.LedgerLines.Where(l => l.Amount != 0))
         {
             // Security Deposit Waiver is a deposit-type charge, not rental income, so it stays on the
             // first accounting period exactly like the Security Deposit instead of being apportioned.
-            if (RentalFeePeriodRegex.IsMatch(line.Description.Trim()))
+            if (TryParseRentalFeeDateRange(line.Description, referenceYear, out _, out _))
                 continue;
 
             if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))

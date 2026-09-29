@@ -167,6 +167,42 @@ public class RentalFeeLineParserTests
         Assert.Equal(30, daysBilled);
     }
 
+    [Fact]
+    public void TryParseRentalFeePeriod_IgnoresSuffixAfterDateRange()
+    {
+        Assert.True(
+            InvoiceBillingDays.TryParseRentalFeePeriod(
+                "Rental Fee (06/01-08/27) - $148/D",
+                2026,
+                out var start,
+                out var end));
+        Assert.Equal(new DateOnly(2026, 6, 1), start);
+        Assert.Equal(new DateOnly(2026, 8, 27), end);
+    }
+
+    [Fact]
+    public void CalculateDaysBilledFromInvoices_CountsRentalLineWithRateSuffixAndNegativeAmount()
+    {
+        var reservation = CreateReservation(BillingType.Monthly);
+        var reservationId = reservation.ReservationId;
+        var invoices = new[]
+        {
+            BuildInvoice(reservationId, new DateOnly(2026, 8, 1), "2026-08-01 - 2026-08-31", [
+                new LedgerLine { Description = "Rental Fee (06/01-08/27) - $148/D", Amount = -148m }
+            ])
+        };
+
+        var daysBilled = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
+            invoices,
+            reservation,
+            new DateOnly(2026, 6, 1),
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 27),
+            new DateOnly(2026, 8, 27));
+
+        Assert.Equal(27, daysBilled);
+    }
+
     private static Reservation CreateReservation(BillingType billingType, DateOnly? departure = null)
         => new()
         {
