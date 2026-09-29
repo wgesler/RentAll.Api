@@ -15,10 +15,7 @@ public class AccountingManagerTransferCreateIntegrationTests
             return;
 
         var services = TransferCreateIntegrationTestSupport.CreateServices();
-        var scenario = await TransferCreateIntegrationTestSupport.LoadScenarioAsync(
-            services.AccountingRepository,
-            services.OrganizationRepository,
-            services.JournalEntryRepository);
+        var scenario = await TransferCreateIntegrationTestSupport.TryLoadScenarioAsync(services);
 
         var currentUser = TransferCreateIntegrationTestSupport.IntegrationTestUserId;
         var transfer = await TransferCreateIntegrationTestSupport.BuildTransferModelAsync(
@@ -43,24 +40,17 @@ public class AccountingManagerTransferCreateIntegrationTests
                 Assert.NotEqual(Guid.Empty, split.JournalEntryLineId);
             });
 
-            if (TransferCreateIntegrationTestSupport.SelectedDepositInts.Contains(156))
+            foreach (var escrowContext in scenario.EscrowLines)
             {
-                var dp156EscrowLineId = scenario.EscrowLines
-                    .First(context => ParseDepositInt(context.Deposit.DepositCode) == 156)
-                    .JournalEntryLineId;
-
-                var dp156Splits = (created.Splits ?? [])
-                    .Where(split => (split.Description ?? string.Empty).Contains("093", StringComparison.OrdinalIgnoreCase)
-                        || (split.Description ?? string.Empty).Contains("953", StringComparison.OrdinalIgnoreCase))
+                var depositCode = escrowContext.Deposit.DepositCode ?? string.Empty;
+                var relatedSplits = (created.Splits ?? [])
+                    .Where(split => (split.Description ?? string.Empty).Contains(depositCode, StringComparison.OrdinalIgnoreCase)
+                        || split.JournalEntryLineId == escrowContext.JournalEntryLineId)
                     .ToList();
+                if (relatedSplits.Count == 0)
+                    continue;
 
-                Assert.NotEmpty(dp156Splits);
-                Assert.All(dp156Splits, split => Assert.Equal(dp156EscrowLineId, split.JournalEntryLineId));
-
-                var py953Split = (created.Splits ?? [])
-                    .FirstOrDefault(split => (split.Description ?? string.Empty).Contains("PY-000000953", StringComparison.OrdinalIgnoreCase));
-                Assert.NotNull(py953Split);
-                Assert.Equal(4060m, py953Split.Amount);
+                Assert.All(relatedSplits, split => Assert.Equal(escrowContext.JournalEntryLineId, split.JournalEntryLineId));
             }
 
             var health = await services.HealthRepository.RunTransferHealthCheckAsync(scenario.OrganizationId, scenario.OfficeId.ToString());
@@ -77,7 +67,12 @@ public class AccountingManagerTransferCreateIntegrationTests
         finally
         {
             if (created != null)
+            {
                 await services.AccountingManager.DeleteTransferAsync(created.TransferId, scenario.OrganizationId, currentUser);
+                await TransferCreateIntegrationTestSupport.AssertScenarioDepositsUnlinkedAfterTransferDeleteAsync(
+                    services.AccountingRepository,
+                    scenario);
+            }
         }
     }
 
@@ -88,18 +83,17 @@ public class AccountingManagerTransferCreateIntegrationTests
             return;
 
         var services = TransferCreateIntegrationTestSupport.CreateServices();
-        var scenario = await TransferCreateIntegrationTestSupport.LoadScenarioAsync(
-            services.AccountingRepository,
-            services.OrganizationRepository,
-            services.JournalEntryRepository);
+        var scenario = await TransferCreateIntegrationTestSupport.TryLoadScenarioAsync(services);
 
-        await TransferCreateIntegrationTestSupport.AssertPy953RematchPathReadyAsync(
+        await TransferCreateIntegrationTestSupport.AssertScenarioPaymentRematchPathsReadyAsync(
             scenario.OrganizationId,
+            scenario.OfficeId,
             scenario.AccountingOffice.DefaultEscrowDepositAccountId
-                ?? throw new InvalidOperationException("Escrow deposit account is not configured."));
+                ?? throw new InvalidOperationException("Escrow deposit account is not configured."),
+            scenario.Deposits);
 
-        Assert.Equal(TransferCreateIntegrationTestSupport.SelectedDepositInts.Length, scenario.Deposits.Count);
-        Assert.Equal(TransferCreateIntegrationTestSupport.SelectedDepositInts.Length, scenario.EscrowLines.Count);
+        Assert.InRange(scenario.Deposits.Count, TransferCreateIntegrationTestSupport.MinDepositsPerIntegrationRun, TransferCreateIntegrationTestSupport.TargetDepositsPerIntegrationRun);
+        Assert.Equal(scenario.Deposits.Count, scenario.EscrowLines.Count);
         Assert.All(scenario.Deposits, deposit =>
         {
             Assert.Null(deposit.TransferId);

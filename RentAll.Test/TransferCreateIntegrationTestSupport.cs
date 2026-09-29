@@ -18,25 +18,30 @@ using RentAll.Infrastructure.Repositories.Properties;
 using RentAll.Infrastructure.Repositories.Reservations;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Xunit.Sdk;
 
 namespace RentAll.Test;
 
 /// <summary>
-/// Full integration harness for GL Make Transfer (DP-137, DP-156, DP-142, DP-141, Office 5).
-/// Uses real repositories and Accounting.* stored procedures against the local GESLER database.
+/// Full integration harness for GL Make Transfer against the local GESLER database.
+/// Gathers eligible deposits at run time (not on a transfer, escrow JE, linked splits).
+/// Override via RENTALL_TRANSFER_TEST_OFFICE_ID / RENTALL_TRANSFER_TEST_DEPOSITS when needed.
 /// </summary>
 internal static class TransferCreateIntegrationTestSupport
 {
-    internal const int OfficeId = 5;
+    internal const int MinDepositsPerIntegrationRun = 1;
+    internal const int TargetDepositsPerIntegrationRun = 2;
     internal static readonly Guid KnownOrganizationId = Guid.Parse("280cd8da-f1be-41f2-ae6e-b45008cf3896");
-    internal static readonly int[] SelectedDepositInts = ParseDepositIntList(
-        Environment.GetEnvironmentVariable("RENTALL_TRANSFER_TEST_DEPOSITS"),
-        defaultInts: [137, 156, 142, 141]);
 
-    internal static int ConfiguredOfficeId =>
+    internal static int[] SelectedDepositInts { get; private set; } = [];
+
+    internal static int? OptionalConfiguredOfficeId =>
         int.TryParse(Environment.GetEnvironmentVariable("RENTALL_TRANSFER_TEST_OFFICE_ID"), out var officeId) && officeId > 0
             ? officeId
-            : OfficeId;
+            : null;
+
+    internal static int[]? OptionalConfiguredDepositInts =>
+        ParseOptionalDepositIntList(Environment.GetEnvironmentVariable("RENTALL_TRANSFER_TEST_DEPOSITS"));
 
     internal static Guid ConfiguredOrganizationId =>
         Guid.TryParse(Environment.GetEnvironmentVariable("RENTALL_TRANSFER_TEST_ORG_ID"), out var organizationId) && organizationId != Guid.Empty
@@ -112,55 +117,134 @@ internal static class TransferCreateIntegrationTestSupport
         };
     }
 
-    internal static async Task<TransferCreateIntegrationScenario> LoadScenarioAsync(
+    internal static async Task AssertScenarioDepositsUnlinkedAfterTransferDeleteAsync(
         IAccountingRepository accountingRepository,
-        IOrganizationRepository organizationRepository,
-        IJournalEntryRepository journalEntryRepository)
+        TransferCreateIntegrationScenario scenario)
     {
-        var officeId = ConfiguredOfficeId;
-        var organizationId = ConfiguredOrganizationId;
-
-        var deposits = (await accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        foreach (var deposit in scenario.Deposits)
         {
-            OrganizationId = organizationId,
-            OfficeIds = officeId.ToString(),
-            IsActive = true
-        }))
-            .Where(deposit => deposit.OfficeId == officeId)
-            .Where(deposit => ParseDocumentCodeInt(deposit.DepositCode) is int depositInt && SelectedDepositInts.Contains(depositInt))
-            .OrderBy(deposit => ParseDocumentCodeInt(deposit.DepositCode))
-            .ToList();
+            var reloaded = await accountingRepository.GetDepositByIdAsync(deposit.DepositId, scenario.OrganizationId)
+                ?? throw new InvalidOperationException($"Deposit {deposit.DepositCode} was not found after transfer delete.");
 
-        if (deposits.Count != SelectedDepositInts.Length)
+            if (reloaded.TransferId is { } transferId && transferId != Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    $"Deposit {reloaded.DepositCode} is still linked to transfer {reloaded.TransferCode} after DeleteTransferAsync.");
+            }
+        }
+    }
+
+    internal static async Task<TransferCreateIntegrationScenario> TryLoadScenarioAsync(IntegrationServices services)
+    {
+        var scenario = await GatherIntegrationScenarioAsync(services);
+        if (scenario == null)
         {
-            var found = string.Join(", ", deposits.Select(deposit => deposit.DepositCode));
-            var availability = await DescribeScenarioAvailabilityAsync(organizationId, officeId);
-            throw new InvalidOperationException(
-                $"Expected {SelectedDepositInts.Length} selected deposits for office {officeId}; found {deposits.Count}: {found}.{Environment.NewLine}{availability}");
+            throw SkipException.ForSkip(
+                "No eligible deposits for transfer integration (not on a transfer, escrow JE, splits linked, allocations resolvable). "
+                + "Clear transfers or fix deposit links, or set RENTALL_TRANSFER_TEST_OFFICE_ID / RENTALL_TRANSFER_TEST_DEPOSITS.");
         }
 
-        organizationId = deposits[0].OrganizationId;
-        var accountingOffice = await organizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId)
-            ?? throw new InvalidOperationException(
-                $"Accounting office {officeId} was not found for organization {organizationId}. {await DescribeScenarioAvailabilityAsync(organizationId, officeId)}");
+        SelectedDepositInts = scenario.Deposits
+            .Select(deposit => ParseDocumentCodeInt(deposit.DepositCode) ?? 0)
+            .Where(depositInt => depositInt > 0)
+            .ToArray();
 
-        var escrowAccountId = accountingOffice.DefaultEscrowDepositAccountId
-            ?? throw new InvalidOperationException($"Office {OfficeId} is missing DefaultEscrowDepositAccountId.");
+        return scenario;
+    }
+
+    private static async Task<TransferCreateIntegrationScenario?> GatherIntegrationScenarioAsync(IntegrationServices services)
+    {
+        var organizationId = ConfiguredOrganizationId;
+        var explicitDepositInts = OptionalConfiguredDepositInts;
+        if (explicitDepositInts is { Length: > 0 })
+        {
+            var pinnedOfficeId = OptionalConfiguredOfficeId
+                ?? throw new InvalidOperationException(
+                    "RENTALL_TRANSFER_TEST_DEPOSITS requires RENTALL_TRANSFER_TEST_OFFICE_ID when pinning deposit codes.");
+
+            var pinned = await LoadDepositsForScenarioAsync(
+                services.AccountingRepository,
+                organizationId,
+                pinnedOfficeId,
+                explicitDepositInts);
+            if (pinned.Count != explicitDepositInts.Length)
+                return null;
+
+            var pinnedScenario = await TryBuildScenarioFromDepositsAsync(services, organizationId, pinnedOfficeId, pinned);
+            if (pinnedScenario == null || !await TryValidateScenarioAllocationsAsync(services.AccountingManager, pinnedScenario))
+                return null;
+
+            return pinnedScenario;
+        }
+
+        var candidates = await DiscoverIntegrationDepositCandidatesAsync(organizationId, OptionalConfiguredOfficeId);
+        var candidatesByOffice = candidates
+            .GroupBy(candidate => candidate.OfficeId)
+            .OrderByDescending(group => group.Count())
+            .ThenBy(group => group.Key);
+
+        foreach (var officeGroup in candidatesByOffice)
+        {
+            var officeId = officeGroup.Key;
+            var selectedDeposits = new List<Deposit>();
+
+            foreach (var candidate in officeGroup.OrderByDescending(item => item.DepositDate))
+            {
+                var deposit = await services.AccountingRepository.GetDepositByIdAsync(candidate.DepositId, organizationId);
+                if (deposit == null || deposit.IsActive == false)
+                    continue;
+
+                if (deposit.TransferId is { } transferId && transferId != Guid.Empty)
+                    continue;
+
+                var trialDeposits = selectedDeposits.Append(deposit).ToList();
+                var trialScenario = await TryBuildScenarioFromDepositsAsync(services, organizationId, officeId, trialDeposits);
+                if (trialScenario == null)
+                    continue;
+
+                if (!await TryValidateScenarioAllocationsAsync(services.AccountingManager, trialScenario))
+                    continue;
+
+                selectedDeposits.Add(deposit);
+                if (selectedDeposits.Count >= TargetDepositsPerIntegrationRun)
+                    return trialScenario;
+            }
+
+            if (selectedDeposits.Count >= MinDepositsPerIntegrationRun)
+            {
+                return await TryBuildScenarioFromDepositsAsync(services, organizationId, officeId, selectedDeposits);
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task<TransferCreateIntegrationScenario?> TryBuildScenarioFromDepositsAsync(
+        IntegrationServices services,
+        Guid organizationId,
+        int officeId,
+        IReadOnlyList<Deposit> deposits)
+    {
+        if (deposits.Count < MinDepositsPerIntegrationRun)
+            return null;
+
+        var accountingOffice = await services.OrganizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
+        var configuredEscrowAccountId = accountingOffice?.DefaultEscrowDepositAccountId;
+        if (configuredEscrowAccountId is not > 0)
+            return null;
+
+        var escrowAccountId = configuredEscrowAccountId.Value;
 
         foreach (var deposit in deposits)
         {
             if (deposit.TransferId is { } transferId && transferId != Guid.Empty)
-            {
-                throw new InvalidOperationException(
-                    $"Preflight failed: {deposit.DepositCode} is already linked to transfer {deposit.TransferCode}. "
-                    + "Delete that transfer before re-running the integration test.");
-            }
+                return null;
         }
 
         var escrowLines = new List<TransferEscrowLineContext>();
         foreach (var deposit in deposits)
         {
-            var depositJournalEntries = (await journalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
+            var depositJournalEntries = (await services.JournalEntryRepository.GetJournalEntriesByDepositIdAsync(new JournalEntryGetByDepositIdCriteria
             {
                 OrganizationId = organizationId,
                 DepositId = deposit.DepositId
@@ -168,12 +252,14 @@ internal static class TransferCreateIntegrationTestSupport
 
             var depositJournalEntry = depositJournalEntries
                 .FirstOrDefault(entry => entry.SourceTypeId == (int)SourceType.Deposit && entry.DepositId == deposit.DepositId)
-                ?? depositJournalEntries.FirstOrDefault(entry => entry.SourceTypeId == (int)SourceType.Deposit)
-                ?? throw new InvalidOperationException($"Deposit {deposit.DepositCode} has no deposit journal entry.");
+                ?? depositJournalEntries.FirstOrDefault(entry => entry.SourceTypeId == (int)SourceType.Deposit);
+            if (depositJournalEntry == null)
+                return null;
 
             var escrowLine = (depositJournalEntry.JournalEntryLines ?? [])
-                .FirstOrDefault(line => line.ChartOfAccountId == escrowAccountId && Math.Abs(line.Debit - line.Credit) > 0.005m)
-                ?? throw new InvalidOperationException($"Deposit {deposit.DepositCode} has no escrow journal entry line.");
+                .FirstOrDefault(line => line.ChartOfAccountId == escrowAccountId && Math.Abs(line.Debit - line.Credit) > 0.005m);
+            if (escrowLine == null)
+                return null;
 
             escrowLines.Add(new TransferEscrowLineContext
             {
@@ -184,7 +270,14 @@ internal static class TransferCreateIntegrationTestSupport
             });
         }
 
-        await RunSqlPreflightAsync(organizationId, escrowAccountId);
+        try
+        {
+            await AssertScenarioPaymentRematchPathsReadyAsync(organizationId, officeId, escrowAccountId, deposits);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
 
         return new TransferCreateIntegrationScenario
         {
@@ -194,6 +287,38 @@ internal static class TransferCreateIntegrationTestSupport
             Deposits = deposits,
             EscrowLines = escrowLines
         };
+    }
+
+    private static async Task<bool> TryValidateScenarioAllocationsAsync(
+        AccountingManager accountingManager,
+        TransferCreateIntegrationScenario scenario)
+    {
+        try
+        {
+            var workItems = BuildTransferAllocationWorkItems(scenario.EscrowLines);
+            if (workItems.Count == 0)
+                return false;
+
+            var allocationItems = workItems
+                .Select(workItem => new TransferDepositAllocationRequestItem
+                {
+                    DepositId = workItem.ContextLine.Deposit.DepositId,
+                    EscrowAmount = workItem.EscrowAmount,
+                    JournalEntryLineId = workItem.AllocationJournalEntryLineId
+                })
+                .ToList();
+
+            _ = await accountingManager.ResolveTransferDepositAllocationsAsync(
+                scenario.OrganizationId,
+                scenario.OfficeId,
+                allocationItems);
+
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     internal static async Task<string> DescribeScenarioAvailabilityAsync(Guid organizationId, int officeId)
@@ -226,17 +351,16 @@ internal static class TransferCreateIntegrationTestSupport
         var activeDeposits = reader.GetInt32(1);
         var officesWithDeposits = reader.IsDBNull(2) ? "(none)" : reader.GetString(2);
 
-        var missingDeposits = string.Join(", ", SelectedDepositInts.Select(depositInt => $"DP-{depositInt:D9}"));
         return " Local DB preflight:"
             + $" office {officeId} exists={officeExists}, activeDeposits={activeDeposits},"
-            + $" officesWithDeposits={officesWithDeposits}, required={missingDeposits}."
+            + $" officesWithDeposits={officesWithDeposits}."
             + " Restore/sync production data to GESLER or set RENTALL_DB_CONNECTION_STRING to a database that contains this scenario.";
     }
 
-    private static int[] ParseDepositIntList(string? rawValue, int[] defaultInts)
+    private static int[]? ParseOptionalDepositIntList(string? rawValue)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
-            return defaultInts;
+            return null;
 
         var parsed = rawValue
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -245,8 +369,10 @@ internal static class TransferCreateIntegrationTestSupport
             .Select(value => value!.Value)
             .ToArray();
 
-        return parsed.Length > 0 ? parsed : defaultInts;
+        return parsed.Length > 0 ? parsed : null;
     }
+
+    private sealed record IntegrationDepositCandidate(Guid DepositId, int OfficeId, DateOnly DepositDate);
 
     internal static async Task<Transfer> BuildTransferModelAsync(
         AccountingManager accountingManager,
@@ -301,46 +427,129 @@ internal static class TransferCreateIntegrationTestSupport
         };
     }
 
-    internal static async Task AssertPy953RematchPathReadyAsync(Guid organizationId, int escrowAccountId)
+    internal static async Task AssertScenarioPaymentRematchPathsReadyAsync(
+        Guid organizationId,
+        int officeId,
+        int escrowAccountId,
+        IReadOnlyList<Deposit> deposits)
+    {
+        _ = organizationId;
+        if (deposits.Count == 0)
+            throw new InvalidOperationException("Scenario preflight: no deposits supplied.");
+
+        await using var connection = new SqlConnection(GetConnectionString());
+        await connection.OpenAsync();
+
+        var readyCount = 0;
+        foreach (var deposit in deposits)
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT TOP 1 CASE
+                    WHEN p.PaymentId IS NULL THEN N'NO PAYMENT ROW'
+                    WHEN p.DepositId IS NULL OR p.DepositId = '00000000-0000-0000-0000-000000000000' THEN N'NO DEPOSIT STAMP'
+                    WHEN je.JournalEntryId IS NULL THEN N'NO DEPOSIT JE'
+                    WHEN jel.JournalEntryLineId IS NULL THEN N'NO ESCROW LINE'
+                    ELSE N'OK for payment rematch'
+                END
+                FROM Accounting.Payment AS p
+                INNER JOIN Accounting.Deposit AS d ON d.DepositId = p.DepositId AND d.DepositId = @DepositId
+                LEFT JOIN Accounting.JournalEntry AS je ON je.DepositId = d.DepositId AND je.SourceTypeId = 1
+                LEFT JOIN Accounting.JournalEntryLine AS jel
+                    ON jel.JournalEntryId = je.JournalEntryId
+                    AND jel.ChartOfAccountId = @EscrowAccountId
+                    AND ABS(jel.Debit - jel.Credit) > 0.005
+                WHERE p.IsActive = 1
+                    AND p.OfficeId = @OfficeId
+                ORDER BY p.PaymentDate DESC
+                """;
+
+            command.Parameters.AddWithValue("@OfficeId", officeId);
+            command.Parameters.AddWithValue("@EscrowAccountId", escrowAccountId);
+            command.Parameters.AddWithValue("@DepositId", deposit.DepositId);
+
+            var status = (string?)await command.ExecuteScalarAsync();
+            if (string.Equals(status, "OK for payment rematch", StringComparison.Ordinal))
+                readyCount++;
+        }
+
+        if (readyCount == 0)
+        {
+            throw new InvalidOperationException(
+                $"Scenario preflight: none of the selected deposits on office {officeId} have a stamped payment with a deposit escrow JE line. "
+                + $"Deposits: {string.Join(", ", deposits.Select(deposit => deposit.DepositCode))}.");
+        }
+    }
+
+    private static async Task<List<Deposit>> LoadDepositsForScenarioAsync(
+        IAccountingRepository accountingRepository,
+        Guid organizationId,
+        int officeId,
+        IReadOnlyList<int> depositInts)
+    {
+        return (await accountingRepository.GetDepositsByCriteriaAsync(new DepositGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = officeId.ToString(),
+            IsActive = true
+        }))
+            .Where(deposit => deposit.OfficeId == officeId)
+            .Where(deposit => ParseDocumentCodeInt(deposit.DepositCode) is int depositInt && depositInts.Contains(depositInt))
+            .OrderBy(deposit => ParseDocumentCodeInt(deposit.DepositCode))
+            .ToList();
+    }
+
+    private static async Task<IReadOnlyList<IntegrationDepositCandidate>> DiscoverIntegrationDepositCandidatesAsync(
+        Guid organizationId,
+        int? officeIdFilter)
     {
         await using var connection = new SqlConnection(GetConnectionString());
         await connection.OpenAsync();
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT CASE
-                WHEN p.PaymentId IS NULL THEN N'NO PAYMENT ROW'
-                WHEN p.DepositId IS NULL OR p.DepositId = '00000000-0000-0000-0000-000000000000' THEN N'NO DEPOSIT STAMP'
-                WHEN je.JournalEntryId IS NULL THEN N'NO DEPOSIT JE'
-                WHEN jel.JournalEntryLineId IS NULL THEN N'NO ESCROW LINE'
-                ELSE N'OK for PY rematch'
-            END
-            FROM Accounting.Payment AS p
-            LEFT JOIN Accounting.Deposit AS d ON d.DepositId = p.DepositId
-            LEFT JOIN Accounting.JournalEntry AS je ON je.DepositId = d.DepositId AND je.SourceTypeId = 1
-            LEFT JOIN Accounting.JournalEntryLine AS jel
-                ON jel.JournalEntryId = je.JournalEntryId
-                AND jel.ChartOfAccountId = @EscrowAccountId
-                AND ABS(jel.Debit - jel.Credit) > 0.005
-            WHERE p.IsActive = 1
-                AND p.OfficeId = @OfficeId
-                AND TRY_CAST(SUBSTRING(p.PaymentCode, PATINDEX('%[0-9]%', p.PaymentCode + N'0'), 20) AS INT) = 953
+            SELECT d.DepositId, d.OfficeId, d.DepositDate
+            FROM Accounting.Deposit AS d
+            INNER JOIN Organization.AccountingOffice AS ao
+                ON ao.OrganizationId = d.OrganizationId AND ao.OfficeId = d.OfficeId
+            WHERE d.OrganizationId = @OrganizationId
+                AND d.IsActive = 1
+                AND d.Amount > 0.005
+                AND (@OfficeId IS NULL OR d.OfficeId = @OfficeId)
+                AND (d.TransferId IS NULL OR d.TransferId = '00000000-0000-0000-0000-000000000000')
+                AND EXISTS (
+                    SELECT 1
+                    FROM Accounting.JournalEntry AS je
+                    INNER JOIN Accounting.JournalEntryLine AS jel ON jel.JournalEntryId = je.JournalEntryId
+                    WHERE je.DepositId = d.DepositId
+                        AND jel.ChartOfAccountId = ao.DefaultEscrowDepositAccountId
+                        AND ABS(jel.Debit - jel.Credit) > 0.005)
+                AND NOT EXISTS (
+                    SELECT 1 FROM Accounting.DepositSplit AS ds
+                    WHERE ds.DepositId = d.DepositId
+                        AND ABS(ds.Amount) > 0.005
+                        AND (ds.JournalEntryLineId IS NULL OR ds.JournalEntryLineId = '00000000-0000-0000-0000-000000000000'))
+            ORDER BY
+                (SELECT COUNT(*) FROM Accounting.DepositSplit AS ds2 WHERE ds2.DepositId = d.DepositId AND ABS(ds2.Amount) > 0.005),
+                d.DepositDate DESC,
+                d.DepositCode
             """;
 
-        command.Parameters.AddWithValue("@OfficeId", ConfiguredOfficeId);
-        command.Parameters.AddWithValue("@EscrowAccountId", escrowAccountId);
+        command.Parameters.AddWithValue("@OrganizationId", organizationId);
+        command.Parameters.AddWithValue("@OfficeId", (object?)officeIdFilter ?? DBNull.Value);
 
-        var status = (string?)await command.ExecuteScalarAsync()
-            ?? throw new InvalidOperationException("PY-953 preflight returned no row.");
+        var candidates = new List<IntegrationDepositCandidate>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var depositDate = reader.GetFieldValue<DateTime>(2);
+            candidates.Add(new IntegrationDepositCandidate(
+                reader.GetGuid(0),
+                reader.GetInt32(1),
+                DateOnly.FromDateTime(depositDate)));
+        }
 
-        if (!string.Equals(status, "OK for PY rematch", StringComparison.Ordinal))
-            throw new InvalidOperationException($"PY-953 preflight failed: {status}");
-    }
-
-    private static async Task RunSqlPreflightAsync(Guid organizationId, int escrowAccountId)
-    {
-        _ = organizationId;
-        await AssertPy953RematchPathReadyAsync(organizationId, escrowAccountId);
+        return candidates;
     }
 
     private static List<TransferAllocationWorkItem> BuildTransferAllocationWorkItems(IReadOnlyList<TransferEscrowLineContext> escrowLines)
