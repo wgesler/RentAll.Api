@@ -505,10 +505,7 @@ public partial class AccountingManager
                 collectedAmount += CalculateSecurityDepositPaymentAllocation(sdInvoice, costCodeById).PaidAmount;
             }
 
-            var chargeTotal = CalculateReservationInvoiceChargeTotal(invoices, costCodeById);
-            var paymentTotal = CalculateReservationInvoicePaymentTotal(invoices, costCodeById);
-            var unpaidBalance = RoundSecurityDepositAmount(chargeTotal - paymentTotal);
-            var owedAmount = RoundSecurityDepositAmount(Math.Max(0m, unpaidBalance));
+            var owedAmount = CalculateReservationOutstandingOwedAmount(invoices, costCodeById);
             var roundedCollectedAmount = RoundSecurityDepositAmount(collectedAmount);
             var balanceAmount = RoundSecurityDepositAmount(Math.Max(0m, roundedCollectedAmount - owedAmount));
 
@@ -658,7 +655,7 @@ public partial class AccountingManager
                 OrganizationId = organizationId,
                 OfficeIds = officeId.ToString(CultureInfo.InvariantCulture),
                 ReservationId = reservationId,
-                IncludeInactive = true,
+                IncludeInactive = false,
                 IncludePaid = true
             });
 
@@ -669,22 +666,46 @@ public partial class AccountingManager
         return invoicesById.Values.ToList();
     }
 
-    private static decimal CalculateReservationInvoiceChargeTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
-    {
-        return RoundSecurityDepositAmount((invoices ?? [])
+    private static decimal CalculateReservationNonSecurityDepositChargeTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
+        => RoundSecurityDepositAmount((invoices ?? [])
             .SelectMany(invoice => invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+            .Where(line =>
+            {
+                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+                return costCode?.TransactionType != TransactionType.SecurityDeposit;
+            })
             .Sum(line => line.Amount));
-    }
 
     private static decimal CalculateReservationInvoicePaymentTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
-    {
-        return RoundSecurityDepositAmount((invoices ?? [])
+        => RoundSecurityDepositAmount((invoices ?? [])
             .SelectMany(invoice => invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
             .Sum(line => line.Amount));
+
+    /// <summary>
+    /// Matches invoice editor total due for rent/fees on a single invoice (charges minus payments, excluding SD charges).
+    /// </summary>
+    private static decimal CalculateInvoiceNonSecurityDepositNetDue(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var chargeTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
+            .Where(line => line.Amount != 0m)
+            .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+            .Where(line =>
+            {
+                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
+                return costCode?.TransactionType != TransactionType.SecurityDeposit;
+            })
+            .Sum(line => line.Amount));
+
+        var paymentTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
+            .Where(line => line.Amount != 0m)
+            .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
+            .Sum(line => line.Amount));
+
+        return Math.Max(0m, RoundSecurityDepositAmount(chargeTotal - paymentTotal));
     }
 
     // Normal operation expects exactly one security-deposit invoice per reservation.
@@ -1004,14 +1025,23 @@ public partial class AccountingManager
 
     private static List<SecurityDepositDetailLine> BuildOutstandingChargeLines(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        return CalculateReservationChargeLineBalances(invoices, costCodeById)
-            .Where(entry => entry.Remaining > 0m)
-            .Where(entry =>
-            {
-                costCodeById.TryGetValue(entry.Line.CostCodeId, out var costCode);
-                return costCode?.TransactionType != TransactionType.SecurityDeposit;
-            })
-            .Select(entry => CreateSecurityDepositDetailLine(entry.Invoice, entry.Line, entry.Remaining, null, null))
+        var lines = new List<SecurityDepositDetailLine>();
+        foreach (var invoice in invoices)
+        {
+            if (CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById) <= 0m)
+                continue;
+
+            lines.AddRange(CalculateReservationChargeLineBalances([invoice], costCodeById)
+                .Where(entry => entry.Remaining > 0m)
+                .Where(entry =>
+                {
+                    costCodeById.TryGetValue(entry.Line.CostCodeId, out var costCode);
+                    return costCode?.TransactionType != TransactionType.SecurityDeposit;
+                })
+                .Select(entry => CreateSecurityDepositDetailLine(entry.Invoice, entry.Line, entry.Remaining, null, null)));
+        }
+
+        return lines
             .OrderBy(line => line.LineDate)
             .ThenBy(line => line.InvoiceCode)
             .ThenBy(line => line.Description)
@@ -1064,43 +1094,46 @@ public partial class AccountingManager
         };
     }
 
-    private sealed class ReservationChargeLineBalance
+    private static decimal CalculateReservationOutstandingOwedAmount(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        public Invoice Invoice { get; init; } = null!;
-        public LedgerLine Line { get; init; } = null!;
-        public decimal Remaining { get; set; }
+        var chargeTotal = CalculateReservationNonSecurityDepositChargeTotal(invoices, costCodeById);
+        var paymentTotal = CalculateReservationInvoicePaymentTotal(invoices, costCodeById);
+        return Math.Max(0m, RoundSecurityDepositAmount(chargeTotal - paymentTotal));
     }
 
     private static List<ReservationChargeLineBalance> CalculateReservationChargeLineBalances(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        var chargeEntries = new List<ReservationChargeLineBalance>();
-        foreach (var invoice in invoices)
-            chargeEntries.AddRange(CalculateInvoiceChargeLineBalances(invoice, costCodeById));
-
-        return chargeEntries;
-    }
-
-    private static List<ReservationChargeLineBalance> CalculateInvoiceChargeLineBalances(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
-    {
-        var chargeEntries = (invoice.LedgerLines ?? [])
-            .Where(line => line.Amount != 0m)
-            .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Select(line => new ReservationChargeLineBalance
-            {
-                Invoice = invoice,
-                Line = line,
-                Remaining = line.Amount
-            })
-            .OrderBy(entry => entry.Line.LineNumber)
+        var chargeEntries = invoices
+            .OrderBy(invoice => invoice.InvoiceDate)
+            .ThenBy(invoice => invoice.InvoiceCode)
+            .SelectMany(invoice => (invoice.LedgerLines ?? [])
+                .Where(line => line.Amount != 0m)
+                .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
+                .Select(line => new ReservationChargeLineBalance
+                {
+                    Invoice = invoice,
+                    Line = line,
+                    Remaining = line.Amount
+                }))
+            .OrderBy(entry => entry.Invoice.InvoiceDate)
+            .ThenBy(entry => entry.Invoice.InvoiceCode)
+            .ThenBy(entry => entry.Line.LineNumber)
             .ToList();
 
-        var paymentLines = (invoice.LedgerLines ?? [])
+        var paymentLines = invoices
+            .SelectMany(invoice => invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
             .OrderBy(line => line.LedgerLineDate)
             .ThenBy(line => line.LineNumber)
             .ToList();
 
+        ApplyPaymentsToChargeLineBalances(chargeEntries, paymentLines);
+        return chargeEntries;
+    }
+
+    private static void ApplyPaymentsToChargeLineBalances(IReadOnlyList<ReservationChargeLineBalance> chargeEntries, IReadOnlyList<LedgerLine> paymentLines)
+    {
         foreach (var payment in paymentLines)
         {
             var paymentRemaining = payment.Amount;
@@ -1134,8 +1167,13 @@ public partial class AccountingManager
                 }
             }
         }
+    }
 
-        return chargeEntries;
+    private sealed class ReservationChargeLineBalance
+    {
+        public Invoice Invoice { get; init; } = null!;
+        public LedgerLine Line { get; init; } = null!;
+        public decimal Remaining { get; set; }
     }
 
     private static Dictionary<Guid, decimal> CalculateSecurityDepositPaymentAmountsByLedgerLine(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
