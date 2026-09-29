@@ -397,9 +397,23 @@ public partial class AccountingManager
             .Select(split => split.SourceJournalEntryLineAmount)
             .FirstOrDefault(value => value.HasValue && Math.Abs(value.Value) > 0.005m);
         if (sourceAmount.HasValue)
-            return RoundCurrency(sourceAmount.Value);
+            return NormalizeTransferReportEscrowSourceAmount(sourceAmount.Value, destinationTotal);
 
         return destinationTotal;
+    }
+
+    private static decimal NormalizeTransferReportEscrowSourceAmount(decimal sourceAmount, decimal destinationTotal)
+    {
+        var source = RoundCurrency(sourceAmount);
+        var destination = RoundCurrency(destinationTotal);
+        if (Math.Abs(source) <= 0.005m)
+            return destination;
+
+        // Normal outflow from escrow: credited on 1002 (negative net), positive destination splits.
+        if (source < 0 && destination > 0.005m)
+            return RoundCurrency(Math.Abs(source));
+
+        return source;
     }
 
     private static decimal SumTransferReportSplitAmountsForAccount(IReadOnlyList<TransferSplit> splits, int? accountId)
