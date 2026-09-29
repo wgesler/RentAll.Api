@@ -167,6 +167,9 @@ internal static class TransferSplitReconciliationTestSupport
         accountingRepository
             .Setup(repo => repo.GetTransfersByCriteriaAsync(It.IsAny<TransferGetCriteria>()))
             .ReturnsAsync([]);
+        accountingRepository
+            .Setup(repo => repo.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+            .ReturnsAsync([]);
 
         SetupPaymentLedgerLineMocks(accountingRepository);
 
@@ -252,6 +255,9 @@ internal static class TransferSplitReconciliationTestSupport
             .ReturnsAsync(BuildPayments(paymentHasDepositStamp));
         accountingRepository
             .Setup(repo => repo.GetTransfersByCriteriaAsync(It.IsAny<TransferGetCriteria>()))
+            .ReturnsAsync([]);
+        accountingRepository
+            .Setup(repo => repo.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
             .ReturnsAsync([]);
 
         SetupPaymentLedgerLineMocks(accountingRepository);

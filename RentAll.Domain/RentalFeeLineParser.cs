@@ -263,10 +263,23 @@ public static class RentalFeeLineParser
         DateOnly periodEnd,
         IReadOnlyList<Invoice> monthInvoices,
         DateOnly invoiceStartDate)
-    {
-        var covered = new List<(DateOnly Start, DateOnly End)>();
+        => FindUncoveredBillingRangesForPeriod(periodStart, periodEnd, monthInvoices, invoiceStartDate);
 
-        foreach (var invoice in FilterInvoicesOnOrAfterAccountingStart(monthInvoices.ToList(), invoiceStartDate))
+    /// <summary>
+    /// Gaps within a billable period. Covered dates come from rental-fee line ranges when present;
+    /// otherwise from the invoice billing period for that accounting month only.
+    /// </summary>
+    public static IReadOnlyList<(DateOnly Start, DateOnly End)> FindUncoveredBillingRangesForPeriod(
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        IReadOnlyList<Invoice> reservationInvoices,
+        DateOnly invoiceStartDate)
+    {
+        var billingMonth = new DateOnly(periodStart.Year, periodStart.Month, 1);
+        var covered = new List<(DateOnly Start, DateOnly End)>();
+        var scopedInvoices = FilterInvoicesOnOrAfterAccountingStart(reservationInvoices.ToList(), invoiceStartDate);
+
+        foreach (var invoice in scopedInvoices)
         {
             var referenceYear = invoice.AccountingPeriod != default
                 ? invoice.AccountingPeriod.Year
@@ -290,6 +303,32 @@ public static class RentalFeeLineParser
                 if (clippedEnd >= clippedStart)
                     covered.Add((clippedStart, clippedEnd));
             }
+        }
+
+        foreach (var invoice in scopedInvoices)
+        {
+            if (invoice.AccountingPeriod != default)
+            {
+                var invoiceMonth = new DateOnly(invoice.AccountingPeriod.Year, invoice.AccountingPeriod.Month, 1);
+                if (invoiceMonth != billingMonth)
+                    continue;
+            }
+
+            var referenceYear = invoice.AccountingPeriod != default
+                ? invoice.AccountingPeriod.Year
+                : invoice.InvoiceDate.Year;
+
+            var invoiceHasRentalLines = (invoice.LedgerLines ?? []).Any(line =>
+                line.Amount != 0
+                && TryParseRentalFeePeriod(line.Description, referenceYear, out _, out _));
+            if (invoiceHasRentalLines)
+                continue;
+
+            var (periodStartOnInvoice, periodEndOnInvoice) = InvoiceBillingDays.ResolveInvoiceBillingPeriod(invoice);
+            var fallbackStart = periodStartOnInvoice < periodStart ? periodStart : periodStartOnInvoice;
+            var fallbackEnd = periodEndOnInvoice > periodEnd ? periodEnd : periodEndOnInvoice;
+            if (fallbackEnd >= fallbackStart)
+                covered.Add((fallbackStart, fallbackEnd));
         }
 
         return FindUncoveredRangesInPeriod(periodStart, periodEnd, covered);

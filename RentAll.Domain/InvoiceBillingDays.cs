@@ -44,6 +44,28 @@ public static class InvoiceBillingDays
     public static bool IsLastDayOfMonth(DateOnly date)
         => date.Day == DateTime.DaysInMonth(date.Year, date.Month);
 
+    /// <summary>
+    /// Billable day/night count for a stay segment — same flags and <see cref="CalculateNumberOfDays"/> as Get Charges.
+    /// </summary>
+    public static int CalculateBillableDaysInPeriod(
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        BillingType billingType,
+        DateOnly billingDepartureDate)
+    {
+        if (periodEnd < periodStart)
+            return 0;
+
+        var isDepartureMonthYear = IsDepartureMonthYear(periodEnd, billingDepartureDate);
+        var isLastDayOfMonth = IsLastDayOfMonth(periodEnd);
+        return CalculateNumberOfDays(
+            periodStart,
+            periodEnd,
+            billingType,
+            isDepartureMonthYear,
+            isLastDayOfMonth);
+    }
+
     public static (DateOnly Start, DateOnly End) ResolveInvoiceBillingPeriod(Invoice invoice)
     {
         if (TryParseInvoicePeriodRange(invoice.InvoicePeriod, out var parsedStart, out var parsedEnd))

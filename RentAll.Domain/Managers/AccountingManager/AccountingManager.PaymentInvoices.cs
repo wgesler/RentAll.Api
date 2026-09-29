@@ -1,4 +1,3 @@
-using System.Reflection;
 using RentAll.Domain;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
@@ -876,14 +875,14 @@ public partial class AccountingManager
         var billingMonth = billedRow.MonthStart;
         var periodStart = billedRow.PeriodStart;
         var periodEnd = billedRow.PeriodEnd;
-        var gaps = RentalFeeLineParser.FindUncoveredRentalFeeBillingRanges(
+        var gaps = RentalFeeLineParser.FindUncoveredBillingRangesForPeriod(
             periodStart,
             periodEnd,
             reservationInvoices,
             invoiceStart).ToList();
 
         if (gaps.Count == 0)
-            gaps = [(periodStart, periodEnd)];
+            return nextSequence;
 
         var ledgerLines = new List<LedgerLine>();
         foreach (var (gapStart, gapEnd) in gaps)
@@ -920,17 +919,17 @@ public partial class AccountingManager
 
         preview.BilledId = billedRow.BilledId;
         preview.BilledIgnore = billedRow.Ignore;
-        preview.BilledDaysStayed = billedRow.DaysStayed;
-        preview.BilledDaysBilled = billedRow.DaysBilled;
-        preview.BilledMonthStart = billedRow.MonthStart;
-        preview.BilledMonthEnd = billedRow.MonthEnd;
-        preview.BilledPeriodStart = billedRow.PeriodStart;
-        preview.BilledPeriodEnd = billedRow.PeriodEnd;
-        preview.BilledStartDate = billedRow.StartDate;
-        preview.BilledEndDate = billedRow.EndDate;
         preview.BilledRentalFeeLines = billedRow.RentalFeeLines is { Count: > 0 }
             ? System.Text.Json.JsonSerializer.Serialize(billedRow.RentalFeeLines)
             : null;
+        ApplyPreviewListPeriodMetrics(
+            preview,
+            reservation,
+            billingMonth,
+            previewStart,
+            previewEnd,
+            reservationInvoices,
+            invoiceStart);
 
         previewInvoices.Add(preview);
 
@@ -951,13 +950,15 @@ public partial class AccountingManager
         foreach (var billingMonth in EnumerateBillableMonths(reservation, throughMonth, billingWindowStart))
         {
             var (periodStart, periodEnd) = ResolveBillingPeriodForMonth(reservation, billingMonth);
-            var monthInvoices = existingReservationInvoices
-                .Where(invoice => FirstDayOfMonth(invoice.AccountingPeriod) == billingMonth)
-                .ToList();
-            if (MonthInvoicesCoverBillableStay(monthInvoices, periodStart, periodEnd))
+            var gaps = ResolveUncoveredBillingGapsForPeriod(
+                periodStart,
+                periodEnd,
+                existingReservationInvoices,
+                billingWindowStart);
+            if (gaps.Count == 0)
                 continue;
 
-            foreach (var (gapStart, gapEnd) in FindUncoveredBillingRanges(periodStart, periodEnd, monthInvoices))
+            foreach (var (gapStart, gapEnd) in gaps)
             {
                 var ledgerLines = await CreateLedgerLinesForUncoveredStayAsync(
                     reservation,
@@ -972,7 +973,7 @@ public partial class AccountingManager
 
                 var totalAmount = ledgerLines.Sum(line => line.Amount);
 
-                previewInvoices.Add(BuildPreBillingInvoicePreview(
+                var preview = BuildPreBillingInvoicePreview(
                     organizationId,
                     reservation,
                     billingMonth,
@@ -981,71 +982,31 @@ public partial class AccountingManager
                     ledgerLines,
                     totalAmount,
                     nextSequence,
-                    responsibleParty));
+                    responsibleParty);
+                ApplyPreviewListPeriodMetrics(
+                    preview,
+                    reservation,
+                    billingMonth,
+                    gapStart,
+                    gapEnd,
+                    existingReservationInvoices,
+                    billingWindowStart);
+                previewInvoices.Add(preview);
                 nextSequence++;
             }
         }
     }
 
-    private static bool MonthInvoicesCoverBillableStay(IReadOnlyList<Invoice> monthInvoices, DateOnly periodStart, DateOnly periodEnd)
-    {
-        if (monthInvoices.Count == 0)
-            return false;
-
-        if (monthInvoices.Any(invoice => !TryParseInvoicePeriod(invoice.InvoicePeriod, out _, out _)))
-            return true;
-
-        return FindUncoveredBillingRanges(periodStart, periodEnd, monthInvoices).Count == 0;
-    }
-
-    private static List<(DateOnly Start, DateOnly End)> FindUncoveredBillingRanges(DateOnly periodStart, DateOnly periodEnd, IReadOnlyList<Invoice> monthInvoices)
-    {
-        var covered = new List<(DateOnly Start, DateOnly End)>();
-        foreach (var invoice in monthInvoices)
-        {
-            if (!TryParseInvoicePeriod(invoice.InvoicePeriod, out var start, out var end))
-                continue;
-
-            var clippedStart = start < periodStart ? periodStart : start;
-            var clippedEnd = end > periodEnd ? periodEnd : end;
-            if (clippedEnd >= clippedStart)
-                covered.Add((clippedStart, clippedEnd));
-        }
-
-        if (covered.Count == 0)
-            return [(periodStart, periodEnd)];
-
-        covered.Sort((left, right) => left.Start.CompareTo(right.Start));
-        var merged = new List<(DateOnly Start, DateOnly End)>();
-        foreach (var range in covered)
-        {
-            if (merged.Count == 0 || range.Start > merged[^1].End.AddDays(1))
-            {
-                merged.Add(range);
-                continue;
-            }
-
-            var current = merged[^1];
-            if (range.End > current.End)
-                merged[^1] = (current.Start, range.End);
-        }
-
-        var gaps = new List<(DateOnly Start, DateOnly End)>();
-        var cursor = periodStart;
-        foreach (var range in merged)
-        {
-            if (range.Start > cursor)
-                gaps.Add((cursor, range.Start.AddDays(-1)));
-            var nextCursor = range.End.AddDays(1);
-            if (nextCursor > cursor)
-                cursor = nextCursor;
-        }
-
-        if (cursor <= periodEnd)
-            gaps.Add((cursor, periodEnd));
-
-        return gaps;
-    }
+    private static List<(DateOnly Start, DateOnly End)> ResolveUncoveredBillingGapsForPeriod(
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        IReadOnlyList<Invoice> reservationInvoices,
+        DateOnly invoiceStart)
+        => RentalFeeLineParser.FindUncoveredBillingRangesForPeriod(
+            periodStart,
+            periodEnd,
+            reservationInvoices,
+            invoiceStart).ToList();
 
     private async Task<List<LedgerLine>> CreateLedgerLinesForUncoveredStayAsync(Reservation reservation, DateOnly billingMonth, DateOnly periodStart, DateOnly periodEnd, DateOnly gapStart, DateOnly gapEnd)
     {
@@ -1058,112 +1019,64 @@ public partial class AccountingManager
                 endDate: periodEnd);
         }
 
-        var throughGap = await CreateLedgerLinesForStayEndingAsync(reservation, billingMonth, periodStart, gapEnd);
-        var beforeGap = gapStart > periodStart
-            ? await CreateLedgerLinesForStayEndingAsync(reservation, billingMonth, periodStart, gapStart.AddDays(-1))
-            : [];
-        return BuildSupplementalLedgerLines(throughGap, beforeGap, gapStart, gapEnd, reservation.BillingType, ResolveBillingDepartureDate(reservation));
+        return await CreateLedgerLinesForBillingGapAsync(reservation, billingMonth, gapStart, gapEnd);
     }
 
-    private async Task<List<LedgerLine>> CreateLedgerLinesForStayEndingAsync(Reservation reservation, DateOnly billingMonth, DateOnly periodStart, DateOnly stayEnd)
+    private async Task<List<LedgerLine>> CreateLedgerLinesForBillingGapAsync(
+        Reservation reservation,
+        DateOnly invoiceDate,
+        DateOnly gapStart,
+        DateOnly gapEnd)
     {
-        var arrivalDate = ResolveBillingArrivalDate(reservation);
-        if (stayEnd < arrivalDate)
-            return [];
+        await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
 
-        var actualDeparture = ResolveBillingDepartureDate(reservation);
-        if (stayEnd >= actualDeparture)
-        {
-            return await CreateLedgerLinesForReservationIdAsync(
-                reservation,
-                invoiceDate: billingMonth,
-                startDate: periodStart,
-                endDate: stayEnd < periodStart ? periodStart : stayEnd);
-        }
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(reservation.OrganizationId, reservation.OfficeId);
+        ApplyMissingDefaultCostCodesFromOfficeCostCodes(costCodeById);
 
-        var coveredStay = CopyReservation(reservation);
-        coveredStay.BillingEndDate = stayEnd;
-        coveredStay.DepartureDate = stayEnd;
-        var (coveredStart, coveredEnd) = ResolveBillingPeriodForMonth(coveredStay, billingMonth);
-        if (!HasBillablePreviewPeriod(coveredStay, coveredStart, coveredEnd))
-            return [];
+        var property = await _propertyRepository.GetPropertyByIdAsync(reservation.PropertyId, reservation.OrganizationId);
+        var isFurnished = property == null || !property.Unfurnished;
+        var rentalCostCodeId = isFurnished ? FURNISHED_EXPENSE_COST_CODE : UNFURNISHED_EXPENSE_COST_CODE;
 
-        return await CreateLedgerLinesForReservationIdAsync(
-            coveredStay,
-            invoiceDate: billingMonth,
-            startDate: coveredStart,
-            endDate: coveredEnd);
-    }
-
-    private static List<LedgerLine> BuildSupplementalLedgerLines(IReadOnlyList<LedgerLine> throughLines, IReadOnlyList<LedgerLine> beforeLines, DateOnly gapStart, DateOnly gapEnd, BillingType billingType, DateOnly departureDate)
-    {
-        var beforeAmounts = beforeLines
-            .GroupBy(LineCoverageKey)
-            .ToDictionary(group => group.Key, group => group.Sum(line => line.Amount));
-        var supplementalLines = new List<LedgerLine>();
+        var lineItems = new List<LedgerLine>();
         var lineNumber = 1;
+        var departureDate = ResolveBillingDepartureDate(reservation);
+        var lastDayOfMonth = new DateOnly(
+            gapStart.Year,
+            gapStart.Month,
+            DateTime.DaysInMonth(gapStart.Year, gapStart.Month));
+        var isDepartureMonthYear = gapEnd.Month == departureDate.Month && gapEnd.Year == departureDate.Year;
+        var isLastDayOfMonth = gapEnd.Day == lastDayOfMonth.Day;
+        var daysInMonth = DateTime.DaysInMonth(gapStart.Year, gapStart.Month);
+        var days = CalculateNumberOfDays(
+            gapStart,
+            gapEnd,
+            reservation.BillingType,
+            isDepartureMonthYear,
+            isLastDayOfMonth);
 
-        foreach (var group in throughLines.GroupBy(LineCoverageKey))
+        AddRentalLine(
+            days,
+            reservation,
+            gapStart,
+            gapEnd,
+            daysInMonth,
+            isDepartureMonthYear,
+            isLastDayOfMonth,
+            lineItems,
+            ref lineNumber,
+            rentalCostCodeId);
+        AddMaidServiceLines(reservation, gapStart, gapEnd, gapStart.Year, gapStart.Month, lineItems, ref lineNumber);
+        AddDepartureFeeIfApplicable(reservation, invoiceDate, lineItems, ref lineNumber);
+
+        foreach (var ledgerLine in lineItems)
         {
-            beforeAmounts.TryGetValue(group.Key, out var beforeAmount);
-            var delta = Math.Round(group.Sum(line => line.Amount) - beforeAmount, 2, MidpointRounding.AwayFromZero);
-            if (delta <= 0)
-                continue;
-
-            var sample = group.Last();
-            supplementalLines.Add(new LedgerLine
-            {
-                LineNumber = lineNumber++,
-                ReservationId = sample.ReservationId,
-                CostCodeId = sample.CostCodeId,
-                TransactionType = sample.TransactionType,
-                LedgerLineDate = sample.LedgerLineDate,
-                Amount = delta,
-                Description = SupplementalLineDescription(group.Key, sample.Description, beforeAmount, gapStart, gapEnd, billingType, departureDate)
-            });
+            ledgerLine.LedgerLineDate = invoiceDate;
+            ledgerLine.ReservationId = reservation.ReservationId;
+            ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
         }
 
-        return supplementalLines;
-    }
-
-    private static string LineCoverageKey(LedgerLine line)
-    {
-        var description = line.Description ?? string.Empty;
-        if (description.StartsWith("Rental Fee", StringComparison.Ordinal))
-            return "Rental Fee";
-        if (description.StartsWith("Security Deposit Waiver", StringComparison.Ordinal))
-            return "Security Deposit Waiver";
-        if (description.StartsWith("Maid Service", StringComparison.Ordinal))
-            return "Maid Service";
-        if (description.StartsWith("Company Markup", StringComparison.Ordinal))
-            return "Company Markup";
-        return description;
-    }
-
-    private static string SupplementalLineDescription(string key, string sampleDescription, decimal beforeAmount, DateOnly gapStart, DateOnly gapEnd, BillingType billingType, DateOnly departureDate)
-    {
-        if (key == "Rental Fee")
-        {
-            var displayEnd = gapEnd;
-            if (billingType == BillingType.Nightly && gapEnd == departureDate && gapEnd > gapStart)
-                displayEnd = gapEnd.AddDays(-1);
-            return $"Rental Fee ({gapStart:MM/dd}-{displayEnd:MM/dd})";
-        }
-
-        if (key == "Maid Service" && beforeAmount > 0)
-            return "Maid Service";
-
-        return sampleDescription;
-    }
-
-    private static Reservation CopyReservation(Reservation source)
-    {
-        var clone = (Reservation)typeof(object)
-            .GetMethod(nameof(MemberwiseClone), BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(source, null)!;
-        clone.ExtraFeeLines = source.ExtraFeeLines?.ToList() ?? [];
-        clone.ContactIds = source.ContactIds?.ToList() ?? [];
-        return clone;
+        await TryAddCompanyMarkupLedgerLineAsync(reservation, lineItems, costCodeById);
+        return lineItems;
     }
 
     private static DateOnly ResolveLastBillableMonth(Reservation reservation)
@@ -1269,6 +1182,54 @@ public partial class AccountingManager
     #region Billing Preview Helpers
     private static bool ReservationOverlapsBillingMonth(DateOnly arrivalDate, DateOnly departureDate, DateOnly monthStart, DateOnly monthEnd)
         => arrivalDate <= monthEnd && departureDate >= monthStart;
+
+    private static void ApplyPreviewListPeriodMetrics(
+        Invoice preview,
+        Reservation reservation,
+        DateOnly billingMonth,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        IReadOnlyList<Invoice> existingReservationInvoices,
+        DateOnly invoiceStart)
+    {
+        preview.BilledMonthStart = billingMonth;
+        preview.BilledMonthEnd = LastDayOfMonth(billingMonth);
+        preview.BilledPeriodStart = periodStart;
+        preview.BilledPeriodEnd = periodEnd;
+        preview.BilledStartDate = ResolveBillingArrivalDate(reservation);
+        preview.BilledEndDate = ResolveBillingDepartureDate(reservation);
+
+        var arrivalDate = ResolveBillingArrivalDate(reservation);
+        var departureDate = ResolveBillingDepartureDate(reservation);
+        var stayWindowStart = periodStart < arrivalDate ? arrivalDate : periodStart;
+        var stayWindowEnd = periodEnd > departureDate ? departureDate : periodEnd;
+        if (stayWindowEnd < stayWindowStart)
+        {
+            preview.BilledDaysStayed = 0;
+            preview.BilledDaysBilled = 0;
+            return;
+        }
+
+        var lastDayOfMonth = new DateOnly(
+            stayWindowEnd.Year,
+            stayWindowEnd.Month,
+            DateTime.DaysInMonth(stayWindowEnd.Year, stayWindowEnd.Month));
+        var isDepartureMonthYear = stayWindowEnd.Month == departureDate.Month && stayWindowEnd.Year == departureDate.Year;
+        var isLastDayOfMonth = stayWindowEnd.Day == lastDayOfMonth.Day;
+        preview.BilledDaysStayed = CalculateNumberOfDays(
+            stayWindowStart,
+            stayWindowEnd,
+            reservation.BillingType,
+            isDepartureMonthYear,
+            isLastDayOfMonth);
+        preview.BilledDaysBilled = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
+            existingReservationInvoices,
+            reservation,
+            invoiceStart,
+            periodStart,
+            periodEnd,
+            departureDate);
+    }
 
     private static Invoice BuildPreBillingInvoicePreview(Guid organizationId, Reservation reservation, DateOnly billingMonth, DateOnly monthStart, DateOnly monthEnd, List<LedgerLine> ledgerLines, decimal totalAmount, int? invoiceSequence = null, string? responsibleParty = null)
     {

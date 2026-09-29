@@ -184,10 +184,10 @@ public class AccountingManagerReservationInvoicePreviewTests
         reservation.CurrentInvoiceNo = 4;
         var existingInvoices = new[]
         {
-            CreateExistingInvoice(reservation, "R-PREVIEW-001", new DateOnly(2026, 7, 1)),
-            CreateExistingInvoice(reservation, "R-PREVIEW-002", new DateOnly(2026, 8, 1)),
-            CreateExistingInvoice(reservation, "R-PREVIEW-003", new DateOnly(2026, 9, 1)),
-            CreateExistingInvoice(reservation, "R-PREVIEW-004", new DateOnly(2026, 10, 1))
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-001", new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 21), new DateOnly(2026, 7, 31)),
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-002", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)),
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-003", new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30)),
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-004", new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31))
         };
 
         var manager = CreatePreviewManager(
@@ -213,9 +213,9 @@ public class AccountingManagerReservationInvoicePreviewTests
         reservation.CurrentInvoiceNo = 4;
         var existingInvoices = new[]
         {
-            CreateExistingInvoice(reservation, "R-PREVIEW-001", new DateOnly(2026, 7, 1)),
-            CreateExistingInvoice(reservation, "R-PREVIEW-002", new DateOnly(2026, 8, 1)),
-            CreateExistingInvoice(reservation, "R-PREVIEW-004", new DateOnly(2026, 10, 1))
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-001", new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 21), new DateOnly(2026, 7, 31)),
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-002", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)),
+            CreateExistingInvoiceWithBillableCoverage(reservation, "R-PREVIEW-004", new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31))
         };
 
         var manager = CreatePreviewManager(
@@ -555,6 +555,14 @@ public class AccountingManagerReservationInvoicePreviewTests
         reservation.OfficeName = "Test Office";
         var existingInvoice = CreateExistingInvoice(reservation, "R-EXTEND-001", new DateOnly(2026, 9, 1));
         existingInvoice.InvoicePeriod = "09/01/2026 - 09/15/2026";
+        existingInvoice.LedgerLines =
+        [
+            new LedgerLine
+            {
+                Description = "Rental Fee (09/01-09/15)",
+                Amount = 1500m
+            }
+        ];
 
         var manager = CreatePreviewManager(
             reservation,
@@ -574,6 +582,48 @@ public class AccountingManagerReservationInvoicePreviewTests
         Assert.Equal("09/16/2026 - 09/22/2026", previews[0].InvoicePeriod);
         Assert.Equal(700m, previews[0].TotalAmount);
         Assert.Contains(previews[0].LedgerLines, line => line.Description == "Rental Fee (09/16-09/22)" && line.Amount == 700m);
+    }
+
+    [Fact]
+    public async Task GetReservationInvoicePreviewsAsync_ExtendedStay_UsesRentalLineEndNotInvoicePeriodEnd()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 8, 18),
+            new DateOnly(2026, 9, 25),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            3000m);
+        reservation.ReservationCode = "R-000000429";
+        reservation.CurrentInvoiceNo = 2;
+        reservation.OfficeName = "Test Office";
+        var existingInvoice = CreateExistingInvoice(reservation, "R-000000429-002", new DateOnly(2026, 9, 1));
+        existingInvoice.InvoicePeriod = "09/01/2026 - 09/17/2026";
+        existingInvoice.LedgerLines =
+        [
+            new LedgerLine
+            {
+                Description = "Rental Fee (08/18-09/16)",
+                Amount = 5950m
+            }
+        ];
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync([existingInvoice]);
+            });
+
+        var previews = await manager.GetReservationInvoicePreviewsAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            reservation.ReservationId);
+
+        Assert.Single(previews);
+        Assert.Contains(
+            previews[0].LedgerLines,
+            line => line.Description == "Rental Fee (09/17-09/25)" && line.Amount > 0);
     }
 
     [Fact]
@@ -653,6 +703,26 @@ public class AccountingManagerReservationInvoicePreviewTests
             AccountingPeriod = accountingPeriod,
             IsActive = true
         };
+
+    private static Invoice CreateExistingInvoiceWithBillableCoverage(
+        Reservation reservation,
+        string invoiceCode,
+        DateOnly accountingPeriod,
+        DateOnly coveredStart,
+        DateOnly coveredEnd)
+    {
+        var invoice = CreateExistingInvoice(reservation, invoiceCode, accountingPeriod);
+        invoice.InvoicePeriod = $"{coveredStart:MM/dd/yyyy} - {coveredEnd:MM/dd/yyyy}";
+        invoice.LedgerLines =
+        [
+            new LedgerLine
+            {
+                Description = $"Rental Fee ({coveredStart:MM/dd}-{coveredEnd:MM/dd})",
+                Amount = 1m
+            }
+        ];
+        return invoice;
+    }
 
     private static Billed CreateBilledMismatchRow(
         Reservation reservation,

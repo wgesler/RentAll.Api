@@ -76,17 +76,9 @@ public partial class AccountingManager
         DateOnly periodStart,
         DateOnly periodEnd,
         DateOnly billingDepartureDate)
-    {
-        if (periodEnd < periodStart)
-            return 0;
-
-        var isDepartureMonthYear = InvoiceBillingDays.IsDepartureMonthYear(periodEnd, billingDepartureDate);
-        var isLastDayOfMonth = InvoiceBillingDays.IsLastDayOfMonth(periodEnd);
-        return InvoiceBillingDays.CalculateNumberOfDays(
+        => InvoiceBillingDays.CalculateBillableDaysInPeriod(
             periodStart,
             periodEnd,
             reservation.BillingType,
-            isDepartureMonthYear,
-            isLastDayOfMonth);
-    }
+            billingDepartureDate);
 }
