@@ -296,6 +296,10 @@ public partial class AccountingManager
 
     private static IEnumerable<LedgerLine> GetProrateChargeLinesByTransactionType(Invoice invoice, Reservation reservation, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
+        var extraFeeDescriptions = reservation.ExtraFeeLines
+            .Select(f => f.FeeDescription)
+            .ToHashSet(StringComparer.Ordinal);
+
         var occurrenceExtraDescriptions = reservation.ExtraFeeLines
             .Where(f => IsOccurrenceFrequency(f.FeeFrequency) || f.FeeFrequency == FrequencyType.NA)
             .Select(f => f.FeeDescription)
@@ -311,6 +315,9 @@ public partial class AccountingManager
                 continue;
 
             if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
+                continue;
+
+            if (extraFeeDescriptions.Contains(line.Description))
                 continue;
 
             if (occurrenceExtraDescriptions.Contains(line.Description))

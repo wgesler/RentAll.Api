@@ -366,6 +366,8 @@ public partial class AccountingManager
             AddRentalLine(days, reservation, arrivalDate, departureDate, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             GetFirstMonthLines(reservation, isFirstMonth, lineItems, ref lineNumber);
             AddMaidServiceLines(reservation, arrivalDate, departureDate, startDateYear, startDateMonth, lineItems, ref lineNumber);
+            foreach (var extraFeeLine in reservation.ExtraFeeLines)
+                AddExtraFeeLines(extraFeeLine, arrivalDate, departureDate, startDateYear, startDateMonth, isProratedMonth, days, lineItems, ref lineNumber);
             AddDepartureFeeIfApplicable(reservation, startDate, lineItems, ref lineNumber);
             return lineItems;
         }
@@ -393,7 +395,7 @@ public partial class AccountingManager
             AddRentalLine(days, reservation, firstDay, lastDay, daysInMonth, isDepartureMonthYear, isLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
             AddMaidServiceLines(reservation, firstDay, lastDayOfMonth, startDateYear, startDateMonth, lineItems, ref lineNumber);
             foreach (var extraFeeLine in reservation.ExtraFeeLines)
-                AddExtraFeeLines(extraFeeLine, firstDay, lastDayOfMonth, startDateYear, startDateMonth, isProratedMonth, days, lineItems, ref lineNumber);
+                AddExtraFeeLines(extraFeeLine, firstDay, lastDay, startDateYear, startDateMonth, isProratedMonth, days, lineItems, ref lineNumber);
             AddDepartureFeeIfApplicable(reservation, startDate, lineItems, ref lineNumber);
             return lineItems;
         }
@@ -581,16 +583,30 @@ public partial class AccountingManager
 
     private void AddExtraFeeLines(ExtraFeeLine extraFeeLine, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, bool isProratedMonth, int days, List<LedgerLine> lines, ref int lineNumber)
     {
-        var fees = CountScheduledOccurrences(startDate, startDate, endDate, extraFeeLine.FeeFrequency);
+        if (extraFeeLine.FeeFrequency == FrequencyType.OneTime)
+            return;
 
-        if (fees > 0)
+        if (startDate > endDate)
+            return;
+
+        var fees = CountScheduledOccurrences(startDate, startDate, endDate, extraFeeLine.FeeFrequency);
+        if (fees <= 0)
+            return;
+
+        var daysInMonth = DateTime.DaysInMonth(startDate.Year, startDate.Month);
+        decimal amount;
+        if (extraFeeLine.FeeFrequency == FrequencyType.Monthly && days > 0 && days < daysInMonth)
+            amount = (extraFeeLine.FeeAmount / PRORATE_DAYS) * days;
+        else
+            amount = fees * extraFeeLine.FeeAmount;
+
+        lines.Add(new LedgerLine
         {
-            var daysInMonth = DateTime.DaysInMonth(startDate.Year, startDate.Month);
-            if (extraFeeLine.FeeFrequency == FrequencyType.Monthly && isProratedMonth && days < daysInMonth && days < PRORATE_DAYS)
-                lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription}", Amount = (extraFeeLine.FeeAmount / PRORATE_DAYS) * days, CostCodeId = extraFeeLine.CostCodeId });
-            else
-                lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = $"{extraFeeLine.FeeDescription}", Amount = fees * extraFeeLine.FeeAmount, CostCodeId = extraFeeLine.CostCodeId });
-        }
+            LineNumber = lineNumber++,
+            Description = $"{extraFeeLine.FeeDescription}",
+            Amount = amount,
+            CostCodeId = extraFeeLine.CostCodeId
+        });
     }
 
     #endregion
@@ -1049,6 +1065,11 @@ public partial class AccountingManager
             ref lineNumber,
             rentalCostCodeId!.Value);
         AddMaidServiceLines(reservation, gapStart, gapEnd, gapStart.Year, gapStart.Month, lineItems, ref lineNumber);
+        var isFirstMonth = gapStart.Month == ResolveBillingArrivalDate(reservation).Month
+            && gapStart.Year == ResolveBillingArrivalDate(reservation).Year;
+        GetFirstMonthLines(reservation, isFirstMonth, lineItems, ref lineNumber);
+        foreach (var extraFeeLine in reservation.ExtraFeeLines)
+            AddExtraFeeLines(extraFeeLine, gapStart, gapEnd, gapStart.Year, gapStart.Month, isProratedMonth: days < daysInMonth, days, lineItems, ref lineNumber);
         AddDepartureFeeIfApplicable(reservation, invoiceDate, lineItems, ref lineNumber);
 
         foreach (var ledgerLine in lineItems)
