@@ -72,6 +72,7 @@ public interface IAccountingManager
     Task<Invoice> UpdateInvoiceAsync(Invoice invoice);
     Task DeleteInvoiceAsync(Guid invoiceId, Guid organizationId);
     Task DeleteInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId);
+    Task ValidateReservationDeactivationAllowedAsync(Guid organizationId, Guid reservationId);
     #endregion
 
     #region Receipt

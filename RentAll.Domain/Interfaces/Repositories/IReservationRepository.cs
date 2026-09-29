@@ -23,7 +23,7 @@ public interface IReservationRepository
     Task MarkDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
     Task ClearDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
     Task DeleteReservationByIdAsync(Guid reservationId, Guid organizationId);
-    Task<bool> SetReservationActiveStateAsync(Guid organizationId, Guid reservationId, bool isActive, Guid modifiedBy);
+    Task<ReservationActiveStateResult> SetReservationActiveStateAsync(Guid organizationId, Guid reservationId, bool isActive, Guid modifiedBy);
     #endregion
 
     #region Lease Information

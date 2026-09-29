@@ -468,10 +468,10 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             });
         }
 
-        public async Task<bool> SetReservationActiveStateAsync(Guid organizationId, Guid reservationId, bool isActive, Guid modifiedBy)
+        public async Task<ReservationActiveStateResult> SetReservationActiveStateAsync(Guid organizationId, Guid reservationId, bool isActive, Guid modifiedBy)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var (summary, _) = await db.DapperProcQueryMultipleAsync<
+            var (summary, invoiceKeys) = await db.DapperProcQueryMultipleAsync<
                 ReservationSetActiveStateSummaryRow,
                 ReservationSetActiveStateInvoiceKeyRow>("Property.Reservation_SetActiveState", new
             {
@@ -481,12 +481,29 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ModifiedBy = modifiedBy
             });
 
-            return (summary?.FirstOrDefault()?.ReservationUpdated ?? 0) > 0;
+            var summaryRow = summary?.FirstOrDefault();
+            var affectedInvoiceIds = (invoiceKeys ?? Enumerable.Empty<ReservationSetActiveStateInvoiceKeyRow>())
+                .Where(row => row.InvoiceId.HasValue && row.InvoiceId.Value != Guid.Empty)
+                .Select(row => row.InvoiceId!.Value)
+                .ToList();
+
+            var reservationUpdated = (summaryRow?.ReservationUpdated ?? 0) > 0;
+            var invoicesAffected = summaryRow?.InvoicesAffected ?? affectedInvoiceIds.Count;
+            if (affectedInvoiceIds.Count > 0 && invoicesAffected == 0)
+                invoicesAffected = affectedInvoiceIds.Count;
+
+            return new ReservationActiveStateResult
+            {
+                ReservationUpdated = reservationUpdated,
+                InvoicesAffected = invoicesAffected,
+                AffectedInvoiceIds = affectedInvoiceIds
+            };
         }
 
         private sealed class ReservationSetActiveStateSummaryRow
         {
             public int ReservationUpdated { get; set; }
+            public int InvoicesAffected { get; set; }
         }
 
         private sealed class ReservationSetActiveStateInvoiceKeyRow

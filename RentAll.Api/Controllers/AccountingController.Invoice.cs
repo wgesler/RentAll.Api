@@ -299,12 +299,18 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var updated = await _reservationRepository.SetReservationActiveStateAsync(
+                await _accountingManager.ValidateReservationDeactivationAllowedAsync(CurrentOrganizationId, reservationId);
+
+                var result = await _reservationRepository.SetReservationActiveStateAsync(
                     CurrentOrganizationId, reservationId, isActive: false, CurrentUser);
-                if (!updated)
+                if (!result.ReservationUpdated)
                     return NotFound("Reservation not found");
 
-                return NoContent();
+                return Ok(new ReservationActiveStateResponseDto(result));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -321,12 +327,12 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                var updated = await _reservationRepository.SetReservationActiveStateAsync(
+                var result = await _reservationRepository.SetReservationActiveStateAsync(
                     CurrentOrganizationId, reservationId, isActive: true, CurrentUser);
-                if (!updated)
+                if (!result.ReservationUpdated)
                     return NotFound("Reservation not found");
 
-                return NoContent();
+                return Ok(new ReservationActiveStateResponseDto(result));
             }
             catch (Exception ex)
             {
