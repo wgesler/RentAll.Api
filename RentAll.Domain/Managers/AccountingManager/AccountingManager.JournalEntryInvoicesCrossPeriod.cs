@@ -266,6 +266,7 @@ public partial class AccountingManager
         return map;
     }
 
+    // ChargeProrate and SecurityDepositWaiver join the cross-period day-ratio pool with rent (same split math).
     private static bool IsProrateChargeByTransactionType(CostCode? costCode)
         => costCode != null
             && costCode.TransactionType is TransactionType.ChargeProrate or TransactionType.SecurityDepositWaiver;
@@ -379,10 +380,10 @@ public partial class AccountingManager
 
     private Task<List<LedgerLine>> GetApportionableIncomeChargeLinesAsync(Invoice invoice, Reservation reservation, CrossPeriodInvoiceAccountingContext accountingContext)
     {
-        // Charges that are NOT extra-fee lines are still classified by COST CODE: anything on a rental-income
-        // code mapped under the 4000 parent account splits across both accounting periods like rent, everything else is a one-time
-        // up-front charge. Extra-fee lines are excluded here because they are now routed by their frequency
-        // instead. Rentals, maid service, and payments have their own dedicated handling.
+        // Non-rent ledger lines whose cost code is ChargeProrate or SecurityDepositWaiver (including SDW).
+        // These join the day-ratio apportionment pool with the crossing rental fee. One-time charges
+        // (Security Deposit, departure fee, etc.) are handled in GetOneTimeFeeLines instead. Extra-fee
+        // lines are routed by frequency; maid service and payments have their own handling.
         var matchedLines = GetProrateChargeLinesByTransactionType(invoice, reservation, accountingContext.CostCodeById).ToList();
         return Task.FromResult(matchedLines);
     }
@@ -1116,8 +1117,8 @@ public partial class AccountingManager
 
         foreach (var line in originalInvoice.LedgerLines.Where(l => l.Amount != 0))
         {
-            // Security Deposit Waiver is a deposit-type charge, not rental income, so it stays on the
-            // first accounting period exactly like the Security Deposit instead of being apportioned.
+            // Rental fee lines are apportioned in the day-ratio pool, not here. SDW is not one-time:
+            // SecurityDepositWaiver lines are picked up by GetProrateChargeLinesByTransactionType.
             if (TryParseRentalFeeDateRange(line.Description, referenceYear, out _, out _))
                 continue;
 

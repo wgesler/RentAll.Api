@@ -117,10 +117,11 @@ public partial class AccountingManager
         }
     }
 
-    private async Task UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser, Invoice? paymentSourceInvoice = null)
+    private async Task UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(Invoice invoice, LedgerLine paymentLedgerLine, decimal paymentAmount, DateOnly transactionDate, List<JournalEntry> workingEntries, ISet<Guid> retainedEntryIds, Guid currentUser, Invoice? paymentSourceInvoice = null, bool includeSecurityDepositWaiverActual = true)
     {
         await UpsertSecurityDepositActualJournalEntryForPaymentAsync(invoice, paymentLedgerLine, paymentAmount, transactionDate, workingEntries, retainedEntryIds, currentUser, paymentSourceInvoice);
-        await UpsertSecurityDepositWaiverActualJournalEntryForPaymentAsync(invoice, paymentLedgerLine, paymentAmount, transactionDate, workingEntries, retainedEntryIds, currentUser, paymentSourceInvoice);
+        if (includeSecurityDepositWaiverActual)
+            await UpsertSecurityDepositWaiverActualJournalEntryForPaymentAsync(invoice, paymentLedgerLine, paymentAmount, transactionDate, workingEntries, retainedEntryIds, currentUser, paymentSourceInvoice);
         await UpsertFeesActualJournalEntryForPaymentAsync(invoice, paymentLedgerLine, paymentAmount, transactionDate, workingEntries, retainedEntryIds, currentUser, paymentSourceInvoice);
     }
 

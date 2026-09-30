@@ -216,6 +216,15 @@ public partial class AccountingManager
                             currentUser,
                             loadCrossPeriodExpectedContext: true,
                             paymentSourceInvoice: invoice);
+                        await UpsertSecurityDepositWaiverActualJournalEntryForPaymentAsync(
+                            splitInvoice,
+                            splitPaymentLedgerLine,
+                            splitAllocation.Amount,
+                            ResolveInvoicePaymentJournalEntryDate(splitPaymentLedgerLine),
+                            workingEntries,
+                            retainedEntryIds,
+                            currentUser,
+                            paymentSourceInvoice: invoice);
                     }
                 }
 
@@ -260,10 +269,20 @@ public partial class AccountingManager
                         paymentSourceInvoice: invoice);
                     if (applyResult.HasWarning)
                         return AccountingJournalEntryResult.WarningResult(applyResult.Warning!, updatedPayment);
+
+                    await UpsertSecurityDepositWaiverActualJournalEntryForPaymentAsync(
+                        splitInvoice,
+                        splitPaymentLedgerLine,
+                        splitAllocation.Amount,
+                        ResolveInvoicePaymentJournalEntryDate(splitPaymentLedgerLine),
+                        workingEntries,
+                        retainedEntryIds,
+                        currentUser,
+                        paymentSourceInvoice: invoice);
                 }
 
-                // Escrow Actual JEs (Fees/SD/SDW) use the full payment waterfall on the source invoice.
-                // Cross-period PrePay slices only move AR/liability; they must not cap tier-4 fees to a slice amount.
+                // Escrow Actual JEs (Fees/SD) use the full payment waterfall on the source invoice.
+                // SDW Actual posts per apportioned slice (tenant income SDW -> escrow SDW / Chase Insurance).
                 await UpsertInvoicePaymentEscrowActualJournalEntriesForPaymentAsync(
                     invoice,
                     paymentLedgerLine,
@@ -272,7 +291,8 @@ public partial class AccountingManager
                     workingEntries,
                     retainedEntryIds,
                     currentUser,
-                    paymentSourceInvoice: invoice);
+                    paymentSourceInvoice: invoice,
+                    includeSecurityDepositWaiverActual: false);
 
                 await DeleteClaimedOrphanJournalEntriesAsync(
                     workingEntries,
