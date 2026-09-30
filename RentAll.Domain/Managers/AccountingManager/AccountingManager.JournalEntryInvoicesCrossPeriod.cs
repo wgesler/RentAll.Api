@@ -238,6 +238,16 @@ public partial class AccountingManager
 
     private async Task<Invoice> ResolveApportionedSliceForPaymentAsync(Invoice source, DateOnly accountingPeriod)
     {
+        var apportionedSlices = await TryBuildCrossPeriodApportionedSlicesAsync(source);
+        if (apportionedSlices.HasValue)
+        {
+            var (firstPeriodInvoice, secondPeriodInvoice) = apportionedSlices.Value;
+            if (firstPeriodInvoice.AccountingPeriod == accountingPeriod)
+                return firstPeriodInvoice;
+            if (secondPeriodInvoice.AccountingPeriod == accountingPeriod)
+                return secondPeriodInvoice;
+        }
+
         var periodTaggedInvoice = CloneInvoiceForPaymentAccountingPeriod(source, accountingPeriod);
         return await ResolveInvoiceForOwnerShareAsync(periodTaggedInvoice);
     }

@@ -104,6 +104,47 @@ public class CrossPeriodInvoicePaymentTests
     }
 
     [Fact]
+    public async Task CrossPeriodPayment_August8ToSeptember6_FullPay_CreatesSdwActualPerAccountingPeriod()
+    {
+        var scenario = await SetupCrossPeriodInvoice0808To0906Async();
+        var manager = scenario.Context.CreateManager();
+        await manager.CreateJournalEntryFromInvoiceAsync(scenario.Invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            scenario.Invoice,
+            scenario.InvoiceTotal,
+            June30PaymentDate,
+            description: "Wire - 08/08-09/06, Dept");
+        scenario.Invoice.LedgerLines.Add(payment);
+        scenario.Invoice.PaidAmount = scenario.InvoiceTotal;
+        scenario.Invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        var updatedInvoice = await manager.UpdateInvoiceAsync(scenario.Invoice);
+        var linkedPaymentLine = Assert.Single(updatedInvoice.LedgerLines, line => line.LedgerLineId == payment.LedgerLineId);
+        Assert.True(linkedPaymentLine.PaymentId.HasValue);
+
+        await manager.CreateJournalEntriesFromInvoicePaymentDocumentAsync(
+            linkedPaymentLine.PaymentId!.Value,
+            scenario.Invoice.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var sdwActualEntries = scenario.Context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositWaiverActual
+                && entry.SourceId == scenario.Invoice.InvoiceId)
+            .ToList();
+
+        Assert.Equal(2, sdwActualEntries.Count);
+        Assert.Contains(sdwActualEntries, entry => entry.AccountingPeriod == AugustAccountingPeriod);
+        Assert.Contains(sdwActualEntries, entry => entry.AccountingPeriod == SeptemberAccountingPeriod);
+
+        var escrowCredits = sdwActualEntries
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.EscrowSdwAccountId)
+            .Sum(line => line.Credit);
+        Assert.Equal(60m, escrowCredits);
+    }
+
+    [Fact]
     public async Task InvoicePaymentLineAndPaymentDocument_UpdatesSynchronizeBothDirections()
     {
         var scenario = await SetupCrossPeriodInvoice0808To0906Async();

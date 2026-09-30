@@ -216,15 +216,6 @@ public partial class AccountingManager
                             currentUser,
                             loadCrossPeriodExpectedContext: true,
                             paymentSourceInvoice: invoice);
-                        await UpsertSecurityDepositWaiverActualJournalEntryForPaymentAsync(
-                            splitInvoice,
-                            splitPaymentLedgerLine,
-                            splitAllocation.Amount,
-                            ResolveInvoicePaymentJournalEntryDate(splitPaymentLedgerLine),
-                            workingEntries,
-                            retainedEntryIds,
-                            currentUser,
-                            paymentSourceInvoice: invoice);
                     }
                 }
 
@@ -269,7 +260,12 @@ public partial class AccountingManager
                         paymentSourceInvoice: invoice);
                     if (applyResult.HasWarning)
                         return AccountingJournalEntryResult.WarningResult(applyResult.Warning!, updatedPayment);
+                }
 
+                foreach (var splitAllocation in splitAllocations)
+                {
+                    var splitInvoice = await ResolveApportionedSliceForPaymentAsync(invoice, splitAllocation.AccountingPeriod);
+                    var splitPaymentLedgerLine = ClonePaymentLedgerLineWithAmount(paymentLedgerLine, splitAllocation.Amount);
                     await UpsertSecurityDepositWaiverActualJournalEntryForPaymentAsync(
                         splitInvoice,
                         splitPaymentLedgerLine,
