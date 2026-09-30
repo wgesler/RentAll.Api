@@ -42,6 +42,11 @@ public class CreateReservationDto
     public int FrequencyId { get; set; }
     public DateOnly MaidStartDate { get; set; }
     public Guid? MaidUserId { get; set; }
+    public bool ReferralFee { get; set; }
+    public int ReferralMethodId { get; set; }
+    public decimal ReferralPercentage { get; set; }
+    public decimal ReferralFlatRate { get; set; }
+    public int ReferralFrequencyId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public List<CreateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<CreateExtraFeeLineDto>();
@@ -131,6 +136,27 @@ public class CreateReservationDto
         if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
             return (false, $"Invalid FrequencyId value: {FrequencyId}");
 
+        if (!Enum.IsDefined(typeof(ReferralMethodType), ReferralMethodId))
+            return (false, $"Invalid ReferralMethodId value: {ReferralMethodId}");
+
+        if (!Enum.IsDefined(typeof(FrequencyType), ReferralFrequencyId))
+            return (false, $"Invalid ReferralFrequencyId value: {ReferralFrequencyId}");
+
+        if (ReferralFee)
+        {
+            if (ReferralMethodId == (int)ReferralMethodType.None)
+                return (false, "ReferralMethodId is required when ReferralFee is enabled");
+            if (ReferralFrequencyId == (int)FrequencyType.NA)
+                return (false, "ReferralFrequencyId is required when ReferralFee is enabled");
+
+            var hasReferralPercentage = ReferralPercentage > 0;
+            var hasReferralFlatRate = ReferralFlatRate > 0;
+            if (hasReferralPercentage && hasReferralFlatRate)
+                return (false, "Referral Percentage and Referral Flat Rate cannot both be set");
+            if (!hasReferralPercentage && !hasReferralFlatRate)
+                return (false, "Referral Percentage or Referral Flat Rate is required when ReferralFee is enabled");
+        }
+
         if (ExtraFeeLines != null)
         {
             foreach (var line in ExtraFeeLines)
@@ -186,6 +212,11 @@ public class CreateReservationDto
             Frequency = (FrequencyType)FrequencyId,
             MaidStartDate = MaidStartDate,
             MaidUserId = MaidUserId,
+            ReferralFee = ReferralFee,
+            ReferralMethod = (ReferralMethodType)ReferralMethodId,
+            ReferralPercentage = ReferralPercentage,
+            ReferralFlatRate = ReferralFlatRate,
+            ReferralFrequency = (FrequencyType)ReferralFrequencyId,
             Taxes = Taxes,
             Notes = Notes,
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),

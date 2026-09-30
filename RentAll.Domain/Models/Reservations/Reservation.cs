@@ -49,6 +49,11 @@ public class Reservation
     public FrequencyType Frequency { get; set; }
     public DateOnly MaidStartDate { get; set; }
     public Guid? MaidUserId { get; set; }
+    public bool ReferralFee { get; set; }
+    public ReferralMethodType ReferralMethod { get; set; }
+    public decimal ReferralPercentage { get; set; }
+    public decimal ReferralFlatRate { get; set; }
+    public FrequencyType ReferralFrequency { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public List<ExtraFeeLine> ExtraFeeLines { get; set; } = new List<ExtraFeeLine>();

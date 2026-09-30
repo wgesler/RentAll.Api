@@ -48,6 +48,11 @@ public class ReservationResponseDto
     public int FrequencyId { get; set; }
     public DateOnly MaidStartDate { get; set; }
     public Guid? MaidUserId { get; set; }
+    public bool ReferralFee { get; set; }
+    public int ReferralMethodId { get; set; }
+    public decimal ReferralPercentage { get; set; }
+    public decimal ReferralFlatRate { get; set; }
+    public int ReferralFrequencyId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public List<ExtraFeeLineResponseDto> ExtraFeeLines { get; set; } = new List<ExtraFeeLineResponseDto>();
@@ -123,6 +128,11 @@ public class ReservationResponseDto
         FrequencyId = (int)reservation.Frequency;
         MaidStartDate = reservation.MaidStartDate;
         MaidUserId = reservation.MaidUserId;
+        ReferralFee = reservation.ReferralFee;
+        ReferralMethodId = (int)reservation.ReferralMethod;
+        ReferralPercentage = reservation.ReferralPercentage;
+        ReferralFlatRate = reservation.ReferralFlatRate;
+        ReferralFrequencyId = (int)reservation.ReferralFrequency;
         Taxes = reservation.Taxes;
         Notes = reservation.Notes;
         ExtraFeeLines = reservation.ExtraFeeLines.Select(line => new ExtraFeeLineResponseDto(line)).ToList();

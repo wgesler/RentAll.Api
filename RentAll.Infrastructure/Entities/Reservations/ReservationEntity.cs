@@ -51,6 +51,11 @@ public class ReservationEntity
     public int FrequencyId { get; set; }
     public DateOnly MaidStartDate { get; set; }
     public Guid? MaidUserId { get; set; }
+    public bool ReferralFee { get; set; }
+    public int ReferralMethodId { get; set; }
+    public decimal ReferralPercentage { get; set; }
+    public decimal ReferralFlatRate { get; set; }
+    public int ReferralFrequencyId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
 

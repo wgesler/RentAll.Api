@@ -17,7 +17,9 @@ public class CrossPeriodInvoicePaymentTests
     private static readonly DateOnly DecemberPaymentDate = new(2025, 12, 1);
     private static readonly DateOnly AugustAccountingPeriod = new(2026, 8, 1);
     private static readonly DateOnly SeptemberAccountingPeriod = new(2026, 9, 1);
+    private static readonly DateOnly OctoberAccountingPeriod = new(2026, 10, 1);
     private static readonly DateOnly June30PaymentDate = new(2026, 6, 30);
+    private static readonly DateOnly September30PaymentDate = new(2026, 9, 30);
 
     [Fact]
     public async Task CrossPeriodPayment_MayFullAmount_BothSlicesUsePrePaymentPath()
@@ -142,6 +144,101 @@ public class CrossPeriodInvoicePaymentTests
             .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.EscrowSdwAccountId)
             .Sum(line => line.Credit);
         Assert.Equal(60m, escrowCredits);
+    }
+
+    [Fact]
+    public async Task CrossPeriodPayment_September30ToOctober29_FullPay_CreatesTwoSdwActualJeWithTwoAndFiftyEight()
+    {
+        var scenario = await SetupCrossPeriodInvoice0930To1029Async();
+        var manager = scenario.Context.CreateManager();
+        await manager.CreateJournalEntryFromInvoiceAsync(scenario.Invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            scenario.Invoice,
+            scenario.InvoiceTotal,
+            September30PaymentDate,
+            description: "Wire - 09/30-10/29, Dept");
+        scenario.Invoice.LedgerLines.Add(payment);
+        scenario.Invoice.PaidAmount = scenario.InvoiceTotal;
+        scenario.Invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        var updatedInvoice = await manager.UpdateInvoiceAsync(scenario.Invoice);
+        var linkedPaymentLine = Assert.Single(updatedInvoice.LedgerLines, line => line.LedgerLineId == payment.LedgerLineId);
+        Assert.True(linkedPaymentLine.PaymentId.HasValue);
+
+        await manager.CreateJournalEntriesFromInvoicePaymentDocumentAsync(
+            linkedPaymentLine.PaymentId!.Value,
+            scenario.Invoice.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var sdwActualEntries = scenario.Context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositWaiverActual
+                && entry.SourceId == scenario.Invoice.InvoiceId)
+            .ToList();
+
+        Assert.Equal(2, sdwActualEntries.Count);
+        Assert.Contains(sdwActualEntries, entry => entry.AccountingPeriod == SeptemberAccountingPeriod);
+        Assert.Contains(sdwActualEntries, entry => entry.AccountingPeriod == OctoberAccountingPeriod);
+
+        decimal EscrowCreditForPeriod(DateOnly accountingPeriod)
+            => sdwActualEntries
+                .Where(entry => entry.AccountingPeriod == accountingPeriod)
+                .SelectMany(entry => entry.JournalEntryLines)
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.EscrowSdwAccountId)
+                .Sum(line => line.Credit);
+
+        Assert.Equal(2m, EscrowCreditForPeriod(SeptemberAccountingPeriod));
+        Assert.Equal(58m, EscrowCreditForPeriod(OctoberAccountingPeriod));
+    }
+
+    [Fact]
+    public async Task CrossPeriodPayment_September30ToOctober29_TenDollarsShort_OctoberSdwActualReducedByShortfall()
+    {
+        const decimal shortfall = 10m;
+        var scenario = await SetupCrossPeriodInvoice0930To1029Async();
+        var manager = scenario.Context.CreateManager();
+        await manager.CreateJournalEntryFromInvoiceAsync(scenario.Invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var paymentAmount = scenario.InvoiceTotal - shortfall;
+        var payment = AccountingManagerJournalEntryFeeTestSupport.CreatePaymentLedgerLine(
+            scenario.Invoice,
+            paymentAmount,
+            September30PaymentDate,
+            description: "Wire - 09/30-10/29, Dept");
+        scenario.Invoice.LedgerLines.Add(payment);
+        scenario.Invoice.PaidAmount = paymentAmount;
+        scenario.Invoice.ModifiedBy = AccountingManagerJournalEntryTestSupport.CurrentUser;
+
+        var updatedInvoice = await manager.UpdateInvoiceAsync(scenario.Invoice);
+        var linkedPaymentLine = Assert.Single(updatedInvoice.LedgerLines, line => line.LedgerLineId == payment.LedgerLineId);
+        Assert.True(linkedPaymentLine.PaymentId.HasValue);
+
+        await manager.CreateJournalEntriesFromInvoicePaymentDocumentAsync(
+            linkedPaymentLine.PaymentId!.Value,
+            scenario.Invoice.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var sdwActualEntries = scenario.Context.ActiveJournalEntries
+            .Where(entry => entry.JournalEntryKindId == JournalEntryKind.SecurityDepositWaiverActual
+                && entry.SourceId == scenario.Invoice.InvoiceId)
+            .ToList();
+
+        Assert.Equal(2, sdwActualEntries.Count);
+
+        decimal EscrowCreditForPeriod(DateOnly accountingPeriod)
+            => sdwActualEntries
+                .Where(entry => entry.AccountingPeriod == accountingPeriod)
+                .SelectMany(entry => entry.JournalEntryLines)
+                .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.EscrowSdwAccountId)
+                .Sum(line => line.Credit);
+
+        // Cross-period split takes the $10 shortage from the second-period pool; after rent, SDW is tier 3 (before fees).
+        Assert.Equal(2m, EscrowCreditForPeriod(SeptemberAccountingPeriod));
+        Assert.Equal(48m, EscrowCreditForPeriod(OctoberAccountingPeriod));
+        Assert.Equal(50m, sdwActualEntries
+            .SelectMany(entry => entry.JournalEntryLines)
+            .Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.EscrowSdwAccountId)
+            .Sum(line => line.Credit));
     }
 
     [Fact]
@@ -466,6 +563,34 @@ public class CrossPeriodInvoicePaymentTests
         Assert.Equal(375m, Assert.Single(invoice.LedgerLines, line => line.Description == "Departure Fee").Amount);
         invoice.TotalAmount = invoice.LedgerLines.Where(line => line.Amount != 0).Sum(line => line.Amount);
         Assert.Equal(4435m, invoice.TotalAmount);
+
+        return new CrossPeriodPaymentScenario(invoice, context, 0m, 0m, invoice.TotalAmount);
+    }
+
+    private static async Task<CrossPeriodPaymentScenario> SetupCrossPeriodInvoice0930To1029Async()
+    {
+        var reservation = AccountingManagerJournalEntryFeeTestSupport.CreateReservationWithFees(
+            new DateOnly(2026, 9, 30),
+            new DateOnly(2026, 12, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            maidStartDate: new DateOnly(2100, 1, 1),
+            depositType: DepositType.SDW,
+            deposit: 60m,
+            hasPets: false,
+            departureFee: 375m,
+            billingRate: 2900m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            SeptemberAccountingPeriod,
+            new DateOnly(2026, 9, 30),
+            enableOwnerShare: true);
+        var rentalLine = Assert.Single(invoice.LedgerLines, line => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal));
+        rentalLine.Description = "Rental Fee (09/30-10/29)";
+        rentalLine.Amount = 2900m;
+        Assert.Equal(60m, Assert.Single(invoice.LedgerLines, line => line.Description == "Security Deposit Waiver").Amount);
+        invoice.TotalAmount = invoice.LedgerLines.Where(line => line.Amount != 0).Sum(line => line.Amount);
 
         return new CrossPeriodPaymentScenario(invoice, context, 0m, 0m, invoice.TotalAmount);
     }
