@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.ExtraFeeLines;
+using RentAll.Domain.Enums;
 
 namespace RentAll.Api.Dtos.Reservations.Reservations;
 
@@ -71,7 +72,7 @@ public class CreateReservationDto
 
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid()
+    public (bool IsValid, string? ErrorMessage) IsValid(PropertyLeaseType? propertyLeaseType = null)
     {
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
@@ -141,6 +142,10 @@ public class CreateReservationDto
 
         if (!Enum.IsDefined(typeof(FrequencyType), ReferralFrequencyId))
             return (false, $"Invalid ReferralFrequencyId value: {ReferralFrequencyId}");
+
+        var referralLeaseCheck = ReservationReferralValidation.ValidateReferralFeeForPropertyLease(ReferralFee, propertyLeaseType);
+        if (!referralLeaseCheck.IsValid)
+            return referralLeaseCheck;
 
         if (ReferralFee)
         {

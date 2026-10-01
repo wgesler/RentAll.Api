@@ -67,6 +67,7 @@ artifacts/
 
 # Alternate MSBuild output paths (local/agent builds; not source)
 _compile_check_out/
+_agent_build_out/
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt

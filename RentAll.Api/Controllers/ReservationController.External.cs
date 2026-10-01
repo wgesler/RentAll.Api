@@ -120,7 +120,7 @@ public partial class ReservationController
 
         var createDto = dto.ToCreateReservationDto(context.OrganizationId, property.OfficeId, property.PropertyId, property, contactIds, companyId, agentId);
         createDto.ExtraFeeLines = [];
-        var (isValid, validationError) = createDto.IsValid();
+        var (isValid, validationError) = createDto.IsValid(property.PropertyLeaseType);
         if (!isValid)
             return (false, false, null, validationError);
 

@@ -140,7 +140,11 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Reservation data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
+            var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, dto.OrganizationId);
+            if (property == null)
+                return NotFound("Property not found");
+
+            var (isValid, errorMessage) = dto.IsValid(property.PropertyLeaseType);
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
@@ -169,7 +173,11 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("Reservation data is required");
 
-            var (isValid, errorMessage) = dto.IsValid();
+            var property = await _propertyRepository.GetPropertyByIdAsync(dto.PropertyId, CurrentOrganizationId);
+            if (property == null)
+                return NotFound("Property not found");
+
+            var (isValid, errorMessage) = dto.IsValid(property.PropertyLeaseType);
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
