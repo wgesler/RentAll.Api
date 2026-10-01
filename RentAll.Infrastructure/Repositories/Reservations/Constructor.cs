@@ -107,7 +107,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 ReferralMethod = (ReferralMethodType)e.ReferralMethodId,
                 ReferralPercentage = e.ReferralPercentage,
                 ReferralFlatRate = e.ReferralFlatRate,
-                ReferralFrequency = (FrequencyType)e.ReferralFrequencyId,
                 Taxes = e.Taxes,
                 Notes = e.Notes,
                 ExtraFeeLines = extraFeeLines,

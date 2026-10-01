@@ -47,7 +47,6 @@ public class CreateReservationDto
     public int ReferralMethodId { get; set; }
     public decimal ReferralPercentage { get; set; }
     public decimal ReferralFlatRate { get; set; }
-    public int ReferralFrequencyId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
     public List<CreateExtraFeeLineDto> ExtraFeeLines { get; set; } = new List<CreateExtraFeeLineDto>();
@@ -140,9 +139,6 @@ public class CreateReservationDto
         if (!Enum.IsDefined(typeof(ReferralMethodType), ReferralMethodId))
             return (false, $"Invalid ReferralMethodId value: {ReferralMethodId}");
 
-        if (!Enum.IsDefined(typeof(FrequencyType), ReferralFrequencyId))
-            return (false, $"Invalid ReferralFrequencyId value: {ReferralFrequencyId}");
-
         var referralLeaseCheck = ReservationReferralValidation.ValidateReferralFeeForPropertyLease(ReferralFee, propertyLeaseType);
         if (!referralLeaseCheck.IsValid)
             return referralLeaseCheck;
@@ -151,8 +147,6 @@ public class CreateReservationDto
         {
             if (ReferralMethodId == (int)ReferralMethodType.None)
                 return (false, "ReferralMethodId is required when ReferralFee is enabled");
-            if (ReferralFrequencyId == (int)FrequencyType.NA)
-                return (false, "ReferralFrequencyId is required when ReferralFee is enabled");
 
             var hasReferralPercentage = ReferralPercentage > 0;
             var hasReferralFlatRate = ReferralFlatRate > 0;
@@ -221,7 +215,6 @@ public class CreateReservationDto
             ReferralMethod = (ReferralMethodType)ReferralMethodId,
             ReferralPercentage = ReferralPercentage,
             ReferralFlatRate = ReferralFlatRate,
-            ReferralFrequency = (FrequencyType)ReferralFrequencyId,
             Taxes = Taxes,
             Notes = Notes,
             ExtraFeeLines = ExtraFeeLines?.Select(dto => dto.ToModel()).ToList() ?? new List<ExtraFeeLine>(),

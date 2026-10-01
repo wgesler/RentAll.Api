@@ -169,7 +169,7 @@ public partial class AccountingManager
             ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
         }
 
-        await TryAddCompanyMarkupLedgerLineAsync(reservation, ledgerLines, costCodeById);
+        await TryAddCompanyMarkupOrReferralLedgerLineAsync(reservation, ledgerLines, costCodeById);
         return ledgerLines;
     }
 
@@ -236,67 +236,8 @@ public partial class AccountingManager
             ledgerLine.TransactionType = costCode.TransactionType;
     }
 
-    private async Task TryAddCompanyMarkupLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
-    {
-        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
-        if (companyId == null || ledgerLines.Count == 0)
-            return;
-
-        if (ledgerLines.Any(IsCompanyMarkupLedgerLine))
-            return;
-
-        var rentLines = ledgerLines.Where(IsRentalFeeLedgerLine).ToList();
-        if (rentLines.Count == 0)
-            return;
-
-        var companyContact = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
-        var markupPercent = companyContact?.Markup ?? 0;
-        if (markupPercent <= 0)
-            return;
-
-        var rentAmount = rentLines.Sum(line => line.Amount);
-        var markupAmount = Math.Round(rentAmount * markupPercent / 100m, 2, MidpointRounding.AwayFromZero);
-        if (markupAmount == 0)
-            return;
-
-        var rentLine = rentLines[^1];
-        var markupLine = new LedgerLine
-        {
-            ReservationId = reservation.ReservationId,
-            CostCodeId = rentLine.CostCodeId,
-            Amount = markupAmount,
-            Description = $"Company Markup {markupPercent}%",
-            LedgerLineDate = rentLine.LedgerLineDate
-        };
-        ApplyTransactionTypeFromCostCode(markupLine, costCodeById);
-
-        ledgerLines.Insert(ledgerLines.IndexOf(rentLine) + 1, markupLine);
-        for (var i = 0; i < ledgerLines.Count; i++)
-            ledgerLines[i].LineNumber = i + 1;
-    }
-
-    private async Task EnsureCompanyMarkupLedgerLineOnInvoiceAsync(Invoice invoice)
-    {
-        if (invoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
-            return;
-
-        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
-        if (reservation == null)
-            return;
-
-        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
-        var amountBefore = invoice.LedgerLines.Sum(line => line.Amount);
-        await TryAddCompanyMarkupLedgerLineAsync(reservation, invoice.LedgerLines, costCodeById);
-        var delta = invoice.LedgerLines.Sum(line => line.Amount) - amountBefore;
-        if (delta != 0)
-            invoice.TotalAmount += delta;
-    }
-
     private static bool IsRentalFeeLedgerLine(LedgerLine line)
         => line.Description.StartsWith("Rental Fee", StringComparison.Ordinal);
-
-    private static bool IsCompanyMarkupLedgerLine(LedgerLine line)
-        => line.Description.StartsWith("Company Markup", StringComparison.Ordinal);
 
     public List<LedgerLine> GetLedgerLinesByReservationIdAsync(Reservation reservation, DateOnly startDate, DateOnly endDate, int rentalCostCodeId)
     {
@@ -1079,7 +1020,7 @@ public partial class AccountingManager
             ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
         }
 
-        await TryAddCompanyMarkupLedgerLineAsync(reservation, lineItems, costCodeById);
+        await TryAddCompanyMarkupOrReferralLedgerLineAsync(reservation, lineItems, costCodeById);
         return lineItems;
     }
 
@@ -1294,6 +1235,214 @@ public partial class AccountingManager
         }
 
         return NormalizeOptionalString(reservation.ContactName);
+    }
+    #endregion
+
+    #region Company Markup
+    private async Task TryAddCompanyMarkupOrReferralLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        if (ReservationHasReferralFee(reservation))
+        {
+            RemoveCompanyMarkupLedgerLines(ledgerLines);
+            await TryAddCompanyReferralLedgerLineAsync(reservation, ledgerLines, costCodeById);
+            return;
+        }
+
+        RemoveCompanyReferralLedgerLines(ledgerLines);
+        await TryAddCompanyMarkupLedgerLineAsync(reservation, ledgerLines, costCodeById);
+    }
+
+    private async Task TryAddCompanyMarkupLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
+        if (companyId == null || ledgerLines.Count == 0)
+            return;
+
+        var rentLines = ledgerLines.Where(IsRentalFeeLedgerLine).ToList();
+        if (rentLines.Count == 0)
+            return;
+
+        var companyContact = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
+        var markupPercent = companyContact?.Markup ?? 0;
+        if (markupPercent <= 0)
+        {
+            RemoveCompanyMarkupLedgerLines(ledgerLines);
+            return;
+        }
+
+        var rentAmount = rentLines.Sum(line => line.Amount);
+        var markupAmount = Math.Round(rentAmount * markupPercent / 100m, 2, MidpointRounding.AwayFromZero);
+        if (markupAmount == 0)
+        {
+            RemoveCompanyMarkupLedgerLines(ledgerLines);
+            return;
+        }
+
+        var rentLine = rentLines[^1];
+        var markupLine = new LedgerLine
+        {
+            ReservationId = reservation.ReservationId,
+            CostCodeId = rentLine.CostCodeId,
+            Amount = markupAmount,
+            Description = $"Company Markup {markupPercent}%",
+            LedgerLineDate = rentLine.LedgerLineDate
+        };
+        ApplyTransactionTypeFromCostCode(markupLine, costCodeById);
+        UpsertCompanyMarkupLedgerLine(ledgerLines, rentLines, markupLine);
+    }
+
+    private async Task EnsureCompanyMarkupLedgerLineOnInvoiceAsync(Invoice invoice)
+    {
+        if (invoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
+            return;
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+        if (reservation == null)
+            return;
+
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var amountBefore = invoice.LedgerLines.Sum(line => line.Amount);
+        await TryAddCompanyMarkupOrReferralLedgerLineAsync(reservation, invoice.LedgerLines, costCodeById);
+        var delta = invoice.LedgerLines.Sum(line => line.Amount) - amountBefore;
+        if (delta != 0)
+            invoice.TotalAmount += delta;
+    }
+
+    private static bool IsCompanyMarkupLedgerLine(LedgerLine line)
+        => line.Description.StartsWith("Company Markup", StringComparison.Ordinal);
+
+    private static void UpsertCompanyMarkupLedgerLine(List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, LedgerLine templateLine)
+    {
+        UpsertCompanyLedgerLine(ledgerLines, rentLines, templateLine, IsCompanyMarkupLedgerLine);
+    }
+
+    private static void RemoveCompanyMarkupLedgerLines(List<LedgerLine> ledgerLines)
+    {
+        if (ledgerLines.RemoveAll(IsCompanyMarkupLedgerLine) == 0)
+            return;
+
+        RenumberLedgerLines(ledgerLines);
+    }
+
+    private static void UpsertCompanyLedgerLine(List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, LedgerLine templateLine, Func<LedgerLine, bool> isCompanyMarkupOrReferralLine)
+    {
+        var rentLine = rentLines[^1];
+        var companyLines = ledgerLines.Where(isCompanyMarkupOrReferralLine).ToList();
+        if (companyLines.Count == 0)
+        {
+            var insertIndex = ledgerLines.IndexOf(rentLine);
+            insertIndex = insertIndex < 0 ? ledgerLines.Count : insertIndex + 1;
+            ledgerLines.Insert(insertIndex, templateLine);
+            RenumberLedgerLines(ledgerLines);
+            return;
+        }
+
+        var primary = companyLines[0];
+        primary.ReservationId = templateLine.ReservationId;
+        primary.CostCodeId = templateLine.CostCodeId;
+        primary.Amount = templateLine.Amount;
+        primary.Description = templateLine.Description;
+        primary.LedgerLineDate = templateLine.LedgerLineDate;
+        primary.TransactionType = templateLine.TransactionType;
+
+        if (companyLines.Count > 1)
+        {
+            for (var duplicateIndex = 1; duplicateIndex < companyLines.Count; duplicateIndex++)
+                ledgerLines.Remove(companyLines[duplicateIndex]);
+            RenumberLedgerLines(ledgerLines);
+        }
+    }
+
+    private static void RenumberLedgerLines(List<LedgerLine> ledgerLines)
+    {
+        for (var i = 0; i < ledgerLines.Count; i++)
+            ledgerLines[i].LineNumber = i + 1;
+    }
+    #endregion
+
+    #region Company Referral
+    private static bool ReservationHasReferralFee(Reservation reservation)
+        => reservation.ReferralFee && reservation.ReferralMethod != ReferralMethodType.None;
+
+    private async Task TryAddCompanyReferralLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        if (!ReservationHasReferralFee(reservation) || ledgerLines.Count == 0)
+            return;
+
+        var rentLines = ledgerLines.Where(IsRentalFeeLedgerLine).ToList();
+        if (rentLines.Count == 0)
+            return;
+
+        var rentAmount = rentLines.Sum(line => line.Amount);
+        if (!TryResolveReferralFeeAmount(reservation, rentAmount, out var referralAmount))
+        {
+            RemoveCompanyReferralLedgerLines(ledgerLines);
+            return;
+        }
+
+        switch (reservation.ReferralMethod)
+        {
+            case ReferralMethodType.NetInvoice:
+                await AddReferralNetInvoiceLedgerLinesAsync(reservation, ledgerLines, rentLines, referralAmount, costCodeById);
+                break;
+            case ReferralMethodType.SeparateInvoice:
+                await AddReferralSeparateInvoiceLedgerLinesAsync(reservation, ledgerLines, rentLines, referralAmount, costCodeById);
+                break;
+            case ReferralMethodType.Bill:
+                await AddReferralBillLedgerLinesAsync(reservation, ledgerLines, rentLines, referralAmount, costCodeById);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private Task AddReferralNetInvoiceLedgerLinesAsync(Reservation reservation, List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, decimal referralAmount, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        return Task.CompletedTask;
+    }
+
+    private Task AddReferralSeparateInvoiceLedgerLinesAsync(Reservation reservation, List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, decimal referralAmount, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        return Task.CompletedTask;
+    }
+
+    private Task AddReferralBillLedgerLinesAsync(Reservation reservation, List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, decimal referralAmount, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        return Task.CompletedTask;
+    }
+
+    private static bool TryResolveReferralFeeAmount(Reservation reservation, decimal rentAmount, out decimal referralAmount)
+    {
+        referralAmount = 0;
+        if (reservation.ReferralPercentage > 0)
+        {
+            referralAmount = Math.Round(rentAmount * reservation.ReferralPercentage / 100m, 2, MidpointRounding.AwayFromZero);
+            return referralAmount != 0;
+        }
+
+        if (reservation.ReferralFlatRate > 0)
+        {
+            referralAmount = reservation.ReferralFlatRate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsCompanyReferralLedgerLine(LedgerLine line)
+        => line.Description.StartsWith("Referral Fee", StringComparison.Ordinal);
+
+    private static void UpsertCompanyReferralLedgerLine(List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, LedgerLine templateLine)
+    {
+        UpsertCompanyLedgerLine(ledgerLines, rentLines, templateLine, IsCompanyReferralLedgerLine);
+    }
+
+    private static void RemoveCompanyReferralLedgerLines(List<LedgerLine> ledgerLines)
+    {
+        if (ledgerLines.RemoveAll(IsCompanyReferralLedgerLine) == 0)
+            return;
+
+        RenumberLedgerLines(ledgerLines);
     }
     #endregion
 

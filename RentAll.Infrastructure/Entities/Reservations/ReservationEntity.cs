@@ -55,7 +55,6 @@ public class ReservationEntity
     public int ReferralMethodId { get; set; }
     public decimal ReferralPercentage { get; set; }
     public decimal ReferralFlatRate { get; set; }
-    public int ReferralFrequencyId { get; set; }
     public decimal Taxes { get; set; }
     public string? Notes { get; set; }
 

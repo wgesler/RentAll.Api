@@ -7,9 +7,7 @@ internal static class ReservationReferralValidation
     public static bool IsReferralFeeAllowedForProperty(PropertyLeaseType propertyLeaseType)
         => propertyLeaseType is PropertyLeaseType.Direct or PropertyLeaseType.ThirdParty;
 
-    public static (bool IsValid, string? ErrorMessage) ValidateReferralFeeForPropertyLease(
-        bool referralFee,
-        PropertyLeaseType? propertyLeaseType)
+    public static (bool IsValid, string? ErrorMessage) ValidateReferralFeeForPropertyLease(bool referralFee, PropertyLeaseType? propertyLeaseType)
     {
         if (!referralFee || propertyLeaseType is null)
             return (true, null);
