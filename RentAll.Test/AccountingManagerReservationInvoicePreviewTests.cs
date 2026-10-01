@@ -727,6 +727,87 @@ public class AccountingManagerReservationInvoicePreviewTests
         Assert.Equal(700m, previews[0].TotalAmount);
     }
 
+    [Fact]
+    public async Task GetMissingInvoicesAsync_ExtendedStayThrough31st_CapsMonthAt30AndSkipsFirstMonthCharges()
+    {
+        var monthStart = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        while (DateTime.DaysInMonth(monthStart.Year, monthStart.Month) < 31)
+            monthStart = monthStart.AddMonths(-1);
+
+        var coveredThrough = monthStart.AddDays(14);
+        var departure = new DateOnly(monthStart.Year, monthStart.Month, DateTime.DaysInMonth(monthStart.Year, monthStart.Month));
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            monthStart,
+            departure,
+            ProrateType.FirstMonth,
+            BillingType.Monthly,
+            3000m);
+        reservation.ReservationCode = "R-EXTEND-31";
+        reservation.CurrentInvoiceNo = 1;
+        reservation.OfficeName = "Test Office";
+        reservation.DepositType = DepositType.Deposit;
+        reservation.Deposit = 500m;
+        reservation.HasPets = true;
+        reservation.PetFee = 75m;
+        var existingInvoice = CreateExistingInvoice(reservation, "R-EXTEND-31-001", monthStart);
+        existingInvoice.InvoicePeriod = $"{monthStart:MM/dd/yyyy} - {coveredThrough:MM/dd/yyyy}";
+        existingInvoice.LedgerLines =
+        [
+            new LedgerLine
+            {
+                Description = $"Rental Fee ({monthStart:MM/dd}-{coveredThrough:MM/dd})",
+                Amount = 1500m
+            },
+            new LedgerLine { Description = "Security Deposit", Amount = 500m },
+            new LedgerLine { Description = "Pet Fee", Amount = 75m }
+        ];
+
+        var gapStart = coveredThrough.AddDays(1);
+        var calendarGapDays = departure.DayNumber - gapStart.DayNumber + 1;
+        var expectedDays = Math.Min(calendarGapDays, 30 - 15);
+        var expectedRent = 3000m / 30m * expectedDays;
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureReservationRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetActiveReservationsByOfficeIdsAsync(
+                        AccountingManagerJournalEntryTestSupport.OrganizationId,
+                        AccountingManagerJournalEntryTestSupport.OfficeId.ToString()))
+                    .ReturnsAsync([reservation]);
+            },
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync([existingInvoice]);
+                repo
+                    .Setup(r => r.GetBilledByOrganizationAndOfficeIdsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                    .ReturnsAsync([
+                        CreateBilledMismatchRow(
+                            reservation,
+                            monthStart,
+                            monthStart,
+                            departure,
+                            calendarGapDays + 15,
+                            15)
+                    ]);
+            });
+
+        var previews = await manager.GetMissingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.Single(previews);
+        Assert.Equal($"{gapStart:MM/dd/yyyy} - {departure:MM/dd/yyyy}", previews[0].InvoicePeriod);
+        Assert.Contains(previews[0].LedgerLines, line => line.Description == $"Rental Fee ({gapStart:MM/dd}-{departure:MM/dd})" && line.Amount == expectedRent);
+        Assert.DoesNotContain(previews[0].LedgerLines, line => line.Description == "Security Deposit");
+        Assert.DoesNotContain(previews[0].LedgerLines, line => line.Description == "Pet Fee");
+        Assert.Equal(expectedRent, previews[0].TotalAmount);
+    }
+
     private static Invoice CreateExistingInvoice(Reservation reservation, string invoiceCode, DateOnly accountingPeriod)
         => new()
         {

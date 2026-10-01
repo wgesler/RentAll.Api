@@ -88,7 +88,7 @@ public partial class AccountingManager
             .GroupBy(invoice => invoice.ReservationId!.Value)
             .ToDictionary(group => group.Key, group => (IReadOnlyList<Invoice>)group.ToList());
 
-        var ignoreByReservationMonth = (await _accountingRepository.GetBilledByOrganizationAndOfficeIdsAsync(organizationId, officeIds))
+        var ignoreByReservationMonth = (await _accountingRepository.GetBilledByOrganizationAndOfficeIdsAsync(organizationId, officeIds) ?? [])
             .ToDictionary(row => (row.ReservationId, row.MonthStart), row => row.Ignore);
 
         return new BilledMatchupOfficeContext
