@@ -1,4 +1,4 @@
-using RentAll.Domain;
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
@@ -637,10 +637,15 @@ public partial class AccountingManager
             if (ledgerLines.Count == 0)
                 continue;
 
+            await CreateDefaultCostCodeAsync(reservation.OrganizationId, reservation.OfficeId);
+            var costCodeById = await LoadCostCodeByOfficeIdAsync(reservation.OrganizationId, reservation.OfficeId);
+            ApplyMissingDefaultCostCodesFromOfficeCostCodes(costCodeById);
+
             var totalAmount = ledgerLines.Sum(line => line.Amount);
             var responsibleParty = await ResolvePreBillingResponsiblePartyAsync(organizationId, reservation);
 
-            previewInvoices.Add(BuildPreBillingInvoicePreview(
+            var nextSequence = ResolveNextInvoiceSequence(reservation, Array.Empty<Invoice>());
+            var mainPreview = BuildPreBillingInvoicePreview(
                 organizationId,
                 reservation,
                 billingMonth,
@@ -648,7 +653,16 @@ public partial class AccountingManager
                 periodEnd,
                 ledgerLines,
                 totalAmount,
-                responsibleParty: responsibleParty));
+                nextSequence,
+                responsibleParty: responsibleParty);
+            previewInvoices.Add(mainPreview);
+            nextSequence++;
+            TryAppendReferralSeparateInvoicePreview(
+                reservation,
+                mainPreview,
+                previewInvoices,
+                ref nextSequence,
+                costCodeById);
         }
 
         return previewInvoices;
@@ -944,8 +958,15 @@ public partial class AccountingManager
         ApplyMissingPreviewBilledGridMetrics(preview, billedRow);
 
         previewInvoices.Add(preview);
+        nextSequence++;
+        TryAppendReferralSeparateInvoicePreview(
+            reservation,
+            preview,
+            previewInvoices,
+            ref nextSequence,
+            costCodeById);
 
-        return nextSequence + 1;
+        return nextSequence;
     }
 
     private async Task<(List<LedgerLine> Lines, int RentalDaysCharged)> CreateLedgerLinesForUncoveredStayAsync(
@@ -1494,17 +1515,669 @@ public partial class AccountingManager
 
     private Task AddReferralNetInvoiceLedgerLinesAsync(Reservation reservation, List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, decimal referralAmount, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
+        var expectedDescriptions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var rentLine in rentLines)
+        {
+            var credit = CalculateReferralFeeAmountForRentLine(reservation, rentLine);
+            if (credit <= 0)
+                continue;
+
+            var referralDescription = BuildReferralFeeDescriptionFromRentalFeeLine(rentLine.Description);
+            if (string.IsNullOrEmpty(referralDescription))
+                continue;
+
+            expectedDescriptions.Add(referralDescription);
+
+            var referralLine = new LedgerLine
+            {
+                ReservationId = reservation.ReservationId,
+                CostCodeId = rentLine.CostCodeId,
+                Amount = -credit,
+                Description = referralDescription,
+                LedgerLineDate = rentLine.LedgerLineDate
+            };
+            ApplyTransactionTypeFromCostCode(referralLine, costCodeById);
+            UpsertNetInvoiceReferralLineAfterRentLine(ledgerLines, rentLine, referralLine);
+        }
+
+        RemoveNetInvoiceReferralLinesNotInExpectedDescriptions(ledgerLines, expectedDescriptions);
         return Task.CompletedTask;
+    }
+
+    private decimal CalculateReferralFeeAmountForRentLine(Reservation reservation, LedgerLine rentLine)
+    {
+        if (reservation.ReferralPercentage > 0)
+        {
+            return Math.Round(rentLine.Amount * reservation.ReferralPercentage / 100m, 2, MidpointRounding.AwayFromZero);
+        }
+
+        if (reservation.ReferralFlatRate <= 0)
+            return 0;
+
+        var referenceYear = rentLine.LedgerLineDate.Year;
+        if (!RentalFeeLineParser.TryParseRentalFeePeriod(rentLine.Description, referenceYear, out var periodStart, out var periodEnd))
+            return reservation.ReferralFlatRate;
+
+        var departureDate = ResolveBillingDepartureDate(reservation);
+        var isDepartureMonthYear = InvoiceBillingDays.IsDepartureMonthYear(periodEnd, departureDate);
+        var isLastDayOfMonth = InvoiceBillingDays.IsLastDayOfMonth(periodEnd);
+        var days = InvoiceBillingDays.CountRentalFeeDescriptionDays(
+            rentLine.Description,
+            referenceYear,
+            reservation.BillingType,
+            isDepartureMonthYear,
+            isLastDayOfMonth,
+            departureDate,
+            periodEnd);
+        if (days <= 0)
+            return 0;
+
+        if (reservation.BillingType == BillingType.Monthly)
+        {
+            var daysInMonth = DateTime.DaysInMonth(periodStart.Year, periodStart.Month);
+            if (!ShouldProrateMonthlyReferralFlatRate(days, daysInMonth))
+                return reservation.ReferralFlatRate;
+            return Math.Round((reservation.ReferralFlatRate / PRORATE_DAYS) * days, 2, MidpointRounding.AwayFromZero);
+        }
+
+        return Math.Round((reservation.ReferralFlatRate / PRORATE_DAYS) * days, 2, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>Same partial-month switch as <see cref="AddRentalLine"/> for monthly billing.</summary>
+    private static bool ShouldProrateMonthlyReferralFlatRate(int days, int daysInMonth)
+        => days < daysInMonth && days < PRORATE_DAYS;
+
+    private static string? BuildReferralFeeDescriptionFromRentalFeeLine(string? rentalFeeDescription)
+    {
+        const string rentalPrefix = "Rental Fee ";
+        if (string.IsNullOrWhiteSpace(rentalFeeDescription) || !rentalFeeDescription.StartsWith(rentalPrefix, StringComparison.Ordinal))
+            return null;
+
+        return "Referral Fee " + rentalFeeDescription[rentalPrefix.Length..];
+    }
+
+    private static void UpsertNetInvoiceReferralLineAfterRentLine(List<LedgerLine> ledgerLines, LedgerLine rentLine, LedgerLine templateLine)
+    {
+        var existing = ledgerLines.FirstOrDefault(line =>
+            string.Equals(line.Description, templateLine.Description, StringComparison.Ordinal));
+
+        if (existing != null)
+        {
+            existing.ReservationId = templateLine.ReservationId;
+            existing.CostCodeId = templateLine.CostCodeId;
+            existing.Amount = templateLine.Amount;
+            existing.LedgerLineDate = templateLine.LedgerLineDate;
+            existing.TransactionType = templateLine.TransactionType;
+            EnsureReferralLineFollowsRentLine(ledgerLines, rentLine, existing);
+            return;
+        }
+
+        var insertIndex = ledgerLines.IndexOf(rentLine);
+        insertIndex = insertIndex < 0 ? ledgerLines.Count : insertIndex + 1;
+        ledgerLines.Insert(insertIndex, templateLine);
+        RenumberLedgerLines(ledgerLines);
+    }
+
+    private static void EnsureReferralLineFollowsRentLine(List<LedgerLine> ledgerLines, LedgerLine rentLine, LedgerLine referralLine)
+    {
+        var rentIndex = ledgerLines.IndexOf(rentLine);
+        var referralIndex = ledgerLines.IndexOf(referralLine);
+        if (rentIndex < 0 || referralIndex < 0 || referralIndex == rentIndex + 1)
+            return;
+
+        ledgerLines.RemoveAt(referralIndex);
+        rentIndex = ledgerLines.IndexOf(rentLine);
+        ledgerLines.Insert(rentIndex + 1, referralLine);
+        RenumberLedgerLines(ledgerLines);
+    }
+
+    private static void RemoveNetInvoiceReferralLinesNotInExpectedDescriptions(List<LedgerLine> ledgerLines, HashSet<string> expectedDescriptions)
+    {
+        var removed = ledgerLines.RemoveAll(line =>
+            IsCompanyReferralLedgerLine(line)
+            && !expectedDescriptions.Contains(line.Description ?? string.Empty));
+        if (removed > 0)
+            RenumberLedgerLines(ledgerLines);
     }
 
     private Task AddReferralSeparateInvoiceLedgerLinesAsync(Reservation reservation, List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, decimal referralAmount, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
+        RemoveCompanyReferralLedgerLines(ledgerLines);
         return Task.CompletedTask;
+    }
+
+    private static bool IsReferralSeparateInvoiceDocument(Invoice invoice)
+    {
+        if (invoice.LedgerLines == null || invoice.LedgerLines.Count == 0)
+            return false;
+
+        return invoice.LedgerLines.All(line => IsCompanyReferralLedgerLine(line));
+    }
+
+    private List<LedgerLine> BuildReferralSeparateInvoiceLedgerLines(
+        Reservation reservation,
+        IReadOnlyList<LedgerLine> rentLines,
+        IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var lines = new List<LedgerLine>();
+        var lineNumber = 1;
+        foreach (var rentLine in rentLines)
+        {
+            var amount = CalculateReferralFeeAmountForRentLine(reservation, rentLine);
+            if (amount <= 0)
+                continue;
+
+            var referralDescription = BuildReferralFeeDescriptionFromRentalFeeLine(rentLine.Description);
+            if (string.IsNullOrEmpty(referralDescription))
+                continue;
+
+            var referralLine = new LedgerLine
+            {
+                LineNumber = lineNumber++,
+                ReservationId = reservation.ReservationId,
+                CostCodeId = rentLine.CostCodeId,
+                Amount = amount,
+                Description = referralDescription,
+                LedgerLineDate = rentLine.LedgerLineDate
+            };
+            ApplyTransactionTypeFromCostCode(referralLine, costCodeById);
+            lines.Add(referralLine);
+        }
+
+        return lines;
+    }
+
+    private void StripReferralLinesFromMainInvoiceAndAdjustTotal(Invoice invoice)
+    {
+        if (invoice.LedgerLines == null || invoice.LedgerLines.Count == 0)
+            return;
+
+        if (IsReferralSeparateInvoiceDocument(invoice))
+            return;
+
+        var removedAmount = invoice.LedgerLines.Where(IsCompanyReferralLedgerLine).Sum(line => line.Amount);
+        if (removedAmount == 0)
+            return;
+
+        RemoveCompanyReferralLedgerLines(invoice.LedgerLines);
+        invoice.TotalAmount -= removedAmount;
+    }
+
+    private async Task SyncReferralSeparateInvoiceForMainInvoiceAsync(Invoice mainInvoice, Guid currentUser)
+    {
+        if (mainInvoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
+            return;
+
+        if (IsReferralSeparateInvoiceDocument(mainInvoice))
+            return;
+
+        StripReferralLinesFromMainInvoiceAndAdjustTotal(mainInvoice);
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, mainInvoice.OrganizationId);
+        if (reservation == null
+            || !ReservationHasReferralFee(reservation)
+            || reservation.ReferralMethod != ReferralMethodType.SeparateInvoice)
+        {
+            await TryDeleteReferralSeparateInvoiceForMainAsync(mainInvoice, currentUser);
+            return;
+        }
+
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(mainInvoice.OrganizationId, mainInvoice.OfficeId);
+        var rentLines = mainInvoice.LedgerLines.Where(IsRentalFeeLedgerLine).ToList();
+        if (rentLines.Count == 0)
+        {
+            await TryDeleteReferralSeparateInvoiceForMainAsync(mainInvoice, currentUser);
+            return;
+        }
+
+        var rentAmount = rentLines.Sum(line => line.Amount);
+        if (!TryResolveReferralFeeAmount(reservation, rentAmount, out _))
+        {
+            await TryDeleteReferralSeparateInvoiceForMainAsync(mainInvoice, currentUser);
+            return;
+        }
+
+        var referralLines = BuildReferralSeparateInvoiceLedgerLines(reservation, rentLines, costCodeById);
+        if (referralLines.Count == 0)
+        {
+            await TryDeleteReferralSeparateInvoiceForMainAsync(mainInvoice, currentUser);
+            return;
+        }
+
+        var existingCompanion = await FindReferralSeparateInvoiceForMainAsync(mainInvoice);
+        if (existingCompanion != null)
+        {
+            existingCompanion.LedgerLines = referralLines;
+            existingCompanion.TotalAmount = referralLines.Sum(line => line.Amount);
+            existingCompanion.InvoiceDate = mainInvoice.InvoiceDate;
+            existingCompanion.DueDate = mainInvoice.DueDate;
+            existingCompanion.AccountingPeriod = mainInvoice.AccountingPeriod;
+            existingCompanion.InvoicePeriod = mainInvoice.InvoicePeriod;
+            existingCompanion.ModifiedBy = currentUser;
+            await UpdateInvoiceAsync(existingCompanion);
+            return;
+        }
+
+        var invoiceCode = await ResolveNextReservationInvoiceCodeAsync(mainInvoice.OrganizationId, reservation);
+        var companion = BuildReferralSeparateInvoiceFromMain(mainInvoice, reservation, referralLines, invoiceCode, currentUser);
+        await CreateInvoiceAsync(companion, currentUser);
+    }
+
+    private async Task TryDeleteReferralSeparateInvoiceForMainAsync(Invoice mainInvoice, Guid currentUser)
+    {
+        var companion = await FindReferralSeparateInvoiceForMainAsync(mainInvoice);
+        if (companion == null)
+            return;
+
+        await DeleteInvoiceAsync(companion.InvoiceId, mainInvoice.OrganizationId);
+    }
+
+    private async Task<Invoice?> FindReferralSeparateInvoiceForMainAsync(Invoice mainInvoice)
+    {
+        if (mainInvoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
+            return null;
+
+        var invoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = mainInvoice.OrganizationId,
+            OfficeIds = mainInvoice.OfficeId.ToString(),
+            ReservationId = reservationId,
+            IsActive = true,
+            IncludePaid = true
+        });
+
+        return invoices
+            .Where(invoice => invoice.InvoiceId != mainInvoice.InvoiceId)
+            .Where(invoice => invoice.AccountingPeriod == mainInvoice.AccountingPeriod)
+            .FirstOrDefault(IsReferralSeparateInvoiceDocument);
+    }
+
+    private async Task<string> ResolveNextReservationInvoiceCodeAsync(Guid organizationId, Reservation reservation)
+    {
+        var existingInvoices = await _accountingRepository.GetInvoicesAsync(new InvoiceGetCriteria
+        {
+            OrganizationId = organizationId,
+            OfficeIds = reservation.OfficeId.ToString(),
+            ReservationId = reservation.ReservationId,
+            IsActive = true,
+            IncludePaid = true
+        });
+
+        var nextSequence = ResolveNextInvoiceSequence(reservation, existingInvoices.ToList());
+        return $"{reservation.ReservationCode}-{nextSequence:000}";
+    }
+
+    private static Invoice BuildReferralSeparateInvoiceFromMain(
+        Invoice mainInvoice,
+        Reservation reservation,
+        List<LedgerLine> referralLines,
+        string invoiceCode,
+        Guid currentUser)
+    {
+        for (var lineIndex = 0; lineIndex < referralLines.Count; lineIndex++)
+            referralLines[lineIndex].LineNumber = lineIndex + 1;
+
+        return new Invoice
+        {
+            OrganizationId = mainInvoice.OrganizationId,
+            OfficeId = mainInvoice.OfficeId,
+            OfficeName = mainInvoice.OfficeName,
+            InvoiceCode = invoiceCode,
+            ReservationId = reservation.ReservationId,
+            ReservationCode = reservation.ReservationCode,
+            PropertyId = mainInvoice.PropertyId,
+            PropertyCode = mainInvoice.PropertyCode,
+            ContactId = mainInvoice.ContactId,
+            ContactName = mainInvoice.ContactName,
+            TenantName = mainInvoice.TenantName,
+            CompanyId = mainInvoice.CompanyId,
+            CompanyName = mainInvoice.CompanyName,
+            ResponsibleParty = mainInvoice.ResponsibleParty,
+            InvoiceDate = mainInvoice.InvoiceDate,
+            DueDate = mainInvoice.DueDate,
+            AccountingPeriod = mainInvoice.AccountingPeriod,
+            InvoicePeriod = mainInvoice.InvoicePeriod,
+            TotalAmount = referralLines.Sum(line => line.Amount),
+            PaidAmount = 0,
+            IsActive = true,
+            CreatedBy = currentUser,
+            ModifiedBy = currentUser,
+            LedgerLines = referralLines
+        };
+    }
+
+    private void TryAppendReferralSeparateInvoicePreview(
+        Reservation reservation,
+        Invoice mainPreview,
+        List<Invoice> previewInvoices,
+        ref int nextSequence,
+        IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        if (!ReservationHasReferralFee(reservation) || reservation.ReferralMethod != ReferralMethodType.SeparateInvoice)
+            return;
+
+        var rentLines = mainPreview.LedgerLines.Where(IsRentalFeeLedgerLine).ToList();
+        if (rentLines.Count == 0)
+            return;
+
+        var rentAmount = rentLines.Sum(line => line.Amount);
+        if (!TryResolveReferralFeeAmount(reservation, rentAmount, out _))
+            return;
+
+        var referralLines = BuildReferralSeparateInvoiceLedgerLines(reservation, rentLines, costCodeById);
+        if (referralLines.Count == 0)
+            return;
+
+        var referralTotal = referralLines.Sum(line => line.Amount);
+        var periodStart = mainPreview.BilledPeriodStart ?? mainPreview.InvoiceDate;
+        var periodEnd = mainPreview.BilledPeriodEnd ?? mainPreview.InvoiceDate;
+        var referralPreview = BuildPreBillingInvoicePreview(
+            mainPreview.OrganizationId,
+            reservation,
+            mainPreview.AccountingPeriod,
+            periodStart,
+            periodEnd,
+            referralLines,
+            referralTotal,
+            nextSequence,
+            mainPreview.ResponsibleParty);
+        referralPreview.InvoicePeriod = mainPreview.InvoicePeriod;
+        previewInvoices.Add(referralPreview);
+        nextSequence++;
     }
 
     private Task AddReferralBillLedgerLinesAsync(Reservation reservation, List<LedgerLine> ledgerLines, List<LedgerLine> rentLines, decimal referralAmount, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
+        RemoveCompanyReferralLedgerLines(ledgerLines);
         return Task.CompletedTask;
+    }
+
+    private static string BuildReferralBillDescription(Reservation reservation)
+    {
+        var reservationCode = (reservation.ReservationCode ?? string.Empty).Trim();
+        return string.IsNullOrEmpty(reservationCode)
+            ? "Referral Fee"
+            : $"Referral Fee for {reservationCode}";
+    }
+
+    private static bool IsReferralBillDocument(Receipt bill, Reservation reservation)
+    {
+        if (bill.BankCardId is > 0)
+            return false;
+
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
+        if (companyId == null || bill.VendorId != companyId)
+            return false;
+
+        var expectedDescription = BuildReferralBillDescription(reservation);
+        return string.Equals(bill.Description?.Trim(), expectedDescription, StringComparison.Ordinal);
+    }
+
+    private decimal CalculateReferralBillAmountForRentLines(Reservation reservation, IReadOnlyList<LedgerLine> rentLines)
+        => rentLines.Sum(rentLine => CalculateReferralFeeAmountForRentLine(reservation, rentLine));
+
+    private async Task<List<ReceiptSplit>> BuildReferralBillSplitsAsync(
+        Invoice mainInvoice,
+        Reservation reservation,
+        IReadOnlyList<LedgerLine> rentLines,
+        decimal amount,
+        string splitDescription)
+    {
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(mainInvoice.OrganizationId, mainInvoice.OfficeId);
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(mainInvoice.OrganizationId, mainInvoice.OfficeId);
+        CostCode? rentCostCode = null;
+        foreach (var rentLine in rentLines)
+        {
+            if (costCodeById.TryGetValue(rentLine.CostCodeId, out var costCode))
+            {
+                rentCostCode = costCode;
+                break;
+            }
+        }
+
+        var companyExpenseAccountId = GetDefaultCompanyExpense(chartOfAccounts, mainInvoice.OfficeId, accountingOffice, rentCostCode);
+        return
+        [
+            new ReceiptSplit
+            {
+                Amount = amount,
+                Description = splitDescription,
+                PropertyId = ResolveReferralBillSplitPropertyId(mainInvoice, reservation),
+                ReceiptTypeId = (int)ReceiptType.Company,
+                ChartOfAccountId = companyExpenseAccountId > 0 ? companyExpenseAccountId : null,
+                ChartOfAccountDisplayName = companyExpenseAccountId > 0 ? "Company" : string.Empty
+            }
+        ];
+    }
+
+    private async Task<Invoice> GetInvoiceForReferralDocumentSyncAsync(Invoice invoice)
+    {
+        if (invoice.InvoiceId == Guid.Empty)
+            return invoice;
+
+        return await _accountingRepository.GetInvoiceByIdAsync(invoice.InvoiceId, invoice.OrganizationId)
+            ?? invoice;
+    }
+
+    private async Task SyncReferralBillForMainInvoiceAsync(Invoice mainInvoice, Guid currentUser)
+    {
+        if (mainInvoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
+        {
+            LogReferralBillSyncSkipped(mainInvoice, "MissingReservationId");
+            return;
+        }
+
+        if (IsReferralSeparateInvoiceDocument(mainInvoice))
+        {
+            LogReferralBillSyncSkipped(mainInvoice, "ReferralOnlyInvoice");
+            return;
+        }
+
+        StripReferralLinesFromMainInvoiceAndAdjustTotal(mainInvoice);
+
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, mainInvoice.OrganizationId);
+        if (reservation == null || !ReservationHasReferralFee(reservation))
+        {
+            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
+            return;
+        }
+
+        if (reservation.ReferralMethod != ReferralMethodType.Bill)
+        {
+            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
+            return;
+        }
+
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId) ?? NormalizeOptionalGuid(mainInvoice.CompanyId);
+        if (companyId == null)
+        {
+            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
+            LogReferralBillSyncSkipped(mainInvoice, "MissingCompanyVendor", reservation.ReservationCode);
+            return;
+        }
+
+        var rentLines = mainInvoice.LedgerLines.Where(IsRentalFeeLedgerLine).ToList();
+        if (rentLines.Count == 0)
+        {
+            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
+            LogReferralBillSyncSkipped(mainInvoice, "NoRentalFeeLines", reservation.ReservationCode);
+            return;
+        }
+
+        var rentAmount = rentLines.Sum(line => line.Amount);
+        if (!TryResolveReferralFeeAmount(reservation, rentAmount, out _))
+        {
+            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
+            LogReferralBillSyncSkipped(mainInvoice, "ReferralAmountNotConfigured", reservation.ReservationCode);
+            return;
+        }
+
+        var referralAmount = CalculateReferralBillAmountForRentLines(reservation, rentLines);
+        if (referralAmount <= 0)
+        {
+            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
+            LogReferralBillSyncSkipped(mainInvoice, "ReferralAmountZero", reservation.ReservationCode);
+            return;
+        }
+
+        var referralDescription = BuildReferralBillDescription(reservation);
+        List<ReceiptSplit> splits;
+        try
+        {
+            splits = await BuildReferralBillSplitsAsync(mainInvoice, reservation, rentLines, referralAmount, referralDescription);
+        }
+        catch (Exception ex)
+        {
+            LogApplicationDiagnostic(
+                "ReferralBillMissingCompanyExpenseAccount",
+                $"ReservationCode={reservation.ReservationCode} InvoiceCode={mainInvoice.InvoiceCode}",
+                ex,
+                mainInvoice.OrganizationId,
+                mainInvoice.OfficeId);
+            return;
+        }
+
+        if (splits.Count == 0 || splits[0].ChartOfAccountId is not > 0)
+        {
+            LogApplicationDiagnostic(
+                "ReferralBillMissingCompanyExpenseAccount",
+                $"ReservationCode={reservation.ReservationCode} InvoiceCode={mainInvoice.InvoiceCode}",
+                null,
+                mainInvoice.OrganizationId,
+                mainInvoice.OfficeId);
+            return;
+        }
+
+        var vendorName = await ResolveReferralBillVendorNameAsync(reservation);
+        var existingBill = await FindReferralBillForMainInvoiceAsync(mainInvoice, reservation);
+        if (existingBill != null)
+        {
+            existingBill.Amount = referralAmount;
+            existingBill.Description = referralDescription;
+            existingBill.VendorId = companyId;
+            existingBill.VendorName = vendorName;
+            existingBill.ReceiptDate = mainInvoice.InvoiceDate;
+            existingBill.DueDate = mainInvoice.DueDate == default ? mainInvoice.InvoiceDate : mainInvoice.DueDate;
+            existingBill.AccountingPeriod = mainInvoice.AccountingPeriod;
+            existingBill.BillNumber = mainInvoice.InvoiceCode?.Trim() ?? string.Empty;
+            existingBill.PropertyIds = ResolveReferralBillPropertyIds(mainInvoice, reservation);
+            existingBill.Splits = splits;
+            existingBill.ModifiedBy = currentUser;
+            await UpdateBillAsync(existingBill, currentUser);
+            return;
+        }
+
+        var billCode = await _organizationManager.GenerateEntityCodeAsync(mainInvoice.OrganizationId, EntityType.Receipt);
+        if (string.IsNullOrWhiteSpace(billCode))
+            throw new Exception("Unable to generate referral bill code");
+
+        var bill = new Receipt
+        {
+            OrganizationId = mainInvoice.OrganizationId,
+            OfficeId = mainInvoice.OfficeId,
+            OfficeName = mainInvoice.OfficeName,
+            ReceiptCode = billCode.Trim(),
+            PropertyIds = ResolveReferralBillPropertyIds(mainInvoice, reservation),
+            ReceiptDate = mainInvoice.InvoiceDate,
+            DueDate = mainInvoice.DueDate == default ? mainInvoice.InvoiceDate : mainInvoice.DueDate,
+            AccountingPeriod = mainInvoice.AccountingPeriod,
+            BillNumber = mainInvoice.InvoiceCode?.Trim() ?? string.Empty,
+            Amount = referralAmount,
+            Description = referralDescription,
+            BankCardId = null,
+            VendorId = companyId,
+            VendorName = vendorName,
+            PaidAmount = 0,
+            Splits = splits,
+            PaymentTypeId = 0,
+            IsActive = true,
+            CreatedBy = currentUser,
+            ModifiedBy = currentUser
+        };
+
+        await CreateReceiptAsync(bill, currentUser);
+    }
+
+    private void LogReferralBillSyncSkipped(Invoice mainInvoice, string reason, string? reservationCode = null)
+    {
+        LogApplicationDiagnostic(
+            "ReferralBillSyncSkipped",
+            $"Reason={reason} ReservationCode={reservationCode ?? mainInvoice.ReservationCode ?? string.Empty} InvoiceCode={mainInvoice.InvoiceCode}",
+            null,
+            mainInvoice.OrganizationId,
+            mainInvoice.OfficeId);
+    }
+
+    private async Task<string?> ResolveReferralBillVendorNameAsync(Reservation reservation)
+    {
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
+        if (companyId == null)
+            return NormalizeOptionalString(reservation.CompanyName);
+
+        var companyContact = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
+        return NormalizeOptionalString(companyContact?.CompanyName)
+            ?? NormalizeOptionalString(reservation.CompanyName)
+            ?? NormalizeOptionalString(companyContact?.DisplayName)
+            ?? NormalizeOptionalString(companyContact?.FullName);
+    }
+
+    private static List<Guid> ResolveReferralBillPropertyIds(Invoice mainInvoice, Reservation reservation)
+    {
+        var splitPropertyId = ResolveReferralBillSplitPropertyId(mainInvoice, reservation);
+        if (splitPropertyId is { } propertyId && propertyId != Guid.Empty)
+            return [propertyId];
+
+        return [ReceiptPropertyConstants.CompanyPropertyId];
+    }
+
+    private static Guid? ResolveReferralBillSplitPropertyId(Invoice mainInvoice, Reservation reservation)
+    {
+        if (mainInvoice.PropertyId is { } invoicePropertyId && invoicePropertyId != Guid.Empty
+            && !ReceiptPropertyConstants.IsCompanyPropertyId(invoicePropertyId))
+        {
+            return invoicePropertyId;
+        }
+
+        if (reservation.PropertyId != Guid.Empty)
+            return reservation.PropertyId;
+
+        return null;
+    }
+
+    private async Task TryDeleteReferralBillForMainAsync(Invoice mainInvoice, Reservation? reservation, Guid currentUser)
+    {
+        if (reservation == null && mainInvoice.ReservationId is { } reservationId && reservationId != Guid.Empty)
+            reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, mainInvoice.OrganizationId);
+
+        if (reservation == null)
+            return;
+
+        var bill = await FindReferralBillForMainInvoiceAsync(mainInvoice, reservation);
+        if (bill == null)
+            return;
+
+        await DeleteReceiptAsync(bill.ReceiptId, mainInvoice.OrganizationId, currentUser);
+    }
+
+    private async Task<Receipt?> FindReferralBillForMainInvoiceAsync(Invoice mainInvoice, Reservation reservation)
+    {
+        var invoiceCode = mainInvoice.InvoiceCode?.Trim();
+        if (string.IsNullOrWhiteSpace(invoiceCode))
+            return null;
+
+        var bills = await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
+        {
+            OrganizationId = mainInvoice.OrganizationId,
+            OfficeIds = mainInvoice.OfficeId.ToString(),
+            ReceiptKind = ReceiptKind.Bill,
+            IsActive = true,
+            VendorId = NormalizeOptionalGuid(reservation.CompanyId)
+        });
+
+        return bills
+            .Where(bill => bill.AccountingPeriod == mainInvoice.AccountingPeriod)
+            .Where(bill => string.Equals(bill.BillNumber?.Trim(), invoiceCode, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(bill => IsReferralBillDocument(bill, reservation));
     }
 
     private static bool TryResolveReferralFeeAmount(Reservation reservation, decimal rentAmount, out decimal referralAmount)

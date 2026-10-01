@@ -10,6 +10,7 @@ public partial class AccountingManager
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
+        StripReferralLinesFromMainInvoiceAndAdjustTotal(invoice);
         var created = await _accountingRepository.CreateAsync(invoice);
         var createdPaymentIds = await CreateAndLinkPaymentDocumentsForUnlinkedInvoiceLinesAsync(created, currentUser);
         try
@@ -18,6 +19,22 @@ public partial class AccountingManager
             foreach (var paymentId in createdPaymentIds)
                 await CreateJournalEntriesFromInvoicePaymentDocumentAsync(paymentId, created.OrganizationId, currentUser);
             await EnsureInvoicePostingStatusComplianceAsync(created, currentUser);
+            var invoiceForReferralSync = await GetInvoiceForReferralDocumentSyncAsync(created);
+            try
+            {
+                await SyncReferralSeparateInvoiceForMainInvoiceAsync(invoiceForReferralSync, currentUser);
+            }
+            catch (Exception ex)
+            {
+                LogApplicationDiagnostic(
+                    "SyncReferralSeparateInvoiceFailed",
+                    $"InvoiceCode={invoiceForReferralSync.InvoiceCode}",
+                    ex,
+                    invoiceForReferralSync.OrganizationId,
+                    invoiceForReferralSync.OfficeId);
+            }
+
+            await SyncReferralBillForMainInvoiceAsync(invoiceForReferralSync, currentUser);
             return created;
         }
         catch
@@ -41,6 +58,7 @@ public partial class AccountingManager
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
         invoice.PostingStatusId = postingStatusId;
         await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
+        StripReferralLinesFromMainInvoiceAndAdjustTotal(invoice);
         await ValidateInvoiceUpdatePreservesDepositedPaymentsAsync(invoice, existingInvoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
@@ -52,6 +70,22 @@ public partial class AccountingManager
             await SyncLinkedPaymentsFromInvoiceAsync(updatedInvoice, existingInvoice, invoice.ModifiedBy);
             await TryReplaceJournalEntriesFromInvoiceAsync(updatedInvoice, existingInvoice);
             await EnsureInvoicePostingStatusComplianceAsync(updatedInvoice, invoice.ModifiedBy);
+            var invoiceForReferralSync = await GetInvoiceForReferralDocumentSyncAsync(updatedInvoice);
+            try
+            {
+                await SyncReferralSeparateInvoiceForMainInvoiceAsync(invoiceForReferralSync, invoice.ModifiedBy);
+            }
+            catch (Exception ex)
+            {
+                LogApplicationDiagnostic(
+                    "SyncReferralSeparateInvoiceFailed",
+                    $"InvoiceCode={invoiceForReferralSync.InvoiceCode}",
+                    ex,
+                    invoiceForReferralSync.OrganizationId,
+                    invoiceForReferralSync.OfficeId);
+            }
+
+            await SyncReferralBillForMainInvoiceAsync(invoiceForReferralSync, invoice.ModifiedBy);
             return updatedInvoice;
         }
         catch
