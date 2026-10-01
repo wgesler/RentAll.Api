@@ -28,13 +28,16 @@ namespace RentAll.Api.Controllers
                     return NotFound("Listing not found");
 
                 var listingScope = BuildListingPhotoScope(property.OfficeName, property.PropertyCode);
+                var photoOrganizationId = property.OrganizationId != Guid.Empty
+                    ? property.OrganizationId
+                    : share.OrganizationId;
                 var photos = await _propertyRepository.GetPropertyPhotosByPropertyIdAsync(share.PropertyId);
                 var photoDtos = photos
                     .Select(async p =>
                     {
                         var dto = new PropertyPhotoResponseDto(p);
                         dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
-                            share.OrganizationId,
+                            photoOrganizationId,
                             listingScope,
                             dto.PhotoPath,
                             ImageType.Photos);

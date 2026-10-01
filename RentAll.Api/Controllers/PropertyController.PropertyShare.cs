@@ -28,7 +28,7 @@ namespace RentAll.Api.Controllers
                 {
                     ShareId = Guid.NewGuid(),
                     PropertyId = propertyId,
-                    OrganizationId = CurrentOrganizationId,
+                    OrganizationId = property.OrganizationId,
                     TokenHash = tokenHash,
                     ExpiresOn = DateTimeOffset.UtcNow.AddDays(30)
                 };
