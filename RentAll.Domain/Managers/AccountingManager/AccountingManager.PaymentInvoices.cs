@@ -1544,14 +1544,23 @@ public partial class AccountingManager
         return Task.CompletedTask;
     }
 
+    private static bool UsesReferralPercentage(Reservation reservation)
+        => reservation.ReferralPercentage > 0;
+
+    private static bool UsesReferralFlatRate(Reservation reservation)
+        => !UsesReferralPercentage(reservation) && reservation.ReferralFlatRate > 0;
+
+    /// <summary>Referral % is always a percentage of the rental fee line amount from Get Charges.</summary>
+    private static decimal CalculateReferralPercentageOfRent(decimal rentAmount, decimal referralPercentage)
+        => Math.Round(rentAmount * referralPercentage / 100m, 2, MidpointRounding.AwayFromZero);
+
     private decimal CalculateReferralFeeAmountForRentLine(Reservation reservation, LedgerLine rentLine)
     {
-        if (reservation.ReferralPercentage > 0)
-        {
-            return Math.Round(rentLine.Amount * reservation.ReferralPercentage / 100m, 2, MidpointRounding.AwayFromZero);
-        }
+        var rentAmount = rentLine.Amount;
+        if (UsesReferralPercentage(reservation))
+            return CalculateReferralPercentageOfRent(rentAmount, reservation.ReferralPercentage);
 
-        if (reservation.ReferralFlatRate <= 0)
+        if (!UsesReferralFlatRate(reservation))
             return 0;
 
         var referenceYear = rentLine.LedgerLineDate.Year;
@@ -1580,7 +1589,8 @@ public partial class AccountingManager
             return Math.Round((reservation.ReferralFlatRate / PRORATE_DAYS) * days, 2, MidpointRounding.AwayFromZero);
         }
 
-        return Math.Round((reservation.ReferralFlatRate / PRORATE_DAYS) * days, 2, MidpointRounding.AwayFromZero);
+        // Daily / Nightly: flat rate is per day (same semantics as billing rate on rental lines).
+        return Math.Round(reservation.ReferralFlatRate * days, 2, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>Same partial-month switch as <see cref="AddRentalLine"/> for monthly billing.</summary>
@@ -2180,19 +2190,22 @@ public partial class AccountingManager
             .FirstOrDefault(bill => IsReferralBillDocument(bill, reservation));
     }
 
-    private static bool TryResolveReferralFeeAmount(Reservation reservation, decimal rentAmount, out decimal referralAmount)
+    private static bool TryResolveReferralFeeAmount(Reservation reservation, decimal totalRentAmount, out decimal referralAmount)
     {
         referralAmount = 0;
-        if (reservation.ReferralPercentage > 0)
+        if (UsesReferralPercentage(reservation))
         {
-            referralAmount = Math.Round(rentAmount * reservation.ReferralPercentage / 100m, 2, MidpointRounding.AwayFromZero);
+            if (totalRentAmount <= 0)
+                return false;
+
+            referralAmount = CalculateReferralPercentageOfRent(totalRentAmount, reservation.ReferralPercentage);
             return referralAmount != 0;
         }
 
-        if (reservation.ReferralFlatRate > 0)
+        if (UsesReferralFlatRate(reservation))
         {
             referralAmount = reservation.ReferralFlatRate;
-            return true;
+            return totalRentAmount > 0;
         }
 
         return false;
