@@ -1925,13 +1925,13 @@ public partial class AccountingManager
             : $"Referral Fee for {reservationCode}";
     }
 
-    private static bool IsReferralBillDocument(Receipt bill, Reservation reservation)
+    private static bool IsReferralBillDocument(Receipt bill)
     {
         if (bill.BankCardId is > 0)
             return false;
 
-        var expectedDescription = BuildReferralBillDescription(reservation);
-        return string.Equals(bill.Description?.Trim(), expectedDescription, StringComparison.Ordinal);
+        var description = bill.Description?.Trim() ?? string.Empty;
+        return description.StartsWith("Referral Fee", StringComparison.OrdinalIgnoreCase);
     }
 
     private decimal CalculateReferralBillAmountForRentLines(Reservation reservation, IReadOnlyList<LedgerLine> rentLines)
@@ -1980,18 +1980,18 @@ public partial class AccountingManager
             ?? invoice;
     }
 
-    private async Task SyncReferralBillForMainInvoiceAsync(Invoice mainInvoice, Guid currentUser)
+    private async Task<bool> SyncReferralBillForMainInvoiceAsync(Invoice mainInvoice, Guid currentUser)
     {
         if (mainInvoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
         {
             LogReferralBillSyncSkipped(mainInvoice, "MissingReservationId");
-            return;
+            return false;
         }
 
         if (IsReferralSeparateInvoiceDocument(mainInvoice))
         {
             LogReferralBillSyncSkipped(mainInvoice, "ReferralOnlyInvoice");
-            return;
+            return false;
         }
 
         StripReferralLinesFromMainInvoiceAndAdjustTotal(mainInvoice);
@@ -2000,13 +2000,13 @@ public partial class AccountingManager
         if (reservation == null || !ReservationHasReferralFee(reservation))
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
-            return;
+            return false;
         }
 
         if (reservation.ReferralMethod != ReferralMethodType.Bill)
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
-            return;
+            return false;
         }
 
         var vendor = await ResolveReferralBillVendorAsync(reservation, mainInvoice, currentUser);
@@ -2015,7 +2015,7 @@ public partial class AccountingManager
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
             LogReferralBillSyncSkipped(mainInvoice, "NoRentalFeeLines", reservation.ReservationCode);
-            return;
+            return false;
         }
 
         var rentAmount = rentLines.Sum(line => line.Amount);
@@ -2023,7 +2023,7 @@ public partial class AccountingManager
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
             LogReferralBillSyncSkipped(mainInvoice, "ReferralAmountNotConfigured", reservation.ReservationCode);
-            return;
+            return false;
         }
 
         var referralAmount = CalculateReferralBillAmountForRentLines(reservation, rentLines);
@@ -2031,7 +2031,7 @@ public partial class AccountingManager
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
             LogReferralBillSyncSkipped(mainInvoice, "ReferralAmountZero", reservation.ReservationCode);
-            return;
+            return false;
         }
 
         var referralDescription = BuildReferralBillDescription(reservation);
@@ -2048,7 +2048,7 @@ public partial class AccountingManager
                 ex,
                 mainInvoice.OrganizationId,
                 mainInvoice.OfficeId);
-            return;
+            return false;
         }
 
         if (splits.Count == 0 || splits[0].ChartOfAccountId is not > 0)
@@ -2059,7 +2059,7 @@ public partial class AccountingManager
                 null,
                 mainInvoice.OrganizationId,
                 mainInvoice.OfficeId);
-            return;
+            return false;
         }
 
         var vendorName = vendor == null ? null : NormalizeOptionalString(vendor.CompanyName);
@@ -2078,7 +2078,7 @@ public partial class AccountingManager
             existingBill.Splits = splits;
             existingBill.ModifiedBy = currentUser;
             await UpdateBillAsync(existingBill, currentUser);
-            return;
+            return true;
         }
 
         var billCode = await _organizationManager.GenerateEntityCodeAsync(mainInvoice.OrganizationId, EntityType.Receipt);
@@ -2110,6 +2110,7 @@ public partial class AccountingManager
         };
 
         await CreateReceiptAsync(bill, currentUser);
+        return true;
     }
 
     private void LogReferralBillSyncSkipped(Invoice mainInvoice, string reason, string? reservationCode = null)
@@ -2238,45 +2239,60 @@ public partial class AccountingManager
         return null;
     }
 
-    private async Task TryDeleteReferralBillForMainAsync(Invoice mainInvoice, Reservation? reservation, Guid currentUser)
+    private async Task<int> TryDeleteReferralBillForMainAsync(Invoice mainInvoice, Reservation? reservation, Guid currentUser)
     {
         if (reservation == null && mainInvoice.ReservationId is { } reservationId && reservationId != Guid.Empty)
             reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, mainInvoice.OrganizationId);
 
-        if (reservation == null)
-            return;
-
-        var bill = await FindReferralBillForMainInvoiceAsync(mainInvoice, reservation);
-        if (bill == null)
-            return;
-
-        if (bill.PaidAmount != 0)
+        var bills = await FindReferralBillsForMainInvoiceAsync(mainInvoice, reservation);
+        var deleted = 0;
+        foreach (var bill in bills)
         {
-            LogReferralBillSyncSkipped(mainInvoice, "BillAlreadyPaid", reservation.ReservationCode);
-            return;
+            if (bill.PaidAmount != 0)
+            {
+                LogReferralBillSyncSkipped(mainInvoice, "BillAlreadyPaid", reservation?.ReservationCode);
+                continue;
+            }
+
+            await DeleteReceiptAsync(bill.ReceiptId, mainInvoice.OrganizationId, currentUser);
+            deleted++;
         }
 
-        await DeleteReceiptAsync(bill.ReceiptId, mainInvoice.OrganizationId, currentUser);
+        return deleted;
     }
 
     private async Task<Receipt?> FindReferralBillForMainInvoiceAsync(Invoice mainInvoice, Reservation reservation)
     {
+        var bills = await FindReferralBillsForMainInvoiceAsync(mainInvoice, reservation);
+        return bills.FirstOrDefault();
+    }
+
+    private async Task<List<Receipt>> FindReferralBillsForMainInvoiceAsync(Invoice mainInvoice, Reservation? reservation)
+    {
         var invoiceCode = mainInvoice.InvoiceCode?.Trim();
         if (string.IsNullOrWhiteSpace(invoiceCode))
-            return null;
+            return [];
+
+        var officeIds = new List<int>();
+        if (mainInvoice.OfficeId > 0)
+            officeIds.Add(mainInvoice.OfficeId);
+        if (reservation is { OfficeId: > 0 } && !officeIds.Contains(reservation.OfficeId))
+            officeIds.Add(reservation.OfficeId);
+        if (officeIds.Count == 0)
+            return [];
 
         var bills = await _maintenanceRepository.GetReceiptsByCriteriaAsync(new ReceiptGetCriteria
         {
             OrganizationId = mainInvoice.OrganizationId,
-            OfficeIds = mainInvoice.OfficeId.ToString(),
+            OfficeIds = string.Join(",", officeIds),
             ReceiptKind = ReceiptKind.Bill,
             IsActive = true
         });
 
         return bills
-            .Where(bill => bill.AccountingPeriod == mainInvoice.AccountingPeriod)
-            .Where(bill => string.Equals(bill.BillNumber?.Trim(), invoiceCode, StringComparison.OrdinalIgnoreCase))
-            .FirstOrDefault(bill => IsReferralBillDocument(bill, reservation));
+            .Where(bill => EntityCodeFormatting.CodesMatch(bill.BillNumber, invoiceCode))
+            .Where(IsReferralBillDocument)
+            .ToList();
     }
 
     private static bool TryResolveReferralFeeAmount(Reservation reservation, decimal totalRentAmount, out decimal referralAmount)

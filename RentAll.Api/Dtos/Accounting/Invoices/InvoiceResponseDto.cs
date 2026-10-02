@@ -40,6 +40,7 @@ public class InvoiceResponseDto
     public DateOnly? BilledStartDate { get; set; }
     public DateOnly? BilledEndDate { get; set; }
     public string? BilledRentalFeeLines { get; set; }
+    public bool ReferralBillCreated { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
@@ -82,6 +83,7 @@ public class InvoiceResponseDto
         BilledStartDate = invoice.BilledStartDate;
         BilledEndDate = invoice.BilledEndDate;
         BilledRentalFeeLines = invoice.BilledRentalFeeLines;
+        ReferralBillCreated = invoice.ReferralBillCreated;
         IsActive = invoice.IsActive;
         CreatedOn = invoice.CreatedOn;
         CreatedBy = invoice.CreatedBy;

@@ -34,7 +34,7 @@ public partial class AccountingManager
                     invoiceForReferralSync.OfficeId);
             }
 
-            await SyncReferralBillForMainInvoiceAsync(invoiceForReferralSync, currentUser);
+            created.ReferralBillCreated = await SyncReferralBillForMainInvoiceAsync(invoiceForReferralSync, currentUser);
             return created;
         }
         catch
@@ -107,7 +107,7 @@ public partial class AccountingManager
         incoming.CreatedOn = existing.CreatedOn;
     }
 
-    public async Task DeleteInvoiceAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
+    public async Task<bool> DeleteInvoiceAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
     {
         if (invoiceId == Guid.Empty)
             throw new ArgumentException("InvoiceId is required.", nameof(invoiceId));
@@ -119,9 +119,10 @@ public partial class AccountingManager
         if (invoice.PaidAmount != 0)
             throw new InvalidOperationException("Invoices with payments applied may not be deleted.");
 
-        await TryDeleteReferralBillForMainAsync(invoice, null, currentUser);
+        var deletedReferralBills = await TryDeleteReferralBillForMainAsync(invoice, null, currentUser);
         await DeleteJournalEntriesForInvoiceAsync(invoice);
         await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, organizationId);
+        return deletedReferralBills > 0;
     }
 
     public async Task DeleteInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid currentUser)
