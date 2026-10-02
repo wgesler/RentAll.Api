@@ -13,6 +13,7 @@ public class UpdateEmailHtmlDto
     public string OwnerStatement { get; set; } = string.Empty;
     public string Schedules { get; set; } = string.Empty;
     public string MissingReceipts { get; set; } = string.Empty;
+    public string BillReport { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
@@ -20,6 +21,7 @@ public class UpdateEmailHtmlDto
     public string OwnerStatementSubject { get; set; } = string.Empty;
     public string ScheduleSubject { get; set; } = string.Empty;
     public string MissingReceiptsSubject { get; set; } = string.Empty;
+    public string BillReportSubject { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId)
     {
@@ -77,6 +79,12 @@ public class UpdateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(MissingReceiptsSubject))
             return (false, "MissingReceiptsSubject is required");
 
+        if (string.IsNullOrWhiteSpace(BillReport))
+            return (false, "BillReport is required");
+
+        if (string.IsNullOrWhiteSpace(BillReportSubject))
+            return (false, "BillReportSubject is required");
+
         return (true, null);
     }
 
@@ -95,6 +103,7 @@ public class UpdateEmailHtmlDto
             OwnerStatement = OwnerStatement,
             Schedules = Schedules,
             MissingReceipts = MissingReceipts,
+            BillReport = BillReport,
             LetterSubject = LetterSubject,
             DepartureSubject = DepartureSubject,
             LeaseSubject = LeaseSubject,
@@ -102,6 +111,7 @@ public class UpdateEmailHtmlDto
             OwnerStatementSubject = OwnerStatementSubject,
             ScheduleSubject = ScheduleSubject,
             MissingReceiptsSubject = MissingReceiptsSubject,
+            BillReportSubject = BillReportSubject,
             ModifiedBy = currentUser
         };
     }
