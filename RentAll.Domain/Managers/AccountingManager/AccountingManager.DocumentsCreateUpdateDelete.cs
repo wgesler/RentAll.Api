@@ -34,7 +34,9 @@ public partial class AccountingManager
                     invoiceForReferralSync.OfficeId);
             }
 
-            created.ReferralBillCreated = await SyncReferralBillForMainInvoiceAsync(invoiceForReferralSync, currentUser);
+            var referralSync = await SyncReferralBillForMainInvoiceAsync(invoiceForReferralSync, currentUser);
+            created.ReferralBillCreated = referralSync.BillCreated;
+            created.ReferralVendorCreated = referralSync.VendorCreated;
             return created;
         }
         catch

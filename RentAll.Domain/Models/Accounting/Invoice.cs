@@ -39,6 +39,7 @@ public class Invoice
     public DateOnly? BilledEndDate { get; set; }
     public string? BilledRentalFeeLines { get; set; }
     public bool ReferralBillCreated { get; set; }
+    public bool ReferralVendorCreated { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }

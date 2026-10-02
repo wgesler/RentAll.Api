@@ -1980,18 +1980,18 @@ public partial class AccountingManager
             ?? invoice;
     }
 
-    private async Task<bool> SyncReferralBillForMainInvoiceAsync(Invoice mainInvoice, Guid currentUser)
+    private async Task<(bool BillCreated, bool VendorCreated)> SyncReferralBillForMainInvoiceAsync(Invoice mainInvoice, Guid currentUser)
     {
         if (mainInvoice.ReservationId is not { } reservationId || reservationId == Guid.Empty)
         {
             LogReferralBillSyncSkipped(mainInvoice, "MissingReservationId");
-            return false;
+            return (false, false);
         }
 
         if (IsReferralSeparateInvoiceDocument(mainInvoice))
         {
             LogReferralBillSyncSkipped(mainInvoice, "ReferralOnlyInvoice");
-            return false;
+            return (false, false);
         }
 
         StripReferralLinesFromMainInvoiceAndAdjustTotal(mainInvoice);
@@ -2000,22 +2000,22 @@ public partial class AccountingManager
         if (reservation == null || !ReservationHasReferralFee(reservation))
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
-            return false;
+            return (false, false);
         }
 
         if (reservation.ReferralMethod != ReferralMethodType.Bill)
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
-            return false;
+            return (false, false);
         }
 
-        var vendor = await ResolveReferralBillVendorAsync(reservation, mainInvoice, currentUser);
+        var (vendor, vendorCreated) = await ResolveReferralBillVendorAsync(reservation, mainInvoice, currentUser);
         var rentLines = mainInvoice.LedgerLines.Where(IsRentalFeeLedgerLine).ToList();
         if (rentLines.Count == 0)
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
             LogReferralBillSyncSkipped(mainInvoice, "NoRentalFeeLines", reservation.ReservationCode);
-            return false;
+            return (false, false);
         }
 
         var rentAmount = rentLines.Sum(line => line.Amount);
@@ -2023,7 +2023,7 @@ public partial class AccountingManager
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
             LogReferralBillSyncSkipped(mainInvoice, "ReferralAmountNotConfigured", reservation.ReservationCode);
-            return false;
+            return (false, false);
         }
 
         var referralAmount = CalculateReferralBillAmountForRentLines(reservation, rentLines);
@@ -2031,7 +2031,7 @@ public partial class AccountingManager
         {
             await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
             LogReferralBillSyncSkipped(mainInvoice, "ReferralAmountZero", reservation.ReservationCode);
-            return false;
+            return (false, false);
         }
 
         var referralDescription = BuildReferralBillDescription(reservation);
@@ -2048,7 +2048,7 @@ public partial class AccountingManager
                 ex,
                 mainInvoice.OrganizationId,
                 mainInvoice.OfficeId);
-            return false;
+            return (false, false);
         }
 
         if (splits.Count == 0 || splits[0].ChartOfAccountId is not > 0)
@@ -2059,7 +2059,7 @@ public partial class AccountingManager
                 null,
                 mainInvoice.OrganizationId,
                 mainInvoice.OfficeId);
-            return false;
+            return (false, false);
         }
 
         var vendorName = vendor == null ? null : NormalizeOptionalString(vendor.CompanyName);
@@ -2078,7 +2078,7 @@ public partial class AccountingManager
             existingBill.Splits = splits;
             existingBill.ModifiedBy = currentUser;
             await UpdateBillAsync(existingBill, currentUser);
-            return true;
+            return (true, false);
         }
 
         var billCode = await _organizationManager.GenerateEntityCodeAsync(mainInvoice.OrganizationId, EntityType.Receipt);
@@ -2110,7 +2110,7 @@ public partial class AccountingManager
         };
 
         await CreateReceiptAsync(bill, currentUser);
-        return true;
+        return (true, vendorCreated);
     }
 
     private void LogReferralBillSyncSkipped(Invoice mainInvoice, string reason, string? reservationCode = null)
@@ -2137,13 +2137,11 @@ public partial class AccountingManager
         return NormalizeOptionalString(reservation.CompanyName) ?? NormalizeOptionalString(mainInvoice.CompanyName);
     }
 
-    private const string ReferralVendorAutoCreatedNote = "Created automatically from the company contact for referral billing.";
-
-    private async Task<Contact?> ResolveReferralBillVendorAsync(Reservation reservation, Invoice mainInvoice, Guid currentUser)
+    private async Task<(Contact? Vendor, bool Created)> ResolveReferralBillVendorAsync(Reservation reservation, Invoice mainInvoice, Guid currentUser)
     {
         var companyName = await ResolveReferralCompanyNameAsync(reservation, mainInvoice);
         if (companyName == null)
-            return null;
+            return (null, false);
 
         var contacts = await _contactRepository.GetContactsByOrganizationIdAsync(reservation.OrganizationId);
         var vendors = contacts
@@ -2151,10 +2149,13 @@ public partial class AccountingManager
             .Where(contact => string.Equals(contact.CompanyName?.Trim(), companyName, StringComparison.OrdinalIgnoreCase))
             .ToList();
         if (vendors.Count == 0)
-            return await CreateReferralVendorFromCompanyAsync(reservation, mainInvoice, currentUser);
+        {
+            var createdVendor = await CreateReferralVendorFromCompanyAsync(reservation, mainInvoice, currentUser);
+            return (createdVendor, createdVendor != null);
+        }
 
         var officeId = mainInvoice.OfficeId > 0 ? mainInvoice.OfficeId : reservation.OfficeId;
-        return vendors.FirstOrDefault(contact => contact.OfficeId == officeId || contact.OfficeAccess.Contains(officeId)) ?? vendors[0];
+        return (vendors.FirstOrDefault(contact => contact.OfficeId == officeId || contact.OfficeAccess.Contains(officeId)) ?? vendors[0], false);
     }
 
     private async Task<Contact?> CreateReferralVendorFromCompanyAsync(Reservation reservation, Invoice mainInvoice, Guid currentUser)
@@ -2175,11 +2176,6 @@ public partial class AccountingManager
         var officeAccess = company.OfficeAccess?.ToList() ?? new List<int>();
         if (officeId > 0 && !officeAccess.Contains(officeId))
             officeAccess.Add(officeId);
-
-        var companyNotes = company.Notes?.Trim();
-        var notes = string.IsNullOrEmpty(companyNotes)
-            ? ReferralVendorAutoCreatedNote
-            : companyNotes + " " + ReferralVendorAutoCreatedNote;
 
         return await _contactRepository.CreateAsync(new Contact
         {
@@ -2205,7 +2201,7 @@ public partial class AccountingManager
             Extension = company.Extension,
             Email = company.Email ?? string.Empty,
             Rating = company.Rating,
-            Notes = notes,
+            Notes = company.Notes,
             IsInternational = company.IsInternational,
             PaymentTerms = company.PaymentTerms,
             BankName = company.BankName,
