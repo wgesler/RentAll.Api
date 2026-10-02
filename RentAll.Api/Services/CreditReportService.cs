@@ -19,6 +19,7 @@ public class CreditReportService
     private readonly IAccountingRepository _accountingRepository;
     private readonly IContactRepository _contactRepository;
     private readonly ILogger<CreditReportService> _logger;
+    private const int MatchDateWindowDays = 3;
 
     public CreditReportService(IDocumentIntelligenceService documentIntelligenceService, IMaintenanceRepository maintenanceRepository, IOrganizationRepository organizationRepository, IOrganizationManager organizationManager, IAccountingRepository accountingRepository, IContactRepository contactRepository, ILogger<CreditReportService> logger)
     {
@@ -78,26 +79,37 @@ public class CreditReportService
             _logger.LogError("[CreditReportTrace] Step=CardTypeFilter CardType={CardType} SkippedReceipts={SkippedReceipts} SkippedDrafts={SkippedDrafts}", (CardType)statementCardTypeId.Value, skippedReceipts, skippedDrafts);
         }
 
-        var usedReceiptIds = new HashSet<Guid>();
-        var usedDraftIds = new HashSet<Guid>();
+        var receiptMatches = AssignClosestMatches(extraction.Lines, receipts, receipt => receipt.ReceiptId, (line, receipt) =>
+        {
+            var resolvedVendor = ResolveVendor(line.VendorName, vendors);
+            var statementLastFour = line.CardLastFour ?? extraction.StatementCardLastFour;
+            var resolvedCard = ResolveBankCard(statementLastFour, line.CardTypeId ?? extraction.StatementCardTypeId, bankCards);
+            return IsExactMatch(line, receipt.ReceiptDate, receipt.Amount, receipt.VendorId, receipt.VendorName, receipt.BankCardId, LookupLastFour(receipt.BankCardId, bankCards) ?? receipt.BankCardDisplayName, resolvedVendor?.ContactId, resolvedCard?.BankCardId, statementLastFour);
+        }, (line, receipt) => DateDistance(line.ChargeDate, receipt.ReceiptDate));
+        var unmatchedLines = extraction.Lines.Where(line => !receiptMatches.ContainsKey(line)).ToList();
+        var draftMatches = AssignClosestMatches(unmatchedLines, drafts.Where(draft => draft.ReceiptDate.HasValue).ToList(), draft => draft.ReceiptDraftId, (line, draft) =>
+        {
+            var resolvedVendor = ResolveVendor(line.VendorName, vendors);
+            var statementLastFour = line.CardLastFour ?? extraction.StatementCardLastFour;
+            var resolvedCard = ResolveBankCard(statementLastFour, line.CardTypeId ?? extraction.StatementCardTypeId, bankCards);
+            return IsExactMatch(line, draft.ReceiptDate!.Value, draft.Amount, draft.VendorId, draft.VendorName, draft.BankCardId, LookupLastFour(draft.BankCardId, bankCards) ?? draft.BankCardDisplayName, resolvedVendor?.ContactId, resolvedCard?.BankCardId, statementLastFour);
+        }, (line, draft) => DateDistance(line.ChargeDate, draft.ReceiptDate!.Value));
+        var usedReceiptIds = receiptMatches.Values.Select(receipt => receipt.ReceiptId).ToHashSet();
+        var usedDraftIds = draftMatches.Values.Select(draft => draft.ReceiptDraftId).ToHashSet();
         foreach (var line in extraction.Lines)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var resolvedVendor = ResolveVendor(line.VendorName, vendors);
             var statementLastFour = line.CardLastFour ?? extraction.StatementCardLastFour;
             var resolvedCard = ResolveBankCard(statementLastFour, line.CardTypeId ?? extraction.StatementCardTypeId, bankCards);
-            var matchedReceipt = receipts.FirstOrDefault(receipt => !usedReceiptIds.Contains(receipt.ReceiptId) && IsExactMatch(line, receipt.ReceiptDate, receipt.Amount, receipt.VendorId, receipt.VendorName, receipt.BankCardId, LookupLastFour(receipt.BankCardId, bankCards) ?? receipt.BankCardDisplayName, resolvedVendor?.ContactId, resolvedCard?.BankCardId, statementLastFour));
-            if (matchedReceipt != null)
+            if (receiptMatches.TryGetValue(line, out var matchedReceipt))
             {
-                usedReceiptIds.Add(matchedReceipt.ReceiptId);
                 response.CompleteMatches.Add(CreditReportResponseDto.FromLine(line, matchedReceipt, resolvedCard: resolvedCard));
                 continue;
             }
 
-            var matchedDraft = drafts.FirstOrDefault(draft => !usedDraftIds.Contains(draft.ReceiptDraftId) && draft.ReceiptDate.HasValue && IsExactMatch(line, draft.ReceiptDate.Value, draft.Amount, draft.VendorId, draft.VendorName, draft.BankCardId, LookupLastFour(draft.BankCardId, bankCards) ?? draft.BankCardDisplayName, resolvedVendor?.ContactId, resolvedCard?.BankCardId, statementLastFour));
-            if (matchedDraft != null)
+            if (draftMatches.TryGetValue(line, out var matchedDraft))
             {
-                usedDraftIds.Add(matchedDraft.ReceiptDraftId);
                 matchedDraft = await EnrichMatchedDraftAsync(matchedDraft, line, resolvedVendor, resolvedCard, dto.OfficeId, currentUser);
                 response.DraftMatches.Add(CreditReportResponseDto.FromLine(line, draft: matchedDraft, resolvedCard: resolvedCard));
                 continue;
@@ -380,7 +392,7 @@ public class CreditReportService
 
     private static bool IsExactMatch(CreditCardStatementLine line, DateOnly existingDate, decimal existingAmount, Guid? existingVendorId, string? existingVendorName, int? existingBankCardId, string? existingCardLastFour, Guid? statementVendorId, int? statementBankCardId, string? statementLastFour)
     {
-        if (!line.ChargeDate.HasValue || line.ChargeDate.Value != existingDate)
+        if (!DatesWithinWindow(line.ChargeDate, existingDate))
             return false;
 
         if (!line.Amount.HasValue || Math.Abs(decimal.Round(line.Amount.Value, 2) - decimal.Round(existingAmount, 2)) > 0.005m)
@@ -473,7 +485,49 @@ public class CreditReportService
         if (dates.Count == 0)
             return (null, null);
 
-        return (dates.Min(), dates.Max());
+        return (dates.Min().AddDays(-MatchDateWindowDays), dates.Max().AddDays(MatchDateWindowDays));
+    }
+
+    private static bool DatesWithinWindow(DateOnly? chargeDate, DateOnly existingDate)
+    {
+        return chargeDate.HasValue && Math.Abs(chargeDate.Value.DayNumber - existingDate.DayNumber) <= MatchDateWindowDays;
+    }
+
+    private static int DateDistance(DateOnly? chargeDate, DateOnly existingDate)
+    {
+        if (!chargeDate.HasValue)
+            return int.MaxValue;
+
+        return Math.Abs(chargeDate.Value.DayNumber - existingDate.DayNumber);
+    }
+
+    private static Dictionary<CreditCardStatementLine, T> AssignClosestMatches<T>(IReadOnlyList<CreditCardStatementLine> lines, IReadOnlyList<T> items, Func<T, Guid> itemId, Func<CreditCardStatementLine, T, bool> isMatch, Func<CreditCardStatementLine, T, int> dateDistance)
+    {
+        var pairs = new List<(int Distance, int LineIndex, T Item)>();
+        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
+        {
+            foreach (var item in items)
+            {
+                if (!isMatch(lines[lineIndex], item))
+                    continue;
+
+                pairs.Add((dateDistance(lines[lineIndex], item), lineIndex, item));
+            }
+        }
+
+        var assigned = new Dictionary<CreditCardStatementLine, T>();
+        var usedIds = new HashSet<Guid>();
+        foreach (var pair in pairs.OrderBy(pair => pair.Distance).ThenBy(pair => pair.LineIndex))
+        {
+            var id = itemId(pair.Item);
+            if (assigned.ContainsKey(lines[pair.LineIndex]) || usedIds.Contains(id))
+                continue;
+
+            assigned[lines[pair.LineIndex]] = pair.Item;
+            usedIds.Add(id);
+        }
+
+        return assigned;
     }
 
     private static HashSet<string> GetVendorNames(Contact vendor)

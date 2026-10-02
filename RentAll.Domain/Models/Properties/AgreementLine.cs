@@ -8,6 +8,7 @@ public class AgreementLine
     public string? Title { get; set; }
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
+    public int? BankCardId { get; set; }
     public int TermsId { get; set; }
     public string? Terms { get; set; }
     public DateOnly StartDate { get; set; }

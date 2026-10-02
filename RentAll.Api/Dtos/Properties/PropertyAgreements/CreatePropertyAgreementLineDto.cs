@@ -5,6 +5,8 @@ public class CreatePropertyAgreementLineDto
     public Guid? PropertyId { get; set; }
     public string? Title { get; set; }
     public Guid? VendorId { get; set; }
+    public string? VendorName { get; set; }
+    public int? BankCardId { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public decimal? Deposit { get; set; }
@@ -48,7 +50,9 @@ public class CreatePropertyAgreementLineDto
             AgreementId = NormalizePropertyId(PropertyId ?? defaultPropertyId),
             OrganizationId = organizationId,
             Title = string.IsNullOrWhiteSpace(Title) ? null : Title.Trim(),
-            VendorId = VendorId,
+            VendorId = NormalizeBankCardId(BankCardId).HasValue ? null : VendorId,
+            VendorName = NormalizeBankCardId(BankCardId).HasValue ? NormalizeVendorName(VendorName) : null,
+            BankCardId = NormalizeBankCardId(BankCardId),
             StartDate = StartDate!.Value,
             EndDate = EndDate,
             Deposit = Deposit!.Value,
@@ -59,6 +63,16 @@ public class CreatePropertyAgreementLineDto
             IsRent = IsRent ?? false,
             Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim()
         };
+    }
+
+    private static int? NormalizeBankCardId(int? bankCardId)
+    {
+        return bankCardId is > 0 ? bankCardId : null;
+    }
+
+    private static string? NormalizeVendorName(string? vendorName)
+    {
+        return string.IsNullOrWhiteSpace(vendorName) ? null : vendorName.Trim();
     }
 
     private static Guid? NormalizePropertyId(Guid? propertyId)

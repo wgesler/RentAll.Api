@@ -8,6 +8,7 @@ public class PropertyAgreementLineResponseDto
     public string? Title { get; set; }
     public Guid? VendorId { get; set; }
     public string? VendorName { get; set; }
+    public int? BankCardId { get; set; }
     public int TermsId { get; set; }
     public string Terms { get; set; } = "Due on receipt";
     public DateOnly StartDate { get; set; }
@@ -28,6 +29,7 @@ public class PropertyAgreementLineResponseDto
         Title = model.Title;
         VendorId = model.VendorId;
         VendorName = model.VendorName;
+        BankCardId = model.BankCardId;
         TermsId = model.TermsId;
         Terms = string.IsNullOrWhiteSpace(model.Terms) ? "Due on receipt" : model.Terms;
         StartDate = model.StartDate;
