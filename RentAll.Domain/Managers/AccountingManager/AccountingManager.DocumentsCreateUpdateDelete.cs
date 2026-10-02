@@ -10,7 +10,7 @@ public partial class AccountingManager
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice, Guid currentUser)
     {
         await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
-        StripReferralLinesFromMainInvoiceAndAdjustTotal(invoice);
+        await StripReferralLinesUnlessNetInvoiceAsync(invoice);
         var created = await _accountingRepository.CreateAsync(invoice);
         var createdPaymentIds = await CreateAndLinkPaymentDocumentsForUnlinkedInvoiceLinesAsync(created, currentUser);
         try
@@ -58,7 +58,7 @@ public partial class AccountingManager
         MergeInvoiceHeaderFromExisting(invoice, existingInvoice);
         invoice.PostingStatusId = postingStatusId;
         await EnsureCompanyMarkupLedgerLineOnInvoiceAsync(invoice);
-        StripReferralLinesFromMainInvoiceAndAdjustTotal(invoice);
+        await StripReferralLinesUnlessNetInvoiceAsync(invoice);
         await ValidateInvoiceUpdatePreservesDepositedPaymentsAsync(invoice, existingInvoice);
 
         var updatedInvoice = await _accountingRepository.UpdateByIdAsync(invoice);
@@ -107,7 +107,7 @@ public partial class AccountingManager
         incoming.CreatedOn = existing.CreatedOn;
     }
 
-    public async Task DeleteInvoiceAsync(Guid invoiceId, Guid organizationId)
+    public async Task DeleteInvoiceAsync(Guid invoiceId, Guid organizationId, Guid currentUser)
     {
         if (invoiceId == Guid.Empty)
             throw new ArgumentException("InvoiceId is required.", nameof(invoiceId));
@@ -119,11 +119,12 @@ public partial class AccountingManager
         if (invoice.PaidAmount != 0)
             throw new InvalidOperationException("Invoices with payments applied may not be deleted.");
 
+        await TryDeleteReferralBillForMainAsync(invoice, null, currentUser);
         await DeleteJournalEntriesForInvoiceAsync(invoice);
         await _accountingRepository.DeleteInvoiceByIdAsync(invoiceId, organizationId);
     }
 
-    public async Task DeleteInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId)
+    public async Task DeleteInvoicesByReservationIdAsync(Guid organizationId, Guid reservationId, Guid currentUser)
     {
         if (reservationId == Guid.Empty)
             throw new ArgumentException("ReservationId is required.", nameof(reservationId));
@@ -147,7 +148,7 @@ public partial class AccountingManager
             throw new InvalidOperationException("This reservation has paid invoices applied to it. It may not be deleted.");
 
         foreach (var invoice in invoices)
-            await DeleteInvoiceAsync(invoice.InvoiceId, organizationId);
+            await DeleteInvoiceAsync(invoice.InvoiceId, organizationId, currentUser);
     }
 
     private Task RestoreInvoiceSnapshotAsync(Invoice snapshot)

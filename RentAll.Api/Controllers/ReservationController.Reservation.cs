@@ -260,7 +260,7 @@ namespace RentAll.Api.Controllers
 
             try
             {
-                await _accountingManager.DeleteInvoicesByReservationIdAsync(CurrentOrganizationId, reservationId);
+                await _accountingManager.DeleteInvoicesByReservationIdAsync(CurrentOrganizationId, reservationId, CurrentUser);
                 await _reservationRepository.DeleteReservationByIdAsync(reservationId, CurrentOrganizationId);
                 return NoContent();
             }

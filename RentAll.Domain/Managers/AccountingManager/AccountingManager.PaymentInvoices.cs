@@ -1686,7 +1686,7 @@ public partial class AccountingManager
                 LineNumber = lineNumber++,
                 ReservationId = reservation.ReservationId,
                 CostCodeId = rentLine.CostCodeId,
-                Amount = amount,
+                Amount = -amount,
                 Description = referralDescription,
                 LedgerLineDate = rentLine.LedgerLineDate
             };
@@ -1695,6 +1695,21 @@ public partial class AccountingManager
         }
 
         return lines;
+    }
+
+    private async Task StripReferralLinesUnlessNetInvoiceAsync(Invoice invoice)
+    {
+        if (IsReferralSeparateInvoiceDocument(invoice))
+            return;
+
+        if (invoice.ReservationId is { } reservationId && reservationId != Guid.Empty)
+        {
+            var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+            if (reservation != null && ReservationHasReferralFee(reservation) && reservation.ReferralMethod == ReferralMethodType.NetInvoice)
+                return;
+        }
+
+        StripReferralLinesFromMainInvoiceAndAdjustTotal(invoice);
     }
 
     private void StripReferralLinesFromMainInvoiceAndAdjustTotal(Invoice invoice)
@@ -1779,7 +1794,7 @@ public partial class AccountingManager
         if (companion == null)
             return;
 
-        await DeleteInvoiceAsync(companion.InvoiceId, mainInvoice.OrganizationId);
+        await DeleteInvoiceAsync(companion.InvoiceId, mainInvoice.OrganizationId, currentUser);
     }
 
     private async Task<Invoice?> FindReferralSeparateInvoiceForMainAsync(Invoice mainInvoice)
@@ -1915,10 +1930,6 @@ public partial class AccountingManager
         if (bill.BankCardId is > 0)
             return false;
 
-        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
-        if (companyId == null || bill.VendorId != companyId)
-            return false;
-
         var expectedDescription = BuildReferralBillDescription(reservation);
         return string.Equals(bill.Description?.Trim(), expectedDescription, StringComparison.Ordinal);
     }
@@ -1998,14 +2009,7 @@ public partial class AccountingManager
             return;
         }
 
-        var companyId = NormalizeOptionalGuid(reservation.CompanyId) ?? NormalizeOptionalGuid(mainInvoice.CompanyId);
-        if (companyId == null)
-        {
-            await TryDeleteReferralBillForMainAsync(mainInvoice, reservation, currentUser);
-            LogReferralBillSyncSkipped(mainInvoice, "MissingCompanyVendor", reservation.ReservationCode);
-            return;
-        }
-
+        var vendor = await ResolveReferralBillVendorAsync(reservation, mainInvoice, currentUser);
         var rentLines = mainInvoice.LedgerLines.Where(IsRentalFeeLedgerLine).ToList();
         if (rentLines.Count == 0)
         {
@@ -2058,13 +2062,13 @@ public partial class AccountingManager
             return;
         }
 
-        var vendorName = await ResolveReferralBillVendorNameAsync(reservation);
+        var vendorName = vendor == null ? null : NormalizeOptionalString(vendor.CompanyName);
         var existingBill = await FindReferralBillForMainInvoiceAsync(mainInvoice, reservation);
         if (existingBill != null)
         {
             existingBill.Amount = referralAmount;
             existingBill.Description = referralDescription;
-            existingBill.VendorId = companyId;
+            existingBill.VendorId = vendor?.ContactId;
             existingBill.VendorName = vendorName;
             existingBill.ReceiptDate = mainInvoice.InvoiceDate;
             existingBill.DueDate = mainInvoice.DueDate == default ? mainInvoice.InvoiceDate : mainInvoice.DueDate;
@@ -2095,7 +2099,7 @@ public partial class AccountingManager
             Amount = referralAmount,
             Description = referralDescription,
             BankCardId = null,
-            VendorId = companyId,
+            VendorId = vendor?.ContactId,
             VendorName = vendorName,
             PaidAmount = 0,
             Splits = splits,
@@ -2118,17 +2122,97 @@ public partial class AccountingManager
             mainInvoice.OfficeId);
     }
 
-    private async Task<string?> ResolveReferralBillVendorNameAsync(Reservation reservation)
+    private async Task<string?> ResolveReferralCompanyNameAsync(Reservation reservation, Invoice mainInvoice)
     {
-        var companyId = NormalizeOptionalGuid(reservation.CompanyId);
-        if (companyId == null)
-            return NormalizeOptionalString(reservation.CompanyName);
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId) ?? NormalizeOptionalGuid(mainInvoice.CompanyId);
+        if (companyId != null)
+        {
+            var companyContact = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
+            var companyName = NormalizeOptionalString(companyContact?.CompanyName);
+            if (companyName != null)
+                return companyName;
+        }
 
-        var companyContact = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
-        return NormalizeOptionalString(companyContact?.CompanyName)
-            ?? NormalizeOptionalString(reservation.CompanyName)
-            ?? NormalizeOptionalString(companyContact?.DisplayName)
-            ?? NormalizeOptionalString(companyContact?.FullName);
+        return NormalizeOptionalString(reservation.CompanyName) ?? NormalizeOptionalString(mainInvoice.CompanyName);
+    }
+
+    private const string ReferralVendorAutoCreatedNote = "Created automatically from the company contact for referral billing.";
+
+    private async Task<Contact?> ResolveReferralBillVendorAsync(Reservation reservation, Invoice mainInvoice, Guid currentUser)
+    {
+        var companyName = await ResolveReferralCompanyNameAsync(reservation, mainInvoice);
+        if (companyName == null)
+            return null;
+
+        var contacts = await _contactRepository.GetContactsByOrganizationIdAsync(reservation.OrganizationId);
+        var vendors = contacts
+            .Where(contact => contact.IsActive && contact.EntityType == EntityType.Vendor)
+            .Where(contact => string.Equals(contact.CompanyName?.Trim(), companyName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (vendors.Count == 0)
+            return await CreateReferralVendorFromCompanyAsync(reservation, mainInvoice, currentUser);
+
+        var officeId = mainInvoice.OfficeId > 0 ? mainInvoice.OfficeId : reservation.OfficeId;
+        return vendors.FirstOrDefault(contact => contact.OfficeId == officeId || contact.OfficeAccess.Contains(officeId)) ?? vendors[0];
+    }
+
+    private async Task<Contact?> CreateReferralVendorFromCompanyAsync(Reservation reservation, Invoice mainInvoice, Guid currentUser)
+    {
+        var companyId = NormalizeOptionalGuid(reservation.CompanyId) ?? NormalizeOptionalGuid(mainInvoice.CompanyId);
+        if (companyId == null)
+            return null;
+
+        var company = await _contactRepository.GetContactByIdsAsync(companyId.Value, reservation.OrganizationId);
+        if (company == null)
+            return null;
+
+        var vendorCode = await _organizationManager.GenerateEntityCodeAsync(reservation.OrganizationId, EntityType.Vendor);
+        if (string.IsNullOrWhiteSpace(vendorCode))
+            return null;
+
+        var officeId = mainInvoice.OfficeId > 0 ? mainInvoice.OfficeId : company.OfficeId;
+        var officeAccess = company.OfficeAccess?.ToList() ?? new List<int>();
+        if (officeId > 0 && !officeAccess.Contains(officeId))
+            officeAccess.Add(officeId);
+
+        var companyNotes = company.Notes?.Trim();
+        var notes = string.IsNullOrEmpty(companyNotes)
+            ? ReferralVendorAutoCreatedNote
+            : companyNotes + " " + ReferralVendorAutoCreatedNote;
+
+        return await _contactRepository.CreateAsync(new Contact
+        {
+            OrganizationId = company.OrganizationId,
+            OfficeId = officeId > 0 ? officeId : company.OfficeId,
+            OfficeAccess = officeAccess,
+            ContactCode = vendorCode.Trim(),
+            EntityType = EntityType.Vendor,
+            VendorType = VendorType.Company,
+            Properties = company.Properties?.ToList() ?? new List<string>(),
+            CompanyName = company.CompanyName,
+            CompanyEmail = company.CompanyEmail,
+            DisplayName = company.DisplayName,
+            FirstName = company.FirstName,
+            LastName = company.LastName,
+            PreferredName = company.PreferredName,
+            Address1 = company.Address1,
+            Address2 = company.Address2,
+            City = company.City,
+            State = company.State,
+            Zip = company.Zip,
+            Phone = company.Phone,
+            Extension = company.Extension,
+            Email = company.Email ?? string.Empty,
+            Rating = company.Rating,
+            Notes = notes,
+            IsInternational = company.IsInternational,
+            PaymentTerms = company.PaymentTerms,
+            BankName = company.BankName,
+            RoutingNumber = company.RoutingNumber,
+            AccountNumber = company.AccountNumber,
+            IsActive = true,
+            CreatedBy = currentUser
+        });
     }
 
     private static List<Guid> ResolveReferralBillPropertyIds(Invoice mainInvoice, Reservation reservation)
@@ -2166,6 +2250,12 @@ public partial class AccountingManager
         if (bill == null)
             return;
 
+        if (bill.PaidAmount != 0)
+        {
+            LogReferralBillSyncSkipped(mainInvoice, "BillAlreadyPaid", reservation.ReservationCode);
+            return;
+        }
+
         await DeleteReceiptAsync(bill.ReceiptId, mainInvoice.OrganizationId, currentUser);
     }
 
@@ -2180,8 +2270,7 @@ public partial class AccountingManager
             OrganizationId = mainInvoice.OrganizationId,
             OfficeIds = mainInvoice.OfficeId.ToString(),
             ReceiptKind = ReceiptKind.Bill,
-            IsActive = true,
-            VendorId = NormalizeOptionalGuid(reservation.CompanyId)
+            IsActive = true
         });
 
         return bills

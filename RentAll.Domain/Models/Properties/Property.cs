@@ -149,6 +149,7 @@ public class Property
     public DateOnly? offInspectingDate { get; set; }
     public bool OnlineChecked { get; set; }
     public bool OfflineChecked { get; set; }
+    public Guid? CurrentReservationId { get; set; }
 
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }

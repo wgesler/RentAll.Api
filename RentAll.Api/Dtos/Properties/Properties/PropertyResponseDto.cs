@@ -151,6 +151,7 @@ public class PropertyResponseDto
     public DateOnly? offInspectingDate { get; set; }
     public bool OnlineChecked { get; set; }
     public bool OfflineChecked { get; set; }
+    public Guid? CurrentReservationId { get; set; }
 
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -280,6 +281,7 @@ public class PropertyResponseDto
         offInspectingDate = property.offInspectingDate;
         OnlineChecked = property.OnlineChecked;
         OfflineChecked = property.OfflineChecked;
+        CurrentReservationId = property.CurrentReservationId;
         IsActive = property.IsActive;
         CreatedOn = property.CreatedOn;
         CreatedBy = property.CreatedBy;

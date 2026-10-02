@@ -364,7 +364,7 @@ namespace RentAll.Api.Controllers
                 if (postingStatusCheck != null)
                     return postingStatusCheck;
 
-                await _accountingManager.DeleteInvoiceAsync(invoiceId, CurrentOrganizationId);
+                await _accountingManager.DeleteInvoiceAsync(invoiceId, CurrentOrganizationId, CurrentUser);
                 return NoContent();
             }
             catch (Exception ex)

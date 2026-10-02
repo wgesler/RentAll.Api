@@ -144,6 +144,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
                 offInspectingDate = e.offInspectingDate,
                 OnlineChecked = e.OnlineChecked,
                 OfflineChecked = e.OfflineChecked,
+                CurrentReservationId = e.CurrentReservationId,
                 IsActive = e.IsActive,
                 IsDeleted = e.IsDeleted,
                 CreatedOn = e.CreatedOn,
