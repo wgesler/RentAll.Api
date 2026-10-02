@@ -1,6 +1,7 @@
 using Azure;
 using Azure.AI.DocumentIntelligence;
 using Azure.Identity;
+using ImageMagick;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
@@ -51,6 +52,12 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
 
         if (content == null || content.Length == 0)
             throw new ArgumentException("Receipt content is required.", nameof(content));
+
+        if (IsTargetLogo(content))
+        {
+            _logger.LogError("[ReceiptExtractTrace] Step=TargetLogo VendorName=Target");
+            return new ReceiptDocumentExtraction { VendorName = "Target" };
+        }
 
         var endpoint = (_settings.Endpoint ?? string.Empty).Trim().TrimEnd('/');
         if (string.IsNullOrWhiteSpace(endpoint))
@@ -292,6 +299,105 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             .Select(group => group.Value)
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
             ?.Trim();
+    }
+
+    private static bool IsTargetLogo(byte[] content)
+    {
+        try
+        {
+            using var image = new MagickImage(content);
+            if (image.Width < 16 || image.Height < 16)
+                return false;
+
+            image.AutoOrient();
+            image.Alpha(AlphaOption.Remove);
+            image.ColorType = ColorType.TrueColor;
+            image.Resize(64, 64);
+
+            var pixels = image.GetPixels();
+            var width = image.Width;
+            var height = image.Height;
+            var cx = (width - 1) / 2.0;
+            var cy = (height - 1) / 2.0;
+            var maxRadius = Math.Min(cx, cy);
+            if (maxRadius < 8)
+                return false;
+
+            var red = 0;
+            var white = 0;
+            var other = 0;
+            var bandRed = new int[16];
+            var bandWhite = new int[16];
+            var bandTotal = new int[16];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var color = pixels.GetPixel(x, y).ToColor();
+                    if (color == null)
+                        continue;
+
+                    var kind = TargetLogoPixelKind(color.R, color.G, color.B);
+                    if (kind == 1)
+                        red++;
+                    else if (kind == 2)
+                        white++;
+                    else
+                        other++;
+
+                    var dx = x - cx;
+                    var dy = y - cy;
+                    var distance = Math.Sqrt((dx * dx) + (dy * dy)) / maxRadius;
+                    if (distance > 1)
+                        continue;
+
+                    var band = Math.Min(15, (int)(distance * 16));
+                    bandTotal[band]++;
+                    if (kind == 1)
+                        bandRed[band]++;
+                    else if (kind == 2)
+                        bandWhite[band]++;
+                }
+            }
+
+            var total = red + white + other;
+            if (total == 0 || other / (double)total > 0.18 || red / (double)total < 0.08 || white / (double)total < 0.08)
+                return false;
+
+            var rings = new List<char>();
+            for (var band = 0; band < bandTotal.Length; band++)
+            {
+                if (bandTotal[band] < 8)
+                    continue;
+
+                char? ring = null;
+                if (bandRed[band] / (double)bandTotal[band] >= 0.55)
+                    ring = 'R';
+                else if (bandWhite[band] / (double)bandTotal[band] >= 0.55)
+                    ring = 'W';
+
+                if (ring.HasValue && (rings.Count == 0 || rings[^1] != ring.Value))
+                    rings.Add(ring.Value);
+            }
+
+            var pattern = new string(rings.ToArray());
+            return pattern.Contains("RWR", StringComparison.Ordinal);
+        }
+        catch (MagickException)
+        {
+            return false;
+        }
+    }
+
+    private static int TargetLogoPixelKind(byte red, byte green, byte blue)
+    {
+        if (red >= 150 && green <= 90 && blue <= 90 && red >= green + 70 && red >= blue + 70)
+            return 1;
+
+        if (red >= 210 && green >= 210 && blue >= 210)
+            return 2;
+
+        return 0;
     }
 
     private static string? InferMerchantNameFromContent(string content)

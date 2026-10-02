@@ -70,6 +70,14 @@ public class CreditReportService
             EndDate = dateRange.EndDate
         })).Where(draft => draft.IsActive).ToList();
 
+        var statementCardTypeId = ResolveClearStatementCardType(extraction, fileName, bankCards);
+        if (statementCardTypeId.HasValue)
+        {
+            var skippedReceipts = receipts.RemoveAll(receipt => IsAssociatedWithOtherCard(receipt.BankCardId, bankCards, statementCardTypeId.Value));
+            var skippedDrafts = drafts.RemoveAll(draft => IsAssociatedWithOtherCard(draft.BankCardId, bankCards, statementCardTypeId.Value));
+            _logger.LogError("[CreditReportTrace] Step=CardTypeFilter CardType={CardType} SkippedReceipts={SkippedReceipts} SkippedDrafts={SkippedDrafts}", (CardType)statementCardTypeId.Value, skippedReceipts, skippedDrafts);
+        }
+
         var usedReceiptIds = new HashSet<Guid>();
         var usedDraftIds = new HashSet<Guid>();
         foreach (var line in extraction.Lines)
@@ -258,6 +266,116 @@ public class CreditReportService
         };
 
         return await _maintenanceRepository.CreateReceiptDraftAsync(draft);
+    }
+
+    private static int? ResolveClearStatementCardType(CreditCardStatementExtraction extraction, string? fileName, IReadOnlyList<BankCard> bankCards)
+    {
+        var header = extraction.FullText ?? string.Empty;
+        if (header.Length > 3000)
+            header = header[..3000];
+
+        var identity = $"{fileName}\n{header}";
+        var identityType = ResolveSingleCardType(identity);
+        if (identityType.HasValue)
+            return identityType;
+
+        var fromCards = ResolveSingleTypeFromStatementCards(extraction, bankCards);
+        if (fromCards.HasValue || NamesMoreThanOneCardType(identity))
+            return fromCards;
+
+        return extraction.StatementCardTypeId is int statementCardTypeId && Enum.IsDefined(typeof(CardType), statementCardTypeId) ? statementCardTypeId : null;
+    }
+
+    private static bool NamesMoreThanOneCardType(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var count = 0;
+        foreach (var cardType in new[] { CardType.Visa, CardType.MasterCard, CardType.Discover, CardType.AmericanExpress })
+        {
+            if (Regex.IsMatch(text, CardTypePattern(cardType), RegexOptions.IgnoreCase))
+                count++;
+        }
+
+        return count > 1;
+    }
+
+    private static int? ResolveSingleCardType(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        int? found = null;
+        foreach (var cardType in new[] { CardType.Visa, CardType.MasterCard, CardType.Discover, CardType.AmericanExpress })
+        {
+            if (!Regex.IsMatch(text, CardTypePattern(cardType), RegexOptions.IgnoreCase))
+                continue;
+
+            if (found.HasValue)
+                return null;
+
+            found = (int)cardType;
+        }
+
+        return found;
+    }
+
+    private static int? ResolveSingleTypeFromStatementCards(CreditCardStatementExtraction extraction, IReadOnlyList<BankCard> bankCards)
+    {
+        var lastFours = extraction.Lines.Select(line => line.CardLastFour).Append(extraction.StatementCardLastFour).Where(lastFour => HasCardDigits(lastFour)).Select(lastFour => lastFour!).Distinct(StringComparer.Ordinal).ToList();
+        if (lastFours.Count == 0)
+            return null;
+
+        int? found = null;
+        foreach (var lastFour in lastFours)
+        {
+            var matches = bankCards.Where(card => LastDigitsMatch(lastFour, card.LastFour)).Select(ResolveBankCardType).Where(cardType => cardType.HasValue).Select(cardType => cardType!.Value).Distinct().ToList();
+            if (matches.Count == 0)
+                continue;
+
+            if (matches.Count > 1)
+                return null;
+
+            if (found.HasValue && found.Value != matches[0])
+                return null;
+
+            found = matches[0];
+        }
+
+        return found;
+    }
+
+    private static bool IsAssociatedWithOtherCard(int? bankCardId, IReadOnlyList<BankCard> bankCards, int statementCardTypeId)
+    {
+        if (bankCardId is not > 0)
+            return false;
+
+        var card = LookupCard(bankCardId, bankCards);
+        return card == null || ResolveBankCardType(card) != statementCardTypeId;
+    }
+
+    private static int? ResolveBankCardType(BankCard card)
+    {
+        var name = $"{card.CardName} {card.DisplayName}";
+        foreach (var cardType in new[] { CardType.AmericanExpress, CardType.MasterCard, CardType.Discover, CardType.Visa })
+        {
+            if (Regex.IsMatch(name, CardTypePattern(cardType), RegexOptions.IgnoreCase))
+                return (int)cardType;
+        }
+
+        return Enum.IsDefined(typeof(CardType), card.CardTypeId) ? card.CardTypeId : null;
+    }
+
+    private static string CardTypePattern(CardType cardType)
+    {
+        return cardType switch
+        {
+            CardType.Visa => @"\bvisa\b",
+            CardType.MasterCard => @"\b(?:master\s*card|mastercard|\bmc\b)\b",
+            CardType.Discover => @"\b(?:discover|\bdisc\b)\b",
+            _ => @"\b(?:amex|american\s*express)\b"
+        };
     }
 
     private static bool IsExactMatch(CreditCardStatementLine line, DateOnly existingDate, decimal existingAmount, Guid? existingVendorId, string? existingVendorName, int? existingBankCardId, string? existingCardLastFour, Guid? statementVendorId, int? statementBankCardId, string? statementLastFour)
