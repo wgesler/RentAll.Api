@@ -84,4 +84,11 @@ public interface IMaintenanceRepository
     Task DeleteReceiptDraftByIdAsync(Guid receiptDraftId, Guid organizationId, Guid currentUser);
     #endregion
 
+    #region ReceiptMatch
+    Task<IEnumerable<ReceiptMatch>> GetReceiptMatchesByOrganizationIdAsync(Guid organizationId);
+    Task<ReceiptMatch> CreateReceiptMatchAsync(ReceiptMatch match);
+    Task<ReceiptMatch> UpdateReceiptMatchAsync(ReceiptMatch match);
+    Task DeleteReceiptMatchByIdAsync(Guid receiptMatchId, Guid organizationId);
+    #endregion
+
 }

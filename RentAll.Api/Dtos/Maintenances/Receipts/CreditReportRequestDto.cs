@@ -31,8 +31,29 @@ public class CreditReportCreateDraftsRequestDto
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
 
-        if (Lines == null || Lines.Count == 0)
-            return (false, "At least one credit report line is required");
+        return (true, null);
+    }
+}
+
+public class CreditReportMatchDto
+{
+    public string? SourceName { get; set; }
+    public Guid? MatchedId { get; set; }
+    public string? MatchedName { get; set; }
+}
+
+public class CreditReportSaveMatchesRequestDto
+{
+    public Guid OrganizationId { get; set; }
+    public List<CreditReportMatchDto> Matches { get; set; } = new();
+
+    public (bool IsValid, string? ErrorMessage) IsValid()
+    {
+        if (OrganizationId == Guid.Empty)
+            return (false, "OrganizationId is required");
+
+        if (Matches == null || Matches.Count == 0)
+            return (false, "At least one match is required");
 
         return (true, null);
     }

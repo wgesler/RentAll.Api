@@ -3,6 +3,7 @@ using RentAll.Domain.Constants;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
+using RentAll.Domain.Models;
 using RentAll.Domain.Models.Maintenances;
 using RentAll.Infrastructure.Services;
 using System.Text.Json;
@@ -18,10 +19,11 @@ public class CreditReportService
     private readonly IOrganizationManager _organizationManager;
     private readonly IAccountingRepository _accountingRepository;
     private readonly IContactRepository _contactRepository;
+    private readonly IAccountingManager _accountingManager;
     private readonly ILogger<CreditReportService> _logger;
     private const int MatchDateWindowDays = 3;
 
-    public CreditReportService(IDocumentIntelligenceService documentIntelligenceService, IMaintenanceRepository maintenanceRepository, IOrganizationRepository organizationRepository, IOrganizationManager organizationManager, IAccountingRepository accountingRepository, IContactRepository contactRepository, ILogger<CreditReportService> logger)
+    public CreditReportService(IDocumentIntelligenceService documentIntelligenceService, IMaintenanceRepository maintenanceRepository, IOrganizationRepository organizationRepository, IOrganizationManager organizationManager, IAccountingRepository accountingRepository, IContactRepository contactRepository, IAccountingManager accountingManager, ILogger<CreditReportService> logger)
     {
         _documentIntelligenceService = documentIntelligenceService;
         _maintenanceRepository = maintenanceRepository;
@@ -29,6 +31,7 @@ public class CreditReportService
         _organizationManager = organizationManager;
         _accountingRepository = accountingRepository;
         _contactRepository = contactRepository;
+        _accountingManager = accountingManager;
         _logger = logger;
     }
 
@@ -40,8 +43,6 @@ public class CreditReportService
         var extraction = await _documentIntelligenceService.ExtractCreditCardStatementAsync(fileBytes, contentType, fileName, cancellationToken);
         var warnings = extraction.Warnings.ToList();
         var response = new CreditReportResponseDto { FileName = fileName, Warnings = warnings };
-
-        _logger.LogError("[CreditReportTrace] Step=Extracted LineCount={LineCount} OfficeId={OfficeId}", extraction.Lines.Count, dto.OfficeId);
 
         if (extraction.Lines.Count == 0)
             return response;
@@ -79,31 +80,31 @@ public class CreditReportService
             _logger.LogError("[CreditReportTrace] Step=CardTypeFilter CardType={CardType} SkippedReceipts={SkippedReceipts} SkippedDrafts={SkippedDrafts}", (CardType)statementCardTypeId.Value, skippedReceipts, skippedDrafts);
         }
 
+        var aliases = (await _maintenanceRepository.GetReceiptMatchesByOrganizationIdAsync(dto.OrganizationId)).ToList();
+        _logger.LogError("[CreditReportTrace] Step=Extracted LineCount={LineCount} OfficeId={OfficeId} AliasCount={AliasCount}", extraction.Lines.Count, dto.OfficeId, aliases.Count);
         var receiptMatches = AssignClosestMatches(extraction.Lines, receipts, receipt => receipt.ReceiptId, (line, receipt) =>
         {
-            var resolvedVendor = ResolveVendor(line.VendorName, vendors);
-            var statementLastFour = line.CardLastFour ?? extraction.StatementCardLastFour;
-            var resolvedCard = ResolveBankCard(statementLastFour, line.CardTypeId ?? extraction.StatementCardTypeId, bankCards);
-            return IsExactMatch(line, receipt.ReceiptDate, receipt.Amount, receipt.VendorId, receipt.VendorName, receipt.BankCardId, LookupLastFour(receipt.BankCardId, bankCards) ?? receipt.BankCardDisplayName, resolvedVendor?.ContactId, resolvedCard?.BankCardId, statementLastFour);
+            var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
+            return IsExactMatch(line, receipt.ReceiptDate, receipt.Amount, receipt.VendorId, receipt.VendorName, statementVendor.VendorId, statementVendor.VendorName, line.VendorName);
         }, (line, receipt) => DateDistance(line.ChargeDate, receipt.ReceiptDate));
         var unmatchedLines = extraction.Lines.Where(line => !receiptMatches.ContainsKey(line)).ToList();
         var draftMatches = AssignClosestMatches(unmatchedLines, drafts.Where(draft => draft.ReceiptDate.HasValue).ToList(), draft => draft.ReceiptDraftId, (line, draft) =>
         {
-            var resolvedVendor = ResolveVendor(line.VendorName, vendors);
-            var statementLastFour = line.CardLastFour ?? extraction.StatementCardLastFour;
-            var resolvedCard = ResolveBankCard(statementLastFour, line.CardTypeId ?? extraction.StatementCardTypeId, bankCards);
-            return IsExactMatch(line, draft.ReceiptDate!.Value, draft.Amount, draft.VendorId, draft.VendorName, draft.BankCardId, LookupLastFour(draft.BankCardId, bankCards) ?? draft.BankCardDisplayName, resolvedVendor?.ContactId, resolvedCard?.BankCardId, statementLastFour);
+            var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
+            return IsExactMatch(line, draft.ReceiptDate!.Value, draft.Amount, draft.VendorId, draft.VendorName, statementVendor.VendorId, statementVendor.VendorName, line.VendorName);
         }, (line, draft) => DateDistance(line.ChargeDate, draft.ReceiptDate!.Value));
         var usedReceiptIds = receiptMatches.Values.Select(receipt => receipt.ReceiptId).ToHashSet();
         var usedDraftIds = draftMatches.Values.Select(draft => draft.ReceiptDraftId).ToHashSet();
         foreach (var line in extraction.Lines)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var resolvedVendor = ResolveVendor(line.VendorName, vendors);
+            var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
+            var resolvedVendor = statementVendor.VendorId is Guid vendorId ? vendors.FirstOrDefault(vendor => vendor.ContactId == vendorId) : ResolveVendor(statementVendor.VendorName, vendors);
             var statementLastFour = line.CardLastFour ?? extraction.StatementCardLastFour;
             var resolvedCard = ResolveBankCard(statementLastFour, line.CardTypeId ?? extraction.StatementCardTypeId, bankCards);
             if (receiptMatches.TryGetValue(line, out var matchedReceipt))
             {
+                matchedReceipt = await CorrectReceiptCardAsync(matchedReceipt, resolvedCard, currentUser);
                 response.CompleteMatches.Add(CreditReportResponseDto.FromLine(line, matchedReceipt, resolvedCard: resolvedCard));
                 continue;
             }
@@ -115,7 +116,7 @@ public class CreditReportService
                 continue;
             }
 
-            response.CreatedDrafts.Add(CreditReportResponseDto.FromLine(line, vendorId: resolvedVendor?.ContactId, bankCardId: resolvedCard?.BankCardId, cardTypeId: line.CardTypeId ?? extraction.StatementCardTypeId, resolvedCard: resolvedCard));
+            response.CreatedDrafts.Add(CreditReportResponseDto.FromLine(line, vendorId: statementVendor.VendorId ?? resolvedVendor?.ContactId, bankCardId: resolvedCard?.BankCardId, cardTypeId: line.CardTypeId ?? extraction.StatementCardTypeId, resolvedCard: resolvedCard));
         }
 
         foreach (var receipt in receipts.Where(receipt => !usedReceiptIds.Contains(receipt.ReceiptId) && receipt.BankCardId > 0))
@@ -126,6 +127,62 @@ public class CreditReportService
 
         _logger.LogError("[CreditReportTrace] Step=Complete Complete={Complete} DraftMatches={DraftMatches} Proposed={Proposed} Unknown={Unknown}", response.CompleteMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count, response.UnknownMatches.Count);
         return response;
+    }
+
+    public async Task SaveMatchesAsync(CreditReportSaveMatchesRequestDto dto)
+    {
+        var existing = (await _maintenanceRepository.GetReceiptMatchesByOrganizationIdAsync(dto.OrganizationId)).ToList();
+        foreach (var match in dto.Matches ?? [])
+        {
+            var sourceName = (match.SourceName ?? string.Empty).Trim();
+            var matchedName = string.IsNullOrWhiteSpace(match.MatchedName) ? null : match.MatchedName.Trim();
+            Guid? matchedId = match.MatchedId is Guid id && id != Guid.Empty ? id : null;
+            if (string.IsNullOrWhiteSpace(sourceName) || (matchedId == null && string.IsNullOrWhiteSpace(matchedName)))
+                continue;
+
+            var found = existing.FirstOrDefault(item => SameSavedVendor(item.SourceName, sourceName));
+            if (found == null)
+            {
+                var created = await _maintenanceRepository.CreateReceiptMatchAsync(new ReceiptMatch
+                {
+                    OrganizationId = dto.OrganizationId,
+                    SourceName = sourceName,
+                    MatchedId = matchedId,
+                    MatchedName = matchedName,
+                    IsActive = true
+                });
+                existing.Add(created);
+                continue;
+            }
+
+            found.MatchedId = matchedId;
+            found.MatchedName = matchedName;
+            found.IsActive = true;
+            await _maintenanceRepository.UpdateReceiptMatchAsync(found);
+        }
+
+        _logger.LogError("[CreditReportTrace] Step=SaveMatches Count={Count}", dto.Matches?.Count ?? 0);
+    }
+
+    public async Task OverwriteMatchedVendorNameAsync(Guid organizationId, string? previousName, string? vendorName, Guid? vendorId)
+    {
+        var previous = (previousName ?? string.Empty).Trim();
+        var current = (vendorName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(previous) || string.IsNullOrWhiteSpace(current) || string.Equals(previous, current, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var aliases = (await _maintenanceRepository.GetReceiptMatchesByOrganizationIdAsync(organizationId)).ToList();
+        foreach (var alias in aliases)
+        {
+            if (!string.Equals((alias.MatchedName ?? string.Empty).Trim(), previous, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            alias.MatchedName = current;
+            if (vendorId is Guid id && id != Guid.Empty)
+                alias.MatchedId = id;
+
+            await _maintenanceRepository.UpdateReceiptMatchAsync(alias);
+        }
     }
 
     public async Task<CreditReportResponseDto> CreateDraftsAsync(CreditReportCreateDraftsRequestDto dto, Guid currentUser, CancellationToken cancellationToken = default)
@@ -166,6 +223,22 @@ public class CreditReportService
         return await _accountingRepository.GetBankCardsByOfficeIdsAsync(organizationId, officeIds);
     }
 
+    private async Task<Receipt> CorrectReceiptCardAsync(Receipt receipt, BankCard? card, Guid currentUser)
+    {
+        if (card?.BankCardId is not > 0 || receipt.BankCardId == card.BankCardId)
+            return receipt;
+
+        var current = await _maintenanceRepository.GetReceiptByIdAsync(receipt.ReceiptId, receipt.OrganizationId) ?? receipt;
+        current.BankCardId = card.BankCardId;
+        current.BankCardDisplayName = card.DisplayName;
+        var updated = await _accountingManager.UpdateReceiptAsync(current, currentUser);
+        if (string.IsNullOrWhiteSpace(updated.BankCardDisplayName))
+            updated.BankCardDisplayName = card.DisplayName;
+
+        _logger.LogError("[CreditReportTrace] Step=CorrectCard ReceiptId={ReceiptId} ReceiptCode={ReceiptCode} BankCardId={BankCardId}", updated.ReceiptId, updated.ReceiptCode, updated.BankCardId);
+        return updated;
+    }
+
     private async Task<ReceiptDraft> EnrichMatchedDraftAsync(ReceiptDraft draft, CreditCardStatementLine line, Contact? vendor, BankCard? card, int? requestOfficeId, Guid currentUser)
     {
         if (!TryEnrichDraftFromStatement(draft, line, vendor, card, requestOfficeId))
@@ -196,11 +269,12 @@ public class CreditReportService
             changed = true;
         }
 
-        if (draft.BankCardId is not > 0 && card?.BankCardId > 0)
+        if (card?.BankCardId > 0 && draft.BankCardId != card.BankCardId)
         {
+            var fillingBlankCard = draft.BankCardId is not > 0;
             draft.BankCardId = card.BankCardId;
             draft.BankCardDisplayName = card.DisplayName;
-            if (draft.PaidAmount == 0 && draft.Amount != 0)
+            if (fillingBlankCard && draft.PaidAmount == 0 && draft.Amount != 0)
             {
                 draft.PaidAmount = draft.Amount;
                 draft.PaidDate = draft.ReceiptDate ?? line.ChargeDate;
@@ -390,7 +464,7 @@ public class CreditReportService
         };
     }
 
-    private static bool IsExactMatch(CreditCardStatementLine line, DateOnly existingDate, decimal existingAmount, Guid? existingVendorId, string? existingVendorName, int? existingBankCardId, string? existingCardLastFour, Guid? statementVendorId, int? statementBankCardId, string? statementLastFour)
+    private static bool IsExactMatch(CreditCardStatementLine line, DateOnly existingDate, decimal existingAmount, Guid? existingVendorId, string? existingVendorName, Guid? statementVendorId, string? statementVendorName = null, string? rawStatementVendorName = null)
     {
         if (!DatesWithinWindow(line.ChargeDate, existingDate))
             return false;
@@ -398,23 +472,26 @@ public class CreditReportService
         if (!line.Amount.HasValue || Math.Abs(decimal.Round(line.Amount.Value, 2) - decimal.Round(existingAmount, 2)) > 0.005m)
             return false;
 
-        if (!VendorsMatch(statementVendorId, line.VendorName, existingVendorId, existingVendorName))
+        if (!VendorsMatch(statementVendorId, statementVendorName ?? line.VendorName, existingVendorId, existingVendorName, rawStatementVendorName))
             return false;
 
-        return CardsMatch(statementBankCardId, statementLastFour, existingBankCardId, existingCardLastFour);
+        return true;
     }
 
-    private static bool VendorsMatch(Guid? statementVendorId, string? statementVendorName, Guid? existingVendorId, string? existingVendorName)
+    private static bool VendorsMatch(Guid? statementVendorId, string? statementVendorName, Guid? existingVendorId, string? existingVendorName, string? rawStatementVendorName = null)
     {
-        if (statementVendorId.HasValue && existingVendorId.HasValue && statementVendorId.Value != Guid.Empty && existingVendorId.Value != Guid.Empty)
-            return statementVendorId.Value == existingVendorId.Value;
-
-        var left = NormalizeVendorName(statementVendorName);
         var right = NormalizeVendorName(existingVendorName);
-        if (VendorNamesAlign(left, right))
+        if (VendorNamesAlign(NormalizeVendorName(statementVendorName), right) || VendorNamesAlign(NormalizeVendorName(rawStatementVendorName), right))
             return true;
 
-        return string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right);
+        var statementId = statementVendorId is Guid leftId && leftId != Guid.Empty ? leftId : (Guid?)null;
+        var existingId = existingVendorId is Guid rightId && rightId != Guid.Empty ? rightId : (Guid?)null;
+        if (statementId.HasValue && existingId.HasValue)
+            return statementId.Value == existingId.Value;
+
+        var statementName = NormalizeVendorName(statementVendorName);
+        var rawName = NormalizeVendorName(rawStatementVendorName);
+        return string.IsNullOrWhiteSpace(right) || (string.IsNullOrWhiteSpace(statementName) && string.IsNullOrWhiteSpace(rawName));
     }
 
     private static bool VendorNamesAlign(string left, string right)
@@ -428,17 +505,45 @@ public class CreditReportService
         return (left.Length >= 6 && right.Contains(left)) || (right.Length >= 6 && left.Contains(right));
     }
 
-    private static bool CardsMatch(int? statementBankCardId, string? statementLastFour, int? existingBankCardId, string? existingLastFour)
+    private static (Guid? VendorId, string? VendorName) ResolveStatementVendor(string? statementVendorName, IReadOnlyList<Contact> vendors, IReadOnlyList<ReceiptMatch> aliases)
     {
-        if (statementBankCardId is > 0 && existingBankCardId is > 0)
-            return statementBankCardId.Value == existingBankCardId.Value;
+        var alias = FindReceiptMatch(statementVendorName, aliases);
+        if (alias != null)
+        {
+            var vendor = alias.MatchedId is Guid matchedId && matchedId != Guid.Empty ? vendors.FirstOrDefault(item => item.ContactId == matchedId) : ResolveVendor(alias.MatchedName, vendors);
+            var vendorId = vendor?.ContactId is Guid contactId && contactId != Guid.Empty ? contactId : (alias.MatchedId is Guid id && id != Guid.Empty ? id : (Guid?)null);
+            var vendorName = string.IsNullOrWhiteSpace(alias.MatchedName) ? statementVendorName : alias.MatchedName;
+            return (vendorId, vendorName);
+        }
 
-        if (LastDigitsMatch(statementLastFour, existingLastFour))
+        var resolved = ResolveVendor(statementVendorName, vendors);
+        return (resolved?.ContactId, statementVendorName);
+    }
+
+    private static ReceiptMatch? FindReceiptMatch(string? statementVendorName, IReadOnlyList<ReceiptMatch> aliases)
+    {
+        if (string.IsNullOrWhiteSpace(VendorMatchKey(statementVendorName)))
+            return null;
+
+        return aliases.FirstOrDefault(alias => SameSavedVendor(alias.SourceName, statementVendorName));
+    }
+
+    private static bool SameSavedVendor(string? savedSource, string? statementVendorName)
+    {
+        var saved = VendorMatchKey(savedSource);
+        var statement = VendorMatchKey(statementVendorName);
+        if (string.IsNullOrWhiteSpace(saved) || string.IsNullOrWhiteSpace(statement))
+            return false;
+        if (saved == statement)
             return true;
 
-        var statementHasCard = statementBankCardId is > 0 || HasCardDigits(statementLastFour);
-        var existingHasCard = existingBankCardId is > 0 || HasCardDigits(existingLastFour);
-        return !statementHasCard || !existingHasCard;
+        return (saved.Length >= 6 && statement.Contains(saved)) || (statement.Length >= 6 && saved.Contains(statement));
+    }
+
+    private static string VendorMatchKey(string? value)
+    {
+        var cleaned = CreditCardStatementLineParser.CleanVendorName(value);
+        return NormalizeVendorName(string.IsNullOrWhiteSpace(cleaned) ? value : cleaned);
     }
 
     private static Contact? ResolveVendor(string? vendorName, IReadOnlyList<Contact> vendors)

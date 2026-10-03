@@ -15,6 +15,9 @@ public class CreditReportLineDto
     public DateOnly? ChargeDate { get; set; }
     public decimal Amount { get; set; }
     public string? VendorName { get; set; }
+    public string? StatementVendorName { get; set; }
+    public DateOnly? StatementChargeDate { get; set; }
+    public decimal StatementAmount { get; set; }
     public Guid? VendorId { get; set; }
     public string? CardLastFour { get; set; }
     public int? BankCardId { get; set; }
@@ -46,6 +49,9 @@ public class CreditReportResponseDto
             ChargeDate = isMatched ? (receipt?.ReceiptDate ?? draft?.ReceiptDate ?? line.ChargeDate) : line.ChargeDate,
             Amount = isMatched ? (receipt?.Amount ?? draft?.Amount ?? line.Amount ?? 0) : (line.Amount ?? 0),
             VendorName = ResolveDisplayVendorName(isMatched ? (receipt?.VendorName ?? draft?.VendorName) : line.VendorName, line.VendorName),
+            StatementVendorName = CreditCardStatementLineParser.CleanVendorName(line.VendorName) ?? line.VendorName?.Trim(),
+            StatementChargeDate = line.ChargeDate,
+            StatementAmount = line.Amount ?? 0,
             VendorId = isMatched ? (receipt?.VendorId ?? draft?.VendorId) : vendorId,
             CardLastFour = isMatched ? (resolvedCard?.LastFour ?? line.CardLastFour) : (line.CardLastFour ?? resolvedCard?.LastFour),
             BankCardId = isMatched ? (receipt?.BankCardId ?? draft?.BankCardId) : (bankCardId ?? resolvedCard?.BankCardId),

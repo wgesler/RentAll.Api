@@ -213,6 +213,31 @@ public partial class MaintenanceController
         }
     }
 
+    [HttpPost("receipt/credit-report/matches")]
+    public async Task<IActionResult> SaveCreditReportMatches([FromBody] CreditReportSaveMatchesRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Credit report match data is required");
+
+        if (dto.OrganizationId != CurrentOrganizationId)
+            return Unauthorized("Invalid organization Id");
+
+        var (isValid, errorMessage) = dto.IsValid();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        try
+        {
+            await _creditReportService.SaveMatchesAsync(dto);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving credit report matches for organization {OrganizationId}", dto.OrganizationId);
+            return ServerError("An error occurred while saving credit report matches");
+        }
+    }
+
     [HttpPost("receipt")]
     public async Task<IActionResult> CreateReceipt([FromBody] CreateReceiptDto dto)
     {
@@ -291,6 +316,7 @@ public partial class MaintenanceController
             else
                 updated = await _accountingManager.UpdateReceiptAsync(receipt, CurrentUser);
 
+            await _creditReportService.OverwriteMatchedVendorNameAsync(updated.OrganizationId, existing.VendorName, updated.VendorName, updated.VendorId);
             var response = new ReceiptResponseDto(updated);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
             return Ok(response);

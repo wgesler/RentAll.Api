@@ -13,7 +13,7 @@ public static class CreditCardStatementLineParser
         + @"|\b(?:visa|master\s*card|mc|discover|disc|amex|american\s*express)\b[^\d]{0,40}(?:[#*xX\s.-]{0,20})(\d{4})\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex SummaryRowPattern = new(
-        @"^(?:previous|opening|new|ending|current)\s+balance\b|^minimum\s+payment\b|^total\b|^subtotal\b|^interest\s+charged\b|^fees?\s+charged\b|^credit\s+limit\b|^available\s+credit\b",
+        @"^(?:previous|opening|new|ending|current)\s+balance\b|^minimum\s+payment\b|^total\b|^subtotal\b|^interest\s+charged\b|^fees?\s+charged\b|^credit\s+limit\b|^available\s+credit\b|^transactions\s+this\s+cycle\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex PaymentRowPattern = new(
         @"\b(?:payment|autopay|auto\s*pay|thank\s*you|pymt|online\s+pmt|mobile\s+payment|payment\s+received|bill\s*pay|refund|reversal)\b",
@@ -49,6 +49,7 @@ public static class CreditCardStatementLineParser
         var warnings = new List<string>();
         var statementCardLastFour = ExtractCardLastFour(fullText);
         var statementCardTypeId = ParseCardType(fullText);
+        var statementYear = DateTime.Today.Year;
         var lines = new List<CreditCardStatementLine>();
 
         foreach (var table in tables)
@@ -56,14 +57,14 @@ public static class CreditCardStatementLineParser
             if (table.Count == 0)
                 continue;
 
-            var parsed = ParseTable(table, statementCardLastFour, statementCardTypeId);
+            var parsed = ParseTable(table, statementCardLastFour, statementCardTypeId, statementYear);
             foreach (var line in parsed)
                 lines.Add(line);
         }
 
         if (lines.Count == 0 && !string.IsNullOrWhiteSpace(fullText))
         {
-            foreach (var line in ParsePlainTextLines(fullText, statementCardLastFour, statementCardTypeId))
+            foreach (var line in ParsePlainTextLines(fullText, statementCardLastFour, statementCardTypeId, statementYear))
                 lines.Add(line);
         }
 
@@ -126,7 +127,7 @@ public static class CreditCardStatementLineParser
         return null;
     }
 
-    private static List<CreditCardStatementLine> ParseTable(IReadOnlyList<string> rows, string? statementCardLastFour, int? statementCardTypeId)
+    private static List<CreditCardStatementLine> ParseTable(IReadOnlyList<string> rows, string? statementCardLastFour, int? statementCardTypeId, int statementYear)
     {
         var grid = rows.Select(SplitRow).Where(cells => cells.Count > 0).ToList();
         if (grid.Count == 0)
@@ -147,7 +148,7 @@ public static class CreditCardStatementLineParser
         for (var i = startRow; i < grid.Count; i++)
         {
             var cells = grid[i];
-            var line = BuildLine(cells, dateCol, vendorCol, amountCol, debitCol, creditCol, typeCol, cardCol, statementCardLastFour, statementCardTypeId);
+            var line = BuildLine(cells, dateCol, vendorCol, amountCol, debitCol, creditCol, typeCol, cardCol, statementCardLastFour, statementCardTypeId, statementYear);
             if (line != null)
                 lines.Add(line);
         }
@@ -155,16 +156,17 @@ public static class CreditCardStatementLineParser
         return lines;
     }
 
-    private static CreditCardStatementLine? BuildLine(IReadOnlyList<string> cells, int dateCol, int vendorCol, int amountCol, int cardCol, string? statementCardLastFour, int? statementCardTypeId)
-        => BuildLine(cells, dateCol, vendorCol, amountCol, -1, -1, -1, cardCol, statementCardLastFour, statementCardTypeId);
+    private static CreditCardStatementLine? BuildLine(IReadOnlyList<string> cells, int dateCol, int vendorCol, int amountCol, int cardCol, string? statementCardLastFour, int? statementCardTypeId, int statementYear = 0)
+        => BuildLine(cells, dateCol, vendorCol, amountCol, -1, -1, -1, cardCol, statementCardLastFour, statementCardTypeId, statementYear);
 
-    private static CreditCardStatementLine? BuildLine(IReadOnlyList<string> cells, int dateCol, int vendorCol, int amountCol, int debitCol, int creditCol, int typeCol, int cardCol, string? statementCardLastFour, int? statementCardTypeId)
+    private static CreditCardStatementLine? BuildLine(IReadOnlyList<string> cells, int dateCol, int vendorCol, int amountCol, int debitCol, int creditCol, int typeCol, int cardCol, string? statementCardLastFour, int? statementCardTypeId, int statementYear = 0)
     {
         if (typeCol >= 0 && IsPaymentType(GetCell(cells, typeCol)))
             return null;
 
-        var date = dateCol >= 0 ? ParseDate(GetCell(cells, dateCol)) : FindDate(cells);
-        var amount = ResolveChargeAmount(cells, amountCol, debitCol, creditCol);
+        var transactionType = typeCol >= 0 ? GetCell(cells, typeCol) : null;
+        var date = dateCol >= 0 ? ParseDate(GetCell(cells, dateCol), statementYear) : FindDate(cells, statementYear);
+        var amount = ResolveChargeAmount(cells, amountCol, debitCol, creditCol, transactionType);
         var vendor = CleanVendorName(vendorCol >= 0 ? CollectVendorCells(cells, vendorCol) : FindVendor(cells, date, amount));
         var cardLastFour = cardCol >= 0 ? ExtractCardLastFour(GetCell(cells, cardCol)) : ExtractCardLastFour(string.Join(" ", cells));
         var rowText = CleanText(string.Join(" ", cells.Where(cell => !string.IsNullOrWhiteSpace(cell))));
@@ -186,7 +188,7 @@ public static class CreditCardStatementLineParser
         };
     }
 
-    private static decimal? ResolveChargeAmount(IReadOnlyList<string> cells, int amountCol, int debitCol, int creditCol)
+    private static decimal? ResolveChargeAmount(IReadOnlyList<string> cells, int amountCol, int debitCol, int creditCol, string? transactionType)
     {
         if (debitCol >= 0 || creditCol >= 0)
         {
@@ -195,7 +197,7 @@ public static class CreditCardStatementLineParser
             if (credit is > 0 && debit.GetValueOrDefault() == 0)
                 return null;
             if (debit is > 0)
-                return debit;
+                return ApplyChargeDirection(debit.Value, transactionType);
         }
 
         var amountCell = amountCol >= 0 ? GetCell(cells, amountCol) : null;
@@ -203,10 +205,24 @@ public static class CreditCardStatementLineParser
             return null;
 
         var amount = amountCol >= 0 ? ParseAmount(amountCell) : FindAmount(cells);
-        return amount.HasValue && amount.Value != 0 ? Math.Abs(amount.Value) : amount;
+        if (!amount.HasValue || amount.Value == 0)
+            return amount;
+
+        return ApplyChargeDirection(amount.Value, transactionType);
     }
 
-    private static List<CreditCardStatementLine> ParsePlainTextLines(string fullText, string? statementCardLastFour, int? statementCardTypeId)
+    private static decimal ApplyChargeDirection(decimal amount, string? transactionType)
+    {
+        var type = (transactionType ?? string.Empty).Trim().ToLowerInvariant();
+        if (type is "return" or "refund" or "credit" or "reversal")
+            return -Math.Abs(amount);
+        if (type is "sale" or "purchase" or "debit")
+            return Math.Abs(amount);
+
+        return amount;
+    }
+
+    private static List<CreditCardStatementLine> ParsePlainTextLines(string fullText, string? statementCardLastFour, int? statementCardTypeId, int statementYear)
     {
         var lines = new List<CreditCardStatementLine>();
         foreach (var raw in fullText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -215,9 +231,43 @@ public static class CreditCardStatementLineParser
             if (cells.Count < 2)
                 cells = raw.Split('\t', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
-            var line = BuildLine(cells, -1, -1, -1, -1, statementCardLastFour, statementCardTypeId);
+            var line = BuildLine(cells, -1, -1, -1, -1, statementCardLastFour, statementCardTypeId, statementYear);
             if (line != null)
                 lines.Add(line);
+        }
+
+        if (lines.Count > 0)
+            return lines;
+
+        return ParseEmbeddedChargeLines(fullText, statementCardLastFour, statementCardTypeId, statementYear);
+    }
+
+    private static readonly Regex EmbeddedChargePattern = new(
+        @"(?m)^(?<date>\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\s+(?<middle>.+?)\s+(?<amount>-?\$?\d{1,3}(?:,\d{3})*\.\d{2}-?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static List<CreditCardStatementLine> ParseEmbeddedChargeLines(string fullText, string? statementCardLastFour, int? statementCardTypeId, int statementYear)
+    {
+        var lines = new List<CreditCardStatementLine>();
+        var normalized = fullText.Replace("\r\n", "\n").Replace('\r', '\n');
+        foreach (Match match in EmbeddedChargePattern.Matches(normalized))
+        {
+            var date = ParseDate(match.Groups["date"].Value, statementYear);
+            var amount = ParseAmount(match.Groups["amount"].Value);
+            var vendor = CleanVendorName(match.Groups["middle"].Value);
+            if (!date.HasValue || !amount.HasValue || amount.Value == 0 || string.IsNullOrWhiteSpace(vendor))
+                continue;
+            if (IsSummaryRow(vendor) || IsPaymentRow(vendor, match.Value))
+                continue;
+
+            lines.Add(new CreditCardStatementLine
+            {
+                ChargeDate = date,
+                Amount = amount,
+                VendorName = vendor,
+                CardLastFour = statementCardLastFour,
+                CardTypeId = statementCardTypeId
+            });
         }
 
         return lines;
@@ -386,7 +436,7 @@ public static class CreditCardStatementLineParser
         return -1;
     }
 
-    private static DateOnly? FindDate(IReadOnlyList<string> cells) => cells.Select(ParseDate).FirstOrDefault(date => date.HasValue);
+    private static DateOnly? FindDate(IReadOnlyList<string> cells, int statementYear = 0) => cells.Select(cell => ParseDate(cell, statementYear)).FirstOrDefault(date => date.HasValue);
 
     private static decimal? FindAmount(IReadOnlyList<string> cells)
     {
@@ -446,12 +496,26 @@ public static class CreditCardStatementLineParser
         return date.HasValue && amount.HasValue ? null : CleanText(cells.FirstOrDefault(cell => !string.IsNullOrWhiteSpace(cell)));
     }
 
-    private static DateOnly? ParseDate(string? value)
+    private static DateOnly? ParseDate(string? value, int statementYear = 0)
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        var trimmed = value.Trim();
+        var trimmed = value.Trim().TrimEnd('*');
+        var monthDay = Regex.Match(trimmed, @"^(\d{1,2})[/-](\d{1,2})$");
+        if (monthDay.Success && int.TryParse(monthDay.Groups[1].Value, out var month) && int.TryParse(monthDay.Groups[2].Value, out var day))
+        {
+            var year = statementYear > 0 ? statementYear : DateTime.Today.Year;
+            try
+            {
+                return new DateOnly(year, month, day);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return null;
+            }
+        }
+
         if (DateOnly.TryParse(trimmed, CultureInfo.CurrentCulture, DateTimeStyles.None, out var current))
             return current;
 
@@ -470,13 +534,16 @@ public static class CreditCardStatementLineParser
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        var trimmed = value.Trim();
+        var trimmed = value.Trim().Replace('\u2212', '-').Replace('\u2013', '-');
         var isCredit = trimmed.Contains('(') && trimmed.Contains(')') || trimmed.EndsWith("CR", StringComparison.OrdinalIgnoreCase);
+        var trailingMinus = !isCredit && trimmed.EndsWith('-') && !trimmed.StartsWith('-');
+        if (trailingMinus)
+            trimmed = trimmed[..^1].Trim();
         var digits = Regex.Replace(trimmed, @"[^\d.\-]", string.Empty);
         if (!decimal.TryParse(digits, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) || parsed == 0)
             return null;
 
-        return isCredit ? -Math.Abs(parsed) : parsed;
+        return isCredit || trailingMinus ? -Math.Abs(parsed) : parsed;
     }
 
     private static string? CleanText(string? value)
