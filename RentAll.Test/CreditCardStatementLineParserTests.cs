@@ -80,4 +80,82 @@ public class CreditCardStatementLineParserTests
         Assert.Equal(90.27m, charge.Amount);
         Assert.Contains(extraction.Lines, line => line.Amount == -24.91m);
     }
+
+    [Fact]
+    public void ParseTables_AssignsCardFromSectionFooter()
+    {
+        var text = """
+            09/04  Payment Thank You - Web  -2,820.43
+            ANGELA HEALY
+            TRANSACTIONS THIS CYCLE (CARD 0842) $2820.43- INCLUDING PAYMENTS RECEIVED
+            08/23  COMCAST / XFINITY 800-266-2278 CO  90.27
+            08/24  COMCAST / XFINITY 800-266-2278 CO  306.46
+            RACHAEL ATENCIO
+            TRANSACTIONS THIS CYCLE (CARD 0859) $396.73
+            08/19  THE HOME DEPOT #1512 FORT COLLINS CO  -24.91
+            08/31  MAVERIK #00642 FORT CO FORT COLLINS CO  120.71
+            CALVIN VANDERHOFF
+            TRANSACTIONS THIS CYCLE (CARD 0883) $425.82
+            """;
+
+        var extraction = CreditCardStatementLineParser.ParseTables([], text);
+        var comcast = extraction.Lines.Where(line => line.VendorName != null && line.VendorName.Contains("Comcast", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        Assert.Equal(2, comcast.Count);
+        Assert.All(comcast, line => Assert.Equal("0859", line.CardLastFour));
+        Assert.Equal("0883", Assert.Single(extraction.Lines, line => line.Amount == -24.91m).CardLastFour);
+        Assert.Equal("0883", Assert.Single(extraction.Lines, line => line.VendorName != null && line.VendorName.Contains("Maverik", StringComparison.OrdinalIgnoreCase)).CardLastFour);
+        Assert.DoesNotContain(extraction.Lines, line => line.VendorName != null && line.VendorName.Contains("Payment", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ReadLines_GroupsDateVendorAmountAndSectionCard()
+    {
+        var stream = """
+            BT
+            /F1 9 Tf
+            72 700 Td
+            (08/24 COMCAST / XFINITY 800-266-2278 CO 306.46) Tj
+            0 -14 Td
+            (RACHAEL ATENCIO) Tj
+            0 -14 Td
+            (TRANSACTIONS THIS CYCLE \(CARD 0859\) 396.73) Tj
+            ET
+            """;
+        var body = System.Text.Encoding.ASCII.GetBytes(stream);
+        var header = System.Text.Encoding.ASCII.GetBytes($"%PDF-1.4\n<< /Length {body.Length} >>\nstream\n");
+        var footer = System.Text.Encoding.ASCII.GetBytes("\nendstream\n");
+        var pdf = header.Concat(body).Concat(footer).ToArray();
+
+        var text = CreditCardStatementPdfReader.ReadLines(pdf);
+        var extraction = CreditCardStatementLineParser.ParseTables([], text);
+        var charge = Assert.Single(extraction.Lines);
+
+        Assert.Equal(306.46m, charge.Amount);
+        Assert.Equal("0859", charge.CardLastFour);
+    }
+
+    [Fact]
+    public void ReadLines_ReadsCompressedChargePackedAgainstTextOperator()
+    {
+        var commands = "BT /F1 9 Tf 72 700 Td (08/24 COMCAST / XFINITY 800-266-2278 CO 306.46)Tj 0 -14 Td (TRANSACTIONS THIS CYCLE \\(CARD 0859\\) 396.73)Tj ET";
+        var compressed = Compress(System.Text.Encoding.ASCII.GetBytes(commands));
+        var header = System.Text.Encoding.ASCII.GetBytes($"%PDF-1.4\n<</Length {compressed.Length}/Filter/FlateDecode>>stream\n");
+        var footer = System.Text.Encoding.ASCII.GetBytes("\nendstream\n");
+        var pdf = header.Concat(compressed).Concat(footer).ToArray();
+
+        var extraction = CreditCardStatementLineParser.ParseTables([], CreditCardStatementPdfReader.ReadLines(pdf));
+        var charge = Assert.Single(extraction.Lines);
+
+        Assert.Equal(306.46m, charge.Amount);
+        Assert.Equal("0859", charge.CardLastFour);
+    }
+
+    private static byte[] Compress(byte[] content)
+    {
+        using var output = new System.IO.MemoryStream();
+        using (var zlib = new System.IO.Compression.ZLibStream(output, System.IO.Compression.CompressionLevel.Fastest, true))
+            zlib.Write(content, 0, content.Length);
+        return output.ToArray();
+    }
 }

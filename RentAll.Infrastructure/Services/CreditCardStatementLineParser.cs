@@ -224,6 +224,10 @@ public static class CreditCardStatementLineParser
 
     private static List<CreditCardStatementLine> ParsePlainTextLines(string fullText, string? statementCardLastFour, int? statementCardTypeId, int statementYear)
     {
+        var sectionLines = ParseStatementSections(fullText, statementCardLastFour, statementCardTypeId, statementYear);
+        if (sectionLines.Count > 0)
+            return sectionLines;
+
         var lines = new List<CreditCardStatementLine>();
         foreach (var raw in fullText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
@@ -242,14 +246,17 @@ public static class CreditCardStatementLineParser
         return ParseEmbeddedChargeLines(fullText, statementCardLastFour, statementCardTypeId, statementYear);
     }
 
+    private static readonly Regex ChargeStartPattern = new(
+        @"^(?<date>\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\b",
+        RegexOptions.Compiled);
     private static readonly Regex EmbeddedChargePattern = new(
-        @"(?m)^(?<date>\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\s+(?<middle>.+?)\s+(?<amount>-?\$?\d{1,3}(?:,\d{3})*\.\d{2}-?)\s*$",
+        @"(?m)^(?<date>\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\s+(?<middle>.+?)\s+(?<amount>-?\$?\s*\d{1,3}(?:,\d{3})*\.\d{2}-?)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static List<CreditCardStatementLine> ParseEmbeddedChargeLines(string fullText, string? statementCardLastFour, int? statementCardTypeId, int statementYear)
     {
         var lines = new List<CreditCardStatementLine>();
-        var normalized = fullText.Replace("\r\n", "\n").Replace('\r', '\n');
+        var normalized = CollapseWrappedChargeLines(fullText.Replace("\r\n", "\n").Replace('\r', '\n'));
         foreach (Match match in EmbeddedChargePattern.Matches(normalized))
         {
             var date = ParseDate(match.Groups["date"].Value, statementYear);
@@ -272,6 +279,84 @@ public static class CreditCardStatementLineParser
 
         return lines;
     }
+
+    private static readonly Regex SectionCardPattern = new(@"\bCARD\s+(\d{3,4})\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static List<CreditCardStatementLine> ParseStatementSections(string fullText, string? statementCardLastFour, int? statementCardTypeId, int statementYear)
+    {
+        var pending = new List<CreditCardStatementLine>();
+        var lines = new List<CreditCardStatementLine>();
+        var normalized = CollapseWrappedChargeLines(fullText.Replace("\r\n", "\n").Replace('\r', '\n'));
+        foreach (var raw in normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var sectionCard = SectionCardPattern.Match(raw);
+            if (sectionCard.Success && raw.Contains("CYCLE", StringComparison.OrdinalIgnoreCase))
+            {
+                var lastFour = sectionCard.Groups[1].Value;
+                foreach (var pendingLine in pending)
+                    pendingLine.CardLastFour = lastFour;
+                lines.AddRange(pending);
+                pending.Clear();
+                continue;
+            }
+
+            var match = EmbeddedChargePattern.Match(raw);
+            if (!match.Success)
+                continue;
+
+            var date = ParseDate(match.Groups["date"].Value, statementYear);
+            var amount = ParseAmount(match.Groups["amount"].Value);
+            var vendor = CleanVendorName(match.Groups["middle"].Value);
+            if (!date.HasValue || !amount.HasValue || amount.Value == 0 || string.IsNullOrWhiteSpace(vendor))
+                continue;
+            if (IsSummaryRow(vendor) || IsPaymentRow(vendor, match.Value))
+                continue;
+
+            pending.Add(new CreditCardStatementLine
+            {
+                ChargeDate = date,
+                Amount = amount,
+                VendorName = vendor,
+                CardLastFour = null,
+                CardTypeId = statementCardTypeId
+            });
+        }
+
+        foreach (var pendingLine in pending)
+        {
+            pendingLine.CardLastFour ??= statementCardLastFour;
+            lines.Add(pendingLine);
+        }
+
+        return lines;
+    }
+
+    private static string CollapseWrappedChargeLines(string fullText)
+    {
+        var rows = fullText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var collapsed = new List<string>();
+        string? buffer = null;
+        foreach (var row in rows)
+        {
+            if (ChargeStartPattern.IsMatch(row) || SectionCardPattern.IsMatch(row))
+            {
+                if (buffer != null)
+                    collapsed.Add(buffer);
+                buffer = row;
+                continue;
+            }
+
+            if (buffer != null && !Regex.IsMatch(buffer, @"-?\$?\s*\d{1,3}(?:,\d{3})*\.\d{2}-?\s*$") && !IsCardholderLine(row))
+                buffer = $"{buffer} {row}";
+        }
+
+        if (buffer != null)
+            collapsed.Add(buffer);
+
+        return string.Join('\n', collapsed);
+    }
+
+    private static bool IsCardholderLine(string row) => Regex.IsMatch(row.Trim(), @"^[A-Za-z][A-Za-z .'-]+$");
 
     private static bool IsHeaderRow(IReadOnlyList<string> cells)
     {

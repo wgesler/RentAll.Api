@@ -509,6 +509,14 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             return CreditCardStatementLineParser.ParseTables(spreadsheetTables, spreadsheetText);
         }
 
+        if (CreditCardStatementPdfReader.IsPdf(fileName, contentType, content))
+        {
+            var pdfText = CreditCardStatementPdfReader.ReadLines(content);
+            var pdfExtraction = CreditCardStatementLineParser.ParseTables([], pdfText);
+            _logger.LogError("[CreditReportTrace] Step=PdfText LineCount={LineCount} TextLength={TextLength}", pdfExtraction.Lines.Count, pdfText.Length);
+            return pdfExtraction;
+        }
+
         if (!_settings.Enabled)
             throw new InvalidOperationException("Document Intelligence is not enabled.");
 
@@ -524,7 +532,6 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var fullText = analyzeResult.Content ?? string.Empty;
         var tables = BuildTablesFromAnalyzeResult(analyzeResult);
         var extraction = CreditCardStatementLineParser.ParseTables(tables, fullText);
-
         _logger.LogError("[CreditReportTrace] Step=Analyze Complete LineCount={LineCount} CardLastFour={CardLastFour} WarningCount={WarningCount}", extraction.Lines.Count, extraction.StatementCardLastFour, extraction.Warnings.Count);
         return extraction;
     }
