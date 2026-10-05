@@ -81,13 +81,20 @@ public class CreditReportService
         }
 
         var aliases = (await _maintenanceRepository.GetReceiptMatchesByOrganizationIdAsync(dto.OrganizationId)).ToList();
-        _logger.LogError("[CreditReportTrace] Step=Extracted LineCount={LineCount} OfficeId={OfficeId} AliasCount={AliasCount}", extraction.Lines.Count, dto.OfficeId, aliases.Count);
+        var billPayments = await LoadCardBillPaymentsAsync(dto.OrganizationId, officeIds, dateRange.StartDate, dateRange.EndDate, bankCards, statementCardTypeId);
+        _logger.LogError("[CreditReportTrace] Step=Extracted LineCount={LineCount} OfficeId={OfficeId} AliasCount={AliasCount} BillPayments={BillPayments}", extraction.Lines.Count, dto.OfficeId, aliases.Count, billPayments.Count);
         var receiptMatches = AssignClosestMatches(extraction.Lines, receipts, receipt => receipt.ReceiptId, (line, receipt) =>
         {
             var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
             return IsExactMatch(line, receipt.ReceiptDate, receipt.Amount, receipt.VendorId, receipt.VendorName, statementVendor.VendorId, statementVendor.VendorName, line.VendorName);
         }, (line, receipt) => DateDistance(line.ChargeDate, receipt.ReceiptDate));
-        var unmatchedLines = extraction.Lines.Where(line => !receiptMatches.ContainsKey(line)).ToList();
+        var unmatchedAfterReceipts = extraction.Lines.Where(line => !receiptMatches.ContainsKey(line)).ToList();
+        var billPaymentMatches = AssignClosestMatches(unmatchedAfterReceipts, billPayments, payment => payment.PaymentId, (line, payment) =>
+        {
+            var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
+            return BillPaymentMatches(line, payment, statementVendor.VendorId, statementVendor.VendorName);
+        }, (line, payment) => DateDistance(line.ChargeDate, payment.PaymentDate));
+        var unmatchedLines = unmatchedAfterReceipts.Where(line => !billPaymentMatches.ContainsKey(line)).ToList();
         var draftMatches = AssignClosestMatches(unmatchedLines, drafts.Where(draft => draft.ReceiptDate.HasValue).ToList(), draft => draft.ReceiptDraftId, (line, draft) =>
         {
             var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
@@ -109,6 +116,12 @@ public class CreditReportService
                 continue;
             }
 
+            if (billPaymentMatches.TryGetValue(line, out var matchedPayment))
+            {
+                response.CompleteMatches.Add(CreditReportResponseDto.FromBillPayment(line, matchedPayment, resolvedCard));
+                continue;
+            }
+
             if (draftMatches.TryGetValue(line, out var matchedDraft))
             {
                 matchedDraft = await EnrichMatchedDraftAsync(matchedDraft, line, resolvedVendor, resolvedCard, dto.OfficeId, currentUser);
@@ -125,7 +138,7 @@ public class CreditReportService
         foreach (var draft in drafts.Where(draft => !usedDraftIds.Contains(draft.ReceiptDraftId) && draft.BankCardId > 0))
             response.UnknownMatches.Add(CreditReportResponseDto.FromExisting(null, draft, LookupCard(draft.BankCardId, bankCards)));
 
-        _logger.LogError("[CreditReportTrace] Step=Complete Complete={Complete} DraftMatches={DraftMatches} Proposed={Proposed} Unknown={Unknown}", response.CompleteMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count, response.UnknownMatches.Count);
+        _logger.LogError("[CreditReportTrace] Step=Complete Complete={Complete} BillPayments={BillPayments} DraftMatches={DraftMatches} Proposed={Proposed} Unknown={Unknown}", response.CompleteMatches.Count, billPaymentMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count, response.UnknownMatches.Count);
         return response;
     }
 
@@ -462,6 +475,62 @@ public class CreditReportService
             CardType.Discover => @"\b(?:discover|\bdisc\b)\b",
             _ => @"\b(?:amex|american\s*express)\b"
         };
+    }
+
+    private async Task<List<Payment>> LoadCardBillPaymentsAsync(Guid organizationId, string officeIds, DateOnly? startDate, DateOnly? endDate, IReadOnlyList<BankCard> bankCards, int? statementCardTypeId)
+    {
+        if (string.IsNullOrWhiteSpace(officeIds))
+            return [];
+
+        var payments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Bill);
+        return payments.Where(payment => payment.IsActive && payment.Amount != 0 && PaymentInDateRange(payment, startDate, endDate) && PaymentUsesStatementCard(payment, bankCards, statementCardTypeId)).ToList();
+    }
+
+    private static bool PaymentInDateRange(Payment payment, DateOnly? startDate, DateOnly? endDate)
+    {
+        if (payment.PaymentDate == default)
+            return false;
+
+        if (startDate.HasValue && payment.PaymentDate < startDate.Value)
+            return false;
+
+        return !endDate.HasValue || payment.PaymentDate <= endDate.Value;
+    }
+
+    private static bool PaymentUsesStatementCard(Payment payment, IReadOnlyList<BankCard> bankCards, int? statementCardTypeId)
+    {
+        var matchingCards = payment.ChartOfAccountId is > 0 ? bankCards.Where(card => card.ChartOfAccountId == payment.ChartOfAccountId).ToList() : [];
+        if (matchingCards.Count > 0)
+            return !statementCardTypeId.HasValue || matchingCards.Any(card => ResolveBankCardType(card) == statementCardTypeId.Value || !ResolveBankCardType(card).HasValue);
+
+        return payment.PaymentTypeId == (int)PaymentType.CreditCard;
+    }
+
+    private static bool BillPaymentMatches(CreditCardStatementLine line, Payment payment, Guid? statementVendorId, string? statementVendorName)
+    {
+        if (!DatesWithinWindow(line.ChargeDate, payment.PaymentDate))
+            return false;
+
+        if (!line.Amount.HasValue || Math.Abs(decimal.Round(line.Amount.Value, 2) - decimal.Round(payment.Amount, 2)) > 0.005m)
+            return false;
+
+        return BillPaymentVendorMatches(payment, statementVendorId, statementVendorName, line.VendorName);
+    }
+
+    private static bool BillPaymentVendorMatches(Payment payment, Guid? statementVendorId, string? statementVendorName, string? rawStatementVendorName)
+    {
+        var allocations = payment.BillAllocations ?? [];
+        var vendorIds = allocations.Select(allocation => allocation.VendorId).Where(id => id is Guid vendorId && vendorId != Guid.Empty).Select(id => id!.Value).Distinct().ToList();
+        var vendorNames = allocations.Select(allocation => NormalizeVendorName(allocation.VendorName)).Where(name => !string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.Ordinal).ToList();
+        if (vendorIds.Count > 1 || vendorNames.Count > 1)
+            return true;
+
+        if (vendorIds.Count == 0 && vendorNames.Count == 0)
+            return true;
+
+        var vendorId = vendorIds.Count == 1 ? vendorIds[0] : (Guid?)null;
+        var vendorName = allocations.Select(allocation => allocation.VendorName).FirstOrDefault(name => !string.IsNullOrWhiteSpace(NormalizeVendorName(name)));
+        return VendorsMatch(statementVendorId, statementVendorName, vendorId, vendorName, rawStatementVendorName);
     }
 
     private static bool IsExactMatch(CreditCardStatementLine line, DateOnly existingDate, decimal existingAmount, Guid? existingVendorId, string? existingVendorName, Guid? statementVendorId, string? statementVendorName = null, string? rawStatementVendorName = null)

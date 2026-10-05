@@ -28,6 +28,9 @@ public class CreditReportLineDto
     public string? ReceiptCode { get; set; }
     public Guid? ReceiptDraftId { get; set; }
     public string? DraftCode { get; set; }
+    public Guid? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public string? BillCodes { get; set; }
     public bool IsUtility { get; set; }
     public List<CreditReportSplitDto> Splits { get; set; } = new();
 }
@@ -64,6 +67,32 @@ public class CreditReportResponseDto
             DraftCode = draft?.DraftCode,
             IsUtility = receipt?.IsUtility ?? draft?.IsUtility ?? false,
             Splits = (receipt?.Splits ?? draft?.Splits ?? []).Select(split => new CreditReportSplitDto { WorkOrderId = split.WorkOrderId, WorkOrderCode = split.WorkOrderCode ?? split.WorkOrder, ReceiptTypeId = split.ReceiptTypeId }).ToList()
+        };
+    }
+
+    public static CreditReportLineDto FromBillPayment(CreditCardStatementLine line, Payment payment, BankCard? resolvedCard = null)
+    {
+        var allocations = payment.BillAllocations ?? [];
+        var vendorNames = allocations.Select(allocation => (allocation.VendorName ?? string.Empty).Trim()).Where(name => name.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var billCodes = allocations.Select(allocation => (allocation.ReceiptCode ?? string.Empty).Trim()).Where(code => code.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var vendorIds = allocations.Select(allocation => allocation.VendorId).Where(id => id is Guid vendorId && vendorId != Guid.Empty).Select(id => id!.Value).Distinct().ToList();
+        return new CreditReportLineDto
+        {
+            ChargeDate = payment.PaymentDate,
+            Amount = payment.Amount,
+            VendorName = vendorNames.Count > 0 ? string.Join(", ", vendorNames) : ResolveDisplayVendorName(null, line.VendorName),
+            StatementVendorName = CreditCardStatementLineParser.CleanVendorName(line.VendorName) ?? line.VendorName?.Trim(),
+            StatementChargeDate = line.ChargeDate,
+            StatementAmount = line.Amount ?? 0,
+            VendorId = vendorIds.Count == 1 ? vendorIds[0] : null,
+            CardLastFour = resolvedCard?.LastFour ?? line.CardLastFour,
+            BankCardId = resolvedCard?.BankCardId,
+            BankCardDisplayName = resolvedCard?.DisplayName,
+            CardTypeId = resolvedCard?.CardTypeId ?? line.CardTypeId,
+            Description = string.IsNullOrWhiteSpace(payment.Description) ? null : payment.Description.Trim(),
+            PaymentId = payment.PaymentId,
+            PaymentCode = string.IsNullOrWhiteSpace(payment.PaymentCode) ? null : payment.PaymentCode.Trim(),
+            BillCodes = billCodes.Count > 0 ? string.Join(", ", billCodes) : null
         };
     }
 
