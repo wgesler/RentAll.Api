@@ -21,7 +21,7 @@ public class CreditReportService
     private readonly IContactRepository _contactRepository;
     private readonly IAccountingManager _accountingManager;
     private readonly ILogger<CreditReportService> _logger;
-    private const int MatchDateWindowDays = 3;
+    private const int MatchDateWindowDays = 5;
 
     public CreditReportService(IDocumentIntelligenceService documentIntelligenceService, IMaintenanceRepository maintenanceRepository, IOrganizationRepository organizationRepository, IOrganizationManager organizationManager, IAccountingRepository accountingRepository, IContactRepository contactRepository, IAccountingManager accountingManager, ILogger<CreditReportService> logger)
     {
@@ -56,11 +56,11 @@ public class CreditReportService
         {
             OrganizationId = dto.OrganizationId,
             OfficeIds = officeIds,
-            IsActive = true,
-            IncludeInactive = false,
+            IsActive = null,
+            IncludeInactive = true,
             StartDate = dateRange.StartDate,
             EndDate = dateRange.EndDate
-        })).Where(receipt => receipt.IsActive).ToList();
+        })).ToList();
         var drafts = (await _maintenanceRepository.GetReceiptDraftsByCriteriaAsync(new ReceiptDraftGetCriteria
         {
             OrganizationId = dto.OrganizationId,
