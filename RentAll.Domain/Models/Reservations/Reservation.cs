@@ -23,6 +23,7 @@ public class Reservation
     public int NumberOfPeople { get; set; }
     public string? TenantName { get; set; }
     public string? ReferenceNo { get; set; }
+    public string? ExternalRefNo { get; set; }
     public DateOnly ArrivalDate { get; set; }
     public DateOnly DepartureDate { get; set; }
     public DateOnly? BillingStartDate { get; set; }

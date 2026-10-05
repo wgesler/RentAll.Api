@@ -194,6 +194,7 @@ public class UpdateReservationDto
             NumberOfPeople = NumberOfPeople,
             TenantName = TenantName,
             ReferenceNo = ReferenceNo,
+            ExternalRefNo = existingReservation?.ExternalRefNo,
             ArrivalDate = ArrivalDate,
             DepartureDate = DepartureDate,
             BillingStartDate = BillingStartDate,

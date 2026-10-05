@@ -77,6 +77,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 NumberOfPeople = e.NumberOfPeople,
                 TenantName = e.TenantName,
                 ReferenceNo = e.ReferenceNo,
+                ExternalRefNo = e.ExternalRefNo,
                 ArrivalDate = e.ArrivalDate,
                 DepartureDate = e.DepartureDate,
                 BillingStartDate = e.BillingStartDate,

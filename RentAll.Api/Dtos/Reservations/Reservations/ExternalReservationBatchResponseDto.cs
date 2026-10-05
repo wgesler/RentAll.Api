@@ -5,6 +5,7 @@ public class ExternalReservationBatchItemResultDto
     public int Index { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public string? ReferenceNo { get; set; }
+    public string? ExternalRefNo { get; set; }
     public string? ReservationCode { get; set; }
     public bool Success { get; set; }
     public bool Updated { get; set; }

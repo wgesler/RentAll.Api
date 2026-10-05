@@ -35,7 +35,8 @@ public partial class ReservationController
             {
                 Index = index,
                 PropertyCode = (dto.PropertyCode ?? string.Empty).Trim(),
-                ReferenceNo = string.IsNullOrWhiteSpace(dto.ReferenceNo) ? null : dto.ReferenceNo.Trim()
+                ReferenceNo = string.IsNullOrWhiteSpace(dto.ReferenceNo) ? null : dto.ReferenceNo.Trim(),
+                ExternalRefNo = string.IsNullOrWhiteSpace(dto.ExternalRefNo) ? null : dto.ExternalRefNo.Trim()
             };
 
             try
@@ -50,7 +51,7 @@ public partial class ReservationController
             catch (Exception ex)
             {
                 hadException = true;
-                _logger.LogError(ex, "[ExternalReservationTrace] Error upserting external reservation {PropertyCode} {ReferenceNo}", item.PropertyCode, item.ReferenceNo);
+                _logger.LogError(ex, "[ExternalReservationTrace] Error upserting external reservation {PropertyCode} {ExternalRefNo}", item.PropertyCode, item.ExternalRefNo);
                 item.Success = false;
                 item.ErrorMessage = GetExternalReservationSaveErrorMessage(ex);
                 await TryLogExternalReservationSaveFailureAsync(context, item, StatusCodes.Status500InternalServerError);
@@ -100,14 +101,14 @@ public partial class ReservationController
         if (!agentOk)
             return (false, false, null, agentError);
 
-        var referenceNo = string.IsNullOrWhiteSpace(dto.ReferenceNo) ? null : dto.ReferenceNo.Trim();
+        var externalRefNo = string.IsNullOrWhiteSpace(dto.ExternalRefNo) ? null : dto.ExternalRefNo.Trim();
         Reservation? existing = null;
-        if (referenceNo != null)
+        if (externalRefNo != null)
         {
             var active = await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(context.OrganizationId, context.OfficeId.ToString());
             existing = active.FirstOrDefault(reservation =>
                 reservation.PropertyId == property.PropertyId
-                && string.Equals((reservation.ReferenceNo ?? string.Empty).Trim(), referenceNo, StringComparison.OrdinalIgnoreCase));
+                && string.Equals((reservation.ExternalRefNo ?? string.Empty).Trim(), externalRefNo, StringComparison.OrdinalIgnoreCase));
         }
 
         if (existing != null)
@@ -126,6 +127,7 @@ public partial class ReservationController
 
         var code = await _organizationManager.GenerateEntityCodeAsync(context.OrganizationId, EntityType.Reservation);
         var model = createDto.ToModel(code, SystemUserId);
+        model.ExternalRefNo = string.IsNullOrWhiteSpace(dto.ExternalRefNo) ? null : dto.ExternalRefNo.Trim();
         model.ExtraFeeLines = dto.ToExtraFeeLines();
         var created = await _reservationRepository.CreateAsync(model);
         return (true, false, new ReservationResponseDto(created), null);
@@ -225,9 +227,9 @@ public partial class ReservationController
     private async Task TryLogExternalReservationSaveFailureAsync(ExternalPropertyIntakeContext context, ExternalReservationBatchItemResultDto item, int httpStatusCode)
     {
         var errorMessage = string.IsNullOrWhiteSpace(item.ErrorMessage) ? "Reservation save failed" : item.ErrorMessage;
-        var detail = string.IsNullOrWhiteSpace(item.ReferenceNo)
+        var detail = string.IsNullOrWhiteSpace(item.ExternalRefNo)
             ? errorMessage
-            : $"{errorMessage} ReferenceNo={item.ReferenceNo}.";
+            : $"{errorMessage} ExternalRefNo={item.ExternalRefNo}.";
         try
         {
             await _externalPropertyUploadLogService.LogExternalSaveFailureAsync(
@@ -242,7 +244,7 @@ public partial class ReservationController
         }
         catch (Exception logEx)
         {
-            _logger.LogError(logEx, "[ExternalReservationTrace] Property Uploads log failed PropertyCode={PropertyCode} ReferenceNo={ReferenceNo}", item.PropertyCode, item.ReferenceNo);
+            _logger.LogError(logEx, "[ExternalReservationTrace] Property Uploads log failed PropertyCode={PropertyCode} ExternalRefNo={ExternalRefNo}", item.PropertyCode, item.ExternalRefNo);
             item.ErrorMessage = $"{errorMessage} | Property Uploads log failed: {logEx.Message}";
         }
     }

@@ -7,6 +7,7 @@ public class CreateExternalReservationDto
 {
     public string PropertyCode { get; set; } = string.Empty;
     public string? ReferenceNo { get; set; }
+    public string? ExternalRefNo { get; set; }
     public string? TenantName { get; set; }
     public string? AgentCode { get; set; }
     public DateOnly ArrivalDate { get; set; }
@@ -70,6 +71,10 @@ public class CreateExternalReservationDto
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(PropertyCode))
             errors.Add("propertyCode is required.");
+        if (string.IsNullOrWhiteSpace(ExternalRefNo))
+            errors.Add("externalRefNo is required.");
+        else if (ExternalRefNo.Trim().Length > 100)
+            errors.Add("externalRefNo must be 100 characters or fewer.");
         if (string.IsNullOrWhiteSpace(TenantName))
             errors.Add("tenantName is required.");
         if (!ReservationTypeId.HasValue)
@@ -185,6 +190,7 @@ public class CreateExternalReservationDto
         }
 
         ExternalIntakeErrors.CollectRequiredString(body, "propertyCode", errors, $"{prefix}.propertyCode is required.");
+        ExternalIntakeErrors.CollectRequiredString(body, "externalRefNo", errors, $"{prefix}.externalRefNo is required.");
         ExternalIntakeErrors.CollectRequiredString(body, "tenantName", errors, $"{prefix}.tenantName is required.");
         ExternalIntakeErrors.CollectRequiredInt(body, "reservationTypeId", errors, $"{prefix}.reservationTypeId is required.");
         ExternalIntakeErrors.CollectRequiredInt(body, "reservationStatusId", errors, $"{prefix}.reservationStatusId is required.");
@@ -313,6 +319,7 @@ public class CreateExternalReservationDto
         reservation.NumberOfPeople = create.NumberOfPeople;
         reservation.TenantName = create.TenantName;
         reservation.ReferenceNo = create.ReferenceNo;
+        reservation.ExternalRefNo = string.IsNullOrWhiteSpace(ExternalRefNo) ? null : ExternalRefNo.Trim();
         reservation.ArrivalDate = create.ArrivalDate;
         reservation.DepartureDate = create.DepartureDate;
         reservation.BillingStartDate = create.BillingStartDate;
