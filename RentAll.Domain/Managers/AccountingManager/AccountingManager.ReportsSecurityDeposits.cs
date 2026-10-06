@@ -960,6 +960,7 @@ public partial class AccountingManager
         PaymentType.OnlineBanking => "Online banking",
         PaymentType.WireTransfer => "Wire transfer",
         PaymentType.CreditCard => "Credit Card",
+        PaymentType.CreditCardRefund => "Credit Card Refund",
         _ => paymentType.ToString()
     };
 
