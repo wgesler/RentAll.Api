@@ -77,9 +77,20 @@ public partial class TicketController
         {
             // Get a new Contact code
             var code = await _organizationManager.GenerateEntityCodeAsync(dto.OrganizationId, EntityType.Ticket);
+            dto.Description = PrepareTicketHtmlForSave(dto.Description);
+            if (dto.Notes != null)
+            {
+                foreach (var note in dto.Notes)
+                    note.Note = PrepareTicketHtmlForSave(note.Note);
+            }
             var ticket = dto.ToModel(code, CurrentUser);
 
             var created = await _ticketRepository.CreateTicketAsync(ticket);
+            await SyncTicketImagesAsync(
+                created.TicketId,
+                created.OfficeId,
+                created.Description,
+                (created.Notes ?? []).Select(note => note.Note));
             return Ok(new TicketResponseDto(created));
         }
         catch (Exception ex)
@@ -103,8 +114,19 @@ public partial class TicketController
 
         try
         {
+            dto.Description = PrepareTicketHtmlForSave(dto.Description);
+            if (dto.Notes != null)
+            {
+                foreach (var note in dto.Notes)
+                    note.Note = PrepareTicketHtmlForSave(note.Note);
+            }
             var ticket = dto.ToModel(CurrentUser);
             var updated = await _ticketRepository.UpdateTicketAsync(ticket);
+            await SyncTicketImagesAsync(
+                updated.TicketId,
+                updated.OfficeId,
+                updated.Description,
+                (updated.Notes ?? []).Select(note => note.Note));
             await _emailManager.AlertTicketListeners(updated);
             return Ok(new TicketResponseDto(updated));
         }

@@ -18,6 +18,8 @@ public partial class TicketController : BaseController
     private readonly IEmailManager _emailManager;
     private readonly IExternalApiKeyService _externalApiKeyService;
     private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
+    private readonly IFileAttachmentHelper _fileAttachmentHelper;
+    private readonly IFileService _fileService;
     private readonly ILogger<TicketController> _logger;
     #endregion
 
@@ -29,6 +31,8 @@ public partial class TicketController : BaseController
         IEmailManager emailManager,
         IExternalApiKeyService externalApiKeyService,
         ExternalPropertyUploadLogService externalPropertyUploadLogService,
+        IFileAttachmentHelper fileAttachmentHelper,
+        IFileService fileService,
         ILogger<TicketController> logger)
     {
         _organizationRepository = organizationRepository;
@@ -37,6 +41,8 @@ public partial class TicketController : BaseController
         _emailManager = emailManager;
         _externalApiKeyService = externalApiKeyService;
         _externalPropertyUploadLogService = externalPropertyUploadLogService;
+        _fileAttachmentHelper = fileAttachmentHelper;
+        _fileService = fileService;
         _logger = logger;
     }
     #endregion

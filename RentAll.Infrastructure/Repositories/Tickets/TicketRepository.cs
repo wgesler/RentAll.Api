@@ -234,6 +234,37 @@ public class TicketRepository : ITicketRepository
         }
     }
 
+    public async Task<IReadOnlyList<TicketImage>> GetTicketImagesByTicketIdAsync(Guid ticketId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<TicketImage>("Maintenance.TicketImage_GetByTicketId", new
+        {
+            TicketId = ticketId
+        });
+        return (rows ?? Enumerable.Empty<TicketImage>()).ToList();
+    }
+
+    public async Task AddTicketImageAsync(Guid ticketId, string storagePath, Guid createdBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Maintenance.TicketImage_Add", new
+        {
+            TicketId = ticketId,
+            StoragePath = storagePath,
+            CreatedBy = createdBy
+        });
+    }
+
+    public async Task DeleteTicketImageByPathAsync(Guid ticketId, string storagePath)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Maintenance.TicketImage_DeleteByPath", new
+        {
+            TicketId = ticketId,
+            StoragePath = storagePath
+        });
+    }
+
     public async Task DeleteTicketByIdAsync(Guid ticketId, Guid organizationId, Guid modifiedBy)
     {
         await using var db = new SqlConnection(_dbConnectionString);
