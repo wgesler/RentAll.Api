@@ -229,6 +229,13 @@ public partial class PropertyController
                 attempt);
         }
 
+        var (agreementParsed, agreementValues, agreementReadError) = ExternalPropertyAgreementIntake.TryRead(propertyBody);
+        if (!agreementParsed)
+        {
+            var prefixedAgreement = ExternalPropertyIntakeErrors.Prefix(prefix, agreementReadError);
+            return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedAgreement, prefixedAgreement, attempt);
+        }
+
         try
         {
             var (existingProperty, isExactMatch, resolveError) = await ResolveExternalPropertyByKeysAsync(keys);
@@ -290,8 +297,17 @@ public partial class PropertyController
                 return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedUpdate, prefixedUpdate, attempt);
             }
 
+            var agreementError = await SaveExternalPropertyAgreementAsync(updateResult, agreementValues);
+            if (agreementError != null)
+            {
+                var prefixedAgreement = ExternalPropertyIntakeErrors.Prefix(prefix, agreementError);
+                return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedAgreement, prefixedAgreement, attempt);
+            }
+
             var updatedProperty = new PropertyResponseDto(updateResult);
             var detail = $"Property {updatedProperty.PropertyCode} updated.";
+            if (agreementValues.HasAny)
+                detail += " Agreement saved.";
             ExternalPropertyPhotoImportCreatedResponseDto? photoImport = null;
             string? photoImportError = null;
 
@@ -485,9 +501,22 @@ public partial class PropertyController
                         attempt);
                 }
 
+                var updatedAgreementError = await SaveExternalPropertyAgreementAsync(updateResult, dto.ToAgreementValues());
+                if (updatedAgreementError != null)
+                {
+                    return new ExternalPropertyUpsertResult(
+                        false,
+                        true,
+                        StatusCodes.Status400BadRequest,
+                        null,
+                        updatedAgreementError,
+                        updatedAgreementError,
+                        attempt);
+                }
+
                 var updatedProperty = new PropertyResponseDto(updateResult);
                 var (updatedPhotoImport, updatedPhotoImportError, updatedPhotoSyncDetail) = await SyncPropertyPhotosIfProvidedAsync(dto, keys, updateResult);
-                var updatedDetail = BuildUpsertDetail(updatedProperty.PropertyCode, true, updatedPhotoSyncDetail, updatedPhotoImportError);
+                var updatedDetail = BuildUpsertDetail(updatedProperty.PropertyCode, true, updatedPhotoSyncDetail, updatedPhotoImportError, dto.ToAgreementValues().HasAny);
                 return new ExternalPropertyUpsertResult(
                     true,
                     true,
@@ -515,9 +544,22 @@ public partial class PropertyController
             }
 
             var createdProperty = await _propertyRepository.CreateAsync(createDto.ToModel(SystemUserId));
+            var createdAgreementError = await SaveExternalPropertyAgreementAsync(createdProperty, dto.ToAgreementValues());
+            if (createdAgreementError != null)
+            {
+                return new ExternalPropertyUpsertResult(
+                    false,
+                    false,
+                    StatusCodes.Status400BadRequest,
+                    null,
+                    createdAgreementError,
+                    createdAgreementError,
+                    attempt);
+            }
+
             var createdResponse = new PropertyResponseDto(createdProperty);
             var (createdPhotoImport, createdPhotoImportError, createdPhotoSyncDetail) = await SyncPropertyPhotosIfProvidedAsync(dto, keys, createdProperty);
-            var createdDetail = BuildUpsertDetail(createdResponse.PropertyCode, false, createdPhotoSyncDetail, createdPhotoImportError);
+            var createdDetail = BuildUpsertDetail(createdResponse.PropertyCode, false, createdPhotoSyncDetail, createdPhotoImportError, dto.ToAgreementValues().HasAny);
             return new ExternalPropertyUpsertResult(
                 true,
                 false,
@@ -580,11 +622,15 @@ public partial class PropertyController
         string propertyCode,
         bool updated,
         string? photoSyncDetail,
-        string? photoImportError)
+        string? photoImportError,
+        bool agreementSaved = false)
     {
         var detail = updated
             ? $"Property {propertyCode} updated."
             : $"Property {propertyCode} created.";
+
+        if (agreementSaved)
+            detail += " Agreement saved.";
 
         if (!string.IsNullOrWhiteSpace(photoSyncDetail))
             detail += $" {photoSyncDetail}";
@@ -609,5 +655,54 @@ public partial class PropertyController
 
         var updatedProperty = await _propertyRepository.UpdateByIdAsync(property);
         return (updatedProperty, null);
+    }
+
+    private async Task<string?> SaveExternalPropertyAgreementAsync(Property property, ExternalPropertyAgreementValues values)
+    {
+        if (!values.HasAny)
+            return null;
+
+        try
+        {
+            var existing = await _propertyRepository.GetPropertyAgreementByPropertyIdAsync(property.PropertyId);
+            if (existing == null)
+            {
+                await _propertyRepository.CreatePropertyAgreementAsync(new PropertyAgreement
+                {
+                    PropertyId = property.PropertyId,
+                    OrganizationId = property.OrganizationId,
+                    OfficeId = property.OfficeId,
+                    ManagementFeeType = values.AgreementType.HasValue ? (ManagementFeeType)values.AgreementType.Value : ManagementFeeType.FlatRate,
+                    FlatRateAmount = values.AgreementOwnerFlatRate ?? 0m,
+                    Markup = 25,
+                    RevenueSplitOwner = values.AgreementOwnerSplit ?? 75m,
+                    RevenueSplitOffice = values.AgreementOfficeSplit ?? 25m,
+                    WorkingCapitalBalance = 0m,
+                    LinenAndTowelFee = 0m,
+                    IsMonthly = false,
+                    HourlyLaborCost = 0m,
+                    OwnerPaymentType = OwnerPaymentType.Ach,
+                    AgreementLines = new List<AgreementLine>()
+                });
+                return null;
+            }
+
+            if (values.AgreementType.HasValue)
+                existing.ManagementFeeType = (ManagementFeeType)values.AgreementType.Value;
+            if (values.AgreementOwnerFlatRate.HasValue)
+                existing.FlatRateAmount = values.AgreementOwnerFlatRate.Value;
+            if (values.AgreementOwnerSplit.HasValue)
+                existing.RevenueSplitOwner = values.AgreementOwnerSplit.Value;
+            if (values.AgreementOfficeSplit.HasValue)
+                existing.RevenueSplitOffice = values.AgreementOfficeSplit.Value;
+
+            await _propertyRepository.UpdatePropertyAgreementByPropertyIdAsync(existing);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving external property agreement. PropertyId={PropertyId}, PropertyCode={PropertyCode}", property.PropertyId, property.PropertyCode);
+            return ExternalPropertyIntakeErrors.TranslateSaveError(ex.InnerException?.Message ?? ex.Message);
+        }
     }
 }

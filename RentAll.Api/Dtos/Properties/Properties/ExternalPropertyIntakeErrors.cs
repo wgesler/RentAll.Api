@@ -7,7 +7,7 @@ namespace RentAll.Api.Dtos.Properties.Properties;
 public static class ExternalPropertyIntakeErrors
 {
     private static readonly string[] IntegerFields = ["bedrooms", "accommodates", "squareFeet", "minStay", "maxStay"];
-    private static readonly string[] DecimalFields = ["bathrooms", "monthlyRate", "dailyRate", "departureFee", "maidServiceFee", "petFee"];
+    private static readonly string[] DecimalFields = ["bathrooms", "monthlyRate", "dailyRate", "departureFee", "maidServiceFee", "petFee", "agreementOwnerFlatRate", "agreementOwnerSplit", "agreementOfficeSplit"];
     private static readonly string[] BooleanFields = ["isActive", "unfurnished", "heating", "ac", "elevator", "security", "gated", "petsAllowed", "dogsOkay", "catsOkay", "smoking", "parking", "kitchen", "oven", "refrigerator", "microwave", "dishwasher", "bathtub", "washerDryerInUnit", "washerDryerInBldg", "tv", "cable", "dvd", "streaming", "fastInternet", "deck", "patio", "yard", "garden", "commonPool", "privatePool", "jacuzzi", "sauna", "gym"];
     private static readonly string[] RequiredStringFields = ["propertyCode", "address1", "city", "state", "zip", "description"];
 
@@ -93,6 +93,7 @@ public static class ExternalPropertyIntakeErrors
         CollectContact(propertyElement, prefix, "owner3", errors);
         CollectContact(propertyElement, prefix, "vendor", errors);
         CollectPhotos(propertyElement, prefix, errors);
+        ExternalPropertyAgreementIntake.CollectAgreementType(propertyElement, prefix, errors);
         if (requireCreateFields)
             CollectLeaseTypeContacts(propertyElement, prefix, errors);
         return errors;

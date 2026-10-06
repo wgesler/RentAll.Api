@@ -1,5 +1,6 @@
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
 using RentAll.Domain;
+using System.Text.Json.Serialization;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
@@ -34,6 +35,12 @@ public class CreateExternalPropertyDto
     public decimal? DepartureFee { get; set; }
     public decimal? MaidServiceFee { get; set; }
     public decimal? PetFee { get; set; }
+
+    [JsonConverter(typeof(FlexibleManagementFeeTypeJsonConverter))]
+    public int? AgreementType { get; set; }
+    public decimal? AgreementOwnerFlatRate { get; set; }
+    public decimal? AgreementOwnerSplit { get; set; }
+    public decimal? AgreementOfficeSplit { get; set; }
 
     public string? ExternalCalendar { get; set; }
     public List<string> ExternalCalendars { get; set; } = [];
@@ -175,6 +182,8 @@ public class CreateExternalPropertyDto
             errors.Add($"maidServiceFee must be >= 0. Received {MaidServiceFee}.");
         if (PetFee is < 0)
             errors.Add($"petFee must be >= 0. Received {PetFee}.");
+
+        ExternalPropertyAgreementIntake.AddRangeErrors(errors, AgreementType, AgreementOwnerFlatRate, AgreementOwnerSplit, AgreementOfficeSplit);
 
         if (string.IsNullOrWhiteSpace(Description))
             errors.Add("description is required.");
@@ -409,6 +418,11 @@ public class CreateExternalPropertyDto
         updateDto.Description = Description.Trim();
 
         return updateDto;
+    }
+
+    public ExternalPropertyAgreementValues ToAgreementValues()
+    {
+        return new ExternalPropertyAgreementValues(AgreementType, AgreementOwnerFlatRate, AgreementOwnerSplit, AgreementOfficeSplit);
     }
 
     private static void AddBedroomIdError(List<string> errors, int? bedroomId, string fieldName)

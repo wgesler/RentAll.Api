@@ -111,6 +111,10 @@ public partial class ReservationController
                 && string.Equals((reservation.ExternalRefNo ?? string.Empty).Trim(), externalRefNo, StringComparison.OrdinalIgnoreCase));
         }
 
+        var stayError = await ValidateExternalReservationStayAsync(property, dto.ArrivalDate, dto.DepartureDate, existing?.ReservationId);
+        if (stayError != null)
+            return (false, false, null, stayError);
+
         if (existing != null)
         {
             dto.ApplyToExisting(existing, property, contactIds, companyId, agentId);
@@ -131,6 +135,23 @@ public partial class ReservationController
         model.ExtraFeeLines = dto.ToExtraFeeLines();
         var created = await _reservationRepository.CreateAsync(model);
         return (true, false, new ReservationResponseDto(created), null);
+    }
+
+    private async Task<string?> ValidateExternalReservationStayAsync(Property property, DateOnly arrival, DateOnly departure, Guid? excludeReservationId)
+    {
+        if (property.AvailableFrom.HasValue && arrival < property.AvailableFrom.Value)
+            return $"This property is not available until {property.AvailableFrom.Value:M/d/yyyy}.";
+
+        if (property.AvailableUntil.HasValue && departure > property.AvailableUntil.Value)
+            return $"This property is not available after {property.AvailableUntil.Value:M/d/yyyy}.";
+
+        var reservations = await _reservationRepository.GetReservationListByPropertyIdAsync(property.PropertyId, property.OrganizationId);
+        var conflict = reservations.FirstOrDefault(reservation => reservation.ReservationId != excludeReservationId && arrival < reservation.DepartureDate && departure > reservation.ArrivalDate);
+        if (conflict == null)
+            return null;
+
+        var reservationCode = string.IsNullOrWhiteSpace(conflict.ReservationCode) ? conflict.ReservationId.ToString() : conflict.ReservationCode;
+        return $"The selected dates overlap with an existing reservation {reservationCode}.";
     }
 
     private async Task<(bool Success, Guid? ContactId, string? ErrorMessage)> ResolveExternalContactAsync(
