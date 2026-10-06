@@ -36,6 +36,8 @@ public class ReservationDepartureResponseDto
     public string JournalEntryCode { get; set; } = string.Empty;
     public Guid? PaidJournalEntryId { get; set; }
     public string PaidJournalEntryCode { get; set; } = string.Empty;
+    public Guid? ReturnJournalEntryId { get; set; }
+    public string ReturnJournalEntryCode { get; set; } = string.Empty;
     public Guid? InvoiceId { get; set; }
     public string InvoiceCode { get; set; } = string.Empty;
 
@@ -75,6 +77,8 @@ public class ReservationDepartureResponseDto
         JournalEntryCode = departure.JournalEntryCode;
         PaidJournalEntryId = departure.PaidJournalEntryId;
         PaidJournalEntryCode = departure.PaidJournalEntryCode;
+        ReturnJournalEntryId = departure.ReturnJournalEntryId;
+        ReturnJournalEntryCode = departure.ReturnJournalEntryCode;
         InvoiceId = departure.InvoiceId;
         InvoiceCode = departure.InvoiceCode;
     }

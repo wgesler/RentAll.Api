@@ -439,9 +439,18 @@ public partial class AccountingManager
             row.BalanceAmount = invoiceEnrichment.BalanceByReservation.TryGetValue(row.ReservationId, out var balanceAmount)
                 ? balanceAmount
                 : 0m;
-            row.ReturnedAmount = returnedByReservation.TryGetValue(row.ReservationId, out var returnedAmount)
-                ? returnedAmount
-                : 0m;
+            if (returnedByReservation.TryGetValue(row.ReservationId, out var returnedActivity))
+            {
+                row.ReturnedAmount = returnedActivity.Amount;
+                row.ReturnJournalEntryId = returnedActivity.JournalEntryId;
+                row.ReturnJournalEntryCode = returnedActivity.JournalEntryCode;
+            }
+            else
+            {
+                row.ReturnedAmount = 0m;
+                row.ReturnJournalEntryId = null;
+                row.ReturnJournalEntryCode = string.Empty;
+            }
             row.TransferredAmount = transferredByReservation.TryGetValue(row.ReservationId, out var transferredAmount)
                 ? transferredAmount
                 : 0m;
@@ -811,10 +820,10 @@ public partial class AccountingManager
 
     #region Return Amounts
 
-    private async Task<Dictionary<Guid, decimal>> GetSecurityDepositReturnPaidAmountsByReservationAsync(Guid organizationId, IReadOnlyCollection<Guid> reservationIds, IReadOnlyCollection<int> officeIds)
+    private async Task<Dictionary<Guid, SecurityDepositReturnActivity>> GetSecurityDepositReturnPaidAmountsByReservationAsync(Guid organizationId, IReadOnlyCollection<Guid> reservationIds, IReadOnlyCollection<int> officeIds)
     {
         if (reservationIds.Count == 0 || officeIds.Count == 0)
-            return new Dictionary<Guid, decimal>();
+            return new Dictionary<Guid, SecurityDepositReturnActivity>();
 
         var reservationIdSet = reservationIds.ToHashSet();
         var entries = await _journalEntryRepository.GetJournalEntriesAsync(new JournalEntryGetCriteria
@@ -831,7 +840,31 @@ public partial class AccountingManager
             .GroupBy(entry => entry.SourceId!.Value)
             .ToDictionary(
                 group => group.Key,
-                group => RoundSecurityDepositAmount(group.Sum(CalculateSecurityDepositReturnJournalEntryAmount)));
+                group =>
+                {
+                    var returnEntry = group
+                        .Where(IsSecurityDepositReturnJournalEntry)
+                        .OrderByDescending(entry => entry.TransactionDate)
+                        .ThenByDescending(entry => entry.JournalEntryCode)
+                        .FirstOrDefault()
+                        ?? group
+                            .OrderByDescending(entry => entry.TransactionDate)
+                            .ThenByDescending(entry => entry.JournalEntryCode)
+                            .First();
+                    return new SecurityDepositReturnActivity
+                    {
+                        Amount = RoundSecurityDepositAmount(group.Sum(CalculateSecurityDepositReturnJournalEntryAmount)),
+                        JournalEntryId = returnEntry.JournalEntryId,
+                        JournalEntryCode = returnEntry.JournalEntryCode?.Trim() ?? string.Empty
+                    };
+                });
+    }
+
+    private sealed class SecurityDepositReturnActivity
+    {
+        public decimal Amount { get; init; }
+        public Guid? JournalEntryId { get; init; }
+        public string JournalEntryCode { get; init; } = string.Empty;
     }
 
     private async Task<Dictionary<Guid, decimal>> GetSecurityDepositTransferAmountsByReservationAsync(Guid organizationId, IReadOnlyCollection<Guid> reservationIds, IReadOnlyCollection<int> officeIds)
@@ -878,6 +911,10 @@ public partial class AccountingManager
 
         return (entries ?? []).ToList();
     }
+
+    private static bool IsSecurityDepositReturnJournalEntry(JournalEntry journalEntry)
+        => journalEntry.SourceTypeId == (int)SourceType.SecurityDeposit
+            && journalEntry.JournalEntryKindId == JournalEntryKind.SecurityDepositReturn;
 
     private static bool IsSecurityDepositTransferJournalEntry(JournalEntry journalEntry)
     {

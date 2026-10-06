@@ -38,6 +38,8 @@ public class ReservationDeparture
     public string JournalEntryCode { get; set; } = string.Empty;
     public Guid? PaidJournalEntryId { get; set; }
     public string PaidJournalEntryCode { get; set; } = string.Empty;
+    public Guid? ReturnJournalEntryId { get; set; }
+    public string ReturnJournalEntryCode { get; set; } = string.Empty;
     public Guid? InvoiceId { get; set; }
     public string InvoiceCode { get; set; } = string.Empty;
 }

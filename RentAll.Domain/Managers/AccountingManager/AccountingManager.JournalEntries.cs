@@ -85,6 +85,24 @@ public partial class AccountingManager
         existing = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntry.JournalEntryId, journalEntry.OrganizationId)
             ?? existing;
 
+        if (IsSecurityDepositReturnJournalEntry(existing))
+        {
+            journalEntry.SourceTypeId = existing.SourceTypeId;
+            journalEntry.SourceId = existing.SourceId;
+            journalEntry.JournalEntryKindId = JournalEntryKind.SecurityDepositReturn;
+            journalEntry.IsCashOnly = existing.IsCashOnly;
+            journalEntry.PaymentId = existing.PaymentId;
+            journalEntry.PaymentCode = existing.PaymentCode;
+            journalEntry.DepositId = existing.DepositId;
+            journalEntry.DepositCode = existing.DepositCode;
+            journalEntry.TransferId = existing.TransferId;
+            journalEntry.TransferCode = existing.TransferCode;
+            if (string.IsNullOrWhiteSpace(journalEntry.SourceCode))
+                journalEntry.SourceCode = existing.SourceCode;
+
+            return await UpdateJournalEntryAsync(journalEntry, requireActiveLines: true);
+        }
+
         if (!IsUserEditableJournalEntry(existing))
             throw new Exception("Only Manual, Opening Balance Sheet, and Retained Earnings journal entries can be updated.");
 
