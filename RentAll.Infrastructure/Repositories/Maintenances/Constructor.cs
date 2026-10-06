@@ -93,6 +93,21 @@ public partial class MaintenanceRepository : IMaintenanceRepository
         };
     }
 
+    private static MaintenanceItemList ConvertEntityToModel(MaintenanceItemListEntity e)
+    {
+        return new MaintenanceItemList
+        {
+            MaintenanceItemId = e.MaintenanceItemId,
+            PropertyId = e.PropertyId,
+            PropertyCode = e.PropertyCode,
+            OfficeId = e.OfficeId,
+            Name = e.Name,
+            Notes = e.Notes,
+            MonthsBetweenService = e.MonthsBetweenService,
+            LastServicedOn = e.LastServicedOn
+        };
+    }
+
     private static MaintenanceItem ConvertEntityToModel(MaintenanceItemEntity e)
     {
         return new MaintenanceItem

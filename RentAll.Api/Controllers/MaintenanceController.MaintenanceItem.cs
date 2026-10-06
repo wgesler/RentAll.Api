@@ -5,6 +5,22 @@ namespace RentAll.Api.Controllers;
 public partial class MaintenanceController
 {
     #region Get
+    [HttpGet("maintenance-item/list")]
+    public async Task<IActionResult> GetMaintenanceItemsByOfficeIds()
+    {
+        try
+        {
+            var records = await _maintenanceRepository.GetMaintenanceItemsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
+            var response = records.Select(o => new MaintenanceItemListResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting maintenance items for organization: {OrganizationId}", CurrentOrganizationId);
+            return ServerError("An error occurred while retrieving maintenance items");
+        }
+    }
+
     [HttpGet("maintenance-item/{propertyId:guid}")]
     public async Task<IActionResult> GetMaintenanceItemsByPropertyId(Guid propertyId)
     {

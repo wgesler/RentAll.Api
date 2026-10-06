@@ -33,6 +33,7 @@ public interface IMaintenanceRepository
     #endregion
 
     #region MaintenanceItem
+    Task<IEnumerable<MaintenanceItemList>> GetMaintenanceItemsByOfficeIdsAsync(Guid organizationId, string officeAccess);
     Task<IEnumerable<MaintenanceItem>> GetMaintenanceItemsByPropertyIdAsync(Guid propertyId);
     Task<MaintenanceItem?> GetMaintenanceItemByIdAsync(int maintenanceItemId);
 

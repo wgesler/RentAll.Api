@@ -7,6 +7,21 @@ namespace RentAll.Infrastructure.Repositories.Maintenances;
 public partial class MaintenanceRepository
 {
     #region Selects
+    public async Task<IEnumerable<MaintenanceItemList>> GetMaintenanceItemsByOfficeIdsAsync(Guid organizationId, string officeAccess)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var res = await db.DapperProcQueryAsync<MaintenanceItemListEntity>("Maintenance.MaintenanceItem_GetByOfficeIds", new
+        {
+            OrganizationId = organizationId,
+            Offices = officeAccess
+        });
+
+        if (res == null || !res.Any())
+            return Enumerable.Empty<MaintenanceItemList>();
+
+        return res.Select(ConvertEntityToModel);
+    }
+
     public async Task<IEnumerable<MaintenanceItem>> GetMaintenanceItemsByPropertyIdAsync(Guid propertyId)
     {
         await using var db = new SqlConnection(_dbConnectionString);
