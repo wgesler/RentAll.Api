@@ -73,9 +73,7 @@ public partial class ReservationController
         return StatusCode(hadException ? StatusCodes.Status500InternalServerError : StatusCodes.Status400BadRequest, response);
     }
 
-    private async Task<(bool Success, bool Updated, ReservationResponseDto? Reservation, string? ErrorMessage)> UpsertExternalReservationAsync(
-        CreateExternalReservationDto dto,
-        ExternalPropertyIntakeContext context)
+    private async Task<(bool Success, bool Updated, ReservationResponseDto? Reservation, string? ErrorMessage)> UpsertExternalReservationAsync(CreateExternalReservationDto dto,ExternalPropertyIntakeContext context)
     {
         var property = await _propertyRepository.GetPropertyByCodeAsync(dto.PropertyCode.Trim(), context.OrganizationId);
         if (property == null)
@@ -105,10 +103,10 @@ public partial class ReservationController
         Reservation? existing = null;
         if (externalRefNo != null)
         {
-            var active = await _reservationRepository.GetActiveReservationsByOfficeIdsAsync(context.OrganizationId, context.OfficeId.ToString());
-            existing = active.FirstOrDefault(reservation =>
-                reservation.PropertyId == property.PropertyId
-                && string.Equals((reservation.ExternalRefNo ?? string.Empty).Trim(), externalRefNo, StringComparison.OrdinalIgnoreCase));
+            var existingId = await _reservationRepository.GetReservationIdByPropertyCodeAndExternalRefNoAsync(
+                context.OrganizationId,  property.PropertyCode, externalRefNo);
+            if (existingId is { } reservationId && reservationId != Guid.Empty)
+                existing = await _reservationRepository.GetReservationByIdAsync(reservationId, context.OrganizationId);
         }
 
         var stayError = await ValidateExternalReservationStayAsync(property, dto.ArrivalDate, dto.DepartureDate, existing?.ReservationId);
