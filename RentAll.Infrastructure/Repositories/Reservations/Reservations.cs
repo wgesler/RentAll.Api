@@ -190,18 +190,17 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             return MapReservationsWithExtraFeeLineEntities(headers, extraFeeLines).FirstOrDefault();
         }
 
-        public async Task<Guid?> GetReservationIdByPropertyCodeAndExternalRefNoAsync(Guid organizationId, string propertyCode, string externalRefNo)
+        public async Task<Reservation?> GetReservationByPropertyCodeAndExternalRefNoAsync(Guid organizationId, string propertyCode, string externalRefNo)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            var rows = await db.DapperProcQueryAsync<ReservationIdEntity>("Property.Reservation_GetByPropertyCodeAndExternalRefNo", new
+            var (headers, extraFeeLines) = await db.DapperProcQueryMultipleAsync<ReservationEntity, ExtraFeeLineEntity>("Property.Reservation_GetByPropertyCodeAndExternalRefNo", new
             {
                 OrganizationId = organizationId,
                 PropertyCode = propertyCode,
                 ExternalRefNo = externalRefNo
             });
 
-            var reservationId = rows?.FirstOrDefault()?.ReservationId ?? Guid.Empty;
-            return reservationId == Guid.Empty ? null : reservationId;
+            return MapReservationsWithExtraFeeLineEntities(headers, extraFeeLines).FirstOrDefault();
         }
         #endregion
 
@@ -522,11 +521,6 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 InvoicesAffected = invoicesAffected,
                 AffectedInvoiceIds = affectedInvoiceIds
             };
-        }
-
-        private sealed class ReservationIdEntity
-        {
-            public Guid ReservationId { get; set; }
         }
 
         private sealed class ReservationSetActiveStateSummaryRow

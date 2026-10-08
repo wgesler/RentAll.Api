@@ -34,9 +34,9 @@ public partial class ReservationController
             var item = new ExternalReservationBatchItemResultDto
             {
                 Index = index,
-                PropertyCode = (dto.PropertyCode ?? string.Empty).Trim(),
+                PropertyCode = dto.PropertyCode.Trim(),
                 ReferenceNo = string.IsNullOrWhiteSpace(dto.ReferenceNo) ? null : dto.ReferenceNo.Trim(),
-                ExternalRefNo = string.IsNullOrWhiteSpace(dto.ExternalRefNo) ? null : dto.ExternalRefNo.Trim()
+                ExternalRefNo = dto.ExternalRefNo.Trim()
             };
 
             try
@@ -79,6 +79,13 @@ public partial class ReservationController
         if (property == null)
             return (false, false, null, $"Property '{dto.PropertyCode.Trim()}' was not found.");
 
+        var existing = await _reservationRepository.GetReservationByPropertyCodeAndExternalRefNoAsync(
+            context.OrganizationId, property.PropertyCode, dto.ExternalRefNo.Trim());
+
+        var stayError = await ValidateExternalReservationStayAsync(property, dto.ArrivalDate, dto.DepartureDate, existing?.ReservationId);
+        if (stayError != null)
+            return (false, false, null, stayError);
+
         var contactIds = new List<Guid>();
         var contactEntityType = dto.ExpectedContactEntityType;
         var (contactOk, contactId, contactError) = await ResolveExternalContactAsync(dto.Contact!, contactEntityType, "contact", context, SystemUserId);
@@ -99,20 +106,6 @@ public partial class ReservationController
         if (!agentOk)
             return (false, false, null, agentError);
 
-        var externalRefNo = string.IsNullOrWhiteSpace(dto.ExternalRefNo) ? null : dto.ExternalRefNo.Trim();
-        Reservation? existing = null;
-        if (externalRefNo != null)
-        {
-            var existingId = await _reservationRepository.GetReservationIdByPropertyCodeAndExternalRefNoAsync(
-                context.OrganizationId,  property.PropertyCode, externalRefNo);
-            if (existingId is { } reservationId && reservationId != Guid.Empty)
-                existing = await _reservationRepository.GetReservationByIdAsync(reservationId, context.OrganizationId);
-        }
-
-        var stayError = await ValidateExternalReservationStayAsync(property, dto.ArrivalDate, dto.DepartureDate, existing?.ReservationId);
-        if (stayError != null)
-            return (false, false, null, stayError);
-
         if (existing != null)
         {
             dto.ApplyToExisting(existing, property, contactIds, companyId, agentId);
@@ -129,7 +122,7 @@ public partial class ReservationController
 
         var code = await _organizationManager.GenerateEntityCodeAsync(context.OrganizationId, EntityType.Reservation);
         var model = createDto.ToModel(code, SystemUserId);
-        model.ExternalRefNo = string.IsNullOrWhiteSpace(dto.ExternalRefNo) ? null : dto.ExternalRefNo.Trim();
+        model.ExternalRefNo = dto.ExternalRefNo.Trim();
         model.ExtraFeeLines = dto.ToExtraFeeLines();
         var created = await _reservationRepository.CreateAsync(model);
         return (true, false, new ReservationResponseDto(created), null);
@@ -153,11 +146,7 @@ public partial class ReservationController
     }
 
     private async Task<(bool Success, Guid? ContactId, string? ErrorMessage)> ResolveExternalContactAsync(
-        ExternalPropertyContactDto contact,
-        EntityType entityType,
-        string fieldLabel,
-        ExternalPropertyIntakeContext context,
-        Guid currentUser)
+        ExternalPropertyContactDto contact, EntityType entityType, string fieldLabel, ExternalPropertyIntakeContext context, Guid currentUser)
     {
         if (contact.EntityTypeId == 0)
             contact.EntityTypeId = (int)entityType;
@@ -188,9 +177,7 @@ public partial class ReservationController
         return (true, created.ContactId, null);
     }
 
-    private async Task<(bool Success, Guid? AgentId, string? ErrorMessage)> ResolveExternalAgentAsync(
-        CreateExternalReservationDto dto,
-        ExternalPropertyIntakeContext context)
+    private async Task<(bool Success, Guid? AgentId, string? ErrorMessage)> ResolveExternalAgentAsync(CreateExternalReservationDto dto, ExternalPropertyIntakeContext context)
     {
         if (dto.ReservationTypeId == (int)ReservationType.Owner)
             return (true, null, null);

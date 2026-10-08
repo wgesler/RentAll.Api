@@ -7,7 +7,7 @@ public class CreateExternalReservationDto
 {
     public string PropertyCode { get; set; } = string.Empty;
     public string? ReferenceNo { get; set; }
-    public string? ExternalRefNo { get; set; }
+    public string ExternalRefNo { get; set; } = string.Empty;
     public string? TenantName { get; set; }
     public string? AgentCode { get; set; }
     public DateOnly ArrivalDate { get; set; }
@@ -319,7 +319,7 @@ public class CreateExternalReservationDto
         reservation.NumberOfPeople = create.NumberOfPeople;
         reservation.TenantName = create.TenantName;
         reservation.ReferenceNo = create.ReferenceNo;
-        reservation.ExternalRefNo = string.IsNullOrWhiteSpace(ExternalRefNo) ? null : ExternalRefNo.Trim();
+        reservation.ExternalRefNo = ExternalRefNo.Trim();
         reservation.ArrivalDate = create.ArrivalDate;
         reservation.DepartureDate = create.DepartureDate;
         reservation.BillingStartDate = create.BillingStartDate;
