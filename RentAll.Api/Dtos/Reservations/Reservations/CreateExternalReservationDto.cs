@@ -30,8 +30,12 @@ public class CreateExternalReservationDto
     public decimal? Deposit { get; set; }
     public int? DepositTypeId { get; set; }
     public decimal? DepartureFee { get; set; }
+    public decimal? PropertyProtectionFee { get; set; }
+    public decimal? AdministrativeFee { get; set; }
+    public decimal? ApplicationFee { get; set; }
     public bool? HasPets { get; set; }
     public decimal? PetFee { get; set; }
+    public decimal? PetSecurityDeposit { get; set; }
     public int? NumberOfPets { get; set; }
     public string? PetDescription { get; set; }
     public bool? MaidService { get; set; }
@@ -128,6 +132,14 @@ public class CreateExternalReservationDto
             errors.Add("departureFee is required.");
         else if (DepartureFee.Value < 0)
             errors.Add("departureFee must be zero or greater.");
+        if (PropertyProtectionFee is < 0)
+            errors.Add("propertyProtectionFee must be zero or greater.");
+        if (AdministrativeFee is < 0)
+            errors.Add("administrativeFee must be zero or greater.");
+        if (ApplicationFee is < 0)
+            errors.Add("applicationFee must be zero or greater.");
+        if (PetSecurityDeposit is < 0)
+            errors.Add("petSecurityDeposit must be zero or greater.");
         if (CheckInTimeId.HasValue && !Enum.IsDefined(typeof(CheckInTime), CheckInTimeId.Value))
             errors.Add($"checkInTimeId must be 0=11AM through 6=5PM. Received {CheckInTimeId.Value}.");
         if (CheckOutTimeId.HasValue && !Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId.Value))
@@ -271,8 +283,12 @@ public class CreateExternalReservationDto
             DepositTypeId = ResolvedDepositTypeId,
             DepositReturned = false,
             DepartureFee = DepartureFee!.Value,
+            PropertyProtectionFee = PropertyProtectionFee ?? 0,
+            AdministrativeFee = AdministrativeFee ?? 0,
+            ApplicationFee = ApplicationFee ?? 0,
             HasPets = hasPets,
             PetFee = hasPets ? PetFee!.Value : 0,
+            PetSecurityDeposit = PetSecurityDeposit ?? 0,
             NumberOfPets = hasPets ? NumberOfPets!.Value : 0,
             PetDescription = hasPets ? PetDescription : null,
             MaidService = maidService,
@@ -336,8 +352,16 @@ public class CreateExternalReservationDto
         reservation.Deposit = create.Deposit;
         reservation.DepositType = (DepositType)create.DepositTypeId;
         reservation.DepartureFee = create.DepartureFee;
+        if (PropertyProtectionFee.HasValue)
+            reservation.PropertyProtectionFee = PropertyProtectionFee.Value;
+        if (AdministrativeFee.HasValue)
+            reservation.AdministrativeFee = AdministrativeFee.Value;
+        if (ApplicationFee.HasValue)
+            reservation.ApplicationFee = ApplicationFee.Value;
         reservation.HasPets = create.HasPets;
         reservation.PetFee = create.PetFee;
+        if (PetSecurityDeposit.HasValue)
+            reservation.PetSecurityDeposit = PetSecurityDeposit.Value;
         reservation.NumberOfPets = create.NumberOfPets;
         reservation.PetDescription = create.PetDescription;
         reservation.MaidService = create.MaidService;

@@ -41,10 +41,14 @@ public class ReservationEntity
     public int DepositTypeId { get; set; }
     public bool DepositReturned { get; set; }
     public decimal DepartureFee { get; set; }
+    public decimal PropertyProtectionFee { get; set; }
+    public decimal AdministrativeFee { get; set; }
+    public decimal ApplicationFee { get; set; }
 
     // Pets and Maids
     public bool HasPets { get; set; }
     public decimal PetFee { get; set; }
+    public decimal PetSecurityDeposit { get; set; }
     public int NumberOfPets { get; set; }
     public string? PetDescription { get; set; }
     public bool MaidService { get; set; }

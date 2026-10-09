@@ -39,8 +39,12 @@ public class ReservationResponseDto
     public int DepositTypeId { get; set; }
     public bool DepositReturned { get; set; }
     public decimal DepartureFee { get; set; }
+    public decimal PropertyProtectionFee { get; set; }
+    public decimal AdministrativeFee { get; set; }
+    public decimal ApplicationFee { get; set; }
     public bool HasPets { get; set; }
     public decimal PetFee { get; set; }
+    public decimal PetSecurityDeposit { get; set; }
     public int NumberOfPets { get; set; }
     public string? PetDescription { get; set; }
     public bool MaidService { get; set; }
@@ -118,8 +122,12 @@ public class ReservationResponseDto
         DepositTypeId = (int)reservation.DepositType;
         DepositReturned = reservation.DepositReturned;
         DepartureFee = reservation.DepartureFee;
+        PropertyProtectionFee = reservation.PropertyProtectionFee;
+        AdministrativeFee = reservation.AdministrativeFee;
+        ApplicationFee = reservation.ApplicationFee;
         HasPets = reservation.HasPets;
         PetFee = reservation.PetFee;
+        PetSecurityDeposit = reservation.PetSecurityDeposit;
         NumberOfPets = reservation.NumberOfPets;
         PetDescription = reservation.PetDescription;
         MaidService = reservation.MaidService;
