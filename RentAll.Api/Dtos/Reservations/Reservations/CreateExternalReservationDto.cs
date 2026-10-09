@@ -216,6 +216,10 @@ public class CreateExternalReservationDto
         ExternalIntakeErrors.CollectRequiredInt(body, "depositTypeId", errors, $"{prefix}.depositTypeId is required.");
         CollectDeposit(body, prefix, errors);
         ExternalIntakeErrors.CollectRequiredNonNegativeDecimal(body, "departureFee", errors, $"{prefix}.departureFee is required.");
+        ExternalIntakeErrors.CollectOptionalNonNegativeDecimal(body, "propertyProtectionFee", errors);
+        ExternalIntakeErrors.CollectOptionalNonNegativeDecimal(body, "administrativeFee", errors);
+        ExternalIntakeErrors.CollectOptionalNonNegativeDecimal(body, "applicationFee", errors);
+        ExternalIntakeErrors.CollectOptionalNonNegativeDecimal(body, "petSecurityDeposit", errors);
         ExternalIntakeErrors.CollectOptionalDateOnly(body, "billingStartDate", errors);
         ExternalIntakeErrors.CollectOptionalDateOnly(body, "billingEndDate", errors);
         ExternalIntakeErrors.CollectOptionalDateOnly(body, "aCleaningDate", errors);
@@ -352,16 +356,12 @@ public class CreateExternalReservationDto
         reservation.Deposit = create.Deposit;
         reservation.DepositType = (DepositType)create.DepositTypeId;
         reservation.DepartureFee = create.DepartureFee;
-        if (PropertyProtectionFee.HasValue)
-            reservation.PropertyProtectionFee = PropertyProtectionFee.Value;
-        if (AdministrativeFee.HasValue)
-            reservation.AdministrativeFee = AdministrativeFee.Value;
-        if (ApplicationFee.HasValue)
-            reservation.ApplicationFee = ApplicationFee.Value;
+        reservation.PropertyProtectionFee = create.PropertyProtectionFee;
+        reservation.AdministrativeFee = create.AdministrativeFee;
+        reservation.ApplicationFee = create.ApplicationFee;
         reservation.HasPets = create.HasPets;
         reservation.PetFee = create.PetFee;
-        if (PetSecurityDeposit.HasValue)
-            reservation.PetSecurityDeposit = PetSecurityDeposit.Value;
+        reservation.PetSecurityDeposit = create.PetSecurityDeposit;
         reservation.NumberOfPets = create.NumberOfPets;
         reservation.PetDescription = create.PetDescription;
         reservation.MaidService = create.MaidService;
