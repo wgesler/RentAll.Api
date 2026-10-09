@@ -61,6 +61,8 @@ public class OfficeCreateDto
     public int? ParkingExpenseCcId { get; set; }
     public int? DepartureFeeCcId { get; set; }
     public int? PetFeeCcId { get; set; }
+    public int? ApplicationFeeCcId { get; set; }
+    public int? AdministrativeFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
     public string? QuotePreface { get; set; }
@@ -141,6 +143,12 @@ public class OfficeCreateDto
         if (PetFeeCcId.HasValue && PetFeeCcId.Value <= 0)
             return (false, "PetFeeCcId must be greater than 0 when provided");
 
+        if (ApplicationFeeCcId.HasValue && ApplicationFeeCcId.Value <= 0)
+            return (false, "ApplicationFeeCcId must be greater than 0 when provided");
+
+        if (AdministrativeFeeCcId.HasValue && AdministrativeFeeCcId.Value <= 0)
+            return (false, "AdministrativeFeeCcId must be greater than 0 when provided");
+
         if (SecurityDepositCcId.HasValue && SecurityDepositCcId.Value <= 0)
             return (false, "SecurityDepositCcId must be greater than 0 when provided");
 
@@ -217,6 +225,8 @@ public class OfficeCreateDto
             ParkingExpenseCcId = ParkingExpenseCcId,
             DepartureFeeCcId = DepartureFeeCcId,
             PetFeeCcId = PetFeeCcId,
+            ApplicationFeeCcId = ApplicationFeeCcId,
+            AdministrativeFeeCcId = AdministrativeFeeCcId,
             SecurityDepositCcId = SecurityDepositCcId,
             SecurityDepositWaiverCcId = SecurityDepositWaiverCcId,
             QuotePreface = QuotePreface,

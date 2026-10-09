@@ -63,6 +63,8 @@ public class OfficeEntity
     public int? ParkingExpenseCcId { get; set; }
     public int? DepartureFeeCcId { get; set; }
     public int? PetFeeCcId { get; set; }
+    public int? ApplicationFeeCcId { get; set; }
+    public int? AdministrativeFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
 

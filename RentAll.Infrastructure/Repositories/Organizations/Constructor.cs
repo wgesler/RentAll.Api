@@ -114,6 +114,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             ParkingExpenseCcId = e.ParkingExpenseCcId,
             DepartureFeeCcId = e.DepartureFeeCcId,
             PetFeeCcId = e.PetFeeCcId,
+            ApplicationFeeCcId = e.ApplicationFeeCcId,
+            AdministrativeFeeCcId = e.AdministrativeFeeCcId,
             SecurityDepositCcId = e.SecurityDepositCcId,
             SecurityDepositWaiverCcId = e.SecurityDepositWaiverCcId,
             QuotePreface = e.QuotePreface,

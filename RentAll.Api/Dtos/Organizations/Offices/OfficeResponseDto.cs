@@ -63,6 +63,8 @@ public class OfficeResponseDto
     public int? ParkingExpenseCcId { get; set; }
     public int? DepartureFeeCcId { get; set; }
     public int? PetFeeCcId { get; set; }
+    public int? ApplicationFeeCcId { get; set; }
+    public int? AdministrativeFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
     public string? QuotePreface { get; set; }
@@ -142,6 +144,8 @@ public class OfficeResponseDto
         ParkingExpenseCcId = office.ParkingExpenseCcId;
         DepartureFeeCcId = office.DepartureFeeCcId;
         PetFeeCcId = office.PetFeeCcId;
+        ApplicationFeeCcId = office.ApplicationFeeCcId;
+        AdministrativeFeeCcId = office.AdministrativeFeeCcId;
         SecurityDepositCcId = office.SecurityDepositCcId;
         SecurityDepositWaiverCcId = office.SecurityDepositWaiverCcId;
         QuotePreface = office.QuotePreface;

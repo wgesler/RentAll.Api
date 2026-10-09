@@ -598,8 +598,7 @@ public partial class AccountingManager
                     appliedToCharges[i] += apply;
                     paymentRemaining -= apply;
 
-                    costCodeById.TryGetValue(chargeLines[i].CostCodeId, out var costCode);
-                    if (costCode?.TransactionType == TransactionType.SecurityDeposit && apply > 0m)
+                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && apply > 0m)
                     {
                         securityDepositPaid += apply;
                         securityDepositPaymentLedgerLineIds.Add(payment.LedgerLineId);
@@ -614,12 +613,11 @@ public partial class AccountingManager
                     if (appliedToCharges[i] <= 0m)
                         continue;
 
-                    costCodeById.TryGetValue(chargeLines[i].CostCodeId, out var costCode);
                     var reverse = Math.Min(toReverse, appliedToCharges[i]);
                     appliedToCharges[i] -= reverse;
                     toReverse -= reverse;
 
-                    if (costCode?.TransactionType == TransactionType.SecurityDeposit && reverse > 0m)
+                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && reverse > 0m)
                     {
                         securityDepositPaid -= reverse;
                         securityDepositPaymentLedgerLineIds.Add(payment.LedgerLineId);
@@ -680,11 +678,7 @@ public partial class AccountingManager
             .SelectMany(invoice => invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Where(line =>
-            {
-                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                return costCode?.TransactionType != TransactionType.SecurityDeposit;
-            })
+            .Where(line => !IsRefundableSecurityDepositCharge(line, costCodeById))
             .Sum(line => line.Amount));
 
     private static decimal CalculateReservationInvoicePaymentTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -702,11 +696,7 @@ public partial class AccountingManager
         var chargeTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Where(line =>
-            {
-                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                return costCode?.TransactionType != TransactionType.SecurityDeposit;
-            })
+            .Where(line => !IsRefundableSecurityDepositCharge(line, costCodeById))
             .Sum(line => line.Amount));
 
         var paymentTotal = RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
@@ -733,11 +723,7 @@ public partial class AccountingManager
         return (invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Any(line =>
-            {
-                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                return costCode?.TransactionType == TransactionType.SecurityDeposit;
-            });
+            .Any(line => IsRefundableSecurityDepositCharge(line, costCodeById));
     }
 
     private static decimal CalculateSecurityDepositChargeAmount(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -745,13 +731,13 @@ public partial class AccountingManager
         return RoundSecurityDepositAmount((invoice.LedgerLines ?? [])
             .Where(line => line.Amount != 0m)
             .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Where(line =>
-            {
-                costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                return costCode?.TransactionType == TransactionType.SecurityDeposit;
-            })
+            .Where(line => IsRefundableSecurityDepositCharge(line, costCodeById))
             .Sum(line => line.Amount));
     }
+
+    private static bool IsRefundableSecurityDepositCharge(LedgerLine line, IReadOnlyDictionary<int, CostCode> costCodeById)
+        => costCodeById.TryGetValue(line.CostCodeId, out var costCode)
+            && costCode.TransactionType == TransactionType.SecurityDeposit;
 
     #endregion
 
@@ -1050,11 +1036,7 @@ public partial class AccountingManager
             .SelectMany(invoice => (invoice.LedgerLines ?? [])
                 .Where(line => line.Amount != 0m)
                 .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-                .Where(line =>
-                {
-                    costCodeById.TryGetValue(line.CostCodeId, out var costCode);
-                    return costCode?.TransactionType == TransactionType.SecurityDeposit;
-                })
+                .Where(line => IsRefundableSecurityDepositCharge(line, costCodeById))
                 .Select(line => CreateSecurityDepositDetailLine(invoice, line, line.Amount, null, null)))
             .OrderBy(line => line.LineDate)
             .ThenBy(line => line.Description)
@@ -1071,11 +1053,7 @@ public partial class AccountingManager
 
             lines.AddRange(CalculateReservationChargeLineBalances([invoice], costCodeById)
                 .Where(entry => entry.Remaining > 0m)
-                .Where(entry =>
-                {
-                    costCodeById.TryGetValue(entry.Line.CostCodeId, out var costCode);
-                    return costCode?.TransactionType != TransactionType.SecurityDeposit;
-                })
+                .Where(entry => !IsRefundableSecurityDepositCharge(entry.Line, costCodeById))
                 .Select(entry => CreateSecurityDepositDetailLine(entry.Invoice, entry.Line, entry.Remaining, null, null)));
         }
 
@@ -1247,8 +1225,7 @@ public partial class AccountingManager
                     appliedToCharges[i] += apply;
                     paymentRemaining -= apply;
 
-                    costCodeById.TryGetValue(chargeLines[i].CostCodeId, out var costCode);
-                    if (costCode?.TransactionType == TransactionType.SecurityDeposit && apply > 0m)
+                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && apply > 0m)
                     {
                         paymentAmountsByLedgerLineId[payment.LedgerLineId] =
                             RoundSecurityDepositAmount(paymentAmountsByLedgerLineId.GetValueOrDefault(payment.LedgerLineId) + apply);
@@ -1263,12 +1240,11 @@ public partial class AccountingManager
                     if (appliedToCharges[i] <= 0m)
                         continue;
 
-                    costCodeById.TryGetValue(chargeLines[i].CostCodeId, out var costCode);
                     var reverse = Math.Min(toReverse, appliedToCharges[i]);
                     appliedToCharges[i] -= reverse;
                     toReverse -= reverse;
 
-                    if (costCode?.TransactionType == TransactionType.SecurityDeposit && reverse > 0m)
+                    if (IsRefundableSecurityDepositCharge(chargeLines[i], costCodeById) && reverse > 0m)
                     {
                         paymentAmountsByLedgerLineId[payment.LedgerLineId] =
                             RoundSecurityDepositAmount(paymentAmountsByLedgerLineId.GetValueOrDefault(payment.LedgerLineId) - reverse);

@@ -328,6 +328,9 @@ public partial class AccountingManager
             if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
                 continue;
 
+            if (IsFirstInvoiceRentAccountFee(line.Description))
+                continue;
+
             if (extraFeeDescriptions.Contains(line.Description))
                 continue;
 
@@ -1109,6 +1112,13 @@ public partial class AccountingManager
         return (startDate, endDate);
     }
 
+    private static bool IsFirstInvoiceRentAccountFee(string? description)
+    {
+        var text = description?.Trim() ?? string.Empty;
+        return text.Equals("Application Fee", StringComparison.OrdinalIgnoreCase)
+            || text.Equals("Administrative Fee", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool ShouldAssignDepartureFeeToSecondPeriod(LedgerLine line, Reservation reservation, int departureFeeCostCodeId)
         => reservation.ReservationType == ReservationType.Platform
             && departureFeeCostCodeId > 0
@@ -1134,6 +1144,12 @@ public partial class AccountingManager
 
             if (line.Description.StartsWith("Maid Service", StringComparison.Ordinal))
                 continue;
+
+            if (IsFirstInvoiceRentAccountFee(line.Description))
+            {
+                yield return line;
+                continue;
+            }
 
             if (occurrenceExtraDescriptions.Contains(line.Description))
                 continue;

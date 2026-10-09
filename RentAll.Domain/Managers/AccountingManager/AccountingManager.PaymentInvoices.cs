@@ -15,6 +15,10 @@ public partial class AccountingManager
     int DEPARTURE_EXPENSE_COST_CODE = 0;
     int MAID_SERVICE_EXPENSE_COST_CODE = 0;
     int PET_FEE_EXPENSE_COST_CODE = 0;
+    int PET_SECURITY_DEPOSIT_COST_CODE = 0;
+    int PROPERTY_PROTECTION_COST_CODE = 0;
+    int APPLICATION_FEE_COST_CODE = 0;
+    int ADMINISTRATIVE_FEE_COST_CODE = 0;
     int PARKING_EXPENSE_COST_CODE = 0;
 
     #region Setup
@@ -57,6 +61,10 @@ public partial class AccountingManager
         DEPARTURE_EXPENSE_COST_CODE = office.DepartureFeeCcId ?? 0;
         MAID_SERVICE_EXPENSE_COST_CODE = office.MaidServiceChargeCcId ?? 0;
         PET_FEE_EXPENSE_COST_CODE = office.PetFeeCcId ?? 0;
+        PET_SECURITY_DEPOSIT_COST_CODE = office.SecurityDepositCcId ?? 0;
+        PROPERTY_PROTECTION_COST_CODE = office.SecurityDepositWaiverCcId ?? 0;
+        APPLICATION_FEE_COST_CODE = office.ApplicationFeeCcId ?? 0;
+        ADMINISTRATIVE_FEE_COST_CODE = office.AdministrativeFeeCcId ?? 0;
         PARKING_EXPENSE_COST_CODE = office.ParkingChargeCcId ?? 0;
     }
     #endregion
@@ -212,6 +220,19 @@ public partial class AccountingManager
             costCodeById,
             PARKING_EXPENSE_COST_CODE,
             descriptionContains: "Parking");
+
+        PET_SECURITY_DEPOSIT_COST_CODE = SECURITY_DEPOSIT_COST_CODE;
+        PROPERTY_PROTECTION_COST_CODE = SECURITY_DEPOSIT_WAIVER_COST_CODE;
+
+        APPLICATION_FEE_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            APPLICATION_FEE_COST_CODE,
+            descriptionContains: "Application Fee");
+
+        ADMINISTRATIVE_FEE_COST_CODE = ResolveDefaultCostCodeId(
+            costCodeById,
+            ADMINISTRATIVE_FEE_COST_CODE,
+            descriptionContains: "Administrative Fee");
     }
 
     private static int ResolveDefaultCostCodeId(IReadOnlyDictionary<int, CostCode> costCodeById, int configuredCostCodeId, string descriptionContains, string? descriptionExcludes = null)
@@ -373,6 +394,12 @@ public partial class AccountingManager
 
         if (reservation.DepositType == DepositType.Deposit)
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Security Deposit", Amount = reservation.Deposit, CostCodeId = SECURITY_DEPOSIT_COST_CODE });
+        if (reservation.PetSecurityDeposit > 0)
+            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Pet Security Deposit", Amount = reservation.PetSecurityDeposit, CostCodeId = PET_SECURITY_DEPOSIT_COST_CODE });
+        if (reservation.ApplicationFee > 0)
+            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Application Fee", Amount = reservation.ApplicationFee, CostCodeId = APPLICATION_FEE_COST_CODE });
+        if (reservation.AdministrativeFee > 0)
+            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Administrative Fee", Amount = reservation.AdministrativeFee, CostCodeId = ADMINISTRATIVE_FEE_COST_CODE });
         if (reservation.HasPets)
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Pet Fee", Amount = reservation.PetFee, CostCodeId = PET_FEE_EXPENSE_COST_CODE });
 
@@ -421,6 +448,7 @@ public partial class AccountingManager
                 lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = rentLine, Amount = (reservation.BillingRate / PRORATE_DAYS) * days, CostCodeId = costCodeId });
                 if (reservation.DepositType == DepositType.SDW)
                     lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Security Deposit Waiver", Amount = (reservation.Deposit / PRORATE_DAYS) * days, CostCodeId = SECURITY_DEPOSIT_WAIVER_COST_CODE });
+                AddPropertyProtectionLine(reservation, (reservation.PropertyProtectionFee / PRORATE_DAYS) * days, lines, ref lineNumber);
             }
             else
             {
@@ -428,6 +456,7 @@ public partial class AccountingManager
                 lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = rentLine, Amount = reservation.BillingRate, CostCodeId = costCodeId });
                 if (reservation.DepositType == DepositType.SDW)
                     lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Security Deposit Waiver", Amount = reservation.Deposit, CostCodeId = SECURITY_DEPOSIT_WAIVER_COST_CODE });
+                AddPropertyProtectionLine(reservation, reservation.PropertyProtectionFee, lines, ref lineNumber);
             }
         }
         else
@@ -435,7 +464,16 @@ public partial class AccountingManager
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = rentLine, Amount = days * reservation.BillingRate, CostCodeId = costCodeId });
             if (reservation.DepositType == DepositType.SDW)
                 lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Security Deposit Waiver", Amount = (reservation.Deposit / PRORATE_DAYS) * days, CostCodeId = SECURITY_DEPOSIT_WAIVER_COST_CODE });
+            AddPropertyProtectionLine(reservation, (reservation.PropertyProtectionFee / PRORATE_DAYS) * days, lines, ref lineNumber);
         }
+    }
+
+    private void AddPropertyProtectionLine(Reservation reservation, decimal amount, List<LedgerLine> lines, ref int lineNumber)
+    {
+        if (reservation.PropertyProtectionFee <= 0 || amount <= 0)
+            return;
+
+        lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Property Protection Fee", Amount = amount, CostCodeId = PROPERTY_PROTECTION_COST_CODE });
     }
 
     private void AddMaidServiceLines(Reservation reservation, DateOnly startDate, DateOnly endDate, int requestedYear, int startDateMonth, List<LedgerLine> lines, ref int lineNumber)
