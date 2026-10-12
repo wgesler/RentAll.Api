@@ -344,6 +344,38 @@ public class AccountingManagerLedgerLineTests
     }
 
     [Fact]
+    public void GetLedgerLines_SecondMonthProrate_SameMonthNextYear_BillsFullMonthNotSecondMonthPartial()
+    {
+        var reservation = CreateReservation(
+            arrival: new DateOnly(2025, 10, 15),
+            departure: new DateOnly(2026, 12, 31),
+            prorateType: ProrateType.SecondMonth,
+            billingType: BillingType.Monthly,
+            billingRate: 3000m);
+        var manager = CreateManager();
+
+        var secondMonth = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2025, 11, 1),
+            endDate: new DateOnly(2025, 11, 30),
+            rentalCostCodeId: 77);
+        var anniversary = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 11, 1),
+            endDate: new DateOnly(2026, 11, 30),
+            rentalCostCodeId: 77);
+        var moveInAnniversary = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 10, 1),
+            endDate: new DateOnly(2026, 10, 31),
+            rentalCostCodeId: 77);
+
+        Assert.Equal("Rental Fee (11/14-11/30)", Assert.Single(secondMonth, x => x.Description.StartsWith("Rental Fee")).Description);
+        Assert.Equal("Rental Fee (11/01-11/30)", Assert.Single(anniversary, x => x.Description.StartsWith("Rental Fee")).Description);
+        Assert.Equal("Rental Fee (10/01-10/31)", Assert.Single(moveInAnniversary, x => x.Description.StartsWith("Rental Fee")).Description);
+    }
+
+    [Fact]
     public void GetLedgerLines_FirstMonthProrate_ArrivalAndDepartureSameMonth_UsesStayRange()
     {
         var reservation = CreateReservation(
