@@ -140,8 +140,8 @@ public partial class AuthController
             var existingUser = await _userRepository.GetUserByIdAsync(dto.UserId);
             if (existingUser == null)
                 return NotFound("User not found");
-            if (!CanEditDefaultOrgAdmin(existingUser))
-                return Unauthorized("Only SuperAdmin can edit the default organization admin.");
+            if (existingUser.UserId != CurrentUser && !CanEditDefaultOrgAdmin(existingUser))
+                return StatusCode(StatusCodes.Status403Forbidden, "Only SuperAdmin can edit the default organization admin.");
 
             if (!IsSuperAdmin() && dto.OrganizationId != CurrentOrganizationId)
                 return Unauthorized("You are not authorized to update users for this organization.");
