@@ -229,12 +229,8 @@ public static class ExternalPropertyIntakeErrors
             errors.Add($"{prefix}.{field} is {raw.Length} characters; max is {maxLength}. Received \"{raw}\".");
     }
 
-    private static void CollectContact(JsonElement body, string prefix, string field, List<string> errors)
+    public static void CollectContactElement(JsonElement element, string contactPrefix, List<string> errors)
     {
-        if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
-            return;
-
-        var contactPrefix = $"{prefix}.{field}";
         if (element.ValueKind != JsonValueKind.Object)
         {
             errors.Add($"{contactPrefix} must be an object. Received {Describe(element)}.");
@@ -253,6 +249,14 @@ public static class ExternalPropertyIntakeErrors
         CollectEnum<OwnerType>(element, contactPrefix, "ownerTypeId", errors, "0=Individual or 1=Company");
         CollectEnum<VendorType>(element, contactPrefix, "vendorTypeId", errors, "0=Individual or 1=Company");
         CollectContactCard(element, contactPrefix, errors);
+    }
+
+    private static void CollectContact(JsonElement body, string prefix, string field, List<string> errors)
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+            return;
+
+        CollectContactElement(element, $"{prefix}.{field}", errors);
     }
 
     private static void CollectRequiredContactEntityType(JsonElement contact, string contactPrefix, List<string> errors)

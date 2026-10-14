@@ -13,27 +13,29 @@ public class CreateExternalPropertyRequestDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
+        var errors = new List<string>();
         if (OrganizationId == Guid.Empty)
-            return (false, "OrganizationId is required");
+            errors.Add("OrganizationId is required");
 
         if (OfficeId <= 0)
-            return (false, "OfficeId is required");
+            errors.Add("OfficeId is required");
 
         if (VendorId == Guid.Empty)
-            return (false, "VendorId is required");
+            errors.Add("VendorId is required");
 
         if (Properties == null || Properties.Count == 0)
-            return (false, "Properties must contain at least one item");
+            errors.Add("Properties must contain at least one item");
+        else if (Properties.Count > MaxPropertiesPerRequest)
+            errors.Add($"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
 
-        if (Properties.Count > MaxPropertiesPerRequest)
-            return (false, $"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
-
-        var errors = new List<string>();
-        for (var index = 0; index < Properties.Count; index++)
+        if (Properties != null)
         {
-            var (itemIsValid, itemError) = Properties[index].IsValid();
-            if (!itemIsValid)
-                errors.Add($"Properties[{index}]: {itemError}");
+            for (var index = 0; index < Properties.Count; index++)
+            {
+                var (itemIsValid, itemError) = Properties[index].IsValid();
+                if (!itemIsValid)
+                    errors.Add($"Properties[{index}]: {itemError}");
+            }
         }
 
         return errors.Count == 0 ? (true, null) : (false, ExternalPropertyIntakeErrors.Join(errors));
@@ -54,50 +56,47 @@ public class CreateExternalPropertyRequestDto
         if (body.ValueKind != JsonValueKind.Object)
             return (false, null, null, "Property data is required");
 
-        var (contextParsed, context, contextError) = ExternalPropertyIntakeJson.TryParseIntakeContext(body);
-        if (!contextParsed || context == null)
-            return (false, null, null, contextError ?? "Invalid request data");
-
-        var (propertiesParsed, propertiesElement, propertiesError) = ExternalPropertyIntakeJson.TryParseRequiredPropertiesArray(body);
-        if (!propertiesParsed)
-            return (false, null, null, propertiesError ?? "Properties must contain at least one item");
+        var errors = new List<string>();
+        ExternalPropertyIntakeJson.CollectIntakeContextErrors(body, errors, out var context);
 
         var properties = new List<CreateExternalPropertyDto>();
-        var errors = new List<string>();
-        var index = 0;
-        foreach (var propertyElement in propertiesElement.EnumerateArray())
+        var (propertiesParsed, propertiesElement, propertiesError) = ExternalPropertyIntakeJson.TryParseRequiredPropertiesArray(body);
+        if (!propertiesParsed)
+            errors.Add(propertiesError ?? "Properties must contain at least one item");
+        else
         {
-            var prefix = $"Properties[{index}]";
-            var itemErrors = ExternalPropertyIntakeErrors.CollectFromJson(propertyElement, prefix);
-            if (itemErrors.Count == 0)
-            {
-                try
-                {
-                    var propertyDto = ExternalPropertyIntakeJson.DeserializePropertyItem(propertyElement);
-                    var (itemIsValid, itemError) = propertyDto.IsValid();
-                    if (!itemIsValid)
-                        itemErrors.Add($"{prefix}: {itemError}");
-                    else
-                        properties.Add(propertyDto);
-                }
-                catch (JsonException ex)
-                {
-                    itemErrors.Add(ExternalPropertyIntakeErrors.FromJsonException(ex, propertyElement, prefix));
-                }
-            }
+            if (propertiesElement.GetArrayLength() > MaxPropertiesPerRequest)
+                errors.Add($"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
 
-            errors.AddRange(itemErrors);
-            index++;
+            var index = 0;
+            foreach (var propertyElement in propertiesElement.EnumerateArray())
+            {
+                var prefix = $"Properties[{index}]";
+                var itemErrors = ExternalPropertyIntakeErrors.CollectFromJson(propertyElement, prefix);
+                if (itemErrors.Count == 0)
+                {
+                    try
+                    {
+                        var propertyDto = ExternalPropertyIntakeJson.DeserializePropertyItem(propertyElement);
+                        var (itemIsValid, itemError) = propertyDto.IsValid();
+                        if (!itemIsValid)
+                            itemErrors.Add($"{prefix}: {itemError}");
+                        else
+                            properties.Add(propertyDto);
+                    }
+                    catch (JsonException ex)
+                    {
+                        itemErrors.Add(ExternalPropertyIntakeErrors.FromJsonException(ex, propertyElement, prefix));
+                    }
+                }
+
+                errors.AddRange(itemErrors);
+                index++;
+            }
         }
 
-        if (errors.Count > 0)
-            return (false, null, null, ExternalPropertyIntakeErrors.Join(errors));
-
-        if (properties.Count == 0)
-            return (false, null, null, "Properties must contain at least one item");
-
-        if (properties.Count > MaxPropertiesPerRequest)
-            return (false, null, null, $"Properties cannot exceed {MaxPropertiesPerRequest} items per request");
+        if (errors.Count > 0 || context == null)
+            return (false, null, null, errors.Count > 0 ? ExternalPropertyIntakeErrors.Join(errors) : "Invalid request data");
 
         return (true, context, properties, null);
     }

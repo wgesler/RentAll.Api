@@ -13,24 +13,7 @@ public class CreateExternalReservationRequestDto
             return (false, null, null, "Reservation data is required");
 
         var errors = new List<string>();
-        var organizationOk = ExternalPropertyIntakeJson.TryParseRequiredOrganizationId(body, out var organizationId, out var organizationError);
-        if (!organizationOk && !string.IsNullOrWhiteSpace(organizationError))
-            errors.Add(organizationError);
-        var officeOk = ExternalPropertyIntakeJson.TryParseRequiredOfficeId(body, out var officeId, out var officeError);
-        if (!officeOk && !string.IsNullOrWhiteSpace(officeError))
-            errors.Add(officeError);
-        var vendorOk = ExternalPropertyIntakeJson.TryParseRequiredVendorId(body, out var vendorId, out var vendorError);
-        if (!vendorOk && !string.IsNullOrWhiteSpace(vendorError))
-            errors.Add(vendorError);
-
-        ExternalPropertyIntakeContext? context = organizationOk && officeOk && vendorOk
-            ? new ExternalPropertyIntakeContext
-            {
-                OrganizationId = organizationId,
-                OfficeId = officeId,
-                PartnerVendorId = vendorId
-            }
-            : null;
+        ExternalPropertyIntakeJson.CollectIntakeContextErrors(body, errors, out var context);
 
         var reservations = new List<CreateExternalReservationDto>();
         if (!ExternalPropertyIntakeJson.TryGetProperty(body, "reservations", out var reservationsElement))
@@ -75,8 +58,8 @@ public class CreateExternalReservationRequestDto
             }
         }
 
-        if (errors.Count > 0)
-            return (false, null, null, ExternalIntakeErrors.Join(errors));
+        if (errors.Count > 0 || context == null)
+            return (false, null, null, errors.Count > 0 ? ExternalIntakeErrors.Join(errors) : "Invalid request data");
 
         return (true, context, reservations, null);
     }

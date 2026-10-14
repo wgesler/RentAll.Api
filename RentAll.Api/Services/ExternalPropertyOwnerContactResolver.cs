@@ -40,7 +40,7 @@ public class ExternalPropertyOwnerContactResolver
             var owner1Result = await ResolveOwnerAsync(dto.Owner1, context.OrganizationId, context.OfficeId, currentUser, "Owner1");
             if (!owner1Result.Success)
                 return (false, null, null, null, null, owner1Result.ErrorMessage);
-            owner1Id = owner1Result.ContactId;
+            owner1Id = owner1Result.Contact?.ContactId;
         }
 
         if (dto.Owner2 != null)
@@ -48,7 +48,7 @@ public class ExternalPropertyOwnerContactResolver
             var owner2Result = await ResolveOwnerAsync(dto.Owner2, context.OrganizationId, context.OfficeId, currentUser, "Owner2");
             if (!owner2Result.Success)
                 return (false, null, null, null, null, owner2Result.ErrorMessage);
-            owner2Id = owner2Result.ContactId;
+            owner2Id = owner2Result.Contact?.ContactId;
         }
 
         if (dto.Owner3 != null)
@@ -56,7 +56,7 @@ public class ExternalPropertyOwnerContactResolver
             var owner3Result = await ResolveOwnerAsync(dto.Owner3, context.OrganizationId, context.OfficeId, currentUser, "Owner3");
             if (!owner3Result.Success)
                 return (false, null, null, null, null, owner3Result.ErrorMessage);
-            owner3Id = owner3Result.ContactId;
+            owner3Id = owner3Result.Contact?.ContactId;
         }
 
         return (true, owner1Id, owner2Id, owner3Id, propertyVendorContactId, null);
@@ -69,7 +69,7 @@ public class ExternalPropertyOwnerContactResolver
             var owner1Result = await ResolveOwnerAsync(owner1, context.OrganizationId, context.OfficeId, currentUser, "Owner1");
             if (!owner1Result.Success)
                 return (false, owner1Result.ErrorMessage);
-            updateDto.Owner1Id = owner1Result.ContactId;
+            updateDto.Owner1Id = owner1Result.Contact?.ContactId;
         }
 
         if (TryGetContact(body, "owner2", out var owner2))
@@ -77,7 +77,7 @@ public class ExternalPropertyOwnerContactResolver
             var owner2Result = await ResolveOwnerAsync(owner2, context.OrganizationId, context.OfficeId, currentUser, "Owner2");
             if (!owner2Result.Success)
                 return (false, owner2Result.ErrorMessage);
-            updateDto.Owner2Id = owner2Result.ContactId;
+            updateDto.Owner2Id = owner2Result.Contact?.ContactId;
         }
 
         if (TryGetContact(body, "owner3", out var owner3))
@@ -85,7 +85,7 @@ public class ExternalPropertyOwnerContactResolver
             var owner3Result = await ResolveOwnerAsync(owner3, context.OrganizationId, context.OfficeId, currentUser, "Owner3");
             if (!owner3Result.Success)
                 return (false, owner3Result.ErrorMessage);
-            updateDto.Owner3Id = owner3Result.ContactId;
+            updateDto.Owner3Id = owner3Result.Contact?.ContactId;
         }
 
         if (TryGetContact(body, "vendor", out var vendor))
@@ -106,6 +106,15 @@ public class ExternalPropertyOwnerContactResolver
             return false;
 
         if (!TryGetProperty(body, fieldName, out var contactElement) || contactElement.ValueKind != JsonValueKind.Object)
+            return false;
+
+        return TryMapContactElement(contactElement, out contact);
+    }
+
+    public static bool TryMapContactElement(JsonElement contactElement, out ExternalPropertyContactDto contact)
+    {
+        contact = new ExternalPropertyContactDto();
+        if (contactElement.ValueKind != JsonValueKind.Object)
             return false;
 
         contact.FirstName = TryGetTrimmedString(contactElement, "firstName") ?? string.Empty;
@@ -244,11 +253,19 @@ public class ExternalPropertyOwnerContactResolver
         }, null);
     }
 
-    private async Task<(bool Success, Guid? ContactId, string? ErrorMessage)> ResolveOwnerAsync(ExternalPropertyContactDto owner, Guid organizationId, int officeId, Guid currentUser, string fieldLabel)
+    public Task<(bool Success, bool Updated, Contact? Contact, string? ErrorMessage)> UpsertOwnerAsync(
+        ExternalPropertyContactDto owner,
+        Guid organizationId,
+        int officeId,
+        Guid currentUser,
+        string fieldLabel = "Owner")
+        => ResolveOwnerAsync(owner, organizationId, officeId, currentUser, fieldLabel);
+
+    private async Task<(bool Success, bool Updated, Contact? Contact, string? ErrorMessage)> ResolveOwnerAsync(ExternalPropertyContactDto owner, Guid organizationId, int officeId, Guid currentUser, string fieldLabel)
     {
         var (isValid, validationError) = owner.IsValid(fieldLabel);
         if (!isValid)
-            return (false, null, validationError);
+            return (false, false, null, validationError);
 
         var email = owner.Email.Trim();
         var existingContact = await _contactRepository.GetContactByEmailAsync(email, organizationId);
@@ -256,19 +273,19 @@ public class ExternalPropertyOwnerContactResolver
         {
             var entityType = owner.ResolveEntityType(EntityType.Owner);
             if (existingContact.EntityType != entityType)
-                return (false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
+                return (false, false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
 
             owner.ApplyToExistingOwnerContact(existingContact, officeId, currentUser);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, owner.GetResolvedContactCard(), currentUser);
-            return (true, updatedContact.ContactId, null);
+            return (true, true, updatedContact, null);
         }
 
         var createdType = owner.ResolveEntityType(EntityType.Owner);
         var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)createdType);
         var createdContact = await _contactRepository.CreateAsync(owner.ToNewOwnerContactModel(organizationId, officeId, code, currentUser));
         await ApplyContactCardAsync(createdContact, owner.GetResolvedContactCard(), currentUser);
-        return (true, createdContact.ContactId, null);
+        return (true, false, createdContact, null);
     }
 
     private async Task<(bool Success, Guid? ContactId, string? ErrorMessage)> ResolveVendorAsync(ExternalPropertyContactDto vendor, Guid organizationId, int officeId, Guid currentUser)

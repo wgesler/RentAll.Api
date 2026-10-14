@@ -20,6 +20,12 @@ public static class ExternalPropertyIntakeJson
         "vendorId"
     };
 
+    public static ExternalPropertyContactDto DeserializeContact(JsonElement contactElement)
+    {
+        return JsonSerializer.Deserialize<ExternalPropertyContactDto>(contactElement, JsonOptions)
+            ?? throw new JsonException("Contact deserialized to null");
+    }
+
     public static CreateExternalPropertyDto DeserializePropertyItem(JsonElement propertyElement)
     {
         using var stream = new MemoryStream();
@@ -84,21 +90,41 @@ public static class ExternalPropertyIntakeJson
         if (body.ValueKind != JsonValueKind.Object)
             return (false, null, "Property data is required");
 
-        if (!TryParseRequiredOrganizationId(body, out var organizationId, out var organizationError))
-            return (false, null, organizationError);
+        var errors = new List<string>();
+        CollectIntakeContextErrors(body, errors, out var context);
+        if (errors.Count > 0 || context == null)
+            return (false, null, errors.Count > 0 ? ExternalPropertyIntakeErrors.Join(errors) : "Invalid request data");
 
-        if (!TryParseRequiredOfficeId(body, out var officeId, out var officeError))
-            return (false, null, officeError);
+        return (true, context, null);
+    }
 
-        if (!TryParseRequiredVendorId(body, out var vendorId, out var vendorError))
-            return (false, null, vendorError);
+    public static void CollectIntakeContextErrors(JsonElement body, List<string> errors, out ExternalPropertyIntakeContext? context)
+    {
+        context = null;
+        if (body.ValueKind != JsonValueKind.Object)
+            return;
 
-        return (true, new ExternalPropertyIntakeContext
+        var organizationOk = TryParseRequiredOrganizationId(body, out var organizationId, out var organizationError);
+        if (!organizationOk && !string.IsNullOrWhiteSpace(organizationError))
+            errors.Add(organizationError);
+
+        var officeOk = TryParseRequiredOfficeId(body, out var officeId, out var officeError);
+        if (!officeOk && !string.IsNullOrWhiteSpace(officeError))
+            errors.Add(officeError);
+
+        var vendorOk = TryParseRequiredVendorId(body, out var vendorId, out var vendorError);
+        if (!vendorOk && !string.IsNullOrWhiteSpace(vendorError))
+            errors.Add(vendorError);
+
+        if (!organizationOk || !officeOk || !vendorOk)
+            return;
+
+        context = new ExternalPropertyIntakeContext
         {
             OrganizationId = organizationId,
             OfficeId = officeId,
             PartnerVendorId = vendorId
-        }, null);
+        };
     }
 
     public static (bool Success, JsonElement PropertiesElement, string? ErrorMessage) TryParseRequiredPropertiesArray(JsonElement body)

@@ -34,12 +34,8 @@ public partial class PropertyController
     [HttpPut("external")]
     public async Task<IActionResult> UpdateExternalProperty([FromBody] JsonElement body)
     {
-        var (contextParsed, context, contextError) = ExternalPropertyOwnerContactResolver.TryParseIntakeContext(body);
-        if (!contextParsed || context == null)
-            return await RejectExternalPropertyRequestAsync(body, PropertyUploadLogOperations.UpdateProperty, PropertyUploadLogEvents.PropertyUpdate, contextError ?? "Invalid request data");
-
-        var (propertiesParsed, properties, parseError) = TryParseExternalPropertyRequestArray(body);
-        if (!propertiesParsed || properties == null)
+        var (contextParsed, context, properties, parseError) = TryParseExternalPropertyUpdate(body);
+        if (!contextParsed || context == null || properties == null)
             return await RejectExternalPropertyRequestAsync(body, PropertyUploadLogOperations.UpdateProperty, PropertyUploadLogEvents.PropertyUpdate, parseError ?? "Invalid request data", context);
 
         var organizationAccessError = await ValidateExternalPropertyOrganizationAccessAsync(context.OrganizationId);
@@ -158,21 +154,69 @@ public partial class PropertyController
         return response;
     }
 
-    private static (bool Success, List<JsonElement>? Properties, string? ErrorMessage) TryParseExternalPropertyRequestArray(JsonElement body)
+    private static (bool Success, ExternalPropertyIntakeContext? Context, List<JsonElement>? Properties, string? ErrorMessage) TryParseExternalPropertyUpdate(JsonElement body)
     {
         if (body.ValueKind != JsonValueKind.Object)
-            return (false, null, "Property data is required");
+            return (false, null, null, "Property data is required");
+
+        var errors = new List<string>();
+        ExternalPropertyIntakeJson.CollectIntakeContextErrors(body, errors, out var context);
 
         var (propertiesParsed, propertiesElement, propertiesError) = ExternalPropertyIntakeJson.TryParseRequiredPropertiesArray(body);
         if (!propertiesParsed)
-            return (false, null, propertiesError ?? "Properties must contain at least one item");
+        {
+            errors.Add(propertiesError ?? "Properties must contain at least one item");
+            return (false, context, null, ExternalPropertyIntakeErrors.Join(errors));
+        }
 
         var properties = propertiesElement.EnumerateArray().ToList();
-
         if (properties.Count > CreateExternalPropertyRequestDto.MaxPropertiesPerRequest)
-            return (false, null, $"Properties cannot exceed {CreateExternalPropertyRequestDto.MaxPropertiesPerRequest} items per request");
+            errors.Add($"Properties cannot exceed {CreateExternalPropertyRequestDto.MaxPropertiesPerRequest} items per request");
 
-        return (true, properties, null);
+        for (var index = 0; index < properties.Count; index++)
+        {
+            var prefix = $"Properties[{index}]";
+            var propertyBody = properties[index].ValueKind == JsonValueKind.Object
+                ? ExternalPropertyIntakeJson.StripRequestHeaderFields(properties[index])
+                : properties[index];
+            var itemErrors = ExternalPropertyIntakeErrors.CollectFromJson(propertyBody, prefix, requireCreateFields: false);
+            CollectUpdatePropertyCode(propertyBody, prefix, itemErrors);
+
+            var (agreementParsed, _, agreementReadError) = ExternalPropertyAgreementIntake.TryRead(propertyBody);
+            if (!agreementParsed && !string.IsNullOrWhiteSpace(agreementReadError))
+            {
+                foreach (var line in agreementReadError.Split('\n'))
+                {
+                    if (line.Contains("must be >= 0", StringComparison.Ordinal)
+                        || line.Contains("between 0 and 100", StringComparison.Ordinal)
+                        || line.Contains("must sum to 100", StringComparison.Ordinal))
+                        itemErrors.Add(ExternalPropertyIntakeErrors.Prefix(prefix, line));
+                }
+            }
+
+            if (!itemErrors.Any(error => error.Contains(".photos", StringComparison.OrdinalIgnoreCase))
+                && ExternalPropertyPhotoSyncService.TryParsePhotosField(propertyBody, out _, out var photosParseError)
+                && !string.IsNullOrWhiteSpace(photosParseError))
+                itemErrors.Add(ExternalPropertyIntakeErrors.Prefix(prefix, photosParseError));
+
+            errors.AddRange(itemErrors);
+        }
+
+        if (errors.Count > 0 || context == null)
+            return (false, context, null, errors.Count > 0 ? ExternalPropertyIntakeErrors.Join(errors) : "Invalid request data");
+
+        return (true, context, properties, null);
+    }
+
+    private static void CollectUpdatePropertyCode(JsonElement propertyBody, string prefix, List<string> errors)
+    {
+        if (propertyBody.ValueKind != JsonValueKind.Object)
+            return;
+
+        if (!ExternalPropertyIntakeJson.TryGetProperty(propertyBody, "propertyCode", out var propertyCodeElement)
+            || propertyCodeElement.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(propertyCodeElement.GetString()))
+            errors.Add($"{prefix}.propertyCode is required.");
     }
 
     private sealed record ExternalPropertyPatchResult(
