@@ -37,9 +37,13 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", rows.Count);
         foreach (var row in rows)
         {
+            if (string.IsNullOrWhiteSpace(row.PhotoPath))
+                continue;
             await MoveOneAsync(result, "listing photo " + row.PhotoId, row.OrganizationId, row.OfficeName, "listings", row.PropertyCode, row.PhotoPath, 2048, ImageType.Photos, report,
                 path => _adminStorageRepository.UpdateListingPhotoPathAsync(row.PhotoId, row.OrganizationId, path));
         }
+        rows = await _adminStorageRepository.GetListingPhotosAsync();
+        await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.PhotoPath)).Select(row => new EmptyImageSlot("listing photo " + row.PhotoId, row.OrganizationId, row.OfficeName, "listings", row.PropertyCode, 2048, path => _adminStorageRepository.UpdateListingPhotoPathAsync(row.PhotoId, row.OrganizationId, path))).ToList(), rows.Select(row => row.PhotoPath));
         return result;
     }
 
@@ -50,9 +54,13 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", rows.Count);
         foreach (var row in rows)
         {
+            if (string.IsNullOrWhiteSpace(row.PhotoPath))
+                continue;
             await MoveOneAsync(result, "inspection photo " + row.PhotoId, row.OrganizationId, row.OfficeName, "inspection", row.PropertyCode, row.PhotoPath, 2048, ImageType.Photos, report,
                 path => _adminStorageRepository.UpdateInspectionPhotoPathAsync(row.PhotoId, row.OrganizationId, path));
         }
+        rows = await _adminStorageRepository.GetInspectionPhotosAsync();
+        await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.PhotoPath)).Select(row => new EmptyImageSlot("inspection photo " + row.PhotoId, row.OrganizationId, row.OfficeName, "inspection", row.PropertyCode, 2048, path => _adminStorageRepository.UpdateInspectionPhotoPathAsync(row.PhotoId, row.OrganizationId, path))).ToList(), rows.Select(row => row.PhotoPath));
         return result;
     }
 
@@ -64,15 +72,24 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", rows.Count + accountingRows.Count);
         foreach (var row in rows)
         {
+            if (string.IsNullOrWhiteSpace(row.LogoPath))
+                continue;
             await MoveOneAsync(result, "office " + row.OfficeId, row.OrganizationId, row.Name, "logos", null, row.LogoPath, 2048, ImageType.Logos, report,
                 path => _adminStorageRepository.UpdateOfficeLogoPathAsync(row.OfficeId, row.OrganizationId, path));
         }
 
         foreach (var row in accountingRows)
         {
+            if (string.IsNullOrWhiteSpace(row.LogoPath))
+                continue;
             await MoveOneAsync(result, "accounting office " + row.OfficeId, row.OrganizationId, row.Name, "logos", null, row.LogoPath, 2048, ImageType.Logos, report,
                 path => _adminStorageRepository.UpdateAccountingOfficeLogoPathAsync(row.OfficeId, row.OrganizationId, path));
         }
+        rows = await _adminStorageRepository.GetOfficeLogosAsync();
+        accountingRows = await _adminStorageRepository.GetAccountingOfficeLogosAsync();
+        var officeSlots = rows.Where(row => string.IsNullOrWhiteSpace(row.LogoPath)).Select(row => new EmptyImageSlot("office " + row.OfficeId, row.OrganizationId, row.Name, "logos", null, 2048, path => _adminStorageRepository.UpdateOfficeLogoPathAsync(row.OfficeId, row.OrganizationId, path)));
+        var accountingSlots = accountingRows.Where(row => string.IsNullOrWhiteSpace(row.LogoPath)).Select(row => new EmptyImageSlot("accounting office " + row.OfficeId, row.OrganizationId, row.Name, "logos", null, 2048, path => _adminStorageRepository.UpdateAccountingOfficeLogoPathAsync(row.OfficeId, row.OrganizationId, path)));
+        await ReattachEmptyImagesAsync(result, report, officeSlots.Concat(accountingSlots).ToList(), rows.Select(row => row.LogoPath).Concat(accountingRows.Select(row => row.LogoPath)));
         return result;
     }
 
@@ -83,9 +100,13 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", rows.Count);
         foreach (var row in rows)
         {
+            if (string.IsNullOrWhiteSpace(row.LogoPath))
+                continue;
             await MoveOneAsync(result, "organization " + row.OrganizationId, row.OrganizationId, null, "logos", null, row.LogoPath, 2048, ImageType.Logos, report,
                 path => _adminStorageRepository.UpdateOrganizationLogoPathAsync(row.OrganizationId, path));
         }
+        rows = await _adminStorageRepository.GetOrganizationLogosAsync();
+        await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.LogoPath)).Select(row => new EmptyImageSlot("organization " + row.OrganizationId, row.OrganizationId, null, "logos", null, 2048, path => _adminStorageRepository.UpdateOrganizationLogoPathAsync(row.OrganizationId, path))).ToList(), rows.Select(row => row.LogoPath));
         return result;
     }
 
@@ -96,9 +117,13 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", rows.Count);
         foreach (var row in rows)
         {
+            if (string.IsNullOrWhiteSpace(row.ProfilePath))
+                continue;
             await MoveOneAsync(result, "user " + row.UserId, row.OrganizationId, row.OfficeName, "profiles", null, row.ProfilePath, 2048, ImageType.Profiles, report,
                 path => _adminStorageRepository.UpdateProfilePathAsync(row.UserId, row.OrganizationId, path));
         }
+        rows = await _adminStorageRepository.GetProfileImagesAsync();
+        await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.ProfilePath)).Select(row => new EmptyImageSlot("user " + row.UserId, row.OrganizationId, row.OfficeName, "profiles", null, 2048, path => _adminStorageRepository.UpdateProfilePathAsync(row.UserId, row.OrganizationId, path))).ToList(), rows.Select(row => row.ProfilePath));
         return result;
     }
 
@@ -116,9 +141,13 @@ public class StoragePathRepairService
                 continue;
             }
 
+            if (string.IsNullOrWhiteSpace(row.Path))
+                continue;
             await MoveOneAsync(result, "state form " + row.StateFormId, organizationId, null, "stateform", null, row.Path, 500, ImageType.StateForm, report,
                 path => _adminStorageRepository.UpdateStateFormPathAsync(row.StateFormId, row.OrganizationId, path));
         }
+        rows = await _adminStorageRepository.GetStateFormImagesAsync();
+        await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.Path) && Guid.TryParse(row.OrganizationId, out _)).Select(row => new EmptyImageSlot("state form " + row.StateFormId, Guid.Parse(row.OrganizationId), null, "stateform", null, 500, path => _adminStorageRepository.UpdateStateFormPathAsync(row.StateFormId, row.OrganizationId, path))).ToList(), rows.Select(row => row.Path));
         return result;
     }
 
@@ -130,15 +159,24 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", receipts.Count + drafts.Count);
         foreach (var row in receipts)
         {
+            if (string.IsNullOrWhiteSpace(row.ReceiptPath))
+                continue;
             await MoveOneAsync(result, "receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, row.ReceiptPath, 2048, ImageType.Receipts, report,
                 path => _adminStorageRepository.UpdateReceiptPathAsync(row.ReceiptId, row.OrganizationId, path));
         }
 
         foreach (var row in drafts)
         {
+            if (string.IsNullOrWhiteSpace(row.ReceiptPath))
+                continue;
             await MoveOneAsync(result, "receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, row.ReceiptPath, 2048, ImageType.Receipts, report,
                 path => _adminStorageRepository.UpdateReceiptDraftPathAsync(row.ReceiptId, row.OrganizationId, path));
         }
+        receipts = await _adminStorageRepository.GetReceiptImagesAsync();
+        drafts = await _adminStorageRepository.GetReceiptDraftImagesAsync();
+        var receiptSlots = receipts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, 2048, path => _adminStorageRepository.UpdateReceiptPathAsync(row.ReceiptId, row.OrganizationId, path)));
+        var draftSlots = drafts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, 2048, path => _adminStorageRepository.UpdateReceiptDraftPathAsync(row.ReceiptId, row.OrganizationId, path)));
+        await ReattachEmptyImagesAsync(result, report, receiptSlots.Concat(draftSlots).ToList(), receipts.Select(row => row.ReceiptPath).Concat(drafts.Select(row => row.ReceiptPath)));
         return result;
     }
 
@@ -149,9 +187,13 @@ public class StoragePathRepairService
         await ReportAsync(report, "start", "", "", "", rows.Count);
         foreach (var row in rows)
         {
+            if (string.IsNullOrWhiteSpace(row.DecalPath))
+                continue;
             await MoveOneAsync(result, "appliance " + row.ApplianceId, row.OrganizationId, row.OfficeName, "appliancedecal", row.PropertyCode, row.DecalPath, 2500, ImageType.ApplianceDecal, report,
                 path => _adminStorageRepository.UpdateApplianceDecalPathAsync(row.ApplianceId, path));
         }
+        rows = await _adminStorageRepository.GetApplianceDecalsAsync();
+        await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.DecalPath)).Select(row => new EmptyImageSlot("appliance " + row.ApplianceId, row.OrganizationId, row.OfficeName, "appliancedecal", row.PropertyCode, 2500, path => _adminStorageRepository.UpdateApplianceDecalPathAsync(row.ApplianceId, path))).ToList(), rows.Select(row => row.DecalPath));
         return result;
     }
 
@@ -192,6 +234,96 @@ public class StoragePathRepairService
         }
 
         return result;
+    }
+
+    private async Task ReattachEmptyImagesAsync(StorageRepairResultDto result, Func<StorageRepairEventDto, Task>? report, IReadOnlyList<EmptyImageSlot> slots, IEnumerable<string?> currentPaths)
+    {
+        var used = new HashSet<string>(currentPaths.Where(path => !string.IsNullOrWhiteSpace(path)).Select(PathKey), StringComparer.OrdinalIgnoreCase);
+        foreach (var group in slots.GroupBy(slot => PathKey(slot.OrganizationId + "|" + slot.OfficeName + "|" + slot.Category + "|" + slot.PropertyCode)))
+        {
+            var pending = group.ToList();
+            var first = pending[0];
+            IReadOnlyList<string> urls;
+            try
+            {
+                urls = await _fileService.ListImageUrlsAsync(first.OrganizationId, first.OfficeName, first.Category, first.PropertyCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[StorageRepair] {Label} could not list the new folder", first.Label);
+                AddFailure(result, first.Label + ": the new folder could not be read");
+                await ReportAsync(report, "file", first.Label, "failed", "the new folder could not be read");
+                continue;
+            }
+
+            var free = urls.Where(url => !used.Contains(PathKey(url))).ToList();
+            if (free.Count == 1 && pending.Count == 1)
+            {
+                if (free[0].Length > first.MaxPathLength)
+                {
+                    AddFailure(result, first.Label + ": new path is longer than the database column");
+                    await ReportAsync(report, "file", FileNameOf(free[0]), "failed", "new path is longer than the database column");
+                    continue;
+                }
+
+                var saved = await first.Save(free[0]);
+                if (saved < 1)
+                {
+                    AddFailure(result, first.Label + ": database row was not updated");
+                    await ReportAsync(report, "file", FileNameOf(free[0]), "failed", "database row was not updated");
+                    continue;
+                }
+
+                used.Add(PathKey(free[0]));
+                result.Moved++;
+                await ReportAsync(report, "file", FileNameOf(free[0]), "saved", "");
+                continue;
+            }
+
+            if (free.Count > 0)
+                await ReportAsync(report, "file", first.Label, "not re-added", free.Count + " files for " + pending.Count + " records");
+        }
+    }
+
+    private static string PathKey(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return "";
+
+        var value = path.Trim().TrimEnd('/');
+        var marker = ".blob.core.windows.net/";
+        var index = value.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index >= 0)
+        {
+            value = value[(index + marker.Length)..];
+            var slash = value.IndexOf('/');
+            if (slash >= 0)
+                value = value[(slash + 1)..];
+        }
+
+        return Uri.UnescapeDataString(value).ToLowerInvariant();
+    }
+
+    private sealed class EmptyImageSlot
+    {
+        public EmptyImageSlot(string label, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength, Func<string, Task<int>> save)
+        {
+            Label = label;
+            OrganizationId = organizationId;
+            OfficeName = officeName;
+            Category = category;
+            PropertyCode = propertyCode;
+            MaxPathLength = maxPathLength;
+            Save = save;
+        }
+
+        public string Label { get; }
+        public Guid OrganizationId { get; }
+        public string? OfficeName { get; }
+        public string Category { get; }
+        public string? PropertyCode { get; }
+        public int MaxPathLength { get; }
+        public Func<string, Task<int>> Save { get; }
     }
 
     private async Task<bool> MoveOneAsync(

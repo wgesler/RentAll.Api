@@ -420,6 +420,22 @@ public class AzureBlobStorageService : IFileService
         };
     }
 
+    public async Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode)
+    {
+        var containerName = BuildContainerName();
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var prefix = BuildBlobDirectory(organizationId, officeName, category, propertyCode) + "/";
+        var urls = new List<string>();
+        await foreach (var blob in containerClient.GetBlobsAsync(prefix: prefix).ConfigureAwait(false))
+        {
+            var remainder = blob.Name.Length > prefix.Length ? blob.Name[prefix.Length..] : "";
+            if (string.IsNullOrWhiteSpace(remainder) || remainder.Contains('/'))
+                continue;
+            urls.Add(BuildUrl(containerName, blob.Name, containerClient.GetBlobClient(blob.Name).Uri));
+        }
+        return urls;
+    }
+
     public async Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType)
     {
         var parsed = ParseStoragePath(originalPath);

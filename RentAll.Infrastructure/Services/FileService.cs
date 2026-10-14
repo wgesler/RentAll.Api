@@ -192,6 +192,18 @@ public class FileService : IFileService
         };
     }
 
+    public Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode)
+    {
+        var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
+        var relativeDirectory = "/" + envName + "/" + StoragePathBuilder.BuildDirectory(organizationId, officeName, category, propertyCode);
+        var fullDirectory = ToFullPath(relativeDirectory);
+        if (!Directory.Exists(fullDirectory))
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        IReadOnlyList<string> files = Directory.GetFiles(fullDirectory).Select(file => relativeDirectory + "/" + Path.GetFileName(file)).ToList();
+        return Task.FromResult(files);
+    }
+
     public async Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType)
     {
         _ = contentType;

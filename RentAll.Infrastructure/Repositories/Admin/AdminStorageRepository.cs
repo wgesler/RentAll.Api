@@ -19,7 +19,6 @@ public class AdminStorageRepository : IAdminStorageRepository
         => QueryAsync<OfficeLogoRow>("""
             SELECT OfficeId, OrganizationId, Name, LogoPath
             FROM [Organization].[Office]
-            WHERE LogoPath IS NOT NULL AND LTRIM(RTRIM(LogoPath)) <> ''
             """);
 
     public Task<int> UpdateOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath)
@@ -34,7 +33,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             SELECT ao.OfficeId, ao.OrganizationId, o.Name, ao.LogoPath
             FROM [Organization].[AccountingOffice] ao
             LEFT JOIN [Organization].[Office] o ON o.OfficeId = ao.OfficeId
-            WHERE ao.LogoPath IS NOT NULL AND LTRIM(RTRIM(ao.LogoPath)) <> ''
             """);
 
     public Task<int> UpdateAccountingOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath)
@@ -48,7 +46,6 @@ public class AdminStorageRepository : IAdminStorageRepository
         => QueryAsync<OrganizationLogoRow>("""
             SELECT OrganizationId, LogoPath
             FROM [Organization].[Organization]
-            WHERE LogoPath IS NOT NULL AND LTRIM(RTRIM(LogoPath)) <> ''
             """);
 
     public Task<int> UpdateOrganizationLogoPathAsync(Guid organizationId, string? logoPath)
@@ -63,7 +60,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             SELECT u.UserId, u.OrganizationId, o.Name AS OfficeName, u.ProfilePath
             FROM [User].[User] u
             LEFT JOIN [Organization].[Office] o ON o.OfficeId = u.DefaultOfficeId AND o.OrganizationId = u.OrganizationId
-            WHERE u.ProfilePath IS NOT NULL AND LTRIM(RTRIM(u.ProfilePath)) <> ''
             """);
 
     public Task<int> UpdateProfilePathAsync(Guid userId, Guid organizationId, string? profilePath)
@@ -77,7 +73,6 @@ public class AdminStorageRepository : IAdminStorageRepository
         => QueryAsync<StateFormImageRow>("""
             SELECT StateFormId, OrganizationId, Path
             FROM [Organization].[StateForm]
-            WHERE Path IS NOT NULL AND LTRIM(RTRIM(Path)) <> ''
             """);
 
     public Task<int> UpdateStateFormPathAsync(int stateFormId, string organizationId, string? path)
@@ -92,7 +87,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             SELECT r.ReceiptId, r.OrganizationId, o.Name AS OfficeName, r.ReceiptPath
             FROM [Maintenance].[Receipt] r
             INNER JOIN [Organization].[Office] o ON o.OfficeId = r.OfficeId AND o.OrganizationId = r.OrganizationId
-            WHERE r.ReceiptPath IS NOT NULL AND LTRIM(RTRIM(r.ReceiptPath)) <> ''
             """);
 
     public Task<int> UpdateReceiptPathAsync(Guid receiptId, Guid organizationId, string? receiptPath)
@@ -107,7 +101,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             SELECT d.ReceiptDraftId AS ReceiptId, d.OrganizationId, o.Name AS OfficeName, d.ReceiptPath
             FROM [Maintenance].[ReceiptDraft] d
             LEFT JOIN [Organization].[Office] o ON o.OfficeId = d.OfficeId AND o.OrganizationId = d.OrganizationId
-            WHERE d.ReceiptPath IS NOT NULL AND LTRIM(RTRIM(d.ReceiptPath)) <> ''
             """);
 
     public Task<int> UpdateReceiptDraftPathAsync(Guid receiptDraftId, Guid organizationId, string? receiptPath)
@@ -123,7 +116,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             FROM [Maintenance].[Appliance] a
             INNER JOIN [Property].[Property] p ON p.PropertyId = a.PropertyId
             LEFT JOIN [Organization].[Office] o ON o.OfficeId = p.OfficeId AND o.OrganizationId = p.OrganizationId
-            WHERE a.DecalPath IS NOT NULL AND LTRIM(RTRIM(a.DecalPath)) <> ''
             """);
 
     public Task<int> UpdateApplianceDecalPathAsync(int applianceId, string? decalPath)
@@ -139,7 +131,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             FROM [Property].[PropertyPhoto] pp
             INNER JOIN [Property].[Property] p ON p.PropertyId = pp.PropertyId
             LEFT JOIN [Organization].[Office] o ON o.OfficeId = p.OfficeId
-            WHERE pp.PhotoPath IS NOT NULL AND LTRIM(RTRIM(pp.PhotoPath)) <> ''
             """);
 
     public Task<int> UpdateListingPhotoPathAsync(int photoId, Guid organizationId, string? photoPath)
@@ -159,7 +150,6 @@ public class AdminStorageRepository : IAdminStorageRepository
             LEFT JOIN [Maintenance].[Maintenance] m ON m.MaintenanceId = ph.MaintenanceId
             LEFT JOIN [Organization].[Office] mo ON mo.OfficeId = m.OfficeId
             LEFT JOIN [Property].[Property] p ON p.PropertyId = m.PropertyId
-            WHERE ph.PhotoPath IS NOT NULL AND LTRIM(RTRIM(ph.PhotoPath)) <> ''
             """);
 
     public Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath)
