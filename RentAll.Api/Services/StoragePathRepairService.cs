@@ -11,22 +11,26 @@ namespace RentAll.Api.Services;
 public class StoragePathRepairService
 {
     private const int ErrorLimit = 25;
+    private const string DenverDbaOffice = "denver dba avenuewest colorado";
     private static readonly Regex GuidePathRegex = new("data-rentall-guide-path=\"(?<path>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private readonly IAdminStorageRepository _adminStorageRepository;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IFileService _fileService;
+    private readonly IDocumentIntelligenceService _documentIntelligenceService;
     private readonly ILogger<StoragePathRepairService> _logger;
 
     public StoragePathRepairService(
         IAdminStorageRepository adminStorageRepository,
         IOrganizationRepository organizationRepository,
         IFileService fileService,
+        IDocumentIntelligenceService documentIntelligenceService,
         ILogger<StoragePathRepairService> logger)
     {
         _adminStorageRepository = adminStorageRepository;
         _organizationRepository = organizationRepository;
         _fileService = fileService;
+        _documentIntelligenceService = documentIntelligenceService;
         _logger = logger;
     }
 
@@ -177,6 +181,139 @@ public class StoragePathRepairService
         var receiptSlots = receipts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", row.ReceiptCode, 2048, path => _adminStorageRepository.UpdateReceiptPathAsync(row.ReceiptId, row.OrganizationId, path)));
         var draftSlots = drafts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", row.ReceiptCode, 2048, path => _adminStorageRepository.UpdateReceiptDraftPathAsync(row.ReceiptId, row.OrganizationId, path)));
         await ReattachEmptyImagesAsync(result, report, receiptSlots.Concat(draftSlots).ToList(), receipts.Select(row => row.ReceiptPath).Concat(drafts.Select(row => row.ReceiptPath)));
+        return result;
+    }
+
+    public async Task<StorageRepairResultDto> MatchHyphenReceiptsAsync(Func<StorageRepairEventDto, Task>? report = null)
+    {
+        if (!_documentIntelligenceService.IsEnabled)
+            throw new InvalidOperationException("Document Intelligence is not enabled.");
+
+        var result = new StorageRepairResultDto();
+        var offices = await _adminStorageRepository.GetSpacedOfficesAsync();
+        var openReceipts = (await _adminStorageRepository.GetReceiptsWithoutFileAsync()).ToList();
+        var files = new List<(Guid OrganizationId, string OfficeName, string Url)>();
+        foreach (var office in offices)
+        {
+            var officeName = (office.Name ?? string.Empty).Trim();
+            if (officeName.Length == 0 || string.Equals(officeName, DenverDbaOffice, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var hyphenOffice = OfficeHyphen(officeName);
+            if (!hyphenOffice.Contains('-'))
+                continue;
+
+            try
+            {
+                var urls = await _fileService.ListImageUrlsAsync(office.OrganizationId, hyphenOffice, "receipts", null);
+                foreach (var url in urls)
+                    files.Add((office.OrganizationId, officeName, url));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[StorageRepair] {Office} hyphen receipts could not be listed", officeName);
+                AddFailure(result, officeName + ": hyphen receipts could not be listed");
+            }
+        }
+
+        await ReportAsync(report, "start", "", "", "", files.Count);
+        foreach (var file in files)
+        {
+            var fileName = FileNameOf(file.Url);
+            if (fileName.StartsWith("blank-", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var deleted = await _fileService.DeleteImageAsync(file.OrganizationId, OfficeHyphen(file.OfficeName), file.Url, ImageType.Receipts);
+                    if (!deleted)
+                        throw new InvalidOperationException("blank file was not deleted");
+                    result.Removed++;
+                    await ReportAsync(report, "file", fileName, "removed", "");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[StorageRepair] {File} blank file could not be deleted", fileName);
+                    AddFailure(result, fileName + ": " + ex.Message);
+                    await ReportAsync(report, "file", fileName, "failed", ex.Message);
+                }
+
+                continue;
+            }
+
+            StoredImageRelocation? relocation = null;
+            var pathSaved = false;
+            try
+            {
+                var details = await _fileService.GetImageDetailsAsync(file.OrganizationId, OfficeHyphen(file.OfficeName), file.Url, ImageType.Receipts);
+                if (details == null || string.IsNullOrWhiteSpace(details.File))
+                {
+                    AddFailure(result, fileName + ": file was not found");
+                    await ReportAsync(report, "file", fileName, "failed", "file was not found");
+                    continue;
+                }
+
+                var contentType = string.IsNullOrWhiteSpace(details.ContentType) ? ContentTypeOf(fileName) : details.ContentType;
+                var extracted = await _documentIntelligenceService.ExtractReceiptAsync(Convert.FromBase64String(details.File), contentType);
+                if (!extracted.Amount.HasValue || !extracted.ReceiptDate.HasValue || string.IsNullOrWhiteSpace(extracted.VendorName))
+                {
+                    AddFailure(result, fileName + ": amount, date, or vendor was not read");
+                    await ReportAsync(report, "file", fileName, "failed", "amount, date, or vendor was not read");
+                    continue;
+                }
+
+                var matches = openReceipts.Where(row =>
+                    row.OrganizationId == file.OrganizationId
+                    && string.Equals(OfficeHyphen(row.OfficeName), OfficeHyphen(file.OfficeName), StringComparison.OrdinalIgnoreCase)
+                    && Math.Abs(row.Amount - extracted.Amount.Value) < 0.01m
+                    && row.ReceiptDate == extracted.ReceiptDate.Value
+                    && VendorsMatch(row.VendorName, extracted.VendorName)).ToList();
+                if (matches.Count != 1)
+                {
+                    var detail = matches.Count == 0 ? "no receipt matched" : "more than one receipt matched";
+                    AddFailure(result, fileName + ": " + detail);
+                    await ReportAsync(report, "file", fileName, "failed", detail);
+                    continue;
+                }
+
+                var receipt = matches[0];
+                relocation = await _fileService.RelocateStoredImageAsync(file.Url, receipt.OrganizationId, receipt.OfficeName, "receipts", receipt.ReceiptCode, 2048);
+                if (relocation.Missing || string.IsNullOrWhiteSpace(relocation.NewPath))
+                {
+                    AddFailure(result, fileName + ": file was not found");
+                    await ReportAsync(report, "file", fileName, "failed", "file was not found");
+                    continue;
+                }
+
+                var saved = await _adminStorageRepository.UpdateReceiptPathAsync(receipt.ReceiptId, receipt.OrganizationId, relocation.NewPath);
+                if (saved < 1)
+                    throw new InvalidOperationException("Database row was not updated.");
+
+                pathSaved = true;
+                openReceipts.Remove(receipt);
+                result.Moved++;
+                await ReportAsync(report, "file", fileName, "moved", receipt.ReceiptCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[StorageRepair] {File} receipt match failed", fileName);
+                if (!pathSaved && relocation != null && !relocation.AlreadyCorrect && !string.IsNullOrWhiteSpace(relocation.NewPath) && relocation.Content.Length > 0 && !string.Equals(relocation.NewPath, relocation.OriginalPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        await _fileService.RestoreStoredImageAsync(relocation.OriginalPath, relocation.Content, relocation.ContentType);
+                        await _fileService.DeleteImageAsync(file.OrganizationId, file.OfficeName, relocation.NewPath, ImageType.Receipts);
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        _logger.LogError(restoreEx, "[StorageRepair] {File} could not restore the original file", fileName);
+                    }
+                }
+
+                AddFailure(result, fileName + ": " + ex.Message);
+                await ReportAsync(report, "file", fileName, "failed", ex.Message);
+            }
+        }
+
         return result;
     }
 
@@ -560,6 +697,43 @@ public class StoragePathRepairService
             return html;
 
         return Regex.Replace(html, "<img\\b[^>]*" + Regex.Escape(path) + "[^>]*>", "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    private static string OfficeHyphen(string? officeName)
+    {
+        return (officeName ?? string.Empty).Trim().ToLowerInvariant().Replace(' ', '-');
+    }
+
+    private static bool VendorsMatch(string? receiptVendor, string? fileVendor)
+    {
+        var receipt = VendorKey(receiptVendor);
+        var file = VendorKey(fileVendor);
+        if (receipt.Length < 4 || file.Length < 4)
+            return false;
+
+        return receipt == file || receipt.Contains(file, StringComparison.Ordinal) || file.Contains(receipt, StringComparison.Ordinal);
+    }
+
+    private static string VendorKey(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return new string(value.Trim().ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+    }
+
+    private static string ContentTypeOf(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            return "application/pdf";
+        if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+            return "image/png";
+        if (extension.Equals(".webp", StringComparison.OrdinalIgnoreCase))
+            return "image/webp";
+        if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
+            return "image/gif";
+        return "image/jpeg";
     }
 
     private static string FileNameOf(string? path)

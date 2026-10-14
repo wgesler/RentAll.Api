@@ -88,6 +88,12 @@ public class AdminStorageRepository : IAdminStorageRepository
     public Task<IReadOnlyList<string>> GetSpacedOfficeNamesAsync()
         => QueryProcAsync<string>("Organization.Office_GetSpacedNames");
 
+    public Task<IReadOnlyList<SpacedOfficeRow>> GetSpacedOfficesAsync()
+        => QueryProcAsync<SpacedOfficeRow>("Organization.Office_GetSpacedOffices");
+
+    public Task<IReadOnlyList<UnlinkedReceiptRow>> GetReceiptsWithoutFileAsync()
+        => QueryProcAsync<UnlinkedReceiptRow>("Maintenance.Receipt_GetWithoutFile");
+
     public Task<IReadOnlyList<StoredPathRow>> GetStoredPathsForFoldersAsync(IReadOnlyList<string> folders)
     {
         if (folders.Count == 0)
