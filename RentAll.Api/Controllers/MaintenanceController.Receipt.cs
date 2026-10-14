@@ -307,8 +307,9 @@ public partial class MaintenanceController
             var receipt = dto.ToModel(CurrentUser);
             receipt.PaymentTypeId = existing.PaymentTypeId;
             receipt.CheckPrinted = existing.CheckPrinted;
+            var receiptOffice = await _organizationRepository.GetOfficeByIdAsync(existing.OfficeId, existing.OrganizationId);
             receipt.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                existing.OrganizationId, null, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
+                existing.OrganizationId, receiptOffice?.Name, dto.FileDetails, ImageType.Receipts, existing.ReceiptPath, dto.ReceiptPath);
 
             Receipt updated;
             if (receipt.BankCardId == null)

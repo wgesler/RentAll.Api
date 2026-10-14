@@ -79,7 +79,7 @@ namespace RentAll.Api.Controllers
                     {
                         dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(
                             organizationGuid,
-                            $"{ImageType.StateForm}/{stateForm.StateCode.Trim().ToUpperInvariant()}",
+                            null,
                             stateForm.Path,
                             ImageType.StateForm);
                     }

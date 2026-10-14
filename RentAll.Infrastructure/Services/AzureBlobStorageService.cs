@@ -32,7 +32,7 @@ public class AzureBlobStorageService : IFileService
     }
 
     #region Images
-    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType)
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType, string? propertyCode = null)
     {
         var fileBytes = DecodeBase64(fileContent);
         ImageUploadLimits.ThrowIfExceedsMaxBytes(fileBytes.Length, _imageUploadSettings);
@@ -42,7 +42,7 @@ public class AzureBlobStorageService : IFileService
         try
         {
             return await UploadPreparedImageBlobAsync(
-                organizationId, officeName, streamToUpload, fileName, effectiveExtension, uploadContentType, imageType).ConfigureAwait(false);
+                organizationId, officeName, streamToUpload, fileName, effectiveExtension, uploadContentType, imageType, propertyCode).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -55,7 +55,7 @@ public class AzureBlobStorageService : IFileService
         }
     }
 
-    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType)
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType, string? propertyCode = null)
     {
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf", ".heic", ".heif" };
@@ -75,7 +75,7 @@ public class AzureBlobStorageService : IFileService
         try
         {
             return await UploadPreparedImageBlobAsync(
-                organizationId, officeName, streamToUpload, fileName, effectiveExtension, uploadContentType, imageType).ConfigureAwait(false);
+                organizationId, officeName, streamToUpload, fileName, effectiveExtension, uploadContentType, imageType, propertyCode).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -95,25 +95,20 @@ public class AzureBlobStorageService : IFileService
         string originalFileName,
         string effectiveExtension,
         string uploadContentType,
-        ImageType imageType)
+        ImageType imageType,
+        string? propertyCode = null)
     {
         var containerName = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
         var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
         await containerClient.CreateIfNotExistsAsync(PublicAccessType.None).ConfigureAwait(false);
-        var typeString = imageType.ToString().ToLowerInvariant();
-        var includeTypeFolder = ShouldIncludeImageTypeFolder(officeName, imageType);
-
         var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
         if (!string.IsNullOrEmpty(fileNameOnly))
             fileNameOnly = Uri.UnescapeDataString(fileNameOnly);
-        fileNameOnly = SanitizeBlobPathSegment(fileNameOnly, "image", 120);
+        fileNameOnly = StoragePathBuilder.SanitizeSegment(fileNameOnly, "image", 120);
 
         var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
-        var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
-        var blobName = includeTypeFolder
-            ? $"{blobPathPrefix}/{typeString}/{uniqueFileName}"
-            : $"{blobPathPrefix}/{uniqueFileName}";
+        var blobName = $"{BuildBlobDirectory(organizationId, officeName, imageType.ToString().ToLowerInvariant(), propertyCode)}/{uniqueFileName}";
         var blobClient = containerClient.GetBlobClient(blobName);
 
         uploadStream.Position = 0;
@@ -225,10 +220,7 @@ public class AzureBlobStorageService : IFileService
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
             var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{fileExtension}";
-            var typeString = documentType.ToString().ToLowerInvariant();
-
-            var blobPathPrefix = GetBlobPathPrefix(organizationId, officeName);
-            var blobName = $"{blobPathPrefix}/{typeString}/{uniqueFileName}";
+            var blobName = $"{BuildBlobDirectory(organizationId, officeName, documentType.ToString().ToLowerInvariant())}/{uniqueFileName}";
             var blobClient = containerClient.GetBlobClient(blobName);
 
             // Read stream into a fresh MemoryStream to avoid disposal issues during async upload
@@ -341,44 +333,112 @@ public class AzureBlobStorageService : IFileService
         return SanitizeContainerSegment(env);
     }
 
-    private static bool ShouldIncludeImageTypeFolder(string? officeName, ImageType imageType)
+    private static string BuildBlobDirectory(Guid organizationId, string? officeName, string category, string? propertyCode = null)
+        => StoragePathBuilder.BuildDirectory(organizationId, officeName, category, propertyCode);
+
+    public async Task<StoredImageRelocation> RelocateStoredImageAsync(string currentPath, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength)
     {
-        if (imageType != ImageType.Photos)
-            return true;
+        var parsed = ParseStoragePath(currentPath);
+        if (parsed == null)
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
 
-        if (string.IsNullOrWhiteSpace(officeName))
-            return true;
+        var (containerName, blobName) = parsed.Value;
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var sourceClient = containerClient.GetBlobClient(blobName);
+        if (!await sourceClient.ExistsAsync().ConfigureAwait(false))
+        {
+            var missingFileName = Path.GetFileName(blobName);
+            if (!string.IsNullOrWhiteSpace(missingFileName))
+            {
+                var existingBlobName = $"{BuildBlobDirectory(organizationId, officeName, category, propertyCode)}/{missingFileName}";
+                if (!string.Equals(blobName, existingBlobName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var existingClient = containerClient.GetBlobClient(existingBlobName);
+                    if (await existingClient.ExistsAsync().ConfigureAwait(false))
+                    {
+                        var existingPath = BuildUrl(containerName, existingBlobName, existingClient.Uri);
+                        if (existingPath.Length > maxPathLength)
+                            throw new InvalidOperationException("New path is longer than the database column.");
+                        return new StoredImageRelocation { FoundExisting = true, OriginalPath = currentPath, NewPath = existingPath };
+                    }
+                }
+            }
 
-        return !officeName.Contains("/listings/", StringComparison.OrdinalIgnoreCase)
-            && !officeName.Contains("/inspection/", StringComparison.OrdinalIgnoreCase);
+            await sourceClient.DeleteIfExistsAsync().ConfigureAwait(false);
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
+        }
+
+        var fileName = Path.GetFileName(blobName);
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new InvalidOperationException("Stored file name is missing.");
+
+        var targetBlobName = $"{BuildBlobDirectory(organizationId, officeName, category, propertyCode)}/{fileName}";
+        var targetClient = containerClient.GetBlobClient(targetBlobName);
+        var newPath = BuildUrl(containerName, targetBlobName, targetClient.Uri);
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        var download = await sourceClient.DownloadContentAsync().ConfigureAwait(false);
+        var bytes = download.Value.Content.ToArray();
+        if (bytes.Length == 0)
+            throw new InvalidOperationException("Stored file is empty.");
+
+        var contentType = download.Value.Details.ContentType;
+        if (string.IsNullOrWhiteSpace(contentType))
+            contentType = "application/octet-stream";
+
+        if (string.Equals(blobName, targetBlobName, StringComparison.OrdinalIgnoreCase))
+        {
+            return new StoredImageRelocation
+            {
+                AlreadyCorrect = true,
+                OriginalPath = currentPath,
+                NewPath = currentPath,
+                Content = bytes,
+                ContentType = contentType
+            };
+        }
+
+        await sourceClient.DeleteIfExistsAsync().ConfigureAwait(false);
+        try
+        {
+            await UploadBytesAsync(targetClient, bytes, contentType).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await UploadBytesAsync(sourceClient, bytes, contentType).ConfigureAwait(false);
+            throw new InvalidOperationException("New file could not be saved. The original file was put back.", ex);
+        }
+
+        return new StoredImageRelocation
+        {
+            AlreadyCorrect = false,
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            Content = bytes,
+            ContentType = contentType
+        };
     }
 
-    private string GetBlobPathPrefix(Guid organizationId, string? officeName)
+    public async Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType)
     {
-        var orgSegment = $"{organizationId:N}".ToLowerInvariant();
-        var officeSegment = SanitizeBlobPathSegment(officeName, "global", 120);
-        return $"{orgSegment}/{officeSegment}";
+        var parsed = ParseStoragePath(originalPath);
+        if (parsed == null)
+            throw new InvalidOperationException("Original file path could not be restored.");
+
+        var (containerName, blobName) = parsed.Value;
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var sourceClient = containerClient.GetBlobClient(blobName);
+        await UploadBytesAsync(sourceClient, content, contentType).ConfigureAwait(false);
     }
 
-    private static string SanitizeBlobPathSegment(string? value, string fallback, int maxLength)
+    private static async Task UploadBytesAsync(BlobClient blobClient, byte[] content, string contentType)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return fallback;
-
-        var trimmed = value.Trim().ToLowerInvariant();
-        var chars = trimmed
-            .Select(c => (char.IsLetterOrDigit(c) || c == '-' || c == '_') ? c : '-')
-            .ToArray();
-
-        var normalized = new string(chars);
-        while (normalized.Contains("--", StringComparison.Ordinal))
-            normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
-
-        normalized = normalized.Trim('-', '_', '.');
-        if (string.IsNullOrWhiteSpace(normalized))
-            normalized = fallback;
-
-        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+        await using var stream = new MemoryStream(content, writable: false);
+        await blobClient.UploadAsync(stream, new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType }
+        }).ConfigureAwait(false);
     }
 
     private static string SanitizeContainerSegment(string value)

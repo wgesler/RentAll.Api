@@ -18,6 +18,7 @@ using RentAll.Domain.Managers;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.HealthChecks;
 using RentAll.Infrastructure.Repositories.Accounting;
+using RentAll.Infrastructure.Repositories.Admin;
 using RentAll.Infrastructure.Repositories.Common;
 using RentAll.Infrastructure.Repositories.Contacts;
 using RentAll.Infrastructure.Repositories.Documents;
@@ -198,6 +199,8 @@ else
 }
 
 builder.Services.AddScoped<IFileAttachmentHelper, FileAttachmentHelper>();
+builder.Services.AddScoped<IAdminStorageRepository, AdminStorageRepository>();
+builder.Services.AddScoped<StoragePathRepairService>();
 builder.Services.AddScoped<UserGuideHtmlImageService>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IPdfGenerationService, PdfGenerationService>();

@@ -226,9 +226,12 @@ public partial class MaintenanceController
 
             var draft = dto.ToModel(CurrentUser);
             draft.DraftCode = existing.DraftCode;
+            var draftOfficeName = existing.OfficeId is > 0
+                ? (await _organizationRepository.GetOfficeByIdAsync(existing.OfficeId.Value, existing.OrganizationId))?.Name
+                : null;
             draft.ReceiptPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
                 existing.OrganizationId,
-                null,
+                draftOfficeName,
                 dto.FileDetails,
                 ImageType.Receipts,
                 existing.ReceiptPath,

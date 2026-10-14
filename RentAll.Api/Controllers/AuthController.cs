@@ -14,6 +14,7 @@ public partial class AuthController : BaseController
     protected readonly AuthManager _authManager;
     protected readonly IAuthTokenService _tokenService;
     protected readonly IUserRepository _userRepository;
+    protected readonly IOrganizationRepository _organizationRepository;
     protected readonly IPasswordHasher _passwordHasher;
     protected readonly IFileService _fileService;
     protected readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -24,6 +25,7 @@ public partial class AuthController : BaseController
         AuthManager authManager,
         IAuthTokenService tokenService,
         IUserRepository userRepository,
+        IOrganizationRepository organizationRepository,
         IPasswordHasher passwordHasher,
         IFileService fileService,
         IFileAttachmentHelper fileAttachmentHelper,
@@ -33,6 +35,7 @@ public partial class AuthController : BaseController
         _authManager = authManager;
         _tokenService = tokenService;
         _userRepository = userRepository;
+        _organizationRepository = organizationRepository;
         _passwordHasher = passwordHasher;
         _fileService = fileService;
         _fileAttachmentHelper = fileAttachmentHelper;

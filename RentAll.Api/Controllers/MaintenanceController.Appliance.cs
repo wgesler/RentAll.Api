@@ -86,7 +86,7 @@ public partial class MaintenanceController
 
             var appliance = dto.ToModel();
             appliance.DecalPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(
-                CurrentOrganizationId, maintenance.OfficeName, dto.DecalFileDetails, ImageType.ApplianceDecal);
+                CurrentOrganizationId, maintenance.OfficeName, dto.DecalFileDetails, ImageType.ApplianceDecal, maintenance.PropertyCode);
 
             var created = await _maintenanceRepository.CreateApplianceAsync(appliance);
             var response = new ApplianceResponseDto(created);
@@ -125,7 +125,7 @@ public partial class MaintenanceController
 
             var appliance = dto.ToModel();
             appliance.DecalPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId,
-                maintenance.OfficeName, dto.DecalFileDetails, ImageType.ApplianceDecal, existing.DecalPath, dto.DecalPath);
+                maintenance.OfficeName, dto.DecalFileDetails, ImageType.ApplianceDecal, existing.DecalPath, dto.DecalPath, maintenance.PropertyCode);
 
             var updated = await _maintenanceRepository.UpdateApplianceAsync(appliance);
             var response = new ApplianceResponseDto(updated);

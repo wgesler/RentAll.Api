@@ -1,0 +1,40 @@
+---
+description: Blob and file storage layout — org, then office, then category, then property code for pictures
+alwaysApply: true
+---
+
+# Storage layout
+
+Every stored file, in Azure blobs and in local file storage, uses this path and nothing else:
+
+```text
+{orgId}/{officeName}/{category}/{file}
+{orgId}/{officeName}/{category}/{propertyCode}/{file}
+```
+
+Pictures use the second form. `propertyCode` is required for listings, inspection photos, and any other property picture.
+
+## Hard rule
+
+**Nothing is ever stored at the root of an org.** The first child under `{orgId}` is always an office name. Do not put a file, a category, or a property folder directly under the org.
+
+- Do not skip the office segment.
+- Do not flatten office, category, and property into one folder (`denver-listings-bar0903`).
+- Do not pass `office/listings/code` or `office/inspection/code` through as a single office name.
+- A missing office uses the `global` office folder. It does not write at the org root.
+
+## Examples
+
+```text
+{orgId}/denver/listings/bar0903/photo.jpg
+{orgId}/denver/inspection/bar0903/photo.jpg
+{orgId}/denver/profiles/avatar.jpg
+{orgId}/denver/logos/logo.png
+{orgId}/global/profiles/avatar.jpg
+```
+
+```text
+{orgId}/photo.jpg
+{orgId}/listings/bar0903/photo.jpg
+{orgId}/denver-listings-bar0903/photo.jpg
+```

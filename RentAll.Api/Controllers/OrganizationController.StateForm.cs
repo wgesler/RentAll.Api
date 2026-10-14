@@ -4,9 +4,10 @@ namespace RentAll.Api.Controllers
 {
     public partial class OrganizationController
     {
-        private static string GetStateFormStorageScope(string stateCode)
+        private static string? GetStateFormStorageScope(string stateCode)
         {
-            return $"{ImageType.StateForm}/{stateCode.Trim().ToUpperInvariant()}";
+            _ = stateCode;
+            return null;
         }
 
         #region Get

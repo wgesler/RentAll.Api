@@ -79,7 +79,7 @@ namespace RentAll.Api.Controllers
                 // Create requested office
                 var office = dto.ToModel();
                 office.OrganizationId = organizationId;
-                office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, null, dto.FileDetails, ImageType.Logos);
+                office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, office.Name, dto.FileDetails, ImageType.Logos);
                 var createdOffice = await _organizationRepository.CreateAsync(office);
 
                 // Create default cost codes for the office

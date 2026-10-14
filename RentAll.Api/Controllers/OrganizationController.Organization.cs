@@ -220,7 +220,7 @@ namespace RentAll.Api.Controllers
                 IsActive = organization.IsActive
             };
 
-            office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organization.OrganizationId, null, fileDetails, ImageType.Logos);
+            office.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organization.OrganizationId, cityName, fileDetails, ImageType.Logos);
 
             // For every new organization, create a default office
             var createdOffice = await _organizationRepository.CreateAsync(office);

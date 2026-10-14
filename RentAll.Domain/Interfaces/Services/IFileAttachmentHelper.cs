@@ -13,14 +13,14 @@ public interface IFileAttachmentHelper
     /// Saves image to storage when fileDetails has content. Returns the stored path, or null if fileDetails is null or content is empty.
     /// Use for create flows.
     /// </summary>
-    Task<string?> SaveImageIfPresentAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType);
+    Task<string?> SaveImageIfPresentAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType, string? propertyCode = null);
 
     /// <summary>
     /// Update flow: (1) If fileDetails has content → delete existing (by existingPath), save new, return new path.
     /// (2) Else if dtoPath is null (explicit clear) → delete existing, return null.
     /// (3) Else → return existingPath (no change).
     /// </summary>
-    Task<string?> ResolveImagePathForUpdateAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType, string? existingPath, string? dtoPath);
+    Task<string?> ResolveImagePathForUpdateAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType, string? existingPath, string? dtoPath, string? propertyCode = null);
 
     /// <summary>
     /// Saves document to storage when fileDetails has content. Returns the stored path, or null if fileDetails is null or content is empty.

@@ -108,7 +108,7 @@ public partial class AuthController
             var passwordHash = _passwordHasher.HashPassword(dto.Password);
             var user = dto.ToModel(passwordHash, CurrentUser);
 
-            user.ProfilePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, null, dto.FileDetails, ImageType.Profiles);
+            user.ProfilePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, await ResolveProfileOfficeNameAsync(dto.OrganizationId, user.DefaultOfficeId), dto.FileDetails, ImageType.Profiles);
 
             var createdUser = await _userRepository.CreateAsync(user);
             var response = new UserResponseDto(createdUser);
@@ -159,7 +159,7 @@ public partial class AuthController
             user.ContactId = dto.ContactId ?? existingUser.ContactId;
 
             user.ProfilePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                dto.OrganizationId, null, dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
+                dto.OrganizationId, await ResolveProfileOfficeNameAsync(dto.OrganizationId, user.DefaultOfficeId), dto.FileDetails, ImageType.Profiles, existingUser.ProfilePath, dto.ProfilePath);
 
             var updatedUser = await _userRepository.UpdateByIdAsync(user);
             var response = new UserResponseDto(updatedUser);
@@ -189,7 +189,7 @@ public partial class AuthController
             if (existingUser != null && !CanEditDefaultOrgAdmin(existingUser))
                 return Unauthorized("Only SuperAdmin can delete the default organization admin.");
             if (existingUser != null && !string.IsNullOrWhiteSpace(existingUser.ProfilePath))
-                await _fileService.DeleteImageAsync(existingUser.OrganizationId, null, existingUser.ProfilePath, ImageType.Profiles);
+                await _fileService.DeleteImageAsync(existingUser.OrganizationId, await ResolveProfileOfficeNameAsync(existingUser.OrganizationId, existingUser.DefaultOfficeId), existingUser.ProfilePath, ImageType.Profiles);
 
             await _userRepository.DeleteUserByIdAsync(userId);
             return NoContent();
@@ -202,6 +202,15 @@ public partial class AuthController
     }
 
     #endregion
+
+    private async Task<string?> ResolveProfileOfficeNameAsync(Guid organizationId, int? officeId)
+    {
+        if (officeId is not > 0)
+            return null;
+
+        var office = await _organizationRepository.GetOfficeByIdAsync(officeId.Value, organizationId);
+        return office?.Name;
+    }
 
     private bool CanEditDefaultOrgAdmin(User user) => IsSuperAdmin() || !IsDefaultOrgAdmin(user);
 

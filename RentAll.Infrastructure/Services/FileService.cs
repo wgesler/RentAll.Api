@@ -27,7 +27,7 @@ public class FileService : IFileService
     }
 
     #region Images
-    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType)
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType, string? propertyCode = null)
     {
         // Handle base64 encoded content
         byte[] fileBytes;
@@ -49,7 +49,7 @@ public class FileService : IFileService
             buffer, fileName, contentType, _imageUploadSettings, imageType).ConfigureAwait(false);
         try
         {
-            return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType).ConfigureAwait(false);
+            return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType, propertyCode).ConfigureAwait(false);
         }
         finally
         {
@@ -57,7 +57,7 @@ public class FileService : IFileService
         }
     }
 
-    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType)
+    public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType, string? propertyCode = null)
     {
         // Validate file type
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf", ".heic", ".heif" };
@@ -76,7 +76,7 @@ public class FileService : IFileService
             buffer, fileName, contentType, _imageUploadSettings, imageType).ConfigureAwait(false);
         try
         {
-            return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType).ConfigureAwait(false);
+            return await SavePreparedImageToDiskAsync(organizationId, officeName, streamToSave, fileName, effectiveExtension, imageType, propertyCode).ConfigureAwait(false);
         }
         finally
         {
@@ -90,15 +90,21 @@ public class FileService : IFileService
         Stream streamToSave,
         string originalFileName,
         string effectiveExtension,
-        ImageType imageType)
+        ImageType imageType,
+        string? propertyCode = null)
     {
         var fileNameOnly = Path.GetFileNameWithoutExtension(originalFileName);
         var containerPath = GetContainerPath(organizationId, officeName);
         var typeString = imageType.ToString().ToLowerInvariant();
         var includeTypeFolder = ShouldIncludeImageTypeFolder(officeName, imageType);
+        var propertySegment = string.IsNullOrWhiteSpace(propertyCode)
+            ? null
+            : StoragePathBuilder.SanitizeSegment(propertyCode, "unknown-property", 80);
         var uploadsPath = includeTypeFolder
             ? Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar), typeString)
             : Path.Combine(_wwwRootPath, containerPath.Replace('/', Path.DirectorySeparatorChar));
+        if (!string.IsNullOrWhiteSpace(propertySegment))
+            uploadsPath = Path.Combine(uploadsPath, propertySegment);
         Directory.CreateDirectory(uploadsPath);
 
         var uniqueFileName = $"{fileNameOnly}-{Guid.NewGuid()}{effectiveExtension}";
@@ -109,9 +115,102 @@ public class FileService : IFileService
             await streamToSave.CopyToAsync(fileStreamOut).ConfigureAwait(false);
         }
 
-        return includeTypeFolder
-            ? "/" + containerPath + "/" + typeString + "/" + uniqueFileName
-            : "/" + containerPath + "/" + uniqueFileName;
+        var relativeDirectory = includeTypeFolder
+            ? "/" + containerPath + "/" + typeString
+            : "/" + containerPath;
+        if (!string.IsNullOrWhiteSpace(propertySegment))
+            relativeDirectory += "/" + propertySegment;
+        return relativeDirectory + "/" + uniqueFileName;
+    }
+
+    public async Task<StoredImageRelocation> RelocateStoredImageAsync(string currentPath, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength)
+    {
+        var sourceFullPath = ToFullPath(currentPath);
+        if (!File.Exists(sourceFullPath))
+        {
+            var missingFileName = Path.GetFileName(currentPath);
+            if (!string.IsNullOrWhiteSpace(missingFileName))
+            {
+                var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
+                var existingPath = "/" + envName + "/" + StoragePathBuilder.BuildDirectory(organizationId, officeName, category, propertyCode) + "/" + missingFileName;
+                if (!string.Equals(NormalizeRelative(currentPath), existingPath, StringComparison.OrdinalIgnoreCase) && File.Exists(ToFullPath(existingPath)))
+                {
+                    if (existingPath.Length > maxPathLength)
+                        throw new InvalidOperationException("New path is longer than the database column.");
+                    return new StoredImageRelocation { FoundExisting = true, OriginalPath = currentPath, NewPath = existingPath };
+                }
+            }
+
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
+        }
+
+        var fileName = Path.GetFileName(sourceFullPath);
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new InvalidOperationException("Stored file name is missing.");
+
+        var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
+        var newPath = "/" + envName + "/" + StoragePathBuilder.BuildDirectory(organizationId, officeName, category, propertyCode) + "/" + fileName;
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        var bytes = await File.ReadAllBytesAsync(sourceFullPath).ConfigureAwait(false);
+        if (bytes.Length == 0)
+            throw new InvalidOperationException("Stored file is empty.");
+
+        if (string.Equals(NormalizeRelative(currentPath), newPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return new StoredImageRelocation
+            {
+                AlreadyCorrect = true,
+                OriginalPath = currentPath,
+                NewPath = currentPath,
+                Content = bytes,
+                ContentType = "application/octet-stream"
+            };
+        }
+
+        File.Delete(sourceFullPath);
+        var targetFullPath = ToFullPath(newPath);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(targetFullPath)!);
+            await File.WriteAllBytesAsync(targetFullPath, bytes).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(sourceFullPath)!);
+            await File.WriteAllBytesAsync(sourceFullPath, bytes).ConfigureAwait(false);
+            throw new InvalidOperationException("New file could not be saved. The original file was put back.", ex);
+        }
+
+        return new StoredImageRelocation
+        {
+            AlreadyCorrect = false,
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            Content = bytes,
+            ContentType = "application/octet-stream"
+        };
+    }
+
+    public async Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType)
+    {
+        _ = contentType;
+        var fullPath = ToFullPath(originalPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        await File.WriteAllBytesAsync(fullPath, content).ConfigureAwait(false);
+    }
+
+    private string ToFullPath(string filePath)
+    {
+        var relative = filePath.Trim().TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        return Path.Combine(_wwwRootPath, relative);
+    }
+
+    private static string NormalizeRelative(string filePath)
+    {
+        var relative = filePath.Trim().Replace('\\', '/');
+        return relative.StartsWith('/') ? relative : "/" + relative;
     }
 
     public Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType)

@@ -14,16 +14,16 @@ public class FileAttachmentHelper : IFileAttachmentHelper
     }
 
     #region Image Helper Methods
-    public async Task<string?> SaveImageIfPresentAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType)
+    public async Task<string?> SaveImageIfPresentAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType, string? propertyCode = null)
     {
         if (fileDetails == null || string.IsNullOrWhiteSpace(fileDetails.File))
             return null;
         var name = string.IsNullOrWhiteSpace(fileDetails.FileName) ? "image" : fileDetails.FileName;
         var type = string.IsNullOrWhiteSpace(fileDetails.ContentType) ? "image/png" : fileDetails.ContentType;
-        return await _fileService.SaveImageAsync(organizationId, officeName, fileDetails.File, name, type, imageType).ConfigureAwait(false);
+        return await _fileService.SaveImageAsync(organizationId, officeName, fileDetails.File, name, type, imageType, propertyCode).ConfigureAwait(false);
     }
 
-    public async Task<string?> ResolveImagePathForUpdateAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType, string? existingPath, string? dtoPath)
+    public async Task<string?> ResolveImagePathForUpdateAsync(Guid organizationId, string? officeName, FileDetails? fileDetails, ImageType imageType, string? existingPath, string? dtoPath, string? propertyCode = null)
     {
         // (1) New file content: delete existing (by path), save new, return new path
         if (fileDetails != null && !string.IsNullOrWhiteSpace(fileDetails.File))
@@ -32,7 +32,7 @@ public class FileAttachmentHelper : IFileAttachmentHelper
                 await _fileService.DeleteImageAsync(organizationId, officeName, existingPath, imageType).ConfigureAwait(false);
             var name = string.IsNullOrWhiteSpace(fileDetails.FileName) ? "image" : fileDetails.FileName;
             var type = string.IsNullOrWhiteSpace(fileDetails.ContentType) ? "image/png" : fileDetails.ContentType;
-            return await _fileService.SaveImageAsync(organizationId, officeName, fileDetails.File, name, type, imageType).ConfigureAwait(false);
+            return await _fileService.SaveImageAsync(organizationId, officeName, fileDetails.File, name, type, imageType, propertyCode).ConfigureAwait(false);
         }
         // (2) No content and path null = explicit clear: delete existing, return null
         if (dtoPath == null)
