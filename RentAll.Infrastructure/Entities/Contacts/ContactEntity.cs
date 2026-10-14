@@ -27,6 +27,7 @@ public class ContactEntity
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
@@ -34,6 +35,13 @@ public class ContactEntity
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
+    public int? FederalTaxClassificationId { get; set; }
+    public int? OwnerIdTypeId { get; set; }
+    public string? IdentificationNumber { get; set; }
+    public int? OwnerDocumentId { get; set; }
+    public string? DocumentFront { get; set; }
+    public string? DocumentBack { get; set; }
+    public int? PropertyManagedBy { get; set; }
     public string? InsurancePath { get; set; }
     public DateOnly? InsuranceExpiration { get; set; }
     public int? Markup { get; set; }

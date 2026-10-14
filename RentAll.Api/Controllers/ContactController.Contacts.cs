@@ -82,6 +82,8 @@ namespace RentAll.Api.Controllers
                 var response = new ContactResponseDto(contact);
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.InsurancePath, ImageType.Insurances);
+                response.DocumentFrontFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.DocumentFront, ImageType.OwnerDocuments);
+                response.DocumentBackFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(contact.OrganizationId, officeName, contact.DocumentBack, ImageType.OwnerDocuments);
                 await AttachContactCardAsync(response, contact);
 
                 return Ok(response);
@@ -117,6 +119,8 @@ namespace RentAll.Api.Controllers
 
                 contact.W9Path = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms);
                 contact.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
+                contact.DocumentFront = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.DocumentFrontFileDetails, ImageType.OwnerDocuments);
+                contact.DocumentBack = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, officeName, dto.DocumentBackFileDetails, ImageType.OwnerDocuments);
                 contact.ContactCardId = await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, null, dto.ContactCard);
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
@@ -125,6 +129,8 @@ namespace RentAll.Api.Controllers
 
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.InsurancePath, ImageType.Insurances);
+                response.DocumentFrontFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.DocumentFront, ImageType.OwnerDocuments);
+                response.DocumentBackFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(afterLogin.OrganizationId, null, afterLogin.DocumentBack, ImageType.OwnerDocuments);
                 await AttachContactCardAsync(response, afterLogin);
 
                 return Ok(response);
@@ -176,6 +182,8 @@ namespace RentAll.Api.Controllers
 
                 contact.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
                 contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
+                contact.DocumentFront = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.DocumentFrontFileDetails, ImageType.OwnerDocuments, existing.DocumentFront, dto.DocumentFront);
+                contact.DocumentBack = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.DocumentBackFileDetails, ImageType.OwnerDocuments, existing.DocumentBack, dto.DocumentBack);
                 contact.ContactCardId = dto.ContactCard != null
                     ? await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, existing.ContactCardId, dto.ContactCard)
                     : (dto.ContactCardId ?? existing.ContactCardId);
@@ -185,6 +193,8 @@ namespace RentAll.Api.Controllers
 
                 response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.W9Path, ImageType.W9Forms);
                 response.InsuranceFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.InsurancePath, ImageType.Insurances);
+                response.DocumentFrontFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.DocumentFront, ImageType.OwnerDocuments);
+                response.DocumentBackFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updatedContact.OrganizationId, null, updatedContact.DocumentBack, ImageType.OwnerDocuments);
                 await AttachContactCardAsync(response, updatedContact);
 
                 return Ok(response);
@@ -352,6 +362,10 @@ namespace RentAll.Api.Controllers
                         await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.W9Path, ImageType.W9Forms);
                     if (!string.IsNullOrEmpty(existing.InsurancePath))
                         await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.InsurancePath, ImageType.Insurances);
+                    if (!string.IsNullOrWhiteSpace(existing.DocumentFront))
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.DocumentFront, ImageType.OwnerDocuments);
+                    if (!string.IsNullOrWhiteSpace(existing.DocumentBack))
+                        await _fileService.DeleteImageAsync(existing.OrganizationId, officeName, existing.DocumentBack, ImageType.OwnerDocuments);
                 }
 
                 await _contactRepository.DeleteContactByIdAsync(contactId, CurrentUser);

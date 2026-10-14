@@ -14,4 +14,5 @@ public enum ImageType
     CheckStocks = 8,
     UserGuide = 9,
     TicketImage = 10,
+    OwnerDocuments = 11
 }

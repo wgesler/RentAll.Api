@@ -27,6 +27,7 @@ public class UpdateContactDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
@@ -34,6 +35,15 @@ public class UpdateContactDto
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
+    public int? FederalTaxClassificationId { get; set; }
+    public int? OwnerIdTypeId { get; set; }
+    public string? IdentificationNumber { get; set; }
+    public int? OwnerDocumentId { get; set; }
+    public string? DocumentFront { get; set; }
+    public FileDetails? DocumentFrontFileDetails { get; set; }
+    public string? DocumentBack { get; set; }
+    public FileDetails? DocumentBackFileDetails { get; set; }
+    public int? PropertyManagedBy { get; set; }
     public FileDetails? W9FileDetails { get; set; }
     public string? InsurancePath { get; set; }
     public DateOnly? InsuranceExpiration { get; set; }
@@ -96,6 +106,21 @@ public class UpdateContactDto
         if (InvoiceMethodTypeId.HasValue && !Enum.IsDefined(typeof(InvoiceMethod), InvoiceMethodTypeId.Value))
             return (false, $"Invalid InvoiceMethodTypeId value: {InvoiceMethodTypeId}");
 
+        if (FederalTaxClassificationId.HasValue && !Enum.IsDefined(typeof(FederalTaxType), FederalTaxClassificationId.Value))
+            return (false, $"Invalid FederalTaxClassificationId value: {FederalTaxClassificationId}");
+
+        if (OwnerIdTypeId.HasValue && !Enum.IsDefined(typeof(OwnerIdType), OwnerIdTypeId.Value))
+            return (false, $"Invalid OwnerIdTypeId value: {OwnerIdTypeId}");
+
+        if (OwnerDocumentId.HasValue && !Enum.IsDefined(typeof(OwnerDocumentType), OwnerDocumentId.Value))
+            return (false, $"Invalid OwnerDocumentId value: {OwnerDocumentId}");
+
+        if (PropertyManagedBy.HasValue && !Enum.IsDefined(typeof(PropertyManagerType), PropertyManagedBy.Value))
+            return (false, $"Invalid PropertyManagedBy value: {PropertyManagedBy}");
+
+        if (!string.IsNullOrWhiteSpace(IdentificationNumber) && IdentificationNumber.Trim().Length > 9)
+            return (false, "IdentificationNumber must be 9 characters or fewer");
+
         if (ContactCard != null)
         {
             var requireCardNumber = ContactCard.ContactCardId is not > 0 && ContactCardId is not > 0;
@@ -133,6 +158,7 @@ public class UpdateContactDto
             City = City,
             State = State,
             Zip = Zip,
+            DateOfBirth = DateOfBirth,
             Phone = Phone,
             Extension = Extension,
             Email = Email,
@@ -140,6 +166,13 @@ public class UpdateContactDto
             Notes = Notes,
             IsInternational = IsInternational,
             W9Path = W9Path,
+            FederalTaxClassification = FederalTaxClassificationId.HasValue ? (FederalTaxType)FederalTaxClassificationId.Value : null,
+            OwnerIdType = OwnerIdTypeId.HasValue ? (OwnerIdType)OwnerIdTypeId.Value : null,
+            IdentificationNumber = string.IsNullOrWhiteSpace(IdentificationNumber) ? null : IdentificationNumber.Trim(),
+            OwnerDocument = OwnerDocumentId.HasValue ? (OwnerDocumentType)OwnerDocumentId.Value : null,
+            DocumentFront = DocumentFront,
+            DocumentBack = DocumentBack,
+            PropertyManagedBy = PropertyManagedBy.HasValue ? (PropertyManagerType)PropertyManagedBy.Value : null,
             InsurancePath = InsurancePath,
             InsuranceExpiration = InsuranceExpiration,
             Markup = Markup,

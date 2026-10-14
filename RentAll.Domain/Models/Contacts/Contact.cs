@@ -30,6 +30,7 @@ public class Contact
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
@@ -38,6 +39,15 @@ public class Contact
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
+    public FederalTaxType? FederalTaxClassification { get; set; }
+    public OwnerIdType? OwnerIdType { get; set; }
+    public string? IdentificationNumber { get; set; }
+    public OwnerDocumentType? OwnerDocument { get; set; }
+    public string? DocumentFront { get; set; }
+    public FileDetails? DocumentFrontFileDetails { get; set; }
+    public string? DocumentBack { get; set; }
+    public FileDetails? DocumentBackFileDetails { get; set; }
+    public PropertyManagerType? PropertyManagedBy { get; set; }
     public string? InsurancePath { get; set; }
     public DateOnly? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }

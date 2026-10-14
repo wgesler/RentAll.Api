@@ -20,5 +20,6 @@ public enum DocumentType
     ApAging = 15,
     SecurityDepositReport = 16,
     Escrow = 17,
-    OwnerApAging = 18
+    OwnerApAging = 18,
+    OwnerDocument = 19
 }

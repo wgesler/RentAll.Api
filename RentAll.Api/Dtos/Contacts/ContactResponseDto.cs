@@ -30,6 +30,7 @@ public class ContactResponseDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
@@ -38,6 +39,15 @@ public class ContactResponseDto
     public bool IsInternational { get; set; }
     public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
+    public int? FederalTaxClassificationId { get; set; }
+    public int? OwnerIdTypeId { get; set; }
+    public string? IdentificationNumber { get; set; }
+    public int? OwnerDocumentId { get; set; }
+    public string? DocumentFront { get; set; }
+    public FileDetails? DocumentFrontFileDetails { get; set; }
+    public string? DocumentBack { get; set; }
+    public FileDetails? DocumentBackFileDetails { get; set; }
+    public int? PropertyManagedBy { get; set; }
     public string? InsurancePath { get; set; }
     public DateOnly? InsuranceExpiration { get; set; }
     public FileDetails? InsuranceFileDetails { get; set; }
@@ -88,6 +98,7 @@ public class ContactResponseDto
         City = contact.City;
         State = contact.State;
         Zip = contact.Zip;
+        DateOfBirth = contact.DateOfBirth;
         Phone = contact.Phone;
         Extension = contact.Extension;
         Email = contact.Email;
@@ -96,6 +107,15 @@ public class ContactResponseDto
         IsInternational = contact.IsInternational;
         W9Path = contact.W9Path;
         W9FileDetails = contact.W9FileDetails;
+        FederalTaxClassificationId = (int?)contact.FederalTaxClassification;
+        OwnerIdTypeId = (int?)contact.OwnerIdType;
+        IdentificationNumber = contact.IdentificationNumber;
+        OwnerDocumentId = (int?)contact.OwnerDocument;
+        DocumentFront = contact.DocumentFront;
+        DocumentFrontFileDetails = contact.DocumentFrontFileDetails;
+        DocumentBack = contact.DocumentBack;
+        DocumentBackFileDetails = contact.DocumentBackFileDetails;
+        PropertyManagedBy = (int?)contact.PropertyManagedBy;
         InsurancePath = contact.InsurancePath;
         InsuranceExpiration = contact.InsuranceExpiration;
         InsuranceFileDetails = contact.InsuranceFileDetails;
