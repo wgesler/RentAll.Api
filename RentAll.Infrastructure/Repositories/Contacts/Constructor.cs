@@ -99,6 +99,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 BankName = e.BankName,
                 RoutingNumber = e.RoutingNumber,
                 AccountNumber = e.AccountNumber,
+                AccountNumberLastFour = e.AccountNumberLastFour,
                 ContactCardId = e.ContactCardId,
                 IsOwnerReady = e.IsOwnerReady,
                 IsActive = e.IsActive,

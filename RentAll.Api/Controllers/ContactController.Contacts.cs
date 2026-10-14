@@ -124,6 +124,7 @@ namespace RentAll.Api.Controllers
                 contact.ContactCardId = await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, null, dto.ContactCard);
 
                 var createdContact = await _contactRepository.CreateAsync(contact);
+                await ProtectAccountNumberAsync(createdContact);
                 var afterLogin = await _contactManager.GenerateLoginForOwnerContact(createdContact, CurrentUser);
                 var response = new ContactResponseDto(afterLogin);
 
@@ -188,6 +189,7 @@ namespace RentAll.Api.Controllers
                     ? await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, existing.ContactCardId, dto.ContactCard)
                     : (dto.ContactCardId ?? existing.ContactCardId);
 
+                await ProtectAccountNumberAsync(contact);
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);
                 var response = new ContactResponseDto(updatedContact);
 

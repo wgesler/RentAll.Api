@@ -1,7 +1,9 @@
 using RentAll.Api.Dtos.Contacts.ContactCards;
+using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
+using RentAll.Domain.Models;
 using System.Text.Json;
 
 namespace RentAll.Api.Services;
@@ -11,12 +13,21 @@ public class ExternalPropertyOwnerContactResolver
     private readonly IContactRepository _contactRepository;
     private readonly IContactManager _contactManager;
     private readonly IEncryptionService _encryptionService;
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IFileAttachmentHelper _fileAttachmentHelper;
 
-    public ExternalPropertyOwnerContactResolver(IContactRepository contactRepository, IContactManager contactManager, IEncryptionService encryptionService)
+    public ExternalPropertyOwnerContactResolver(
+        IContactRepository contactRepository,
+        IContactManager contactManager,
+        IEncryptionService encryptionService,
+        IOrganizationRepository organizationRepository,
+        IFileAttachmentHelper fileAttachmentHelper)
     {
         _contactRepository = contactRepository;
         _contactManager = contactManager;
         _encryptionService = encryptionService;
+        _organizationRepository = organizationRepository;
+        _fileAttachmentHelper = fileAttachmentHelper;
     }
 
     public async Task<(bool Success, Guid? Owner1Id, Guid? Owner2Id, Guid? Owner3Id, Guid? PropertyVendorContactId, string? ErrorMessage)> ResolveContactsAsync(CreateExternalPropertyDto dto, ExternalPropertyIntakeContext context, Guid currentUser)
@@ -276,6 +287,9 @@ public class ExternalPropertyOwnerContactResolver
                 return (false, false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
 
             owner.ApplyToExistingOwnerContact(existingContact, officeId, currentUser);
+            var updateImageError = await StoreOwnerDocumentsAsync(owner, existingContact, organizationId, officeId, fieldLabel);
+            if (updateImageError != null)
+                return (false, false, null, updateImageError);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, owner.GetResolvedContactCard(), currentUser);
             return (true, true, updatedContact, null);
@@ -283,7 +297,11 @@ public class ExternalPropertyOwnerContactResolver
 
         var createdType = owner.ResolveEntityType(EntityType.Owner);
         var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)createdType);
-        var createdContact = await _contactRepository.CreateAsync(owner.ToNewOwnerContactModel(organizationId, officeId, code, currentUser));
+        var newOwner = owner.ToNewOwnerContactModel(organizationId, officeId, code, currentUser);
+        var createImageError = await StoreOwnerDocumentsAsync(owner, newOwner, organizationId, officeId, fieldLabel);
+        if (createImageError != null)
+            return (false, false, null, createImageError);
+        var createdContact = await _contactRepository.CreateAsync(newOwner);
         await ApplyContactCardAsync(createdContact, owner.GetResolvedContactCard(), currentUser);
         return (true, false, createdContact, null);
     }
@@ -303,6 +321,9 @@ public class ExternalPropertyOwnerContactResolver
                 return (false, null, $"Vendor email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
 
             vendor.ApplyToExistingVendorContact(existingContact, officeId, currentUser);
+            var updateImageError = await StoreOwnerDocumentsAsync(vendor, existingContact, organizationId, officeId, "Vendor");
+            if (updateImageError != null)
+                return (false, null, updateImageError);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, vendor.GetResolvedContactCard(), currentUser);
             return (true, updatedContact.ContactId, null);
@@ -310,9 +331,52 @@ public class ExternalPropertyOwnerContactResolver
 
         var createdType = vendor.ResolveEntityType(EntityType.Vendor);
         var code = await _contactManager.GenerateContactCodeAsync(organizationId, (int)createdType);
-        var createdContact = await _contactRepository.CreateAsync(vendor.ToNewVendorContactModel(organizationId, officeId, code, currentUser));
+        var newVendor = vendor.ToNewVendorContactModel(organizationId, officeId, code, currentUser);
+        var createImageError = await StoreOwnerDocumentsAsync(vendor, newVendor, organizationId, officeId, "Vendor");
+        if (createImageError != null)
+            return (false, null, createImageError);
+        var createdContact = await _contactRepository.CreateAsync(newVendor);
         await ApplyContactCardAsync(createdContact, vendor.GetResolvedContactCard(), currentUser);
         return (true, createdContact.ContactId, null);
+    }
+
+    private async Task<string?> StoreOwnerDocumentsAsync(ExternalPropertyContactDto contactDto, Contact contact, Guid organizationId, int officeId, string fieldLabel)
+    {
+        if (contactDto.DocumentFront == null && contactDto.DocumentBack == null)
+            return null;
+
+        try
+        {
+            var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
+            var officeName = office?.Name;
+            if (contactDto.DocumentFront != null)
+            {
+                contact.DocumentFront = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                    organizationId,
+                    officeName,
+                    contactDto.DocumentFront.ToFileDetails("document-front.jpg"),
+                    ImageType.OwnerDocuments,
+                    contact.DocumentFront,
+                    null);
+            }
+
+            if (contactDto.DocumentBack != null)
+            {
+                contact.DocumentBack = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
+                    organizationId,
+                    officeName,
+                    contactDto.DocumentBack.ToFileDetails("document-back.jpg"),
+                    ImageType.OwnerDocuments,
+                    contact.DocumentBack,
+                    null);
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"{fieldLabel} document image could not be stored. {ex.Message}";
+        }
     }
 
     private static bool TryGetProperty(JsonElement body, string name, out JsonElement value)

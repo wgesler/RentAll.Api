@@ -62,6 +62,7 @@ public class ContactResponseDto
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public string? AccountNumberLastFour { get; set; }
     public int? ContactCardId { get; set; }
     public ContactCardResponseDto? ContactCard { get; set; }
     public bool IsOwnerReady { get; set; }
@@ -130,6 +131,7 @@ public class ContactResponseDto
         BankName = contact.BankName;
         RoutingNumber = contact.RoutingNumber;
         AccountNumber = contact.AccountNumber;
+        AccountNumberLastFour = contact.AccountNumberLastFour;
         ContactCardId = contact.ContactCardId;
         IsOwnerReady = contact.IsOwnerReady;
         IsActive = contact.IsActive;

@@ -1,3 +1,4 @@
+using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
@@ -33,6 +34,8 @@ public class EmailManager : IEmailManager
 
     public async Task<Email> SendEmail(string? sendGridName, Email email)
     {
+        ApplySystemUserOutboundSender(email);
+
         // Translate the email into SendGrid format
         var originalEmailMessage = email.ToEmailMessage();
 
@@ -179,6 +182,26 @@ public class EmailManager : IEmailManager
             if (ticket.TicketStateType == TicketStateType.Closed)
                 await _emailRepository.DeleteAlertByIdAsync(alert.AlertId, alert.OrganizationId);
         }
+    }
+
+    private static void ApplySystemUserOutboundSender(Email email)
+    {
+        if (email.CreatedBy != SystemConstants.SystemUserId)
+            return;
+
+        email.FromRecipient = EmailAddress.Create(SystemConstants.SystemUserOutboundEmail, SystemConstants.SystemUserOutboundName);
+        email.PlainTextContent = ReplaceSystemUserSenderText(email.PlainTextContent);
+        email.HtmlContent = ReplaceSystemUserSenderText(email.HtmlContent);
+    }
+
+    private static string ReplaceSystemUserSenderText(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value ?? string.Empty;
+
+        value = value.Replace(SystemConstants.SystemUserAccountName, SystemConstants.SystemUserOutboundName, StringComparison.Ordinal);
+        value = value.Replace(SystemConstants.SystemUserAccountEmail, SystemConstants.SystemUserOutboundEmail, StringComparison.OrdinalIgnoreCase);
+        return value;
     }
 
     private async Task<Document> SaveEmailAttachmentDocumentAsync(

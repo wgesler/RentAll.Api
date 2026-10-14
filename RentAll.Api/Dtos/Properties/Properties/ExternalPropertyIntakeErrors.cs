@@ -248,7 +248,79 @@ public static class ExternalPropertyIntakeErrors
         CollectMaxLength(element, contactPrefix, "city", 100, errors);
         CollectEnum<OwnerType>(element, contactPrefix, "ownerTypeId", errors, "0=Individual or 1=Company");
         CollectEnum<VendorType>(element, contactPrefix, "vendorTypeId", errors, "0=Individual or 1=Company");
+        CollectOwnerProfile(element, contactPrefix, errors);
         CollectContactCard(element, contactPrefix, errors);
+    }
+
+    private static void CollectOwnerProfile(JsonElement contact, string contactPrefix, List<string> errors)
+    {
+        CollectFlexibleDate(contact, contactPrefix, "dateOfBirth", errors);
+        CollectFlexibleEnum<FederalTaxType>(contact, contactPrefix, "federalTaxClassificationId", errors);
+        CollectFlexibleEnum<OwnerIdType>(contact, contactPrefix, "ownerIdTypeId", errors);
+        CollectFlexibleEnum<OwnerDocumentType>(contact, contactPrefix, "ownerDocumentId", errors);
+        CollectFlexibleEnum<PropertyManagerType>(contact, contactPrefix, "propertyManagedBy", errors);
+        CollectMaxLength(contact, contactPrefix, "identificationNumber", 9, errors);
+        CollectOwnerImage(contact, contactPrefix, "documentFront", errors);
+        CollectOwnerImage(contact, contactPrefix, "documentBack", errors);
+    }
+
+    private static void CollectFlexibleDate(JsonElement body, string prefix, string field, List<string> errors)
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+            return;
+
+        if (!ExternalContactValueCoercion.TryReadDateOnly(element, out _, out var error))
+            errors.Add($"{prefix}.{field} {error} Received {Describe(element)}.");
+    }
+
+    private static void CollectFlexibleEnum<TEnum>(JsonElement body, string prefix, string field, List<string> errors) where TEnum : struct, Enum
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+            return;
+
+        if (!ExternalContactValueCoercion.TryReadEnum<TEnum>(element, out _, out var error))
+            errors.Add($"{prefix}.{field} {error} Received {Describe(element)}.");
+    }
+
+    private static void CollectOwnerImage(JsonElement body, string prefix, string field, List<string> errors)
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+            return;
+
+        ExternalContactImageDto? image = element.ValueKind switch
+        {
+            JsonValueKind.String => new ExternalContactImageDto { DataUrl = element.GetString() },
+            JsonValueKind.Object => new ExternalContactImageDto
+            {
+                FileName = ReadImageString(element, "fileName"),
+                ContentType = ReadImageString(element, "contentType"),
+                File = ReadImageString(element, "file"),
+                DataUrl = ReadImageString(element, "dataUrl")
+            },
+            _ => null
+        };
+
+        if (image == null)
+        {
+            errors.Add($"{prefix}.{field} must be an image object or a base64 image string. Received {Describe(element)}.");
+            return;
+        }
+
+        image.CollectErrors(prefix, field, errors);
+    }
+
+    private static string? ReadImageString(JsonElement element, string name)
+    {
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase) || property.Value.ValueKind != JsonValueKind.String)
+                continue;
+
+            var raw = property.Value.GetString()?.Trim();
+            return string.IsNullOrWhiteSpace(raw) ? null : raw;
+        }
+
+        return null;
     }
 
     private static void CollectContact(JsonElement body, string prefix, string field, List<string> errors)
