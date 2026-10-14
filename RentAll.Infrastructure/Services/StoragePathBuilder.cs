@@ -22,12 +22,14 @@ public static class StoragePathBuilder
             return fallback;
 
         var trimmed = value.Trim().ToLowerInvariant();
-        var chars = trimmed.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '-').ToArray();
+        var chars = trimmed.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == ' ' ? c : '-').ToArray();
         var normalized = new string(chars);
         while (normalized.Contains("--", StringComparison.Ordinal))
             normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
+        while (normalized.Contains("  ", StringComparison.Ordinal))
+            normalized = normalized.Replace("  ", " ", StringComparison.Ordinal);
 
-        normalized = normalized.Trim('-', '_', '.');
+        normalized = normalized.Trim('-', '_', '.', ' ');
         if (string.IsNullOrWhiteSpace(normalized))
             normalized = fallback;
 
