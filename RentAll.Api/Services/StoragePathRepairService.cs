@@ -161,7 +161,7 @@ public class StoragePathRepairService
         {
             if (string.IsNullOrWhiteSpace(row.ReceiptPath))
                 continue;
-            await MoveOneAsync(result, "receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, row.ReceiptPath, 2048, ImageType.Receipts, report,
+            await MoveOneAsync(result, "receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", row.ReceiptCode, row.ReceiptPath, 2048, ImageType.Receipts, report,
                 path => _adminStorageRepository.UpdateReceiptPathAsync(row.ReceiptId, row.OrganizationId, path));
         }
 
@@ -169,13 +169,13 @@ public class StoragePathRepairService
         {
             if (string.IsNullOrWhiteSpace(row.ReceiptPath))
                 continue;
-            await MoveOneAsync(result, "receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, row.ReceiptPath, 2048, ImageType.Receipts, report,
+            await MoveOneAsync(result, "receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", row.ReceiptCode, row.ReceiptPath, 2048, ImageType.Receipts, report,
                 path => _adminStorageRepository.UpdateReceiptDraftPathAsync(row.ReceiptId, row.OrganizationId, path));
         }
         receipts = await _adminStorageRepository.GetReceiptImagesAsync();
         drafts = await _adminStorageRepository.GetReceiptDraftImagesAsync();
-        var receiptSlots = receipts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, 2048, path => _adminStorageRepository.UpdateReceiptPathAsync(row.ReceiptId, row.OrganizationId, path)));
-        var draftSlots = drafts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", null, 2048, path => _adminStorageRepository.UpdateReceiptDraftPathAsync(row.ReceiptId, row.OrganizationId, path)));
+        var receiptSlots = receipts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", row.ReceiptCode, 2048, path => _adminStorageRepository.UpdateReceiptPathAsync(row.ReceiptId, row.OrganizationId, path)));
+        var draftSlots = drafts.Where(row => string.IsNullOrWhiteSpace(row.ReceiptPath)).Select(row => new EmptyImageSlot("receipt draft " + row.ReceiptId, row.OrganizationId, row.OfficeName, "receipts", row.ReceiptCode, 2048, path => _adminStorageRepository.UpdateReceiptDraftPathAsync(row.ReceiptId, row.OrganizationId, path)));
         await ReattachEmptyImagesAsync(result, report, receiptSlots.Concat(draftSlots).ToList(), receipts.Select(row => row.ReceiptPath).Concat(drafts.Select(row => row.ReceiptPath)));
         return result;
     }

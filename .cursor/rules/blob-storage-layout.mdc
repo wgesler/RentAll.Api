@@ -12,7 +12,7 @@ Every stored file, in Azure blobs and in local file storage, uses this path and 
 {orgId}/{officeName}/{category}/{propertyCode}/{file}
 ```
 
-Pictures use the second form. `propertyCode` is required for listings, inspection photos, and any other property picture.
+Pictures use the second form. `propertyCode` is required for listings, inspection photos, and any other property picture. Receipt images use that same extra segment for the receipt number, and receipt drafts use the draft code. Each receipt has its own folder.
 
 ## Hard rule
 
@@ -31,6 +31,7 @@ Pictures use the second form. `propertyCode` is required for listings, inspectio
 {orgId}/denver/inspection/bar0903/photo.jpg
 {orgId}/denver/profiles/avatar.jpg
 {orgId}/denver/logos/logo.png
+{orgId}/denver/receipts/rc-000000084/receipt.jpg
 {orgId}/global/profiles/avatar.jpg
 ```
 

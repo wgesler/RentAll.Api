@@ -61,6 +61,7 @@ public sealed class ReceiptImageRow
     public Guid ReceiptId { get; set; }
     public Guid OrganizationId { get; set; }
     public string? OfficeName { get; set; }
+    public string ReceiptCode { get; set; } = string.Empty;
     public string ReceiptPath { get; set; } = string.Empty;
 }
 

@@ -78,7 +78,7 @@ public partial class MaintenanceController
             var office = dto.OfficeId is > 0
                 ? await _organizationRepository.GetOfficeByIdAsync(dto.OfficeId.Value, CurrentOrganizationId)
                 : null;
-            draft.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts);
+            draft.ReceiptPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(dto.OrganizationId, office?.Name, dto.FileDetails, ImageType.Receipts, draftCode);
 
             var created = await _maintenanceRepository.CreateReceiptDraftAsync(draft);
             var response = new ReceiptDraftResponseDto(created);
@@ -172,8 +172,14 @@ public partial class MaintenanceController
                 return ServerError("Unable to generate receipt code");
 
             var receipt = receiptDto.ToModel(receiptCode, CurrentUser);
-            if (string.IsNullOrWhiteSpace(receipt.ReceiptPath) && !string.IsNullOrWhiteSpace(draft.ReceiptPath))
-                receipt.ReceiptPath = draft.ReceiptPath;
+            if (!string.IsNullOrWhiteSpace(draft.ReceiptPath))
+            {
+                var draftOffice = draft.OfficeId is > 0
+                    ? await _organizationRepository.GetOfficeByIdAsync(draft.OfficeId.Value, draft.OrganizationId)
+                    : null;
+                var moved = await _fileService.RelocateStoredImageAsync(draft.ReceiptPath, draft.OrganizationId, draftOffice?.Name, "receipts", receiptCode, 2048);
+                receipt.ReceiptPath = moved.Missing ? draft.ReceiptPath : moved.NewPath ?? draft.ReceiptPath;
+            }
 
             var createdReceipt = await _accountingManager.CreateReceiptAsync(receipt, CurrentUser);
             await _maintenanceRepository.DeleteReceiptDraftByIdAsync(
@@ -235,7 +241,8 @@ public partial class MaintenanceController
                 dto.FileDetails,
                 ImageType.Receipts,
                 existing.ReceiptPath,
-                dto.ReceiptPath);
+                dto.ReceiptPath,
+                existing.DraftCode);
 
             var updated = await _maintenanceRepository.UpdateReceiptDraftAsync(draft);
             await _creditReportService.OverwriteMatchedVendorNameAsync(updated.OrganizationId, existing.VendorName, updated.VendorName, updated.VendorId);
