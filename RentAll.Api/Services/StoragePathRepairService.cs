@@ -366,7 +366,7 @@ public class StoragePathRepairService
                 return false;
             }
 
-            if (relocation.AlreadyCorrect || string.IsNullOrWhiteSpace(relocation.NewPath) || string.Equals(relocation.NewPath, currentPath, StringComparison.Ordinal))
+            if (relocation.AlreadyCorrect || string.IsNullOrWhiteSpace(relocation.NewPath))
             {
                 result.AlreadyCorrect++;
                 await ReportAsync(report, "file", fileName, "already correct", "");
@@ -384,7 +384,7 @@ public class StoragePathRepairService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[StorageRepair] {Label} failed", label);
-            if (relocation != null && !relocation.FoundExisting && !relocation.AlreadyCorrect && !string.IsNullOrWhiteSpace(relocation.NewPath) && relocation.Content.Length > 0)
+            if (relocation != null && !relocation.FoundExisting && !relocation.AlreadyCorrect && !string.IsNullOrWhiteSpace(relocation.NewPath) && relocation.Content.Length > 0 && !string.Equals(relocation.NewPath, relocation.OriginalPath, StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {

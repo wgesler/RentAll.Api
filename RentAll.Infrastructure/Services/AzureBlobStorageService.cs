@@ -364,6 +364,10 @@ public class AzureBlobStorageService : IFileService
                 }
             }
 
+            var copied = await CopyFromDevContainerAsync(currentPath, containerName, blobName, organizationId, officeName, category, propertyCode, maxPathLength).ConfigureAwait(false);
+            if (copied != null)
+                return copied;
+
             await sourceClient.DeleteIfExistsAsync().ConfigureAwait(false);
             return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
         }
@@ -413,6 +417,53 @@ public class AzureBlobStorageService : IFileService
         return new StoredImageRelocation
         {
             AlreadyCorrect = false,
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            Content = bytes,
+            ContentType = contentType
+        };
+    }
+
+    private async Task<StoredImageRelocation?> CopyFromDevContainerAsync(string currentPath, string sourceContainer, string blobName, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength)
+    {
+        if (string.Equals(sourceContainer, "dev", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var fileName = Path.GetFileName(blobName);
+        if (string.IsNullOrWhiteSpace(fileName))
+            return null;
+
+        var devClient = _blobServiceClient.GetBlobContainerClient("dev");
+        var found = devClient.GetBlobClient(blobName);
+        if (!await found.ExistsAsync().ConfigureAwait(false))
+        {
+            var correctedName = $"{BuildBlobDirectory(organizationId, officeName, category, propertyCode)}/{fileName}";
+            if (string.Equals(correctedName, blobName, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            found = devClient.GetBlobClient(correctedName);
+            if (!await found.ExistsAsync().ConfigureAwait(false))
+                return null;
+        }
+
+        var download = await found.DownloadContentAsync().ConfigureAwait(false);
+        var bytes = download.Value.Content.ToArray();
+        if (bytes.Length == 0)
+            throw new InvalidOperationException("Stored file is empty.");
+
+        var contentType = download.Value.Details.ContentType;
+        if (string.IsNullOrWhiteSpace(contentType))
+            contentType = "application/octet-stream";
+
+        var targetBlobName = $"{BuildBlobDirectory(organizationId, officeName, category, propertyCode)}/{fileName}";
+        var targetClient = _blobServiceClient.GetBlobContainerClient(sourceContainer).GetBlobClient(targetBlobName);
+        var newPath = BuildUrl(sourceContainer, targetBlobName, targetClient.Uri);
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        await UploadBytesAsync(targetClient, bytes, contentType).ConfigureAwait(false);
+        return new StoredImageRelocation
+        {
             OriginalPath = currentPath,
             NewPath = newPath,
             Content = bytes,
