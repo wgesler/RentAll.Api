@@ -197,6 +197,66 @@ public class StoragePathRepairService
         return result;
     }
 
+    public async Task<StorageRepairResultDto> RepairDenverDbaDocumentsAsync(Func<StorageRepairEventDto, Task>? report = null)
+    {
+        const string oldOffice = "denver dba avenuewest colorado";
+        const string newOffice = "denver";
+        var result = new StorageRepairResultDto();
+        var rows = await _adminStorageRepository.GetDenverDbaDocumentsAsync();
+        await ReportAsync(report, "start", "", "", "", rows.Count);
+        foreach (var row in rows)
+        {
+            var maxLength = row.Source == "quote" ? 1000 : 2048;
+            var fileName = FileNameOf(row.DocumentPath);
+            StoredImageRelocation? relocation = null;
+            try
+            {
+                relocation = await _fileService.MoveStoredFileOfficeAsync(row.DocumentPath, oldOffice, newOffice, maxLength);
+                if (relocation.Missing)
+                {
+                    AddFailure(result, row.Source + " " + row.RecordId + ": file was not found");
+                    await ReportAsync(report, "file", fileName, "failed", "file was not found");
+                    continue;
+                }
+
+                if (relocation.AlreadyCorrect)
+                {
+                    result.AlreadyCorrect++;
+                    await ReportAsync(report, "file", fileName, "already correct", "");
+                    continue;
+                }
+
+                var saved = await _adminStorageRepository.UpdateDenverDocumentPathAsync(row.Source, row.RecordId, relocation.NewPath ?? "");
+                if (saved < 1)
+                    throw new InvalidOperationException("Database row was not updated.");
+
+                result.Moved++;
+                await ReportAsync(report, "file", fileName, relocation.FoundExisting ? "saved" : "moved", "");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[StorageRepair] {Source} {RecordId} failed", row.Source, row.RecordId);
+                if (relocation != null && !relocation.FoundExisting && !relocation.Missing && !string.IsNullOrWhiteSpace(relocation.NewPath) && relocation.Content.Length > 0)
+                {
+                    try
+                    {
+                        await _fileService.RestoreStoredImageAsync(relocation.OriginalPath, relocation.Content, relocation.ContentType);
+                        await _fileService.DeleteDocumentAsync(Guid.Empty, newOffice, relocation.NewPath);
+                    }
+                    catch (Exception restoreEx)
+                    {
+                        _logger.LogError(restoreEx, "[StorageRepair] {Source} {RecordId} could not restore the original file", row.Source, row.RecordId);
+                    }
+                }
+
+                AddFailure(result, row.Source + " " + row.RecordId + ": " + ex.Message);
+                await ReportAsync(report, "file", fileName, "failed", ex.Message);
+            }
+        }
+
+        return result;
+    }
+
     public async Task<StorageRepairResultDto> RepairUserGuideImagesAsync(Guid modifiedBy, Func<StorageRepairEventDto, Task>? report = null)
     {
         var result = new StorageRepairResultDto();

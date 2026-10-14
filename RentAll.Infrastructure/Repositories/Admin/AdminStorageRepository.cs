@@ -159,6 +159,73 @@ public class AdminStorageRepository : IAdminStorageRepository
             WHERE PhotoId = @PhotoId AND OrganizationId = @OrganizationId
             """, new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
 
+    public Task<IReadOnlyList<DenverDocumentRow>> GetDenverDbaDocumentsAsync()
+        => QueryAsync<DenverDocumentRow>("""
+            SELECT 'document' AS Source, CONVERT(varchar(36), DocumentId) AS RecordId, DocumentPath
+            FROM [Organization].[Document]
+            WHERE DocumentPath LIKE '%denver dba avenuewest colorado%'
+            UNION ALL
+            SELECT 'inspection', CONVERT(varchar(20), InspectionId), DocumentPath
+            FROM [Maintenance].[Inspection]
+            WHERE DocumentPath LIKE '%denver dba avenuewest colorado%'
+            UNION ALL
+            SELECT 'agreement', CONVERT(varchar(36), PropertyId), AgreementPath
+            FROM [Property].[PropertyAgreements]
+            WHERE AgreementPath LIKE '%denver dba avenuewest colorado%'
+            UNION ALL
+            SELECT 'contact', CONVERT(varchar(36), ContactId), AgreementPath
+            FROM [Organization].[Contact]
+            WHERE AgreementPath LIKE '%denver dba avenuewest colorado%'
+            UNION ALL
+            SELECT 'email', CONVERT(varchar(36), EmailId), AttachmentPath
+            FROM [Email].[Email]
+            WHERE AttachmentPath LIKE '%denver dba avenuewest colorado%'
+            UNION ALL
+            SELECT 'quote', CONVERT(varchar(20), RentalId), QuotePath
+            FROM [Lead].[Rental]
+            WHERE QuotePath LIKE '%denver dba avenuewest colorado%'
+            """);
+
+    public Task<int> UpdateDenverDocumentPathAsync(string source, string recordId, string documentPath)
+    {
+        var sql = source switch
+        {
+            "document" => """
+                UPDATE [Organization].[Document]
+                SET DocumentPath = @DocumentPath
+                WHERE DocumentId = @RecordId
+                """,
+            "inspection" => """
+                UPDATE [Maintenance].[Inspection]
+                SET DocumentPath = @DocumentPath
+                WHERE InspectionId = @RecordId
+                """,
+            "agreement" => """
+                UPDATE [Property].[PropertyAgreements]
+                SET AgreementPath = @DocumentPath
+                WHERE PropertyId = @RecordId
+                """,
+            "contact" => """
+                UPDATE [Organization].[Contact]
+                SET AgreementPath = @DocumentPath
+                WHERE ContactId = @RecordId
+                """,
+            "email" => """
+                UPDATE [Email].[Email]
+                SET AttachmentPath = @DocumentPath
+                WHERE EmailId = @RecordId
+                """,
+            "quote" => """
+                UPDATE [Lead].[Rental]
+                SET QuotePath = @DocumentPath
+                WHERE RentalId = @RecordId
+                """,
+            _ => throw new InvalidOperationException("Document source is not valid.")
+        };
+        object record = source is "inspection" or "quote" ? int.Parse(recordId) : Guid.Parse(recordId);
+        return ExecuteAsync(sql, new { RecordId = record, DocumentPath = documentPath });
+    }
+
     private async Task<IReadOnlyList<T>> QueryAsync<T>(string sql)
     {
         await using var db = new SqlConnection(_dbConnectionString);

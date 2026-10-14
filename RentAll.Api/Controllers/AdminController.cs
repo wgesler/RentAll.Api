@@ -59,6 +59,10 @@ public class AdminController : BaseController
     public Task RepairApplianceDecals(CancellationToken cancellationToken)
         => RepairStreamAsync(report => _storagePathRepairService.RepairApplianceDecalsAsync(report), cancellationToken);
 
+    [HttpPost("denver-documents")]
+    public Task RepairDenverDocuments(CancellationToken cancellationToken)
+        => RepairStreamAsync(report => _storagePathRepairService.RepairDenverDbaDocumentsAsync(report), cancellationToken);
+
     private async Task RepairStreamAsync(Func<Func<StorageRepairEventDto, Task>, Task<StorageRepairResultDto>> repair, CancellationToken cancellationToken)
     {
         if (!IsSuperAdmin())

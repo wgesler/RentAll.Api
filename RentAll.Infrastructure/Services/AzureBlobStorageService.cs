@@ -471,6 +471,71 @@ public class AzureBlobStorageService : IFileService
         };
     }
 
+    public async Task<StoredImageRelocation> MoveStoredFileOfficeAsync(string currentPath, string oldOfficeFolder, string newOfficeFolder, int maxPathLength)
+    {
+        var parsed = ParseStoragePath(currentPath);
+        if (parsed == null)
+            throw new InvalidOperationException("Stored file path could not be read.");
+
+        var (containerName, blobName) = parsed.Value;
+        var parts = blobName.Split('/');
+        var replaced = false;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (!string.Equals(parts[i], oldOfficeFolder, StringComparison.OrdinalIgnoreCase))
+                continue;
+            parts[i] = newOfficeFolder;
+            replaced = true;
+            break;
+        }
+
+        if (!replaced)
+            throw new InvalidOperationException("Stored file path does not use the old office folder.");
+
+        var targetBlobName = string.Join("/", parts);
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var sourceClient = containerClient.GetBlobClient(blobName);
+        var targetClient = containerClient.GetBlobClient(targetBlobName);
+        var newPath = BuildUrl(containerName, targetBlobName, targetClient.Uri);
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        if (!await sourceClient.ExistsAsync().ConfigureAwait(false))
+        {
+            if (await targetClient.ExistsAsync().ConfigureAwait(false))
+                return new StoredImageRelocation { FoundExisting = true, OriginalPath = currentPath, NewPath = newPath };
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
+        }
+
+        var download = await sourceClient.DownloadContentAsync().ConfigureAwait(false);
+        var bytes = download.Value.Content.ToArray();
+        if (bytes.Length == 0)
+            throw new InvalidOperationException("Stored file is empty.");
+
+        var contentType = download.Value.Details.ContentType;
+        if (string.IsNullOrWhiteSpace(contentType))
+            contentType = "application/octet-stream";
+
+        await sourceClient.DeleteIfExistsAsync().ConfigureAwait(false);
+        try
+        {
+            await UploadBytesAsync(targetClient, bytes, contentType).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await UploadBytesAsync(sourceClient, bytes, contentType).ConfigureAwait(false);
+            throw new InvalidOperationException("New file could not be saved. The original file was put back.", ex);
+        }
+
+        return new StoredImageRelocation
+        {
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            Content = bytes,
+            ContentType = contentType
+        };
+    }
+
     public async Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode)
     {
         var containerName = BuildContainerName();

@@ -192,6 +192,62 @@ public class FileService : IFileService
         };
     }
 
+    public async Task<StoredImageRelocation> MoveStoredFileOfficeAsync(string currentPath, string oldOfficeFolder, string newOfficeFolder, int maxPathLength)
+    {
+        var relative = NormalizeRelative(currentPath);
+        var parts = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var replaced = false;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (!string.Equals(parts[i], oldOfficeFolder, StringComparison.OrdinalIgnoreCase))
+                continue;
+            parts[i] = newOfficeFolder;
+            replaced = true;
+            break;
+        }
+
+        if (!replaced)
+            throw new InvalidOperationException("Stored file path does not use the old office folder.");
+
+        var newPath = "/" + string.Join("/", parts);
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        var sourceFullPath = ToFullPath(relative);
+        var targetFullPath = ToFullPath(newPath);
+        if (!File.Exists(sourceFullPath))
+        {
+            if (File.Exists(targetFullPath))
+                return new StoredImageRelocation { FoundExisting = true, OriginalPath = currentPath, NewPath = newPath };
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
+        }
+
+        var bytes = await File.ReadAllBytesAsync(sourceFullPath).ConfigureAwait(false);
+        if (bytes.Length == 0)
+            throw new InvalidOperationException("Stored file is empty.");
+
+        File.Delete(sourceFullPath);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(targetFullPath)!);
+            await File.WriteAllBytesAsync(targetFullPath, bytes).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(sourceFullPath)!);
+            await File.WriteAllBytesAsync(sourceFullPath, bytes).ConfigureAwait(false);
+            throw new InvalidOperationException("New file could not be saved. The original file was put back.", ex);
+        }
+
+        return new StoredImageRelocation
+        {
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            Content = bytes,
+            ContentType = "application/octet-stream"
+        };
+    }
+
     public Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode)
     {
         var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
