@@ -30,15 +30,48 @@ public class StoragePathRepairService
         _logger = logger;
     }
 
+    public async Task<StorageRepairResultDto> RepairListingPhotosAsync(Func<StorageRepairEventDto, Task>? report = null)
+    {
+        var result = new StorageRepairResultDto();
+        var rows = await _adminStorageRepository.GetListingPhotosAsync();
+        await ReportAsync(report, "start", "", "", "", rows.Count);
+        foreach (var row in rows)
+        {
+            await MoveOneAsync(result, "listing photo " + row.PhotoId, row.OrganizationId, row.OfficeName, "listings", row.PropertyCode, row.PhotoPath, 2048, ImageType.Photos, report,
+                path => _adminStorageRepository.UpdateListingPhotoPathAsync(row.PhotoId, row.OrganizationId, path));
+        }
+        return result;
+    }
+
+    public async Task<StorageRepairResultDto> RepairInspectionPhotosAsync(Func<StorageRepairEventDto, Task>? report = null)
+    {
+        var result = new StorageRepairResultDto();
+        var rows = await _adminStorageRepository.GetInspectionPhotosAsync();
+        await ReportAsync(report, "start", "", "", "", rows.Count);
+        foreach (var row in rows)
+        {
+            await MoveOneAsync(result, "inspection photo " + row.PhotoId, row.OrganizationId, row.OfficeName, "inspection", row.PropertyCode, row.PhotoPath, 2048, ImageType.Photos, report,
+                path => _adminStorageRepository.UpdateInspectionPhotoPathAsync(row.PhotoId, row.OrganizationId, path));
+        }
+        return result;
+    }
+
     public async Task<StorageRepairResultDto> RepairOfficeLogosAsync(Func<StorageRepairEventDto, Task>? report = null)
     {
         var result = new StorageRepairResultDto();
         var rows = await _adminStorageRepository.GetOfficeLogosAsync();
-        await ReportAsync(report, "start", "", "", "", rows.Count);
+        var accountingRows = await _adminStorageRepository.GetAccountingOfficeLogosAsync();
+        await ReportAsync(report, "start", "", "", "", rows.Count + accountingRows.Count);
         foreach (var row in rows)
         {
             await MoveOneAsync(result, "office " + row.OfficeId, row.OrganizationId, row.Name, "logos", null, row.LogoPath, 2048, ImageType.Logos, report,
                 path => _adminStorageRepository.UpdateOfficeLogoPathAsync(row.OfficeId, row.OrganizationId, path));
+        }
+
+        foreach (var row in accountingRows)
+        {
+            await MoveOneAsync(result, "accounting office " + row.OfficeId, row.OrganizationId, row.Name, "logos", null, row.LogoPath, 2048, ImageType.Logos, report,
+                path => _adminStorageRepository.UpdateAccountingOfficeLogoPathAsync(row.OfficeId, row.OrganizationId, path));
         }
         return result;
     }

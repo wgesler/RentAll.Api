@@ -29,6 +29,21 @@ public class AdminStorageRepository : IAdminStorageRepository
             WHERE OfficeId = @OfficeId AND OrganizationId = @OrganizationId
             """, new { OfficeId = officeId, OrganizationId = organizationId, LogoPath = logoPath });
 
+    public Task<IReadOnlyList<OfficeLogoRow>> GetAccountingOfficeLogosAsync()
+        => QueryAsync<OfficeLogoRow>("""
+            SELECT ao.OfficeId, ao.OrganizationId, o.Name, ao.LogoPath
+            FROM [Organization].[AccountingOffice] ao
+            LEFT JOIN [Organization].[Office] o ON o.OfficeId = ao.OfficeId
+            WHERE ao.LogoPath IS NOT NULL AND LTRIM(RTRIM(ao.LogoPath)) <> ''
+            """);
+
+    public Task<int> UpdateAccountingOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath)
+        => ExecuteAsync("""
+            UPDATE [Organization].[AccountingOffice]
+            SET LogoPath = @LogoPath
+            WHERE OfficeId = @OfficeId AND OrganizationId = @OrganizationId
+            """, new { OfficeId = officeId, OrganizationId = organizationId, LogoPath = logoPath });
+
     public Task<IReadOnlyList<OrganizationLogoRow>> GetOrganizationLogosAsync()
         => QueryAsync<OrganizationLogoRow>("""
             SELECT OrganizationId, LogoPath
@@ -117,6 +132,42 @@ public class AdminStorageRepository : IAdminStorageRepository
             SET DecalPath = @DecalPath
             WHERE ApplianceId = @ApplianceId
             """, new { ApplianceId = applianceId, DecalPath = decalPath });
+
+    public Task<IReadOnlyList<PropertyPhotoRow>> GetListingPhotosAsync()
+        => QueryAsync<PropertyPhotoRow>("""
+            SELECT pp.PhotoId, p.OrganizationId, o.Name AS OfficeName, p.PropertyCode, pp.PhotoPath
+            FROM [Property].[PropertyPhoto] pp
+            INNER JOIN [Property].[Property] p ON p.PropertyId = pp.PropertyId
+            LEFT JOIN [Organization].[Office] o ON o.OfficeId = p.OfficeId
+            WHERE pp.PhotoPath IS NOT NULL AND LTRIM(RTRIM(pp.PhotoPath)) <> ''
+            """);
+
+    public Task<int> UpdateListingPhotoPathAsync(int photoId, Guid organizationId, string? photoPath)
+        => ExecuteAsync("""
+            UPDATE pp
+            SET pp.PhotoPath = ISNULL(@PhotoPath, '')
+            FROM [Property].[PropertyPhoto] pp
+            INNER JOIN [Property].[Property] p ON p.PropertyId = pp.PropertyId
+            WHERE pp.PhotoId = @PhotoId AND p.OrganizationId = @OrganizationId
+            """, new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
+
+    public Task<IReadOnlyList<InspectionPhotoRow>> GetInspectionPhotosAsync()
+        => QueryAsync<InspectionPhotoRow>("""
+            SELECT ph.PhotoId, ph.OrganizationId, COALESCE(o.Name, mo.Name) AS OfficeName, p.PropertyCode, ph.PhotoPath
+            FROM [Maintenance].[Photo] ph
+            LEFT JOIN [Organization].[Office] o ON o.OfficeId = ph.OfficeId
+            LEFT JOIN [Maintenance].[Maintenance] m ON m.MaintenanceId = ph.MaintenanceId
+            LEFT JOIN [Organization].[Office] mo ON mo.OfficeId = m.OfficeId
+            LEFT JOIN [Property].[Property] p ON p.PropertyId = m.PropertyId
+            WHERE ph.PhotoPath IS NOT NULL AND LTRIM(RTRIM(ph.PhotoPath)) <> ''
+            """);
+
+    public Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath)
+        => ExecuteAsync("""
+            UPDATE [Maintenance].[Photo]
+            SET PhotoPath = ISNULL(@PhotoPath, '')
+            WHERE PhotoId = @PhotoId AND OrganizationId = @OrganizationId
+            """, new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
 
     private async Task<IReadOnlyList<T>> QueryAsync<T>(string sql)
     {

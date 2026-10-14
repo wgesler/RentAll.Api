@@ -126,12 +126,12 @@ public class FileService : IFileService
     public async Task<StoredImageRelocation> RelocateStoredImageAsync(string currentPath, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength)
     {
         var sourceFullPath = ToFullPath(currentPath);
+        var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
         if (!File.Exists(sourceFullPath))
         {
             var missingFileName = Path.GetFileName(currentPath);
             if (!string.IsNullOrWhiteSpace(missingFileName))
             {
-                var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
                 var existingPath = "/" + envName + "/" + StoragePathBuilder.BuildDirectory(organizationId, officeName, category, propertyCode) + "/" + missingFileName;
                 if (!string.Equals(NormalizeRelative(currentPath), existingPath, StringComparison.OrdinalIgnoreCase) && File.Exists(ToFullPath(existingPath)))
                 {
@@ -148,7 +148,6 @@ public class FileService : IFileService
         if (string.IsNullOrWhiteSpace(fileName))
             throw new InvalidOperationException("Stored file name is missing.");
 
-        var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
         var newPath = "/" + envName + "/" + StoragePathBuilder.BuildDirectory(organizationId, officeName, category, propertyCode) + "/" + fileName;
         if (newPath.Length > maxPathLength)
             throw new InvalidOperationException("New path is longer than the database column.");

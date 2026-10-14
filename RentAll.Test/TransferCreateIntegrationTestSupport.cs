@@ -229,7 +229,10 @@ internal static class TransferCreateIntegrationTestSupport
             return null;
 
         var accountingOffice = await services.OrganizationRepository.GetAccountingOfficeByIdAsync(organizationId, officeId);
-        var configuredEscrowAccountId = accountingOffice?.DefaultEscrowDepositAccountId;
+        if (accountingOffice == null)
+            return null;
+
+        var configuredEscrowAccountId = accountingOffice.DefaultEscrowDepositAccountId;
         if (configuredEscrowAccountId is not > 0)
             return null;
 

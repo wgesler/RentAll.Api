@@ -4,6 +4,8 @@ public interface IAdminStorageRepository
 {
     Task<IReadOnlyList<OfficeLogoRow>> GetOfficeLogosAsync();
     Task<int> UpdateOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath);
+    Task<IReadOnlyList<OfficeLogoRow>> GetAccountingOfficeLogosAsync();
+    Task<int> UpdateAccountingOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath);
     Task<IReadOnlyList<OrganizationLogoRow>> GetOrganizationLogosAsync();
     Task<int> UpdateOrganizationLogoPathAsync(Guid organizationId, string? logoPath);
     Task<IReadOnlyList<ProfileImageRow>> GetProfileImagesAsync();
@@ -16,6 +18,10 @@ public interface IAdminStorageRepository
     Task<int> UpdateReceiptDraftPathAsync(Guid receiptDraftId, Guid organizationId, string? receiptPath);
     Task<IReadOnlyList<ApplianceImageRow>> GetApplianceDecalsAsync();
     Task<int> UpdateApplianceDecalPathAsync(int applianceId, string? decalPath);
+    Task<IReadOnlyList<PropertyPhotoRow>> GetListingPhotosAsync();
+    Task<int> UpdateListingPhotoPathAsync(int photoId, Guid organizationId, string? photoPath);
+    Task<IReadOnlyList<InspectionPhotoRow>> GetInspectionPhotosAsync();
+    Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath);
 }
 
 public sealed class OfficeLogoRow
@@ -53,6 +59,24 @@ public sealed class ReceiptImageRow
     public Guid OrganizationId { get; set; }
     public string? OfficeName { get; set; }
     public string ReceiptPath { get; set; } = string.Empty;
+}
+
+public sealed class PropertyPhotoRow
+{
+    public int PhotoId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public string? OfficeName { get; set; }
+    public string? PropertyCode { get; set; }
+    public string PhotoPath { get; set; } = string.Empty;
+}
+
+public sealed class InspectionPhotoRow
+{
+    public Guid PhotoId { get; set; }
+    public Guid OrganizationId { get; set; }
+    public string? OfficeName { get; set; }
+    public string? PropertyCode { get; set; }
+    public string PhotoPath { get; set; } = string.Empty;
 }
 
 public sealed class ApplianceImageRow

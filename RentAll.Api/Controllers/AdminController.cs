@@ -23,6 +23,14 @@ public class AdminController : BaseController
         _logger = logger;
     }
 
+    [HttpPost("listing-photos")]
+    public Task RepairListingPhotos(CancellationToken cancellationToken)
+        => RepairStreamAsync(report => _storagePathRepairService.RepairListingPhotosAsync(report), cancellationToken);
+
+    [HttpPost("inspection-photos")]
+    public Task RepairInspectionPhotos(CancellationToken cancellationToken)
+        => RepairStreamAsync(report => _storagePathRepairService.RepairInspectionPhotosAsync(report), cancellationToken);
+
     [HttpPost("office-logos")]
     public Task RepairOfficeLogos(CancellationToken cancellationToken)
         => RepairStreamAsync(report => _storagePathRepairService.RepairOfficeLogosAsync(report), cancellationToken);
