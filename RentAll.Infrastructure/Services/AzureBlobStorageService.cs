@@ -340,7 +340,7 @@ public class AzureBlobStorageService : IFileService
     {
         var parsed = ParseStoragePath(currentPath);
         if (parsed == null)
-            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
+            throw new InvalidOperationException("Stored file path could not be read.");
 
         var (containerName, blobName) = parsed.Value;
         var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
