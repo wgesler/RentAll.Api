@@ -21,6 +21,7 @@ public class PropertyAgreementEntity
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
+    public string? AccountNumberLastFour { get; set; }
     public int OwnerPaymentTypeId { get; set; }
     public string? Notes { get; set; }
     public string? AgreementLines { get; set; }

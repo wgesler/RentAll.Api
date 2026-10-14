@@ -87,6 +87,7 @@ public partial class PropertyController
             model.InsurancePath = await _fileAttachmentHelper.SaveImageIfPresentAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances);
             model.AgreementPath = await _fileAttachmentHelper.SaveDocumentIfPresentAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, DocumentType.Agreements);
             var saved = await _propertyRepository.CreatePropertyAgreementAsync(model);
+            await ProtectAgreementAccountNumberAsync(saved);
 
             var response = new PropertyAgreementResponseDto(saved);
             response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, saved.W9Path, ImageType.W9Forms);
@@ -155,11 +156,14 @@ public partial class PropertyController
             var officeName = office?.Name;
 
             var model = dto.ToModel(existing, CurrentOrganizationId);
+            if (!string.IsNullOrWhiteSpace(model.AccountNumber) && model.AccountNumber.Contains('*'))
+                model.AccountNumber = null;
             model.W9Path = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.W9FileDetails, ImageType.W9Forms, existing.W9Path, dto.W9Path);
             model.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(CurrentOrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
             model.AgreementPath = await _fileAttachmentHelper.ResolveDocumentPathForUpdateAsync(CurrentOrganizationId, officeName, dto.AgreementFileDetails, DocumentType.Agreements, existing.AgreementPath, dto.AgreementPath);
 
             var updatedContact = await _propertyRepository.UpdatePropertyAgreementByPropertyIdAsync(model);
+            await ProtectAgreementAccountNumberAsync(updatedContact);
             var response = new PropertyAgreementResponseDto(updatedContact);
 
             response.W9FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(CurrentOrganizationId, officeName, updatedContact.W9Path, ImageType.W9Forms);

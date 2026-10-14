@@ -230,6 +230,7 @@ namespace RentAll.Infrastructure.Repositories.Properties
             BankName = e.BankName,
             RoutingNumber = e.RoutingNumber,
             AccountNumber = e.AccountNumber,
+            AccountNumberLastFour = e.AccountNumberLastFour,
             OwnerPaymentType = (OwnerPaymentType)e.OwnerPaymentTypeId,
             Notes = e.Notes
         };

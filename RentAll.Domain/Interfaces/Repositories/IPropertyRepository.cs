@@ -57,6 +57,9 @@ public interface IPropertyRepository
     Task<PropertyAgreement> UpdatePropertyAgreementByPropertyIdAsync(PropertyAgreement agreement);
     Task<AgreementLine> UpdateRentRollAgreementLineAsync(AgreementLine line);
     Task DeletePropertyAgreementByPropertyIdAsync(Guid propertyId);
+    Task SaveEncryptedAgreementAccountNumberAsync(Guid propertyId, byte[] encryptedAccountNumber, string lastFour);
+    Task<byte[]?> GetEncryptedAgreementAccountNumberAsync(Guid propertyId);
+    Task<IEnumerable<(Guid PropertyId, string AccountNumber)>> GetClearAgreementAccountNumbersAsync(Guid organizationId);
     Task DeleteRentRollAgreementLineByIdAsync(int agreementLineId, Guid organizationId);
     #endregion
 

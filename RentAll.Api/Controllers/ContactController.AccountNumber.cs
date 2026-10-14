@@ -31,6 +31,19 @@ public partial class ContactController
                 converted++;
             }
 
+            var agreementRows = await _propertyRepository.GetClearAgreementAccountNumbersAsync(dto.OrganizationId);
+            foreach (var row in agreementRows)
+            {
+                if (!IsClearBankAccountNumber(row.AccountNumber))
+                    continue;
+
+                var digits = new string(row.AccountNumber.Where(char.IsDigit).ToArray());
+                var lastFour = digits.Length <= 4 ? digits : digits[^4..];
+                var encrypted = await _encryptionService.EncryptAsync(digits);
+                await _propertyRepository.SaveEncryptedAgreementAccountNumberAsync(row.PropertyId, encrypted, lastFour);
+                converted++;
+            }
+
             return Ok(new EncryptStoredAccountNumbersResponseDto { Converted = converted });
         }
         catch (Exception ex)

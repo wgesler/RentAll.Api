@@ -12,6 +12,7 @@ namespace RentAll.Api.Controllers
     {
         private readonly IContactManager _contactManager;
         private readonly IContactRepository _contactRepository;
+        private readonly IPropertyRepository _propertyRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IFileService _fileService;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
@@ -21,6 +22,7 @@ namespace RentAll.Api.Controllers
         public ContactController(
             IContactManager contactManager,
             IContactRepository contactRepository,
+            IPropertyRepository propertyRepository,
             IOrganizationRepository organizationRepository,
             IFileService fileService,
             IFileAttachmentHelper fileAttachmentHelper,
@@ -29,6 +31,7 @@ namespace RentAll.Api.Controllers
         {
             _contactManager = contactManager;
             _contactRepository = contactRepository;
+            _propertyRepository = propertyRepository;
             _organizationRepository = organizationRepository;
             _fileService = fileService;
             _fileAttachmentHelper = fileAttachmentHelper;

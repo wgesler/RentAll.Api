@@ -473,4 +473,46 @@ public partial class PropertyRepository
             Notes = line.Notes
         }).ToList();
     }
+
+    public async Task SaveEncryptedAgreementAccountNumberAsync(Guid propertyId, byte[] encryptedAccountNumber, string lastFour)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Property.PropertyAgreements_SaveEncryptedAccountNumber", new
+        {
+            PropertyId = propertyId,
+            AccountNumberEncrypted = encryptedAccountNumber,
+            AccountNumberLastFour = lastFour
+        });
+    }
+
+    public async Task<byte[]?> GetEncryptedAgreementAccountNumberAsync(Guid propertyId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<EncryptedAgreementAccountNumberRow>("Property.PropertyAgreements_GetEncryptedAccountNumber", new
+        {
+            PropertyId = propertyId
+        });
+        return rows?.FirstOrDefault()?.AccountNumberEncrypted;
+    }
+
+    public async Task<IEnumerable<(Guid PropertyId, string AccountNumber)>> GetClearAgreementAccountNumbersAsync(Guid organizationId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<ClearAgreementAccountNumberRow>("Property.PropertyAgreements_GetClearAccountNumbers", new
+        {
+            OrganizationId = organizationId
+        });
+        return (rows ?? []).Select(row => (row.PropertyId, row.AccountNumber ?? string.Empty));
+    }
+
+    private sealed class EncryptedAgreementAccountNumberRow
+    {
+        public byte[]? AccountNumberEncrypted { get; set; }
+    }
+
+    private sealed class ClearAgreementAccountNumberRow
+    {
+        public Guid PropertyId { get; set; }
+        public string? AccountNumber { get; set; }
+    }
 }
