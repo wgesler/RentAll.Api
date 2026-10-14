@@ -426,7 +426,7 @@ public class AzureBlobStorageService : IFileService
         var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
         var prefix = BuildBlobDirectory(organizationId, officeName, category, propertyCode) + "/";
         var urls = new List<string>();
-        await foreach (var blob in containerClient.GetBlobsAsync(prefix: prefix).ConfigureAwait(false))
+        await foreach (var blob in containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix, CancellationToken.None).ConfigureAwait(false))
         {
             var remainder = blob.Name.Length > prefix.Length ? blob.Name[prefix.Length..] : "";
             if (string.IsNullOrWhiteSpace(remainder) || remainder.Contains('/'))
