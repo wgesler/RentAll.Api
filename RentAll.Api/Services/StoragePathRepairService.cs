@@ -199,19 +199,29 @@ public class StoragePathRepairService
 
     public async Task<StorageRepairResultDto> RepairDenverDbaDocumentsAsync(Func<StorageRepairEventDto, Task>? report = null)
     {
-        const string oldOffice = "denver dba avenuewest colorado";
-        const string newOffice = "denver";
         var result = new StorageRepairResultDto();
-        var rows = await _adminStorageRepository.GetDenverDbaDocumentsAsync();
+        var pairs = await GetOfficeFolderPairsAsync();
+        var folders = new List<string>();
+        foreach (var pair in pairs)
+        {
+            folders.Add(pair.From);
+            if (pair.To.Contains(' '))
+                folders.Add(pair.To);
+        }
+
+        var rows = (await _adminStorageRepository.GetStoredPathsForFoldersAsync(folders))
+            .Where(row => MatchOfficeFolder(row.DocumentPath, pairs) != null)
+            .ToList();
         await ReportAsync(report, "start", "", "", "", rows.Count);
         foreach (var row in rows)
         {
-            var maxLength = row.Source == "quote" ? 1000 : 2048;
+            var pair = MatchOfficeFolder(row.DocumentPath, pairs)!.Value;
             var fileName = FileNameOf(row.DocumentPath);
             StoredImageRelocation? relocation = null;
+            var pathSaved = false;
             try
             {
-                relocation = await _fileService.MoveStoredFileOfficeAsync(row.DocumentPath, oldOffice, newOffice, maxLength);
+                relocation = await _fileService.CopyOfficeFileIfMissingAsync(row.DocumentPath, pair.From, pair.To, row.MaxLength);
                 if (relocation.Missing)
                 {
                     AddFailure(result, row.Source + " " + row.RecordId + ": file was not found");
@@ -219,29 +229,41 @@ public class StoragePathRepairService
                     continue;
                 }
 
-                if (relocation.AlreadyCorrect)
+                var newPath = relocation.NewPath ?? "";
+                var pathChanged = !string.Equals(row.DocumentPath, newPath, StringComparison.OrdinalIgnoreCase);
+                if (pathChanged)
+                {
+                    var saved = await _adminStorageRepository.UpdateStoredPathAsync(row.Source, row.RecordId, row.OrganizationId, newPath);
+                    if (saved < 1)
+                        throw new InvalidOperationException("Database row was not updated.");
+                }
+
+                pathSaved = true;
+
+                if (!string.IsNullOrWhiteSpace(relocation.DuplicatePath))
+                    await _fileService.DeleteDocumentAsync(Guid.Empty, pair.From, relocation.DuplicatePath);
+
+                if (!pathChanged && string.IsNullOrWhiteSpace(relocation.DuplicatePath) && relocation.Content.Length == 0)
                 {
                     result.AlreadyCorrect++;
                     await ReportAsync(report, "file", fileName, "already correct", "");
                     continue;
                 }
 
-                var saved = await _adminStorageRepository.UpdateDenverDocumentPathAsync(row.Source, row.RecordId, relocation.NewPath ?? "");
-                if (saved < 1)
-                    throw new InvalidOperationException("Database row was not updated.");
-
                 result.Moved++;
-                await ReportAsync(report, "file", fileName, relocation.FoundExisting ? "saved" : "moved", "");
+                await ReportAsync(report, "file", fileName, pathChanged && relocation.Content.Length == 0 ? "saved" : "moved", "");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[StorageRepair] {Source} {RecordId} failed", row.Source, row.RecordId);
-                if (relocation != null && !relocation.FoundExisting && !relocation.Missing && !string.IsNullOrWhiteSpace(relocation.NewPath) && relocation.Content.Length > 0)
+                if (!pathSaved && relocation != null && !string.IsNullOrWhiteSpace(relocation.NewPath))
                 {
                     try
                     {
-                        await _fileService.RestoreStoredImageAsync(relocation.OriginalPath, relocation.Content, relocation.ContentType);
-                        await _fileService.DeleteDocumentAsync(Guid.Empty, newOffice, relocation.NewPath);
+                        if (relocation.ReplacedContent.Length > 0)
+                            await _fileService.RestoreStoredImageAsync(relocation.NewPath, relocation.ReplacedContent, relocation.ReplacedContentType);
+                        else if (relocation.Content.Length > 0)
+                            await _fileService.DeleteDocumentAsync(Guid.Empty, pair.To, relocation.NewPath);
                     }
                     catch (Exception restoreEx)
                     {
@@ -480,6 +502,56 @@ public class StoragePathRepairService
         {
             // A dropped progress stream must not undo a file that already moved.
         }
+    }
+
+    private async Task<List<(string From, string To)>> GetOfficeFolderPairsAsync()
+    {
+        var pairs = new List<(string From, string To)>();
+        foreach (var name in await _adminStorageRepository.GetSpacedOfficeNamesAsync())
+        {
+            var spaced = name.Trim().ToLowerInvariant();
+            if (spaced.Length == 0 || spaced == "denver dba avenuewest colorado")
+                continue;
+            var hyphen = spaced.Replace(" ", "-");
+            if (!string.Equals(hyphen, spaced, StringComparison.Ordinal) && pairs.TrueForAll(pair => !string.Equals(pair.From, hyphen, StringComparison.Ordinal)))
+                pairs.Add((hyphen, spaced));
+        }
+
+        pairs.Add(("denver dba avenuewest colorado", "denver"));
+        return pairs;
+    }
+
+    private static (string From, string To)? MatchOfficeFolder(string path, IReadOnlyList<(string From, string To)> pairs)
+    {
+        (string From, string To)? best = null;
+        var bestLength = -1;
+        foreach (var pair in pairs)
+        {
+            var from = HasPathSegment(path, pair.From);
+            var to = HasPathSegment(path, pair.To);
+            if (!from && !to)
+                continue;
+            var length = Math.Max(from ? pair.From.Length : 0, to ? pair.To.Length : 0);
+            if (length > bestLength)
+            {
+                best = pair;
+                bestLength = length;
+            }
+        }
+
+        return best;
+    }
+
+    private static bool HasPathSegment(string path, string folder)
+    {
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (string.Equals(parts[i], folder, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private static string RemoveGuideImage(string html, string path)

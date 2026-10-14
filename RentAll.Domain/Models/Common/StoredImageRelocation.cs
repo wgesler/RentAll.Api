@@ -9,4 +9,7 @@ public class StoredImageRelocation
     public string? NewPath { get; set; }
     public byte[] Content { get; set; } = Array.Empty<byte>();
     public string ContentType { get; set; } = "application/octet-stream";
+    public string DuplicatePath { get; set; } = string.Empty;
+    public byte[] ReplacedContent { get; set; } = Array.Empty<byte>();
+    public string ReplacedContentType { get; set; } = string.Empty;
 }

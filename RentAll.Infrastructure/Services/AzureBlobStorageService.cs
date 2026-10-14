@@ -536,6 +536,132 @@ public class AzureBlobStorageService : IFileService
         };
     }
 
+    public async Task<StoredImageRelocation> CopyOfficeFileIfMissingAsync(string currentPath, string fromOffice, string toOffice, int maxPathLength)
+    {
+        var parsed = ParseStoragePath(currentPath);
+        if (parsed == null)
+            throw new InvalidOperationException("Stored file path could not be read.");
+
+        var (containerName, blobName) = parsed.Value;
+        if (!TryOfficeTarget(blobName, fromOffice, toOffice, out var targetBlobName, out var sourceBlobName))
+            throw new InvalidOperationException("Stored file path does not use this office folder.");
+
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var targetClient = containerClient.GetBlobClient(targetBlobName);
+        var sourceClient = containerClient.GetBlobClient(sourceBlobName);
+        var newPath = BuildUrl(containerName, targetBlobName, targetClient.Uri);
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        var sameBlob = string.Equals(sourceBlobName, targetBlobName, StringComparison.OrdinalIgnoreCase);
+        var targetExists = await targetClient.ExistsAsync().ConfigureAwait(false);
+        var sourceExists = !sameBlob && await sourceClient.ExistsAsync().ConfigureAwait(false);
+        if (!targetExists && !sourceExists)
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath, NewPath = newPath };
+
+        var sourceUrl = sameBlob ? "" : BuildUrl(containerName, sourceBlobName, sourceClient.Uri);
+        var pathAlreadyCorrect = string.Equals(blobName, targetBlobName, StringComparison.OrdinalIgnoreCase);
+        if (targetExists && sourceExists)
+        {
+            var targetProperties = await targetClient.GetPropertiesAsync().ConfigureAwait(false);
+            var sourceProperties = await sourceClient.GetPropertiesAsync().ConfigureAwait(false);
+            if (sourceProperties.Value.LastModified > targetProperties.Value.LastModified)
+            {
+                var replacedDownload = await targetClient.DownloadContentAsync().ConfigureAwait(false);
+                var replaced = replacedDownload.Value.Content.ToArray();
+                var replacedType = replacedDownload.Value.Details.ContentType;
+                if (string.IsNullOrWhiteSpace(replacedType))
+                    replacedType = "application/octet-stream";
+                var sourceDownload = await sourceClient.DownloadContentAsync().ConfigureAwait(false);
+                var bytes = sourceDownload.Value.Content.ToArray();
+                if (bytes.Length == 0)
+                    throw new InvalidOperationException("Stored file is empty.");
+                var contentType = sourceDownload.Value.Details.ContentType;
+                if (string.IsNullOrWhiteSpace(contentType))
+                    contentType = "application/octet-stream";
+                try
+                {
+                    await UploadBytesAsync(targetClient, bytes, contentType).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    await UploadBytesAsync(targetClient, replaced, replacedType).ConfigureAwait(false);
+                    throw new InvalidOperationException("New file could not be saved. The original file was put back.", ex);
+                }
+
+                return new StoredImageRelocation
+                {
+                    OriginalPath = currentPath,
+                    NewPath = newPath,
+                    Content = bytes,
+                    ContentType = contentType,
+                    DuplicatePath = sourceUrl,
+                    ReplacedContent = replaced,
+                    ReplacedContentType = replacedType
+                };
+            }
+        }
+        else if (!targetExists)
+        {
+            var sourceDownload = await sourceClient.DownloadContentAsync().ConfigureAwait(false);
+            var bytes = sourceDownload.Value.Content.ToArray();
+            if (bytes.Length == 0)
+                throw new InvalidOperationException("Stored file is empty.");
+            var contentType = sourceDownload.Value.Details.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
+                contentType = "application/octet-stream";
+            await UploadBytesAsync(targetClient, bytes, contentType).ConfigureAwait(false);
+            return new StoredImageRelocation
+            {
+                OriginalPath = currentPath,
+                NewPath = newPath,
+                Content = bytes,
+                ContentType = contentType,
+                DuplicatePath = sourceUrl
+            };
+        }
+
+        return new StoredImageRelocation
+        {
+            AlreadyCorrect = pathAlreadyCorrect && !sourceExists,
+            FoundExisting = !pathAlreadyCorrect,
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            DuplicatePath = sourceExists ? sourceUrl : ""
+        };
+    }
+
+    private static bool TryOfficeTarget(string path, string fromOffice, string toOffice, out string target, out string source)
+    {
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var fromIndex = -1;
+        var toIndex = -1;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (fromIndex < 0 && string.Equals(parts[i], fromOffice, StringComparison.OrdinalIgnoreCase))
+                fromIndex = i;
+            else if (toIndex < 0 && string.Equals(parts[i], toOffice, StringComparison.OrdinalIgnoreCase))
+                toIndex = i;
+        }
+
+        if (fromIndex < 0 && toIndex < 0)
+        {
+            target = "";
+            source = "";
+            return false;
+        }
+
+        var targetParts = (string[])parts.Clone();
+        var sourceParts = (string[])parts.Clone();
+        if (fromIndex >= 0)
+            targetParts[fromIndex] = toOffice;
+        if (toIndex >= 0 && fromIndex < 0)
+            sourceParts[toIndex] = fromOffice;
+        target = string.Join("/", targetParts);
+        source = string.Join("/", sourceParts);
+        return true;
+    }
+
     public async Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode)
     {
         var containerName = BuildContainerName();

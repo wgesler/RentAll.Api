@@ -1,13 +1,23 @@
-using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
+using RentAll.Infrastructure.Configuration;
+using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Admin;
 
 public class AdminStorageRepository : IAdminStorageRepository
 {
+    private static readonly HashSet<string> StoredPathSources = new(StringComparer.Ordinal)
+    {
+        "document", "inspection", "property-agreement", "property-w9", "property-insurance",
+        "contact-agreement", "contact-w9", "contact-insurance", "contact-front", "contact-back",
+        "email", "quote", "office-logo", "accounting-logo", "accounting-check", "org-logo",
+        "branding-logo", "branding-collapsed", "profile", "state-form", "receipt", "receipt-draft",
+        "decal", "listing", "inspection-photo", "check-html", "ticket"
+    };
+
     private readonly string _dbConnectionString;
 
     public AdminStorageRepository(IOptions<AppSettings> appSettings)
@@ -16,226 +26,100 @@ public class AdminStorageRepository : IAdminStorageRepository
     }
 
     public Task<IReadOnlyList<OfficeLogoRow>> GetOfficeLogosAsync()
-        => QueryAsync<OfficeLogoRow>("""
-            SELECT OfficeId, OrganizationId, Name, LogoPath
-            FROM [Organization].[Office]
-            """);
+        => QueryProcAsync<OfficeLogoRow>("Organization.Office_GetStorageLogos");
 
     public Task<int> UpdateOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath)
-        => ExecuteAsync("""
-            UPDATE [Organization].[Office]
-            SET LogoPath = @LogoPath
-            WHERE OfficeId = @OfficeId AND OrganizationId = @OrganizationId
-            """, new { OfficeId = officeId, OrganizationId = organizationId, LogoPath = logoPath });
+        => ExecuteProcAsync("Organization.Office_UpdateLogoPath", new { OfficeId = officeId, OrganizationId = organizationId, LogoPath = logoPath });
 
     public Task<IReadOnlyList<OfficeLogoRow>> GetAccountingOfficeLogosAsync()
-        => QueryAsync<OfficeLogoRow>("""
-            SELECT ao.OfficeId, ao.OrganizationId, o.Name, ao.LogoPath
-            FROM [Organization].[AccountingOffice] ao
-            LEFT JOIN [Organization].[Office] o ON o.OfficeId = ao.OfficeId
-            """);
+        => QueryProcAsync<OfficeLogoRow>("Organization.AccountingOffice_GetStorageLogos");
 
     public Task<int> UpdateAccountingOfficeLogoPathAsync(int officeId, Guid organizationId, string? logoPath)
-        => ExecuteAsync("""
-            UPDATE [Organization].[AccountingOffice]
-            SET LogoPath = @LogoPath
-            WHERE OfficeId = @OfficeId AND OrganizationId = @OrganizationId
-            """, new { OfficeId = officeId, OrganizationId = organizationId, LogoPath = logoPath });
+        => ExecuteProcAsync("Organization.AccountingOffice_UpdateLogoPath", new { OfficeId = officeId, OrganizationId = organizationId, LogoPath = logoPath });
 
     public Task<IReadOnlyList<OrganizationLogoRow>> GetOrganizationLogosAsync()
-        => QueryAsync<OrganizationLogoRow>("""
-            SELECT OrganizationId, LogoPath
-            FROM [Organization].[Organization]
-            """);
+        => QueryProcAsync<OrganizationLogoRow>("Organization.Organization_GetLogoPaths");
 
     public Task<int> UpdateOrganizationLogoPathAsync(Guid organizationId, string? logoPath)
-        => ExecuteAsync("""
-            UPDATE [Organization].[Organization]
-            SET LogoPath = @LogoPath
-            WHERE OrganizationId = @OrganizationId
-            """, new { OrganizationId = organizationId, LogoPath = logoPath });
+        => ExecuteProcAsync("Organization.Organization_UpdateLogoPath", new { OrganizationId = organizationId, LogoPath = logoPath });
 
     public Task<IReadOnlyList<ProfileImageRow>> GetProfileImagesAsync()
-        => QueryAsync<ProfileImageRow>("""
-            SELECT u.UserId, u.OrganizationId, o.Name AS OfficeName, u.ProfilePath
-            FROM [User].[User] u
-            LEFT JOIN [Organization].[Office] o ON o.OfficeId = u.DefaultOfficeId AND o.OrganizationId = u.OrganizationId
-            """);
+        => QueryProcAsync<ProfileImageRow>("User.User_GetProfilePaths");
 
     public Task<int> UpdateProfilePathAsync(Guid userId, Guid organizationId, string? profilePath)
-        => ExecuteAsync("""
-            UPDATE [User].[User]
-            SET ProfilePath = @ProfilePath
-            WHERE UserId = @UserId AND OrganizationId = @OrganizationId
-            """, new { UserId = userId, OrganizationId = organizationId, ProfilePath = profilePath });
+        => ExecuteProcAsync("User.User_UpdateProfilePath", new { UserId = userId, OrganizationId = organizationId, ProfilePath = profilePath });
 
     public Task<IReadOnlyList<StateFormImageRow>> GetStateFormImagesAsync()
-        => QueryAsync<StateFormImageRow>("""
-            SELECT StateFormId, OrganizationId, Path
-            FROM [Organization].[StateForm]
-            """);
+        => QueryProcAsync<StateFormImageRow>("Organization.StateForm_GetPaths");
 
     public Task<int> UpdateStateFormPathAsync(int stateFormId, string organizationId, string? path)
-        => ExecuteAsync("""
-            UPDATE [Organization].[StateForm]
-            SET Path = ISNULL(@Path, '')
-            WHERE StateFormId = @StateFormId AND OrganizationId = @OrganizationId
-            """, new { StateFormId = stateFormId, OrganizationId = organizationId, Path = path });
+        => ExecuteProcAsync("Organization.StateForm_UpdatePath", new { StateFormId = stateFormId, OrganizationId = organizationId, Path = path });
 
     public Task<IReadOnlyList<ReceiptImageRow>> GetReceiptImagesAsync()
-        => QueryAsync<ReceiptImageRow>("""
-            SELECT r.ReceiptId, r.OrganizationId, o.Name AS OfficeName, r.ReceiptPath
-            FROM [Maintenance].[Receipt] r
-            INNER JOIN [Organization].[Office] o ON o.OfficeId = r.OfficeId AND o.OrganizationId = r.OrganizationId
-            """);
+        => QueryProcAsync<ReceiptImageRow>("Maintenance.Receipt_GetStoragePaths");
 
     public Task<int> UpdateReceiptPathAsync(Guid receiptId, Guid organizationId, string? receiptPath)
-        => ExecuteAsync("""
-            UPDATE [Maintenance].[Receipt]
-            SET ReceiptPath = @ReceiptPath
-            WHERE ReceiptId = @ReceiptId AND OrganizationId = @OrganizationId
-            """, new { ReceiptId = receiptId, OrganizationId = organizationId, ReceiptPath = receiptPath });
+        => ExecuteProcAsync("Maintenance.Receipt_UpdatePath", new { ReceiptId = receiptId, OrganizationId = organizationId, ReceiptPath = receiptPath });
 
     public Task<IReadOnlyList<ReceiptImageRow>> GetReceiptDraftImagesAsync()
-        => QueryAsync<ReceiptImageRow>("""
-            SELECT d.ReceiptDraftId AS ReceiptId, d.OrganizationId, o.Name AS OfficeName, d.ReceiptPath
-            FROM [Maintenance].[ReceiptDraft] d
-            LEFT JOIN [Organization].[Office] o ON o.OfficeId = d.OfficeId AND o.OrganizationId = d.OrganizationId
-            """);
+        => QueryProcAsync<ReceiptImageRow>("Maintenance.ReceiptDraft_GetStoragePaths");
 
     public Task<int> UpdateReceiptDraftPathAsync(Guid receiptDraftId, Guid organizationId, string? receiptPath)
-        => ExecuteAsync("""
-            UPDATE [Maintenance].[ReceiptDraft]
-            SET ReceiptPath = @ReceiptPath
-            WHERE ReceiptDraftId = @ReceiptDraftId AND OrganizationId = @OrganizationId
-            """, new { ReceiptDraftId = receiptDraftId, OrganizationId = organizationId, ReceiptPath = receiptPath });
+        => ExecuteProcAsync("Maintenance.ReceiptDraft_UpdatePath", new { ReceiptDraftId = receiptDraftId, OrganizationId = organizationId, ReceiptPath = receiptPath });
 
     public Task<IReadOnlyList<ApplianceImageRow>> GetApplianceDecalsAsync()
-        => QueryAsync<ApplianceImageRow>("""
-            SELECT a.ApplianceId, p.OrganizationId, o.Name AS OfficeName, p.PropertyCode, a.DecalPath
-            FROM [Maintenance].[Appliance] a
-            INNER JOIN [Property].[Property] p ON p.PropertyId = a.PropertyId
-            LEFT JOIN [Organization].[Office] o ON o.OfficeId = p.OfficeId AND o.OrganizationId = p.OrganizationId
-            """);
+        => QueryProcAsync<ApplianceImageRow>("Maintenance.Appliance_GetDecalPaths");
 
     public Task<int> UpdateApplianceDecalPathAsync(int applianceId, string? decalPath)
-        => ExecuteAsync("""
-            UPDATE [Maintenance].[Appliance]
-            SET DecalPath = @DecalPath
-            WHERE ApplianceId = @ApplianceId
-            """, new { ApplianceId = applianceId, DecalPath = decalPath });
+        => ExecuteProcAsync("Maintenance.Appliance_UpdateDecalPath", new { ApplianceId = applianceId, DecalPath = decalPath });
 
     public Task<IReadOnlyList<PropertyPhotoRow>> GetListingPhotosAsync()
-        => QueryAsync<PropertyPhotoRow>("""
-            SELECT pp.PhotoId, p.OrganizationId, o.Name AS OfficeName, p.PropertyCode, pp.PhotoPath
-            FROM [Property].[PropertyPhoto] pp
-            INNER JOIN [Property].[Property] p ON p.PropertyId = pp.PropertyId
-            LEFT JOIN [Organization].[Office] o ON o.OfficeId = p.OfficeId
-            """);
+        => QueryProcAsync<PropertyPhotoRow>("Property.PropertyPhoto_GetPaths");
 
     public Task<int> UpdateListingPhotoPathAsync(int photoId, Guid organizationId, string? photoPath)
-        => ExecuteAsync("""
-            UPDATE pp
-            SET pp.PhotoPath = ISNULL(@PhotoPath, '')
-            FROM [Property].[PropertyPhoto] pp
-            INNER JOIN [Property].[Property] p ON p.PropertyId = pp.PropertyId
-            WHERE pp.PhotoId = @PhotoId AND p.OrganizationId = @OrganizationId
-            """, new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
+        => ExecuteProcAsync("Property.PropertyPhoto_UpdatePath", new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
 
     public Task<IReadOnlyList<InspectionPhotoRow>> GetInspectionPhotosAsync()
-        => QueryAsync<InspectionPhotoRow>("""
-            SELECT ph.PhotoId, ph.OrganizationId, COALESCE(o.Name, mo.Name) AS OfficeName, p.PropertyCode, ph.PhotoPath
-            FROM [Maintenance].[Photo] ph
-            LEFT JOIN [Organization].[Office] o ON o.OfficeId = ph.OfficeId
-            LEFT JOIN [Maintenance].[Maintenance] m ON m.MaintenanceId = ph.MaintenanceId
-            LEFT JOIN [Organization].[Office] mo ON mo.OfficeId = m.OfficeId
-            LEFT JOIN [Property].[Property] p ON p.PropertyId = m.PropertyId
-            """);
+        => QueryProcAsync<InspectionPhotoRow>("Maintenance.Photo_GetPaths");
 
     public Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath)
-        => ExecuteAsync("""
-            UPDATE [Maintenance].[Photo]
-            SET PhotoPath = ISNULL(@PhotoPath, '')
-            WHERE PhotoId = @PhotoId AND OrganizationId = @OrganizationId
-            """, new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
+        => ExecuteProcAsync("Maintenance.Photo_UpdatePath", new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
 
-    public Task<IReadOnlyList<DenverDocumentRow>> GetDenverDbaDocumentsAsync()
-        => QueryAsync<DenverDocumentRow>("""
-            SELECT 'document' AS Source, CONVERT(varchar(36), DocumentId) AS RecordId, DocumentPath
-            FROM [Organization].[Document]
-            WHERE DocumentPath LIKE '%denver dba avenuewest colorado%'
-            UNION ALL
-            SELECT 'inspection', CONVERT(varchar(20), InspectionId), DocumentPath
-            FROM [Maintenance].[Inspection]
-            WHERE DocumentPath LIKE '%denver dba avenuewest colorado%'
-            UNION ALL
-            SELECT 'agreement', CONVERT(varchar(36), PropertyId), AgreementPath
-            FROM [Property].[PropertyAgreements]
-            WHERE AgreementPath LIKE '%denver dba avenuewest colorado%'
-            UNION ALL
-            SELECT 'contact', CONVERT(varchar(36), ContactId), AgreementPath
-            FROM [Organization].[Contact]
-            WHERE AgreementPath LIKE '%denver dba avenuewest colorado%'
-            UNION ALL
-            SELECT 'email', CONVERT(varchar(36), EmailId), AttachmentPath
-            FROM [Email].[Email]
-            WHERE AttachmentPath LIKE '%denver dba avenuewest colorado%'
-            UNION ALL
-            SELECT 'quote', CONVERT(varchar(20), RentalId), QuotePath
-            FROM [Lead].[Rental]
-            WHERE QuotePath LIKE '%denver dba avenuewest colorado%'
-            """);
+    public Task<IReadOnlyList<string>> GetSpacedOfficeNamesAsync()
+        => QueryProcAsync<string>("Organization.Office_GetSpacedNames");
 
-    public Task<int> UpdateDenverDocumentPathAsync(string source, string recordId, string documentPath)
+    public Task<IReadOnlyList<StoredPathRow>> GetStoredPathsForFoldersAsync(IReadOnlyList<string> folders)
     {
-        var sql = source switch
+        if (folders.Count == 0)
+            return Task.FromResult<IReadOnlyList<StoredPathRow>>(Array.Empty<StoredPathRow>());
+
+        return QueryProcAsync<StoredPathRow>("Organization.StoragePath_GetByFolders", new { FoldersJson = JsonSerializer.Serialize(folders) });
+    }
+
+    public Task<int> UpdateStoredPathAsync(string source, string recordId, string organizationId, string documentPath)
+    {
+        if (!StoredPathSources.Contains(source))
+            throw new InvalidOperationException("Stored path source is not valid.");
+
+        return ExecuteProcAsync("Organization.StoragePath_Update", new
         {
-            "document" => """
-                UPDATE [Organization].[Document]
-                SET DocumentPath = @DocumentPath
-                WHERE DocumentId = @RecordId
-                """,
-            "inspection" => """
-                UPDATE [Maintenance].[Inspection]
-                SET DocumentPath = @DocumentPath
-                WHERE InspectionId = @RecordId
-                """,
-            "agreement" => """
-                UPDATE [Property].[PropertyAgreements]
-                SET AgreementPath = @DocumentPath
-                WHERE PropertyId = @RecordId
-                """,
-            "contact" => """
-                UPDATE [Organization].[Contact]
-                SET AgreementPath = @DocumentPath
-                WHERE ContactId = @RecordId
-                """,
-            "email" => """
-                UPDATE [Email].[Email]
-                SET AttachmentPath = @DocumentPath
-                WHERE EmailId = @RecordId
-                """,
-            "quote" => """
-                UPDATE [Lead].[Rental]
-                SET QuotePath = @DocumentPath
-                WHERE RentalId = @RecordId
-                """,
-            _ => throw new InvalidOperationException("Document source is not valid.")
-        };
-        object record = source is "inspection" or "quote" ? int.Parse(recordId) : Guid.Parse(recordId);
-        return ExecuteAsync(sql, new { RecordId = record, DocumentPath = documentPath });
+            Source = source,
+            RecordId = recordId,
+            OrganizationId = organizationId,
+            DocumentPath = documentPath
+        });
     }
 
-    private async Task<IReadOnlyList<T>> QueryAsync<T>(string sql)
+    private async Task<IReadOnlyList<T>> QueryProcAsync<T>(string procedureName, object? parameters = null)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        var rows = await db.QueryAsync<T>(sql);
-        return rows.ToList();
+        var rows = await db.DapperProcQueryAsync<T>(procedureName, parameters);
+        return rows?.ToList() ?? new List<T>();
     }
 
-    private async Task<int> ExecuteAsync(string sql, object parameters)
+    private async Task<int> ExecuteProcAsync(string procedureName, object parameters)
     {
         await using var db = new SqlConnection(_dbConnectionString);
-        return await db.ExecuteAsync(sql, parameters);
+        return await db.DapperProcQueryScalarAsync<int>(procedureName, parameters);
     }
 }
