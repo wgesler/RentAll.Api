@@ -109,6 +109,7 @@ public sealed class UnlinkedReceiptRow
     public DateOnly ReceiptDate { get; set; }
     public decimal Amount { get; set; }
     public string VendorName { get; set; } = string.Empty;
+    public string CardLastFour { get; set; } = string.Empty;
 }
 
 public sealed class ApplianceImageRow

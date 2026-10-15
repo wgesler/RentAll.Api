@@ -4,6 +4,7 @@ using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Common;
+using RentAll.Domain.Models.Maintenances;
 using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Services;
@@ -244,6 +245,7 @@ public class StoragePathRepairService
             var pathSaved = false;
             try
             {
+                await ReportAsync(report, "file", fileName, "reading", "");
                 var details = await _fileService.GetImageDetailsAsync(file.OrganizationId, OfficeHyphen(file.OfficeName), file.Url, ImageType.Receipts);
                 if (details == null || string.IsNullOrWhiteSpace(details.File))
                 {
@@ -253,30 +255,38 @@ public class StoragePathRepairService
                 }
 
                 var contentType = string.IsNullOrWhiteSpace(details.ContentType) ? ContentTypeOf(fileName) : details.ContentType;
-                var extracted = await _documentIntelligenceService.ExtractReceiptAsync(Convert.FromBase64String(details.File), contentType);
-                if (!extracted.Amount.HasValue || !extracted.ReceiptDate.HasValue || string.IsNullOrWhiteSpace(extracted.VendorName))
+                using var readLimit = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+                var extractTask = _documentIntelligenceService.ExtractReceiptAsync(Convert.FromBase64String(details.File), contentType, readLimit.Token);
+                var finished = await Task.WhenAny(extractTask, Task.Delay(TimeSpan.FromSeconds(90)));
+                ReceiptDocumentExtraction? extracted = null;
+                if (finished == extractTask)
+                    extracted = await extractTask;
+                else
+                    _ = extractTask.ContinueWith(task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+
+                var receipt = ChooseReceipt(openReceipts, file.OrganizationId, file.OfficeName, extracted);
+                if (receipt != null)
                 {
-                    AddFailure(result, fileName + ": amount, date, or vendor was not read");
-                    await ReportAsync(report, "file", fileName, "failed", "amount, date, or vendor was not read");
+                    relocation = await _fileService.RelocateStoredImageAsync(file.Url, receipt.OrganizationId, receipt.OfficeName, "receipts", receipt.ReceiptCode, 2048);
+                    if (relocation.Missing || string.IsNullOrWhiteSpace(relocation.NewPath))
+                    {
+                        AddFailure(result, fileName + ": file was not found");
+                        await ReportAsync(report, "file", fileName, "failed", "file was not found");
+                        continue;
+                    }
+
+                    var saved = await _adminStorageRepository.UpdateReceiptPathAsync(receipt.ReceiptId, receipt.OrganizationId, relocation.NewPath);
+                    if (saved < 1)
+                        throw new InvalidOperationException("Database row was not updated.");
+
+                    pathSaved = true;
+                    openReceipts.Remove(receipt);
+                    result.Moved++;
+                    await ReportAsync(report, "file", fileName, "moved", receipt.ReceiptCode);
                     continue;
                 }
 
-                var matches = openReceipts.Where(row =>
-                    row.OrganizationId == file.OrganizationId
-                    && string.Equals(OfficeHyphen(row.OfficeName), OfficeHyphen(file.OfficeName), StringComparison.OrdinalIgnoreCase)
-                    && Math.Abs(row.Amount - extracted.Amount.Value) < 0.01m
-                    && row.ReceiptDate == extracted.ReceiptDate.Value
-                    && VendorsMatch(row.VendorName, extracted.VendorName)).ToList();
-                if (matches.Count != 1)
-                {
-                    var detail = matches.Count == 0 ? "no receipt matched" : "more than one receipt matched";
-                    AddFailure(result, fileName + ": " + detail);
-                    await ReportAsync(report, "file", fileName, "failed", detail);
-                    continue;
-                }
-
-                var receipt = matches[0];
-                relocation = await _fileService.RelocateStoredImageAsync(file.Url, receipt.OrganizationId, receipt.OfficeName, "receipts", receipt.ReceiptCode, 2048);
+                relocation = await _fileService.RelocateStoredImageAsync(file.Url, file.OrganizationId, file.OfficeName, "receipts", null, 2048);
                 if (relocation.Missing || string.IsNullOrWhiteSpace(relocation.NewPath))
                 {
                     AddFailure(result, fileName + ": file was not found");
@@ -284,14 +294,9 @@ public class StoragePathRepairService
                     continue;
                 }
 
-                var saved = await _adminStorageRepository.UpdateReceiptPathAsync(receipt.ReceiptId, receipt.OrganizationId, relocation.NewPath);
-                if (saved < 1)
-                    throw new InvalidOperationException("Database row was not updated.");
-
                 pathSaved = true;
-                openReceipts.Remove(receipt);
                 result.Moved++;
-                await ReportAsync(report, "file", fileName, "moved", receipt.ReceiptCode);
+                await ReportAsync(report, "file", fileName, "moved", "unmatched");
             }
             catch (Exception ex)
             {
@@ -704,22 +709,37 @@ public class StoragePathRepairService
         return (officeName ?? string.Empty).Trim().ToLowerInvariant().Replace(' ', '-');
     }
 
-    private static bool VendorsMatch(string? receiptVendor, string? fileVendor)
+    private static UnlinkedReceiptRow? ChooseReceipt(IReadOnlyList<UnlinkedReceiptRow> openReceipts, Guid organizationId, string officeName, ReceiptDocumentExtraction? extracted)
     {
-        var receipt = VendorKey(receiptVendor);
-        var file = VendorKey(fileVendor);
-        if (receipt.Length < 4 || file.Length < 4)
-            return false;
+        if (extracted?.Amount == null || extracted.ReceiptDate == null)
+            return null;
 
-        return receipt == file || receipt.Contains(file, StringComparison.Ordinal) || file.Contains(receipt, StringComparison.Ordinal);
+        var matches = openReceipts.Where(row =>
+            row.OrganizationId == organizationId
+            && string.Equals(OfficeHyphen(row.OfficeName), OfficeHyphen(officeName), StringComparison.OrdinalIgnoreCase)
+            && Math.Abs(row.Amount - extracted.Amount.Value) < 0.01m
+            && row.ReceiptDate == extracted.ReceiptDate.Value).ToList();
+        if (matches.Count == 1)
+            return matches[0];
+
+        var lastFour = LastFourDigits(extracted.CardLastFour);
+        if (matches.Count > 1 && lastFour.Length == 4)
+        {
+            var byCard = matches.Where(row => LastFourDigits(row.CardLastFour) == lastFour).ToList();
+            if (byCard.Count == 1)
+                return byCard[0];
+        }
+
+        return null;
     }
 
-    private static string VendorKey(string? value)
+    private static string LastFourDigits(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return string.Empty;
 
-        return new string(value.Trim().ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        return digits.Length >= 4 ? digits[^4..] : string.Empty;
     }
 
     private static string ContentTypeOf(string fileName)
