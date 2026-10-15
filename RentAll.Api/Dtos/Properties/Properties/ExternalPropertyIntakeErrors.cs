@@ -229,7 +229,7 @@ public static class ExternalPropertyIntakeErrors
             errors.Add($"{prefix}.{field} is {raw.Length} characters; max is {maxLength}. Received \"{raw}\".");
     }
 
-    public static void CollectContactElement(JsonElement element, string contactPrefix, List<string> errors)
+    public static void CollectContactElement(JsonElement element, string contactPrefix, List<string> errors, bool ownerOnly = false)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -240,14 +240,16 @@ public static class ExternalPropertyIntakeErrors
         CollectRequiredString(element, contactPrefix, "firstName", errors);
         CollectRequiredString(element, contactPrefix, "lastName", errors);
         CollectRequiredString(element, contactPrefix, "email", errors);
-        CollectRequiredContactEntityType(element, contactPrefix, errors);
+        if (!ownerOnly)
+            CollectRequiredContactEntityType(element, contactPrefix, errors);
         CollectState(element, contactPrefix, "state", errors);
         CollectMaxLength(element, contactPrefix, "zip", 10, errors);
         CollectMaxLength(element, contactPrefix, "phone", 25, errors);
         CollectMaxLength(element, contactPrefix, "address1", 100, errors);
         CollectMaxLength(element, contactPrefix, "city", 100, errors);
         CollectEnum<OwnerType>(element, contactPrefix, "ownerTypeId", errors, "0=Individual or 1=Company");
-        CollectEnum<VendorType>(element, contactPrefix, "vendorTypeId", errors, "0=Individual or 1=Company");
+        if (!ownerOnly)
+            CollectEnum<VendorType>(element, contactPrefix, "vendorTypeId", errors, "0=Individual or 1=Company");
         CollectOwnerProfile(element, contactPrefix, errors);
         CollectContactCard(element, contactPrefix, errors);
     }

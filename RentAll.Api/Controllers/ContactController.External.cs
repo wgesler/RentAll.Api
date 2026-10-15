@@ -35,11 +35,8 @@ public partial class ContactController
         for (var index = 0; index < contacts.Count; index++)
         {
             var contact = contacts[index];
-            var item = new ExternalContactBatchItemResultDto
-            {
-                Index = index,
-                Email = contact.Email.Trim()
-            };
+            var email = contact.Email.Trim();
+            var item = new ExternalContactBatchItemResultDto();
 
             var itemFailedWithException = false;
             try
@@ -47,15 +44,14 @@ public partial class ContactController
                 var result = await _externalPropertyOwnerContactResolver.UpsertOwnerAsync(contact, context.OrganizationId, context.OfficeId, SystemUserId, $"Contacts[{index}]");
                 item.Success = result.Success;
                 item.Updated = result.Updated;
-                item.ContactCode = result.Contact?.ContactCode;
                 item.ErrorMessage = result.ErrorMessage;
-                item.Contact = result.Contact == null ? null : ExternalContactResponseDto.FromContact(result.Contact);
+                item.Contact = result.Contact == null ? null : await ToExternalContactAsync(result.Contact);
             }
             catch (Exception ex)
             {
                 hadException = true;
                 itemFailedWithException = true;
-                _logger.LogError(ex, "[ExternalContactTrace] Error upserting contact {Email}", item.Email);
+                _logger.LogError(ex, "[ExternalContactTrace] Error upserting contact {Email}", email);
                 item.Success = false;
                 item.ErrorMessage = "An error occurred while saving the contact";
             }
@@ -69,7 +65,7 @@ public partial class ContactController
                     EventType = PropertyUploadLogEvents.ContactUpsert,
                     Operation = PropertyUploadLogOperations.UpsertContact,
                     Detail = item.Success
-                        ? $"{(item.Updated ? "Updated" : "Created")} contact {item.ContactCode} {item.Email}."
+                        ? $"{(item.Updated ? "Updated" : "Created")} contact {item.Contact?.ContactCode} {email}."
                         : item.ErrorMessage
                 },
                 item.Success ? StatusCodes.Status200OK : itemFailedWithException ? StatusCodes.Status500InternalServerError : StatusCodes.Status400BadRequest,
@@ -104,7 +100,7 @@ public partial class ContactController
         try
         {
             var contacts = await LoadExternalContactsAsync(query.OrganizationId, query.OfficeId);
-            return Ok(ToExternalContactBatchResponse(contacts));
+            return Ok(await ToExternalContactBatchResponse(contacts));
         }
         catch (Exception ex)
         {
@@ -114,8 +110,8 @@ public partial class ContactController
     }
 
     [AllowAnonymous]
-    [HttpGet("external/{email}")]
-    public async Task<IActionResult> GetExternalContactByEmailAsync(string email, [FromQuery] ExternalContactExportQueryDto query)
+    [HttpGet("external/{externalRefNo}")]
+    public async Task<IActionResult> GetExternalContactByRefNoAsync(string externalRefNo, [FromQuery] ExternalContactExportQueryDto query)
     {
         if (query == null)
             return BadRequest("Query parameters are required");
@@ -124,8 +120,8 @@ public partial class ContactController
         if (!isValid)
             return BadRequest(errorMessage ?? "Invalid request data");
 
-        if (string.IsNullOrWhiteSpace(email))
-            return BadRequest("Email is required");
+        if (string.IsNullOrWhiteSpace(externalRefNo))
+            return BadRequest("ExternalRefNo is required");
 
         var accessError = await ValidateExternalContactAccessAsync(query.OrganizationId, query.OfficeId);
         if (accessError != null)
@@ -133,38 +129,53 @@ public partial class ContactController
 
         try
         {
-            var normalizedEmail = email.Trim();
+            var externalRef = externalRefNo.Trim();
             var contacts = await LoadExternalContactsAsync(query.OrganizationId, query.OfficeId);
-            var matches = contacts.Where(contact => string.Equals(contact.Email?.Trim(), normalizedEmail, StringComparison.OrdinalIgnoreCase)).ToList();
+            var matches = contacts.Where(contact =>
+                string.Equals(contact.ExternalRefNo?.Trim(), externalRef, StringComparison.OrdinalIgnoreCase)).ToList();
             if (matches.Count == 0)
                 return NotFound("Contact not found");
 
-            return Ok(ToExternalContactBatchResponse(matches));
+            return Ok(await ToExternalContactBatchResponse(matches));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting external contact. OrganizationId={OrganizationId}, OfficeId={OfficeId}, Email={Email}", query.OrganizationId, query.OfficeId, email);
+            _logger.LogError(ex, "Error getting external contact. OrganizationId={OrganizationId}, OfficeId={OfficeId}, ExternalRefNo={ExternalRefNo}", query.OrganizationId, query.OfficeId, externalRefNo);
             return ServerError("An error occurred while retrieving the contact");
         }
     }
 
     private async Task<List<Contact>> LoadExternalContactsAsync(Guid organizationId, int officeId)
     {
-        var contacts = await _contactRepository.GetContactsByOfficeIdAsync(organizationId, officeId.ToString());
+        var contacts = await _contactRepository.GetExternalContactsByOfficeAsync(organizationId, officeId);
         return contacts.Where(ExternalContactResponseDto.IsExportable).ToList();
     }
 
-    private static ExternalContactBatchResponseDto ToExternalContactBatchResponse(IEnumerable<Contact> contacts)
+    private async Task<ExternalContactResponseDto> ToExternalContactAsync(Contact contact)
     {
-        var results = contacts.Select((contact, index) => new ExternalContactBatchItemResultDto
+        var response = ExternalContactResponseDto.FromContact(contact);
+        if (contact.ContactCardId is not > 0)
+            return response;
+
+        var card = await _contactRepository.GetContactCardByIdAsync(contact.ContactCardId.Value, contact.OrganizationId, contact.OfficeId);
+        if (card != null)
+            response.ApplyCard(card.CardTypeId, card.CardName, card.LastFour);
+
+        return response;
+    }
+
+    private async Task<ExternalContactBatchResponseDto> ToExternalContactBatchResponse(IEnumerable<Contact> contacts)
+    {
+        var results = new List<ExternalContactBatchItemResultDto>();
+        foreach (var contact in contacts)
         {
-            Index = index,
-            Email = contact.Email?.Trim() ?? string.Empty,
-            ContactCode = contact.ContactCode,
-            Success = true,
-            Updated = false,
-            Contact = ExternalContactResponseDto.FromContact(contact)
-        }).ToList();
+            results.Add(new ExternalContactBatchItemResultDto
+            {
+                Success = true,
+                Updated = false,
+                Contact = await ToExternalContactAsync(contact)
+            });
+        }
 
         return new ExternalContactBatchResponseDto
         {
@@ -201,12 +212,14 @@ public partial class ContactController
             {
                 var prefix = $"Contacts[{index}]";
                 var itemErrors = new List<string>();
-                ExternalPropertyIntakeErrors.CollectContactElement(contactElement, prefix, itemErrors);
+                ExternalPropertyIntakeErrors.CollectContactElement(contactElement, prefix, itemErrors, ownerOnly: true);
                 if (itemErrors.Count == 0)
                 {
                     try
                     {
                         var contact = ExternalPropertyIntakeJson.DeserializeContact(contactElement);
+                        contact.EntityTypeId = (int)EntityType.Owner;
+                        contact.VendorTypeId = null;
                         itemErrors.AddRange(contact.CollectErrors(prefix));
                         if (itemErrors.Count == 0)
                             contacts.Add(contact);

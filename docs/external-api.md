@@ -520,23 +520,23 @@ Send the same `propertyCode` with changed fields inside `properties`:
 ## 8) External Contact API (v1)
 
 - **Authentication:** same `X-Api-Key` property key as Section 5
-- **Contact object:** `externalRefNo` is first and optional. Required: `firstName`, `lastName`, `email`, `entityTypeId`. Optional, and safe to omit: `preferredName`, `extension`, `notes`, `isActive` (new contacts default to true), `isInternational` (new contacts default to false), W9 fields (`dateOfBirth`, `federalTaxClassificationId`, `ownerIdTypeId`, `identificationNumber`, `ownerDocumentId`), document URLs (`documentFront`, `documentBack`, `w9` — https links; images are compressed and stored, and the contact keeps the stored path), bank fields (`bankName`, `routingNumber`, `accountNumber`), and card fields (`cardTypeId`, `cardName`, `cardNumber`).
-- **Entity types:** `3` Company, `4` Owner, `5` Tenant, `6` Vendor
-- **Match:** email, within the organization. The same email updates the existing contact. A different entity type on that email is rejected.
+- **Contact object:** `externalRefNo` is first and optional. Required: `firstName`, `lastName`, `email`. Every contact is saved as an Owner (`entityTypeId` 4). Do not send `entityTypeId` or `vendorTypeId`. Optional, and safe to omit: `preferredName`, `extension`, `notes`, `isActive` (new contacts default to true), `isInternational` (new contacts default to false), `ownerTypeId` (0=Individual, 1=Company; companyName is required when ownerTypeId is 1), W9 fields (`dateOfBirth`, `federalTaxClassificationId`, `ownerIdTypeId`, `identificationNumber`, `ownerDocumentId`), document URLs (`documentFront`, `documentBack`, `w9` — https links; images are compressed and stored, and the contact keeps the stored path), bank fields (`bankName`, `routingNumber`, `accountNumber`), and card fields (`cardTypeId`, `cardName`, `cardNumber`).
+- **Match:** email, within the organization. The same email updates the existing owner. A different entity type on that email is rejected.
 
 ### List contacts
 
 - **Method:** `GET`
 - **URL:** `/api/contact/external?organizationId={guid}&officeId={id}`
-- **Included contacts:** active Company, Owner, Tenant, and Vendor contacts in that office
-- **Success response:** `200 OK` in the upsert batch shape: `successCount`, `failureCount`, and `results`. Each result includes `email`, `contactCode`, and `contact`. `contact.properties` is that contact’s property codes.
+- **Included contacts:** active Owner contacts in that office
+- **Success response:** `200 OK` in the upsert batch shape: `successCount`, `failureCount`, and `results`. Each result includes `success`, `updated`, `errorMessage`, and `contact`. `contact.contactCode` is first, then `externalRefNo`. File paths are not returned. `cardNumber` and `accountNumber` are masked. `contact.properties` is that contact’s property codes.
 
-### Get contact by email
+### Get contact by externalRefNo
 
 - **Method:** `GET`
-- **URL:** `/api/contact/external/{email}?organizationId={guid}&officeId={id}`
+- **URL:** `/api/contact/external/{externalRefNo}?organizationId={guid}&officeId={id}`
+- **Match:** `externalRefNo` is the caller’s contact id
 - **Success response:** `200 OK` in the same batch shape, containing the matching contact
-- **Not found:** `404` when that email is not an active contact in that office
+- **Not found:** `404` when that externalRefNo is not an active contact in that office
 
 ### Upsert contacts
 

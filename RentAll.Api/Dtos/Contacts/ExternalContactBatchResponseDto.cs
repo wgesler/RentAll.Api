@@ -2,9 +2,6 @@ namespace RentAll.Api.Dtos.Contacts;
 
 public class ExternalContactBatchItemResultDto
 {
-    public int Index { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public string? ContactCode { get; set; }
     public bool Success { get; set; }
     public bool Updated { get; set; }
     public string? ErrorMessage { get; set; }

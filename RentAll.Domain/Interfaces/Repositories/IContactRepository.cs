@@ -6,6 +6,7 @@ public interface IContactRepository
 {
     #region Contacts
     Task<IEnumerable<Contact>> GetContactsByOfficeIdAsync(Guid organizationId, string officeAccess);
+    Task<IEnumerable<Contact>> GetExternalContactsByOfficeAsync(Guid organizationId, int officeId);
     Task<IEnumerable<Contact>> GetContactsByOrganizationIdAsync(Guid organizationId);
     Task<IEnumerable<Contact>> GetContactsByContactTypeIdAsync(int contactTypeId, Guid organizationId);
     Task<Contact?> GetContactByIdAsync(Guid contactId);

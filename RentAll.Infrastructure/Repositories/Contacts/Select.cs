@@ -22,6 +22,21 @@ namespace RentAll.Infrastructure.Repositories.Contacts
             return res.Select(ConvertEntityToModel);
         }
 
+        public async Task<IEnumerable<Contact>> GetExternalContactsByOfficeAsync(Guid organizationId, int officeId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var res = await db.DapperProcQueryAsync<ContactEntity>("Organization.Contact_GetByExternalRefNo", new
+            {
+                OrganizationId = organizationId,
+                OfficeId = officeId
+            });
+
+            if (res == null || !res.Any())
+                return Enumerable.Empty<Contact>();
+
+            return res.Select(ConvertEntityToModel);
+        }
+
         public async Task<IEnumerable<Contact>> GetContactsByOrganizationIdAsync(Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);

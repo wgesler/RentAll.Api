@@ -148,6 +148,8 @@ public class ExternalPropertyContactDto
 
         if (OwnerTypeId.HasValue && !Enum.IsDefined(typeof(OwnerType), OwnerTypeId.Value))
             errors.Add($"{fieldLabel}.ownerTypeId must be 0=Individual or 1=Company. Received {OwnerTypeId.Value}.");
+        if (OwnerTypeId == (int)OwnerType.Company && string.IsNullOrWhiteSpace(CompanyName))
+            errors.Add($"{fieldLabel}.companyName is required when ownerTypeId is 1 (Company).");
         if (VendorTypeId.HasValue && !Enum.IsDefined(typeof(VendorType), VendorTypeId.Value))
             errors.Add($"{fieldLabel}.vendorTypeId must be 0=Individual or 1=Company. Received {VendorTypeId.Value}.");
 
