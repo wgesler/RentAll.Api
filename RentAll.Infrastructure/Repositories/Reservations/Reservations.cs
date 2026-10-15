@@ -202,6 +202,18 @@ namespace RentAll.Infrastructure.Repositories.Reservations
 
             return MapReservationsWithExtraFeeLineEntities(headers, extraFeeLines).FirstOrDefault();
         }
+
+        public async Task<IEnumerable<Reservation>> GetExternalReservationsByOfficeAsync(Guid organizationId, int officeId)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            var (headers, extraFeeLines) = await db.DapperProcQueryMultipleAsync<ReservationEntity, ExtraFeeLineEntity>("Property.Reservation_GetByExternalRefNo", new
+            {
+                OrganizationId = organizationId,
+                OfficeId = officeId
+            });
+
+            return MapReservationsWithExtraFeeLineEntities(headers, extraFeeLines);
+        }
         #endregion
 
         #region Creates

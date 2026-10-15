@@ -73,6 +73,91 @@ public partial class ReservationController
         return StatusCode(hadException ? StatusCodes.Status500InternalServerError : StatusCodes.Status400BadRequest, response);
     }
 
+    [AllowAnonymous]
+    [HttpGet("external")]
+    public async Task<IActionResult> GetExternalReservationsAsync([FromQuery] ExternalReservationExportQueryDto query)
+    {
+        if (query == null)
+            return BadRequest("Query parameters are required");
+
+        var (isValid, errorMessage) = query.Validate();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        var accessError = await ValidateExternalReservationAccessAsync(query.OrganizationId, query.OfficeId);
+        if (accessError != null)
+            return accessError;
+
+        try
+        {
+            var reservations = await _reservationRepository.GetExternalReservationsByOfficeAsync(query.OrganizationId, query.OfficeId);
+            return Ok(ToExternalReservationBatchResponse(reservations));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting external reservations. OrganizationId={OrganizationId}, OfficeId={OfficeId}", query.OrganizationId, query.OfficeId);
+            return ServerError("An error occurred while retrieving reservations");
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("external/{externalRefNo}")]
+    public async Task<IActionResult> GetExternalReservationByRefNoAsync(string externalRefNo, [FromQuery] ExternalReservationExportQueryDto query)
+    {
+        if (query == null)
+            return BadRequest("Query parameters are required");
+
+        var (isValid, errorMessage) = query.Validate();
+        if (!isValid)
+            return BadRequest(errorMessage ?? "Invalid request data");
+
+        if (string.IsNullOrWhiteSpace(externalRefNo))
+            return BadRequest("ExternalRefNo is required");
+
+        var accessError = await ValidateExternalReservationAccessAsync(query.OrganizationId, query.OfficeId);
+        if (accessError != null)
+            return accessError;
+
+        try
+        {
+            var externalRef = externalRefNo.Trim();
+            var reservations = await _reservationRepository.GetExternalReservationsByOfficeAsync(query.OrganizationId, query.OfficeId);
+            var matches = reservations.Where(reservation =>
+                string.Equals(reservation.ExternalRefNo?.Trim(), externalRef, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (matches.Count == 0)
+                return NotFound("Reservation not found");
+
+            return Ok(ToExternalReservationBatchResponse(matches));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting external reservation. OrganizationId={OrganizationId}, OfficeId={OfficeId}, ExternalRefNo={ExternalRefNo}", query.OrganizationId, query.OfficeId, externalRefNo);
+            return ServerError("An error occurred while retrieving the reservation");
+        }
+    }
+
+    private static ExternalReservationBatchResponseDto ToExternalReservationBatchResponse(IEnumerable<Reservation> reservations)
+    {
+        var results = reservations.Select((reservation, index) => new ExternalReservationBatchItemResultDto
+        {
+            Index = index,
+            PropertyCode = reservation.PropertyCode,
+            ReferenceNo = string.IsNullOrWhiteSpace(reservation.ReferenceNo) ? null : reservation.ReferenceNo.Trim(),
+            ExternalRefNo = string.IsNullOrWhiteSpace(reservation.ExternalRefNo) ? null : reservation.ExternalRefNo.Trim(),
+            ReservationCode = reservation.ReservationCode,
+            Success = true,
+            Updated = false,
+            Reservation = new ReservationResponseDto(reservation)
+        }).ToList();
+
+        return new ExternalReservationBatchResponseDto
+        {
+            SuccessCount = results.Count,
+            FailureCount = 0,
+            Results = results
+        };
+    }
+
     private async Task<(bool Success, bool Updated, ReservationResponseDto? Reservation, string? ErrorMessage)> UpsertExternalReservationAsync(CreateExternalReservationDto dto,ExternalPropertyIntakeContext context)
     {
         var property = await _propertyRepository.GetPropertyByCodeAsync(dto.PropertyCode.Trim(), context.OrganizationId);

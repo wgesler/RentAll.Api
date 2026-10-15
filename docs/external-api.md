@@ -388,6 +388,22 @@ Send the same `propertyCode` with changed fields inside `properties`:
 - **Behavior (POST):** Create, or upsert when `referenceNo` matches an active reservation on that property
 - **Success response:** `200 OK` with per-item results (`successCount`, `failureCount`, `results`)
 
+### List reservations
+
+- **Method:** `GET`
+- **URL:** `/api/reservation/external?organizationId={guid}&officeId={id}`
+- **Authentication:** same `X-Api-Key` property key as the reservation POST
+- **Included reservations:** active reservations in that office
+- **Success response:** `200 OK` in the same shape as the reservation upsert: `successCount`, `failureCount`, and `results`. Each result includes `propertyCode`, `referenceNo`, `externalRefNo`, `reservationCode`, and `reservation`.
+
+### Get reservation by external reference
+
+- **Method:** `GET`
+- **URL:** `/api/reservation/external/{externalRefNo}?organizationId={guid}&officeId={id}`
+- **Match:** `externalRefNo` is the caller’s reservation id
+- **Success response:** `200 OK` in the same upsert shape, containing the matching reservation
+- **Not found:** `404` when that external reference is not an active reservation in that office
+
 ### Required header fields
 
 - `organizationId` (string, GUID)
