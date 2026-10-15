@@ -11,7 +11,6 @@ namespace RentAll.Api.Services;
 public class StoragePathRepairService
 {
     private const int ErrorLimit = 25;
-    private const string DenverDbaOffice = "denver dba avenuewest colorado";
     private static readonly Regex GuidePathRegex = new("data-rentall-guide-path=\"(?<path>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private readonly IAdminStorageRepository _adminStorageRepository;
@@ -181,54 +180,6 @@ public class StoragePathRepairService
         return result;
     }
 
-    public async Task<StorageRepairResultDto> MatchHyphenReceiptsAsync(Func<StorageRepairEventDto, Task>? report = null)
-    {
-        var result = new StorageRepairResultDto();
-        var orgIds = (await _adminStorageRepository.GetOfficeLogosAsync()).Select(office => office.OrganizationId).Distinct().ToList();
-        var files = new List<(Guid OrganizationId, string Url)>();
-        foreach (var orgId in orgIds)
-        {
-            try
-            {
-                var urls = await _fileService.ListImageUrlsAsync(orgId, DenverDbaOffice, "receipts", null);
-                foreach (var url in urls)
-                    files.Add((orgId, url));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[StorageRepair] Denver DBA receipts could not be listed");
-                AddFailure(result, "denver dba avenuewest colorado: receipts could not be listed");
-            }
-        }
-
-        await ReportAsync(report, "start", "", "", "", files.Count);
-        foreach (var file in files)
-        {
-            var fileName = FileNameOf(file.Url);
-            try
-            {
-                var relocation = await _fileService.RelocateStoredImageAsync(file.Url, file.OrganizationId, "denver", "receipts", null, 2048);
-                if (relocation.Missing || string.IsNullOrWhiteSpace(relocation.NewPath))
-                {
-                    AddFailure(result, fileName + ": file was not found");
-                    await ReportAsync(report, "file", fileName, "failed", "file was not found");
-                    continue;
-                }
-
-                result.Moved++;
-                await ReportAsync(report, "file", fileName, "moved", "denver");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[StorageRepair] {File} could not be moved to denver", fileName);
-                AddFailure(result, fileName + ": " + ex.Message);
-                await ReportAsync(report, "file", fileName, "failed", ex.Message);
-            }
-        }
-
-        return result;
-    }
-
     public async Task<StorageRepairResultDto> RepairApplianceDecalsAsync(Func<StorageRepairEventDto, Task>? report = null)
     {
         var result = new StorageRepairResultDto();
@@ -243,88 +194,6 @@ public class StoragePathRepairService
         }
         rows = await _adminStorageRepository.GetApplianceDecalsAsync();
         await ReattachEmptyImagesAsync(result, report, rows.Where(row => string.IsNullOrWhiteSpace(row.DecalPath)).Select(row => new EmptyImageSlot("appliance " + row.ApplianceId, row.OrganizationId, row.OfficeName, "appliancedecal", row.PropertyCode, 2500, path => _adminStorageRepository.UpdateApplianceDecalPathAsync(row.ApplianceId, path))).ToList(), rows.Select(row => row.DecalPath));
-        return result;
-    }
-
-    public async Task<StorageRepairResultDto> RepairDenverDbaDocumentsAsync(Func<StorageRepairEventDto, Task>? report = null)
-    {
-        var result = new StorageRepairResultDto();
-        var pairs = await GetOfficeFolderPairsAsync();
-        var folders = new List<string>();
-        foreach (var pair in pairs)
-        {
-            folders.Add(pair.From);
-            if (pair.To.Contains(' '))
-                folders.Add(pair.To);
-        }
-
-        var rows = (await _adminStorageRepository.GetStoredPathsForFoldersAsync(folders))
-            .Where(row => MatchOfficeFolder(row.DocumentPath, pairs) != null)
-            .ToList();
-        await ReportAsync(report, "start", "", "", "", rows.Count);
-        foreach (var row in rows)
-        {
-            var pair = MatchOfficeFolder(row.DocumentPath, pairs)!.Value;
-            var fileName = FileNameOf(row.DocumentPath);
-            StoredImageRelocation? relocation = null;
-            var pathSaved = false;
-            try
-            {
-                relocation = await _fileService.CopyOfficeFileIfMissingAsync(row.DocumentPath, pair.From, pair.To, row.MaxLength);
-                if (relocation.Missing)
-                {
-                    AddFailure(result, row.Source + " " + row.RecordId + ": file was not found");
-                    await ReportAsync(report, "file", fileName, "failed", "file was not found");
-                    continue;
-                }
-
-                var newPath = relocation.NewPath ?? "";
-                var pathChanged = !string.Equals(row.DocumentPath, newPath, StringComparison.OrdinalIgnoreCase);
-                if (pathChanged)
-                {
-                    var saved = await _adminStorageRepository.UpdateStoredPathAsync(row.Source, row.RecordId, row.OrganizationId, newPath);
-                    if (saved < 1)
-                        throw new InvalidOperationException("Database row was not updated.");
-                }
-
-                pathSaved = true;
-
-                if (!string.IsNullOrWhiteSpace(relocation.DuplicatePath))
-                    await _fileService.DeleteDocumentAsync(Guid.Empty, pair.From, relocation.DuplicatePath);
-
-                if (!pathChanged && string.IsNullOrWhiteSpace(relocation.DuplicatePath) && relocation.Content.Length == 0)
-                {
-                    result.AlreadyCorrect++;
-                    await ReportAsync(report, "file", fileName, "already correct", "");
-                    continue;
-                }
-
-                result.Moved++;
-                await ReportAsync(report, "file", fileName, pathChanged && relocation.Content.Length == 0 ? "saved" : "moved", "");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[StorageRepair] {Source} {RecordId} failed", row.Source, row.RecordId);
-                if (!pathSaved && relocation != null && !string.IsNullOrWhiteSpace(relocation.NewPath))
-                {
-                    try
-                    {
-                        if (relocation.ReplacedContent.Length > 0)
-                            await _fileService.RestoreStoredImageAsync(relocation.NewPath, relocation.ReplacedContent, relocation.ReplacedContentType);
-                        else if (relocation.Content.Length > 0)
-                            await _fileService.DeleteDocumentAsync(Guid.Empty, pair.To, relocation.NewPath);
-                    }
-                    catch (Exception restoreEx)
-                    {
-                        _logger.LogError(restoreEx, "[StorageRepair] {Source} {RecordId} could not restore the original file", row.Source, row.RecordId);
-                    }
-                }
-
-                AddFailure(result, row.Source + " " + row.RecordId + ": " + ex.Message);
-                await ReportAsync(report, "file", fileName, "failed", ex.Message);
-            }
-        }
-
         return result;
     }
 
@@ -551,56 +420,6 @@ public class StoragePathRepairService
         {
             // A dropped progress stream must not undo a file that already moved.
         }
-    }
-
-    private async Task<List<(string From, string To)>> GetOfficeFolderPairsAsync()
-    {
-        var pairs = new List<(string From, string To)>();
-        foreach (var name in await _adminStorageRepository.GetSpacedOfficeNamesAsync())
-        {
-            var spaced = name.Trim().ToLowerInvariant();
-            if (spaced.Length == 0 || spaced == "denver dba avenuewest colorado")
-                continue;
-            var hyphen = spaced.Replace(" ", "-");
-            if (!string.Equals(hyphen, spaced, StringComparison.Ordinal) && pairs.TrueForAll(pair => !string.Equals(pair.From, hyphen, StringComparison.Ordinal)))
-                pairs.Add((hyphen, spaced));
-        }
-
-        pairs.Add(("denver dba avenuewest colorado", "denver"));
-        return pairs;
-    }
-
-    private static (string From, string To)? MatchOfficeFolder(string path, IReadOnlyList<(string From, string To)> pairs)
-    {
-        (string From, string To)? best = null;
-        var bestLength = -1;
-        foreach (var pair in pairs)
-        {
-            var from = HasPathSegment(path, pair.From);
-            var to = HasPathSegment(path, pair.To);
-            if (!from && !to)
-                continue;
-            var length = Math.Max(from ? pair.From.Length : 0, to ? pair.To.Length : 0);
-            if (length > bestLength)
-            {
-                best = pair;
-                bestLength = length;
-            }
-        }
-
-        return best;
-    }
-
-    private static bool HasPathSegment(string path, string folder)
-    {
-        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < parts.Length - 1; i++)
-        {
-            if (string.Equals(parts[i], folder, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
     }
 
     private static string RemoveGuideImage(string html, string path)

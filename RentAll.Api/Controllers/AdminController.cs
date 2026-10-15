@@ -55,17 +55,9 @@ public class AdminController : BaseController
     public Task RepairReceiptImages(CancellationToken cancellationToken)
         => RepairStreamAsync(report => _storagePathRepairService.RepairReceiptImagesAsync(report), cancellationToken);
 
-    [HttpPost("match-receipts")]
-    public Task MatchHyphenReceipts(CancellationToken cancellationToken)
-        => RepairStreamAsync(report => _storagePathRepairService.MatchHyphenReceiptsAsync(report), cancellationToken);
-
     [HttpPost("appliance-decals")]
     public Task RepairApplianceDecals(CancellationToken cancellationToken)
         => RepairStreamAsync(report => _storagePathRepairService.RepairApplianceDecalsAsync(report), cancellationToken);
-
-    [HttpPost("denver-documents")]
-    public Task RepairDenverDocuments(CancellationToken cancellationToken)
-        => RepairStreamAsync(report => _storagePathRepairService.RepairDenverDbaDocumentsAsync(report), cancellationToken);
 
     private async Task RepairStreamAsync(Func<Func<StorageRepairEventDto, Task>, Task<StorageRepairResultDto>> repair, CancellationToken cancellationToken)
     {

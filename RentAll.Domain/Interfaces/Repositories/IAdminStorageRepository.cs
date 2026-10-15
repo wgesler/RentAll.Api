@@ -22,11 +22,6 @@ public interface IAdminStorageRepository
     Task<int> UpdateListingPhotoPathAsync(int photoId, Guid organizationId, string? photoPath);
     Task<IReadOnlyList<InspectionPhotoRow>> GetInspectionPhotosAsync();
     Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath);
-    Task<IReadOnlyList<string>> GetSpacedOfficeNamesAsync();
-    Task<IReadOnlyList<SpacedOfficeRow>> GetSpacedOfficesAsync();
-    Task<IReadOnlyList<UnlinkedReceiptRow>> GetReceiptsWithoutFileAsync();
-    Task<IReadOnlyList<StoredPathRow>> GetStoredPathsForFoldersAsync(IReadOnlyList<string> folders);
-    Task<int> UpdateStoredPathAsync(string source, string recordId, string organizationId, string documentPath);
 }
 
 public sealed class OfficeLogoRow
@@ -83,33 +78,6 @@ public sealed class InspectionPhotoRow
     public string? OfficeName { get; set; }
     public string? PropertyCode { get; set; }
     public string PhotoPath { get; set; } = string.Empty;
-}
-
-public sealed class StoredPathRow
-{
-    public string Source { get; set; } = string.Empty;
-    public string RecordId { get; set; } = string.Empty;
-    public string OrganizationId { get; set; } = string.Empty;
-    public string DocumentPath { get; set; } = string.Empty;
-    public int MaxLength { get; set; }
-}
-
-public sealed class SpacedOfficeRow
-{
-    public Guid OrganizationId { get; set; }
-    public string Name { get; set; } = string.Empty;
-}
-
-public sealed class UnlinkedReceiptRow
-{
-    public Guid ReceiptId { get; set; }
-    public Guid OrganizationId { get; set; }
-    public string? OfficeName { get; set; }
-    public string ReceiptCode { get; set; } = string.Empty;
-    public DateOnly ReceiptDate { get; set; }
-    public decimal Amount { get; set; }
-    public string VendorName { get; set; } = string.Empty;
-    public string CardLastFour { get; set; } = string.Empty;
 }
 
 public sealed class ApplianceImageRow

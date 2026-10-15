@@ -3,21 +3,11 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Infrastructure.Configuration;
-using System.Text.Json;
 
 namespace RentAll.Infrastructure.Repositories.Admin;
 
 public class AdminStorageRepository : IAdminStorageRepository
 {
-    private static readonly HashSet<string> StoredPathSources = new(StringComparer.Ordinal)
-    {
-        "document", "inspection", "property-agreement", "property-w9", "property-insurance",
-        "contact-agreement", "contact-w9", "contact-insurance", "contact-front", "contact-back",
-        "email", "quote", "office-logo", "accounting-logo", "accounting-check", "org-logo",
-        "branding-logo", "branding-collapsed", "profile", "state-form", "receipt", "receipt-draft",
-        "decal", "listing", "inspection-photo", "check-html", "ticket"
-    };
-
     private readonly string _dbConnectionString;
 
     public AdminStorageRepository(IOptions<AppSettings> appSettings)
@@ -84,37 +74,6 @@ public class AdminStorageRepository : IAdminStorageRepository
 
     public Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath)
         => ExecuteProcAsync("Maintenance.Photo_UpdatePath", new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
-
-    public Task<IReadOnlyList<string>> GetSpacedOfficeNamesAsync()
-        => QueryProcAsync<string>("Organization.Office_GetSpacedNames");
-
-    public Task<IReadOnlyList<SpacedOfficeRow>> GetSpacedOfficesAsync()
-        => QueryProcAsync<SpacedOfficeRow>("Organization.Office_GetSpacedOffices");
-
-    public Task<IReadOnlyList<UnlinkedReceiptRow>> GetReceiptsWithoutFileAsync()
-        => QueryProcAsync<UnlinkedReceiptRow>("Maintenance.Receipt_GetWithoutFile");
-
-    public Task<IReadOnlyList<StoredPathRow>> GetStoredPathsForFoldersAsync(IReadOnlyList<string> folders)
-    {
-        if (folders.Count == 0)
-            return Task.FromResult<IReadOnlyList<StoredPathRow>>(Array.Empty<StoredPathRow>());
-
-        return QueryProcAsync<StoredPathRow>("Organization.StoragePath_GetByFolders", new { FoldersJson = JsonSerializer.Serialize(folders) });
-    }
-
-    public Task<int> UpdateStoredPathAsync(string source, string recordId, string organizationId, string documentPath)
-    {
-        if (!StoredPathSources.Contains(source))
-            throw new InvalidOperationException("Stored path source is not valid.");
-
-        return ExecuteProcAsync("Organization.StoragePath_Update", new
-        {
-            Source = source,
-            RecordId = recordId,
-            OrganizationId = organizationId,
-            DocumentPath = documentPath
-        });
-    }
 
     private async Task<IReadOnlyList<T>> QueryProcAsync<T>(string procedureName, object? parameters = null)
     {
