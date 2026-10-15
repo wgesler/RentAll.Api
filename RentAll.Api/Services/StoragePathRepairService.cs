@@ -204,10 +204,7 @@ public class StoragePathRepairService
             var destinationOffice = isDenverDba ? "denver" : officeName;
             var sources = new List<string>();
             if (isDenverDba)
-            {
                 sources.Add(officeName.ToLowerInvariant());
-                sources.Add(OfficeHyphen(officeName));
-            }
             else
             {
                 var hyphenOffice = OfficeHyphen(officeName);
