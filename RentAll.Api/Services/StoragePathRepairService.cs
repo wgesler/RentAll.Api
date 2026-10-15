@@ -197,23 +197,38 @@ public class StoragePathRepairService
         foreach (var office in offices)
         {
             var officeName = (office.Name ?? string.Empty).Trim();
-            if (officeName.Length == 0 || string.Equals(officeName, DenverDbaOffice, StringComparison.OrdinalIgnoreCase))
+            if (officeName.Length == 0)
                 continue;
 
-            var hyphenOffice = OfficeHyphen(officeName);
-            if (!hyphenOffice.Contains('-'))
-                continue;
-
-            try
+            var isDenverDba = string.Equals(officeName, DenverDbaOffice, StringComparison.OrdinalIgnoreCase);
+            var destinationOffice = isDenverDba ? "denver" : officeName;
+            var sources = new List<string>();
+            if (isDenverDba)
             {
-                var urls = await _fileService.ListImageUrlsAsync(office.OrganizationId, hyphenOffice, "receipts", null);
-                foreach (var url in urls)
-                    files.Add((office.OrganizationId, officeName, url));
+                sources.Add(officeName.ToLowerInvariant());
+                sources.Add(OfficeHyphen(officeName));
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "[StorageRepair] {Office} hyphen receipts could not be listed", officeName);
-                AddFailure(result, officeName + ": hyphen receipts could not be listed");
+                var hyphenOffice = OfficeHyphen(officeName);
+                if (!hyphenOffice.Contains('-'))
+                    continue;
+                sources.Add(hyphenOffice);
+            }
+
+            foreach (var sourceOffice in sources)
+            {
+                try
+                {
+                    var urls = await _fileService.ListImageUrlsAsync(office.OrganizationId, sourceOffice, "receipts", null);
+                    foreach (var url in urls)
+                        files.Add((office.OrganizationId, destinationOffice, url));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[StorageRepair] {Office} hyphen receipts could not be listed", sourceOffice);
+                    AddFailure(result, sourceOffice + ": hyphen receipts could not be listed");
+                }
             }
         }
 
@@ -267,7 +282,7 @@ public class StoragePathRepairService
                 var receipt = ChooseReceipt(openReceipts, file.OrganizationId, file.OfficeName, extracted);
                 if (receipt != null)
                 {
-                    relocation = await _fileService.RelocateStoredImageAsync(file.Url, receipt.OrganizationId, receipt.OfficeName, "receipts", receipt.ReceiptCode, 2048);
+                    relocation = await _fileService.RelocateStoredImageAsync(file.Url, receipt.OrganizationId, file.OfficeName, "receipts", receipt.ReceiptCode, 2048);
                     if (relocation.Missing || string.IsNullOrWhiteSpace(relocation.NewPath))
                     {
                         AddFailure(result, fileName + ": file was not found");
@@ -709,6 +724,16 @@ public class StoragePathRepairService
         return (officeName ?? string.Empty).Trim().ToLowerInvariant().Replace(' ', '-');
     }
 
+    private static bool ReceiptOfficeMatches(string? receiptOffice, string destinationOffice)
+    {
+        var receipt = OfficeHyphen(receiptOffice);
+        var destination = OfficeHyphen(destinationOffice);
+        if (string.Equals(receipt, destination, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return destination == "denver" && (receipt == "denver" || receipt == OfficeHyphen(DenverDbaOffice));
+    }
+
     private static UnlinkedReceiptRow? ChooseReceipt(IReadOnlyList<UnlinkedReceiptRow> openReceipts, Guid organizationId, string officeName, ReceiptDocumentExtraction? extracted)
     {
         if (extracted?.Amount == null || extracted.ReceiptDate == null)
@@ -716,7 +741,7 @@ public class StoragePathRepairService
 
         var matches = openReceipts.Where(row =>
             row.OrganizationId == organizationId
-            && string.Equals(OfficeHyphen(row.OfficeName), OfficeHyphen(officeName), StringComparison.OrdinalIgnoreCase)
+            && ReceiptOfficeMatches(row.OfficeName, officeName)
             && Math.Abs(row.Amount - extracted.Amount.Value) < 0.01m
             && row.ReceiptDate == extracted.ReceiptDate.Value).ToList();
         if (matches.Count == 1)
