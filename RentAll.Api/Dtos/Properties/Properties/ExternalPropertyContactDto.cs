@@ -207,7 +207,7 @@ public class ExternalPropertyContactDto
             DateOfBirth = DateOfBirth,
             FederalTaxClassification = DefinedEnum<FederalTaxType>(FederalTaxClassificationId),
             OwnerIdType = DefinedEnum<OwnerIdType>(OwnerIdTypeId),
-            IdentificationNumber = TrimOrNull(IdentificationNumber),
+            IdentificationNumber = NormalizeIdentificationNumber(IdentificationNumber),
             OwnerDocument = DefinedEnum<OwnerDocumentType>(OwnerDocumentId),
             PropertyManagedBy = DefinedEnum<PropertyManagerType>(PropertyManagedBy),
             Rating = 0,
@@ -267,7 +267,7 @@ public class ExternalPropertyContactDto
             DateOfBirth = DateOfBirth,
             FederalTaxClassification = DefinedEnum<FederalTaxType>(FederalTaxClassificationId),
             OwnerIdType = DefinedEnum<OwnerIdType>(OwnerIdTypeId),
-            IdentificationNumber = TrimOrNull(IdentificationNumber),
+            IdentificationNumber = NormalizeIdentificationNumber(IdentificationNumber),
             OwnerDocument = DefinedEnum<OwnerDocumentType>(OwnerDocumentId),
             PropertyManagedBy = DefinedEnum<PropertyManagerType>(PropertyManagedBy),
             Rating = 0,
@@ -440,8 +440,9 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.ownerDocumentId must be 0=DriversLicense, 1=Passport, or 2=IdCard. Received {OwnerDocumentId.Value}.");
         if (PropertyManagedBy.HasValue && !Enum.IsDefined(typeof(PropertyManagerType), PropertyManagedBy.Value))
             errors.Add($"{fieldLabel}.propertyManagedBy must be 0=Owner or 1=PropertyManagementCompany. Received {PropertyManagedBy.Value}.");
-        if (!string.IsNullOrWhiteSpace(IdentificationNumber) && IdentificationNumber.Trim().Length > 9)
-            errors.Add($"{fieldLabel}.identificationNumber is {IdentificationNumber.Trim().Length} characters; max is 9. Received \"{IdentificationNumber.Trim()}\".");
+        var identificationNumber = NormalizeIdentificationNumber(IdentificationNumber);
+        if (identificationNumber != null && identificationNumber.Length > 9)
+            errors.Add($"{fieldLabel}.identificationNumber is {identificationNumber.Length} characters after removing hyphens; max is 9. Received \"{IdentificationNumber.Trim()}\".");
         CollectDocumentUrl(fieldLabel, "documentFront", DocumentFront, errors);
         CollectDocumentUrl(fieldLabel, "documentBack", DocumentBack, errors);
         CollectDocumentUrl(fieldLabel, "w9", W9, errors);
@@ -464,7 +465,7 @@ public class ExternalPropertyContactDto
             contact.FederalTaxClassification = (FederalTaxType)FederalTaxClassificationId.Value;
         if (OwnerIdTypeId.HasValue && Enum.IsDefined(typeof(OwnerIdType), OwnerIdTypeId.Value))
             contact.OwnerIdType = (OwnerIdType)OwnerIdTypeId.Value;
-        var identificationNumber = TrimOrNull(IdentificationNumber);
+        var identificationNumber = NormalizeIdentificationNumber(IdentificationNumber);
         if (identificationNumber != null)
             contact.IdentificationNumber = identificationNumber;
         if (OwnerDocumentId.HasValue && Enum.IsDefined(typeof(OwnerDocumentType), OwnerDocumentId.Value))
@@ -475,6 +476,29 @@ public class ExternalPropertyContactDto
 
     private static TEnum? DefinedEnum<TEnum>(int? value) where TEnum : struct, Enum =>
         value.HasValue && Enum.IsDefined(typeof(TEnum), value.Value) ? (TEnum)Enum.ToObject(typeof(TEnum), value.Value) : null;
+
+    public static string? NormalizeIdentificationNumber(string? value)
+    {
+        var stripped = (value ?? string.Empty).Trim().Replace("-", "", StringComparison.Ordinal);
+        return string.IsNullOrWhiteSpace(stripped) ? null : stripped;
+    }
+
+    public static string? FormatIdentificationNumber(int? ownerIdTypeId, string? identificationNumber)
+    {
+        var normalized = NormalizeIdentificationNumber(identificationNumber);
+        if (normalized == null)
+            return null;
+
+        if (normalized.Length == 9 && normalized.All(char.IsDigit))
+        {
+            if (ownerIdTypeId == (int)OwnerIdType.SocialSecurity)
+                return $"{normalized[..3]}-{normalized[3..5]}-{normalized[5..]}";
+            if (ownerIdTypeId == (int)OwnerIdType.EmployerIdentification)
+                return $"{normalized[..2]}-{normalized[2..]}";
+        }
+
+        return normalized;
+    }
 
     private static string? TrimOrNull(string? value)
     {

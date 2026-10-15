@@ -219,6 +219,23 @@ public static class ExternalPropertyIntakeErrors
         errors.Add($"{prefix}.{field} must be a 2-letter US code or full state name. Received \"{raw}\"{(mapped != raw ? $" (mapped to \"{mapped}\")" : string.Empty)}. Example: \"TX\" or \"Texas\".");
     }
 
+    private static void CollectIdentificationNumber(JsonElement body, string prefix, List<string> errors)
+    {
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, "identificationNumber", out var element) || element.ValueKind == JsonValueKind.Null)
+            return;
+
+        if (element.ValueKind != JsonValueKind.String)
+        {
+            errors.Add($"{prefix}.identificationNumber must be a string. Received {Describe(element)}.");
+            return;
+        }
+
+        var raw = element.GetString()?.Trim() ?? string.Empty;
+        var normalized = ExternalPropertyContactDto.NormalizeIdentificationNumber(raw);
+        if (normalized != null && normalized.Length > 9)
+            errors.Add($"{prefix}.identificationNumber is {normalized.Length} characters after removing hyphens; max is 9. Received \"{raw}\".");
+    }
+
     private static void CollectMaxLength(JsonElement body, string prefix, string field, int maxLength, List<string> errors)
     {
         if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind != JsonValueKind.String)
@@ -261,7 +278,7 @@ public static class ExternalPropertyIntakeErrors
         CollectFlexibleEnum<OwnerIdType>(contact, contactPrefix, "ownerIdTypeId", errors);
         CollectFlexibleEnum<OwnerDocumentType>(contact, contactPrefix, "ownerDocumentId", errors);
         CollectFlexibleEnum<PropertyManagerType>(contact, contactPrefix, "propertyManagedBy", errors);
-        CollectMaxLength(contact, contactPrefix, "identificationNumber", 9, errors);
+        CollectIdentificationNumber(contact, contactPrefix, errors);
         CollectOwnerImage(contact, contactPrefix, "documentFront", errors);
         CollectOwnerImage(contact, contactPrefix, "documentBack", errors);
     }

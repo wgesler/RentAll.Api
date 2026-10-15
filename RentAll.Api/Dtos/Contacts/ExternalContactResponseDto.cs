@@ -57,7 +57,7 @@ public class ExternalContactResponseDto
             DateOfBirth = contact.DateOfBirth,
             FederalTaxClassificationId = contact.FederalTaxClassification.HasValue ? (int)contact.FederalTaxClassification.Value : null,
             OwnerIdTypeId = contact.OwnerIdType.HasValue ? (int)contact.OwnerIdType.Value : null,
-            IdentificationNumber = contact.IdentificationNumber,
+            IdentificationNumber = ExternalPropertyContactDto.FormatIdentificationNumber(contact.OwnerIdType.HasValue ? (int)contact.OwnerIdType.Value : null, contact.IdentificationNumber),
             OwnerDocumentId = contact.OwnerDocument.HasValue ? (int)contact.OwnerDocument.Value : null,
             PropertyManagedBy = contact.PropertyManagedBy.HasValue ? (int)contact.PropertyManagedBy.Value : null,
             OwnerTypeId = (int)contact.OwnerType,

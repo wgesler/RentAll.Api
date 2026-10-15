@@ -118,8 +118,9 @@ public class UpdateContactDto
         if (PropertyManagedBy.HasValue && !Enum.IsDefined(typeof(PropertyManagerType), PropertyManagedBy.Value))
             return (false, $"Invalid PropertyManagedBy value: {PropertyManagedBy}");
 
-        if (!string.IsNullOrWhiteSpace(IdentificationNumber) && IdentificationNumber.Trim().Length > 9)
-            return (false, "IdentificationNumber must be 9 characters or fewer");
+        var identificationNumber = ExternalPropertyContactDto.NormalizeIdentificationNumber(IdentificationNumber);
+        if (identificationNumber != null && identificationNumber.Length > 9)
+            return (false, "IdentificationNumber must be 9 characters or fewer after removing hyphens");
 
         if (ContactCard != null)
         {
@@ -174,7 +175,7 @@ public class UpdateContactDto
             DateOfBirth = DateOfBirth,
             FederalTaxClassification = FederalTaxClassificationId.HasValue ? (FederalTaxType)FederalTaxClassificationId.Value : null,
             OwnerIdType = OwnerIdTypeId.HasValue ? (OwnerIdType)OwnerIdTypeId.Value : null,
-            IdentificationNumber = string.IsNullOrWhiteSpace(IdentificationNumber) ? null : IdentificationNumber.Trim(),
+            IdentificationNumber = ExternalPropertyContactDto.NormalizeIdentificationNumber(IdentificationNumber),
             OwnerDocument = OwnerDocumentId.HasValue ? (OwnerDocumentType)OwnerDocumentId.Value : null,
             DocumentFront = DocumentFront,
             DocumentBack = DocumentBack,

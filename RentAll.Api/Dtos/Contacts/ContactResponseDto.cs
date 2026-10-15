@@ -113,7 +113,7 @@ public class ContactResponseDto
         DateOfBirth = contact.DateOfBirth;
         FederalTaxClassificationId = (int?)contact.FederalTaxClassification;
         OwnerIdTypeId = (int?)contact.OwnerIdType;
-        IdentificationNumber = contact.IdentificationNumber;
+        IdentificationNumber = ExternalPropertyContactDto.FormatIdentificationNumber((int?)contact.OwnerIdType, contact.IdentificationNumber);
         OwnerDocumentId = (int?)contact.OwnerDocument;
         DocumentFront = contact.DocumentFront;
         DocumentFrontFileDetails = contact.DocumentFrontFileDetails;
