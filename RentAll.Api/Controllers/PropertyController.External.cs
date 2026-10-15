@@ -719,6 +719,16 @@ public partial class PropertyController
 
         try
         {
+            string? agreementPath = null;
+            if (!string.IsNullOrWhiteSpace(values.OwnerAgreementUrl))
+            {
+                var office = await _organizationRepository.GetOfficeByIdAsync(property.OfficeId, property.OrganizationId);
+                var (storedPath, downloadError) = await _externalPropertyPhotoUrlImporter.DownloadAndSavePropertyAgreementAsync(property.OrganizationId, office?.Name, values.OwnerAgreementUrl);
+                if (downloadError != null || string.IsNullOrWhiteSpace(storedPath))
+                    return downloadError ?? "ownerAgreement Unable to download file";
+                agreementPath = storedPath;
+            }
+
             var existing = await _propertyRepository.GetPropertyAgreementByPropertyIdAsync(property.PropertyId);
             if (existing == null)
             {
@@ -727,6 +737,7 @@ public partial class PropertyController
                     PropertyId = property.PropertyId,
                     OrganizationId = property.OrganizationId,
                     OfficeId = property.OfficeId,
+                    AgreementPath = agreementPath,
                     ManagementFeeType = values.AgreementType.HasValue ? (ManagementFeeType)values.AgreementType.Value : ManagementFeeType.FlatRate,
                     FlatRateAmount = values.AgreementOwnerFlatRate ?? 0m,
                     Markup = 25,
@@ -750,6 +761,8 @@ public partial class PropertyController
                 existing.RevenueSplitOwner = values.AgreementOwnerSplit.Value;
             if (values.AgreementOfficeSplit.HasValue)
                 existing.RevenueSplitOffice = values.AgreementOfficeSplit.Value;
+            if (!string.IsNullOrWhiteSpace(agreementPath))
+                existing.AgreementPath = agreementPath;
 
             await _propertyRepository.UpdatePropertyAgreementByPropertyIdAsync(existing);
             return null;

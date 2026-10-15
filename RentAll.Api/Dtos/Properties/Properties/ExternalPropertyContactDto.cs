@@ -8,10 +8,16 @@ namespace RentAll.Api.Dtos.Properties.Properties;
 
 public class ExternalPropertyContactDto
 {
+    public string? ExternalRefNo { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? Extension { get; set; }
+    public string? PreferredName { get; set; }
+    public string? Notes { get; set; }
+    public bool? IsActive { get; set; }
+    public bool? IsInternational { get; set; }
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }
     public string? City { get; set; }
@@ -26,10 +32,8 @@ public class ExternalPropertyContactDto
     public string? IdentificationNumber { get; set; }
     [JsonConverter(typeof(FlexibleNullableEnumConverter<OwnerDocumentType>))]
     public int? OwnerDocumentId { get; set; }
-    [JsonConverter(typeof(ExternalContactImageJsonConverter))]
-    public ExternalContactImageDto? DocumentFront { get; set; }
-    [JsonConverter(typeof(ExternalContactImageJsonConverter))]
-    public ExternalContactImageDto? DocumentBack { get; set; }
+    public string? DocumentFront { get; set; }
+    public string? DocumentBack { get; set; }
     [JsonConverter(typeof(FlexibleNullableEnumConverter<PropertyManagerType>))]
     public int? PropertyManagedBy { get; set; }
     [JsonConverter(typeof(ContactEntityTypeIdJsonConverter))]
@@ -42,6 +46,10 @@ public class ExternalPropertyContactDto
     public string? CardName { get; set; }
     public string? CardNumber { get; set; }
     public UpsertContactCardDto? ContactCard { get; set; }
+    public string? BankName { get; set; }
+    public string? RoutingNumber { get; set; }
+    public string? AccountNumber { get; set; }
+    public string? W9 { get; set; }
 
     public static bool IsAllowedContactEntityType(int entityTypeId) =>
         entityTypeId is (int)EntityType.Company or (int)EntityType.Owner or (int)EntityType.Tenant or (int)EntityType.Vendor;
@@ -144,6 +152,7 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.vendorTypeId must be 0=Individual or 1=Company. Received {VendorTypeId.Value}.");
 
         CollectOwnerProfileErrors(fieldLabel, errors);
+        CollectOptionalFieldErrors(fieldLabel, errors);
 
         var card = GetResolvedContactCard();
         var hasCardInput = CardTypeId.HasValue
@@ -173,6 +182,7 @@ public class ExternalPropertyContactDto
             OfficeId = officeId,
             OfficeAccess = new List<int> { officeId },
             ContactCode = contactCode,
+            ExternalRefNo = TrimOrNull(ExternalRefNo),
             EntityType = ResolveEntityType(EntityType.Owner),
             OwnerType = ownerType,
             VendorType = ResolveVendorType(VendorType.Individual),
@@ -182,6 +192,11 @@ public class ExternalPropertyContactDto
             LastName = LastName.Trim(),
             Email = Email.Trim(),
             Phone = TrimOrNull(Phone),
+            Extension = TrimOrNull(Extension),
+            PreferredName = TrimOrNull(PreferredName),
+            Notes = TrimOrNull(Notes),
+            BankName = TrimOrNull(BankName),
+            RoutingNumber = TrimOrNull(RoutingNumber),
             Address1 = TrimOrNull(Address1),
             Address2 = TrimOrNull(Address2),
             City = TrimOrNull(City),
@@ -194,13 +209,9 @@ public class ExternalPropertyContactDto
             OwnerDocument = DefinedEnum<OwnerDocumentType>(OwnerDocumentId),
             PropertyManagedBy = DefinedEnum<PropertyManagerType>(PropertyManagedBy),
             Rating = 0,
-            IsInternational = false,
+            IsInternational = IsInternational ?? false,
             Markup = 0,
-            RevenueSplitOwner = 75,
-            RevenueSplitOffice = 25,
-            WorkingCapitalBalance = 0,
-            LinenAndTowelFee = 0,
-            IsActive = true,
+            IsActive = IsActive ?? true,
             CreatedBy = currentUser
         };
     }
@@ -231,6 +242,7 @@ public class ExternalPropertyContactDto
             OfficeId = officeId,
             OfficeAccess = new List<int> { officeId },
             ContactCode = contactCode,
+            ExternalRefNo = TrimOrNull(ExternalRefNo),
             EntityType = ResolveEntityType(EntityType.Vendor),
             OwnerType = ResolveOwnerType(required: false) ?? OwnerType.Individual,
             VendorType = ResolveVendorType(VendorType.Company),
@@ -240,6 +252,11 @@ public class ExternalPropertyContactDto
             LastName = LastName.Trim(),
             Email = Email.Trim(),
             Phone = TrimOrNull(Phone),
+            Extension = TrimOrNull(Extension),
+            PreferredName = TrimOrNull(PreferredName),
+            Notes = TrimOrNull(Notes),
+            BankName = TrimOrNull(BankName),
+            RoutingNumber = TrimOrNull(RoutingNumber),
             Address1 = TrimOrNull(Address1),
             Address2 = TrimOrNull(Address2),
             City = TrimOrNull(City),
@@ -252,13 +269,9 @@ public class ExternalPropertyContactDto
             OwnerDocument = DefinedEnum<OwnerDocumentType>(OwnerDocumentId),
             PropertyManagedBy = DefinedEnum<PropertyManagerType>(PropertyManagedBy),
             Rating = 0,
-            IsInternational = false,
+            IsInternational = IsInternational ?? false,
             Markup = 0,
-            RevenueSplitOwner = 75,
-            RevenueSplitOffice = 25,
-            WorkingCapitalBalance = 0,
-            LinenAndTowelFee = 0,
-            IsActive = true,
+            IsActive = IsActive ?? true,
             CreatedBy = currentUser
         };
     }
@@ -266,16 +279,13 @@ public class ExternalPropertyContactDto
     public void ApplyToExistingVendorContact(Contact contact, int officeId, Guid modifiedBy)
     {
         contact.OfficeId = officeId;
-        contact.OfficeAccess = contact.OfficeAccess != null && contact.OfficeAccess.Count > 0
-            ? contact.OfficeAccess.Distinct().ToList()
-            : new List<int> { officeId };
-        if (!contact.OfficeAccess.Contains(officeId))
-            contact.OfficeAccess.Add(officeId);
+        contact.OfficeAccess = [officeId];
 
         contact.FirstName = FirstName.Trim();
         contact.LastName = LastName.Trim();
         contact.Email = Email.Trim();
         contact.Phone = TrimOrNull(Phone) ?? contact.Phone;
+        ApplyOptionalFields(contact);
         contact.Address1 = TrimOrNull(Address1) ?? contact.Address1;
         contact.Address2 = TrimOrNull(Address2) ?? contact.Address2;
         contact.City = TrimOrNull(City) ?? contact.City;
@@ -295,16 +305,13 @@ public class ExternalPropertyContactDto
     public void ApplyToExistingOwnerContact(Contact contact, int officeId, Guid modifiedBy)
     {
         contact.OfficeId = officeId;
-        contact.OfficeAccess = contact.OfficeAccess != null && contact.OfficeAccess.Count > 0
-            ? contact.OfficeAccess.Distinct().ToList()
-            : new List<int> { officeId };
-        if (!contact.OfficeAccess.Contains(officeId))
-            contact.OfficeAccess.Add(officeId);
+        contact.OfficeAccess = [officeId];
 
         contact.FirstName = FirstName.Trim();
         contact.LastName = LastName.Trim();
         contact.Email = Email.Trim();
         contact.Phone = TrimOrNull(Phone) ?? contact.Phone;
+        ApplyOptionalFields(contact);
         contact.Address1 = TrimOrNull(Address1) ?? contact.Address1;
         contact.Address2 = TrimOrNull(Address2) ?? contact.Address2;
         contact.City = TrimOrNull(City) ?? contact.City;
@@ -361,6 +368,66 @@ public class ExternalPropertyContactDto
         return fallback;
     }
 
+    private void CollectOptionalFieldErrors(string fieldLabel, List<string> errors)
+    {
+        if (!string.IsNullOrWhiteSpace(ExternalRefNo) && ExternalRefNo.Trim().Length > 100)
+            errors.Add($"{fieldLabel}.externalRefNo is {ExternalRefNo.Trim().Length} characters; max is 100.");
+        if (!string.IsNullOrWhiteSpace(PreferredName) && PreferredName.Trim().Length > 100)
+            errors.Add($"{fieldLabel}.preferredName is {PreferredName.Trim().Length} characters; max is 100.");
+        if (!string.IsNullOrWhiteSpace(Extension) && Extension.Trim().Length > 20)
+            errors.Add($"{fieldLabel}.extension is {Extension.Trim().Length} characters; max is 20.");
+        if (!string.IsNullOrWhiteSpace(Notes) && Notes.Trim().Length > 250)
+            errors.Add($"{fieldLabel}.notes is {Notes.Trim().Length} characters; max is 250.");
+        if (!string.IsNullOrWhiteSpace(BankName) && BankName.Trim().Length > 250)
+            errors.Add($"{fieldLabel}.bankName is {BankName.Trim().Length} characters; max is 250.");
+        if (!string.IsNullOrWhiteSpace(RoutingNumber) && RoutingNumber.Trim().Length > 250)
+            errors.Add($"{fieldLabel}.routingNumber is {RoutingNumber.Trim().Length} characters; max is 250.");
+
+        var accountNumber = TrimOrNull(AccountNumber);
+        if (accountNumber != null && !accountNumber.Contains('*', StringComparison.Ordinal))
+        {
+            var compact = accountNumber.Replace(" ", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal);
+            if (compact.Length < 4 || compact.Length > 34 || compact.Any(ch => !char.IsDigit(ch)))
+                errors.Add($"{fieldLabel}.accountNumber must be 4 to 34 digits.");
+        }
+    }
+
+    private void ApplyOptionalFields(Contact contact)
+    {
+        var externalRefNo = TrimOrNull(ExternalRefNo);
+        if (externalRefNo != null)
+            contact.ExternalRefNo = externalRefNo;
+        var preferredName = TrimOrNull(PreferredName);
+        if (preferredName != null)
+            contact.PreferredName = preferredName;
+        var extension = TrimOrNull(Extension);
+        if (extension != null)
+            contact.Extension = extension;
+        var notes = TrimOrNull(Notes);
+        if (notes != null)
+            contact.Notes = notes;
+        var bankName = TrimOrNull(BankName);
+        if (bankName != null)
+            contact.BankName = bankName;
+        var routingNumber = TrimOrNull(RoutingNumber);
+        if (routingNumber != null)
+            contact.RoutingNumber = routingNumber;
+        if (IsActive.HasValue)
+            contact.IsActive = IsActive.Value;
+        if (IsInternational.HasValue)
+            contact.IsInternational = IsInternational.Value;
+    }
+
+    public string? ClearAccountNumber()
+    {
+        var accountNumber = TrimOrNull(AccountNumber);
+        if (accountNumber == null || accountNumber.Contains('*', StringComparison.Ordinal))
+            return null;
+
+        var digits = new string(accountNumber.Where(char.IsDigit).ToArray());
+        return digits.Length >= 4 ? digits : null;
+    }
+
     private void CollectOwnerProfileErrors(string fieldLabel, List<string> errors)
     {
         if (FederalTaxClassificationId.HasValue && !Enum.IsDefined(typeof(FederalTaxType), FederalTaxClassificationId.Value))
@@ -373,8 +440,18 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.propertyManagedBy must be 0=Owner or 1=PropertyManagementCompany. Received {PropertyManagedBy.Value}.");
         if (!string.IsNullOrWhiteSpace(IdentificationNumber) && IdentificationNumber.Trim().Length > 9)
             errors.Add($"{fieldLabel}.identificationNumber is {IdentificationNumber.Trim().Length} characters; max is 9. Received \"{IdentificationNumber.Trim()}\".");
-        DocumentFront?.CollectErrors(fieldLabel, "documentFront", errors);
-        DocumentBack?.CollectErrors(fieldLabel, "documentBack", errors);
+        CollectDocumentUrl(fieldLabel, "documentFront", DocumentFront, errors);
+        CollectDocumentUrl(fieldLabel, "documentBack", DocumentBack, errors);
+        CollectDocumentUrl(fieldLabel, "w9", W9, errors);
+    }
+
+    private static void CollectDocumentUrl(string fieldLabel, string fieldName, string? url, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return;
+
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            errors.Add($"{fieldLabel}.{fieldName} must be an https URL.");
     }
 
     private void ApplyOwnerProfile(Contact contact)
@@ -452,31 +529,41 @@ public class ExternalContactImageDto
     public string? File { get; set; }
     public string? DataUrl { get; set; }
 
+    public bool HasContent() => FirstNonEmpty(File, DataUrl).Length > 0;
+
     public void CollectErrors(string fieldLabel, string fieldName, List<string> errors)
     {
-        if (!TryGetImageContent(out _, out var error))
+        if (!TryGetStoredContent(false, out _, out var error))
             errors.Add($"{fieldLabel}.{fieldName} {error}");
     }
 
-    public FileDetails ToFileDetails(string defaultFileName)
+    public void CollectStoredFileErrors(string fieldLabel, string fieldName, List<string> errors, bool allowPdf)
     {
-        TryGetImageContent(out var content, out _);
-        var contentType = ResolveContentType(content);
+        if (!TryGetStoredContent(allowPdf, out _, out var error))
+            errors.Add($"{fieldLabel}.{fieldName} {error}");
+    }
+
+    public FileDetails ToFileDetails(string defaultFileName) => ToStoredFileDetails(defaultFileName, false);
+
+    public FileDetails ToStoredFileDetails(string defaultFileName, bool allowPdf)
+    {
+        TryGetStoredContent(allowPdf, out var content, out _);
         return new FileDetails
         {
             FileName = string.IsNullOrWhiteSpace(FileName) ? defaultFileName : FileName.Trim(),
-            ContentType = contentType,
+            ContentType = ResolveContentType(content),
             File = content
         };
     }
 
-    private bool TryGetImageContent(out string content, out string error)
+    private bool TryGetStoredContent(bool allowPdf, out string content, out string error)
     {
         content = FirstNonEmpty(File, DataUrl);
         error = string.Empty;
+        var kind = allowPdf ? "an image or PDF" : "an image";
         if (content.Length == 0)
         {
-            error = "must be an image. Send file or dataUrl as base64, or a data:image URL.";
+            error = $"must be {kind}. Send file or dataUrl as base64, or a data URL.";
             return false;
         }
 
@@ -487,14 +574,14 @@ public class ExternalContactImageDto
             var comma = payload.IndexOf(',');
             if (comma < 0 || comma == payload.Length - 1)
             {
-                error = "must be a data:image URL.";
+                error = $"must be a data URL for {kind}.";
                 return false;
             }
 
             var header = payload[..comma];
-            if (!header.Contains("image/", StringComparison.OrdinalIgnoreCase))
+            if (!IsAllowedContent(header, allowPdf))
             {
-                error = "must be an image. Received a non-image data URL.";
+                error = $"must be {kind}. Received a different data URL.";
                 return false;
             }
 
@@ -503,9 +590,9 @@ public class ExternalContactImageDto
                 declaredType = header.Replace("data:", "", StringComparison.OrdinalIgnoreCase).Split(';')[0];
         }
 
-        if (declaredType.Length > 0 && !declaredType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        if (declaredType.Length > 0 && !IsAllowedContent(declaredType, allowPdf))
         {
-            error = $"must be an image content type. Received \"{declaredType}\".";
+            error = $"must be {kind}. Received \"{declaredType}\".";
             return false;
         }
 
@@ -515,12 +602,16 @@ public class ExternalContactImageDto
         }
         catch (FormatException)
         {
-            error = "must be a base64 image.";
+            error = $"must be a base64 {(allowPdf ? "image or PDF" : "image")}.";
             return false;
         }
 
         return true;
     }
+
+    private static bool IsAllowedContent(string value, bool allowPdf) =>
+        value.Contains("image/", StringComparison.OrdinalIgnoreCase)
+        || (allowPdf && value.Contains("pdf", StringComparison.OrdinalIgnoreCase));
 
     private string ResolveContentType(string content)
     {

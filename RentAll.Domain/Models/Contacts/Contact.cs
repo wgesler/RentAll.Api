@@ -6,14 +6,13 @@ namespace RentAll.Domain.Models;
 public class Contact
 {
     public Guid ContactId { get; set; }
-    public int? OwnerLeadId { get; set; }
-    public Guid? UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
     public string? ExternalRefNo { get; set; }
+    public Guid? UserId { get; set; }
     public EntityType EntityType { get; set; }
     public OwnerType OwnerType { get; set; } = OwnerType.Individual;
     public VendorType VendorType { get; set; } = VendorType.Individual;
@@ -31,15 +30,21 @@ public class Contact
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
-    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
-    public string? W9Path { get; set; }
-    public FileDetails? W9FileDetails { get; set; }
+    public int? Markup { get; set; }
+    public TermType? PaymentTerms { get; set; }
+    public ProrateType? ProrateType { get; set; }
+    public InvoiceMethod? InvoiceMethod { get; set; }
+    public string? InsurancePath { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
+    public PropertyManagerType? PropertyManagedBy { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public FederalTaxType? FederalTaxClassification { get; set; }
     public OwnerIdType? OwnerIdType { get; set; }
     public string? IdentificationNumber { get; set; }
@@ -48,24 +53,15 @@ public class Contact
     public FileDetails? DocumentFrontFileDetails { get; set; }
     public string? DocumentBack { get; set; }
     public FileDetails? DocumentBackFileDetails { get; set; }
-    public PropertyManagerType? PropertyManagedBy { get; set; }
-    public string? InsurancePath { get; set; }
-    public DateOnly? InsuranceExpiration { get; set; }
-    public FileDetails? InsuranceFileDetails { get; set; }
-    public int? Markup { get; set; }
-    public decimal? RevenueSplitOwner { get; set; }
-    public decimal? RevenueSplitOffice { get; set; }
-    public decimal? WorkingCapitalBalance { get; set; }
-    public decimal? LinenAndTowelFee { get; set; }
-    public TermType? PaymentTerms { get; set; }
-    public ProrateType? ProrateType { get; set; }
-    public InvoiceMethod? InvoiceMethod { get; set; }
+    public string? W9Path { get; set; }
+    public FileDetails? W9FileDetails { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
     public string? AccountNumberLastFour { get; set; }
     public int? ContactCardId { get; set; }
     public bool IsOwnerReady { get; set; }
+    public int? OwnerLeadId { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }

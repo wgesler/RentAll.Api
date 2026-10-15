@@ -259,6 +259,7 @@ Use the endpoint-specific API key in the `X-Api-Key` header.
 - `latitude`, `longitude` (number | null)
 - `externalCalendars` (array of `{ propertyICalId, iCalUrl }`; `externalCalendar` string is still accepted as one URL)
 - `monthlyRate`, `dailyRate`, `departureFee`, `maidServiceFee`, `petFee` (number | null)
+- `ownerAgreement` (https URL | null) — downloaded and stored on that property’s agreement, just below the owner/company splits. Images are compressed; a PDF is stored as a PDF. Omit it to leave the existing file.
 - `bldgNo` (string | null)
 - `unitLevel`, `bedrooms`, `Accommodates`, `squareFeet` (integer | null)
 - `bathrooms` (number | null)
@@ -519,7 +520,7 @@ Send the same `propertyCode` with changed fields inside `properties`:
 ## 8) External Contact API (v1)
 
 - **Authentication:** same `X-Api-Key` property key as Section 5
-- **Contact object:** the same fields as `owner1` / `vendor` on a property (`firstName`, `lastName`, `email`, `phone`, address, `entityTypeId`, `ownerTypeId`, `vendorTypeId`, `companyName`, tax and id fields, and card fields on create/update)
+- **Contact object:** `externalRefNo` is first and optional. Required: `firstName`, `lastName`, `email`, `entityTypeId`. Optional, and safe to omit: `preferredName`, `extension`, `notes`, `isActive` (new contacts default to true), `isInternational` (new contacts default to false), W9 fields (`dateOfBirth`, `federalTaxClassificationId`, `ownerIdTypeId`, `identificationNumber`, `ownerDocumentId`), document URLs (`documentFront`, `documentBack`, `w9` — https links; images are compressed and stored, and the contact keeps the stored path), bank fields (`bankName`, `routingNumber`, `accountNumber`), and card fields (`cardTypeId`, `cardName`, `cardNumber`).
 - **Entity types:** `3` Company, `4` Owner, `5` Tenant, `6` Vendor
 - **Match:** email, within the organization. The same email updates the existing contact. A different entity type on that email is rejected.
 

@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 
 namespace RentAll.Api.Dtos.Properties.Properties;
 
-public sealed record ExternalPropertyAgreementValues(int? AgreementType, decimal? AgreementOwnerFlatRate, decimal? AgreementOwnerSplit, decimal? AgreementOfficeSplit)
+public sealed record ExternalPropertyAgreementValues(int? AgreementType, decimal? AgreementOwnerFlatRate, string? OwnerAgreementUrl, decimal? AgreementOwnerSplit, decimal? AgreementOfficeSplit)
 {
-    public bool HasAny => AgreementType.HasValue || AgreementOwnerFlatRate.HasValue || AgreementOwnerSplit.HasValue || AgreementOfficeSplit.HasValue;
+    public bool HasAny => AgreementType.HasValue || AgreementOwnerFlatRate.HasValue || AgreementOwnerSplit.HasValue || AgreementOfficeSplit.HasValue || !string.IsNullOrWhiteSpace(OwnerAgreementUrl);
 }
 
 public static class ExternalPropertyAgreementIntake
@@ -65,11 +65,14 @@ public static class ExternalPropertyAgreementIntake
         if (!TryReadOptionalDecimal(body, "agreementOfficeSplit", errors, out agreementOfficeSplit))
             agreementOfficeSplit = null;
 
+        if (!TryReadOptionalHttpsUrl(body, "ownerAgreement", errors, out var ownerAgreementUrl))
+            ownerAgreementUrl = null;
+
         AddRangeErrors(errors, agreementType, agreementOwnerFlatRate, agreementOwnerSplit, agreementOfficeSplit);
         if (errors.Count > 0)
-            return (false, new ExternalPropertyAgreementValues(null, null, null, null), ExternalPropertyIntakeErrors.Join(errors));
+            return (false, new ExternalPropertyAgreementValues(null, null, null, null, null), ExternalPropertyIntakeErrors.Join(errors));
 
-        return (true, new ExternalPropertyAgreementValues(agreementType, agreementOwnerFlatRate, agreementOwnerSplit, agreementOfficeSplit), null);
+        return (true, new ExternalPropertyAgreementValues(agreementType, agreementOwnerFlatRate, ownerAgreementUrl, agreementOwnerSplit, agreementOfficeSplit), null);
     }
 
     public static bool TryReadToken(ref Utf8JsonReader reader, out int value)
@@ -133,6 +136,32 @@ public static class ExternalPropertyAgreementIntake
 
         errors.Add($"{field} must be a number. Received {ExternalPropertyIntakeErrors.Describe(element)}.");
         return false;
+    }
+
+    private static bool TryReadOptionalHttpsUrl(JsonElement body, string field, List<string> errors, out string? value)
+    {
+        value = null;
+        if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
+            return true;
+
+        if (element.ValueKind != JsonValueKind.String)
+        {
+            errors.Add($"{field} must be an https URL. Received {ExternalPropertyIntakeErrors.Describe(element)}.");
+            return false;
+        }
+
+        var text = element.GetString()?.Trim() ?? string.Empty;
+        if (text.Length == 0)
+            return true;
+
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"{field} must be an https URL.");
+            return false;
+        }
+
+        value = text;
+        return true;
     }
 }
 

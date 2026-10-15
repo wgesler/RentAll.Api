@@ -5,7 +5,6 @@ namespace RentAll.Api.Dtos.Contacts;
 
 public class CreateContactDto
 {
-    public int? OwnerLeadId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public List<int> OfficeAccess { get; set; } = new List<int>();
@@ -25,37 +24,34 @@ public class CreateContactDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
-    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
-    public FileDetails? W9FileDetails { get; set; }
+    public int? Markup { get; set; }
+    public int? PaymentTermsId { get; set; }
+    public int? ProrateTypeId { get; set; }
+    public int? InvoiceMethodTypeId { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
+    public int? PropertyManagedBy { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public int? FederalTaxClassificationId { get; set; }
     public int? OwnerIdTypeId { get; set; }
     public string? IdentificationNumber { get; set; }
     public int? OwnerDocumentId { get; set; }
     public FileDetails? DocumentFrontFileDetails { get; set; }
     public FileDetails? DocumentBackFileDetails { get; set; }
-    public int? PropertyManagedBy { get; set; }
-    public FileDetails? InsuranceFileDetails { get; set; }
-    public DateOnly? InsuranceExpiration { get; set; }
-    public int? Markup { get; set; }
-    public decimal? RevenueSplitOwner { get; set; }
-    public decimal? RevenueSplitOffice { get; set; }
-    public decimal? WorkingCapitalBalance { get; set; }
-    public decimal? LinenAndTowelFee { get; set; }
-    public int? PaymentTermsId { get; set; }
-    public int? ProrateTypeId { get; set; }
-    public int? InvoiceMethodTypeId { get; set; }
+    public FileDetails? W9FileDetails { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
     public int? ContactCardId { get; set; }
     public UpsertContactCardDto? ContactCard { get; set; }
     public bool IsOwnerReady { get; set; }
+    public int? OwnerLeadId { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -127,7 +123,6 @@ public class CreateContactDto
         return new Contact
         {
             OrganizationId = OrganizationId,
-            OwnerLeadId = OwnerLeadId,
             OfficeId = OfficeId,
             ContactCode = code,
             ExternalRefNo = string.IsNullOrWhiteSpace(ExternalRefNo) ? null : ExternalRefNo.Trim(),
@@ -147,36 +142,33 @@ public class CreateContactDto
             City = City,
             State = State,
             Zip = Zip,
-            DateOfBirth = DateOfBirth,
             Phone = Phone,
             Extension = Extension,
             Email = Email,
             Rating = Rating,
             Notes = Notes,
             IsInternational = IsInternational,
-            W9Path = null, // Will be set by controller after file save
+            Markup = Markup,
+            PaymentTerms = PaymentTermsId.HasValue ? (TermType)PaymentTermsId.Value : null,
+            ProrateType = ProrateTypeId.HasValue ? (ProrateType)ProrateTypeId.Value : null,
+            InvoiceMethod = InvoiceMethodTypeId.HasValue ? (InvoiceMethod)InvoiceMethodTypeId.Value : null,
+            InsurancePath = null,// Will be set by controller after file save
+            InsuranceExpiration = InsuranceExpiration,
+            PropertyManagedBy = PropertyManagedBy.HasValue ? (PropertyManagerType)PropertyManagedBy.Value : null,
+            DateOfBirth = DateOfBirth,
             FederalTaxClassification = FederalTaxClassificationId.HasValue ? (FederalTaxType)FederalTaxClassificationId.Value : null,
             OwnerIdType = OwnerIdTypeId.HasValue ? (OwnerIdType)OwnerIdTypeId.Value : null,
             IdentificationNumber = string.IsNullOrWhiteSpace(IdentificationNumber) ? null : IdentificationNumber.Trim(),
             OwnerDocument = OwnerDocumentId.HasValue ? (OwnerDocumentType)OwnerDocumentId.Value : null,
             DocumentFront = null,
             DocumentBack = null,
-            PropertyManagedBy = PropertyManagedBy.HasValue ? (PropertyManagerType)PropertyManagedBy.Value : null,
-            InsurancePath = null,// Will be set by controller after file save
-            InsuranceExpiration = InsuranceExpiration,
-            Markup = Markup,
-            RevenueSplitOwner = RevenueSplitOwner,
-            RevenueSplitOffice = RevenueSplitOffice,
-            WorkingCapitalBalance = WorkingCapitalBalance,
-            LinenAndTowelFee = LinenAndTowelFee,
-            PaymentTerms = PaymentTermsId.HasValue ? (TermType)PaymentTermsId.Value : null,
-            ProrateType = ProrateTypeId.HasValue ? (ProrateType)ProrateTypeId.Value : null,
-            InvoiceMethod = InvoiceMethodTypeId.HasValue ? (InvoiceMethod)InvoiceMethodTypeId.Value : null,
+            W9Path = null, // Will be set by controller after file save
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
             ContactCardId = ContactCardId,
             IsOwnerReady = IsOwnerReady,
+            OwnerLeadId = OwnerLeadId,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

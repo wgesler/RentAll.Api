@@ -14,20 +14,20 @@ public class ExternalPropertyOwnerContactResolver
     private readonly IContactManager _contactManager;
     private readonly IEncryptionService _encryptionService;
     private readonly IOrganizationRepository _organizationRepository;
-    private readonly IFileAttachmentHelper _fileAttachmentHelper;
+    private readonly ExternalPropertyPhotoUrlImporter _urlImporter;
 
     public ExternalPropertyOwnerContactResolver(
         IContactRepository contactRepository,
         IContactManager contactManager,
         IEncryptionService encryptionService,
         IOrganizationRepository organizationRepository,
-        IFileAttachmentHelper fileAttachmentHelper)
+        ExternalPropertyPhotoUrlImporter urlImporter)
     {
         _contactRepository = contactRepository;
         _contactManager = contactManager;
         _encryptionService = encryptionService;
         _organizationRepository = organizationRepository;
-        _fileAttachmentHelper = fileAttachmentHelper;
+        _urlImporter = urlImporter;
     }
 
     public async Task<(bool Success, Guid? Owner1Id, Guid? Owner2Id, Guid? Owner3Id, Guid? PropertyVendorContactId, string? ErrorMessage)> ResolveContactsAsync(CreateExternalPropertyDto dto, ExternalPropertyIntakeContext context, Guid currentUser)
@@ -319,6 +319,7 @@ public class ExternalPropertyOwnerContactResolver
                 return (false, false, null, updateImageError);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, owner.GetResolvedContactCard(), currentUser);
+            await ProtectProvidedAccountNumberAsync(updatedContact, owner.ClearAccountNumber(), currentUser);
             return (true, true, updatedContact, null);
         }
 
@@ -330,6 +331,7 @@ public class ExternalPropertyOwnerContactResolver
             return (false, false, null, createImageError);
         var createdContact = await _contactRepository.CreateAsync(newOwner);
         await ApplyContactCardAsync(createdContact, owner.GetResolvedContactCard(), currentUser);
+        await ProtectProvidedAccountNumberAsync(createdContact, owner.ClearAccountNumber(), currentUser);
         return (true, false, createdContact, null);
     }
 
@@ -353,6 +355,7 @@ public class ExternalPropertyOwnerContactResolver
                 return (false, null, updateImageError);
             var updatedContact = await _contactRepository.UpdateByIdAsync(existingContact);
             await ApplyContactCardAsync(updatedContact, vendor.GetResolvedContactCard(), currentUser);
+            await ProtectProvidedAccountNumberAsync(updatedContact, vendor.ClearAccountNumber(), currentUser);
             return (true, updatedContact.ContactId, null);
         }
 
@@ -364,46 +367,55 @@ public class ExternalPropertyOwnerContactResolver
             return (false, null, createImageError);
         var createdContact = await _contactRepository.CreateAsync(newVendor);
         await ApplyContactCardAsync(createdContact, vendor.GetResolvedContactCard(), currentUser);
+        await ProtectProvidedAccountNumberAsync(createdContact, vendor.ClearAccountNumber(), currentUser);
         return (true, createdContact.ContactId, null);
     }
 
     private async Task<string?> StoreOwnerDocumentsAsync(ExternalPropertyContactDto contactDto, Contact contact, Guid organizationId, int officeId, string fieldLabel)
     {
-        if (contactDto.DocumentFront == null && contactDto.DocumentBack == null)
+        if (string.IsNullOrWhiteSpace(contactDto.DocumentFront) && string.IsNullOrWhiteSpace(contactDto.DocumentBack) && string.IsNullOrWhiteSpace(contactDto.W9))
             return null;
 
-        try
-        {
-            var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
-            var officeName = office?.Name;
-            if (contactDto.DocumentFront != null)
-            {
-                contact.DocumentFront = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                    organizationId,
-                    officeName,
-                    contactDto.DocumentFront.ToFileDetails("document-front.jpg"),
-                    ImageType.OwnerDocuments,
-                    contact.DocumentFront,
-                    null);
-            }
+        var office = await _organizationRepository.GetOfficeByIdAsync(officeId, organizationId);
+        var officeName = office?.Name;
+        var frontError = await StoreDocumentUrlAsync(contactDto.DocumentFront, organizationId, officeName, ImageType.OwnerDocuments, allowPdf: false, path => contact.DocumentFront = path);
+        if (frontError != null)
+            return $"{fieldLabel}.documentFront {frontError}";
 
-            if (contactDto.DocumentBack != null)
-            {
-                contact.DocumentBack = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(
-                    organizationId,
-                    officeName,
-                    contactDto.DocumentBack.ToFileDetails("document-back.jpg"),
-                    ImageType.OwnerDocuments,
-                    contact.DocumentBack,
-                    null);
-            }
+        var backError = await StoreDocumentUrlAsync(contactDto.DocumentBack, organizationId, officeName, ImageType.OwnerDocuments, allowPdf: false, path => contact.DocumentBack = path);
+        if (backError != null)
+            return $"{fieldLabel}.documentBack {backError}";
 
+        var w9Error = await StoreDocumentUrlAsync(contactDto.W9, organizationId, officeName, ImageType.W9Forms, allowPdf: true, path => contact.W9Path = path);
+        if (w9Error != null)
+            return $"{fieldLabel}.w9 {w9Error}";
+
+        return null;
+    }
+
+    private async Task<string?> StoreDocumentUrlAsync(string? url, Guid organizationId, string? officeName, ImageType imageType, bool allowPdf, Action<string> assignPath)
+    {
+        if (string.IsNullOrWhiteSpace(url))
             return null;
-        }
-        catch (Exception ex)
-        {
-            return $"{fieldLabel} document image could not be stored. {ex.Message}";
-        }
+
+        var (storedPath, errorMessage) = await _urlImporter.DownloadAndSaveDocumentAsync(organizationId, officeName, url, imageType, allowPdf);
+        if (errorMessage != null || string.IsNullOrWhiteSpace(storedPath))
+            return errorMessage ?? "Unable to download file";
+
+        assignPath(storedPath);
+        return null;
+    }
+
+    private async Task ProtectProvidedAccountNumberAsync(Contact contact, string? accountNumber, Guid currentUser)
+    {
+        if (string.IsNullOrWhiteSpace(accountNumber))
+            return;
+
+        var lastFour = accountNumber.Length <= 4 ? accountNumber : accountNumber[^4..];
+        var encrypted = await _encryptionService.EncryptAsync(accountNumber);
+        await _contactRepository.SaveEncryptedAccountNumberAsync(contact.ContactId, encrypted, lastFour, currentUser);
+        contact.AccountNumber = null;
+        contact.AccountNumberLastFour = lastFour;
     }
 
     private static bool TryGetProperty(JsonElement body, string name, out JsonElement value)

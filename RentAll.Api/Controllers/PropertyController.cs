@@ -28,6 +28,7 @@ namespace RentAll.Api.Controllers
         private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
         private readonly ExternalPropertyOwnerContactResolver _externalPropertyOwnerContactResolver;
         private readonly ExternalPropertyPhotoSyncService _externalPropertyPhotoSyncService;
+        private readonly ExternalPropertyPhotoUrlImporter _externalPropertyPhotoUrlImporter;
         private readonly IEncryptionService _encryptionService;
         private readonly ILogger<PropertyController> _logger;
 
@@ -47,6 +48,7 @@ namespace RentAll.Api.Controllers
             ExternalPropertyUploadLogService externalPropertyUploadLogService,
             ExternalPropertyOwnerContactResolver externalPropertyOwnerContactResolver,
             ExternalPropertyPhotoSyncService externalPropertyPhotoSyncService,
+            ExternalPropertyPhotoUrlImporter externalPropertyPhotoUrlImporter,
             IEncryptionService encryptionService,
             ILogger<PropertyController> logger)
         {
@@ -65,6 +67,7 @@ namespace RentAll.Api.Controllers
             _externalPropertyUploadLogService = externalPropertyUploadLogService;
             _externalPropertyOwnerContactResolver = externalPropertyOwnerContactResolver;
             _externalPropertyPhotoSyncService = externalPropertyPhotoSyncService;
+            _externalPropertyPhotoUrlImporter = externalPropertyPhotoUrlImporter;
             _encryptionService = encryptionService;
             _logger = logger;
         }

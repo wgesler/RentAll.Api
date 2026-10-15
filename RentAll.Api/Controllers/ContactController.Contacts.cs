@@ -290,10 +290,6 @@ namespace RentAll.Api.Controllers
                         Rating = 0,
                         IsInternational = false,
                         Markup = 0,
-                        RevenueSplitOwner = 75,
-                        RevenueSplitOffice = 25,
-                        WorkingCapitalBalance = 0,
-                        LinenAndTowelFee = 0,
                         IsActive = true,
                         CreatedBy = CurrentUser
                     });

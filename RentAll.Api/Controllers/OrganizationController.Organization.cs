@@ -265,10 +265,6 @@ namespace RentAll.Api.Controllers
                 Phone = organization.Phone,
                 Email = email,
                 Markup = 0,
-                RevenueSplitOwner = 75,
-                RevenueSplitOffice = 25,
-                WorkingCapitalBalance = 0,
-                LinenAndTowelFee = 0,
                 IsInternational = organization.IsInternational,
                 IsActive = true,
                 CreatedBy = CurrentUser

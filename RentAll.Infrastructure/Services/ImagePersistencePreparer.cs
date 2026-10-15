@@ -25,7 +25,7 @@ internal static class ImagePersistencePreparer
 
         try
         {
-            if (imageType == ImageType.Photos
+            if (UsesListingCompression(imageType)
                 && settings.AggressivePhotoCompressionEnabled
                 && RasterImagePhotoCompressor.IsCompressiblePhoto(effectiveExtension, contentType))
             {
@@ -72,4 +72,7 @@ internal static class ImagePersistencePreparer
             throw;
         }
     }
+
+    private static bool UsesListingCompression(ImageType imageType) =>
+        imageType is ImageType.Photos or ImageType.OwnerDocuments or ImageType.W9Forms or ImageType.OwnerAgreement;
 }

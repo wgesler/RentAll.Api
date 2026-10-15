@@ -41,6 +41,7 @@ public class CreateExternalPropertyDto
     public decimal? AgreementOwnerFlatRate { get; set; }
     public decimal? AgreementOwnerSplit { get; set; }
     public decimal? AgreementOfficeSplit { get; set; }
+    public string? OwnerAgreement { get; set; }
 
     public string? ExternalCalendar { get; set; }
     public List<string> ExternalCalendars { get; set; } = [];
@@ -184,6 +185,10 @@ public class CreateExternalPropertyDto
             errors.Add($"petFee must be >= 0. Received {PetFee}.");
 
         ExternalPropertyAgreementIntake.AddRangeErrors(errors, AgreementType, AgreementOwnerFlatRate, AgreementOwnerSplit, AgreementOfficeSplit);
+        if (!string.IsNullOrWhiteSpace(OwnerAgreement)
+            && (!Uri.TryCreate(OwnerAgreement.Trim(), UriKind.Absolute, out var agreementUri)
+                || !string.Equals(agreementUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            errors.Add("ownerAgreement must be an https URL.");
 
         if (string.IsNullOrWhiteSpace(Description))
             errors.Add("description is required.");
@@ -422,7 +427,7 @@ public class CreateExternalPropertyDto
 
     public ExternalPropertyAgreementValues ToAgreementValues()
     {
-        return new ExternalPropertyAgreementValues(AgreementType, AgreementOwnerFlatRate, AgreementOwnerSplit, AgreementOfficeSplit);
+        return new ExternalPropertyAgreementValues(AgreementType, AgreementOwnerFlatRate, string.IsNullOrWhiteSpace(OwnerAgreement) ? null : OwnerAgreement.Trim(), AgreementOwnerSplit, AgreementOfficeSplit);
     }
 
     private static void AddBedroomIdError(List<string> errors, int? bedroomId, string fieldName)

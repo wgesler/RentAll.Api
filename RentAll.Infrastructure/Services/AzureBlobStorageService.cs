@@ -261,6 +261,28 @@ public class AzureBlobStorageService : IFileService
         }
     }
 
+    public async Task<string> SavePropertyAgreementFileAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType)
+    {
+        var isPdf = string.Equals(contentType, "application/pdf", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Path.GetExtension(fileName), ".pdf", StringComparison.OrdinalIgnoreCase);
+        if (isPdf)
+            return await SaveDocumentAsync(organizationId, officeName, fileStream, fileName, "application/pdf", DocumentType.Agreements).ConfigureAwait(false);
+
+        var buffer = await ImageUploadLimits.ReadImageStreamWithSizeCapAsync(fileStream, _imageUploadSettings).ConfigureAwait(false);
+        var (streamToSave, effectiveExtension, _) = await ImagePersistencePreparer.PrepareForSaveAsync(
+            buffer, fileName, contentType, _imageUploadSettings, ImageType.OwnerAgreement).ConfigureAwait(false);
+        try
+        {
+            var jpegName = Path.GetFileNameWithoutExtension(fileName) + effectiveExtension;
+            var savedType = string.Equals(effectiveExtension, ".pdf", StringComparison.OrdinalIgnoreCase) ? "application/pdf" : "image/jpeg";
+            return await SaveDocumentAsync(organizationId, officeName, streamToSave, jpegName, savedType, DocumentType.Agreements).ConfigureAwait(false);
+        }
+        finally
+        {
+            await streamToSave.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
     public async Task<bool> DeleteDocumentAsync(Guid organizationId, string? officeName, string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))

@@ -15,6 +15,7 @@ public interface IFileService
 
     Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, DocumentType documentType);
     Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, DocumentType documentType);
+    Task<string> SavePropertyAgreementFileAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType);
     Task<bool> DeleteDocumentAsync(Guid organizationId, string? officeName, string filePath);
     Task<FileDetails?> GetDocumentDetailsAsync(Guid organizationId, string? officeName, string filePath);
 }

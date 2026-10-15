@@ -6,13 +6,12 @@ namespace RentAll.Api.Dtos.Contacts;
 public class UpdateContactDto
 {
     public Guid ContactId { get; set; }
-    public int? OwnerLeadId { get; set; }
-    public Guid? UserId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
     public string? ExternalRefNo { get; set; }
+    public Guid? UserId { get; set; }
     public int EntityTypeId { get; set; }
     public int OwnerTypeId { get; set; }
     public int VendorTypeId { get; set; }
@@ -28,14 +27,21 @@ public class UpdateContactDto
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Zip { get; set; }
-    public DateOnly? DateOfBirth { get; set; }
     public string? Phone { get; set; }
     public string? Extension { get; set; }
     public string Email { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public bool IsInternational { get; set; }
-    public string? W9Path { get; set; }
+    public int? Markup { get; set; }
+    public int? PaymentTermsId { get; set; }
+    public int? ProrateTypeId { get; set; }
+    public int? InvoiceMethodTypeId { get; set; }
+    public string? InsurancePath { get; set; }
+    public DateOnly? InsuranceExpiration { get; set; }
+    public FileDetails? InsuranceFileDetails { get; set; }
+    public int? PropertyManagedBy { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
     public int? FederalTaxClassificationId { get; set; }
     public int? OwnerIdTypeId { get; set; }
     public string? IdentificationNumber { get; set; }
@@ -44,25 +50,15 @@ public class UpdateContactDto
     public FileDetails? DocumentFrontFileDetails { get; set; }
     public string? DocumentBack { get; set; }
     public FileDetails? DocumentBackFileDetails { get; set; }
-    public int? PropertyManagedBy { get; set; }
+    public string? W9Path { get; set; }
     public FileDetails? W9FileDetails { get; set; }
-    public string? InsurancePath { get; set; }
-    public DateOnly? InsuranceExpiration { get; set; }
-    public FileDetails? InsuranceFileDetails { get; set; }
-    public int? Markup { get; set; }
-    public decimal? RevenueSplitOwner { get; set; }
-    public decimal? RevenueSplitOffice { get; set; }
-    public decimal? WorkingCapitalBalance { get; set; }
-    public decimal? LinenAndTowelFee { get; set; }
-    public int? PaymentTermsId { get; set; }
-    public int? ProrateTypeId { get; set; }
-    public int? InvoiceMethodTypeId { get; set; }
     public string? BankName { get; set; }
     public string? RoutingNumber { get; set; }
     public string? AccountNumber { get; set; }
     public int? ContactCardId { get; set; }
     public UpsertContactCardDto? ContactCard { get; set; }
     public bool IsOwnerReady { get; set; }
+    public int? OwnerLeadId { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid()
@@ -141,12 +137,11 @@ public class UpdateContactDto
         return new Contact
         {
             ContactId = ContactId,
-            OwnerLeadId = OwnerLeadId,
-            UserId = UserId,
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             ContactCode = ContactCode,
             ExternalRefNo = string.IsNullOrWhiteSpace(ExternalRefNo) ? null : ExternalRefNo.Trim(),
+            UserId = UserId,
             EntityType = (EntityType)EntityTypeId,
             OwnerType = (OwnerType)OwnerTypeId,
             VendorType = (VendorType)VendorTypeId,
@@ -163,36 +158,33 @@ public class UpdateContactDto
             City = City,
             State = State,
             Zip = Zip,
-            DateOfBirth = DateOfBirth,
             Phone = Phone,
             Extension = Extension,
             Email = Email,
             Rating = Rating,
             Notes = Notes,
             IsInternational = IsInternational,
-            W9Path = W9Path,
+            Markup = Markup,
+            PaymentTerms = PaymentTermsId.HasValue ? (TermType)PaymentTermsId.Value : null,
+            ProrateType = ProrateTypeId.HasValue ? (ProrateType)ProrateTypeId.Value : null,
+            InvoiceMethod = InvoiceMethodTypeId.HasValue ? (InvoiceMethod)InvoiceMethodTypeId.Value : null,
+            InsurancePath = InsurancePath,
+            InsuranceExpiration = InsuranceExpiration,
+            PropertyManagedBy = PropertyManagedBy.HasValue ? (PropertyManagerType)PropertyManagedBy.Value : null,
+            DateOfBirth = DateOfBirth,
             FederalTaxClassification = FederalTaxClassificationId.HasValue ? (FederalTaxType)FederalTaxClassificationId.Value : null,
             OwnerIdType = OwnerIdTypeId.HasValue ? (OwnerIdType)OwnerIdTypeId.Value : null,
             IdentificationNumber = string.IsNullOrWhiteSpace(IdentificationNumber) ? null : IdentificationNumber.Trim(),
             OwnerDocument = OwnerDocumentId.HasValue ? (OwnerDocumentType)OwnerDocumentId.Value : null,
             DocumentFront = DocumentFront,
             DocumentBack = DocumentBack,
-            PropertyManagedBy = PropertyManagedBy.HasValue ? (PropertyManagerType)PropertyManagedBy.Value : null,
-            InsurancePath = InsurancePath,
-            InsuranceExpiration = InsuranceExpiration,
-            Markup = Markup,
-            RevenueSplitOwner = RevenueSplitOwner,
-            RevenueSplitOffice = RevenueSplitOffice,
-            WorkingCapitalBalance = WorkingCapitalBalance,
-            LinenAndTowelFee = LinenAndTowelFee,
-            PaymentTerms = PaymentTermsId.HasValue ? (TermType)PaymentTermsId.Value : null,
-            ProrateType = ProrateTypeId.HasValue ? (ProrateType)ProrateTypeId.Value : null,
-            InvoiceMethod = InvoiceMethodTypeId.HasValue ? (InvoiceMethod)InvoiceMethodTypeId.Value : null,
+            W9Path = W9Path,
             BankName = BankName,
             RoutingNumber = RoutingNumber,
             AccountNumber = AccountNumber,
             ContactCardId = ContactCardId,
             IsOwnerReady = IsOwnerReady,
+            OwnerLeadId = OwnerLeadId,
             IsActive = IsActive,
             ModifiedBy = currentUser
         };

@@ -4,10 +4,16 @@ namespace RentAll.Api.Dtos.Contacts;
 
 public class ExternalContactResponseDto
 {
+    public string? ExternalRefNo { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? Extension { get; set; }
+    public string? PreferredName { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsInternational { get; set; }
     public string? Address1 { get; set; }
     public string? Address2 { get; set; }
     public string? City { get; set; }
@@ -28,6 +34,8 @@ public class ExternalContactResponseDto
     public int? CardTypeId { get; set; }
     public string? CardName { get; set; }
     public string? CardNumber { get; set; }
+    public string? BankName { get; set; }
+    public string? RoutingNumber { get; set; }
     public List<string> Properties { get; set; } = [];
 
     public static ExternalContactResponseDto FromContact(Contact contact)
@@ -37,7 +45,13 @@ public class ExternalContactResponseDto
             FirstName = contact.FirstName ?? string.Empty,
             LastName = contact.LastName ?? string.Empty,
             Email = contact.Email ?? string.Empty,
+            ExternalRefNo = string.IsNullOrWhiteSpace(contact.ExternalRefNo) ? null : contact.ExternalRefNo.Trim(),
             Phone = contact.Phone,
+            Extension = contact.Extension,
+            PreferredName = contact.PreferredName,
+            Notes = contact.Notes,
+            IsActive = contact.IsActive,
+            IsInternational = contact.IsInternational,
             Address1 = contact.Address1,
             Address2 = contact.Address2,
             City = contact.City,
@@ -53,6 +67,8 @@ public class ExternalContactResponseDto
             OwnerTypeId = (int)contact.OwnerType,
             VendorTypeId = (int)contact.VendorType,
             CompanyName = contact.CompanyName,
+            BankName = contact.BankName,
+            RoutingNumber = contact.RoutingNumber,
             Properties = (contact.Properties ?? []).Where(code => !string.IsNullOrWhiteSpace(code)).Select(code => code.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
     }
