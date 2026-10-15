@@ -7,5 +7,5 @@ public static class SystemConstants
     public const string SystemUserAccountEmail = "system@rentall.com";
     public const string SystemUserAccountName = "System User";
     public const string SystemUserOutboundEmail = "wendy.gesler@rentallexchange.com";
-    public const string SystemUserOutboundName = "Wendy Gelser";
+    public const string SystemUserOutboundName = "Wendy Gesler";
 }
