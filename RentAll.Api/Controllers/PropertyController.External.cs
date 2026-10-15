@@ -348,6 +348,15 @@ public partial class PropertyController
                 return new ExternalPropertyPatchResult(false, keys.PropertyCode, null, prefixedAgreement, prefixedAgreement, attempt);
             }
 
+            var patchedOwnerIds = new List<Guid?>();
+            if (ExternalPropertyOwnerContactResolver.TryGetContact(propertyBody, "owner1", out _))
+                patchedOwnerIds.Add(updateDto.Owner1Id);
+            if (ExternalPropertyOwnerContactResolver.TryGetContact(propertyBody, "owner2", out _))
+                patchedOwnerIds.Add(updateDto.Owner2Id);
+            if (ExternalPropertyOwnerContactResolver.TryGetContact(propertyBody, "owner3", out _))
+                patchedOwnerIds.Add(updateDto.Owner3Id);
+            await _externalPropertyOwnerContactResolver.LinkPropertyToOwnersAsync(updateResult.PropertyCode, context.OrganizationId, SystemUserId, patchedOwnerIds);
+
             var updatedProperty = new PropertyResponseDto(updateResult);
             var detail = $"Property {updatedProperty.PropertyCode} updated.";
             if (agreementValues.HasAny)
@@ -559,6 +568,7 @@ public partial class PropertyController
                 }
 
                 var updatedProperty = new PropertyResponseDto(updateResult);
+                await _externalPropertyOwnerContactResolver.LinkPropertyToOwnersAsync(updatedProperty.PropertyCode, context.OrganizationId, SystemUserId, [owner1Id, owner2Id, owner3Id]);
                 var (updatedPhotoImport, updatedPhotoImportError, updatedPhotoSyncDetail) = await SyncPropertyPhotosIfProvidedAsync(dto, keys, updateResult);
                 var updatedDetail = BuildUpsertDetail(updatedProperty.PropertyCode, true, updatedPhotoSyncDetail, updatedPhotoImportError, dto.ToAgreementValues().HasAny);
                 return new ExternalPropertyUpsertResult(
@@ -602,6 +612,7 @@ public partial class PropertyController
             }
 
             var createdResponse = new PropertyResponseDto(createdProperty);
+            await _externalPropertyOwnerContactResolver.LinkPropertyToOwnersAsync(createdResponse.PropertyCode, context.OrganizationId, SystemUserId, [owner1Id, owner2Id, owner3Id]);
             var (createdPhotoImport, createdPhotoImportError, createdPhotoSyncDetail) = await SyncPropertyPhotosIfProvidedAsync(dto, keys, createdProperty);
             var createdDetail = BuildUpsertDetail(createdResponse.PropertyCode, false, createdPhotoSyncDetail, createdPhotoImportError, dto.ToAgreementValues().HasAny);
             return new ExternalPropertyUpsertResult(

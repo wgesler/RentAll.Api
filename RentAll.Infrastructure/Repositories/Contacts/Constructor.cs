@@ -54,6 +54,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 OfficeName = e.OfficeName,
                 OfficeAccess = officeAccess,
                 ContactCode = e.ContactCode,
+                ExternalRefNo = string.IsNullOrWhiteSpace(e.ExternalRefNo) ? null : e.ExternalRefNo.Trim(),
                 EntityType = (EntityType)e.EntityTypeId,
                 OwnerType = (OwnerType)e.OwnerTypeId,
                 VendorType = (VendorType)e.VendorTypeId,

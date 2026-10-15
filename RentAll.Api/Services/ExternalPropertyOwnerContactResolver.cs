@@ -73,6 +73,33 @@ public class ExternalPropertyOwnerContactResolver
         return (true, owner1Id, owner2Id, owner3Id, propertyVendorContactId, null);
     }
 
+    public async Task LinkPropertyToOwnersAsync(string propertyCode, Guid organizationId, Guid currentUser, IEnumerable<Guid?> ownerIds)
+    {
+        var code = (propertyCode ?? string.Empty).Trim();
+        if (code.Length == 0)
+            return;
+
+        foreach (var ownerId in ownerIds.Where(id => id is Guid value && value != Guid.Empty).Select(id => id!.Value).Distinct())
+        {
+            var contact = await _contactRepository.GetContactByIdsAsync(ownerId, organizationId);
+            if (contact == null)
+                continue;
+
+            var existingCodes = (contact.Properties ?? [])
+                .Select(item => (item ?? string.Empty).Trim())
+                .Where(item => item.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (existingCodes.Any(item => item.Equals(code, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            existingCodes.Add(code);
+            contact.Properties = existingCodes;
+            contact.ModifiedBy = currentUser;
+            await _contactRepository.UpdateByIdAsync(contact);
+        }
+    }
+
     public async Task<(bool Success, string? ErrorMessage)> TryApplyContactPatchesAsync(JsonElement body, ExternalPropertyIntakeContext context, UpdatePropertyDto updateDto, Guid currentUser)
     {
         if (TryGetContact(body, "owner1", out var owner1))

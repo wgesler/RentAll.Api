@@ -13,6 +13,7 @@ public class ContactResponseDto
     public string OfficeName { get; set; } = string.Empty;
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
+    public string? ExternalRefNo { get; set; }
     public int EntityTypeId { get; set; }
     public int OwnerTypeId { get; set; }
     public int VendorTypeId { get; set; }
@@ -82,6 +83,7 @@ public class ContactResponseDto
         OfficeName = contact.OfficeName;
         OfficeAccess = contact.OfficeAccess;
         ContactCode = contact.ContactCode;
+        ExternalRefNo = string.IsNullOrWhiteSpace(contact.ExternalRefNo) ? null : contact.ExternalRefNo.Trim();
         EntityTypeId = (int)contact.EntityType;
         OwnerTypeId = (int)contact.OwnerType;
         VendorTypeId = (int)contact.VendorType;

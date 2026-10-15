@@ -6,6 +6,7 @@ public class ContactEntity
     public int? OwnerLeadId { get; set; }
     public Guid OrganizationId { get; set; }
     public string ContactCode { get; set; } = string.Empty;
+    public string? ExternalRefNo { get; set; }
     public Guid? UserId { get; set; }
     public int OfficeId { get; set; }
     public string OfficeName { get; set; } = string.Empty;

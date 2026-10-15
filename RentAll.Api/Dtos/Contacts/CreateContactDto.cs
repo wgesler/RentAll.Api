@@ -9,6 +9,7 @@ public class CreateContactDto
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public List<int> OfficeAccess { get; set; } = new List<int>();
+    public string? ExternalRefNo { get; set; }
     public int EntityTypeId { get; set; }
     public int OwnerTypeId { get; set; }
     public int VendorTypeId { get; set; }
@@ -68,6 +69,9 @@ public class CreateContactDto
         if (EntityTypeId <= 0)
             return (false, "Entity Type ID is required");
 
+        if (!string.IsNullOrWhiteSpace(ExternalRefNo) && ExternalRefNo.Trim().Length > 100)
+            return (false, "ExternalRefNo must be 100 characters or fewer");
+
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
@@ -126,6 +130,7 @@ public class CreateContactDto
             OwnerLeadId = OwnerLeadId,
             OfficeId = OfficeId,
             ContactCode = code,
+            ExternalRefNo = string.IsNullOrWhiteSpace(ExternalRefNo) ? null : ExternalRefNo.Trim(),
             EntityType = (EntityType)EntityTypeId,
             OwnerType = (OwnerType)OwnerTypeId,
             VendorType = (VendorType)VendorTypeId,

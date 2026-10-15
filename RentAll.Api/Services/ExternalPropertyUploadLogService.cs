@@ -12,6 +12,7 @@ public static class PropertyUploadLogEvents
     public const string PhotoImportStatus = "PhotoImportStatus";
     public const string Photo = "Photo";
     public const string OwnerUpsert = "OwnerUpsert";
+    public const string ContactUpsert = "ContactUpsert";
     public const string ReservationCreate = "ReservationCreate";
     public const string ReservationUpdate = "ReservationUpdate";
     public const string LeadCreate = "LeadCreate";
@@ -25,6 +26,7 @@ public static class PropertyUploadLogOperations
     public const string QueuePhotoImport = "POST|PUT /property/external (photos)";
     public const string GetPhotoImportStatus = "GET /property/external/{propertyCode}/photos/import/{importId}";
     public const string UpsertOwner = "POST /property/owners/external";
+    public const string UpsertContact = "POST /contact/external";
     public const string CreateReservation = "POST /reservation/external";
     public const string CreateLead = "POST /leads/external";
     public const string CreateTicket = "POST /ticket/external";

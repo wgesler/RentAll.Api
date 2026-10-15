@@ -12,6 +12,7 @@ public class UpdateContactDto
     public int OfficeId { get; set; }
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
+    public string? ExternalRefNo { get; set; }
     public int EntityTypeId { get; set; }
     public int OwnerTypeId { get; set; }
     public int VendorTypeId { get; set; }
@@ -81,6 +82,9 @@ public class UpdateContactDto
         if (EntityTypeId <= 0)
             return (false, "Entity Type ID is required");
 
+        if (!string.IsNullOrWhiteSpace(ExternalRefNo) && ExternalRefNo.Trim().Length > 100)
+            return (false, "ExternalRefNo must be 100 characters or fewer");
+
         if (string.IsNullOrWhiteSpace(Email))
             return (false, "Email is required");
 
@@ -142,6 +146,7 @@ public class UpdateContactDto
             OrganizationId = OrganizationId,
             OfficeId = OfficeId,
             ContactCode = ContactCode,
+            ExternalRefNo = string.IsNullOrWhiteSpace(ExternalRefNo) ? null : ExternalRefNo.Trim(),
             EntityType = (EntityType)EntityTypeId,
             OwnerType = (OwnerType)OwnerTypeId,
             VendorType = (VendorType)VendorTypeId,

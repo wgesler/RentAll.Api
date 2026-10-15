@@ -514,3 +514,35 @@ Send the same `propertyCode` with changed fields inside `properties`:
 - `400 Bad Request` — validation failure, invalid `organizationId`, `officeId`, or `vendorId`
 - `401 Unauthorized` — missing or invalid `X-Api-Key`
 
+---
+
+## 8) External Contact API (v1)
+
+- **Authentication:** same `X-Api-Key` property key as Section 5
+- **Contact object:** the same fields as `owner1` / `vendor` on a property (`firstName`, `lastName`, `email`, `phone`, address, `entityTypeId`, `ownerTypeId`, `vendorTypeId`, `companyName`, tax and id fields, and card fields on create/update)
+- **Entity types:** `3` Company, `4` Owner, `5` Tenant, `6` Vendor
+- **Match:** email, within the organization. The same email updates the existing contact. A different entity type on that email is rejected.
+
+### List contacts
+
+- **Method:** `GET`
+- **URL:** `/api/contact/external?organizationId={guid}&officeId={id}`
+- **Included contacts:** active Company, Owner, Tenant, and Vendor contacts in that office
+- **Success response:** `200 OK` in the upsert batch shape: `successCount`, `failureCount`, and `results`. Each result includes `email`, `contactCode`, and `contact`. `contact.properties` is that contact’s property codes.
+
+### Get contact by email
+
+- **Method:** `GET`
+- **URL:** `/api/contact/external/{email}?organizationId={guid}&officeId={id}`
+- **Success response:** `200 OK` in the same batch shape, containing the matching contact
+- **Not found:** `404` when that email is not an active contact in that office
+
+### Upsert contacts
+
+- **Method:** `POST`
+- **URL:** `/api/contact/external`
+- **Request body:** `{ "organizationId", "officeId", "vendorId", "contacts": [ ... ] }`
+- **Limits:** 1–50 contacts per request
+- **Success response:** `200 OK` with the same batch shape. `updated` is true when the email already existed.
+- **Partial failure:** saved items stay saved. The response is `400` when any item fails validation, or `500` when a save throws.
+

@@ -13,6 +13,7 @@ public class Contact
     public string OfficeName { get; set; } = string.Empty;
     public List<int> OfficeAccess { get; set; } = new List<int>();
     public string ContactCode { get; set; } = string.Empty;
+    public string? ExternalRefNo { get; set; }
     public EntityType EntityType { get; set; }
     public OwnerType OwnerType { get; set; } = OwnerType.Individual;
     public VendorType VendorType { get; set; } = VendorType.Individual;

@@ -26,6 +26,7 @@ namespace RentAll.Infrastructure.Repositories.Contacts
                 UserId = contact.UserId,
                 OfficeId = contact.OfficeId,
                 ContactCode = contact.ContactCode,
+                ExternalRefNo = string.IsNullOrWhiteSpace(contact.ExternalRefNo) ? null : contact.ExternalRefNo.Trim(),
                 EntityTypeId = (int)contact.EntityType,
                 OwnerTypeId = (int)contact.OwnerType,
                 VendorTypeId = (int)contact.VendorType,

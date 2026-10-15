@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using RentAll.Api.Services;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
@@ -17,6 +18,9 @@ namespace RentAll.Api.Controllers
         private readonly IFileService _fileService;
         private readonly IFileAttachmentHelper _fileAttachmentHelper;
         private readonly IEncryptionService _encryptionService;
+        private readonly IExternalApiKeyService _externalApiKeyService;
+        private readonly ExternalPropertyOwnerContactResolver _externalPropertyOwnerContactResolver;
+        private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
         private readonly ILogger<ContactController> _logger;
 
         public ContactController(
@@ -27,6 +31,9 @@ namespace RentAll.Api.Controllers
             IFileService fileService,
             IFileAttachmentHelper fileAttachmentHelper,
             IEncryptionService encryptionService,
+            IExternalApiKeyService externalApiKeyService,
+            ExternalPropertyOwnerContactResolver externalPropertyOwnerContactResolver,
+            ExternalPropertyUploadLogService externalPropertyUploadLogService,
             ILogger<ContactController> logger)
         {
             _contactManager = contactManager;
@@ -36,6 +43,9 @@ namespace RentAll.Api.Controllers
             _fileService = fileService;
             _fileAttachmentHelper = fileAttachmentHelper;
             _encryptionService = encryptionService;
+            _externalApiKeyService = externalApiKeyService;
+            _externalPropertyOwnerContactResolver = externalPropertyOwnerContactResolver;
+            _externalPropertyUploadLogService = externalPropertyUploadLogService;
             _logger = logger;
         }
     }
