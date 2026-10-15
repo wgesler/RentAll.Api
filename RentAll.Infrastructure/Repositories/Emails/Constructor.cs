@@ -71,6 +71,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 Schedules = e.Schedules ?? string.Empty,
                 MissingReceipts = e.MissingReceipts ?? string.Empty,
                 BillReport = e.BillReport ?? string.Empty,
+                Billing = e.Billing ?? string.Empty,
                 LetterSubject = e.LetterSubject,
                 DepartureSubject = e.DepartureSubject ?? string.Empty,
                 LeaseSubject = e.LeaseSubject,

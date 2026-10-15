@@ -14,6 +14,7 @@ public class EmailHtmlEntity
     public string Schedules { get; set; } = string.Empty;
     public string MissingReceipts { get; set; } = string.Empty;
     public string BillReport { get; set; } = string.Empty;
+    public string Billing { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;

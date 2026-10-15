@@ -14,6 +14,7 @@ public class CreateEmailHtmlDto
     public string Schedules { get; set; } = string.Empty;
     public string MissingReceipts { get; set; } = string.Empty;
     public string BillReport { get; set; } = string.Empty;
+    public string Billing { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
@@ -82,6 +83,9 @@ public class CreateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(BillReport))
             return (false, "BillReport is required");
 
+        if (string.IsNullOrWhiteSpace(Billing))
+            return (false, "Billing is required");
+
         if (string.IsNullOrWhiteSpace(BillReportSubject))
             return (false, "BillReportSubject is required");
 
@@ -104,6 +108,7 @@ public class CreateEmailHtmlDto
             Schedules = Schedules,
             MissingReceipts = MissingReceipts,
             BillReport = BillReport,
+            Billing = Billing,
             LetterSubject = LetterSubject,
             DepartureSubject = DepartureSubject,
             LeaseSubject = LeaseSubject,
