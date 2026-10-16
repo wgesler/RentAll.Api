@@ -185,9 +185,7 @@ namespace RentAll.Api.Controllers
                 contact.InsurancePath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.InsuranceFileDetails, ImageType.Insurances, existing.InsurancePath, dto.InsurancePath);
                 contact.DocumentFront = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.DocumentFrontFileDetails, ImageType.OwnerDocuments, existing.DocumentFront, dto.DocumentFront);
                 contact.DocumentBack = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(dto.OrganizationId, officeName, dto.DocumentBackFileDetails, ImageType.OwnerDocuments, existing.DocumentBack, dto.DocumentBack);
-                contact.ContactCardId = dto.ContactCard != null
-                    ? await SyncContactCardAsync(dto.OrganizationId, dto.OfficeId, existing.ContactCardId, dto.ContactCard)
-                    : (dto.ContactCardId ?? existing.ContactCardId);
+                contact.ContactCardId = await ResolveSavedContactCardIdAsync(dto.OrganizationId, dto.OfficeId, existing.ContactCardId, dto.ContactCardId, dto.ContactCard);
 
                 await ProtectAccountNumberAsync(contact);
                 var updatedContact = await _contactRepository.UpdateByIdAsync(contact);

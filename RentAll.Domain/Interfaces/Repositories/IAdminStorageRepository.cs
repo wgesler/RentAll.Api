@@ -22,6 +22,8 @@ public interface IAdminStorageRepository
     Task<int> UpdateListingPhotoPathAsync(int photoId, Guid organizationId, string? photoPath);
     Task<IReadOnlyList<InspectionPhotoRow>> GetInspectionPhotosAsync();
     Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath);
+    Task<IReadOnlyList<StoredPathRow>> GetPathsByFoldersAsync(string foldersJson);
+    Task<int> UpdateStoredPathAsync(string source, string recordId, string? organizationId, string documentPath);
 }
 
 public sealed class OfficeLogoRow
@@ -78,6 +80,15 @@ public sealed class InspectionPhotoRow
     public string? OfficeName { get; set; }
     public string? PropertyCode { get; set; }
     public string PhotoPath { get; set; } = string.Empty;
+}
+
+public sealed class StoredPathRow
+{
+    public string Source { get; set; } = string.Empty;
+    public string RecordId { get; set; } = string.Empty;
+    public string OrganizationId { get; set; } = string.Empty;
+    public string DocumentPath { get; set; } = string.Empty;
+    public int MaxLength { get; set; }
 }
 
 public sealed class ApplianceImageRow

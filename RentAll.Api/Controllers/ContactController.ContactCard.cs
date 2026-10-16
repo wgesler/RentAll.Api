@@ -182,6 +182,23 @@ public partial class ContactController
         response.ContactCard = new ContactCardResponseDto(card);
     }
 
+    private async Task<int?> ResolveSavedContactCardIdAsync(Guid organizationId, int officeId, int? existingCardId, int? requestedCardId, UpsertContactCardDto? card)
+    {
+        var cardId = card != null
+            ? await SyncContactCardAsync(organizationId, officeId, existingCardId, card)
+            : requestedCardId is > 0 ? requestedCardId : existingCardId is > 0 ? existingCardId : null;
+
+        if (cardId is not > 0)
+            return null;
+
+        var saved = await _contactRepository.GetContactCardByIdAsync(cardId.Value, organizationId, officeId);
+        if (saved != null)
+            return cardId;
+
+        _logger.LogError("[ContactSaveTrace] Step=DropMissingCard ContactCardId={ContactCardId} OfficeId={OfficeId}", cardId, officeId);
+        return null;
+    }
+
     private async Task<int?> SyncContactCardAsync(Guid organizationId, int officeId, int? existingCardId, UpsertContactCardDto? card)
     {
         if (card == null)

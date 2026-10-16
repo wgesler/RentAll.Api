@@ -6,7 +6,7 @@ public static class StoragePathBuilder
     {
         var scope = SplitStorageScope(officeName);
         var orgSegment = $"{organizationId:N}".ToLowerInvariant();
-        var officeSegment = SanitizeSegment(scope.OfficeName, "global", 120);
+        var officeSegment = OfficeFolderName(scope.OfficeName);
         var categorySegment = SanitizeSegment(string.IsNullOrWhiteSpace(scope.Category) ? category : scope.Category, "files", 40);
         var propertySource = string.IsNullOrWhiteSpace(propertyCode) ? scope.PropertyCode : propertyCode;
         if (string.IsNullOrWhiteSpace(propertySource))
@@ -14,6 +14,16 @@ public static class StoragePathBuilder
 
         var propertySegment = SanitizeSegment(propertySource, "unknown-property", 80);
         return $"{orgSegment}/{officeSegment}/{categorySegment}/{propertySegment}";
+    }
+
+    // DO NOT MODIFY the office name. Lowercase only.
+    // office.Name is the folder, as the office stored it. Hyphens stay hyphens. Spaces stay spaces. Numbers stay numbers.
+    // Do not strip, replace, or rewrite any character. A new spelling creates a second folder for that office.
+    // A blank name is the only exception: use "global".
+    public static string OfficeFolderName(string? officeName)
+    {
+        var trimmed = (officeName ?? string.Empty).Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(trimmed) ? "global" : trimmed;
     }
 
     public static string SanitizeSegment(string? value, string fallback, int maxLength)

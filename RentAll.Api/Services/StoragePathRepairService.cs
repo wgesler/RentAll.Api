@@ -1,9 +1,11 @@
+using System.Text.Json;
 using RentAll.Api.Dtos.Admin;
 using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Common;
+using RentAll.Infrastructure.Services;
 using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Services;
@@ -28,6 +30,56 @@ public class StoragePathRepairService
         _organizationRepository = organizationRepository;
         _fileService = fileService;
         _logger = logger;
+    }
+
+    public async Task<StorageRepairResultDto> RepairHyphenOfficeFoldersAsync(Func<StorageRepairEventDto, Task>? report = null)
+    {
+        var result = new StorageRepairResultDto();
+        var offices = (await _adminStorageRepository.GetOfficeLogosAsync())
+            .Where(office => office.Name.Contains(' ', StringComparison.Ordinal))
+            .ToList();
+        var folders = offices
+            .Select(office => StoragePathBuilder.OfficeFolderName(office.Name).Replace(' ', '-'))
+            .Where(folder => folder.Contains('-', StringComparison.Ordinal))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (folders.Count == 0)
+        {
+            await ReportAsync(report, "start", "", "", "", 0);
+            return result;
+        }
+
+        var rows = await _adminStorageRepository.GetPathsByFoldersAsync(JsonSerializer.Serialize(folders));
+        await ReportAsync(report, "start", "", "", "", rows.Count);
+        foreach (var row in rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.DocumentPath))
+                continue;
+
+            await MoveOfficeFolderAsync(result, row, report);
+        }
+
+        foreach (var office in offices)
+        {
+            var hyphenFolder = StoragePathBuilder.OfficeFolderName(office.Name).Replace(' ', '-');
+            if (!hyphenFolder.Contains('-', StringComparison.Ordinal))
+                continue;
+
+            try
+            {
+                var removed = await _fileService.ClearHyphenOfficePrefixAsync(office.OrganizationId, hyphenFolder);
+                if (removed > 0)
+                    await ReportAsync(report, "file", hyphenFolder, "removed", removed + " leftover file" + (removed == 1 ? "" : "s"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[StorageRepair] Leftover folder {Folder} failed", hyphenFolder);
+                AddFailure(result, hyphenFolder + ": " + ex.Message);
+                await ReportAsync(report, "file", hyphenFolder, "failed", ex.Message);
+            }
+        }
+
+        return result;
     }
 
     public async Task<StorageRepairResultDto> RepairListingPhotosAsync(Func<StorageRepairEventDto, Task>? report = null)
@@ -324,6 +376,56 @@ public class StoragePathRepairService
         public string? PropertyCode { get; }
         public int MaxPathLength { get; }
         public Func<string, Task<int>> Save { get; }
+    }
+
+    private async Task MoveOfficeFolderAsync(StorageRepairResultDto result, StoredPathRow row, Func<StorageRepairEventDto, Task>? report)
+    {
+        var fileName = FileNameOf(row.DocumentPath);
+        var label = row.Source + " " + row.RecordId;
+        StoredImageRelocation? relocation = null;
+        try
+        {
+            relocation = await _fileService.CopyToCorrectOfficeFolderAsync(row.DocumentPath, row.MaxLength);
+            if (relocation.AlreadyCorrect || string.IsNullOrWhiteSpace(relocation.NewPath))
+            {
+                result.AlreadyCorrect++;
+                await ReportAsync(report, "file", fileName, "already correct", "");
+                return;
+            }
+
+            if (relocation.Missing)
+            {
+                AddFailure(result, label + ": file was not found");
+                await ReportAsync(report, "file", fileName, "failed", "file was not found");
+                return;
+            }
+
+            var updated = await _adminStorageRepository.UpdateStoredPathAsync(row.Source, row.RecordId, row.OrganizationId, relocation.NewPath);
+            if (updated < 1)
+                throw new InvalidOperationException("Database row was not updated.");
+
+            await _fileService.DeleteStoredFileAsync(relocation.OriginalPath);
+            result.Moved++;
+            await ReportAsync(report, "file", fileName, "moved", "");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[StorageRepair] {Label} failed", label);
+            if (relocation != null && !relocation.FoundExisting && !relocation.AlreadyCorrect && !string.IsNullOrWhiteSpace(relocation.NewPath) && !string.Equals(relocation.NewPath, relocation.OriginalPath, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    await _fileService.DeleteStoredFileAsync(relocation.NewPath);
+                }
+                catch (Exception restoreEx)
+                {
+                    _logger.LogError(restoreEx, "[StorageRepair] {Label} could not remove the new file. New path {NewPath}", label, relocation.NewPath);
+                }
+            }
+
+            AddFailure(result, label + ": " + ex.Message);
+            await ReportAsync(report, "file", fileName, "failed", ex.Message);
+        }
     }
 
     private async Task<bool> MoveOneAsync(

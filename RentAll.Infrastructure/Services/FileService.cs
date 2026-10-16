@@ -123,6 +123,113 @@ public class FileService : IFileService
         return relativeDirectory + "/" + uniqueFileName;
     }
 
+    public async Task<StoredImageRelocation> CopyToCorrectOfficeFolderAsync(string currentPath, int maxPathLength)
+    {
+        var relative = NormalizeRelative(currentPath);
+        if (!TryCorrectOfficeSegment(relative.Trim('/'), out var correctedRelative))
+        {
+            return new StoredImageRelocation { AlreadyCorrect = true, OriginalPath = currentPath, NewPath = currentPath };
+        }
+
+        var newPath = "/" + correctedRelative;
+        if (newPath.Length > maxPathLength)
+            throw new InvalidOperationException("New path is longer than the database column.");
+
+        var sourceFullPath = ToFullPath(relative);
+        var targetFullPath = ToFullPath(newPath);
+        if (!File.Exists(sourceFullPath))
+        {
+            if (File.Exists(targetFullPath))
+                return new StoredImageRelocation { FoundExisting = true, OriginalPath = currentPath, NewPath = newPath };
+
+            return new StoredImageRelocation { Missing = true, OriginalPath = currentPath };
+        }
+
+        var bytes = await File.ReadAllBytesAsync(sourceFullPath).ConfigureAwait(false);
+        if (bytes.Length == 0)
+            throw new InvalidOperationException("Stored file is empty.");
+
+        Directory.CreateDirectory(Path.GetDirectoryName(targetFullPath)!);
+        await File.WriteAllBytesAsync(targetFullPath, bytes).ConfigureAwait(false);
+        return new StoredImageRelocation
+        {
+            AlreadyCorrect = false,
+            OriginalPath = currentPath,
+            NewPath = newPath,
+            Content = bytes,
+            ContentType = "application/octet-stream"
+        };
+    }
+
+    public Task<bool> DeleteStoredFileAsync(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return Task.FromResult(false);
+
+        var fullPath = ToFullPath(filePath);
+        if (!File.Exists(fullPath))
+            return Task.FromResult(false);
+
+        File.Delete(fullPath);
+        return Task.FromResult(true);
+    }
+
+    public Task<int> ClearHyphenOfficePrefixAsync(Guid organizationId, string hyphenFolder)
+    {
+        if (organizationId == Guid.Empty || string.IsNullOrWhiteSpace(hyphenFolder) || !hyphenFolder.Contains('-'))
+            return Task.FromResult(0);
+
+        var corrected = StoragePathBuilder.OfficeFolderName(hyphenFolder);
+        if (string.Equals(corrected, hyphenFolder, StringComparison.OrdinalIgnoreCase))
+            return Task.FromResult(0);
+
+        var envName = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
+        var sourceDir = Path.Combine(_wwwRootPath, envName, organizationId.ToString("N"), hyphenFolder.Trim().ToLowerInvariant());
+        if (!Directory.Exists(sourceDir))
+            return Task.FromResult(0);
+
+        var destDir = Path.Combine(_wwwRootPath, envName, organizationId.ToString("N"), corrected);
+        var removed = 0;
+        foreach (var file in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourceDir, file);
+            var target = Path.Combine(destDir, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            if (File.Exists(target))
+                File.Delete(file);
+            else
+                File.Move(file, target);
+            removed++;
+        }
+
+        if (Directory.Exists(sourceDir))
+            Directory.Delete(sourceDir, recursive: true);
+
+        return Task.FromResult(removed);
+    }
+
+    private static bool TryCorrectOfficeSegment(string blobName, out string correctedBlobName)
+    {
+        correctedBlobName = blobName;
+        var parts = blobName.Split('/');
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (parts[i].Length != 32 || !parts[i].All(Uri.IsHexDigit))
+                continue;
+
+            var office = Uri.UnescapeDataString(parts[i + 1]);
+            var corrected = StoragePathBuilder.OfficeFolderName(office);
+            if (string.Equals(office, corrected, StringComparison.Ordinal))
+                return false;
+
+            parts[i + 1] = corrected;
+            correctedBlobName = string.Join("/", parts);
+            return true;
+        }
+
+        return false;
+    }
+
     public async Task<StoredImageRelocation> RelocateStoredImageAsync(string currentPath, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength)
     {
         var sourceFullPath = ToFullPath(currentPath);
@@ -502,8 +609,12 @@ public class FileService : IFileService
     {
         var envName = (string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container).ToLowerInvariant();
         var orgSegment = $"{organizationId:N}".ToLowerInvariant();
-        var officeSegment = !string.IsNullOrWhiteSpace(officeName) ? officeName.Trim().ToLower() : "global";
-        return $"{envName}/{orgSegment}/{officeSegment}";
+        var rawOffice = string.IsNullOrWhiteSpace(officeName) ? "global" : officeName.Trim();
+        var slash = rawOffice.IndexOf('/');
+        var officePart = slash >= 0 ? rawOffice[..slash] : rawOffice;
+        var rest = slash >= 0 ? rawOffice[slash..].ToLowerInvariant() : string.Empty;
+        var officeSegment = StoragePathBuilder.OfficeFolderName(officePart);
+        return $"{envName}/{orgSegment}/{officeSegment}{rest}";
     }
 
     private static bool ShouldIncludeImageTypeFolder(string? officeName, ImageType imageType)

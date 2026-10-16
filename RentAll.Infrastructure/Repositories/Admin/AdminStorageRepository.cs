@@ -75,6 +75,12 @@ public class AdminStorageRepository : IAdminStorageRepository
     public Task<int> UpdateInspectionPhotoPathAsync(Guid photoId, Guid organizationId, string? photoPath)
         => ExecuteProcAsync("Maintenance.Photo_UpdatePath", new { PhotoId = photoId, OrganizationId = organizationId, PhotoPath = photoPath });
 
+    public Task<IReadOnlyList<StoredPathRow>> GetPathsByFoldersAsync(string foldersJson)
+        => QueryProcAsync<StoredPathRow>("Organization.StoragePath_GetByFolders", new { FoldersJson = foldersJson });
+
+    public Task<int> UpdateStoredPathAsync(string source, string recordId, string? organizationId, string documentPath)
+        => ExecuteProcAsync("Organization.StoragePath_Update", new { Source = source, RecordId = recordId, OrganizationId = organizationId, DocumentPath = documentPath });
+
     private async Task<IReadOnlyList<T>> QueryProcAsync<T>(string procedureName, object? parameters = null)
     {
         await using var db = new SqlConnection(_dbConnectionString);

@@ -8,6 +8,9 @@ public interface IFileService
     Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType, string? propertyCode = null);
     Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType, string? propertyCode = null);
     Task<StoredImageRelocation> RelocateStoredImageAsync(string currentPath, Guid organizationId, string? officeName, string category, string? propertyCode, int maxPathLength);
+    Task<StoredImageRelocation> CopyToCorrectOfficeFolderAsync(string currentPath, int maxPathLength);
+    Task<bool> DeleteStoredFileAsync(string filePath);
+    Task<int> ClearHyphenOfficePrefixAsync(Guid organizationId, string hyphenFolder);
     Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode);
     Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType);
     Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType);

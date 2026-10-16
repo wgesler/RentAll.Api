@@ -21,6 +21,7 @@ namespace RentAll.Api.Controllers
         private readonly IExternalApiKeyService _externalApiKeyService;
         private readonly ExternalPropertyOwnerContactResolver _externalPropertyOwnerContactResolver;
         private readonly ExternalPropertyUploadLogService _externalPropertyUploadLogService;
+        private readonly IDocumentIntelligenceService _documentIntelligenceService;
         private readonly ILogger<ContactController> _logger;
 
         public ContactController(
@@ -34,6 +35,7 @@ namespace RentAll.Api.Controllers
             IExternalApiKeyService externalApiKeyService,
             ExternalPropertyOwnerContactResolver externalPropertyOwnerContactResolver,
             ExternalPropertyUploadLogService externalPropertyUploadLogService,
+            IDocumentIntelligenceService documentIntelligenceService,
             ILogger<ContactController> logger)
         {
             _contactManager = contactManager;
@@ -46,6 +48,7 @@ namespace RentAll.Api.Controllers
             _externalApiKeyService = externalApiKeyService;
             _externalPropertyOwnerContactResolver = externalPropertyOwnerContactResolver;
             _externalPropertyUploadLogService = externalPropertyUploadLogService;
+            _documentIntelligenceService = documentIntelligenceService;
             _logger = logger;
         }
     }

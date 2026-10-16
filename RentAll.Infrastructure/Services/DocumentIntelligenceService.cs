@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Models.Contacts;
 using RentAll.Domain.Models.Maintenances;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -487,6 +488,164 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             .ToList();
 
         return items.Count == 0 ? null : string.Join("; ", items);
+    }
+
+    public async Task<W9DocumentExtraction> ExtractW9Async(
+        byte[] content,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_settings.Enabled)
+            throw new InvalidOperationException("Document Intelligence is not enabled.");
+
+        if (content == null || content.Length == 0)
+            throw new ArgumentException("W-9 content is required.", nameof(content));
+
+        var endpoint = (_settings.Endpoint ?? string.Empty).Trim().TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(endpoint))
+            throw new InvalidOperationException("Document Intelligence endpoint is not configured.");
+
+        var client = new DocumentIntelligenceClient(new Uri(endpoint), new DefaultAzureCredential());
+        var options = new AnalyzeDocumentOptions(PrebuiltLayoutModelId, BinaryData.FromBytes(content));
+        options.Features.Add(DocumentAnalysisFeature.QueryFields);
+        options.Features.Add(DocumentAnalysisFeature.KeyValuePairs);
+        options.Features.Add(DocumentAnalysisFeature.OcrHighResolution);
+        foreach (var fieldName in W9FormParser.QueryFields)
+            options.QueryFields.Add(fieldName);
+
+        _logger.LogError(
+            "[W9ExtractTrace] Step=Analyze Start ContentType={ContentType} ContentLength={ContentLength}",
+            contentType,
+            content.Length);
+
+        var operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, options, cancellationToken);
+        var fields = ReadW9QueryFields(operation.Value);
+        AddW9KeyValueFields(operation.Value, fields);
+        var extraction = W9FormParser.Parse(fields, BuildW9Text(operation.Value));
+        _logger.LogError(
+            "[W9ExtractTrace] Step=Analyze Complete TaxClassificationId={TaxClassificationId} OwnerIdTypeId={OwnerIdTypeId} HasTin={HasTin} WarningCount={WarningCount} FieldKeys={FieldKeys} ContentLength={ContentLength} HasSelectedMark={HasSelectedMark}",
+            extraction.FederalTaxClassificationId,
+            extraction.OwnerIdTypeId,
+            !string.IsNullOrWhiteSpace(extraction.IdentificationNumber),
+            extraction.Warnings.Count,
+            string.Join(",", fields.Keys),
+            operation.Value.Content?.Length ?? 0,
+            (operation.Value.Content ?? string.Empty).Contains(":selected:", StringComparison.OrdinalIgnoreCase));
+        return extraction;
+    }
+
+    private static Dictionary<string, string> ReadW9QueryFields(AnalyzeResult analyzeResult)
+    {
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var document in analyzeResult.Documents ?? [])
+        {
+            foreach (var pair in document.Fields)
+                AddW9Field(fields, pair.Key, pair.Value);
+        }
+
+        return fields;
+    }
+
+    private static void AddW9KeyValueFields(AnalyzeResult analyzeResult, Dictionary<string, string> fields)
+    {
+        foreach (var pair in analyzeResult.KeyValuePairs ?? [])
+        {
+            var key = pair.Key?.Content ?? string.Empty;
+            var value = pair.Value?.Content ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                continue;
+
+            string? target = null;
+            if (key.Contains("social security", StringComparison.OrdinalIgnoreCase))
+                target = W9FormParser.SocialSecurityNumber;
+            else if (key.Contains("employer", StringComparison.OrdinalIgnoreCase) && key.Contains("identification", StringComparison.OrdinalIgnoreCase))
+                target = W9FormParser.EmployerIdentificationNumber;
+            else if (key.Contains("tax classification", StringComparison.OrdinalIgnoreCase) || key.Contains("federal tax", StringComparison.OrdinalIgnoreCase))
+                target = W9FormParser.FederalTaxClassification;
+
+            if (target != null && !fields.ContainsKey(target))
+                fields[target] = value.Trim();
+        }
+    }
+
+    private static string BuildW9Text(AnalyzeResult analyzeResult)
+    {
+        var text = new System.Text.StringBuilder();
+        if (!string.IsNullOrWhiteSpace(analyzeResult.Content))
+            text.AppendLine(analyzeResult.Content);
+
+        foreach (var page in analyzeResult.Pages ?? [])
+        {
+            var words = (page.Words ?? [])
+                .Select(word => (Content: word.Content ?? string.Empty, Center: PolygonCenter(word.Polygon)))
+                .Where(word => word.Content.Length > 0)
+                .ToList();
+
+            foreach (var mark in page.SelectionMarks ?? [])
+            {
+                if (mark.State != DocumentSelectionMarkState.Selected)
+                    continue;
+
+                var markCenter = PolygonCenter(mark.Polygon);
+                var label = string.Join(' ', words
+                    .Where(word => Math.Abs(word.Center.Y - markCenter.Y) < 0.35 && word.Center.X > markCenter.X && word.Center.X - markCenter.X < 5)
+                    .OrderBy(word => word.Center.X)
+                    .Take(12)
+                    .Select(word => word.Content));
+                if (!string.IsNullOrWhiteSpace(label))
+                    text.AppendLine(":selected: " + label);
+            }
+        }
+
+        foreach (var pair in analyzeResult.KeyValuePairs ?? [])
+        {
+            var key = pair.Key?.Content;
+            var value = pair.Value?.Content;
+            if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
+                text.AppendLine(key + " " + value);
+        }
+
+        return text.ToString();
+    }
+
+    private static (float X, float Y) PolygonCenter(IReadOnlyList<float>? polygon)
+    {
+        if (polygon == null || polygon.Count < 2)
+            return (0, 0);
+
+        float sumX = 0;
+        float sumY = 0;
+        var points = 0;
+        for (var index = 0; index + 1 < polygon.Count; index += 2)
+        {
+            sumX += polygon[index];
+            sumY += polygon[index + 1];
+            points++;
+        }
+
+        return points == 0 ? (0, 0) : (sumX / points, sumY / points);
+    }
+
+    private static void AddW9Field(Dictionary<string, string> fields, string key, DocumentField field)
+    {
+        var text = ReadW9FieldText(field);
+        if (!string.IsNullOrWhiteSpace(text))
+            fields[key] = text;
+    }
+
+    private static string? ReadW9FieldText(DocumentField field)
+    {
+        if (!string.IsNullOrWhiteSpace(field.ValueString))
+            return field.ValueString.Trim();
+
+        if (field.ValueSelectionGroup is { Count: > 0 })
+        {
+            var selected = string.Join(" ", field.ValueSelectionGroup.Where(value => !string.IsNullOrWhiteSpace(value)));
+            if (!string.IsNullOrWhiteSpace(selected))
+                return selected.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(field.Content) ? null : field.Content.Trim();
     }
 
     public async Task<CreditCardStatementExtraction> ExtractCreditCardStatementAsync(byte[] content, string contentType, string? fileName, CancellationToken cancellationToken = default)

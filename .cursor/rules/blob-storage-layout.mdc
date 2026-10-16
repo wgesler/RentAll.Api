@@ -22,7 +22,7 @@ Pictures use the second form. `propertyCode` is required for listings, inspectio
 - Do not flatten office, category, and property into one folder (`denver-listings-bar0903`).
 - Do not pass `office/listings/code` or `office/inspection/code` through as a single office name.
 - A missing office uses the `global` office folder. It does not write at the org root.
-- Keep spaces in the office name. Do not replace a space with a hyphen (`las vegas`, not `las-vegas`).
+- DO NOT MODIFY the office name. `StoragePathBuilder.OfficeFolderName` lowercases `office.Name` and changes nothing else. Hyphens, spaces, and numbers stay. Do not strip, replace, or rewrite any character. A new spelling creates a second folder for that office. A blank name uses `global`.
 
 ## Examples
 
