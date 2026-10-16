@@ -3,6 +3,7 @@ namespace RentAll.Api.Dtos.Maintenances.Receipts;
 public class GetReceiptsDto
 {
     public int[] OfficeIds { get; set; } = [];
+    public Guid? OrganizationId { get; set; }
     public Guid? PropertyId { get; set; }
     public bool? IsActive { get; set; }
     public bool IncludeInactive { get; set; }

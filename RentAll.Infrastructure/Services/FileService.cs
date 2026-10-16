@@ -311,6 +311,34 @@ public class FileService : IFileService
         return Task.FromResult(files);
     }
 
+    public Task<IReadOnlyList<string>> ListRootImagesAsync(Guid organizationId, string? officeName, string category, DateOnly? start, DateOnly? end)
+    {
+        var envName = string.IsNullOrWhiteSpace(_appSettings.Container) ? "dev" : _appSettings.Container.ToLowerInvariant();
+        var relativeDirectory = "/" + envName + "/" + StoragePathBuilder.BuildDirectory(organizationId, officeName, category, null);
+        var fullDirectory = ToFullPath(relativeDirectory);
+        if (!Directory.Exists(fullDirectory))
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        IReadOnlyList<string> files = Directory.GetFiles(fullDirectory)
+            .Where(file => IsWithinDates(File.GetLastWriteTimeUtc(file), start, end))
+            .Select(file => relativeDirectory + "/" + Path.GetFileName(file))
+            .ToList();
+        return Task.FromResult(files);
+    }
+
+    private static bool IsWithinDates(DateTime modifiedUtc, DateOnly? start, DateOnly? end)
+    {
+        if (!start.HasValue && !end.HasValue)
+            return true;
+
+        var day = DateOnly.FromDateTime(modifiedUtc);
+        if (start.HasValue && day < start.Value)
+            return false;
+        if (end.HasValue && day > end.Value)
+            return false;
+        return true;
+    }
+
     public async Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType)
     {
         _ = contentType;

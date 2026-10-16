@@ -18,7 +18,10 @@ public partial class MaintenanceController
 
         try
         {
-            var criteria = dto.ToCriteria(CurrentOrganizationId);
+            var organizationId = IsSuperAdmin() && dto.OrganizationId.HasValue && dto.OrganizationId.Value != Guid.Empty
+                ? dto.OrganizationId.Value
+                : CurrentOrganizationId;
+            var criteria = dto.ToCriteria(organizationId);
             var records = await _maintenanceRepository.GetReceiptsByCriteriaAsync(criteria);
             var response = records.Select(o => new ReceiptResponseDto(o));
             return Ok(response);

@@ -12,6 +12,7 @@ public interface IFileService
     Task<bool> DeleteStoredFileAsync(string filePath);
     Task<int> ClearHyphenOfficePrefixAsync(Guid organizationId, string hyphenFolder);
     Task<IReadOnlyList<string>> ListImageUrlsAsync(Guid organizationId, string? officeName, string category, string? propertyCode);
+    Task<IReadOnlyList<string>> ListRootImagesAsync(Guid organizationId, string? officeName, string category, DateOnly? start, DateOnly? end);
     Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType);
     Task<bool> DeleteImageAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType);
     Task<FileDetails?> GetImageDetailsAsync(Guid organizationId, string? officeName, string filePath, ImageType imageType);

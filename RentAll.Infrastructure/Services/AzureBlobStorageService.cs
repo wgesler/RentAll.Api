@@ -667,6 +667,38 @@ public class AzureBlobStorageService : IFileService
         return urls;
     }
 
+    public async Task<IReadOnlyList<string>> ListRootImagesAsync(Guid organizationId, string? officeName, string category, DateOnly? start, DateOnly? end)
+    {
+        var containerName = WritableContainerName();
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var prefix = BuildBlobDirectory(organizationId, officeName, category, null) + "/";
+        var urls = new List<string>();
+        await foreach (var item in containerClient.GetBlobsByHierarchyAsync(BlobTraits.None, BlobStates.None, "/", prefix, CancellationToken.None).ConfigureAwait(false))
+        {
+            if (item.IsPrefix || item.Blob == null)
+                continue;
+            if (!IsWithinDates(item.Blob.Properties.LastModified, start, end))
+                continue;
+            urls.Add(BuildUrl(containerName, item.Blob.Name, containerClient.GetBlobClient(item.Blob.Name).Uri));
+        }
+        return urls;
+    }
+
+    private static bool IsWithinDates(DateTimeOffset? modified, DateOnly? start, DateOnly? end)
+    {
+        if (!start.HasValue && !end.HasValue)
+            return true;
+        if (!modified.HasValue)
+            return false;
+
+        var day = DateOnly.FromDateTime(modified.Value.UtcDateTime);
+        if (start.HasValue && day < start.Value)
+            return false;
+        if (end.HasValue && day > end.Value)
+            return false;
+        return true;
+    }
+
     public async Task RestoreStoredImageAsync(string originalPath, byte[] content, string contentType)
     {
         var parsed = ParseStoragePath(originalPath);
