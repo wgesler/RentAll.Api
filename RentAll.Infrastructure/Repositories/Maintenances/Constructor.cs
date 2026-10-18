@@ -174,6 +174,7 @@ public partial class MaintenanceRepository : IMaintenanceRepository
             AgreementLineId = e.AgreementLineId,
             AgreementLineNotes = e.AgreementLineNotes,
             ReceiptPath = e.ReceiptPath,
+            NoReceiptAvailable = e.NoReceiptAvailable,
             PaymentTypeId = e.PaymentTypeId,
             PostingStatusId = e.PostingStatusId,
             CheckPrinted = e.CheckPrinted,

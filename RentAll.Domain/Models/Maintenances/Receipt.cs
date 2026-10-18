@@ -27,6 +27,7 @@ public class Receipt
     public int? AgreementLineId { get; set; }
     public string? AgreementLineNotes { get; set; }
     public string? ReceiptPath { get; set; }
+    public bool NoReceiptAvailable { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
     public int? PostingStatusId { get; set; }

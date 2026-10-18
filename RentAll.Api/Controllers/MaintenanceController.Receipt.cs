@@ -89,14 +89,17 @@ public partial class MaintenanceController
     }
 
     [HttpGet("receipt/{receiptId:guid}")]
-    public async Task<IActionResult> GetReceiptById(Guid receiptId)
+    public async Task<IActionResult> GetReceiptById(Guid receiptId, [FromQuery] Guid? organizationId)
     {
         if (receiptId == Guid.Empty)
             return BadRequest("ReceiptId is required");
 
         try
         {
-            var record = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, CurrentOrganizationId);
+            var organization = IsSuperAdmin() && organizationId.HasValue && organizationId.Value != Guid.Empty
+                ? organizationId.Value
+                : CurrentOrganizationId;
+            var record = await _maintenanceRepository.GetReceiptByIdAsync(receiptId, organization);
             if (record == null)
                 return NotFound("Receipt record not found");
 
@@ -290,8 +293,12 @@ public partial class MaintenanceController
         if (dto == null)
             return BadRequest("Receipt data is required");
 
-        if (dto.OrganizationId != CurrentOrganizationId)
+        if (!IsSuperAdmin() && dto.OrganizationId != CurrentOrganizationId)
             return Unauthorized("Invalid organization Id");
+
+        var organization = IsSuperAdmin() && dto.OrganizationId != Guid.Empty
+            ? dto.OrganizationId
+            : CurrentOrganizationId;
 
         var (isValid, errorMessage) = dto.IsValid();
         if (!isValid)
@@ -299,7 +306,7 @@ public partial class MaintenanceController
 
         try
         {
-            var existing = await _maintenanceRepository.GetReceiptByIdAsync(dto.ReceiptId, CurrentOrganizationId);
+            var existing = await _maintenanceRepository.GetReceiptByIdAsync(dto.ReceiptId, organization);
             if (existing == null)
                 return NotFound("Receipt record not found");
 

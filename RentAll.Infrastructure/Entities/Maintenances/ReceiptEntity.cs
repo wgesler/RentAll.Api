@@ -25,6 +25,7 @@ namespace RentAll.Infrastructure.Entities.Maintenances
         public int? AgreementLineId { get; set; }
         public string? AgreementLineNotes { get; set; }
         public string? ReceiptPath { get; set; }
+        public bool NoReceiptAvailable { get; set; }
         public int PaymentTypeId { get; set; }
         public int? PostingStatusId { get; set; }
         public bool CheckPrinted { get; set; }
