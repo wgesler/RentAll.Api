@@ -24,6 +24,7 @@ public class UpdateReceiptDto
     public List<ReceiptSplitDto> Splits { get; set; } = new List<ReceiptSplitDto>();
     public int? AgreementLineId { get; set; }
     public string? ReceiptPath { get; set; }
+    public bool NoReceiptAvailable { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int PaymentTypeId { get; set; }
     public bool CheckPrinted { get; set; }
@@ -94,6 +95,7 @@ public class UpdateReceiptDto
             Splits = Splits.Select(split => split.ToModel()).ToList(),
             AgreementLineId = AgreementLineId,
             ReceiptPath = ReceiptPath,
+            NoReceiptAvailable = NoReceiptAvailable,
             PaymentTypeId = PaymentTypeId,
             CheckPrinted = CheckPrinted,
             IsUtility = IsUtility,
