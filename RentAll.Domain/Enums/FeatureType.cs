@@ -10,5 +10,6 @@ public enum FeatureType
     Leads = 5,
     Owners = 6,
     Management = 7,
-    PartnerIntegration = 8
+    PartnerIntegration = 8,
+    Leasing = 9
 }
