@@ -31,6 +31,10 @@ public class ReservationListEntity
     public DateOnly? MaidStartDate { get; set; }
     public int FrequencyId { get; set; }
     public decimal MaidServiceFee { get; set; }
+    public bool OverrideOwnerPayout { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
 
     public int CurrentInvoiceNo { get; set; }
 

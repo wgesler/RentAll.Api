@@ -29,6 +29,10 @@ public class ReservationListResponseDto
     public DateOnly? MaidStartDate { get; set; }
     public int FrequencyId { get; set; }
     public decimal MaidServiceFee { get; set; }
+    public bool OverrideOwnerPayout { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
     public int CurrentInvoiceNo { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -77,6 +81,10 @@ public class ReservationListResponseDto
         MaidStartDate = reservationList.MaidStartDate;
         FrequencyId = (int)reservationList.Frequency;
         MaidServiceFee = reservationList.MaidServiceFee;
+        OverrideOwnerPayout = reservationList.OverrideOwnerPayout;
+        ManagementFeeTypeId = reservationList.ManagementFeeType.HasValue ? (int)reservationList.ManagementFeeType.Value : null;
+        FlatRateAmount = reservationList.FlatRateAmount;
+        RevenueSplitOwner = reservationList.RevenueSplitOwner;
         IsActive = reservationList.IsActive;
         CreatedOn = reservationList.CreatedOn;
         aCleanerUserId = reservationList.aCleanerUserId;
