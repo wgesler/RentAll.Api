@@ -16,5 +16,6 @@ public enum AccountType
     CostOfGoodsSold = 11,
     Expense = 12,
     OtherIncome = 13,
-    OtherExpense = 14
+    OtherExpense = 14,
+    Taxes = 15
 }
