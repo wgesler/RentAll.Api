@@ -65,6 +65,11 @@ public class Reservation
     public bool BilledToEmployer { get; set; }
     public bool CollapseCharges { get; set; }
     public InvoiceMethod InvoiceMethod { get; set; } = InvoiceMethod.Create;
+    public bool OverrideOwnerPayout { get; set; }
+    public ManagementFeeType? ManagementFeeType { get; set; }
+    public decimal? FlatRateAmount { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }

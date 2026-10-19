@@ -58,6 +58,11 @@ public class CreateReservationDto
     public bool BilledToEmployer { get; set; }
     public bool CollapseCharges { get; set; }
     public int InvoiceMethodId { get; set; } = (int)InvoiceMethod.Create;
+    public bool OverrideOwnerPayout { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -160,6 +165,9 @@ public class CreateReservationDto
                 return (false, "Referral Percentage or Referral Flat Rate is required when ReferralFee is enabled");
         }
 
+        if (OverrideOwnerPayout && ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
+            return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
+
         if (ExtraFeeLines != null)
         {
             foreach (var line in ExtraFeeLines)
@@ -175,6 +183,7 @@ public class CreateReservationDto
 
     public Reservation ToModel(string code, Guid currentUser)
     {
+        var ownerPayout = ResolveOwnerPayout();
         return new Reservation
         {
             OrganizationId = OrganizationId,
@@ -230,6 +239,11 @@ public class CreateReservationDto
             BilledToEmployer = BilledToEmployer,
             CollapseCharges = CollapseCharges,
             InvoiceMethod = (InvoiceMethod)InvoiceMethodId,
+            OverrideOwnerPayout = ownerPayout.Override,
+            ManagementFeeType = ownerPayout.FeeType,
+            FlatRateAmount = ownerPayout.FlatRateAmount,
+            RevenueSplitOwner = ownerPayout.RevenueSplitOwner,
+            RevenueSplitOffice = ownerPayout.RevenueSplitOffice,
             aCleanerUserId = aCleanerUserId,
             aCleaningDate = aCleaningDate,
             aCarpetUserId = aCarpetUserId,
@@ -246,5 +260,21 @@ public class CreateReservationDto
             IsActive = IsActive,
             CreatedBy = currentUser
         };
+    }
+
+    private (bool Override, ManagementFeeType? FeeType, decimal? FlatRateAmount, decimal? RevenueSplitOwner, decimal? RevenueSplitOffice) ResolveOwnerPayout()
+    {
+        if (!OverrideOwnerPayout)
+            return (false, null, null, null, null);
+
+        var feeType = ManagementFeeTypeId.HasValue && Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value)
+            ? (ManagementFeeType)ManagementFeeTypeId.Value
+            : ManagementFeeType.FlatRate;
+
+        if (feeType == ManagementFeeType.Percentage)
+            return (true, feeType, null, RevenueSplitOwner, RevenueSplitOffice);
+        if (feeType == ManagementFeeType.Minimum)
+            return (true, feeType, FlatRateAmount, RevenueSplitOwner, RevenueSplitOffice);
+        return (true, ManagementFeeType.FlatRate, FlatRateAmount, null, null);
     }
 }

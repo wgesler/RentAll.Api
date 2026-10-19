@@ -63,6 +63,11 @@ public class ReservationResponseDto
     public bool BilledToEmployer { get; set; }
     public bool CollapseCharges { get; set; }
     public int InvoiceMethodId { get; set; }
+    public bool OverrideOwnerPayout { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
@@ -146,6 +151,11 @@ public class ReservationResponseDto
         BilledToEmployer = reservation.BilledToEmployer;
         CollapseCharges = reservation.CollapseCharges;
         InvoiceMethodId = (int)reservation.InvoiceMethod;
+        OverrideOwnerPayout = reservation.OverrideOwnerPayout;
+        ManagementFeeTypeId = reservation.ManagementFeeType.HasValue ? (int)reservation.ManagementFeeType.Value : null;
+        FlatRateAmount = reservation.FlatRateAmount;
+        RevenueSplitOwner = reservation.RevenueSplitOwner;
+        RevenueSplitOffice = reservation.RevenueSplitOffice;
         aCleanerUserId = reservation.aCleanerUserId;
         aCleaningDate = reservation.aCleaningDate;
         aCarpetUserId = reservation.aCarpetUserId;

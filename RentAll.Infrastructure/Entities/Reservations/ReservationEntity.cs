@@ -70,6 +70,11 @@ public class ReservationEntity
     public bool CollapseCharges { get; set; }
     public int InvoiceMethodId { get; set; }
     public int CurrentInvoiceNo { get; set; }
+    public bool OverrideOwnerPayout { get; set; }
+    public int? ManagementFeeTypeId { get; set; }
+    public decimal? FlatRateAmount { get; set; }
+    public decimal? RevenueSplitOwner { get; set; }
+    public decimal? RevenueSplitOffice { get; set; }
 
     public Guid? aCleanerUserId { get; set; }
     public DateOnly? aCleaningDate { get; set; }
