@@ -891,21 +891,35 @@ public partial class AccountingManager
         if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
             return null;
 
+        var feeType = propertyAgreement.ManagementFeeType;
+        var flatRateAmount = propertyAgreement.FlatRateAmount;
+        var revenueSplitOwner = propertyAgreement.RevenueSplitOwner;
+        var reservation = invoice.ReservationId is { } reservationId && reservationId != Guid.Empty
+            ? await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId) : null;
+
+        // On occasion, a reservation can override the property agreement
+        if (reservation is { OverrideOwnerPayout: true, ManagementFeeType: { } reservationFeeType })
+        {
+            feeType = reservationFeeType;
+            flatRateAmount = reservation.FlatRateAmount ?? 0m;
+            revenueSplitOwner = reservation.RevenueSplitOwner ?? 0m;
+        }
+
         decimal ownerAmount = 0m;
-        switch (propertyAgreement.ManagementFeeType)
+        switch (feeType)
         {
             case ManagementFeeType.FlatRate:
-                ownerAmount = await GetProratedOwnerFlatAmountAsync(invoice, propertyAgreement.FlatRateAmount, rentalLine);
+                ownerAmount = await GetProratedOwnerFlatAmountAsync(invoice, flatRateAmount, rentalLine);
                 break;
 
             case ManagementFeeType.Percentage:
-                ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
+                ownerAmount = amount * revenueSplitOwner / 100m;
                 break;
 
             case ManagementFeeType.Minimum:
                 {
-                    ownerAmount = amount * propertyAgreement.RevenueSplitOwner / 100m;
-                    var proratedMinimum = await GetProratedOwnerFlatAmountAsync(invoice, propertyAgreement.FlatRateAmount, rentalLine);
+                    ownerAmount = amount * revenueSplitOwner / 100m;
+                    var proratedMinimum = await GetProratedOwnerFlatAmountAsync(invoice, flatRateAmount, rentalLine);
                     if (ownerAmount < proratedMinimum)
                         ownerAmount = proratedMinimum;
                     break;

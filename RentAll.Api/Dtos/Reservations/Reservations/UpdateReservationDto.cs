@@ -173,8 +173,24 @@ public class UpdateReservationDto
                 return (false, "Referral Percentage or Referral Flat Rate is required when ReferralFee is enabled");
         }
 
-        if (OverrideOwnerPayout && ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
-            return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
+        if (OverrideOwnerPayout)
+        {
+            if (ManagementFeeTypeId.HasValue && !Enum.IsDefined(typeof(ManagementFeeType), ManagementFeeTypeId.Value))
+                return (false, $"Invalid ManagementFeeType value: {ManagementFeeTypeId.Value}");
+
+            if (FlatRateAmount.HasValue && FlatRateAmount.Value < 0)
+                return (false, "FlatRateAmount cannot be negative");
+
+            if (RevenueSplitOwner.HasValue && (RevenueSplitOwner.Value < 0 || RevenueSplitOwner.Value > 100))
+                return (false, "RevenueSplitOwner must be between 0 and 100");
+
+            if (RevenueSplitOffice.HasValue && (RevenueSplitOffice.Value < 0 || RevenueSplitOffice.Value > 100))
+                return (false, "RevenueSplitOffice must be between 0 and 100");
+
+            if (RevenueSplitOwner.HasValue && RevenueSplitOffice.HasValue
+                && Math.Abs(RevenueSplitOwner.Value + RevenueSplitOffice.Value - 100m) > 0.01m)
+                return (false, "When both splits are provided, RevenueSplitOwner and RevenueSplitOffice must sum to 100");
+        }
 
         if (ExtraFeeLines != null)
         {
