@@ -19,6 +19,7 @@ public class AccountingOfficeEntity
     public string? BankRouting { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
+    public string? BankAccountOrig { get; set; }
     public string? BankPhone { get; set; }
     public string? AccountNoLastFour { get; set; }
     public int StartMonth { get; set; }
