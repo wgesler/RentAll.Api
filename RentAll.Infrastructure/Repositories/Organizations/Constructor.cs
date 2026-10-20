@@ -159,7 +159,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             BankSwiftCode = e.BankSwiftCode,
             BankAddress = e.BankAddress,
             BankPhone = e.BankPhone,
-            AccountNo = string.IsNullOrWhiteSpace(e.BankAccountOrig) ? null : e.BankAccountOrig,
+            AccountNo = null,
             AccountNoLastFour = e.AccountNoLastFour,
             StartMonth = e.StartMonth,
             StartYear = e.StartYear,
