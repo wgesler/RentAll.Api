@@ -19,7 +19,10 @@ namespace RentAll.Api.Controllers
                     accountingOffices = await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess);
                 var accountingOfficeList = accountingOffices.ToList();
                 foreach (var accountingOffice in accountingOfficeList)
+                {
                     accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(accountingOffice.OfficeId);
+                    accountingOffice.Banks = await _accountingRepository.GetBanksByOfficeIdAsync(accountingOffice.OrganizationId, accountingOffice.OfficeId);
+                }
 
                 var response = new List<AccountingOfficeResponseDto>();
                 foreach (var accountingOffice in accountingOfficeList)
@@ -55,6 +58,7 @@ namespace RentAll.Api.Controllers
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(officeId), accountingOffice.LogoPath, ImageType.Logos);
                 if (!string.IsNullOrWhiteSpace(accountingOffice.CheckStockPath))
                     response.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(officeId), accountingOffice.CheckStockPath, ImageType.CheckStocks);
+                await HydrateBankCheckStockAsync(response.Banks, officeId);
 
                 return Ok(response);
             }
@@ -290,6 +294,7 @@ namespace RentAll.Api.Controllers
                 var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
                 if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
+                await HydrateBankCheckStockAsync(response.Banks, refreshedAccountingOffice.OfficeId);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -399,6 +404,7 @@ namespace RentAll.Api.Controllers
                     await _fileService.DeleteImageAsync(office.OrganizationId, await GetOfficeNameAsync(officeId), office.LogoPath, ImageType.Logos);
 
                 await DeleteBankCardsForOfficeAsync(officeId);
+                await DeleteBanksForOfficeAsync(officeId);
 
                 await _organizationRepository.DeleteAccountingOfficeByIdAsync(CurrentOrganizationId, officeId);
                 return NoContent();
@@ -447,7 +453,15 @@ namespace RentAll.Api.Controllers
                 return null;
 
             accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(officeId);
+            accountingOffice.Banks = await _accountingRepository.GetBanksByOfficeIdAsync(resolvedOrganizationId, officeId);
             return accountingOffice;
+        }
+
+        private async Task DeleteBanksForOfficeAsync(int officeId)
+        {
+            var existingBanks = await _accountingRepository.GetBanksByOfficeIdAsync(CurrentOrganizationId, officeId);
+            foreach (var existingBank in existingBanks)
+                await _accountingRepository.DeleteBankByIdAsync(existingBank.BankId, CurrentOrganizationId, officeId);
         }
 
         private async Task DeleteBankCardsForOfficeAsync(int officeId)

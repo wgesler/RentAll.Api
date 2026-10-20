@@ -58,6 +58,7 @@ public class CreateAccountingOfficeDto
     public int? DefaultInterOfficeAccountId { get; set; }
     public FileDetails? FileDetails { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
+    public string? CheckHtml { get; set; }
     public bool IsActive { get; set; }
 
     public (bool IsValid, string? ErrorMessage) IsValid(bool requireBankInformation = true)
@@ -206,6 +207,7 @@ public class CreateAccountingOfficeDto
             DefaultInterOfficeAccountId = DefaultInterOfficeAccountId,
             LogoPath = null, // Will be set by controller after file save
             CurrentCheckNumber = CurrentCheckNumber,
+            CheckHtml = string.IsNullOrWhiteSpace(CheckHtml) ? "[]" : CheckHtml.Trim(),
             IsActive = IsActive,
             CreatedBy = currentUser
         };

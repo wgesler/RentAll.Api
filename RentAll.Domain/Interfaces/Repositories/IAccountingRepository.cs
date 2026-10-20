@@ -49,6 +49,14 @@ public interface IAccountingRepository
     Task DeleteBankCardByIdAsync(int bankCardId, Guid organizationId, int officeId);
     #endregion
 
+    #region Banks
+    Task<List<Bank>> GetBanksByOfficeIdAsync(Guid organizationId, int officeId);
+    Task<Bank?> GetBankByIdAsync(int bankId, Guid organizationId, int officeId);
+    Task<Bank> CreateBankAsync(Bank bank);
+    Task<Bank> UpdateBankByIdAsync(Bank bank);
+    Task DeleteBankByIdAsync(int bankId, Guid organizationId, int officeId);
+    #endregion
+
     #region ChartOfAccounts
     Task<List<ChartOfAccount>> GetChartOfAccountsByOfficeIdsAsync(Guid organizationId, string officeIds);
     Task<List<ChartOfAccount>> GetChartOfAccountsByOfficeIdAsync(Guid organizationId, int officeId);

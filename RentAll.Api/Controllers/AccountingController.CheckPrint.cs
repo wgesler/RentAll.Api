@@ -52,11 +52,24 @@ public partial class AccountingController
                 nextCheckNumber += 1;
             }
 
-            await _organizationRepository.UpdateAccountingOfficeCheckNumberByIdAsync(
-                CurrentOrganizationId,
-                dto.OfficeId,
-                nextCheckNumber,
-                CurrentUser);
+            if (dto.BankId is > 0)
+            {
+                var bank = await _accountingRepository.GetBankByIdAsync(dto.BankId.Value, CurrentOrganizationId, dto.OfficeId);
+                if (bank == null)
+                    return NotFound("Bank not found");
+
+                bank.CurrentCheckNumber = nextCheckNumber;
+                bank.ModifiedBy = CurrentUser;
+                await _accountingRepository.UpdateBankByIdAsync(bank);
+            }
+            else
+            {
+                await _organizationRepository.UpdateAccountingOfficeCheckNumberByIdAsync(
+                    CurrentOrganizationId,
+                    dto.OfficeId,
+                    nextCheckNumber,
+                    CurrentUser);
+            }
 
             return Ok(new AssignCheckNumbersResponseDto(assignments, nextCheckNumber));
         }

@@ -56,6 +56,7 @@ public class AccountingOffice
     public int? DefaultInterOfficeAccountId { get; set; }
     public string? LogoPath { get; set; }
     public string? CheckStockPath { get; set; }
+    public string CheckHtml { get; set; } = "[]";
     public int CurrentCheckNumber { get; set; } = 1;
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -63,4 +64,5 @@ public class AccountingOffice
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public List<BankCard> BankCards { get; set; } = new();
+    public List<Bank> Banks { get; set; } = new();
 }

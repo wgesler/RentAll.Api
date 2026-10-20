@@ -56,6 +56,7 @@ public class AccountingOfficeEntity
     public int? DefaultInterOfficeAccountId { get; set; }
     public string? LogoPath { get; set; }
     public string? CheckStockPath { get; set; }
+    public string CheckHtml { get; set; } = "[]";
     public int CurrentCheckNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }

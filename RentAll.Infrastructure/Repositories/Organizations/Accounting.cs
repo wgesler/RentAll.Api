@@ -112,6 +112,7 @@ public partial class OrganizationRepository
             DefaultInterOfficeAccountId = accountingOffice.DefaultInterOfficeAccountId,
             LogoPath = accountingOffice.LogoPath,
             CurrentCheckNumber = accountingOffice.CurrentCheckNumber,
+            CheckHtml = accountingOffice.CheckHtml,
             IsActive = accountingOffice.IsActive,
             CreatedBy = accountingOffice.CreatedBy
         });
@@ -183,6 +184,7 @@ public partial class OrganizationRepository
             DefaultInterOfficeAccountId = accountingOffice.DefaultInterOfficeAccountId,
             LogoPath = accountingOffice.LogoPath,
             CurrentCheckNumber = accountingOffice.CurrentCheckNumber,
+            CheckHtml = accountingOffice.CheckHtml,
             IsActive = accountingOffice.IsActive,
             ModifiedBy = accountingOffice.ModifiedBy
         });

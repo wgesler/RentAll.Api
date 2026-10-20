@@ -1,4 +1,5 @@
 using RentAll.Api.Dtos.Accounting.BankCards;
+using RentAll.Api.Dtos.Accounting.Banks;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations.Accounting;
@@ -61,6 +62,7 @@ public class AccountingOfficeResponseDto
     public FileDetails? FileDetails { get; set; }
     public string? CheckStockPath { get; set; }
     public FileDetails? CheckStockFileDetails { get; set; }
+    public string CheckHtml { get; set; } = "[]";
     public int CurrentCheckNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset CreatedOn { get; set; }
@@ -68,6 +70,7 @@ public class AccountingOfficeResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public List<BankCardResponseDto> BankCards { get; set; } = new();
+    public List<BankResponseDto> Banks { get; set; } = new();
 
     public AccountingOfficeResponseDto(AccountingOffice accountingOffice)
     {
@@ -125,6 +128,7 @@ public class AccountingOfficeResponseDto
         DefaultInterOfficeAccountId = accountingOffice.DefaultInterOfficeAccountId;
         LogoPath = accountingOffice.LogoPath;
         CheckStockPath = accountingOffice.CheckStockPath;
+        CheckHtml = string.IsNullOrWhiteSpace(accountingOffice.CheckHtml) ? "[]" : accountingOffice.CheckHtml;
         CurrentCheckNumber = accountingOffice.CurrentCheckNumber;
         IsActive = accountingOffice.IsActive;
         CreatedOn = accountingOffice.CreatedOn;
@@ -132,5 +136,6 @@ public class AccountingOfficeResponseDto
         ModifiedOn = accountingOffice.ModifiedOn;
         ModifiedBy = accountingOffice.ModifiedBy;
         BankCards = accountingOffice.BankCards.Select(b => new BankCardResponseDto(b)).ToList();
+        Banks = accountingOffice.Banks.Select(b => new BankResponseDto(b)).ToList();
     }
 }

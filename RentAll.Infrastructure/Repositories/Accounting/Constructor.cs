@@ -21,6 +21,32 @@ public partial class AccountingRepository : IAccountingRepository
         _logger = logger;
     }
 
+    #region Banks
+    private Bank ConvertEntityToModel(BankEntity e)
+    {
+        return new Bank
+        {
+            BankId = e.BankId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            BankName = e.BankName,
+            BankPhone = e.BankPhone,
+            BankRouting = e.BankRouting,
+            BankAccount = e.BankAccount,
+            BankSwiftCode = e.BankSwiftCode,
+            BankAddress = e.BankAddress,
+            CurrentCheckNumber = e.CurrentCheckNumber,
+            CheckStockPath = e.CheckStockPath,
+            CheckHtml = e.CheckHtml,
+            UseOnInvoices = e.UseOnInvoices,
+            CreatedOn = e.CreatedOn,
+            CreatedBy = e.CreatedBy,
+            ModifiedOn = e.ModifiedOn,
+            ModifiedBy = e.ModifiedBy
+        };
+    }
+    #endregion
+
     #region BankCards
     private BankCard ConvertEntityToModel(BankCardEntity e)
     {

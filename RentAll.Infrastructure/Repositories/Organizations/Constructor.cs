@@ -195,6 +195,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             DefaultInterOfficeAccountId = e.DefaultInterOfficeAccountId,
             LogoPath = e.LogoPath,
             CheckStockPath = e.CheckStockPath,
+            CheckHtml = string.IsNullOrWhiteSpace(e.CheckHtml) ? "[]" : e.CheckHtml,
             CurrentCheckNumber = e.CurrentCheckNumber,
             IsActive = e.IsActive,
             CreatedOn = e.CreatedOn,

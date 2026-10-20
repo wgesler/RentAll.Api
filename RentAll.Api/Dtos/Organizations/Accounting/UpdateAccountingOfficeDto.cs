@@ -58,6 +58,7 @@ public class UpdateAccountingOfficeDto
     public int? DefaultInterOfficeAccountId { get; set; }
     public string? LogoPath { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
+    public string? CheckHtml { get; set; }
     public FileDetails? FileDetails { get; set; }
     public bool IsActive { get; set; }
 
@@ -207,6 +208,7 @@ public class UpdateAccountingOfficeDto
             DefaultInterOfficeAccountId = DefaultInterOfficeAccountId,
             LogoPath = LogoPath, // Will be updated by controller if FileDetails provided
             CurrentCheckNumber = CurrentCheckNumber,
+            CheckHtml = string.IsNullOrWhiteSpace(CheckHtml) ? "[]" : CheckHtml.Trim(),
             IsActive = IsActive,
             ModifiedBy = currentUser
         };
