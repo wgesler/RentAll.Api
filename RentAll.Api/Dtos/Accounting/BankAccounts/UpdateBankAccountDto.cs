@@ -1,15 +1,16 @@
 using RentAll.Domain.Models.Common;
 
-namespace RentAll.Api.Dtos.Accounting.Banks;
+namespace RentAll.Api.Dtos.Accounting.BankAccounts;
 
-public class CreateBankDto
+public class UpdateBankAccountDto
 {
     public string BankName { get; set; } = string.Empty;
     public string? BankPhone { get; set; }
     public string? BankRouting { get; set; }
-    public string? BankAccount { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
+    public string? AccountNo { get; set; }
+    public string? AccountNoLastFour { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
     public string? CheckStockPath { get; set; }
     public FileDetails? CheckStockFileDetails { get; set; }
@@ -27,23 +28,24 @@ public class CreateBankDto
         return (true, null);
     }
 
-    public Bank ToModel(Guid organizationId, int officeId, Guid currentUser)
+    public BankAccount ToModel(int bankId, Guid organizationId, int officeId, Guid currentUser)
     {
-        return new Bank
+        return new BankAccount
         {
+            BankAccountId = bankId,
             OrganizationId = organizationId,
             OfficeId = officeId,
             BankName = BankName.Trim(),
             BankPhone = Normalize(BankPhone),
             BankRouting = Normalize(BankRouting),
-            BankAccount = Normalize(BankAccount),
             BankSwiftCode = Normalize(BankSwiftCode),
             BankAddress = Normalize(BankAddress),
+            AccountNo = Normalize(AccountNo),
+            AccountNoLastFour = Normalize(AccountNoLastFour),
             CurrentCheckNumber = CurrentCheckNumber,
             CheckStockPath = Normalize(CheckStockPath),
             CheckHtml = Normalize(CheckHtml),
             UseOnInvoices = UseOnInvoices,
-            CreatedBy = currentUser,
             ModifiedBy = currentUser
         };
     }

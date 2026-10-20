@@ -3,7 +3,7 @@ namespace RentAll.Api.Dtos.Accounting.CheckPrint;
 public class AssignCheckNumbersDto
 {
     public int OfficeId { get; set; }
-    public int? BankId { get; set; }
+    public int? BankAccountId { get; set; }
     public int StartingCheckNumber { get; set; }
     public List<Guid> JournalEntryIds { get; set; } = new();
 

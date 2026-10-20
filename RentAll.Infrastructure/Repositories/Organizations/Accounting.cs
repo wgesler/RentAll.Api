@@ -73,7 +73,6 @@ public partial class OrganizationRepository
             Website = accountingOffice.Website,
             BankName = accountingOffice.BankName,
             BankRouting = accountingOffice.BankRouting,
-            BankAccount = accountingOffice.BankAccount,
             BankSwiftCode = accountingOffice.BankSwiftCode,
             BankAddress = accountingOffice.BankAddress,
             BankPhone = accountingOffice.BankPhone,
@@ -145,7 +144,6 @@ public partial class OrganizationRepository
             Website = accountingOffice.Website,
             BankName = accountingOffice.BankName,
             BankRouting = accountingOffice.BankRouting,
-            BankAccount = accountingOffice.BankAccount,
             BankSwiftCode = accountingOffice.BankSwiftCode,
             BankAddress = accountingOffice.BankAddress,
             BankPhone = accountingOffice.BankPhone,
@@ -245,6 +243,36 @@ public partial class OrganizationRepository
 
         return ConvertEntityToModel(res.FirstOrDefault()!);
     }
+
+    public async Task SaveEncryptedAccountingOfficeBankAccountAsync(Guid organizationId, int officeId, byte[] encryptedBankAccount, string lastFour, Guid modifiedBy)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        await db.DapperProcExecuteAsync("Organization.AccountingOffice_SaveEncryptedBankAccount", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId,
+            AccountNo = encryptedBankAccount,
+            AccountNoLastFour = lastFour,
+            ModifiedBy = modifiedBy
+        });
+    }
+
+    public async Task<byte[]?> GetEncryptedAccountingOfficeBankAccountAsync(Guid organizationId, int officeId)
+    {
+        await using var db = new SqlConnection(_dbConnectionString);
+        var rows = await db.DapperProcQueryAsync<EncryptedBankAccountRow>("Organization.AccountingOffice_GetEncryptedBankAccount", new
+        {
+            OrganizationId = organizationId,
+            OfficeId = officeId
+        });
+        return rows?.FirstOrDefault()?.AccountNo;
+    }
+
+    private sealed class EncryptedBankAccountRow
+    {
+        public byte[]? AccountNo { get; set; }
+    }
+
     public async Task<int> ClosePostingStatusThroughClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, int closeStatusId, Guid modifiedBy)
     {
         await using var db = new SqlConnection(_dbConnectionString);

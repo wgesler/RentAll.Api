@@ -37,6 +37,8 @@ public interface IOrganizationRepository
     Task<AccountingOffice> UpdateAccountingOfficeWorkOrderNoByIdAsync(Guid organizationId, int officeId, int workOrderNo, Guid modifiedBy);
     Task<AccountingOffice> UpdateAccountingOfficeCheckNumberByIdAsync(Guid organizationId, int officeId, int currentCheckNumber, Guid modifiedBy);
     Task<AccountingOffice> UpdateAccountingOfficeCheckStockByIdAsync(Guid organizationId, int officeId, string? checkStockPath, Guid modifiedBy);
+    Task SaveEncryptedAccountingOfficeBankAccountAsync(Guid organizationId, int officeId, byte[] encryptedBankAccount, string lastFour, Guid modifiedBy);
+    Task<byte[]?> GetEncryptedAccountingOfficeBankAccountAsync(Guid organizationId, int officeId);
     Task DeleteAccountingOfficeByIdAsync(Guid organizationId, int officeId);
     Task<int> ClosePostingStatusThroughClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, int closeStatusId, Guid modifiedBy);
     Task<int> ReopenSoftClosedPostingStatusAfterClosedEndDateAsync(Guid organizationId, int officeId, DateOnly closedEndDate, Guid modifiedBy);

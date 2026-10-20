@@ -52,15 +52,15 @@ public partial class AccountingController
                 nextCheckNumber += 1;
             }
 
-            if (dto.BankId is > 0)
+            if (dto.BankAccountId is > 0)
             {
-                var bank = await _accountingRepository.GetBankByIdAsync(dto.BankId.Value, CurrentOrganizationId, dto.OfficeId);
+                var bank = await _accountingRepository.GetBankAccountByIdAsync(dto.BankAccountId.Value, CurrentOrganizationId, dto.OfficeId);
                 if (bank == null)
                     return NotFound("Bank not found");
 
                 bank.CurrentCheckNumber = nextCheckNumber;
                 bank.ModifiedBy = CurrentUser;
-                await _accountingRepository.UpdateBankByIdAsync(bank);
+                await _accountingRepository.UpdateBankAccountByIdAsync(bank);
             }
             else
             {

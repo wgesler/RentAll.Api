@@ -1,5 +1,5 @@
 using RentAll.Api.Dtos.Accounting.BankCards;
-using RentAll.Api.Dtos.Accounting.Banks;
+using RentAll.Api.Dtos.Accounting.BankAccounts;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations.Accounting;
@@ -21,10 +21,11 @@ public class AccountingOfficeResponseDto
     public string Website { get; set; } = string.Empty;
     public string? BankName { get; set; }
     public string? BankRouting { get; set; }
-    public string? BankAccount { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
     public string? BankPhone { get; set; }
+    public string? AccountNo { get; set; }
+    public string? AccountNoLastFour { get; set; }
     public int StartMonth { get; set; }
     public int StartYear { get; set; }
     public int InvoiceStartMonth { get; set; }
@@ -70,7 +71,7 @@ public class AccountingOfficeResponseDto
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public List<BankCardResponseDto> BankCards { get; set; } = new();
-    public List<BankResponseDto> Banks { get; set; } = new();
+    public List<BankAccountResponseDto> Banks { get; set; } = new();
 
     public AccountingOfficeResponseDto(AccountingOffice accountingOffice)
     {
@@ -89,10 +90,11 @@ public class AccountingOfficeResponseDto
         Website = accountingOffice.Website ?? string.Empty;
         BankName = accountingOffice.BankName;
         BankRouting = accountingOffice.BankRouting;
-        BankAccount = accountingOffice.BankAccount;
         BankSwiftCode = accountingOffice.BankSwiftCode;
         BankAddress = accountingOffice.BankAddress;
         BankPhone = accountingOffice.BankPhone;
+        AccountNo = accountingOffice.AccountNo;
+        AccountNoLastFour = accountingOffice.AccountNoLastFour;
         StartMonth = accountingOffice.StartMonth;
         StartYear = accountingOffice.StartYear;
         InvoiceStartMonth = accountingOffice.InvoiceStartMonth;
@@ -136,6 +138,6 @@ public class AccountingOfficeResponseDto
         ModifiedOn = accountingOffice.ModifiedOn;
         ModifiedBy = accountingOffice.ModifiedBy;
         BankCards = accountingOffice.BankCards.Select(b => new BankCardResponseDto(b)).ToList();
-        Banks = accountingOffice.Banks.Select(b => new BankResponseDto(b)).ToList();
+        Banks = accountingOffice.Banks.Select(b => new BankAccountResponseDto(b)).ToList();
     }
 }

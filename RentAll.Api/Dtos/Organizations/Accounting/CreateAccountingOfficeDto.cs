@@ -19,10 +19,11 @@ public class CreateAccountingOfficeDto
     public string Website { get; set; } = string.Empty;
     public string? BankName { get; set; }
     public string? BankRouting { get; set; }
-    public string? BankAccount { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
     public string? BankPhone { get; set; }
+    public string? AccountNo { get; set; }
+    public string? AccountNoLastFour { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
     public int InvoiceStartMonth { get; set; } = 6;
@@ -93,8 +94,8 @@ public class CreateAccountingOfficeDto
         if (requireBankInformation && string.IsNullOrWhiteSpace(BankRouting))
             return (false, "BankRouting is required");
 
-        if (requireBankInformation && string.IsNullOrWhiteSpace(BankAccount))
-            return (false, "BankAccount is required");
+        if (requireBankInformation && string.IsNullOrWhiteSpace(AccountNo) && string.IsNullOrWhiteSpace(AccountNoLastFour))
+            return (false, "AccountNo is required");
 
         if (requireBankInformation && string.IsNullOrWhiteSpace(BankSwiftCode))
             return (false, "BankSwiftCode is required");
@@ -168,10 +169,11 @@ public class CreateAccountingOfficeDto
             Website = Website,
             BankName = string.IsNullOrWhiteSpace(BankName) ? null : BankName,
             BankRouting = string.IsNullOrWhiteSpace(BankRouting) ? null : BankRouting,
-            BankAccount = string.IsNullOrWhiteSpace(BankAccount) ? null : BankAccount,
             BankSwiftCode = string.IsNullOrWhiteSpace(BankSwiftCode) ? null : BankSwiftCode,
             BankAddress = string.IsNullOrWhiteSpace(BankAddress) ? null : BankAddress,
             BankPhone = string.IsNullOrWhiteSpace(BankPhone) ? null : BankPhone,
+            AccountNo = string.IsNullOrWhiteSpace(AccountNo) ? null : AccountNo,
+            AccountNoLastFour = string.IsNullOrWhiteSpace(AccountNoLastFour) ? null : AccountNoLastFour,
             StartMonth = StartMonth,
             StartYear = StartYear,
             InvoiceStartMonth = InvoiceStartMonth,

@@ -21,13 +21,15 @@ namespace RentAll.Api.Controllers
                 foreach (var accountingOffice in accountingOfficeList)
                 {
                     accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(accountingOffice.OfficeId);
-                    accountingOffice.Banks = await _accountingRepository.GetBanksByOfficeIdAsync(accountingOffice.OrganizationId, accountingOffice.OfficeId);
+                    accountingOffice.Banks = await _accountingRepository.GetBankAccountsByOfficeIdAsync(accountingOffice.OrganizationId, accountingOffice.OfficeId);
                 }
 
                 var response = new List<AccountingOfficeResponseDto>();
                 foreach (var accountingOffice in accountingOfficeList)
                 {
+                    await ProtectStoredBankAccountsAsync(accountingOffice);
                     var dto = new AccountingOfficeResponseDto(accountingOffice);
+                    HideBankAccountNumbers(dto);
                     if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
                         dto.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(accountingOffice.OfficeId), accountingOffice.LogoPath, ImageType.Logos);
                     response.Add(dto);
@@ -53,12 +55,14 @@ namespace RentAll.Api.Controllers
                 if (accountingOffice == null)
                     return NotFound("Accounting office not found");
 
+                await ProtectStoredBankAccountsAsync(accountingOffice);
                 var response = new AccountingOfficeResponseDto(accountingOffice);
+                HideBankAccountNumbers(response);
                 if (!string.IsNullOrWhiteSpace(accountingOffice.LogoPath))
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(officeId), accountingOffice.LogoPath, ImageType.Logos);
                 if (!string.IsNullOrWhiteSpace(accountingOffice.CheckStockPath))
                     response.CheckStockFileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(accountingOffice.OrganizationId, await GetOfficeNameAsync(officeId), accountingOffice.CheckStockPath, ImageType.CheckStocks);
-                await HydrateBankCheckStockAsync(response.Banks, officeId);
+                await HydrateBankAccountCheckStockAsync(response.Banks, officeId);
 
                 return Ok(response);
             }
@@ -94,13 +98,21 @@ namespace RentAll.Api.Controllers
 
                 accountingOffice.LogoPath = await _fileAttachmentHelper.SaveImageIfPresentAsync(organizationId, await GetOfficeNameAsync(dto.OfficeId), dto.FileDetails, ImageType.Logos);
 
+                var clearBankAccount = ClearBankAccountOrNull(accountingOffice.AccountNo);
                 var created = await _organizationRepository.CreateAccountingAsync(accountingOffice);
+                if (clearBankAccount != null)
+                {
+                    created.AccountNo = clearBankAccount;
+                    await ProtectAccountingOfficeBankAccountAsync(created, clearBankAccount);
+                }
 
                 var refreshedAccountingOffice = await LoadAccountingOfficeWithBankCardsAsync(created.OfficeId, organizationId);
                 if (refreshedAccountingOffice == null)
                     return NotFound("Accounting office not found");
 
+                await ProtectStoredBankAccountsAsync(refreshedAccountingOffice);
                 var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
+                HideBankAccountNumbers(response);
                 if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
 
@@ -261,10 +273,14 @@ namespace RentAll.Api.Controllers
 
                 var accountingOffice = dto.ToModel(CurrentUser);
                 accountingOffice.OrganizationId = organizationId;
+                var clearBankAccount = ClearBankAccountOrNull(dto.AccountNo) ?? ClearBankAccountOrNull(existing.AccountNo);
+                accountingOffice.AccountNo = clearBankAccount;
                 var officeName = await GetOfficeNameAsync(dto.OfficeId);
                 accountingOffice.LogoPath = await _fileAttachmentHelper.ResolveImagePathForUpdateAsync(organizationId, officeName, dto.FileDetails, ImageType.Logos, existing.LogoPath, dto.LogoPath);
 
                 var updated = await _organizationRepository.UpdateAccountingAsync(accountingOffice);
+                if (clearBankAccount != null)
+                    await ProtectAccountingOfficeBankAccountAsync(updated, clearBankAccount);
 
                 if (hardClosedPeriodDecreased)
                 {
@@ -291,10 +307,12 @@ namespace RentAll.Api.Controllers
                 if (refreshedAccountingOffice == null)
                     return NotFound("Accounting office not found");
 
+                await ProtectStoredBankAccountsAsync(refreshedAccountingOffice);
                 var response = new AccountingOfficeResponseDto(refreshedAccountingOffice);
+                HideBankAccountNumbers(response);
                 if (!string.IsNullOrWhiteSpace(refreshedAccountingOffice.LogoPath))
                     response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(refreshedAccountingOffice.OrganizationId, await GetOfficeNameAsync(refreshedAccountingOffice.OfficeId), refreshedAccountingOffice.LogoPath, ImageType.Logos);
-                await HydrateBankCheckStockAsync(response.Banks, refreshedAccountingOffice.OfficeId);
+                await HydrateBankAccountCheckStockAsync(response.Banks, refreshedAccountingOffice.OfficeId);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -453,15 +471,15 @@ namespace RentAll.Api.Controllers
                 return null;
 
             accountingOffice.BankCards = await LoadBankCardsNoDecryptionAsync(officeId);
-            accountingOffice.Banks = await _accountingRepository.GetBanksByOfficeIdAsync(resolvedOrganizationId, officeId);
+            accountingOffice.Banks = await _accountingRepository.GetBankAccountsByOfficeIdAsync(resolvedOrganizationId, officeId);
             return accountingOffice;
         }
 
         private async Task DeleteBanksForOfficeAsync(int officeId)
         {
-            var existingBanks = await _accountingRepository.GetBanksByOfficeIdAsync(CurrentOrganizationId, officeId);
+            var existingBanks = await _accountingRepository.GetBankAccountsByOfficeIdAsync(CurrentOrganizationId, officeId);
             foreach (var existingBank in existingBanks)
-                await _accountingRepository.DeleteBankByIdAsync(existingBank.BankId, CurrentOrganizationId, officeId);
+                await _accountingRepository.DeleteBankAccountByIdAsync(existingBank.BankAccountId, CurrentOrganizationId, officeId);
         }
 
         private async Task DeleteBankCardsForOfficeAsync(int officeId)

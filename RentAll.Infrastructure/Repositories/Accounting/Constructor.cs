@@ -21,20 +21,21 @@ public partial class AccountingRepository : IAccountingRepository
         _logger = logger;
     }
 
-    #region Banks
-    private Bank ConvertEntityToModel(BankEntity e)
+    #region BankAccounts
+    private BankAccount ConvertEntityToModel(BankAccountEntity e)
     {
-        return new Bank
+        return new BankAccount
         {
-            BankId = e.BankId,
+            BankAccountId = e.BankAccountId,
             OrganizationId = e.OrganizationId,
             OfficeId = e.OfficeId,
             BankName = e.BankName,
             BankPhone = e.BankPhone,
             BankRouting = e.BankRouting,
-            BankAccount = e.BankAccount,
             BankSwiftCode = e.BankSwiftCode,
             BankAddress = e.BankAddress,
+            AccountNo = null,
+            AccountNoLastFour = e.AccountNoLastFour,
             CurrentCheckNumber = e.CurrentCheckNumber,
             CheckStockPath = e.CheckStockPath,
             CheckHtml = e.CheckHtml,

@@ -1,16 +1,17 @@
 namespace RentAll.Infrastructure.Entities.Accounting;
 
-public class BankEntity
+public class BankAccountEntity
 {
-    public int BankId { get; set; }
+    public int BankAccountId { get; set; }
     public Guid OrganizationId { get; set; }
     public int OfficeId { get; set; }
     public string BankName { get; set; } = string.Empty;
     public string? BankPhone { get; set; }
     public string? BankRouting { get; set; }
-    public string? BankAccount { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
+    public byte[]? AccountNo { get; set; }
+    public string? AccountNoLastFour { get; set; }
     public int CurrentCheckNumber { get; set; }
     public string? CheckStockPath { get; set; }
     public string? CheckHtml { get; set; }

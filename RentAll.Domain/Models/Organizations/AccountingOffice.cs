@@ -17,10 +17,11 @@ public class AccountingOffice
     public string? Website { get; set; }
     public string? BankName { get; set; }
     public string? BankRouting { get; set; }
-    public string? BankAccount { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
     public string? BankPhone { get; set; }
+    public string? AccountNo { get; set; }
+    public string? AccountNoLastFour { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
     public int InvoiceStartMonth { get; set; } = 6;
@@ -64,5 +65,5 @@ public class AccountingOffice
     public DateTimeOffset ModifiedOn { get; set; }
     public Guid ModifiedBy { get; set; }
     public List<BankCard> BankCards { get; set; } = new();
-    public List<Bank> Banks { get; set; } = new();
+    public List<BankAccount> Banks { get; set; } = new();
 }

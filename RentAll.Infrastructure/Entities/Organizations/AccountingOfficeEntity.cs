@@ -17,10 +17,10 @@ public class AccountingOfficeEntity
     public string? Website { get; set; }
     public string? BankName { get; set; }
     public string? BankRouting { get; set; }
-    public string? BankAccount { get; set; }
     public string? BankSwiftCode { get; set; }
     public string? BankAddress { get; set; }
     public string? BankPhone { get; set; }
+    public string? AccountNoLastFour { get; set; }
     public int StartMonth { get; set; }
     public int StartYear { get; set; }
     public int InvoiceStartMonth { get; set; }
