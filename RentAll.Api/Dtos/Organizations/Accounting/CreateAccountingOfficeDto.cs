@@ -24,6 +24,7 @@ public class CreateAccountingOfficeDto
     public string? BankPhone { get; set; }
     public string? AccountNo { get; set; }
     public string? AccountNoLastFour { get; set; }
+    public int? AccountChartOfAccountId { get; set; }
     public int StartMonth { get; set; } = 1;
     public int StartYear { get; set; } = 2026;
     public int InvoiceStartMonth { get; set; } = 6;
@@ -174,6 +175,7 @@ public class CreateAccountingOfficeDto
             BankPhone = string.IsNullOrWhiteSpace(BankPhone) ? null : BankPhone,
             AccountNo = string.IsNullOrWhiteSpace(AccountNo) ? null : AccountNo,
             AccountNoLastFour = string.IsNullOrWhiteSpace(AccountNoLastFour) ? null : AccountNoLastFour,
+            AccountChartOfAccountId = AccountChartOfAccountId,
             StartMonth = StartMonth,
             StartYear = StartYear,
             InvoiceStartMonth = InvoiceStartMonth,

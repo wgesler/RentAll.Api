@@ -26,6 +26,7 @@ public class AccountingOfficeResponseDto
     public string? BankPhone { get; set; }
     public string? AccountNo { get; set; }
     public string? AccountNoLastFour { get; set; }
+    public int? AccountChartOfAccountId { get; set; }
     public int StartMonth { get; set; }
     public int StartYear { get; set; }
     public int InvoiceStartMonth { get; set; }
@@ -95,6 +96,7 @@ public class AccountingOfficeResponseDto
         BankPhone = accountingOffice.BankPhone;
         AccountNo = accountingOffice.AccountNo;
         AccountNoLastFour = accountingOffice.AccountNoLastFour;
+        AccountChartOfAccountId = accountingOffice.AccountChartOfAccountId;
         StartMonth = accountingOffice.StartMonth;
         StartYear = accountingOffice.StartYear;
         InvoiceStartMonth = accountingOffice.InvoiceStartMonth;

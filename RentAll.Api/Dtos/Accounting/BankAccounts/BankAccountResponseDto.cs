@@ -14,6 +14,7 @@ public class BankAccountResponseDto
     public string? BankAddress { get; set; }
     public string? AccountNo { get; set; }
     public string? AccountNoLastFour { get; set; }
+    public int? AccountChartOfAccountId { get; set; }
     public int CurrentCheckNumber { get; set; }
     public string? CheckStockPath { get; set; }
     public FileDetails? CheckStockFileDetails { get; set; }
@@ -32,6 +33,7 @@ public class BankAccountResponseDto
         BankAddress = bankAccount.BankAddress;
         AccountNo = bankAccount.AccountNo;
         AccountNoLastFour = bankAccount.AccountNoLastFour;
+        AccountChartOfAccountId = bankAccount.AccountChartOfAccountId;
         CurrentCheckNumber = bankAccount.CurrentCheckNumber;
         CheckStockPath = bankAccount.CheckStockPath;
         CheckHtml = bankAccount.CheckHtml;

@@ -161,6 +161,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             BankPhone = e.BankPhone,
             AccountNo = null,
             AccountNoLastFour = e.AccountNoLastFour,
+            AccountChartOfAccountId = e.AccountChartOfAccountId,
             StartMonth = e.StartMonth,
             StartYear = e.StartYear,
             InvoiceStartMonth = e.InvoiceStartMonth,

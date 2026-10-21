@@ -21,6 +21,7 @@ public class AccountingOfficeEntity
     public string? BankAddress { get; set; }
     public string? BankPhone { get; set; }
     public string? AccountNoLastFour { get; set; }
+    public int? AccountChartOfAccountId { get; set; }
     public int StartMonth { get; set; }
     public int StartYear { get; set; }
     public int InvoiceStartMonth { get; set; }

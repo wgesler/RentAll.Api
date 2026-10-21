@@ -36,6 +36,7 @@ public partial class AccountingRepository : IAccountingRepository
             BankAddress = e.BankAddress,
             AccountNo = null,
             AccountNoLastFour = e.AccountNoLastFour,
+            AccountChartOfAccountId = e.AccountChartOfAccountId,
             CurrentCheckNumber = e.CurrentCheckNumber,
             CheckStockPath = e.CheckStockPath,
             CheckHtml = e.CheckHtml,

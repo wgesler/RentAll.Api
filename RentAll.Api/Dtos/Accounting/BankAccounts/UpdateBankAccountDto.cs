@@ -11,6 +11,7 @@ public class UpdateBankAccountDto
     public string? BankAddress { get; set; }
     public string? AccountNo { get; set; }
     public string? AccountNoLastFour { get; set; }
+    public int? AccountChartOfAccountId { get; set; }
     public int CurrentCheckNumber { get; set; } = 1;
     public string? CheckStockPath { get; set; }
     public FileDetails? CheckStockFileDetails { get; set; }
@@ -42,6 +43,7 @@ public class UpdateBankAccountDto
             BankAddress = Normalize(BankAddress),
             AccountNo = Normalize(AccountNo),
             AccountNoLastFour = Normalize(AccountNoLastFour),
+            AccountChartOfAccountId = AccountChartOfAccountId,
             CurrentCheckNumber = CurrentCheckNumber,
             CheckStockPath = Normalize(CheckStockPath),
             CheckHtml = Normalize(CheckHtml),

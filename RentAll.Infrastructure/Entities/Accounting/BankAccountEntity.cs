@@ -12,6 +12,7 @@ public class BankAccountEntity
     public string? BankAddress { get; set; }
     public byte[]? AccountNo { get; set; }
     public string? AccountNoLastFour { get; set; }
+    public int? AccountChartOfAccountId { get; set; }
     public int CurrentCheckNumber { get; set; }
     public string? CheckStockPath { get; set; }
     public string? CheckHtml { get; set; }
