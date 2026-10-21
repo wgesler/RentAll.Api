@@ -8,6 +8,7 @@ public class UpsertPublicOwnerPropertyDto
     public string? OrganizationId { get; set; }
     public string? PropertyCode { get; set; }
     public int? PropertyLeaseTypeId { get; set; }
+    public string? AgentId { get; set; }
     public string? Owner1Id { get; set; }
     public string? Owner2Id { get; set; }
     public string? Owner3Id { get; set; }
@@ -141,6 +142,7 @@ public class UpsertPublicOwnerPropertyDto
             OrganizationId = ParseGuid(OrganizationId) ?? owner.OrganizationId,
             PropertyCode = propertyCode,
             PropertyLeaseTypeId = PropertyLeaseTypeId ?? (int)PropertyLeaseType.PropertyManagement,
+            AgentId = ParseGuid(AgentId),
             Owner1Id = ParseGuid(Owner1Id) ?? ownerContactId,
             Owner2Id = ParseGuid(Owner2Id),
             Owner3Id = ParseGuid(Owner3Id),

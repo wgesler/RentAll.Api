@@ -5,6 +5,7 @@ public class CreatePropertyDto
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public int PropertyLeaseTypeId { get; set; }
+    public Guid? AgentId { get; set; }
     public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
@@ -202,6 +203,7 @@ public class CreatePropertyDto
             OrganizationId = OrganizationId,
             PropertyCode = PropertyCode,
             PropertyLeaseType = (PropertyLeaseType)PropertyLeaseTypeId,
+            AgentId = AgentId is { } agentId && agentId != Guid.Empty ? agentId : null,
             Owner1Id = Owner1Id,
             Owner2Id = Owner2Id,
             Owner3Id = Owner3Id,
@@ -330,6 +332,7 @@ public class CreatePropertyDto
             PropertyId = propertyId,
             PropertyCode = PropertyCode,
             PropertyLeaseTypeId = PropertyLeaseTypeId,
+            AgentId = AgentId,
             Owner1Id = Owner1Id,
             Owner2Id = Owner2Id,
             Owner3Id = Owner3Id,

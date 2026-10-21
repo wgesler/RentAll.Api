@@ -209,6 +209,7 @@ public class PartnerRepository : IPartnerRepository
             PropertyId = e.PropertyId,
             PropertyCode = e.PropertyCode,
             PropertyLeaseType = (PropertyLeaseType)e.PropertyLeaseTypeId,
+            AgentId = e.AgentId,
             ShortAddress = e.ShortAddress,
             OfficeId = e.OfficeId,
             OfficeName = e.OfficeName,

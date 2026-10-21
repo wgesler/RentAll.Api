@@ -6,6 +6,7 @@ public class UpdatePropertyDto
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public int PropertyLeaseTypeId { get; set; }
+    public Guid? AgentId { get; set; }
     public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
@@ -157,6 +158,7 @@ public class UpdatePropertyDto
             PropertyId = property.PropertyId,
             PropertyCode = property.PropertyCode,
             PropertyLeaseTypeId = NormalizeEnumId(property.PropertyLeaseType, 0),
+            AgentId = property.AgentId,
             Owner1Id = property.Owner1Id,
             Owner2Id = property.Owner2Id,
             Owner3Id = property.Owner3Id,
@@ -341,6 +343,7 @@ public class UpdatePropertyDto
             PropertyId = PropertyId,
             PropertyCode = PropertyCode,
             PropertyLeaseType = (PropertyLeaseType)PropertyLeaseTypeId,
+            AgentId = AgentId is { } agentId && agentId != Guid.Empty ? agentId : null,
             Owner1Id = Owner1Id,
             Owner2Id = Owner2Id,
             Owner3Id = Owner3Id,

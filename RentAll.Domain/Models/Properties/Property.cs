@@ -9,6 +9,7 @@ public class Property
     public Guid OrganizationId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public PropertyLeaseType PropertyLeaseType { get; set; }
+    public Guid? AgentId { get; set; }
     public Guid? Owner1Id { get; set; }
     public Guid? Owner2Id { get; set; }
     public Guid? Owner3Id { get; set; }
