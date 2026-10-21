@@ -487,7 +487,7 @@ public class FileService : IFileService
     public async Task<string> SaveDocumentAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, DocumentType documentType)
     {
         // Validate file type
-        var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt" };
+        var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".jpeg", ".jpg", ".png", ".txt", ".json" };
         var fileNameOnly = Path.GetFileNameWithoutExtension(fileName);
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
@@ -501,7 +501,8 @@ public class FileService : IFileService
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "image/jpeg",
             "image/png",
-            "text/plain"
+            "text/plain",
+            "application/json"
         };
         if (!allowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException($"Invalid content type. Allowed types: {string.Join(", ", allowedContentTypes)}");
