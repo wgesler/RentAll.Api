@@ -366,6 +366,21 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 
+    #region Terminology
+    private Terminology ConvertEntityToModel(TerminologyEntity e)
+    {
+        return new Terminology
+        {
+            TermId = e.TermId,
+            OrganizationId = e.OrganizationId,
+            OfficeId = e.OfficeId,
+            OfficeName = e.OfficeName,
+            Term = e.Term,
+            Replacement = e.Replacement
+        };
+    }
+    #endregion
+
     #region State Forms
     private StateForm ConvertEntityToModel(StateFormEntity e)
     {

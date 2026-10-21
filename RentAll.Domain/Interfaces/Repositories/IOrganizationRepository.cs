@@ -125,6 +125,16 @@ public interface IOrganizationRepository
     Task DeleteRegionByIdAsync(int regionId);
     #endregion
 
+    #region Terminology
+    Task<IEnumerable<Terminology>> GetTerminologiesByOfficeIdsAsync(Guid organizationId, string officeAccess);
+    Task<Terminology?> GetTerminologyByIdAsync(int termId, Guid organizationId);
+    Task<Terminology?> GetTerminologyByTermAsync(string term, Guid organizationId, int officeId);
+
+    Task<Terminology> CreateTerminologyAsync(Terminology terminology);
+    Task<Terminology> UpdateTerminologyByIdAsync(Terminology terminology);
+    Task DeleteTerminologyByIdAsync(int termId, Guid organizationId);
+    #endregion
+
     #region State Forms
     Task<IEnumerable<StateForm>> GetStateFormsAsync(string organizationId, string stateCode);
     Task<StateForm?> GetStateFormByIdAsync(int stateFormId, string organizationId);
