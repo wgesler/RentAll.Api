@@ -8,5 +8,6 @@ public enum TicketStateType
     InProgress = 3,
     WorkComplete = 4,
     Closed = 5,
-    InReview = 6
+    InReview = 6,
+    Hold = 7
 }
