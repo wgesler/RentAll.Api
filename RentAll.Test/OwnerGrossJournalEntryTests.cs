@@ -17,13 +17,6 @@ public class OwnerGrossJournalEntryTests
             context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected);
         AssertGrossOwnerLines(ownerExpected, rent, OwnerShare(rent));
-        Assert.DoesNotContain(
-            ownerExpected.JournalEntryLines,
-            line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId);
-        var feeLine = Assert.Single(
-            ownerExpected.JournalEntryLines,
-            line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId && line.Debit > 0);
-        Assert.Contains(": Owner: Management Fee", feeLine.Memo, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -70,11 +63,12 @@ public class OwnerGrossJournalEntryTests
         AssertGrossOwnerLines(ownerActuals[0], firstAmount, OwnerShare(firstAmount));
         AssertGrossOwnerLines(ownerActuals[1], secondAmount, OwnerShare(rent) - OwnerShare(firstAmount));
 
-        var tenantIncomeDebit = ownerActuals.Sum(entry => Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Debit));
         var ownerPayableNet = ownerActuals.Sum(entry =>
             Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit - line.Debit));
-        Assert.Equal(rent, tenantIncomeDebit);
+        var remainder = ownerActuals.Sum(entry =>
+            Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit));
         Assert.Equal(OwnerShare(rent), ownerPayableNet);
+        Assert.Equal(OwnerShare(rent), remainder);
     }
 
     [Fact]
@@ -142,12 +136,14 @@ public class OwnerGrossJournalEntryTests
         var debits = entry.JournalEntryLines.Sum(line => line.Debit);
         var credits = entry.JournalEntryLines.Sum(line => line.Credit);
         Assert.Equal(debits, credits);
-        Assert.Equal(rent, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Debit));
-        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Credit));
         Assert.Equal(rent, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit));
         Assert.Equal(fee, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Debit));
-        Assert.Equal(fee, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerIncomeAccountId, line => line.Credit));
+        Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit));
+        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerIncomeAccountId, line => line.Debit + line.Credit));
         Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit - line.Debit));
+        Assert.All(
+            entry.JournalEntryLines.Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId),
+            line => Assert.Equal(AccountingManagerJournalEntryFeeTestSupport.OwnerContactId, line.ContactId));
     }
 
     private static decimal Sum(JournalEntry entry, int accountId, Func<JournalEntryLine, decimal> amount)

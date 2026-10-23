@@ -102,12 +102,10 @@ public partial class AccountingManager
         var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
         await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
-        var (_, costCodeById) = await officeCostCodeContextTask;
+        var (office, costCodeById) = await officeCostCodeContextTask;
 
-        var ownerAmount = await CalculateOwnerShareAmountForInvoiceAsync(invoice, rentPlus4000Base);
-        var fullRent = Math.Round(rentPlus4000Base, 2, MidpointRounding.AwayFromZero);
-        var ownerShare = Math.Round(ownerAmount ?? 0m, 2, MidpointRounding.AwayFromZero);
-        if (!ownerAmount.HasValue || (fullRent == 0 && ownerShare == 0))
+        var portions = await BuildGrossOwnerPortionsAsync(invoice, propertyAgreement, costCodeById);
+        if (portions.Count == 0)
         {
             var existingOwnerShare = existingInvoiceEntries.FirstOrDefault(entry =>
                 IsInvoiceOwnerShareJournalEntry(entry)
@@ -119,7 +117,7 @@ public partial class AccountingManager
 
         List<JournalEntryLine>? journalEntryLines = [];
         if (property.PropertyLeaseType == PropertyLeaseType.PropertyManagement)
-            journalEntryLines = BuildJournalEntryLinesForOwnerGross(invoice, fullRent, ownerShare, property, chartOfAccounts, accountingOffice, costCodeById, propertyId.Value, BuildOwnerExpectedRentMemo(invoice), currentUser);
+            journalEntryLines = BuildJournalEntryLinesForOwnerGross(invoice, portions, property, chartOfAccounts, accountingOffice, office, costCodeById, propertyId.Value, BuildOwnerExpectedRentMemo(invoice), currentUser);
 
         if (journalEntryLines == null || journalEntryLines.Count == 0)
         {
@@ -253,32 +251,92 @@ public partial class AccountingManager
         return [ownerExpenseLine, ownerPayableLine];
     }
 
-    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerGross(Invoice invoice, decimal fullRent, decimal ownerShare, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, string memo, Guid currentUser)
+    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerGross(Invoice invoice, IReadOnlyList<GrossOwnerPortion> portions, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, string memo, Guid currentUser)
     {
-        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+        var fullAmount = Math.Round(portions.Sum(portion => portion.Amount), 2, MidpointRounding.AwayFromZero);
+        var officeTotal = Math.Round(portions.Sum(portion => portion.OfficeAmount), 2, MidpointRounding.AwayFromZero);
+        if (fullAmount == 0 && officeTotal == 0)
             return [];
 
-        var fee = Math.Round(fullRent - ownerShare, 2, MidpointRounding.AwayFromZero);
-        if (fullRent == 0 && fee == 0)
-            return [];
-
-        costCodeById.TryGetValue(rentalLine.CostCodeId, out var rentalCostCode);
         var lineContext = CreateJournalEntryLineContextFromInvoice(invoice, propertyId) with
         {
-            ContactId = NormalizeOptionalGuid(property.Owner1Id)
+            ContactId = NormalizeOptionalGuid(property.Owner1Id),
+            ContactName = null
         };
-        var tenantIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice, rentalCostCode);
+        var isFurnished = !property.Unfurnished;
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
-
-        var feeMemo = BuildOwnerManagementFeeMemo(invoice);
+        var rentExpenseAccountId = isFurnished
+            ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
+            : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
+        var rentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
         var lines = new List<JournalEntryLine>();
-        AddOwnerGrossLine(lines, tenantIncomeAccountId, rentalLine.CostCodeId, fullRent, debitWhenPositive: true, lineContext, memo, currentUser);
-        AddOwnerGrossLine(lines, ownerAccountsPayableId, rentalLine.CostCodeId, fullRent, debitWhenPositive: false, lineContext, memo, currentUser);
-        AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fee, debitWhenPositive: true, lineContext, feeMemo, currentUser);
-        AddOwnerGrossLine(lines, ownerIncomeAccountId, null, fee, debitWhenPositive: false, lineContext, feeMemo, currentUser);
+        AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
+        foreach (var portion in portions)
+            AddOwnerGrossLine(lines, ownerAccountsPayableId, portion.CostCodeId, portion.OfficeAmount, debitWhenPositive: true, lineContext, memo, currentUser);
+
+        var remainder = Math.Round(fullAmount - officeTotal, 2, MidpointRounding.AwayFromZero);
+        AddOwnerGrossLine(lines, rentExpenseAccountId, rentExpenseCostCodeId is > 0 ? rentExpenseCostCodeId : null, remainder, debitWhenPositive: true, lineContext, memo, currentUser);
         return lines;
     }
+
+    private async Task<List<GrossOwnerPortion>> BuildGrossOwnerPortionsAsync(Invoice invoice, PropertyAgreement propertyAgreement, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        var lines = GetGrossOwnerInvoiceLines(invoice, costCodeById);
+        if (lines.Count == 0)
+            return [];
+
+        var officePercent = await ResolveGrossOfficePercentAsync(invoice, propertyAgreement);
+        return lines
+            .Select(line =>
+            {
+                var amount = Math.Round(line.Amount, 2, MidpointRounding.AwayFromZero);
+                var officeAmount = Math.Round(amount * officePercent / 100m, 2, MidpointRounding.AwayFromZero);
+                return new GrossOwnerPortion(amount, officeAmount, line.CostCodeId);
+            })
+            .ToList();
+    }
+
+    private static List<LedgerLine> GetGrossOwnerInvoiceLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        return invoice.LedgerLines
+            .Where(line => line.Amount != 0)
+            .Where(line =>
+            {
+                if (!costCodeById.TryGetValue(line.CostCodeId, out var costCode) || IsPaymentLedgerLine(costCode))
+                    return false;
+
+                return costCode.TransactionType is not TransactionType.SecurityDeposit and not TransactionType.SecurityDepositWaiver;
+            })
+            .OrderBy(line => line.LineNumber)
+            .ToList();
+    }
+
+    private async Task<decimal> ResolveGrossOfficePercentAsync(Invoice invoice, PropertyAgreement propertyAgreement)
+    {
+        var feeType = propertyAgreement.ManagementFeeType;
+        var revenueSplitOwner = propertyAgreement.RevenueSplitOwner;
+        var revenueSplitOffice = propertyAgreement.RevenueSplitOffice;
+        if (invoice.ReservationId is { } reservationId && reservationId != Guid.Empty)
+        {
+            var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, invoice.OrganizationId);
+            if (reservation is { OverrideOwnerPayout: true, ManagementFeeType: { } reservationFeeType })
+            {
+                feeType = reservationFeeType;
+                revenueSplitOwner = reservation.RevenueSplitOwner ?? 0m;
+                revenueSplitOffice = reservation.RevenueSplitOffice ?? 0m;
+            }
+        }
+
+        if (feeType != ManagementFeeType.Percentage)
+            return 0m;
+
+        if (revenueSplitOffice != 0m)
+            return revenueSplitOffice;
+
+        return 100m - revenueSplitOwner;
+    }
+
+    private readonly record struct GrossOwnerPortion(decimal Amount, decimal OfficeAmount, int? CostCodeId);
 
     private static void AddOwnerGrossLine(List<JournalEntryLine> lines, int chartOfAccountId, int? costCodeId, decimal amount, bool debitWhenPositive, JournalEntryLineContext lineContext, string memo, Guid currentUser)
     {
@@ -489,16 +547,19 @@ public partial class AccountingManager
         var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
         await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
-        var (_, costCodeById) = await officeCostCodeContextTask;
+        var (office, costCodeById) = await officeCostCodeContextTask;
         var memo = BuildOwnerActualRentMemo(invoice, paymentLedgerLine);
         var (fullRent, ownerShare) = amounts.Value;
+        if (!TryGetInvoiceRentalLedgerLine(invoice, out var rentalLine))
+            return null;
+
         var journalEntryLines = BuildJournalEntryLinesForOwnerGross(
             invoice,
-            fullRent,
-            ownerShare,
+            [new GrossOwnerPortion(fullRent, Math.Round(fullRent - ownerShare, 2, MidpointRounding.AwayFromZero), rentalLine.CostCodeId)],
             property,
             chartOfAccounts,
             accountingOffice,
+            office,
             costCodeById,
             propertyId.Value,
             memo,
