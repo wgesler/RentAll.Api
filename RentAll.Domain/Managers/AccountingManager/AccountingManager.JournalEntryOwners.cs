@@ -104,7 +104,7 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var (office, costCodeById) = await officeCostCodeContextTask;
 
-        var portions = await BuildGrossOwnerPortionsAsync(invoice, propertyAgreement, costCodeById);
+        var portions = await BuildGrossOwnerPortionsAsync(invoice, propertyAgreement, costCodeById, chartOfAccounts, accountingOffice);
         if (portions.Count == 0)
         {
             var existingOwnerShare = existingInvoiceEntries.FirstOrDefault(entry =>
@@ -265,23 +265,27 @@ public partial class AccountingManager
         };
         var isFurnished = !property.Unfurnished;
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var rentExpenseAccountId = isFurnished
-            ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
-            : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
-        var rentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
+        var rentalIncomeAccountId = isFurnished
+            ? GetDefaultFurnishedRentIncome(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
+            : GetDefaultUnfurnishedRentIncome(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
+        var rentalIncomeCostCodeId = isFurnished ? office?.FurnishedRentIncomeCcId : office?.UnfurnishedRentIncomeCcId;
         var lines = new List<JournalEntryLine>();
         AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
         foreach (var portion in portions)
             AddOwnerGrossLine(lines, ownerAccountsPayableId, portion.CostCodeId, portion.OfficeAmount, debitWhenPositive: true, lineContext, memo, currentUser);
 
         var remainder = Math.Round(fullAmount - officeTotal, 2, MidpointRounding.AwayFromZero);
-        AddOwnerGrossLine(lines, rentExpenseAccountId, rentExpenseCostCodeId is > 0 ? rentExpenseCostCodeId : null, remainder, debitWhenPositive: true, lineContext, memo, currentUser);
+        AddOwnerGrossLine(lines, rentalIncomeAccountId, rentalIncomeCostCodeId is > 0 ? rentalIncomeCostCodeId : null, remainder, debitWhenPositive: true, lineContext, memo, currentUser);
         return lines;
     }
 
-    private async Task<List<GrossOwnerPortion>> BuildGrossOwnerPortionsAsync(Invoice invoice, PropertyAgreement propertyAgreement, IReadOnlyDictionary<int, CostCode> costCodeById)
+    private async Task<List<GrossOwnerPortion>> BuildGrossOwnerPortionsAsync(Invoice invoice, PropertyAgreement propertyAgreement, IReadOnlyDictionary<int, CostCode> costCodeById, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
     {
-        var lines = GetGrossOwnerInvoiceLines(invoice, costCodeById);
+        var ownerAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
+        var ownerAccountNo = chartOfAccounts
+            .FirstOrDefault(account => account.OfficeId == invoice.OfficeId && account.AccountId == ownerAccountId)
+            ?.AccountNo ?? string.Empty;
+        var lines = GetGrossOwnerInvoiceLines(invoice, costCodeById, ownerAccountNo);
         if (lines.Count == 0)
             return [];
 
@@ -296,8 +300,12 @@ public partial class AccountingManager
             .ToList();
     }
 
-    private static List<LedgerLine> GetGrossOwnerInvoiceLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
+    private static List<LedgerLine> GetGrossOwnerInvoiceLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById, string ownerLiabilityAccountNo)
     {
+        var ownerCode = NormalizeAccountCode(ownerLiabilityAccountNo);
+        if (string.IsNullOrWhiteSpace(ownerCode))
+            return [];
+
         return invoice.LedgerLines
             .Where(line => line.Amount != 0)
             .Where(line =>
@@ -305,7 +313,7 @@ public partial class AccountingManager
                 if (!costCodeById.TryGetValue(line.CostCodeId, out var costCode) || IsPaymentLedgerLine(costCode))
                     return false;
 
-                return costCode.TransactionType is not TransactionType.SecurityDeposit and not TransactionType.SecurityDepositWaiver;
+                return NormalizeAccountCode(costCode.Code).Equals(ownerCode, StringComparison.OrdinalIgnoreCase);
             })
             .OrderBy(line => line.LineNumber)
             .ToList();

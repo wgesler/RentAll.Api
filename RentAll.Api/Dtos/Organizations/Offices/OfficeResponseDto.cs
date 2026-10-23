@@ -68,6 +68,8 @@ public class OfficeResponseDto
     public int? AdministrativeFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
+    public int? FurnishedRentIncomeCcId { get; set; }
+    public int? UnfurnishedRentIncomeCcId { get; set; }
     public string? QuotePreface { get; set; }
     public string? QuoteSuffix { get; set; }
     public string? QuoteDisclaimer { get; set; }
@@ -150,6 +152,8 @@ public class OfficeResponseDto
         AdministrativeFeeCcId = office.AdministrativeFeeCcId;
         SecurityDepositCcId = office.SecurityDepositCcId;
         SecurityDepositWaiverCcId = office.SecurityDepositWaiverCcId;
+        FurnishedRentIncomeCcId = office.FurnishedRentIncomeCcId;
+        UnfurnishedRentIncomeCcId = office.UnfurnishedRentIncomeCcId;
         QuotePreface = office.QuotePreface;
         QuoteSuffix = office.QuoteSuffix;
         QuoteDisclaimer = office.QuoteDisclaimer;

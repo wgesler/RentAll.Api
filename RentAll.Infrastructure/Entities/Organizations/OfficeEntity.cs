@@ -68,6 +68,8 @@ public class OfficeEntity
     public int? AdministrativeFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
+    public int? FurnishedRentIncomeCcId { get; set; }
+    public int? UnfurnishedRentIncomeCcId { get; set; }
 
     public string? QuotePreface { get; set; }
     public string? QuoteSuffix { get; set; }
