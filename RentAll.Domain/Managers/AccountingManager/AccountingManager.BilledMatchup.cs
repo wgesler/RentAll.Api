@@ -1,3 +1,4 @@
+using RentAll.Domain.Helpers;
 using RentAll.Domain.Models;
 
 namespace RentAll.Domain.Managers;

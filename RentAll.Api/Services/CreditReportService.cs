@@ -3,7 +3,6 @@ using RentAll.Domain.Constants;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
 using RentAll.Domain.Models.Maintenances;
 using RentAll.Infrastructure.Services;
 using System.Text.Json;

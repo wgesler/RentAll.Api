@@ -3,7 +3,6 @@ using RentAll.Domain.Constants;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
-using RentAll.Infrastructure.Entities.Organizations;
 
 namespace RentAll.Infrastructure.Repositories.Organizations;
 

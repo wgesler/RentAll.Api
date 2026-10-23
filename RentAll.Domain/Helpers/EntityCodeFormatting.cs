@@ -1,4 +1,4 @@
-namespace RentAll.Domain;
+namespace RentAll.Domain.Helpers;
 
 public static class EntityCodeFormatting
 {

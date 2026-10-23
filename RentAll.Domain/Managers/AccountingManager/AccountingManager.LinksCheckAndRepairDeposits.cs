@@ -1,6 +1,7 @@
-using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Helpers;
 using RentAll.Domain.Models;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Domain.Managers;
 

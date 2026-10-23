@@ -1,9 +1,7 @@
 using RentAll.Api.Dtos.Contacts.ContactCards;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
 using System.Text.Json;
 
 namespace RentAll.Api.Services;

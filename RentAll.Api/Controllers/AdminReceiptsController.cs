@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using RentAll.Domain.Enums;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
-using RentAll.Domain.Models;
 
 namespace RentAll.Api.Controllers;
 

@@ -1,5 +1,4 @@
 using RentAll.Domain.Enums;
-using RentAll.Domain.Models.Properties;
 
 namespace RentAll.Domain.Models;
 

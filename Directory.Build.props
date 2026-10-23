@@ -1,2 +1,5 @@
 <Project>
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;obj_temp\**;bin_temp\**</DefaultItemExcludes>
+  </PropertyGroup>
 </Project>

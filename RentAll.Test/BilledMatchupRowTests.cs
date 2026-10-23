@@ -1,5 +1,4 @@
 using RentAll.Domain.Enums;
-using RentAll.Domain.Interfaces;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;
 using RentAll.Domain.Models;

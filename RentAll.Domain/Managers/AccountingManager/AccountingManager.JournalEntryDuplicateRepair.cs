@@ -275,10 +275,10 @@ public partial class AccountingManager
             return deleted;
 
         var openEntryIdsAfter = (await _journalEntryRepository.GetJournalEntriesByPaymentIdAsync(new JournalEntryGetByPaymentIdCriteria
-            {
-                OrganizationId = organizationId,
-                PaymentId = paymentId
-            }))
+        {
+            OrganizationId = organizationId,
+            PaymentId = paymentId
+        }))
             .Where(entry => entry.PostingStatusId == PostingStatus.Open && IsHealthInvoicePaymentJournalEntry(entry))
             .Select(entry => entry.JournalEntryId)
             .ToHashSet();

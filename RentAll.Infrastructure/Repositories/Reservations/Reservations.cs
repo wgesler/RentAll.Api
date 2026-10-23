@@ -527,12 +527,12 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             var (summary, invoiceKeys) = await db.DapperProcQueryMultipleAsync<
                 ReservationSetActiveStateSummaryRow,
                 ReservationSetActiveStateInvoiceKeyRow>("Property.Reservation_SetActiveState", new
-            {
-                OrganizationId = organizationId,
-                ReservationId = reservationId,
-                IsActive = isActive,
-                ModifiedBy = modifiedBy
-            });
+                {
+                    OrganizationId = organizationId,
+                    ReservationId = reservationId,
+                    IsActive = isActive,
+                    ModifiedBy = modifiedBy
+                });
 
             var summaryRow = summary?.FirstOrDefault();
             var affectedInvoiceIds = (invoiceKeys ?? Enumerable.Empty<ReservationSetActiveStateInvoiceKeyRow>())

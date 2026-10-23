@@ -1,13 +1,13 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
-namespace RentAll.Domain;
+namespace RentAll.Domain.Helpers;
 
 /// <summary>
 /// Day counts for invoice rental lines — same rules as Get Charges
-/// (<see cref="Managers.AccountingManager.GetLedgerLinesByReservationIdAsync"/> / <c>CalculateNumberOfDays</c>).
+/// (<see cref="RentAll.Domain.Managers.AccountingManager.GetLedgerLinesByReservationIdAsync"/> / <c>CalculateNumberOfDays</c>).
 /// </summary>
 public static class InvoiceBillingDays
 {

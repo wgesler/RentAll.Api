@@ -1,7 +1,6 @@
-using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 using System.Text.RegularExpressions;
-using EntityCodeFormatting = RentAll.Domain.EntityCodeFormatting;
+using EntityCodeFormatting = RentAll.Domain.Helpers.EntityCodeFormatting;
 
 namespace RentAll.Domain.Managers;
 

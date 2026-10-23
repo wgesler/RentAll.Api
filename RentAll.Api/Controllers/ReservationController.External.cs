@@ -158,7 +158,7 @@ public partial class ReservationController
         };
     }
 
-    private async Task<(bool Success, bool Updated, ReservationResponseDto? Reservation, string? ErrorMessage)> UpsertExternalReservationAsync(CreateExternalReservationDto dto,ExternalPropertyIntakeContext context)
+    private async Task<(bool Success, bool Updated, ReservationResponseDto? Reservation, string? ErrorMessage)> UpsertExternalReservationAsync(CreateExternalReservationDto dto, ExternalPropertyIntakeContext context)
     {
         var property = await _propertyRepository.GetPropertyByCodeAsync(dto.PropertyCode.Trim(), context.OrganizationId);
         if (property == null)

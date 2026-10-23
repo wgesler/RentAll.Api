@@ -1,7 +1,7 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
-namespace RentAll.Domain;
+namespace RentAll.Domain.Helpers;
 
 /// <summary>
 /// Stay day counts for the reservation form and Accounting.Billed matchup rows.

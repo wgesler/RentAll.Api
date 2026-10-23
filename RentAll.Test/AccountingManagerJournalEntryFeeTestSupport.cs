@@ -1,6 +1,6 @@
 using Moq;
-using RentAll.Domain;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Helpers;
 using RentAll.Domain.Interfaces.Managers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Managers;

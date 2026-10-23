@@ -1,6 +1,6 @@
-using System.Text.RegularExpressions;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Contacts;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Infrastructure.Services;
 

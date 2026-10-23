@@ -1,7 +1,7 @@
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
 
-namespace RentAll.Domain;
+namespace RentAll.Domain.Helpers;
 
 public static class RentalFeeLineParser
 {

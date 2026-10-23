@@ -1,4 +1,4 @@
-using RentAll.Domain;
+using RentAll.Domain.Helpers;
 
 namespace RentAll.Test;
 

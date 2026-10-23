@@ -1,5 +1,5 @@
-using RentAll.Api.Dtos.Accounting.BankCards;
 using RentAll.Api.Dtos.Accounting.BankAccounts;
+using RentAll.Api.Dtos.Accounting.BankCards;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations.Accounting;

@@ -1,3 +1,4 @@
+using RentAll.Domain.Helpers;
 using RentAll.Domain.Interfaces.Auth;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Models;

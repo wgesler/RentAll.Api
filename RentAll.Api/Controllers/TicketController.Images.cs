@@ -1,6 +1,5 @@
-using System.Text.RegularExpressions;
 using RentAll.Api.Dtos.Tickets.Tickets;
-using RentAll.Domain.Enums;
+using System.Text.RegularExpressions;
 
 namespace RentAll.Api.Controllers;
 

@@ -8,8 +8,6 @@ using RentAll.Domain.Models.Partners;
 using RentAll.Domain.Models.Properties;
 using RentAll.Infrastructure.Configuration;
 using RentAll.Infrastructure.Entities.Partners;
-using RentAll.Infrastructure.Entities.Properties;
-using RentAll.Infrastructure.Entities.Reservations;
 using RentAll.Infrastructure.Repositories.Properties;
 
 namespace RentAll.Infrastructure.Repositories.Partners;

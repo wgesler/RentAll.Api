@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Partners;
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
 using RentAll.Api.Dtos.Properties.PropertyShares;
-using RentAll.Api.Dtos.Reservations.Reservations;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Models.Properties;

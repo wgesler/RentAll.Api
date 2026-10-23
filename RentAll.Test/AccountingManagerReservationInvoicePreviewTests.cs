@@ -1,7 +1,7 @@
 using Moq;
-using RentAll.Domain;
 using RentAll.Domain.Configuration;
 using RentAll.Domain.Enums;
+using RentAll.Domain.Helpers;
 using RentAll.Domain.Interfaces.Repositories;
 using RentAll.Domain.Interfaces.Services;
 using RentAll.Domain.Managers;

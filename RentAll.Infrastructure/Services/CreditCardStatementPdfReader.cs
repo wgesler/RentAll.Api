@@ -362,7 +362,7 @@ public static class CreditCardStatementPdfReader
                 continue;
             }
 
-            if (current is '[' or ']' or '>' )
+            if (current is '[' or ']' or '>')
             {
                 index++;
                 continue;

@@ -1,5 +1,5 @@
 using RentAll.Api.Dtos.Properties.PropertyPhotos;
-using RentAll.Domain;
+using RentAll.Domain.Helpers;
 using System.Text.Json.Serialization;
 
 namespace RentAll.Api.Dtos.Properties.Properties;

@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Logging;
 using RentAll.Domain.Enums;
 using RentAll.Domain.Models;
-using Microsoft.Extensions.Logging;
 
 namespace RentAll.Domain.Managers;
 

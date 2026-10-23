@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Dtos.Contacts;
-using RentAll.Api.Dtos.Properties.Properties;
 using RentAll.Api.Services;
 using System.Text.Json;
 

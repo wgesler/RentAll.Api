@@ -1,5 +1,5 @@
 using RentAll.Api.Dtos.Contacts.ContactCards;
-using RentAll.Domain;
+using RentAll.Domain.Helpers;
 using RentAll.Domain.Models.Common;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -442,7 +442,7 @@ public class ExternalPropertyContactDto
             errors.Add($"{fieldLabel}.propertyManagedBy must be 0=Owner or 1=PropertyManagementCompany. Received {PropertyManagedBy.Value}.");
         var identificationNumber = NormalizeIdentificationNumber(IdentificationNumber);
         if (identificationNumber != null && identificationNumber.Length > 9)
-            errors.Add($"{fieldLabel}.identificationNumber is {identificationNumber.Length} characters after removing hyphens; max is 9. Received \"{IdentificationNumber.Trim()}\".");
+            errors.Add($"{fieldLabel}.identificationNumber is {identificationNumber.Length} characters after removing hyphens; max is 9. Received \"{IdentificationNumber?.Trim()}\".");
         CollectDocumentUrl(fieldLabel, "documentFront", DocumentFront, errors);
         CollectDocumentUrl(fieldLabel, "documentBack", DocumentBack, errors);
         CollectDocumentUrl(fieldLabel, "w9", W9, errors);

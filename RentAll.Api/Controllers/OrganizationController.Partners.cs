@@ -1,5 +1,3 @@
-using RentAll.Api.Dtos.Organizations.Organizations;
-
 namespace RentAll.Api.Controllers;
 
 public partial class OrganizationController
