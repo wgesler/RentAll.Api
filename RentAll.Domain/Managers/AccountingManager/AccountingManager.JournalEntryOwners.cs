@@ -269,13 +269,17 @@ public partial class AccountingManager
             ? GetDefaultFurnishedRentIncome(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
             : GetDefaultUnfurnishedRentIncome(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
         var rentalIncomeCostCodeId = isFurnished ? office?.FurnishedRentIncomeCcId : office?.UnfurnishedRentIncomeCcId;
+        var rentExpenseAccountId = isFurnished
+            ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
+            : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
+        var rentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
         var lines = new List<JournalEntryLine>();
-        AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
+        AddOwnerGrossLine(lines, rentalIncomeAccountId, rentalIncomeCostCodeId is > 0 ? rentalIncomeCostCodeId : null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
         foreach (var portion in portions)
             AddOwnerGrossLine(lines, ownerAccountsPayableId, portion.CostCodeId, portion.OfficeAmount, debitWhenPositive: true, lineContext, memo, currentUser);
 
         var remainder = Math.Round(fullAmount - officeTotal, 2, MidpointRounding.AwayFromZero);
-        AddOwnerGrossLine(lines, rentalIncomeAccountId, rentalIncomeCostCodeId is > 0 ? rentalIncomeCostCodeId : null, remainder, debitWhenPositive: true, lineContext, memo, currentUser);
+        AddOwnerGrossLine(lines, rentExpenseAccountId, rentExpenseCostCodeId is > 0 ? rentExpenseCostCodeId : null, remainder, debitWhenPositive: true, lineContext, memo, currentUser);
         return lines;
     }
 

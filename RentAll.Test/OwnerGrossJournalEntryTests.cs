@@ -63,11 +63,11 @@ public class OwnerGrossJournalEntryTests
         AssertGrossOwnerLines(ownerActuals[0], firstAmount, OwnerShare(firstAmount));
         AssertGrossOwnerLines(ownerActuals[1], secondAmount, OwnerShare(rent) - OwnerShare(firstAmount));
 
-        var ownerPayableNet = ownerActuals.Sum(entry =>
-            Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit - line.Debit));
+        var ownerPayableDebit = ownerActuals.Sum(entry =>
+            Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Debit));
         var remainder = ownerActuals.Sum(entry =>
             Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit));
-        Assert.Equal(OwnerShare(rent), ownerPayableNet);
+        Assert.Equal(rent - OwnerShare(rent), ownerPayableDebit);
         Assert.Equal(OwnerShare(rent), remainder);
     }
 
@@ -136,11 +136,11 @@ public class OwnerGrossJournalEntryTests
         var debits = entry.JournalEntryLines.Sum(line => line.Debit);
         var credits = entry.JournalEntryLines.Sum(line => line.Credit);
         Assert.Equal(debits, credits);
-        Assert.Equal(rent, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit));
+        Assert.Equal(rent, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Credit));
+        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit));
         Assert.Equal(fee, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Debit));
         Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit));
         Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerIncomeAccountId, line => line.Debit + line.Credit));
-        Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit - line.Debit));
         Assert.All(
             entry.JournalEntryLines.Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId),
             line => Assert.Equal(AccountingManagerJournalEntryFeeTestSupport.OwnerContactId, line.ContactId));
