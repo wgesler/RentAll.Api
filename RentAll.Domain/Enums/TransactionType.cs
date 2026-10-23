@@ -12,5 +12,7 @@ public enum TransactionType
     Liability = 7,
     Equity = 8,
     Income = 9,
-    ChargeOneTime = 10
+    ChargeOneTime = 10,
+    ChargeOwnerProrate = 11,
+    ChargeOwnerOneTime = 12
 }
