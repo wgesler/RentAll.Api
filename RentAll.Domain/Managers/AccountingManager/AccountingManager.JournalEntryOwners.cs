@@ -271,11 +271,12 @@ public partial class AccountingManager
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var ownerIncomeAccountId = GetDefaultOwnerIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
 
+        var feeMemo = BuildOwnerManagementFeeMemo(invoice);
         var lines = new List<JournalEntryLine>();
         AddOwnerGrossLine(lines, tenantIncomeAccountId, rentalLine.CostCodeId, fullRent, debitWhenPositive: true, lineContext, memo, currentUser);
         AddOwnerGrossLine(lines, ownerAccountsPayableId, rentalLine.CostCodeId, fullRent, debitWhenPositive: false, lineContext, memo, currentUser);
-        AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fee, debitWhenPositive: true, lineContext, memo, currentUser);
-        AddOwnerGrossLine(lines, ownerIncomeAccountId, null, fee, debitWhenPositive: false, lineContext, memo, currentUser);
+        AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fee, debitWhenPositive: true, lineContext, feeMemo, currentUser);
+        AddOwnerGrossLine(lines, ownerIncomeAccountId, null, fee, debitWhenPositive: false, lineContext, feeMemo, currentUser);
         return lines;
     }
 

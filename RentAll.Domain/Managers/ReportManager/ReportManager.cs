@@ -544,6 +544,21 @@ public partial class ReportManager : IReportManager
         var memo = (line.Description ?? string.Empty).Trim();
         var journalEntryCode = (line.JournalEntryCode ?? string.Empty).Trim();
 
+        if ((string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
+            && AccountingManager.IsOwnerManagementFeeMemo(memo))
+        {
+            group.OwnerExpenseValue += -amount;
+            if (!string.IsNullOrWhiteSpace(memo))
+                group.OwnerExpenseMemo = memo;
+            if (!string.IsNullOrWhiteSpace(journalEntryCode))
+                group.OwnerExpenseJournalEntryCode = journalEntryCode;
+            group.OwnerExpenseJournalEntryLineId = line.JournalEntryLineId;
+            group.OwnerExpenseSourceId = line.SourceId;
+            group.OwnerExpenseSourceTypeId = line.SourceTypeId;
+            return;
+        }
+
         if (string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase))
         {
             group.OwnerRentValue += amount;
@@ -936,6 +951,9 @@ public partial class ReportManager : IReportManager
             if (!string.Equals(category, "OwnerRent", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(category, "ExpectedIncome", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (AccountingManager.IsOwnerManagementFeeMemo(line.Description))
                 continue;
 
             var invoiceKey = GetInvoiceOwnerIncomeKey(line);

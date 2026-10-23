@@ -280,6 +280,20 @@ public partial class AccountingManager
         return $"{invoice.InvoiceCode.Trim()}: Owner: Expected: {rentalLine.Description.Trim()}";
     }
 
+    public static string BuildOwnerManagementFeeMemo(Invoice invoice)
+    {
+        if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
+            throw new ArgumentException("Invoice code is required.", nameof(invoice));
+
+        return $"{invoice.InvoiceCode.Trim()}: Owner: Management Fee";
+    }
+
+    public static bool IsOwnerManagementFeeMemo(string? memo)
+    {
+        var normalizedMemo = (memo ?? string.Empty).Trim();
+        return normalizedMemo.Contains(": Owner: Management Fee", StringComparison.Ordinal);
+    }
+
     // Example: R-001053-001: Owner: Expected: Rental Fee (04/01-04/30)
     public static JournalEntryMemoMatch MatchOwnerExpectedRentMemo(string? journalMemo, string? lineMemo = null)
         => MatchOwnerExpectedRentMemo(CoalesceJournalEntryMemo(journalMemo, lineMemo));

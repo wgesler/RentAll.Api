@@ -20,6 +20,10 @@ public class OwnerGrossJournalEntryTests
         Assert.DoesNotContain(
             ownerExpected.JournalEntryLines,
             line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId);
+        var feeLine = Assert.Single(
+            ownerExpected.JournalEntryLines,
+            line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId && line.Debit > 0);
+        Assert.Contains(": Owner: Management Fee", feeLine.Memo, StringComparison.Ordinal);
     }
 
     [Fact]
