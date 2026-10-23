@@ -53,5 +53,22 @@ namespace RentAll.Api.Controllers
             var organization = await _organizationRepository.GetOrganizationByIdAsync(organizationId);
             return organization != null && organization.OrganizationType == OrganizationType.Partner;
         }
+
+        private async Task<bool> HasFeatureAccessAsync(Guid organizationId, FeatureType featureType)
+        {
+            if (organizationId == Guid.Empty)
+                return false;
+
+            var features = await _organizationRepository.GetFeaturesByOrganizationIdAsync(organizationId);
+            return features.Any(feature => feature.FeatureTypeId == featureType && feature.HasAccess);
+        }
+
+        private async Task<bool> RequireOfficeManagementContactAsync(Guid organizationId)
+        {
+            if (await IsPartnerOrganizationAsync(organizationId))
+                return false;
+
+            return await HasFeatureAccessAsync(organizationId, FeatureType.Management);
+        }
     }
 }

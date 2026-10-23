@@ -84,7 +84,7 @@ public class OfficeUpdateDto
     public bool IsInternational { get; set; }
     public bool IsActive { get; set; }
 
-    public (bool IsValid, string? ErrorMessage) IsValid(bool requireBillingInformation = true)
+    public (bool IsValid, string? ErrorMessage) IsValid(bool requireManagementContact = true)
     {
         if (OrganizationId == Guid.Empty)
             return (false, "OrganizationId is required");
@@ -113,10 +113,10 @@ public class OfficeUpdateDto
         if (!IsInternational && string.IsNullOrWhiteSpace(Zip))
             return (false, "Zip is required");
 
-        if (requireBillingInformation && string.IsNullOrWhiteSpace(MaintenanceEmail))
+        if (requireManagementContact && string.IsNullOrWhiteSpace(MaintenanceEmail))
             return (false, "MaintenanceEmail is required");
 
-        if (requireBillingInformation && string.IsNullOrWhiteSpace(AfterHoursPhone))
+        if (requireManagementContact && string.IsNullOrWhiteSpace(AfterHoursPhone))
             return (false, "AfterHoursPhone is required");
 
         if (FurnishedRentChargeCcId.HasValue && FurnishedRentChargeCcId.Value <= 0)
