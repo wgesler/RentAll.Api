@@ -59,11 +59,7 @@ public partial class AccountingManager
             journalEntry.AccountingPeriod = FirstDayOfMonth(journalEntry.TransactionDate);
 
         if (string.IsNullOrWhiteSpace(journalEntry.JournalEntryCode))
-        {
-            journalEntry.JournalEntryCode = await _organizationManager.GenerateEntityCodeAsync(
-                journalEntry.OrganizationId,
-                EntityType.JournalEntry);
-        }
+            journalEntry.JournalEntryCode = await NextJournalEntryCodeAsync(journalEntry.OrganizationId);
 
         await ApplyAccountingOfficeClosedPostingStatusComplianceAsync(journalEntry);
         ValidateJournalEntryForSave(journalEntry, requireActiveLines);
@@ -73,6 +69,19 @@ public partial class AccountingManager
         await TrySyncOwnerInvoiceOutstandingFromJournalEntryAsync(created);
         await TryInvalidateOwnerReportMonthlyAnchorsFromJournalEntryAsync(created);
         return created;
+    }
+
+    private async Task<string> NextJournalEntryCodeAsync(Guid organizationId)
+    {
+        const int attemptLimit = 10000;
+        for (var attempt = 0; attempt < attemptLimit; attempt++)
+        {
+            var code = await _organizationManager.GenerateEntityCodeAsync(organizationId, EntityType.JournalEntry);
+            if (!await _journalEntryRepository.ExistsByJournalEntryCodeAsync(code, organizationId))
+                return code;
+        }
+
+        throw new InvalidOperationException("Unable to generate a unique journal entry code.");
     }
 
     public async Task<JournalEntry> UpdateJournalEntryAsync(JournalEntry journalEntry)

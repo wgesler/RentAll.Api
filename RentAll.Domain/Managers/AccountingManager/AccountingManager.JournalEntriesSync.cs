@@ -902,8 +902,6 @@ public partial class AccountingManager
             }
         }
 
-        await _organizationManager.ResetEntityCodeSequenceAsync(organizationId, EntityType.JournalEntry, 0);
-
         return result;
     }
 
