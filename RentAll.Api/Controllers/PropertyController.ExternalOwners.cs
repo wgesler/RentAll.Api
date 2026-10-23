@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using RentAll.Api.Services;
+using RentAll.Domain.Enums;
 using System.Text.Json;
 
 namespace RentAll.Api.Controllers;
@@ -35,7 +36,8 @@ public partial class PropertyController
             var item = new ExternalOwnerBatchItemResultDto
             {
                 Index = index,
-                Email = owner.Email.Trim()
+                Email = owner.Email.Trim(),
+                ExternalRefNo = string.IsNullOrWhiteSpace(owner.ExternalRefNo) ? null : owner.ExternalRefNo.Trim()
             };
 
             try
@@ -45,11 +47,14 @@ public partial class PropertyController
                     context.OrganizationId,
                     context.OfficeId,
                     SystemUserId,
-                    $"Owners[{index}]");
+                    $"Owners[{index}]",
+                    matchByExternalRefNo: true);
 
                 item.Success = result.Success;
                 item.Updated = result.Updated;
-                item.ContactId = result.Contact?.ContactId;
+                item.ExternalRefNo = string.IsNullOrWhiteSpace(result.Contact?.ExternalRefNo)
+                    ? item.ExternalRefNo
+                    : result.Contact.ExternalRefNo.Trim();
                 item.ContactCode = result.Contact?.ContactCode;
                 item.ErrorMessage = result.ErrorMessage;
             }
@@ -110,12 +115,13 @@ public partial class PropertyController
             {
                 var prefix = $"Owners[{index}]";
                 var itemErrors = new List<string>();
-                ExternalPropertyIntakeErrors.CollectContactElement(ownerElement, prefix, itemErrors);
+                ExternalPropertyIntakeErrors.CollectContactElement(ownerElement, prefix, itemErrors, ownerOnly: true, requireExternalRefNo: true);
                 if (itemErrors.Count == 0)
                 {
                     try
                     {
-                        var owner = ExternalPropertyIntakeJson.DeserializeContact(ownerElement);
+                        var owner = ExternalPropertyIntakeJson.DeserializeContact(WithoutEntityTypeId(ownerElement));
+                        owner.EntityTypeId = (int)EntityType.Owner;
                         itemErrors.AddRange(owner.CollectErrors(prefix));
                         if (itemErrors.Count == 0)
                             owners.Add(owner);
@@ -135,5 +141,29 @@ public partial class PropertyController
             return (false, context, null, errors.Count > 0 ? ExternalPropertyIntakeErrors.Join(errors) : "Invalid request data");
 
         return (true, context, owners, null);
+    }
+
+    private static JsonElement WithoutEntityTypeId(JsonElement ownerElement)
+    {
+        if (ownerElement.ValueKind != JsonValueKind.Object)
+            return ownerElement;
+
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            foreach (var property in ownerElement.EnumerateObject())
+            {
+                if (string.Equals(property.Name, "entityTypeId", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                property.WriteTo(writer);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        using var document = JsonDocument.Parse(stream.ToArray());
+        return document.RootElement.Clone();
     }
 }

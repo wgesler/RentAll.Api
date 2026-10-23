@@ -246,7 +246,7 @@ public static class ExternalPropertyIntakeErrors
             errors.Add($"{prefix}.{field} is {raw.Length} characters; max is {maxLength}. Received \"{raw}\".");
     }
 
-    public static void CollectContactElement(JsonElement element, string contactPrefix, List<string> errors, bool ownerOnly = false)
+    public static void CollectContactElement(JsonElement element, string contactPrefix, List<string> errors, bool ownerOnly = false, bool requireExternalRefNo = false)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -257,6 +257,11 @@ public static class ExternalPropertyIntakeErrors
         CollectRequiredString(element, contactPrefix, "firstName", errors);
         CollectRequiredString(element, contactPrefix, "lastName", errors);
         CollectRequiredString(element, contactPrefix, "email", errors);
+        if (requireExternalRefNo)
+        {
+            CollectRequiredString(element, contactPrefix, "externalRefNo", errors);
+            CollectMaxLength(element, contactPrefix, "externalRefNo", 100, errors);
+        }
         if (!ownerOnly)
             CollectRequiredContactEntityType(element, contactPrefix, errors);
         CollectState(element, contactPrefix, "state", errors);
@@ -279,8 +284,9 @@ public static class ExternalPropertyIntakeErrors
         CollectFlexibleEnum<OwnerDocumentType>(contact, contactPrefix, "ownerDocumentId", errors);
         CollectFlexibleEnum<PropertyManagerType>(contact, contactPrefix, "propertyManagedBy", errors);
         CollectIdentificationNumber(contact, contactPrefix, errors);
-        CollectOwnerImage(contact, contactPrefix, "documentFront", errors);
-        CollectOwnerImage(contact, contactPrefix, "documentBack", errors);
+        CollectHttpsUrl(contact, contactPrefix, "documentFront", errors);
+        CollectHttpsUrl(contact, contactPrefix, "documentBack", errors);
+        CollectHttpsUrl(contact, contactPrefix, "w9", errors);
     }
 
     private static void CollectFlexibleDate(JsonElement body, string prefix, string field, List<string> errors)
@@ -301,45 +307,23 @@ public static class ExternalPropertyIntakeErrors
             errors.Add($"{prefix}.{field} {error} Received {Describe(element)}.");
     }
 
-    private static void CollectOwnerImage(JsonElement body, string prefix, string field, List<string> errors)
+    private static void CollectHttpsUrl(JsonElement body, string prefix, string field, List<string> errors)
     {
         if (!ExternalPropertyIntakeJson.TryGetProperty(body, field, out var element) || element.ValueKind == JsonValueKind.Null)
             return;
 
-        ExternalContactImageDto? image = element.ValueKind switch
+        if (element.ValueKind != JsonValueKind.String)
         {
-            JsonValueKind.String => new ExternalContactImageDto { DataUrl = element.GetString() },
-            JsonValueKind.Object => new ExternalContactImageDto
-            {
-                FileName = ReadImageString(element, "fileName"),
-                ContentType = ReadImageString(element, "contentType"),
-                File = ReadImageString(element, "file"),
-                DataUrl = ReadImageString(element, "dataUrl")
-            },
-            _ => null
-        };
-
-        if (image == null)
-        {
-            errors.Add($"{prefix}.{field} must be an image object or a base64 image string. Received {Describe(element)}.");
+            errors.Add($"{prefix}.{field} must be an https URL. Received {Describe(element)}.");
             return;
         }
 
-        image.CollectErrors(prefix, field, errors);
-    }
+        var url = element.GetString()?.Trim() ?? string.Empty;
+        if (url.Length == 0)
+            return;
 
-    private static string? ReadImageString(JsonElement element, string name)
-    {
-        foreach (var property in element.EnumerateObject())
-        {
-            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase) || property.Value.ValueKind != JsonValueKind.String)
-                continue;
-
-            var raw = property.Value.GetString()?.Trim();
-            return string.IsNullOrWhiteSpace(raw) ? null : raw;
-        }
-
-        return null;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            errors.Add($"{prefix}.{field} must be an https URL.");
     }
 
     private static void CollectContact(JsonElement body, string prefix, string field, List<string> errors)

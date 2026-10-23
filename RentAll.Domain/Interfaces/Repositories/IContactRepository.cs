@@ -13,6 +13,7 @@ public interface IContactRepository
     Task<Contact?> GetContactByIdsAsync(Guid contactId, Guid organizationId);
     Task<Contact?> GetContactByLeadAsync(Guid organizationId, string officeAccess, int? leadOwnerId, string? firstName, string? lastName, string? address);
     Task<Contact?> GetContactByEmailAsync(string email, Guid organizationId);
+    Task<IReadOnlyList<Contact>> GetContactsByExternalRefNoAsync(Guid organizationId, string externalRefNo);
     Task<Contact?> GetContactByContactCodeAsync(string contactCode, Guid organizationId);
     Task<bool> ExistsByContactCodeAsync(string contactCode, Guid organizationId);
 

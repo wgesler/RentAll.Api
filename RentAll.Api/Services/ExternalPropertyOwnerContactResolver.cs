@@ -294,22 +294,41 @@ public class ExternalPropertyOwnerContactResolver
         Guid organizationId,
         int officeId,
         Guid currentUser,
-        string fieldLabel = "Owner")
-        => ResolveOwnerAsync(owner, organizationId, officeId, currentUser, fieldLabel);
+        string fieldLabel = "Owner",
+        bool matchByExternalRefNo = false)
+        => ResolveOwnerAsync(owner, organizationId, officeId, currentUser, fieldLabel, matchByExternalRefNo);
 
-    private async Task<(bool Success, bool Updated, Contact? Contact, string? ErrorMessage)> ResolveOwnerAsync(ExternalPropertyContactDto owner, Guid organizationId, int officeId, Guid currentUser, string fieldLabel)
+    private async Task<(bool Success, bool Updated, Contact? Contact, string? ErrorMessage)> ResolveOwnerAsync(ExternalPropertyContactDto owner, Guid organizationId, int officeId, Guid currentUser, string fieldLabel, bool matchByExternalRefNo = false)
     {
         var (isValid, validationError) = owner.IsValid(fieldLabel);
         if (!isValid)
             return (false, false, null, validationError);
 
         var email = owner.Email.Trim();
-        var existingContact = await _contactRepository.GetContactByEmailAsync(email, organizationId);
+        Contact? existingContact;
+        if (matchByExternalRefNo)
+        {
+            var externalRefNo = owner.ExternalRefNo?.Trim();
+            if (string.IsNullOrWhiteSpace(externalRefNo))
+                return (false, false, null, $"{fieldLabel}.externalRefNo is required.");
+
+            var matches = await _contactRepository.GetContactsByExternalRefNoAsync(organizationId, externalRefNo);
+            if (matches.Count > 1)
+                return (false, false, null, $"{fieldLabel}.externalRefNo '{externalRefNo}' matches more than one contact.");
+
+            existingContact = matches.Count == 1 ? matches[0] : null;
+        }
+        else
+        {
+            existingContact = await _contactRepository.GetContactByEmailAsync(email, organizationId);
+        }
+
         if (existingContact != null)
         {
             var entityType = owner.ResolveEntityType(EntityType.Owner);
+            var matchedBy = matchByExternalRefNo ? $"externalRefNo '{owner.ExternalRefNo?.Trim()}'" : $"email '{email}'";
             if (existingContact.EntityType != entityType)
-                return (false, false, null, $"{fieldLabel} email '{email}' is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different email or change that contact to {entityType}.");
+                return (false, false, null, $"{fieldLabel} {matchedBy} is already used by {existingContact.EntityType} contact {existingContact.ContactCode}. Use a different {(matchByExternalRefNo ? "externalRefNo" : "email")} or change that contact to {entityType}.");
 
             owner.ApplyToExistingOwnerContact(existingContact, officeId, currentUser);
             var updateImageError = await StoreOwnerDocumentsAsync(owner, existingContact, organizationId, officeId, fieldLabel);
