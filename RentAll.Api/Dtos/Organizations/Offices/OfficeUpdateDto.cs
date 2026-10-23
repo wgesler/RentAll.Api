@@ -21,6 +21,7 @@ public class OfficeUpdateDto
     public string? MaintenanceEmail { get; set; }
     public string? AfterHoursPhone { get; set; }
     public string? AfterHoursInstructions { get; set; }
+    public int IrsMethodTypeId { get; set; }
     public bool UseDailyOnResBoard { get; set; }
     public bool UseStrictOnTickets { get; set; }
     public int DaysToRefundDeposit { get; set; }
@@ -160,6 +161,9 @@ public class OfficeUpdateDto
         if (SecurityDepositWaiverCcId.HasValue && SecurityDepositWaiverCcId.Value <= 0)
             return (false, "SecurityDepositWaiverCcId must be greater than 0 when provided");
 
+        if (!Enum.IsDefined(typeof(IRSMethodType), IrsMethodTypeId))
+            return (false, $"Invalid IrsMethodTypeId value: {IrsMethodTypeId}");
+
         if (QbNameTypeId.HasValue && !Enum.IsDefined(typeof(QbNameType), QbNameTypeId.Value))
             return (false, $"Invalid QbNameTypeId value: {QbNameTypeId.Value}");
 
@@ -190,6 +194,7 @@ public class OfficeUpdateDto
             MaintenanceEmail = MaintenanceEmail,
             AfterHoursPhone = AfterHoursPhone,
             AfterHoursInstructions = AfterHoursInstructions,
+            IrsMethodType = (IRSMethodType)IrsMethodTypeId,
             UseDailyOnResBoard = UseDailyOnResBoard,
             UseStrictOnTickets = UseStrictOnTickets,
             DaysToRefundDeposit = DaysToRefundDeposit,

@@ -72,6 +72,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             MaintenanceEmail = e.MaintenanceEmail,
             AfterHoursPhone = e.AfterHoursPhone,
             AfterHoursInstructions = e.AfterHoursInstructions,
+            IrsMethodType = Enum.IsDefined(typeof(IRSMethodType), e.IrsMethodTypeId) ? (IRSMethodType)e.IrsMethodTypeId : IRSMethodType.IrsNetMethod,
             UseDailyOnResBoard = e.UseDailyOnResBoard,
             UseStrictOnTickets = e.UseStrictOnTickets,
             DaysToRefundDeposit = e.DaysToRefundDeposit,

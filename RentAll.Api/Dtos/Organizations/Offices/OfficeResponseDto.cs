@@ -21,6 +21,7 @@ public class OfficeResponseDto
     public string? MaintenanceEmail { get; set; }
     public string? AfterHoursPhone { get; set; }
     public string? AfterHoursInstructions { get; set; }
+    public int IrsMethodTypeId { get; set; }
     public bool UseDailyOnResBoard { get; set; }
     public bool UseStrictOnTickets { get; set; }
     public int DaysToRefundDeposit { get; set; }
@@ -102,6 +103,7 @@ public class OfficeResponseDto
         MaintenanceEmail = office.MaintenanceEmail;
         AfterHoursPhone = office.AfterHoursPhone;
         AfterHoursInstructions = office.AfterHoursInstructions;
+        IrsMethodTypeId = (int)office.IrsMethodType;
         UseDailyOnResBoard = office.UseDailyOnResBoard;
         UseStrictOnTickets = office.UseStrictOnTickets;
         DaysToRefundDeposit = office.DaysToRefundDeposit;
