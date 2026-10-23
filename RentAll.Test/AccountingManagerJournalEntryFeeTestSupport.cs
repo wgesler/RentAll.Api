@@ -97,8 +97,9 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         Reservation reservation,
         string petFeeAccountCode = "2080",
         bool enableOwnerShare = false,
-        decimal revenueSplitOwner = 80m)
-        => new(reservation, petFeeAccountCode, enableOwnerShare, revenueSplitOwner);
+        decimal revenueSplitOwner = 80m,
+        IRSMethodType irsMethodType = IRSMethodType.IrsNetMethod)
+        => new(reservation, petFeeAccountCode, enableOwnerShare, revenueSplitOwner, irsMethodType);
 
     internal static async Task<(Invoice Invoice, FeeJournalEntryTestContext Context)> BuildTrackedFeeInvoiceAsync(
         Reservation reservation,
@@ -106,9 +107,10 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         DateOnly periodEnd,
         string petFeeAccountCode = "2080",
         bool enableOwnerShare = false,
-        decimal revenueSplitOwner = 80m)
+        decimal revenueSplitOwner = 80m,
+        IRSMethodType irsMethodType = IRSMethodType.IrsNetMethod)
     {
-        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode, enableOwnerShare, revenueSplitOwner);
+        var context = CreateFeeJournalEntryTestContext(reservation, petFeeAccountCode, enableOwnerShare, revenueSplitOwner, irsMethodType);
         var manager = context.CreateManager();
         var ledgerLines = await GetInvoiceLedgerLinesAsync(manager, reservation, periodStart, periodEnd);
         var invoice = AccountingManagerJournalEntryTestSupport.BuildInvoice(reservation, periodStart, periodEnd, ledgerLines);
@@ -122,6 +124,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
         private readonly string _petFeeAccountCode;
         private readonly bool _enableOwnerShare;
         private readonly decimal _revenueSplitOwner;
+        private readonly IRSMethodType _irsMethodType;
         private readonly List<JournalEntry> _journalEntries = [];
         private readonly Dictionary<Guid, Invoice> _invoices = [];
         private readonly Dictionary<Guid, Payment> _payments = [];
@@ -133,12 +136,14 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             Reservation reservation,
             string petFeeAccountCode = "2080",
             bool enableOwnerShare = false,
-            decimal revenueSplitOwner = 80m)
+            decimal revenueSplitOwner = 80m,
+            IRSMethodType irsMethodType = IRSMethodType.IrsNetMethod)
         {
             _reservation = reservation;
             _petFeeAccountCode = petFeeAccountCode;
             _enableOwnerShare = enableOwnerShare;
             _revenueSplitOwner = revenueSplitOwner;
+            _irsMethodType = irsMethodType;
         }
 
         internal IReadOnlyList<JournalEntry> CreatedJournalEntries => _journalEntries;
@@ -453,7 +458,8 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     SecurityDepositWaiverCcId = SdwCostCodeId,
                     DepartureFeeCcId = DepartureFeeCostCodeId,
                     MaidServiceChargeCcId = MaidServiceCostCodeId,
-                    PetFeeCcId = PetFeeCostCodeId
+                    PetFeeCcId = PetFeeCostCodeId,
+                    IrsMethodType = _irsMethodType
                 });
 
             var propertyRepository = new Mock<IPropertyRepository>();
@@ -577,11 +583,16 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                 .Setup(m => m.GenerateEntityCodeAsync(AccountingManagerJournalEntryTestSupport.OrganizationId, EntityType.Payment))
                 .ReturnsAsync(() => EntityCodeFormatting.Format("PY", Interlocked.Increment(ref _paymentCodeSequence)));
 
+            var maintenanceRepository = new Mock<IMaintenanceRepository>();
+            maintenanceRepository
+                .Setup(r => r.GetReceiptsByCriteriaAsync(It.IsAny<ReceiptGetCriteria>()))
+                .ReturnsAsync([]);
+
             return new AccountingManager(
                 organizationRepository.Object,
                 propertyRepository.Object,
                 accountingRepository.Object,
-                maintenanceRepository: null!,
+                maintenanceRepository.Object,
                 reservationRepository.Object,
                 journalEntryRepository.Object,
                 organizationManager.Object,

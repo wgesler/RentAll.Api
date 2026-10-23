@@ -376,11 +376,16 @@ internal static class AccountingManagerJournalEntryTestSupport
                 .Setup(m => m.GenerateEntityCodeAsync(OrganizationId, EntityType.JournalEntry))
                 .ReturnsAsync(() => EntityCodeFormatting.Format("JE", Interlocked.Increment(ref _journalEntryCodeSequence)));
 
+            var maintenanceRepository = new Mock<IMaintenanceRepository>();
+            maintenanceRepository
+                .Setup(r => r.GetReceiptsByCriteriaAsync(It.IsAny<ReceiptGetCriteria>()))
+                .ReturnsAsync([]);
+
             return new AccountingManager(
                 organizationRepository.Object,
                 propertyRepository.Object,
                 accountingRepository.Object,
-                maintenanceRepository: null!,
+                maintenanceRepository.Object,
                 reservationRepository.Object,
                 journalEntryRepository.Object,
                 organizationManager.Object,
