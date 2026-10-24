@@ -104,7 +104,7 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var (office, costCodeById) = await officeCostCodeContextTask;
 
-        var portions = await BuildGrossOwnerPortionsAsync(invoice, propertyAgreement, costCodeById, chartOfAccounts, accountingOffice);
+        var portions = await BuildGrossOwnerPortionsAsync(invoice, propertyAgreement, costCodeById);
         if (portions.Count == 0)
         {
             var existingOwnerShare = existingInvoiceEntries.FirstOrDefault(entry =>
@@ -265,16 +265,13 @@ public partial class AccountingManager
         };
         var isFurnished = !property.Unfurnished;
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var rentalIncomeAccountId = isFurnished
-            ? GetDefaultFurnishedRentIncome(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
-            : GetDefaultUnfurnishedRentIncome(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
-        var rentalIncomeCostCodeId = isFurnished ? office?.FurnishedRentIncomeCcId : office?.UnfurnishedRentIncomeCcId;
+        var rentalIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
         var rentExpenseAccountId = isFurnished
             ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
             : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
         var rentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
         var lines = new List<JournalEntryLine>();
-        AddOwnerGrossLine(lines, rentalIncomeAccountId, rentalIncomeCostCodeId is > 0 ? rentalIncomeCostCodeId : null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
+        AddOwnerGrossLine(lines, rentalIncomeAccountId, null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
         foreach (var portion in portions)
             AddOwnerGrossLine(lines, ownerAccountsPayableId, portion.CostCodeId, portion.OfficeAmount, debitWhenPositive: true, lineContext, memo, currentUser);
 
@@ -283,13 +280,9 @@ public partial class AccountingManager
         return lines;
     }
 
-    private async Task<List<GrossOwnerPortion>> BuildGrossOwnerPortionsAsync(Invoice invoice, PropertyAgreement propertyAgreement, IReadOnlyDictionary<int, CostCode> costCodeById, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice)
+    private async Task<List<GrossOwnerPortion>> BuildGrossOwnerPortionsAsync(Invoice invoice, PropertyAgreement propertyAgreement, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        var ownerAccountId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var ownerAccountNo = chartOfAccounts
-            .FirstOrDefault(account => account.OfficeId == invoice.OfficeId && account.AccountId == ownerAccountId)
-            ?.AccountNo ?? string.Empty;
-        var lines = GetGrossOwnerInvoiceLines(invoice, costCodeById, ownerAccountNo);
+        var lines = GetGrossOwnerInvoiceLines(invoice, costCodeById);
         if (lines.Count == 0)
             return [];
 
@@ -304,12 +297,8 @@ public partial class AccountingManager
             .ToList();
     }
 
-    private static List<LedgerLine> GetGrossOwnerInvoiceLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById, string ownerLiabilityAccountNo)
+    private static List<LedgerLine> GetGrossOwnerInvoiceLines(Invoice invoice, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        var ownerCode = NormalizeAccountCode(ownerLiabilityAccountNo);
-        if (string.IsNullOrWhiteSpace(ownerCode))
-            return [];
-
         return invoice.LedgerLines
             .Where(line => line.Amount != 0)
             .Where(line =>
@@ -317,7 +306,7 @@ public partial class AccountingManager
                 if (!costCodeById.TryGetValue(line.CostCodeId, out var costCode) || IsPaymentLedgerLine(costCode))
                     return false;
 
-                return NormalizeAccountCode(costCode.Code).Equals(ownerCode, StringComparison.OrdinalIgnoreCase);
+                return costCode.TransactionType is TransactionType.ChargeOwnerProrate or TransactionType.ChargeOwnerOneTime;
             })
             .OrderBy(line => line.LineNumber)
             .ToList();
@@ -552,13 +541,13 @@ public partial class AccountingManager
         await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
         var (office, costCodeById) = await officeCostCodeContextTask;
-        var portions = await BuildGrossOwnerPortionsAsync(ownerShareInvoice, propertyAgreement, costCodeById, chartOfAccounts, accountingOffice);
+        var portions = await BuildGrossOwnerPortionsAsync(ownerShareInvoice, propertyAgreement, costCodeById);
         var total = Math.Round(portions.Sum(portion => portion.Amount), 2, MidpointRounding.AwayFromZero);
         if (portions.Count == 0 || total == 0m)
             return null;
 
         var collected = await CalculateCumulativeGrossOwnerCollectedAsync(ownerShareInvoice, sourceInvoice, paymentLedgerLine, paymentAmount, total);
-        var prior = await SumPriorGrossOwnerActualRecognizedAsync(ownerShareInvoice, sourceInvoice, paymentLedgerLine, property, chartOfAccounts, accountingOffice, office, costCodeById, workingEntries);
+        var prior = await SumPriorGrossOwnerActualRecognizedAsync(ownerShareInvoice, sourceInvoice, paymentLedgerLine, chartOfAccounts, accountingOffice, costCodeById, workingEntries);
         var incremental = Math.Round(collected - prior, 2, MidpointRounding.AwayFromZero);
         if (incremental == 0m)
             return null;
@@ -618,11 +607,9 @@ public partial class AccountingManager
         return 0m;
     }
 
-    private async Task<decimal> SumPriorGrossOwnerActualRecognizedAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine currentPaymentLedgerLine, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlyList<JournalEntry>? workingEntries)
+    private async Task<decimal> SumPriorGrossOwnerActualRecognizedAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine currentPaymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlyList<JournalEntry>? workingEntries)
     {
-        var rentalIncomeAccountId = !property.Unfurnished
-            ? GetDefaultFurnishedRentIncome(chartOfAccounts, ownerShareInvoice.OfficeId, office, costCodeById, accountingOffice)
-            : GetDefaultUnfurnishedRentIncome(chartOfAccounts, ownerShareInvoice.OfficeId, office, costCodeById, accountingOffice);
+        var rentalIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, ownerShareInvoice.OfficeId, accountingOffice);
         var dbEntries = await GetOwnerActualJournalEntriesForInvoiceAsync(ownerShareInvoice.OrganizationId, ownerShareInvoice.OfficeId, ownerShareInvoice.InvoiceId);
         var orderedPayments = GetOrderedInvoicePaymentLines(paymentSourceInvoice, costCodeById);
         if (orderedPayments.Count == 0)

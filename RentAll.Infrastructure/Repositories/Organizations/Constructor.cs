@@ -119,8 +119,6 @@ public partial class OrganizationRepository : IOrganizationRepository
             AdministrativeFeeCcId = e.AdministrativeFeeCcId,
             SecurityDepositCcId = e.SecurityDepositCcId,
             SecurityDepositWaiverCcId = e.SecurityDepositWaiverCcId,
-            FurnishedRentIncomeCcId = e.FurnishedRentIncomeCcId,
-            UnfurnishedRentIncomeCcId = e.UnfurnishedRentIncomeCcId,
             QuotePreface = e.QuotePreface,
             QuoteSuffix = e.QuoteSuffix,
             QuoteDisclaimer = e.QuoteDisclaimer,

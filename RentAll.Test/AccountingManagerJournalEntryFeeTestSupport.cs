@@ -292,7 +292,11 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             // so a pet fee that posts to the rent account can be exercised.
             var costCodes = new List<CostCode>
             {
-                ChargeCostCode(AccountingManagerJournalEntryTestSupport.RentalCostCodeId, _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? "2105" : "4000", "Rent"),
+                ChargeCostCode(
+                    AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
+                    _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? "2105" : "4000",
+                    "Rent",
+                    _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? TransactionType.ChargeOwnerProrate : TransactionType.ChargeProrate),
                 ChargeCostCode(SecurityDepositCostCodeId, "2200", "Security Deposit", TransactionType.SecurityDeposit),
                 ChargeCostCode(PetFeeCostCodeId, _petFeeAccountCode, "Pet Fee", TransactionType.ChargeOneTime),
                 ChargeCostCode(MaidServiceCostCodeId, "4000", "Maid Service"),
@@ -454,8 +458,6 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
                     FurnishedRentChargeCcId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
                     UnfurnishedRentChargeCcId = AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
                     FurnishedRentExpenseCcId = _enableOwnerShare ? FurnishedRentExpenseCostCodeId : null,
-                    FurnishedRentIncomeCcId = _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? ExtraFeeCostCodeId : null,
-                    UnfurnishedRentIncomeCcId = _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? ExtraFeeCostCodeId : null,
                     SecurityDepositCcId = SecurityDepositCostCodeId,
                     SecurityDepositWaiverCcId = SdwCostCodeId,
                     DepartureFeeCcId = DepartureFeeCostCodeId,

@@ -66,8 +66,6 @@ public class OfficeCreateDto
     public int? AdministrativeFeeCcId { get; set; }
     public int? SecurityDepositCcId { get; set; }
     public int? SecurityDepositWaiverCcId { get; set; }
-    public int? FurnishedRentIncomeCcId { get; set; }
-    public int? UnfurnishedRentIncomeCcId { get; set; }
     public string? QuotePreface { get; set; }
     public string? QuoteSuffix { get; set; }
     public string? QuoteDisclaimer { get; set; }
@@ -158,12 +156,6 @@ public class OfficeCreateDto
         if (SecurityDepositWaiverCcId.HasValue && SecurityDepositWaiverCcId.Value <= 0)
             return (false, "SecurityDepositWaiverCcId must be greater than 0 when provided");
 
-        if (FurnishedRentIncomeCcId.HasValue && FurnishedRentIncomeCcId.Value <= 0)
-            return (false, "FurnishedRentIncomeCcId must be greater than 0 when provided");
-
-        if (UnfurnishedRentIncomeCcId.HasValue && UnfurnishedRentIncomeCcId.Value <= 0)
-            return (false, "UnfurnishedRentIncomeCcId must be greater than 0 when provided");
-
         if (!Enum.IsDefined(typeof(IRSMethodType), IrsMethodTypeId))
             return (false, $"Invalid IrsMethodTypeId value: {IrsMethodTypeId}");
 
@@ -242,8 +234,6 @@ public class OfficeCreateDto
             AdministrativeFeeCcId = AdministrativeFeeCcId,
             SecurityDepositCcId = SecurityDepositCcId,
             SecurityDepositWaiverCcId = SecurityDepositWaiverCcId,
-            FurnishedRentIncomeCcId = FurnishedRentIncomeCcId,
-            UnfurnishedRentIncomeCcId = UnfurnishedRentIncomeCcId,
             QuotePreface = QuotePreface,
             QuoteSuffix = QuoteSuffix,
             QuoteDisclaimer = QuoteDisclaimer,
