@@ -308,6 +308,13 @@ public partial class ReportManager : IReportManager
                 continue;
 
             var category = (line.RecapCategory ?? string.Empty).Trim();
+            decimal? grossFeeCharge = null;
+            if (IsOwnerActualChargeDebit(line, category))
+            {
+                category = "Expense";
+                grossFeeCharge = line.Debit - line.Credit;
+            }
+
             if (!IsOwnerReportRecapCategory(category))
                 continue;
 
@@ -338,7 +345,7 @@ public partial class ReportManager : IReportManager
                 groups[groupKey] = group;
             }
 
-            RollupAmountsForOwnerInvoiceGroup(group, line, category);
+            RollupAmountsForOwnerInvoiceGroup(group, line, category, grossFeeCharge);
             RollupOwnerInvoiceGroupBySourceAndDates(group, line);
         }
 
@@ -538,9 +545,16 @@ public partial class ReportManager : IReportManager
 
     #region Rollup
 
-    private static void RollupAmountsForOwnerInvoiceGroup(OwnerInvoiceActivityGroup group, JournalEntryRecapLine line, string category)
+    private static bool IsOwnerActualChargeDebit(JournalEntryRecapLine line, string category)
     {
-        var amount = line.Amount;
+        return line.JournalEntryKindId == (int)JournalEntryKind.OwnerActual
+            && string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase)
+            && line.Debit > line.Credit;
+    }
+
+    private static void RollupAmountsForOwnerInvoiceGroup(OwnerInvoiceActivityGroup group, JournalEntryRecapLine line, string category, decimal? amountOverride = null)
+    {
+        var amount = amountOverride ?? line.Amount;
         var memo = (line.Description ?? string.Empty).Trim();
         var journalEntryCode = (line.JournalEntryCode ?? string.Empty).Trim();
 
@@ -868,6 +882,10 @@ public partial class ReportManager : IReportManager
         foreach (var line in recapLineSet.AllLines)
         {
             var category = (line.RecapCategory ?? string.Empty).Trim();
+            if (string.Equals(category, "Expense", StringComparison.OrdinalIgnoreCase)
+                && line.JournalEntryKindId == (int)JournalEntryKind.OwnerExpected)
+                continue;
+
             if (string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
             {
                 if (!IsAccountingPeriodInReportRange(line.AccountingPeriod, criteria.StartDate, criteria.EndDate))

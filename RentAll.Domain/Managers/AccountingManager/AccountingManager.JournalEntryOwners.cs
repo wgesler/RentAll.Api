@@ -102,7 +102,7 @@ public partial class AccountingManager
         var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
         await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
-        var (office, costCodeById) = await officeCostCodeContextTask;
+        var (_, costCodeById) = await officeCostCodeContextTask;
 
         var portions = await BuildGrossOwnerPortionsAsync(invoice, propertyAgreement, costCodeById);
         if (portions.Count == 0)
@@ -117,7 +117,7 @@ public partial class AccountingManager
 
         List<JournalEntryLine>? journalEntryLines = [];
         if (property.PropertyLeaseType == PropertyLeaseType.PropertyManagement)
-            journalEntryLines = BuildJournalEntryLinesForOwnerGross(invoice, portions, property, chartOfAccounts, accountingOffice, office, costCodeById, propertyId.Value, BuildOwnerExpectedRentMemo(invoice), currentUser);
+            journalEntryLines = BuildJournalEntryLinesForOwnerGross(invoice, portions, property, chartOfAccounts, accountingOffice, costCodeById, propertyId.Value, BuildOwnerExpectedRentMemo(invoice), isActual: false, currentUser);
 
         if (journalEntryLines == null || journalEntryLines.Count == 0)
         {
@@ -251,11 +251,10 @@ public partial class AccountingManager
         return [ownerExpenseLine, ownerPayableLine];
     }
 
-    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerGross(Invoice invoice, IReadOnlyList<GrossOwnerPortion> portions, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, string memo, Guid currentUser)
+    private List<JournalEntryLine> BuildJournalEntryLinesForOwnerGross(Invoice invoice, IReadOnlyList<GrossOwnerPortion> portions, Property property, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, IReadOnlyDictionary<int, CostCode> costCodeById, Guid propertyId, string memo, bool isActual, Guid currentUser)
     {
         var fullAmount = Math.Round(portions.Sum(portion => portion.Amount), 2, MidpointRounding.AwayFromZero);
-        var officeTotal = Math.Round(portions.Sum(portion => portion.OfficeAmount), 2, MidpointRounding.AwayFromZero);
-        if (fullAmount == 0 && officeTotal == 0)
+        if (fullAmount == 0 && portions.All(portion => portion.OfficeAmount == 0))
             return [];
 
         var lineContext = CreateJournalEntryLineContextFromInvoice(invoice, propertyId) with
@@ -263,21 +262,46 @@ public partial class AccountingManager
             ContactId = NormalizeOptionalGuid(property.Owner1Id),
             ContactName = null
         };
-        var isFurnished = !property.Unfurnished;
         var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var rentalIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, invoice.OfficeId, accountingOffice);
-        var rentExpenseAccountId = isFurnished
-            ? GetDefaultFurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice)
-            : GetDefaultUnfurnishedRentExpense(chartOfAccounts, invoice.OfficeId, office, costCodeById, accountingOffice);
-        var rentExpenseCostCodeId = isFurnished ? office?.FurnishedRentExpenseCcId : office?.UnfurnishedRentExpenseCcId;
+        var groups = portions
+            .Select(portion => (portion, incomeAccountId: ResolveGrossOwnerIncomeAccountId(portion, chartOfAccounts, invoice.OfficeId, accountingOffice, costCodeById)))
+            .GroupBy(item => item.incomeAccountId)
+            .ToList();
         var lines = new List<JournalEntryLine>();
-        AddOwnerGrossLine(lines, rentalIncomeAccountId, null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
-        foreach (var portion in portions)
-            AddOwnerGrossLine(lines, ownerAccountsPayableId, portion.CostCodeId, portion.OfficeAmount, debitWhenPositive: true, lineContext, memo, currentUser);
+        foreach (var group in groups)
+            AddOwnerGrossLine(lines, group.Key, SingleCostCodeId(group.Select(item => item.portion.CostCodeId)), Math.Round(group.Sum(item => item.portion.Amount), 2, MidpointRounding.AwayFromZero), debitWhenPositive: true, lineContext, memo, currentUser);
 
-        var remainder = Math.Round(fullAmount - officeTotal, 2, MidpointRounding.AwayFromZero);
-        AddOwnerGrossLine(lines, rentExpenseAccountId, rentExpenseCostCodeId is > 0 ? rentExpenseCostCodeId : null, remainder, debitWhenPositive: true, lineContext, memo, currentUser);
+        AddOwnerGrossLine(lines, ownerAccountsPayableId, null, fullAmount, debitWhenPositive: false, lineContext, memo, currentUser);
+        foreach (var portion in portions)
+            AddOwnerGrossLine(lines, ownerAccountsPayableId, portion.CostCodeId, portion.OfficeAmount, debitWhenPositive: true, lineContext, BuildOwnerGrossFeeMemo(invoice.InvoiceCode, portion.Description, portion.OfficePercent, isActual), currentUser);
+
+        foreach (var group in groups)
+            AddOwnerGrossLine(lines, group.Key, SingleCostCodeId(group.Select(item => item.portion.CostCodeId)), Math.Round(group.Sum(item => item.portion.OfficeAmount), 2, MidpointRounding.AwayFromZero), debitWhenPositive: false, lineContext, memo, currentUser);
+
         return lines;
+    }
+
+    private int ResolveGrossOwnerIncomeAccountId(GrossOwnerPortion portion, List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        CostCode? costCode = null;
+        if (portion.CostCodeId is int costCodeId)
+            costCodeById.TryGetValue(costCodeId, out costCode);
+
+        return GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice, costCode);
+    }
+
+    private static int? SingleCostCodeId(IEnumerable<int?> costCodeIds)
+    {
+        int? costCodeId = null;
+        foreach (var candidate in costCodeIds)
+        {
+            if (costCodeId == null)
+                costCodeId = candidate;
+            else if (costCodeId != candidate)
+                return null;
+        }
+
+        return costCodeId;
     }
 
     private async Task<List<GrossOwnerPortion>> BuildGrossOwnerPortionsAsync(Invoice invoice, PropertyAgreement propertyAgreement, IReadOnlyDictionary<int, CostCode> costCodeById)
@@ -292,7 +316,7 @@ public partial class AccountingManager
             {
                 var amount = Math.Round(line.Amount, 2, MidpointRounding.AwayFromZero);
                 var officeAmount = Math.Round(amount * officePercent / 100m, 2, MidpointRounding.AwayFromZero);
-                return new GrossOwnerPortion(amount, officeAmount, line.CostCodeId);
+                return new GrossOwnerPortion(amount, officeAmount, line.CostCodeId, line.Description ?? string.Empty, officePercent);
             })
             .ToList();
     }
@@ -337,7 +361,7 @@ public partial class AccountingManager
         return 100m - revenueSplitOwner;
     }
 
-    private readonly record struct GrossOwnerPortion(decimal Amount, decimal OfficeAmount, int? CostCodeId);
+    private readonly record struct GrossOwnerPortion(decimal Amount, decimal OfficeAmount, int? CostCodeId, string Description, decimal OfficePercent);
 
     private static void AddOwnerGrossLine(List<JournalEntryLine> lines, int chartOfAccountId, int? costCodeId, decimal amount, bool debitWhenPositive, JournalEntryLineContext lineContext, string memo, Guid currentUser)
     {
@@ -540,7 +564,7 @@ public partial class AccountingManager
         var officeCostCodeContextTask = LoadOfficeCostCodeContextAsync(invoice.OrganizationId, invoice.OfficeId);
         await Task.WhenAll(accountContextTask, officeCostCodeContextTask);
         var (chartOfAccounts, accountingOffice) = await accountContextTask;
-        var (office, costCodeById) = await officeCostCodeContextTask;
+        var (_, costCodeById) = await officeCostCodeContextTask;
         var portions = await BuildGrossOwnerPortionsAsync(ownerShareInvoice, propertyAgreement, costCodeById);
         var total = Math.Round(portions.Sum(portion => portion.Amount), 2, MidpointRounding.AwayFromZero);
         if (portions.Count == 0 || total == 0m)
@@ -549,20 +573,24 @@ public partial class AccountingManager
         var collected = await CalculateCumulativeGrossOwnerCollectedAsync(ownerShareInvoice, sourceInvoice, paymentLedgerLine, paymentAmount, total);
         var prior = await SumPriorGrossOwnerActualRecognizedAsync(ownerShareInvoice, sourceInvoice, paymentLedgerLine, chartOfAccounts, accountingOffice, costCodeById, workingEntries);
         var incremental = Math.Round(collected - prior, 2, MidpointRounding.AwayFromZero);
-        if (incremental == 0m)
+        if (incremental <= 0m)
             return null;
 
         var memo = BuildOwnerActualRentMemo(invoice, paymentLedgerLine);
+        var ownerActualDate = transactionDate;
+        if (invoice.AccountingPeriod != default && transactionDate < invoice.AccountingPeriod)
+            ownerActualDate = invoice.AccountingPeriod;
+
         var journalEntryLines = BuildJournalEntryLinesForOwnerGross(
             invoice,
             incremental == total ? portions : ScaleGrossOwnerPortions(portions, total, incremental),
             property,
             chartOfAccounts,
             accountingOffice,
-            office,
             costCodeById,
             propertyId.Value,
             memo,
+            isActual: true,
             currentUser);
         if (journalEntryLines.Count == 0)
             return null;
@@ -571,10 +599,10 @@ public partial class AccountingManager
         {
             OrganizationId = invoice.OrganizationId,
             OfficeId = invoice.OfficeId,
-            TransactionDate = transactionDate,
+            TransactionDate = ownerActualDate,
             AccountingPeriod = invoice.AccountingPeriod != default
                 ? invoice.AccountingPeriod
-                : FirstDayOfMonth(transactionDate),
+                : FirstDayOfMonth(ownerActualDate),
             SourceTypeId = (int)SourceType.Invoice,
             SourceId = invoice.InvoiceId,
             SourceCode = ResolveJournalEntrySourceCodeFromInvoice(invoice),
@@ -609,7 +637,7 @@ public partial class AccountingManager
 
     private async Task<decimal> SumPriorGrossOwnerActualRecognizedAsync(Invoice ownerShareInvoice, Invoice paymentSourceInvoice, LedgerLine currentPaymentLedgerLine, List<ChartOfAccount> chartOfAccounts, AccountingOffice? accountingOffice, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlyList<JournalEntry>? workingEntries)
     {
-        var rentalIncomeAccountId = GetDefaultTenantIncome(chartOfAccounts, ownerShareInvoice.OfficeId, accountingOffice);
+        var ownerAccountsPayableId = GetDefaultOwnerAccountsPayable(chartOfAccounts, ownerShareInvoice.OfficeId, accountingOffice);
         var dbEntries = await GetOwnerActualJournalEntriesForInvoiceAsync(ownerShareInvoice.OrganizationId, ownerShareInvoice.OfficeId, ownerShareInvoice.InvoiceId);
         var orderedPayments = GetOrderedInvoicePaymentLines(paymentSourceInvoice, costCodeById);
         if (orderedPayments.Count == 0)
@@ -625,8 +653,8 @@ public partial class AccountingManager
             .Select(group => group.First())
             .Where(entry => IsOwnerActualJournalEntryForEarlierPayment(entry, ownerShareInvoice, earlierPayments))
             .Sum(entry => entry.JournalEntryLines
-                .Where(line => line.ChartOfAccountId == rentalIncomeAccountId)
-                .Sum(line => line.Credit - line.Debit));
+                .Where(line => line.ChartOfAccountId == ownerAccountsPayableId)
+                .Sum(line => line.Credit));
     }
 
     private static List<GrossOwnerPortion> ScaleGrossOwnerPortions(IReadOnlyList<GrossOwnerPortion> portions, decimal total, decimal incremental)
@@ -654,7 +682,7 @@ public partial class AccountingManager
                 officeAssigned += officeAmount;
             }
 
-            scaled.Add(new GrossOwnerPortion(amount, officeAmount, portion.CostCodeId));
+            scaled.Add(new GrossOwnerPortion(amount, officeAmount, portion.CostCodeId, portion.Description, portion.OfficePercent));
         }
 
         return scaled;

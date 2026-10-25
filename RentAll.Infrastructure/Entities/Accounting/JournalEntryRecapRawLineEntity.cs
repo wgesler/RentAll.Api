@@ -35,4 +35,5 @@ public class JournalEntryRecapRawLineEntity
     public int? DefaultTenantIncAccountId { get; set; }
     public bool IsRentalIncomeAccount { get; set; }
     public bool IsInDateRange { get; set; } = true;
+    public int IrsMethodTypeId { get; set; }
 }

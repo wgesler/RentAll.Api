@@ -29,4 +29,5 @@ public class JournalEntryRecapLine
     public decimal Amount { get; set; }
     public bool IsInDateRange { get; set; } = true;
     public int? DefaultOwnActPayableAccountId { get; set; }
+    public int IrsMethodTypeId { get; set; }
 }

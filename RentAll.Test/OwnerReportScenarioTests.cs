@@ -349,4 +349,75 @@ public class OwnerReportScenarioTests
             line => line.Expenses != 0 && line.Description.Contains("Owner's Payments", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(report.PropertyActivityLines, line => line.OwnerPayment == 2649.32m);
     }
+
+    [Fact]
+    public async Task CashReport_GrossOwnerActual_ShowsCreditAsIncomeAndEachFeeDebitAsACharge()
+    {
+        var november = new DateOnly(2026, 11, 1);
+        var novemberEnd = new DateOnly(2026, 11, 30);
+        const string invoice = "R-000000173-001";
+        var lines = new List<JournalEntryRecapLine>
+        {
+            GrossOwnerActualLine(invoice, november, 7675m, 0m, 7675m, "R-000000173-001: Owner: Actual: Rental Fee (11/01-11/30) (ACH)"),
+            GrossOwnerActualLine(invoice, november, -834m, 834m, 0m, "R-000000173-001: Owner: Actual: Rental Fee (11/01-11/30) (12%)"),
+            GrossOwnerActualLine(invoice, november, -42m, 42m, 0m, "R-000000173-001: Owner: Actual: Pet Fee (12%)"),
+            GrossOwnerActualLine(invoice, november, -45m, 45m, 0m, "R-000000173-001: Owner: Actual: Departure Fee (12%)"),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRent",
+                6754m,
+                invoice,
+                november,
+                november,
+                "R-000000173-001: Owner: Expected: Rental Fee (11/01-11/30)",
+                journalEntryKindId: (int)JournalEntryKind.OwnerExpected,
+                irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod,
+                credit: 6754m)
+        };
+        var context = ReportManagerTestSupport.CreateContext(lines);
+
+        var report = await context.GetCashReportAsync(november, novemberEnd);
+        var row = Assert.Single(report.Rows);
+
+        Assert.Equal(7675m, row.ReceivedIncome);
+        Assert.Equal(921m, row.OwnerExpenses);
+        Assert.Equal(6754m, row.OwnerPayment);
+
+        var income = Assert.Single(report.PropertyActivityLines, line => line.ReceivedIncome != 0);
+        Assert.Equal(7675m, income.ReceivedIncome);
+        Assert.Equal("Rental Fee (11/01-11/30)", income.Description);
+
+        var charges = report.PropertyActivityLines
+            .Where(line => line.Expenses != 0)
+            .OrderBy(line => line.Expenses)
+            .ToList();
+        Assert.Equal(3, charges.Count);
+        Assert.Equal(42m, charges[0].Expenses);
+        Assert.Equal("Pet Fee (12%)", charges[0].Description);
+        Assert.Equal(45m, charges[1].Expenses);
+        Assert.Equal("Departure Fee (12%)", charges[1].Description);
+        Assert.Equal(834m, charges[2].Expenses);
+        Assert.Equal("Rental Fee (11/01-11/30) (12%)", charges[2].Description);
+    }
+
+    private static JournalEntryRecapLine GrossOwnerActualLine(
+        string invoice,
+        DateOnly november,
+        decimal amount,
+        decimal debit,
+        decimal credit,
+        string description)
+    {
+        return ReportManagerTestSupport.RecapLine(
+            "OwnerRentActual",
+            amount,
+            invoice,
+            november,
+            november,
+            description,
+            chartOfAccountId: ReportManagerTestSupport.OwnerAccountsPayableAccountId,
+            journalEntryKindId: (int)JournalEntryKind.OwnerActual,
+            irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod,
+            debit: debit,
+            credit: credit);
+    }
 }

@@ -26,6 +26,39 @@ public class JournalEntryRecapLineClassifierTests
     }
 
     [Fact]
+    public void Classify_GrossOwnerShare_IgnoresLinesThatAreNotOwnerPayable()
+    {
+        var credit = BuildLine(
+            kind: JournalEntryKind.OwnerExpected,
+            chartOfAccountId: TenantIncome,
+            credit: 7675m,
+            irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod);
+        var debit = BuildLine(
+            kind: JournalEntryKind.OwnerActual,
+            chartOfAccountId: 5100,
+            debit: 6754m,
+            irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod);
+
+        Assert.False(JournalEntryRecapLineClassifier.TryClassify(credit, out _));
+        Assert.False(JournalEntryRecapLineClassifier.TryClassify(debit, out _));
+    }
+
+    [Fact]
+    public void Classify_GrossOwnerActual_OnOwnerPayable_UsesCreditMinusDebit()
+    {
+        var line = BuildLine(
+            kind: JournalEntryKind.OwnerActual,
+            chartOfAccountId: OwnerAp,
+            ownerApAccountId: OwnerAp,
+            debit: 921m,
+            irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod);
+
+        Assert.True(JournalEntryRecapLineClassifier.TryClassify(line, out var result));
+        Assert.Equal("OwnerRentActual", result.RecapCategory);
+        Assert.Equal(-921m, result.Amount);
+    }
+
+    [Fact]
     public void Classify_OwnerActual_UsesKind()
     {
         var line = BuildLine(
@@ -249,7 +282,8 @@ public class JournalEntryRecapLineClassifierTests
         decimal credit = 0m,
         bool isInDateRange = true,
         bool isRentalIncomeAccount = false,
-        bool isCashOnly = false)
+        bool isCashOnly = false,
+        int irsMethodTypeId = (int)IRSMethodType.IrsNetMethod)
     {
         return new JournalEntryRecapClassificationLine
         {
@@ -270,7 +304,8 @@ public class JournalEntryRecapLineClassifierTests
             DefaultEscrowDepositAccountId = escrowDepositAccountId,
             IsRentalIncomeAccount = isRentalIncomeAccount,
             IsCashOnly = isCashOnly,
-            IsInDateRange = isInDateRange
+            IsInDateRange = isInDateRange,
+            IrsMethodTypeId = irsMethodTypeId
         };
     }
 }

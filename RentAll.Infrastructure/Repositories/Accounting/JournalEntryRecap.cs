@@ -143,7 +143,8 @@ public partial class JournalEntryRepository
             DefaultTenantIncAccountId = rawLine.DefaultTenantIncAccountId,
             IsRentalIncomeAccount = rawLine.IsRentalIncomeAccount,
             IsCashOnly = rawLine.IsCashOnly,
-            IsInDateRange = rawLine.IsInDateRange
+            IsInDateRange = rawLine.IsInDateRange,
+            IrsMethodTypeId = rawLine.IrsMethodTypeId
         };
     }
 
@@ -179,7 +180,8 @@ public partial class JournalEntryRepository
             RecapCategory = classification.RecapCategory,
             Amount = classification.Amount,
             IsInDateRange = rawLine.IsInDateRange,
-            DefaultOwnActPayableAccountId = rawLine.DefaultOwnActPayableAccountId
+            DefaultOwnActPayableAccountId = rawLine.DefaultOwnActPayableAccountId,
+            IrsMethodTypeId = rawLine.IrsMethodTypeId
         };
     }
 }

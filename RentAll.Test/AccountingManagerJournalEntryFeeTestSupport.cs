@@ -294,7 +294,7 @@ internal static class AccountingManagerJournalEntryFeeTestSupport
             {
                 ChargeCostCode(
                     AccountingManagerJournalEntryTestSupport.RentalCostCodeId,
-                    _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? "2105" : "4000",
+                    "4000",
                     "Rent",
                     _enableOwnerShare && _irsMethodType == IRSMethodType.IrsGrossMethod ? TransactionType.ChargeOwnerProrate : TransactionType.ChargeProrate),
                 ChargeCostCode(SecurityDepositCostCodeId, "2200", "Security Deposit", TransactionType.SecurityDeposit),

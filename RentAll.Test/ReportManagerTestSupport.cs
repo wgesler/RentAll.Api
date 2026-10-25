@@ -34,7 +34,11 @@ internal static class ReportManagerTestSupport
         int? sourceTypeId = null,
         string? reservationCode = null,
         Guid? journalEntryLineId = null,
-        int? chartOfAccountId = null)
+        int? chartOfAccountId = null,
+        int journalEntryKindId = 0,
+        int irsMethodTypeId = 0,
+        decimal debit = 0m,
+        decimal credit = 0m)
     {
         var isExpense = string.Equals(recapCategory, "Expense", StringComparison.OrdinalIgnoreCase);
         return new JournalEntryRecapLine
@@ -56,7 +60,11 @@ internal static class ReportManagerTestSupport
             RecapCategory = recapCategory,
             Amount = amount,
             ChartOfAccountId = chartOfAccountId ?? (isExpense ? OwnerAccountsPayableAccountId : 0),
-            DefaultOwnActPayableAccountId = OwnerAccountsPayableAccountId
+            DefaultOwnActPayableAccountId = OwnerAccountsPayableAccountId,
+            JournalEntryKindId = journalEntryKindId,
+            IrsMethodTypeId = irsMethodTypeId,
+            Debit = debit,
+            Credit = credit
         };
     }
 
@@ -294,6 +302,9 @@ internal static class ReportManagerTestSupport
                     ChartOfAccountId = line.ChartOfAccountId,
                     DefaultOwnActPayableAccountId = line.DefaultOwnActPayableAccountId,
                     JournalEntryKindId = line.JournalEntryKindId,
+                    IrsMethodTypeId = line.IrsMethodTypeId,
+                    Debit = line.Debit,
+                    Credit = line.Credit,
                     IsInDateRange = IsLineInReportRange(line, criteria.StartDate, criteria.EndDate)
                 });
         }

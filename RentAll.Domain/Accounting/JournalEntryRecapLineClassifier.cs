@@ -271,6 +271,7 @@ public sealed class JournalEntryRecapClassificationLine
     public bool IsRentalIncomeAccount { get; set; }
     public bool IsCashOnly { get; set; }
     public bool IsInDateRange { get; set; } = true;
+    public int IrsMethodTypeId { get; set; }
 }
 
 public readonly struct JournalEntryRecapClassificationResult

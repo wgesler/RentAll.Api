@@ -137,6 +137,15 @@ public partial class AccountingManager : IAccountingManager
         return GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice, costCode);
     }
 
+    private int GetDefaultUnfurnishedRentCharge(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
+    {
+        CostCode? costCode = null;
+        if (office?.UnfurnishedRentChargeCcId is > 0)
+            costCodeById.TryGetValue(office.UnfurnishedRentChargeCcId.Value, out costCode);
+
+        return GetDefaultTenantIncome(chartOfAccounts, officeId, accountingOffice, costCode);
+    }
+
     public int GetDefaultParentRentalIncomeAccount(List<ChartOfAccount> chartOfAccounts, int officeId, Office? office, IReadOnlyDictionary<int, CostCode> costCodeById, AccountingOffice? accountingOffice)
     {
         var furnishedRentAccountId = GetDefaultFurnishedRentCharge(chartOfAccounts, officeId, office, costCodeById, accountingOffice);

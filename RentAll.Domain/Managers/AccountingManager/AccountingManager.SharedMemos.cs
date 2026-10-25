@@ -280,6 +280,18 @@ public partial class AccountingManager
         return $"{invoice.InvoiceCode.Trim()}: Owner: Expected: {rentalLine.Description.Trim()}";
     }
 
+    // Example: R-000000173-001: Owner: Expected: Pet Fee (12%)
+    public static string BuildOwnerGrossFeeMemo(string invoiceCode, string lineDescription, decimal officePercent, bool isActual)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceCode))
+            throw new ArgumentException("Invoice code is required.", nameof(invoiceCode));
+
+        var description = string.IsNullOrWhiteSpace(lineDescription) ? "Fee" : lineDescription.Trim();
+        var kind = isActual ? "Actual" : "Expected";
+        var percentText = officePercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        return $"{invoiceCode.Trim()}: Owner: {kind}: {description} ({percentText}%)";
+    }
+
     public static string BuildOwnerManagementFeeMemo(Invoice invoice)
     {
         if (string.IsNullOrWhiteSpace(invoice.InvoiceCode))
