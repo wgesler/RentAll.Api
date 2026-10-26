@@ -21,5 +21,6 @@ public enum RoleType
     OwnerAdmin = 16,
     OfficeAdmin = 17,
     Realtor = 18,
-    PartnerAdmin = 19
+    PartnerAdmin = 19,
+    ITAdmin = 20
 }
