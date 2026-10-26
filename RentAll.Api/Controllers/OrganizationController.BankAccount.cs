@@ -106,7 +106,7 @@ namespace RentAll.Api.Controllers
                 if (existing == null)
                     return NotFound("Bank account not found");
 
-                await _accountingRepository.DeleteBankAccountByIdAsync(bankId, CurrentOrganizationId, officeId);
+                await DeleteStoredBankAccountAsync(existing);
                 return NoContent();
             }
             catch (Exception ex)
@@ -114,6 +114,14 @@ namespace RentAll.Api.Controllers
                 _logger.LogError(ex, "Error deleting bank account {BankId} for office: {OfficeId}", bankId, officeId);
                 return ServerError("An error occurred while deleting the bank account");
             }
+        }
+
+        private async Task DeleteStoredBankAccountAsync(BankAccount bank)
+        {
+            if (!string.IsNullOrWhiteSpace(bank.CheckStockPath))
+                await _fileService.DeleteImageAsync(bank.OrganizationId, await GetOfficeNameAsync(bank.OfficeId), bank.CheckStockPath, ImageType.CheckStocks);
+
+            await _accountingRepository.DeleteBankAccountByIdAsync(bank.BankAccountId, bank.OrganizationId, bank.OfficeId);
         }
 
         private async Task<BankAccountResponseDto> ToBankAccountResponseAsync(BankAccount bankAccount, string? officeName)

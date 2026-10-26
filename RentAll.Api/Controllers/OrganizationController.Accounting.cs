@@ -479,7 +479,7 @@ namespace RentAll.Api.Controllers
         {
             var existingBanks = await _accountingRepository.GetBankAccountsByOfficeIdAsync(CurrentOrganizationId, officeId);
             foreach (var existingBank in existingBanks)
-                await _accountingRepository.DeleteBankAccountByIdAsync(existingBank.BankAccountId, CurrentOrganizationId, officeId);
+                await DeleteStoredBankAccountAsync(existingBank);
         }
 
         private async Task DeleteBankCardsForOfficeAsync(int officeId)
