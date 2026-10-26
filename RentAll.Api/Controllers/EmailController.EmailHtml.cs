@@ -36,6 +36,9 @@ namespace RentAll.Api.Controllers
                 return BadRequest("EmailHtml data is required");
 
             ApplyEmailHtmlScope(dto.OrganizationId, dto.OfficeId, out var organizationId, out var officeId);
+            if (organizationId == SystemOrganizationId)
+                return BadRequest("Email templates cannot be saved for the system organization.");
+
             dto.OrganizationId = organizationId;
             dto.OfficeId = officeId;
 
@@ -69,6 +72,9 @@ namespace RentAll.Api.Controllers
                 return BadRequest("EmailHtml data is required");
 
             ApplyEmailHtmlScope(dto.OrganizationId, dto.OfficeId, out var organizationId, out var officeId);
+            if (organizationId == SystemOrganizationId)
+                return BadRequest("Email templates cannot be saved for the system organization.");
+
             dto.OrganizationId = organizationId;
             dto.OfficeId = officeId;
 
@@ -102,8 +108,12 @@ namespace RentAll.Api.Controllers
         {
             try
             {
+                var deleteOrganizationId = ResolveEmailHtmlOrganization(organizationId);
+                if (deleteOrganizationId == SystemOrganizationId)
+                    return BadRequest("Email templates cannot be saved for the system organization.");
+
                 await _emailRepository.DeleteEmailHtmlByOrganizationIdAsync(
-                    ResolveEmailHtmlOrganization(organizationId),
+                    deleteOrganizationId,
                     NormalizeOfficeId(officeId));
                 return NoContent();
             }
