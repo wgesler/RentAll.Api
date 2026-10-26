@@ -3,6 +3,7 @@ namespace RentAll.Api.Dtos.Emails.EmailHtmls;
 public class UpdateEmailHtmlDto
 {
     public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
     public string DepartureLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
@@ -97,6 +98,7 @@ public class UpdateEmailHtmlDto
         return new EmailHtml
         {
             OrganizationId = OrganizationId,
+            OfficeId = OfficeId,
             WelcomeLetter = WelcomeLetter,
             DepartureLetter = DepartureLetter,
             CorporateLetter = CorporateLetter,

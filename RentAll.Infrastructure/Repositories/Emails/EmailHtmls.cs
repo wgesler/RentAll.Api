@@ -7,12 +7,14 @@ namespace RentAll.Infrastructure.Repositories.Emails
     public partial class EmailRepository
     {
         #region Selects
-        public async Task<EmailHtml?> GetEmailHtmlByOrganizationIdAsync(Guid organizationId)
+        public async Task<EmailHtml?> GetEmailHtmlByOrganizationIdAsync(Guid organizationId, int? officeId = null, bool exactOnly = false)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_GetById", new
             {
-                OrganizationId = organizationId
+                OrganizationId = organizationId,
+                OfficeId = officeId,
+                ExactOnly = exactOnly
             });
 
             if (res == null || !res.Any())
@@ -29,6 +31,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_Add", new
             {
                 OrganizationId = emailHtml.OrganizationId,
+                OfficeId = emailHtml.OfficeId,
                 WelcomeLetter = emailHtml.WelcomeLetter,
                 DepartureLetter = emailHtml.DepartureLetter,
                 CorporateLetter = emailHtml.CorporateLetter,
@@ -66,6 +69,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             var res = await db.DapperProcQueryAsync<EmailHtmlEntity>("Email.EmailHtml_UpdateById", new
             {
                 OrganizationId = emailHtml.OrganizationId,
+                OfficeId = emailHtml.OfficeId,
                 WelcomeLetter = emailHtml.WelcomeLetter,
                 DepartureLetter = emailHtml.DepartureLetter,
                 CorporateLetter = emailHtml.CorporateLetter,
@@ -97,12 +101,13 @@ namespace RentAll.Infrastructure.Repositories.Emails
         #endregion
 
         #region Deletes
-        public async Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId)
+        public async Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId, int? officeId = null)
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Email.EmailHtml_DeleteById", new
             {
-                OrganizationId = organizationId
+                OrganizationId = organizationId,
+                OfficeId = officeId
             });
         }
         #endregion

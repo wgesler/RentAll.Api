@@ -1,4 +1,3 @@
-
 namespace RentAll.Api.Controllers
 {
     public partial class EmailController
@@ -7,11 +6,13 @@ namespace RentAll.Api.Controllers
         #region Get
 
         [HttpGet("email-html")]
-        public async Task<IActionResult> GetByOrganization()
+        public async Task<IActionResult> GetByOrganization([FromQuery] int? officeId, [FromQuery] Guid? organizationId)
         {
             try
             {
-                var emailHtml = await _emailRepository.GetEmailHtmlByOrganizationIdAsync(CurrentOrganizationId);
+                var emailHtml = await _emailRepository.GetEmailHtmlByOrganizationIdAsync(
+                    ResolveEmailHtmlOrganization(organizationId),
+                    NormalizeOfficeId(officeId));
                 if (emailHtml == null)
                     return NotFound("EmailHtml not found");
 
@@ -34,7 +35,11 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("EmailHtml data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(CurrentOrganizationId);
+            ApplyEmailHtmlScope(dto.OrganizationId, dto.OfficeId, out var organizationId, out var officeId);
+            dto.OrganizationId = organizationId;
+            dto.OfficeId = officeId;
+
+            var (isValid, errorMessage) = dto.IsValid(organizationId);
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
@@ -48,7 +53,7 @@ namespace RentAll.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating EmailHtml for organization: {OrganizationId}", CurrentOrganizationId);
+                _logger.LogError(ex, "Error creating EmailHtml for organization: {OrganizationId}", organizationId);
                 return ServerError("An error occurred while creating EmailHtml");
             }
         }
@@ -63,23 +68,27 @@ namespace RentAll.Api.Controllers
             if (dto == null)
                 return BadRequest("EmailHtml data is required");
 
-            var (isValid, errorMessage) = dto.IsValid(CurrentOrganizationId);
+            ApplyEmailHtmlScope(dto.OrganizationId, dto.OfficeId, out var organizationId, out var officeId);
+            dto.OrganizationId = organizationId;
+            dto.OfficeId = officeId;
+
+            var (isValid, errorMessage) = dto.IsValid(organizationId);
             if (!isValid)
                 return BadRequest(errorMessage ?? "Invalid request data");
 
             try
             {
-                var existing = await _emailRepository.GetEmailHtmlByOrganizationIdAsync(CurrentOrganizationId);
-                if (existing == null)
-                    return NotFound("EmailHtml not found");
-
                 var emailHtml = dto.ToModel(CurrentUser);
-                var updated = await _emailRepository.UpdateEmailHtmlByOrganizationIdAsync(emailHtml);
-                return Ok(new EmailHtmlResponseDto(updated));
+                emailHtml.CreatedBy = CurrentUser;
+                var existing = await _emailRepository.GetEmailHtmlByOrganizationIdAsync(organizationId, officeId, exactOnly: true);
+                var saved = existing == null
+                    ? await _emailRepository.CreateEmailHtmlAsync(emailHtml)
+                    : await _emailRepository.UpdateEmailHtmlByOrganizationIdAsync(emailHtml);
+                return Ok(new EmailHtmlResponseDto(saved));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating EmailHtml for organization: {OrganizationId}", CurrentOrganizationId);
+                _logger.LogError(ex, "Error updating EmailHtml for organization: {OrganizationId}", organizationId);
                 return ServerError("An error occurred while updating EmailHtml");
             }
         }
@@ -89,11 +98,13 @@ namespace RentAll.Api.Controllers
         #region Delete
 
         [HttpDelete("email-html")]
-        public async Task<IActionResult> DeleteEmailHtmlByOrganizationIdAsync()
+        public async Task<IActionResult> DeleteEmailHtmlByOrganizationIdAsync([FromQuery] int? officeId, [FromQuery] Guid? organizationId)
         {
             try
             {
-                await _emailRepository.DeleteEmailHtmlByOrganizationIdAsync(CurrentOrganizationId);
+                await _emailRepository.DeleteEmailHtmlByOrganizationIdAsync(
+                    ResolveEmailHtmlOrganization(organizationId),
+                    NormalizeOfficeId(officeId));
                 return NoContent();
             }
             catch (Exception ex)
@@ -104,6 +115,25 @@ namespace RentAll.Api.Controllers
         }
 
         #endregion
+
+        private Guid ResolveEmailHtmlOrganization(Guid? organizationId)
+        {
+            if (IsSuperAdmin() && organizationId.HasValue && organizationId.Value != Guid.Empty)
+                return organizationId.Value;
+
+            return CurrentOrganizationId;
+        }
+
+        private void ApplyEmailHtmlScope(Guid requestedOrganizationId, int? requestedOfficeId, out Guid organizationId, out int? officeId)
+        {
+            organizationId = ResolveEmailHtmlOrganization(requestedOrganizationId == Guid.Empty ? null : requestedOrganizationId);
+            officeId = NormalizeOfficeId(requestedOfficeId);
+        }
+
+        private static int? NormalizeOfficeId(int? officeId)
+        {
+            return officeId is > 0 ? officeId : null;
+        }
 
     }
 }

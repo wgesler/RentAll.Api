@@ -60,6 +60,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             return new EmailHtml
             {
                 OrganizationId = e.OrganizationId,
+                OfficeId = e.OfficeId,
                 WelcomeLetter = e.WelcomeLetter,
                 DepartureLetter = e.DepartureLetter ?? string.Empty,
                 CorporateLetter = e.CorporateLetter,

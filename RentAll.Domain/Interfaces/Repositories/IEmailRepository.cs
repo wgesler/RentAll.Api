@@ -14,10 +14,10 @@ public interface IEmailRepository
     #endregion
 
     #region EmailHtml
-    Task<EmailHtml?> GetEmailHtmlByOrganizationIdAsync(Guid organizationId);
+    Task<EmailHtml?> GetEmailHtmlByOrganizationIdAsync(Guid organizationId, int? officeId = null, bool exactOnly = false);
     Task<EmailHtml> CreateEmailHtmlAsync(EmailHtml emailHtml);
     Task<EmailHtml> UpdateEmailHtmlByOrganizationIdAsync(EmailHtml emailHtml);
-    Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId);
+    Task DeleteEmailHtmlByOrganizationIdAsync(Guid organizationId, int? officeId = null);
     #endregion
 
     #region Alerts

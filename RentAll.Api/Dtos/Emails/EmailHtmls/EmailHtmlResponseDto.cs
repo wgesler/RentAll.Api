@@ -3,6 +3,7 @@ namespace RentAll.Api.Dtos.Emails.EmailHtmls;
 public class EmailHtmlResponseDto
 {
     public Guid OrganizationId { get; set; }
+    public int? OfficeId { get; set; }
     public string WelcomeLetter { get; set; } = string.Empty;
     public string DepartureLetter { get; set; } = string.Empty;
     public string CorporateLetter { get; set; } = string.Empty;
@@ -31,6 +32,7 @@ public class EmailHtmlResponseDto
     public EmailHtmlResponseDto(EmailHtml emailHtml)
     {
         OrganizationId = emailHtml.OrganizationId;
+        OfficeId = emailHtml.OfficeId;
         WelcomeLetter = emailHtml.WelcomeLetter;
         DepartureLetter = emailHtml.DepartureLetter;
         CorporateLetter = emailHtml.CorporateLetter;
