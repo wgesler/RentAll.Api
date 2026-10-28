@@ -577,7 +577,7 @@ public partial class ReportManager : IReportManager
         {
             group.OwnerRentValue += amount;
             group.OwnerRentAccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd");
-            if (!string.IsNullOrWhiteSpace(memo))
+            if (!string.IsNullOrWhiteSpace(memo) && !AccountingManager.IsOwnerGrossPercentFeeMemo(memo))
                 group.OwnerRentMemo = memo;
             if (!string.IsNullOrWhiteSpace(journalEntryCode))
                 group.OwnerRentJournalEntryCode = journalEntryCode;
@@ -591,6 +591,8 @@ public partial class ReportManager : IReportManager
         {
             group.OwnerRentActualValue += amount;
             group.OwnerRentActualAccountingPeriod = line.AccountingPeriod.ToString("yyyy-MM-dd");
+            if (line.Credit > line.Debit && !string.IsNullOrWhiteSpace(memo) && !AccountingManager.IsOwnerGrossPercentFeeMemo(memo))
+                group.OwnerRentMemo = memo;
             return;
         }
 
@@ -986,7 +988,7 @@ public partial class ReportManager : IReportManager
                 totals.OwnerRentValue += line.Amount;
                 var memo = (line.Description ?? string.Empty).Trim();
                 var journalEntryCode = (line.JournalEntryCode ?? string.Empty).Trim();
-                if (!string.IsNullOrWhiteSpace(memo))
+                if (!string.IsNullOrWhiteSpace(memo) && !AccountingManager.IsOwnerGrossPercentFeeMemo(memo))
                     totals.OwnerRentMemo = memo;
                 if (!string.IsNullOrWhiteSpace(journalEntryCode))
                     totals.OwnerRentJournalEntryCode = journalEntryCode;
@@ -996,7 +998,12 @@ public partial class ReportManager : IReportManager
                 totals.OwnerRentSourceTypeId = line.SourceTypeId;
             }
             else if (string.Equals(category, "OwnerRentActual", StringComparison.OrdinalIgnoreCase))
+            {
                 totals.OwnerRentActualValue += line.Amount;
+                var actualMemo = (line.Description ?? string.Empty).Trim();
+                if (line.Credit > line.Debit && !string.IsNullOrWhiteSpace(actualMemo) && !AccountingManager.IsOwnerGrossPercentFeeMemo(actualMemo))
+                    totals.OwnerRentMemo = actualMemo;
+            }
             else
                 totals.ExpectedIncomeValue += line.Amount;
         }

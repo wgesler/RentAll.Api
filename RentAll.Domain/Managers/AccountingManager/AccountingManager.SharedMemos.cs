@@ -19,6 +19,8 @@ public partial class AccountingManager
     private static readonly Regex LegacyOwnerStatementPaymentMemoPattern = new(@"^Owner'?s?\s+Payments?\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex OwnerBillMemoPattern = new(@"^RC-[^:]+: Owner: .+$", RegexOptions.Compiled);
     private static readonly Regex OwnerWorkOrderMemoPattern = new(@"^WO-[^:]+: Owner: .+$", RegexOptions.Compiled);
+    private static readonly Regex OwnerGrossPercentFeeMemoPattern = new(@"\(\d+(\.\d+)?%\)$", RegexOptions.Compiled);
+    private static readonly Regex TrailingParenPattern = new(@"^(.*) \(([^)]+)\)$", RegexOptions.Compiled);
 
     #region Invoice Memo
 
@@ -304,6 +306,12 @@ public partial class AccountingManager
     {
         var normalizedMemo = (memo ?? string.Empty).Trim();
         return normalizedMemo.Contains(": Owner: Management Fee", StringComparison.Ordinal);
+    }
+
+    public static bool IsOwnerGrossPercentFeeMemo(string? memo)
+    {
+        var detail = StripOwnerMemoPrefixForDisplay(memo);
+        return OwnerGrossPercentFeeMemoPattern.IsMatch(detail);
     }
 
     // Example: R-001053-001: Owner: Expected: Rental Fee (04/01-04/30)
@@ -932,17 +940,30 @@ public partial class AccountingManager
         var trimmed = (memo ?? string.Empty).Trim();
         var ownerIndex = trimmed.IndexOf(": Owner: ", StringComparison.Ordinal);
         if (ownerIndex < 0)
-            return trimmed;
+            return StripTrailingPaymentLabel(trimmed);
 
         var detail = trimmed[(ownerIndex + ": Owner: ".Length)..].Trim();
         if (detail.StartsWith("Expected: ", StringComparison.Ordinal))
-            return detail["Expected: ".Length..].Trim();
-        if (detail.StartsWith("Actual: ", StringComparison.Ordinal))
-            return detail["Actual: ".Length..].Trim();
-        if (detail.StartsWith("Payment: ", StringComparison.Ordinal))
-            return detail["Payment: ".Length..].Trim();
+            detail = detail["Expected: ".Length..].Trim();
+        else if (detail.StartsWith("Actual: ", StringComparison.Ordinal))
+            detail = detail["Actual: ".Length..].Trim();
+        else if (detail.StartsWith("Payment: ", StringComparison.Ordinal))
+            detail = detail["Payment: ".Length..].Trim();
 
-        return detail;
+        return StripTrailingPaymentLabel(detail);
+    }
+
+    private static string StripTrailingPaymentLabel(string detail)
+    {
+        var match = TrailingParenPattern.Match(detail);
+        if (!match.Success)
+            return detail;
+
+        var suffix = match.Groups[2].Value;
+        if (suffix.Contains('%') || suffix.Contains('/'))
+            return detail;
+
+        return match.Groups[1].Value.Trim();
     }
 
     private static string ExtractMemoSourceCode(string? memo)

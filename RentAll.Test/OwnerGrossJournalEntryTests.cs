@@ -6,7 +6,7 @@ namespace RentAll.Test;
 public class OwnerGrossJournalEntryTests
 {
     [Fact]
-    public async Task OwnerExpected_PostsFullRentAndMovesFeeToOwnerIncome()
+    public async Task OwnerExpected_PostsOwnerShareAndFeesAgainstOwnerLiability()
     {
         var (invoice, context, rent) = await CreateGrossRentInvoiceAsync();
         var manager = context.CreateManager();
@@ -16,7 +16,7 @@ public class OwnerGrossJournalEntryTests
         var ownerExpected = Assert.Single(
             context.ActiveJournalEntries,
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerExpected);
-        AssertGrossOwnerLines(ownerExpected, rent, OwnerShare(rent));
+        AssertGrossOwnerExpectedLines(ownerExpected, rent, OwnerShare(rent));
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class OwnerGrossJournalEntryTests
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
         Assert.Equal(paymentDate, ownerActual.TransactionDate);
         Assert.True(ownerActual.IsCashOnly);
-        AssertGrossOwnerLines(ownerActual, rent, OwnerShare(rent));
+        AssertGrossOwnerExpectedLines(ownerActual, rent, OwnerShare(rent));
     }
 
     [Fact]
@@ -61,15 +61,15 @@ public class OwnerGrossJournalEntryTests
             .OrderBy(entry => entry.TransactionDate)
             .ToList();
         Assert.Equal(2, ownerActuals.Count);
-        AssertGrossOwnerLines(ownerActuals[0], firstAmount, OwnerShare(firstAmount));
-        AssertGrossOwnerLines(ownerActuals[1], secondAmount, OwnerShare(rent) - OwnerShare(firstAmount));
+        AssertGrossOwnerPartialLines(ownerActuals[0], OwnerShare(firstAmount));
+        AssertGrossOwnerPartialLines(ownerActuals[1], OwnerShare(rent) - OwnerShare(firstAmount));
 
         var ownerPayableCredit = ownerActuals.Sum(entry =>
             Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit));
         var ownerPayableDebit = ownerActuals.Sum(entry =>
             Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Debit));
-        Assert.Equal(rent, ownerPayableCredit);
-        Assert.Equal(rent - OwnerShare(rent), ownerPayableDebit);
+        Assert.Equal(OwnerShare(rent), ownerPayableCredit);
+        Assert.Equal(0m, ownerPayableDebit);
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public class OwnerGrossJournalEntryTests
             entry => entry.JournalEntryKindId == JournalEntryKind.OwnerActual);
         Assert.Equal(new DateOnly(2026, 4, 1), ownerActual.TransactionDate);
         Assert.Equal(new DateOnly(2026, 4, 1), ownerActual.AccountingPeriod);
-        AssertGrossOwnerLines(ownerExpected, 3000m, 2100m);
-        AssertGrossOwnerLines(ownerActual, collectedRent, OwnerShare(collectedRent));
+        AssertGrossOwnerExpectedLines(ownerExpected, 3000m, 2100m);
+        AssertGrossOwnerPartialLines(ownerActual, OwnerShare(collectedRent));
     }
 
     private static async Task<(Invoice Invoice, AccountingManagerJournalEntryFeeTestSupport.FeeJournalEntryTestContext Context, decimal Rent)> CreateGrossRentInvoiceAsync()
@@ -133,21 +133,27 @@ public class OwnerGrossJournalEntryTests
     private static decimal OwnerShare(decimal rent)
         => Math.Round(rent * 70m / 100m, 2, MidpointRounding.AwayFromZero);
 
-    private static void AssertGrossOwnerLines(JournalEntry entry, decimal rent, decimal ownerShare)
+    private static void AssertGrossOwnerExpectedLines(JournalEntry entry, decimal rent, decimal ownerShare)
     {
         var fee = Math.Round(rent - ownerShare, 2, MidpointRounding.AwayFromZero);
         var debits = entry.JournalEntryLines.Sum(line => line.Debit);
         var credits = entry.JournalEntryLines.Sum(line => line.Credit);
         Assert.Equal(debits, credits);
-        Assert.Equal(rent, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Debit));
-        Assert.Equal(fee, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Credit));
+        Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit));
+        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Debit + line.Credit));
         Assert.Equal(rent, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit));
         Assert.Equal(fee, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Debit));
-        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit + line.Credit));
-        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerIncomeAccountId, line => line.Debit + line.Credit));
-        Assert.All(
-            entry.JournalEntryLines.Where(line => line.ChartOfAccountId == AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId),
-            line => Assert.Equal(AccountingManagerJournalEntryFeeTestSupport.OwnerContactId, line.ContactId));
+    }
+
+    private static void AssertGrossOwnerPartialLines(JournalEntry entry, decimal ownerShare)
+    {
+        var debits = entry.JournalEntryLines.Sum(line => line.Debit);
+        var credits = entry.JournalEntryLines.Sum(line => line.Credit);
+        Assert.Equal(debits, credits);
+        Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerRentExpenseAccountId, line => line.Debit));
+        Assert.Equal(ownerShare, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Credit));
+        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryFeeTestSupport.OwnerAccountsPayableAccountId, line => line.Debit));
+        Assert.Equal(0m, Sum(entry, AccountingManagerJournalEntryTestSupport.TenantIncomeAccountId, line => line.Debit + line.Credit));
     }
 
     private static decimal Sum(JournalEntry entry, int accountId, Func<JournalEntryLine, decimal> amount)

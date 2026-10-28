@@ -94,6 +94,21 @@ public class ExternalPropertyPhotoSyncService
                 .Select(item => NormalizePhotoUrl(item.Url))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+            foreach (var importItem in importItems)
+            {
+                if (importItem.Status is not PropertyPhotoImportItemStatus.Pending and not PropertyPhotoImportItemStatus.InProgress)
+                    continue;
+
+                if (desiredByUrl.ContainsKey(NormalizePhotoUrl(importItem.Url)))
+                    continue;
+
+                await _propertyRepository.CompletePropertyPhotoImportItemAsync(
+                    importItem.ImportItemId,
+                    PropertyPhotoImportItemStatus.Failed,
+                    null,
+                    "Photo was removed from the property");
+            }
+
             var removedCount = 0;
             foreach (var existingPhoto in existingPhotos)
             {

@@ -358,10 +358,6 @@ public class OwnerReportScenarioTests
         const string invoice = "R-000000173-001";
         var lines = new List<JournalEntryRecapLine>
         {
-            GrossOwnerActualLine(invoice, november, 7675m, 0m, 7675m, "R-000000173-001: Owner: Actual: Rental Fee (11/01-11/30) (ACH)"),
-            GrossOwnerActualLine(invoice, november, -834m, 834m, 0m, "R-000000173-001: Owner: Actual: Rental Fee (11/01-11/30) (12%)"),
-            GrossOwnerActualLine(invoice, november, -42m, 42m, 0m, "R-000000173-001: Owner: Actual: Pet Fee (12%)"),
-            GrossOwnerActualLine(invoice, november, -45m, 45m, 0m, "R-000000173-001: Owner: Actual: Departure Fee (12%)"),
             ReportManagerTestSupport.RecapLine(
                 "OwnerRent",
                 6754m,
@@ -371,7 +367,31 @@ public class OwnerReportScenarioTests
                 "R-000000173-001: Owner: Expected: Rental Fee (11/01-11/30)",
                 journalEntryKindId: (int)JournalEntryKind.OwnerExpected,
                 irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod,
-                credit: 6754m)
+                credit: 6754m),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRent",
+                -834m,
+                invoice,
+                november,
+                november,
+                "R-000000173-001: Owner: Expected: Rental Fee (11/01-11/30) (12%)",
+                journalEntryKindId: (int)JournalEntryKind.OwnerExpected,
+                irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod,
+                debit: 834m),
+            ReportManagerTestSupport.RecapLine(
+                "OwnerRent",
+                -45m,
+                invoice,
+                november,
+                november,
+                "R-000000173-001: Owner: Expected: Departure Fee (12%)",
+                journalEntryKindId: (int)JournalEntryKind.OwnerExpected,
+                irsMethodTypeId: (int)IRSMethodType.IrsGrossMethod,
+                debit: 45m),
+            GrossOwnerActualLine(invoice, november, 7675m, 0m, 7675m, "R-000000173-001: Owner: Actual: Rental Fee (11/01-11/30) (ACH)"),
+            GrossOwnerActualLine(invoice, november, -834m, 834m, 0m, "R-000000173-001: Owner: Actual: Rental Fee (11/01-11/30) (12%)"),
+            GrossOwnerActualLine(invoice, november, -42m, 42m, 0m, "R-000000173-001: Owner: Actual: Pet Fee (12%)"),
+            GrossOwnerActualLine(invoice, november, -45m, 45m, 0m, "R-000000173-001: Owner: Actual: Departure Fee (12%)")
         };
         var context = ReportManagerTestSupport.CreateContext(lines);
 
