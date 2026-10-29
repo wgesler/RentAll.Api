@@ -397,6 +397,36 @@ public class AccountingManagerLedgerLineTests
         Assert.Equal(1100m, rental.Amount);
     }
 
+    [Fact]
+    public void GetLedgerLines_DailySecondMonthProrate_StayUnder30DaysAcrossMonths_SplitsAtMonthAndStopsAtDeparture()
+    {
+        var reservation = CreateReservation(
+            arrival: new DateOnly(2026, 10, 28),
+            departure: new DateOnly(2026, 11, 1),
+            prorateType: ProrateType.SecondMonth,
+            billingType: BillingType.Daily,
+            billingRate: 165m);
+        var manager = CreateManager();
+
+        var october = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 10, 1),
+            endDate: new DateOnly(2026, 10, 31),
+            rentalCostCodeId: 77);
+        var november = manager.GetLedgerLinesByReservationIdAsync(
+            reservation,
+            startDate: new DateOnly(2026, 11, 1),
+            endDate: new DateOnly(2026, 11, 30),
+            rentalCostCodeId: 77);
+
+        var octoberRent = Assert.Single(october, x => x.Description.StartsWith("Rental Fee"));
+        Assert.Equal("Rental Fee (10/28-10/31)", octoberRent.Description);
+        Assert.Equal(660m, octoberRent.Amount);
+        var novemberRent = Assert.Single(november, x => x.Description.StartsWith("Rental Fee"));
+        Assert.Equal("Rental Fee (11/01-11/01)", novemberRent.Description);
+        Assert.Equal(165m, novemberRent.Amount);
+    }
+
     #endregion
 
     #region Print Helpers

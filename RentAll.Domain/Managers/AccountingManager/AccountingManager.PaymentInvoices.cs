@@ -322,6 +322,31 @@ public partial class AccountingManager
         var firstDayOfLastMonth = lastBillableMonth;
         var lastDayOfLastMonth = endDate <= departureDate ? endDate : departureDate;
 
+        var departureIsLastDayOfItsMonth = departureDate.Day == DateTime.DaysInMonth(departureYear, departureMonth);
+        var wholeStayDays = CalculateNumberOfDays(arrivalDate, departureDate, reservation.BillingType, true, departureIsLastDayOfItsMonth);
+        var stayCrossesMonths = departureMonth != arrivalMonth || departureYear != arrivalYear;
+        if (wholeStayDays > 0 && wholeStayDays < PRORATE_DAYS && stayCrossesMonths)
+        {
+            var sliceStart = arrivalDate > startDate ? arrivalDate : startDate;
+            var sliceEnd = departureDate < endDate ? departureDate : endDate;
+            if (sliceEnd < sliceStart)
+                return lineItems;
+
+            var sliceIsDepartureMonth = sliceEnd.Month == departureMonth && sliceEnd.Year == departureYear;
+            var sliceIsLastDayOfMonth = sliceEnd.Day == DateTime.DaysInMonth(sliceEnd.Year, sliceEnd.Month);
+            var sliceDays = CalculateNumberOfDays(sliceStart, sliceEnd, reservation.BillingType, sliceIsDepartureMonth, sliceIsLastDayOfMonth);
+            if (sliceDays <= 0)
+                return lineItems;
+
+            AddRentalLine(sliceDays, reservation, sliceStart, sliceEnd, daysInMonth, sliceIsDepartureMonth, sliceIsLastDayOfMonth, lineItems, ref lineNumber, rentalCostCodeId);
+            GetFirstMonthLines(reservation, isFirstMonth, lineItems, ref lineNumber);
+            AddMaidServiceLines(reservation, sliceStart, sliceEnd, startDateYear, startDateMonth, lineItems, ref lineNumber);
+            foreach (var extraFeeLine in reservation.ExtraFeeLines)
+                AddExtraFeeLines(extraFeeLine, sliceStart, sliceEnd, startDateYear, startDateMonth, isProratedMonth, sliceDays, lineItems, ref lineNumber);
+            AddDepartureFeeIfApplicable(reservation, startDate, lineItems, ref lineNumber);
+            return lineItems;
+        }
+
         // If you're in and out in the same month OR less than 30 days
         if (arrivalMonth == startDateMonth && arrivalYear == startDateYear && departureMonth == startDateMonth && departureYear == startDateYear)
         {
