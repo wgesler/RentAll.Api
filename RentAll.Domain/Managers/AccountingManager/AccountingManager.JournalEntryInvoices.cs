@@ -1167,6 +1167,9 @@ public partial class AccountingManager
         if (!InvoiceCrossesAccountingPeriodBoundary(invoice))
             return new List<InvoicePaymentSplitAllocation>();
 
+        if (InvoiceCrossesMoreThanTwoAccountingMonths(invoice))
+            return await GetMultiMonthInvoicePaymentSplitAllocationsAsync(invoice, paymentLedgerLine);
+
         if (!TryCreateCrossPeriodInvoiceSlices(invoice, out var firstPeriodInvoice, out var secondPeriodInvoice))
             return new List<InvoicePaymentSplitAllocation>();
 
@@ -1215,6 +1218,45 @@ public partial class AccountingManager
 
         if (secondPaymentAmount > 0)
             allocations.Add(new InvoicePaymentSplitAllocation { AccountingPeriod = secondAccountingPeriod, Amount = secondPaymentAmount, Days = secondSliceDays, PerDiem = perDiem });
+
+        return allocations;
+    }
+
+    private async Task<List<InvoicePaymentSplitAllocation>> GetMultiMonthInvoicePaymentSplitAllocationsAsync(Invoice invoice, LedgerLine paymentLedgerLine)
+    {
+        var slices = await TryBuildMultiMonthApportionedSlicesAsync(invoice);
+        if (slices == null || slices.Count < 3)
+            return new List<InvoicePaymentSplitAllocation>();
+
+        var costCodeById = await LoadCostCodeByOfficeIdAsync(invoice.OrganizationId, invoice.OfficeId);
+        var caps = slices.Select(slice => SumInvoiceChargeLines(slice, costCodeById)).ToList();
+        if (caps.Any(cap => cap <= 0))
+            return new List<InvoicePaymentSplitAllocation>();
+
+        var totalDays = 0;
+        foreach (var slice in slices)
+        {
+            if (TryGetSliceDateRange(slice, out var sliceStart, out var sliceEnd))
+                totalDays += CountInclusiveDays(sliceStart, sliceEnd);
+        }
+
+        var chargeTotal = caps.Sum();
+        var perDiem = totalDays > 0 ? chargeTotal / totalDays : 0m;
+        var remaining = paymentLedgerLine.Amount;
+        var allocations = new List<InvoicePaymentSplitAllocation>();
+        for (var index = 0; index < slices.Count; index++)
+        {
+            var amount = Math.Min(remaining, caps[index]);
+            if (amount <= 0)
+                break;
+
+            var days = 0;
+            if (TryGetSliceDateRange(slices[index], out var periodStart, out var periodEnd))
+                days = CountInclusiveDays(periodStart, periodEnd);
+
+            allocations.Add(new InvoicePaymentSplitAllocation { AccountingPeriod = slices[index].AccountingPeriod, Amount = amount, Days = days, PerDiem = perDiem });
+            remaining -= amount;
+        }
 
         return allocations;
     }

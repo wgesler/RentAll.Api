@@ -75,6 +75,48 @@ public class CrossPeriodInvoiceJournalEntryTests
     }
 
     [Fact]
+    public async Task CrossMonthRent_NovemberThroughJanuary_BillsDecemberAsFullMonth()
+    {
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            new DateOnly(2026, 11, 1),
+            new DateOnly(2027, 1, 31),
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            3000m);
+
+        var (invoice, context) = await AccountingManagerJournalEntryFeeTestSupport.BuildTrackedFeeInvoiceAsync(
+            reservation,
+            new DateOnly(2026, 11, 1),
+            new DateOnly(2027, 1, 31));
+        var rental = invoice.LedgerLines.First(line => line.Description.StartsWith("Rental Fee"));
+        rental.Description = "Rental Fee (11/01-01/31)";
+        rental.Amount = 9200m;
+        invoice.LedgerLines.Clear();
+        invoice.LedgerLines.Add(rental);
+        invoice.TotalAmount = 9200m;
+        context.TrackInvoice(invoice);
+
+        await context.CreateManager().CreateJournalEntryFromInvoiceAsync(invoice, AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var chargeEntries = context.ActiveJournalEntries
+            .Where(entry => entry.SourceTypeId == (int)SourceType.Invoice && entry.JournalEntryKindId == JournalEntryKind.Charge)
+            .OrderBy(entry => entry.AccountingPeriod)
+            .ToList();
+
+        Assert.Equal(3, chargeEntries.Count);
+        Assert.Equal(new DateOnly(2026, 11, 1), chargeEntries[0].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 12, 1), chargeEntries[1].AccountingPeriod);
+        Assert.Equal(new DateOnly(2027, 1, 1), chargeEntries[2].AccountingPeriod);
+        Assert.Equal(3000m, AccountsReceivableDebit(chargeEntries[0]));
+        Assert.Equal(3100m, AccountsReceivableDebit(chargeEntries[1]));
+        Assert.Equal(3100m, AccountsReceivableDebit(chargeEntries[2]));
+        Assert.Contains(chargeEntries[1].JournalEntryLines, line => AccountingManagerJournalEntryTestSupport.MatchesChargeLineMemoPrefix(line.Memo, "Rental Fee (12/01-12/31)"));
+    }
+
+    private static decimal AccountsReceivableDebit(JournalEntry entry)
+        => entry.JournalEntryLines.Single(line => AccountingManagerJournalEntryTestSupport.IsAccountsReceivableMemo(line.Memo)).Debit;
+
+    [Fact]
     public async Task CrossPeriodWithFees_FebInvoice_SplitsMaidServiceByOccurrenceMonth()
     {
         var reservation = CreateFebReservationWithFees();
