@@ -795,12 +795,25 @@ public partial class AccountingManager
                 }
             }
 
-            if (exactLineMatches.Count != 1)
+            if (exactLineMatches.Count == 1)
+            {
+                split.JournalEntryLineId = exactLineMatches[0].JournalEntryLineId;
+                assignedLineIds.Add(exactLineMatches[0].JournalEntryLineId);
+                changed = true;
+                continue;
+            }
+
+            if (exactLineMatches.Count != 0)
                 continue;
 
-            split.JournalEntryLineId = exactLineMatches[0].JournalEntryLineId;
-            assignedLineIds.Add(exactLineMatches[0].JournalEntryLineId);
+            var consolidatedLineId = await TryResolveConsolidatedMultiInvoiceDepositSplitLineAsync(deposit, split, paymentLineCandidates, claimedByOtherDeposits, assignedLineIds, payment);
+            if (consolidatedLineId is not { } consolidatedId || consolidatedId == Guid.Empty)
+                continue;
+
+            split.JournalEntryLineId = consolidatedId;
+            assignedLineIds.Add(consolidatedId);
             changed = true;
+            trail?.Note($"Linked consolidated split {split.DepositSplitId} amount={splitAmount:0.00} -> line={consolidatedId}");
         }
 
         if (!changed)
@@ -1218,6 +1231,123 @@ public partial class AccountingManager
             .ToList();
     }
 
+    // One payment applied to two or more invoices: the UF split is the payment total, and the link is the first invoice's AR line.
+    private async Task<Guid?> TryResolveConsolidatedMultiInvoiceDepositSplitLineAsync(Deposit deposit, DepositSplit split, IReadOnlyList<UndepositedPaymentLineCandidate> candidates, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds, Payment? knownPayment = null)
+    {
+        var payment = await ResolveConsolidatedDepositSplitPaymentAsync(deposit, split, knownPayment);
+        var anchor = payment == null ? null : FindConsolidatedDepositSplitAnchorLedgerLine(split, payment);
+        if (payment == null || anchor == null)
+            return null;
+
+        var paymentLineIds = new HashSet<Guid>();
+        foreach (var entry in await GetJournalEntriesByPaymentIdCachedAsync(deposit.OrganizationId, payment.PaymentId))
+        {
+            if (!IsRematchableHealthInvoicePaymentJournalEntry(entry))
+                continue;
+
+            foreach (var line in entry.JournalEntryLines ?? [])
+            {
+                if (line.JournalEntryLineId != Guid.Empty)
+                    paymentLineIds.Add(line.JournalEntryLineId);
+            }
+        }
+
+        if (paymentLineIds.Count == 0)
+            return null;
+
+        var anchorAmount = Math.Abs(RoundCurrency(anchor.Value.Amount));
+        var hints = BuildLinkContextHintsFromDepositSplit(split);
+        var matches = new List<UndepositedPaymentLineCandidate>();
+        foreach (var candidate in candidates)
+        {
+            if (!paymentLineIds.Contains(candidate.JournalEntryLineId)
+                || claimedLineIds.Contains(candidate.JournalEntryLineId)
+                || assignedLineIds.Contains(candidate.JournalEntryLineId))
+                continue;
+
+            if (!IsPaymentDepositStampAvailableForDeposit(candidate.DepositId, deposit.DepositId)
+                || !PaymentTransactionDateIsOnOrBeforeDeposit(candidate.TransactionDate, deposit.DepositDate)
+                || Math.Abs(Math.Abs(candidate.NetAmount) - anchorAmount) > 0.005m
+                || !DepositSplitSourceCodeMatchesCandidateLine(split, anchor.Value.InvoiceCode, candidate.SourceCode))
+                continue;
+
+            var line = await GetJournalEntryLineByIdCachedAsync(candidate.JournalEntryLineId);
+            if (line == null
+                || !await SplitLineContextMatchesResolvedLineAsync(split.PropertyId, split.ReservationId, line, deposit.OrganizationId, hints))
+                continue;
+
+            matches.Add(candidate);
+        }
+
+        return matches.Count == 1 ? matches[0].JournalEntryLineId : null;
+    }
+
+    private async Task<Payment?> ResolveConsolidatedDepositSplitPaymentAsync(Deposit deposit, DepositSplit split, Payment? knownPayment)
+    {
+        if (ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split).Count < 2)
+            return null;
+
+        if (knownPayment != null)
+        {
+            if (!knownPayment.IsActive
+                || !IsPaymentDepositStampAvailableForDeposit(knownPayment.DepositId, deposit.DepositId)
+                || !PaymentTransactionDateIsOnOrBeforeDeposit(knownPayment.PaymentDate, deposit.DepositDate)
+                || !await DepositSplitConsolidatedInvoiceLedgerTotalMatchesAsync(deposit, split, knownPayment.PaymentId))
+                return null;
+
+            if (knownPayment.LedgerLines is { Count: > 0 })
+                return knownPayment;
+
+            return await _accountingRepository.GetPaymentByIdAsync(knownPayment.PaymentId, deposit.OrganizationId);
+        }
+
+        var payments = _officeSyncCache != null
+            ? _officeSyncCache.Payments.Where(payment => payment.IsActive && payment.PaymentKindId == (int)PaymentKind.Invoice && payment.OfficeId == deposit.OfficeId).ToList()
+            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(deposit.OrganizationId, deposit.OfficeId.ToString(), (int)PaymentKind.Invoice)).Where(payment => payment.IsActive).ToList();
+
+        Payment? match = null;
+        foreach (var payment in payments)
+        {
+            if (!IsPaymentDepositStampAvailableForDeposit(payment.DepositId, deposit.DepositId)
+                || !PaymentTransactionDateIsOnOrBeforeDeposit(payment.PaymentDate, deposit.DepositDate)
+                || !await DepositSplitConsolidatedInvoiceLedgerTotalMatchesAsync(deposit, split, payment.PaymentId))
+                continue;
+
+            if (match != null)
+                return null;
+
+            match = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, deposit.OrganizationId) ?? payment;
+        }
+
+        return match;
+    }
+
+    private static (string InvoiceCode, decimal Amount)? FindConsolidatedDepositSplitAnchorLedgerLine(DepositSplit split, Payment payment)
+    {
+        var invoiceCodes = ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split)
+            .Select(code => code.Trim())
+            .Where(code => code.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (invoiceCodes.Count < 2)
+            return null;
+
+        foreach (var invoiceCode in invoiceCodes)
+        {
+            var ledgerLine = (payment.LedgerLines ?? [])
+                .Where(line => EntityCodeFormatting.CodesMatch(line.InvoiceCode, invoiceCode))
+                .OrderBy(line => line.LineNumber)
+                .FirstOrDefault();
+            if (ledgerLine == null || Math.Abs(ledgerLine.Amount) <= 0.005m)
+                continue;
+
+            return (invoiceCode, ledgerLine.Amount);
+        }
+
+        return null;
+    }
+
     private async Task<Guid?> ResolveDepositSplitJournalEntryLineIdAsync(
         Deposit deposit,
         DepositSplit split,
@@ -1248,7 +1378,7 @@ public partial class AccountingManager
             return amountMatches[0].JournalEntryLineId;
 
         if (amountMatches.Count == 0)
-            return null;
+            return await TryResolveConsolidatedMultiInvoiceDepositSplitLineAsync(deposit, split, candidates, claimedLineIds, assignedLineIds);
 
         var contextMatches = new List<UndepositedPaymentLineCandidate>();
         foreach (var candidate in amountMatches)
@@ -1285,12 +1415,20 @@ public partial class AccountingManager
     }
 
     /// <summary>
-    /// When a deposit split memo lists multiple invoices, use the linked AR line memo (after deposit rematch).
+    /// A split that lists two or more invoices keeps every code, including after it is linked to one of those AR lines.
     /// </summary>
     private async Task<IReadOnlyList<string>> ResolveDepositSplitInvoiceSourceCodesForTransferEscrowMatchAsync(
         Guid organizationId,
         DepositSplit split)
     {
+        var memoCodes = ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split)
+            .Select(code => code.Trim())
+            .Where(code => code.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (memoCodes.Count >= 2)
+            return memoCodes;
+
         if (split.JournalEntryLineId is { } lineId && lineId != Guid.Empty)
         {
             var line = await GetJournalEntryLineByIdCachedAsync(lineId);
@@ -1305,9 +1443,8 @@ public partial class AccountingManager
             }
         }
 
-        var memoCodes = ResolveDepositSplitPaymentMemoInvoiceSourceCodes(split);
         if (memoCodes.Count == 1)
-            return [memoCodes[0].Trim()];
+            return [memoCodes[0]];
 
         var single = ResolveDepositSplitInvoiceSourceCode(split);
         if (IsReservationOrInvoiceSourceCode(single))
