@@ -801,8 +801,6 @@ public partial class AccountingManager
 
         await RebuildReservationBilledMatchupForReservationAsync(organizationId, reservation, currentUser);
 
-        var currentMonth = FirstDayOfMonth(DateOnly.FromDateTime(DateTime.Today));
-
         var accountingOfficesByOfficeId = (await _organizationRepository.GetAccountingOfficesByOfficeIdsAsync(
                 organizationId,
                 reservation.OfficeId.ToString()))
@@ -826,13 +824,8 @@ public partial class AccountingManager
             .ToList();
 
         var billedRows = (await _accountingRepository.GetBilledByReservationIdAsync(organizationId, reservationId)).ToList();
-        var latestInvoicedMonth = billedRows
-            .Where(row => row.DaysBilled > 0)
-            .Select(row => (DateOnly?)row.MonthStart)
-            .Max();
         var openBilledRows = billedRows
             .Where(row => row.DaysStayed > row.DaysBilled && !row.Ignore)
-            .Where(row => IncludeOpenMonthInReservationPreview(row, currentMonth, latestInvoicedMonth))
             .OrderBy(row => row.MonthStart)
             .ToList();
 
@@ -863,19 +856,6 @@ public partial class AccountingManager
         return previewInvoices
             .OrderBy(invoice => invoice.AccountingPeriod)
             .ToList();
-    }
-
-    /// <summary>
-    /// Current and future months always preview. An earlier month previews when it is already partly invoiced,
-    /// or when a later month is invoiced and this one is still open.
-    /// </summary>
-    private static bool IncludeOpenMonthInReservationPreview(Billed row, DateOnly currentMonth, DateOnly? latestInvoicedMonth)
-    {
-        if (row.MonthStart >= currentMonth)
-            return true;
-        if (row.DaysBilled > 0)
-            return true;
-        return latestInvoicedMonth.HasValue && row.MonthStart < latestInvoicedMonth.Value;
     }
 
     private async Task AppendInvoicePreviewsForOpenBilledRowsAsync(

@@ -63,15 +63,9 @@ public class AccountingManagerReservationInvoicePreviewTests
             reservation.ReservationId,
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
-        var expectedCount = 0;
-        for (var month = new DateOnly(2026, 7, 1); month <= new DateOnly(2026, 10, 1); month = month.AddMonths(1))
-        {
-            if (month >= currentMonth)
-                expectedCount++;
-        }
-
-        Assert.Equal(expectedCount, previews.Count);
+        Assert.Equal(4, previews.Count);
+        Assert.Equal(new DateOnly(2026, 7, 1), previews[0].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 10, 1), previews[3].AccountingPeriod);
         Assert.All(previews, preview => Assert.Equal(0m, preview.TotalAmount));
     }
 
@@ -86,16 +80,11 @@ public class AccountingManagerReservationInvoicePreviewTests
             reservation.ReservationId,
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
-        var expectedCount = 0;
-        for (var month = new DateOnly(2026, 7, 1); month <= new DateOnly(2026, 10, 1); month = month.AddMonths(1))
-        {
-            if (month >= currentMonth)
-                expectedCount++;
-        }
-
-        Assert.Equal(expectedCount, previews.Count);
-        Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= currentMonth));
+        Assert.Equal(4, previews.Count);
+        Assert.Equal(new DateOnly(2026, 7, 1), previews[0].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 8, 1), previews[1].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 9, 1), previews[2].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 10, 1), previews[3].AccountingPeriod);
     }
 
     [Fact]

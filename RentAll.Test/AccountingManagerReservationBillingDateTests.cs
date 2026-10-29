@@ -67,15 +67,9 @@ public class AccountingManagerReservationBillingDateTests
             reservation.ReservationId,
             AccountingManagerJournalEntryTestSupport.CurrentUser);
 
-        var currentMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
-        var expectedCount = 0;
-        if (new DateOnly(2026, 8, 1) >= currentMonth)
-            expectedCount++;
-        if (new DateOnly(2026, 9, 1) >= currentMonth)
-            expectedCount++;
-
-        Assert.Equal(expectedCount, previews.Count);
-        Assert.All(previews, preview => Assert.True(preview.AccountingPeriod >= currentMonth));
+        Assert.Equal(2, previews.Count);
+        Assert.Equal(new DateOnly(2026, 8, 1), previews[0].AccountingPeriod);
+        Assert.Equal(new DateOnly(2026, 9, 1), previews[1].AccountingPeriod);
     }
 
     private static AccountingManager CreatePreviewManager(Reservation reservation)
