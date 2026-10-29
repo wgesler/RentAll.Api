@@ -292,6 +292,63 @@ public partial class AccountingManager
 
             trail?.Bail($"Rematch failed: {splitLabel} amount={split.Amount:0.00} (no exact AR allocation line match).");
         }
+
+        await ApplyHealthExactArRematchLinksAsync(deposit, undepositedFundsAccountId, claimedLineIds, assignedLineIds, trail);
+    }
+
+    // Health check links a two-invoice UF split through DepositSplit_ArRematchCandidates. Save uses that same exact match.
+    private async Task ApplyHealthExactArRematchLinksAsync(Deposit deposit, int undepositedFundsAccountId, IReadOnlySet<Guid> claimedLineIds, HashSet<Guid> assignedLineIds, AccountingSyncBailTrail? trail)
+    {
+        if (deposit.DepositId == Guid.Empty || deposit.Splits == null || deposit.Splits.Count == 0)
+            return;
+
+        var needsLink = false;
+        foreach (var split in deposit.Splits)
+        {
+            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId))
+                continue;
+
+            if (split.JournalEntryLineId is not { } existingLineId || existingLineId == Guid.Empty)
+            {
+                needsLink = true;
+                break;
+            }
+        }
+
+        if (!needsLink)
+            return;
+
+        var persisted = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, deposit.OrganizationId);
+        if (persisted?.Splits == null || persisted.Splits.Count == 0)
+            return;
+
+        var candidates = await _accountingRepository.GetDepositSplitArRematchCandidatesAsync(deposit.OrganizationId, deposit.DepositId);
+        foreach (var match in candidates.ExactMatches.OrderBy(row => row.DepositSplitId))
+        {
+            if (match.ArJournalEntryLineId is not { } arLineId || arLineId == Guid.Empty)
+                continue;
+
+            if (claimedLineIds.Contains(arLineId) || assignedLineIds.Contains(arLineId))
+                continue;
+
+            var split = deposit.Splits.FirstOrDefault(row => row.DepositSplitId == match.DepositSplitId);
+            var persistedSplit = persisted.Splits.FirstOrDefault(row => row.DepositSplitId == match.DepositSplitId);
+            if (split == null || persistedSplit == null)
+                continue;
+
+            if (split.JournalEntryLineId is { } currentLineId && currentLineId != Guid.Empty)
+                continue;
+
+            if (Math.Abs(RoundCurrency(split.Amount) - RoundCurrency(persistedSplit.Amount)) > 0.005m)
+                continue;
+
+            if (!string.Equals((split.Description ?? string.Empty).Trim(), (persistedSplit.Description ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            split.JournalEntryLineId = arLineId;
+            assignedLineIds.Add(arLineId);
+            trail?.Note($"Rematch health link: split {split.DepositSplitId} -> line {arLineId}");
+        }
     }
 
     private async Task<bool> IsValidDepositSplitJournalEntryLineAsync(Deposit deposit, DepositSplit split, int undepositedFundsAccountId)

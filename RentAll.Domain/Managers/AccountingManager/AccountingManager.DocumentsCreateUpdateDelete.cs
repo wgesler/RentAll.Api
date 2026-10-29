@@ -588,6 +588,14 @@ public partial class AccountingManager
         try
         {
             created = await _accountingRepository.CreateDepositAsync(deposit);
+            var createdLineIds = (created.Splits ?? []).Select(split => split.JournalEntryLineId).ToList();
+            await PrepareDepositForSaveAsync(created);
+            if (DepositSplitJournalEntryLineIdsChanged(createdLineIds, created.Splits))
+            {
+                created.ModifiedBy = currentUser;
+                created = await _accountingRepository.UpdateDepositAsync(created);
+            }
+
             await SyncPaymentDepositIdsForDepositAsync(created, currentUser);
             await CreateJournalEntryFromDepositAsync(created, currentUser);
             await EnsureDepositPostingStatusComplianceAsync(created, currentUser);
