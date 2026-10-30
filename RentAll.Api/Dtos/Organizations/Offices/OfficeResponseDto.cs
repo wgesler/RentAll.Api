@@ -24,6 +24,8 @@ public class OfficeResponseDto
     public int IrsMethodTypeId { get; set; }
     public bool UseDailyOnResBoard { get; set; }
     public bool UseStrictOnTickets { get; set; }
+    public bool UseExternalRefNo { get; set; }
+    public bool PetFeeTimesNoDogs { get; set; }
     public int DaysToRefundDeposit { get; set; }
     public decimal DefaultDeposit { get; set; }
     public decimal DefaultSdw { get; set; }
@@ -106,6 +108,8 @@ public class OfficeResponseDto
         IrsMethodTypeId = (int)office.IrsMethodType;
         UseDailyOnResBoard = office.UseDailyOnResBoard;
         UseStrictOnTickets = office.UseStrictOnTickets;
+        UseExternalRefNo = office.UseExternalRefNo;
+        PetFeeTimesNoDogs = office.PetFeeTimesNoDogs;
         DaysToRefundDeposit = office.DaysToRefundDeposit;
         DefaultDeposit = office.DefaultDeposit;
         DefaultSdw = office.DefaultSdw;

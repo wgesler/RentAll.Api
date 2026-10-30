@@ -75,6 +75,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             IrsMethodType = Enum.IsDefined(typeof(IRSMethodType), e.IrsMethodTypeId) ? (IRSMethodType)e.IrsMethodTypeId : IRSMethodType.IrsNetMethod,
             UseDailyOnResBoard = e.UseDailyOnResBoard,
             UseStrictOnTickets = e.UseStrictOnTickets,
+            UseExternalRefNo = e.UseExternalRefNo,
+            PetFeeTimesNoDogs = e.PetFeeTimesNoDogs,
             DaysToRefundDeposit = e.DaysToRefundDeposit,
             DefaultDeposit = e.DefaultDeposit,
             DefaultSdw = e.DefaultSdw,
