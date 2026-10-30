@@ -16,6 +16,7 @@ public partial class AccountingManager
     int DEPARTURE_EXPENSE_COST_CODE = 0;
     int MAID_SERVICE_EXPENSE_COST_CODE = 0;
     int PET_FEE_EXPENSE_COST_CODE = 0;
+    bool PET_FEE_TIMES_NO_DOGS = false;
     int PET_SECURITY_DEPOSIT_COST_CODE = 0;
     int PROPERTY_PROTECTION_COST_CODE = 0;
     int APPLICATION_FEE_COST_CODE = 0;
@@ -62,6 +63,7 @@ public partial class AccountingManager
         DEPARTURE_EXPENSE_COST_CODE = office.DepartureFeeCcId ?? 0;
         MAID_SERVICE_EXPENSE_COST_CODE = office.MaidServiceChargeCcId ?? 0;
         PET_FEE_EXPENSE_COST_CODE = office.PetFeeCcId ?? 0;
+        PET_FEE_TIMES_NO_DOGS = office.PetFeeTimesNoDogs;
         PET_SECURITY_DEPOSIT_COST_CODE = office.SecurityDepositCcId ?? 0;
         PROPERTY_PROTECTION_COST_CODE = office.SecurityDepositWaiverCcId ?? 0;
         APPLICATION_FEE_COST_CODE = office.ApplicationFeeCcId ?? 0;
@@ -427,7 +429,12 @@ public partial class AccountingManager
         if (reservation.AdministrativeFee > 0)
             lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Administrative Fee", Amount = reservation.AdministrativeFee, CostCodeId = ADMINISTRATIVE_FEE_COST_CODE });
         if (reservation.HasPets)
-            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Pet Fee", Amount = reservation.PetFee, CostCodeId = PET_FEE_EXPENSE_COST_CODE });
+        {
+            var petFee = reservation.PetFee;
+            if (PET_FEE_TIMES_NO_DOGS)
+                petFee *= reservation.NumberOfPets;
+            lines.Add(new LedgerLine { LineNumber = lineNumber++, Description = "Pet Fee", Amount = petFee, CostCodeId = PET_FEE_EXPENSE_COST_CODE });
+        }
 
         // We add the one-time fees up front
         foreach (var extraFeeLine in reservation.ExtraFeeLines)
