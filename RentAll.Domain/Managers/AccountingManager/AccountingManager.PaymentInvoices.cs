@@ -180,6 +180,7 @@ public partial class AccountingManager
             ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
         }
 
+        await TryAddCreditCardSurchargeLedgerLineAsync(reservation, ledgerLines, costCodeById);
         await TryAddCompanyMarkupOrReferralLedgerLineAsync(reservation, ledgerLines, costCodeById);
         return ledgerLines;
     }
@@ -1129,6 +1130,7 @@ public partial class AccountingManager
             ApplyTransactionTypeFromCostCode(ledgerLine, costCodeById);
         }
 
+        await TryAddCreditCardSurchargeLedgerLineAsync(reservation, lineItems, costCodeById);
         await TryAddCompanyMarkupOrReferralLedgerLineAsync(reservation, lineItems, costCodeById);
         return (lineItems, rentalDaysCharged);
     }
@@ -1410,6 +1412,52 @@ public partial class AccountingManager
     #endregion
 
     #region Company Markup
+    private async Task TryAddCreditCardSurchargeLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
+    {
+        if (ledgerLines.Count == 0)
+            return;
+
+        var percentage = await GetCreditCardSurchargePercentageAsync(reservation);
+        if (percentage <= 0)
+            return;
+
+        var chargeTotal = ledgerLines.Sum(line => line.Amount);
+        var surcharge = Math.Round(chargeTotal * percentage / 100m, 2, MidpointRounding.AwayFromZero);
+        if (surcharge == 0)
+            return;
+
+        var surchargeLine = new LedgerLine
+        {
+            ReservationId = reservation.ReservationId,
+            LineNumber = ledgerLines.Count + 1,
+            CostCodeId = ResolveDefaultCostCodeId(costCodeById, 0, "Credit Card Surcharge"),
+            Amount = surcharge,
+            Description = "Credit Card Surcharge Fee",
+            LedgerLineDate = ledgerLines[^1].LedgerLineDate
+        };
+        ApplyTransactionTypeFromCostCode(surchargeLine, costCodeById);
+        ledgerLines.Add(surchargeLine);
+    }
+
+    private async Task<decimal> GetCreditCardSurchargePercentageAsync(Reservation reservation)
+    {
+        if (reservation.BillingMethod is not (BillingMethod.CreditCardVisa or BillingMethod.CreditCardMc or BillingMethod.CreditCardAmex or BillingMethod.CreditCardDiscover))
+            return 0;
+
+        var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(reservation.OrganizationId, reservation.OfficeId);
+        if (accountingOffice == null)
+            return 0;
+
+        return reservation.BillingMethod switch
+        {
+            BillingMethod.CreditCardVisa => accountingOffice.VisaFeePercentage,
+            BillingMethod.CreditCardMc => accountingOffice.McFeePercentage,
+            BillingMethod.CreditCardAmex => accountingOffice.AmexFeePercentage,
+            BillingMethod.CreditCardDiscover => accountingOffice.DiscoverFeePercentage,
+            _ => 0
+        };
+    }
+
     private async Task TryAddCompanyMarkupOrReferralLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
         if (ReservationHasReferralFee(reservation))
