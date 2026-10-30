@@ -4,6 +4,7 @@ public class ReservationListResponseDto
 {
     public Guid ReservationId { get; set; }
     public string ReservationCode { get; set; } = string.Empty;
+    public string? ExternalRefNo { get; set; }
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public int NoticeStatusId { get; set; }
@@ -55,6 +56,7 @@ public class ReservationListResponseDto
     {
         ReservationId = reservationList.ReservationId;
         ReservationCode = reservationList.ReservationCode;
+        ExternalRefNo = reservationList.ExternalRefNo;
         PropertyId = reservationList.PropertyId;
         PropertyCode = reservationList.PropertyCode;
         NoticeStatusId = reservationList.NoticeStatusId;

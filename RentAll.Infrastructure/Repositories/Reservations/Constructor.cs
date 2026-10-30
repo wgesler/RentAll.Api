@@ -193,6 +193,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
             {
                 ReservationId = e.ReservationId,
                 ReservationCode = e.ReservationCode,
+                ExternalRefNo = e.ExternalRefNo,
                 PropertyId = e.PropertyId,
                 PropertyCode = e.PropertyCode,
                 NoticeStatusId = e.NoticeStatusId,

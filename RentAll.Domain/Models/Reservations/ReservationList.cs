@@ -6,6 +6,7 @@ public class ReservationList
 {
     public Guid ReservationId { get; set; }
     public string ReservationCode { get; set; } = string.Empty;
+    public string? ExternalRefNo { get; set; }
     public Guid PropertyId { get; set; }
     public string PropertyCode { get; set; } = string.Empty;
     public int NoticeStatusId { get; set; }
