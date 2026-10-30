@@ -541,6 +541,17 @@ public partial class AccountingManager
         if (payment == null)
             throw new Exception("Payment record not found");
 
+        var linkedEntries = await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId);
+        var paymentOnDeposit = payment.DepositId is { } depositId && depositId != Guid.Empty;
+        var journalOnDeposit = linkedEntries.Any(entry => entry.DepositId is { } journalDepositId && journalDepositId != Guid.Empty);
+        if (paymentOnDeposit || journalOnDeposit)
+        {
+            var paymentLabel = string.IsNullOrWhiteSpace(payment.PaymentCode)
+                ? payment.PaymentId.ToString()
+                : payment.PaymentCode.Trim();
+            throw new Exception($"Payment {paymentLabel} is on a deposit and cannot be deleted.");
+        }
+
         await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
         await DeleteJournalEntriesForPaymentAsync(payment);
 
@@ -548,7 +559,8 @@ public partial class AccountingManager
             await ReverseInvoicePaymentApplicationsAsync(payment, currentUser);
         else if (payment.PaymentKindId == (int)PaymentKind.Bill)
             await ReverseBillPaymentApplicationsAsync(payment, currentUser);
-        else if (payment.PaymentKindId != (int)PaymentKind.Owner)
+        else if (payment.PaymentKindId != (int)PaymentKind.OwnerOutbound
+            && payment.PaymentKindId != (int)PaymentKind.OwnerInbound)
             throw new Exception($"Unsupported payment kind: {payment.PaymentKindId}");
 
         await _accountingRepository.DeletePaymentByIdAsync(paymentId, organizationId, currentUser);

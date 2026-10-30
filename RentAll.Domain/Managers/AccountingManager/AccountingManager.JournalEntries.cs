@@ -416,6 +416,15 @@ public partial class AccountingManager
         foreach (var entry in ownerPaymentEntries)
             await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
 
+        var ownerInboundEntries = await GetJournalEntriesForSourceAsync(
+            payment.OrganizationId,
+            payment.OfficeId,
+            SourceType.OwnerInbound,
+            payment.PaymentId);
+
+        foreach (var entry in ownerInboundEntries)
+            await DeleteOpenJournalEntryAsync(entry.JournalEntryId, payment.OrganizationId);
+
         if (payment.PaymentKindId != (int)PaymentKind.Invoice)
             return;
 

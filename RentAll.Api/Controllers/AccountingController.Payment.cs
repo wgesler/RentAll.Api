@@ -83,7 +83,7 @@ public partial class AccountingController
     {
         try
         {
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentKind.Owner);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentKind.OwnerOutbound);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -103,7 +103,7 @@ public partial class AccountingController
         try
         {
             var officeAccess = officeId.ToString();
-            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentKind.Owner);
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentKind.OwnerOutbound);
             var response = records.Select(o => new PaymentResponseDto(o));
             return Ok(response);
         }
@@ -111,6 +111,42 @@ public partial class AccountingController
         {
             _logger.LogError(ex, "Error getting owner payments");
             return ServerError("An error occurred while retrieving owner payments");
+        }
+    }
+
+    [HttpGet("payment/owner-inbound")]
+    public async Task<IActionResult> GetAllOwnerInboundPayments()
+    {
+        try
+        {
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, CurrentOfficeAccess, (int)PaymentKind.OwnerInbound);
+            var response = records.Select(o => new PaymentResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting owner inbound payments");
+            return ServerError("An error occurred while retrieving owner inbound payments");
+        }
+    }
+
+    [HttpGet("payment/owner-inbound/office/{officeId:int}")]
+    public async Task<IActionResult> GetOwnerInboundPaymentsByOfficeId(int officeId)
+    {
+        if (officeId <= 0)
+            return BadRequest("OfficeId is required");
+
+        try
+        {
+            var officeAccess = officeId.ToString();
+            var records = await _accountingRepository.GetPaymentsByOfficeIdsAsync(CurrentOrganizationId, officeAccess, (int)PaymentKind.OwnerInbound);
+            var response = records.Select(o => new PaymentResponseDto(o));
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting owner inbound payments");
+            return ServerError("An error occurred while retrieving owner inbound payments");
         }
     }
 
@@ -268,7 +304,8 @@ public partial class AccountingController
             if (existing == null)
                 return NotFound("Payment record not found");
 
-            if (existing.PaymentKindId != (int)PaymentKind.Owner)
+            if (existing.PaymentKindId != (int)PaymentKind.OwnerOutbound
+                && existing.PaymentKindId != (int)PaymentKind.OwnerInbound)
                 return BadRequest("Invoice and bill payments must be updated through their allocation endpoints.");
 
             var postingStatusCheck = RefuseIfDocumentUpdateNotAllowed(existing.PostingStatusId, "payment");
@@ -578,7 +615,8 @@ public partial class AccountingController
                         postingStatuses.Add(bill.PostingStatusId);
                 }
             }
-            else if (payment.PaymentKindId != (int)PaymentKind.Owner)
+            else if (payment.PaymentKindId != (int)PaymentKind.OwnerOutbound
+                && payment.PaymentKindId != (int)PaymentKind.OwnerInbound)
             {
                 return BadRequest($"Unsupported payment kind: {payment.PaymentKindId}");
             }

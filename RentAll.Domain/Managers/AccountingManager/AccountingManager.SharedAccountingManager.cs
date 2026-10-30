@@ -662,6 +662,16 @@ public partial class AccountingManager : IAccountingManager
         });
     }
 
+    private static bool IsUndepositedPaymentKind(int paymentKindId)
+        => paymentKindId == (int)PaymentKind.Invoice || paymentKindId == (int)PaymentKind.OwnerInbound;
+
+    private async Task<List<Payment>> GetUndepositedPaymentsByOfficeIdsAsync(Guid organizationId, string officeIds)
+    {
+        var invoicePayments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Invoice);
+        var ownerInboundPayments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.OwnerInbound);
+        return invoicePayments.Concat(ownerInboundPayments).ToList();
+    }
+
     public int GetDefaultOwnerAccountsPayable(List<ChartOfAccount> chartOfAccounts, int officeId, AccountingOffice? accountingOffice)
     {
         return ResolveDefaultAccountIdCached(nameof(GetDefaultOwnerAccountsPayable), chartOfAccounts, officeId, null, () =>
@@ -670,14 +680,13 @@ public partial class AccountingManager : IAccountingManager
                 return accountingOffice.DefaultOwnActPayableAccountId.Value;
 
             var account = chartOfAccounts
-                .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
+                .Where(a => a.OfficeId == officeId)
                 .Where(a => a.Name.Contains("Owner", StringComparison.OrdinalIgnoreCase))
+                .Where(a =>
+                    a.Name.Contains("Payable", StringComparison.OrdinalIgnoreCase)
+                    || a.Name.Contains("A/P", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(a => a.AccountId)
-                .FirstOrDefault()
-                ?? chartOfAccounts
-                    .Where(a => a.OfficeId == officeId && a.AccountType == AccountType.AccountsPayable)
-                    .OrderBy(a => a.AccountId)
-                    .FirstOrDefault();
+                .FirstOrDefault();
 
             if (account == null)
                 throw new Exception($"No Owner Accounts Payable chart of account is configured for office {officeId}");

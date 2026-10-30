@@ -498,14 +498,11 @@ public partial class AccountingManager
         {
             return _officeSyncCache.Payments.FirstOrDefault(payment =>
                 payment.IsActive
-                && payment.PaymentKindId == (int)PaymentKind.Invoice
+                && IsUndepositedPaymentKind(payment.PaymentKindId)
                 && EntityCodeFormatting.CodesMatch(payment.PaymentCode, normalizedPaymentCode));
         }
 
-        var payments = await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-            organizationId,
-            officeId.ToString(),
-            (int)PaymentKind.Invoice);
+        var payments = await GetUndepositedPaymentsByOfficeIdsAsync(organizationId, officeId.ToString());
 
         return payments.FirstOrDefault(payment =>
             payment.IsActive
@@ -518,15 +515,12 @@ public partial class AccountingManager
 
         var officePayments = _officeSyncCache != null
             ? _officeSyncCache.Payments
-            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                organizationId,
-                deposit.OfficeId.ToString(),
-                (int)PaymentKind.Invoice)).ToList();
+            : (await GetUndepositedPaymentsByOfficeIdsAsync(organizationId, deposit.OfficeId.ToString())).ToList();
 
         foreach (var payment in officePayments)
         {
             if (payment.IsActive
-                && payment.PaymentKindId == (int)PaymentKind.Invoice
+                && IsUndepositedPaymentKind(payment.PaymentKindId)
                 && payment.DepositId == deposit.DepositId
                 && PaymentMatchesDepositTransactionDate(deposit, payment.PaymentDate))
             {
@@ -582,7 +576,7 @@ public partial class AccountingManager
             var neededSum = unlinkedSplitAmounts.Sum();
             var batchPaymentMatches = new List<Guid>();
             foreach (var candidate in officePayments.Where(candidate =>
-                         candidate.IsActive && candidate.PaymentKindId == (int)PaymentKind.Invoice))
+                         candidate.IsActive && IsUndepositedPaymentKind(candidate.PaymentKindId)))
             {
                 if (candidate.DepositId is { } stampedDepositId
                     && stampedDepositId != Guid.Empty
@@ -662,7 +656,7 @@ public partial class AccountingManager
 
             foreach (var payment in _officeSyncCache.Payments)
             {
-                if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                if (!payment.IsActive || !IsUndepositedPaymentKind(payment.PaymentKindId))
                     continue;
 
                 if (PaymentMatchesInvoiceSourceCode(payment, normalizedSourceCode, cacheMatchedInvoiceIds))
@@ -690,10 +684,7 @@ public partial class AccountingManager
 
         if (repoMatchedInvoiceIds.Count > 0)
         {
-            foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                         organizationId,
-                         officeId.ToString(),
-                         (int)PaymentKind.Invoice))
+            foreach (var payment in await GetUndepositedPaymentsByOfficeIdsAsync(organizationId, officeId.ToString()))
             {
                 if (!payment.IsActive)
                     continue;
@@ -705,12 +696,9 @@ public partial class AccountingManager
             }
         }
 
-        foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                     organizationId,
-                     officeId.ToString(),
-                     (int)PaymentKind.Invoice))
+        foreach (var payment in await GetUndepositedPaymentsByOfficeIdsAsync(organizationId, officeId.ToString()))
         {
-            if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+            if (!payment.IsActive || !IsUndepositedPaymentKind(payment.PaymentKindId))
                 continue;
 
             foreach (var paymentEntry in await GetJournalEntriesByPaymentIdCachedAsync(organizationId, payment.PaymentId))
@@ -747,7 +735,7 @@ public partial class AccountingManager
 
             foreach (var payment in _officeSyncCache.Payments)
             {
-                if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+                if (!payment.IsActive || !IsUndepositedPaymentKind(payment.PaymentKindId))
                     continue;
 
                 if ((payment.LedgerLines ?? []).Any(line =>
@@ -772,10 +760,7 @@ public partial class AccountingManager
         if (reservationInvoiceIds.Count == 0)
             return [];
 
-        foreach (var payment in await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                     organizationId,
-                     officeId.ToString(),
-                     (int)PaymentKind.Invoice))
+        foreach (var payment in await GetUndepositedPaymentsByOfficeIdsAsync(organizationId, officeId.ToString()))
         {
             if (!payment.IsActive)
                 continue;
@@ -797,7 +782,7 @@ public partial class AccountingManager
 
         foreach (var payment in _officeSyncCache.Payments)
         {
-            if (!payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+            if (!payment.IsActive || !IsUndepositedPaymentKind(payment.PaymentKindId))
                 continue;
 
             foreach (var paymentEntry in _officeSyncCache.GetByPaymentId(payment.PaymentId))

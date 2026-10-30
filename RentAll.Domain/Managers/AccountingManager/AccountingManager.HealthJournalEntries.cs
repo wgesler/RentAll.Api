@@ -386,7 +386,9 @@ public partial class AccountingManager
             return;
         }
 
-        if (paymentKindId.HasValue && payment.PaymentKindId != paymentKindId.Value)
+        var invoiceScanIncludesOwnerInbound = paymentKindId == (int)PaymentKind.Invoice
+            && payment.PaymentKindId == (int)PaymentKind.OwnerInbound;
+        if (paymentKindId.HasValue && payment.PaymentKindId != paymentKindId.Value && !invoiceScanIncludesOwnerInbound)
         {
             result.JournalEntriesSkipped++;
             return;
@@ -400,7 +402,8 @@ public partial class AccountingManager
             case PaymentKind.Bill:
                 await SyncBillPaymentJournalEntryAsync(payment, organizationId, currentUser, result);
                 break;
-            case PaymentKind.Owner:
+            case PaymentKind.OwnerOutbound:
+            case PaymentKind.OwnerInbound:
                 await SyncOwnerPaymentJournalEntryAsync(payment, organizationId, currentUser, result);
                 break;
             default:
@@ -604,7 +607,17 @@ public partial class AccountingManager
         foreach (var paymentId in paymentIds)
         {
             var payment = await _accountingRepository.GetPaymentByIdAsync(paymentId, organizationId);
-            if (payment == null || !payment.IsActive || payment.PaymentKindId != (int)PaymentKind.Invoice)
+            if (payment == null || !payment.IsActive)
+                continue;
+
+            if (payment.PaymentKindId == (int)PaymentKind.OwnerInbound)
+            {
+                payment.DepositId = deposit.DepositId;
+                await SyncOwnerPaymentJournalEntryAsync(payment, organizationId, currentUser, result);
+                continue;
+            }
+
+            if (payment.PaymentKindId != (int)PaymentKind.Invoice)
                 continue;
 
             payment.DepositId = deposit.DepositId;

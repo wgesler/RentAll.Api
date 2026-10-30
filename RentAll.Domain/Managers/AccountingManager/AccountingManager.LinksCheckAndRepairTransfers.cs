@@ -485,10 +485,7 @@ public partial class AccountingManager
         if (string.IsNullOrWhiteSpace(paymentSourceCode))
             return null;
 
-        var payments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-            transfer.OrganizationId,
-            transfer.OfficeId.ToString(),
-            (int)PaymentKind.Invoice)).ToList();
+        var payments = (await GetUndepositedPaymentsByOfficeIdsAsync(transfer.OrganizationId, transfer.OfficeId.ToString())).ToList();
 
         var payment = payments
             .Where(row =>
@@ -1103,15 +1100,12 @@ public partial class AccountingManager
 
             var payments = _officeSyncCache != null
                 ? _officeSyncCache.Payments
-                : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                    transfer.OrganizationId,
-                    transfer.OfficeId.ToString(),
-                    (int)PaymentKind.Invoice)).ToList();
+                : (await GetUndepositedPaymentsByOfficeIdsAsync(transfer.OrganizationId, transfer.OfficeId.ToString())).ToList();
 
             var payment = payments
                 .Where(row =>
                     row.IsActive
-                    && row.PaymentKindId == (int)PaymentKind.Invoice
+                    && IsUndepositedPaymentKind(row.PaymentKindId)
                     && EntityCodeFormatting.CodesMatch(row.PaymentCode, paymentSourceCode)
                     && Math.Abs(Math.Abs(RoundCurrency(row.Amount)) - groupAmount) <= 0.005m
                     && row.DepositId is { } stampedDepositId

@@ -191,7 +191,7 @@ public partial class AccountingManager
     private async Task<OfficeAccountingGraph> LoadOfficeAccountingGraphAsync(Guid organizationId, string officeIds)
     {
         var payments = new List<Payment>();
-        foreach (var kind in new[] { PaymentKind.Invoice, PaymentKind.Bill, PaymentKind.Owner })
+        foreach (var kind in new[] { PaymentKind.Invoice, PaymentKind.Bill, PaymentKind.OwnerOutbound, PaymentKind.OwnerInbound })
         {
             var rows = await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)kind);
             payments.AddRange(rows);
@@ -340,6 +340,7 @@ public partial class AccountingManager
             {
                 entries.AddRange(await GetDocumentJournalEntriesForSyncAsync(organizationId, chain.OfficeId, SourceType.InvoicePayment, paymentId));
                 entries.AddRange(await GetDocumentJournalEntriesForSyncAsync(organizationId, chain.OfficeId, SourceType.BillPayment, paymentId));
+                entries.AddRange(await GetDocumentJournalEntriesForSyncAsync(organizationId, chain.OfficeId, SourceType.OwnerInbound, paymentId));
             }
         }
 
@@ -410,7 +411,7 @@ public partial class AccountingManager
             return 0;
         if (sourceType == (int)SourceType.Deposit)
             return 1;
-        if (sourceType == (int)SourceType.InvoicePayment || sourceType == (int)SourceType.BillPayment || sourceType == (int)SourceType.OwnerDistribution)
+        if (sourceType == (int)SourceType.InvoicePayment || sourceType == (int)SourceType.BillPayment || sourceType == (int)SourceType.OwnerDistribution || sourceType == (int)SourceType.OwnerInbound)
             return 2;
         if (entry.TransferId is Guid transferId && transferId != Guid.Empty && (entry.DepositId == null || entry.DepositId == Guid.Empty) && (entry.PaymentId == null || entry.PaymentId == Guid.Empty))
             return 0;

@@ -45,7 +45,7 @@ public partial class AccountingManager
                 PaymentDate = ownerPayments.PaymentDate,
                 Amount = payment.Amount,
                 Description = paymentReference,
-                PaymentKindId = (int)PaymentKind.Owner,
+                PaymentKindId = (int)PaymentKind.OwnerOutbound,
                 PaymentTypeId = (int)payment.PaymentType,
                 ChartOfAccountId = chartOfAccountId,
                 IsActive = true,
@@ -94,12 +94,13 @@ public partial class AccountingManager
     {
         EnsureOwnerPayment(payment);
 
-        if (payment.ChartOfAccountId is not > 0)
+        if (payment.PaymentKindId == (int)PaymentKind.OwnerOutbound && payment.ChartOfAccountId is not > 0)
             throw new ArgumentException("ChartOfAccountId is required.", nameof(payment));
 
         var resolvedAllocations = await ResolveOwnerPaymentAllocationsAsync(payment, allocations);
         ValidateExplicitOwnerPaymentAllocations(payment, resolvedAllocations);
-        payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
+        if (payment.CostCodeId <= 0)
+            payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
 
         Payment? createdPayment = null;
         try
@@ -129,30 +130,33 @@ public partial class AccountingManager
 
         EnsureOwnerPayment(payment);
 
-        if (payment.ChartOfAccountId is not > 0)
+        if (payment.PaymentKindId == (int)PaymentKind.OwnerOutbound && payment.ChartOfAccountId is not > 0)
             throw new ArgumentException("ChartOfAccountId is required.", nameof(payment));
 
         var existing = await _accountingRepository.GetPaymentByIdAsync(payment.PaymentId, payment.OrganizationId)
             ?? throw new Exception("Payment record not found");
 
-        if (existing.PaymentKindId != (int)PaymentKind.Owner)
+        if (existing.PaymentKindId != (int)PaymentKind.OwnerOutbound
+            && existing.PaymentKindId != (int)PaymentKind.OwnerInbound)
             throw new Exception("Payment is not an owner payment.");
+
+        payment.PaymentKindId = existing.PaymentKindId;
 
         var resolvedAllocations = await ResolveOwnerPaymentAllocationsAsync(payment, allocations);
         ValidateExplicitOwnerPaymentAllocations(payment, resolvedAllocations);
 
         payment.PaymentCode = existing.PaymentCode;
         payment.PostingStatusId = await ApplySourceDocumentEditReconcileInvalidationAsync(existing.PostingStatusId, existing.OrganizationId, existing.OfficeId, payment.PaymentDate, default, currentUser, () => LoadJournalEntriesForPaymentDocumentAsync(existing.OrganizationId, existing));
-        payment.CostCodeId = await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
+        if (payment.CostCodeId <= 0)
+            payment.CostCodeId = existing.CostCodeId > 0
+                ? existing.CostCodeId
+                : await ResolveOwnerPaymentCostCodeIdAsync(payment.OrganizationId, payment.OfficeId);
 
         var revertAllocations = existing.OwnerAllocations.ToList();
         var revertPayment = existing;
 
         try
         {
-            await ClearPaymentDocumentLinksAsync(existing.OrganizationId, existing.PaymentId, currentUser);
-            await DeleteJournalEntriesForPaymentAsync(existing);
-
             var updatedPayment = await _accountingRepository.UpdatePaymentWithOwnerAllocationsAsync(payment, resolvedAllocations, currentUser);
             await CreateJournalEntriesFromOwnerPaymentDocumentAsync(updatedPayment.PaymentId, payment.OrganizationId, currentUser);
             await EnsurePaymentPostingStatusComplianceAsync(updatedPayment, currentUser);
@@ -227,7 +231,8 @@ public partial class AccountingManager
 
     private static void EnsureOwnerPayment(Payment payment)
     {
-        if (payment.PaymentKindId != (int)PaymentKind.Owner)
+        if (payment.PaymentKindId != (int)PaymentKind.OwnerOutbound
+            && payment.PaymentKindId != (int)PaymentKind.OwnerInbound)
             throw new ArgumentException("Owner allocations are only supported for owner payments.", nameof(payment));
     }
 

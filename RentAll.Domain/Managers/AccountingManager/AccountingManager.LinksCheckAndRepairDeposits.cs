@@ -1080,12 +1080,9 @@ public partial class AccountingManager
         var candidates = new List<UndepositedPaymentLineCandidate>();
         var payments = _officeSyncCache != null
             ? _officeSyncCache.Payments
-            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                deposit.OrganizationId,
-                deposit.OfficeId.ToString(),
-                (int)PaymentKind.Invoice)).ToList();
+            : (await GetUndepositedPaymentsByOfficeIdsAsync(deposit.OrganizationId, deposit.OfficeId.ToString())).ToList();
 
-        foreach (var payment in payments.Where(payment => payment.IsActive && payment.PaymentKindId == (int)PaymentKind.Invoice))
+        foreach (var payment in payments.Where(payment => payment.IsActive && IsUndepositedPaymentKind(payment.PaymentKindId)))
         {
             if (rematchPaymentIds is { Count: > 0 } && !rematchPaymentIds.Contains(payment.PaymentId))
                 continue;
@@ -1275,15 +1272,12 @@ public partial class AccountingManager
             return _officeSyncCache.Payments
                 .Where(payment =>
                     payment.IsActive
-                    && payment.PaymentKindId == (int)PaymentKind.Invoice
+                    && IsUndepositedPaymentKind(payment.PaymentKindId)
                     && payment.DepositId == deposit.DepositId)
                 .ToList();
         }
 
-        return (await _accountingRepository.GetPaymentsByOfficeIdsAsync(
-                deposit.OrganizationId,
-                deposit.OfficeId.ToString(),
-                (int)PaymentKind.Invoice))
+        return (await GetUndepositedPaymentsByOfficeIdsAsync(deposit.OrganizationId, deposit.OfficeId.ToString()))
             .Where(payment => payment.IsActive && payment.DepositId == deposit.DepositId)
             .ToList();
     }
@@ -1359,8 +1353,8 @@ public partial class AccountingManager
         }
 
         var payments = _officeSyncCache != null
-            ? _officeSyncCache.Payments.Where(payment => payment.IsActive && payment.PaymentKindId == (int)PaymentKind.Invoice && payment.OfficeId == deposit.OfficeId).ToList()
-            : (await _accountingRepository.GetPaymentsByOfficeIdsAsync(deposit.OrganizationId, deposit.OfficeId.ToString(), (int)PaymentKind.Invoice)).Where(payment => payment.IsActive).ToList();
+            ? _officeSyncCache.Payments.Where(payment => payment.IsActive && IsUndepositedPaymentKind(payment.PaymentKindId) && payment.OfficeId == deposit.OfficeId).ToList()
+            : (await GetUndepositedPaymentsByOfficeIdsAsync(deposit.OrganizationId, deposit.OfficeId.ToString())).Where(payment => payment.IsActive).ToList();
 
         Payment? match = null;
         foreach (var payment in payments)

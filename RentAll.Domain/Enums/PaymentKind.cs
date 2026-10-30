@@ -4,5 +4,6 @@ public enum PaymentKind
 {
     Invoice = 0,
     Bill = 1,
-    Owner = 2
+    OwnerOutbound = 2,
+    OwnerInbound = 3
 }

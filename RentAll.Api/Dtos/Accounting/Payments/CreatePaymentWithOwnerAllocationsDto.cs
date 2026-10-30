@@ -11,6 +11,8 @@ public class CreatePaymentWithOwnerAllocationsDto
     public decimal Amount { get; set; }
     public string Description { get; set; } = string.Empty;
     public int? PaymentTypeId { get; set; }
+    public int PaymentKindId { get; set; } = (int)PaymentKind.OwnerOutbound;
+    public int CostCodeId { get; set; }
     public int ChartOfAccountId { get; set; }
     public bool IsActive { get; set; } = true;
     public List<PaymentOwnerAllocationDto> Allocations { get; set; } = new();
@@ -26,7 +28,10 @@ public class CreatePaymentWithOwnerAllocationsDto
         if (PaymentDate == default)
             return (false, "PaymentDate is required");
 
-        if (ChartOfAccountId <= 0)
+        if (PaymentKindId != (int)PaymentKind.OwnerOutbound && PaymentKindId != (int)PaymentKind.OwnerInbound)
+            return (false, "PaymentKindId must be an owner payment");
+
+        if (PaymentKindId == (int)PaymentKind.OwnerOutbound && ChartOfAccountId <= 0)
             return (false, "ChartOfAccountId is required");
 
         if (string.IsNullOrWhiteSpace(Description))
@@ -58,9 +63,10 @@ public class CreatePaymentWithOwnerAllocationsDto
             PaymentDate = PaymentDate,
             Amount = Amount,
             Description = Description,
-            PaymentKindId = (int)PaymentKind.Owner,
+            PaymentKindId = PaymentKindId,
             PaymentTypeId = PaymentTypeId is >= 0 ? PaymentTypeId : null,
-            ChartOfAccountId = ChartOfAccountId,
+            ChartOfAccountId = ChartOfAccountId > 0 ? ChartOfAccountId : null,
+            CostCodeId = CostCodeId,
             IsActive = IsActive,
             CreatedBy = currentUser
         };

@@ -52,7 +52,7 @@ public class HealthController : BaseController
 
     [HttpPost("payment-owner/check")]
     public Task<IActionResult> CheckOwnerPayments([FromBody] HealthCheckRequestDto dto)
-        => RunHealthCheckAsync(dto, (orgId, officeIds) => _healthRepository.RunPaymentHealthCheckAsync(orgId, officeIds, (int)PaymentKind.Owner));
+        => RunHealthCheckAsync(dto, (orgId, officeIds) => _healthRepository.RunPaymentHealthCheckAsync(orgId, officeIds, (int)PaymentKind.OwnerOutbound));
 
     [HttpPost("deposit/check")]
     public Task<IActionResult> CheckDeposits([FromBody] HealthCheckRequestDto dto)
@@ -100,7 +100,7 @@ public class HealthController : BaseController
 
     [HttpPost("payment-owner/fix")]
     public Task<IActionResult> FixOwnerPayments([FromBody] HealthCheckRequestDto dto)
-        => RunHealthFixAsync(dto, "payment", (int)PaymentKind.Owner);
+        => RunHealthFixAsync(dto, "payment", (int)PaymentKind.OwnerOutbound);
 
     [HttpPost("deposit/fix")]
     public Task<IActionResult> FixDeposits([FromBody] HealthCheckRequestDto dto)

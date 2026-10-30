@@ -91,7 +91,8 @@ public partial class AccountingManager
         var sourceType = payment.PaymentKindId switch
         {
             (int)PaymentKind.Bill => SourceType.BillPayment,
-            (int)PaymentKind.Owner => SourceType.OwnerDistribution,
+            (int)PaymentKind.OwnerOutbound => SourceType.OwnerDistribution,
+            (int)PaymentKind.OwnerInbound => SourceType.OwnerInbound,
             _ => SourceType.InvoicePayment
         };
 

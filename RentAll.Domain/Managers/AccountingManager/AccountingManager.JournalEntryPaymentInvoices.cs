@@ -137,7 +137,8 @@ public partial class AccountingManager
             .ThenBy(payment => payment.PaymentId)
             .ToList();
 
-        var ownerPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.Owner))
+        var ownerPayments = (await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.OwnerOutbound))
+            .Concat(await _accountingRepository.GetPaymentsByOfficeIdsAsync(organizationId, officeIds, (int)PaymentKind.OwnerInbound))
             .OrderBy(payment => payment.PaymentDate)
             .ThenBy(payment => payment.PaymentId)
             .ToList();
@@ -273,7 +274,9 @@ public partial class AccountingManager
                         trigger: "OwnerPayment",
                         organizationId: organizationId,
                         officeId: paymentSummary.OfficeId,
-                        sourceTypeId: (int)SourceType.OwnerDistribution,
+                        sourceTypeId: paymentSummary.PaymentKindId == (int)PaymentKind.OwnerInbound
+                            ? (int)SourceType.OwnerInbound
+                            : (int)SourceType.OwnerDistribution,
                         sourceId: paymentSummary.PaymentId,
                         documentCode: paymentSummary.PaymentCode ?? paymentSummary.Description,
                         accountingPeriod: null,
@@ -828,6 +831,19 @@ public partial class AccountingManager
 
         await EnsurePaymentCodePersistedAsync(payment, currentUser);
 
+        var ownerInboundEntryIds = new List<Guid>();
+        if (payment.PaymentKindId == (int)PaymentKind.OwnerInbound)
+        {
+            foreach (var linkedEntry in await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId))
+            {
+                if (linkedEntry.JournalEntryId == Guid.Empty)
+                    continue;
+                if (linkedEntry.SourceTypeId != (int)SourceType.OwnerInbound)
+                    continue;
+                ownerInboundEntryIds.Add(linkedEntry.JournalEntryId);
+            }
+        }
+
         await ClearPaymentDocumentLinksAsync(payment.OrganizationId, payment.PaymentId, currentUser);
 
         Deposit? depositedOn = null;
@@ -860,6 +876,33 @@ public partial class AccountingManager
                 continue;
 
             await StampPaymentDocumentLinkAsync(journalEntry);
+        }
+
+        if (payment.PaymentKindId == (int)PaymentKind.OwnerInbound)
+        {
+            foreach (var journalEntry in await GetDocumentJournalEntriesForSyncAsync(
+                         payment.OrganizationId,
+                         payment.OfficeId,
+                         SourceType.OwnerInbound,
+                         payment.PaymentId))
+            {
+                if (journalEntry.JournalEntryKindId != JournalEntryKind.Payment)
+                    continue;
+
+                ownerInboundEntryIds.Remove(journalEntry.JournalEntryId);
+                await StampPaymentDocumentLinkAsync(journalEntry);
+            }
+
+            foreach (var journalEntryId in ownerInboundEntryIds)
+            {
+                var journalEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(journalEntryId, payment.OrganizationId);
+                if (journalEntry == null || journalEntry.JournalEntryKindId != JournalEntryKind.Payment)
+                    continue;
+                if (journalEntry.SourceTypeId != (int)SourceType.OwnerInbound)
+                    continue;
+
+                await StampPaymentDocumentLinkAsync(journalEntry);
+            }
         }
 
         foreach (var journalEntry in await GetJournalEntriesByPaymentIdCachedAsync(payment.OrganizationId, payment.PaymentId))
