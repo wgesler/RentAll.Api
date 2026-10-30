@@ -36,6 +36,10 @@ public class CreateAccountingOfficeDto
     public int HardClosedMonth { get; set; } = 12;
     public int HardClosedYear { get; set; } = 2020;
     public int WorkOrderNo { get; set; }
+    public decimal VisaFeePercentage { get; set; }
+    public decimal McFeePercentage { get; set; }
+    public decimal AmexFeePercentage { get; set; }
+    public decimal DiscoverFeePercentage { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
@@ -187,6 +191,10 @@ public class CreateAccountingOfficeDto
             HardClosedMonth = HardClosedMonth,
             HardClosedYear = HardClosedYear,
             WorkOrderNo = WorkOrderNo,
+            VisaFeePercentage = VisaFeePercentage,
+            McFeePercentage = McFeePercentage,
+            AmexFeePercentage = AmexFeePercentage,
+            DiscoverFeePercentage = DiscoverFeePercentage,
             DefaultTenantIncAccountId = DefaultTenantIncAccountId,
             DefaultTenantExpAccountId = DefaultTenantExpAccountId,
             DefaultOwnerIncAccountId = DefaultOwnerIncAccountId,

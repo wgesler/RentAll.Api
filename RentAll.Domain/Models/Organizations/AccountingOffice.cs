@@ -34,6 +34,10 @@ public class AccountingOffice
     public int HardClosedMonth { get; set; } = 12;
     public int HardClosedYear { get; set; } = 2020;
     public int WorkOrderNo { get; set; }
+    public decimal VisaFeePercentage { get; set; }
+    public decimal McFeePercentage { get; set; }
+    public decimal AmexFeePercentage { get; set; }
+    public decimal DiscoverFeePercentage { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }

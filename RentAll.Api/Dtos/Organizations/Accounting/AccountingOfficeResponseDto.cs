@@ -38,6 +38,10 @@ public class AccountingOfficeResponseDto
     public int HardClosedMonth { get; set; }
     public int HardClosedYear { get; set; }
     public int WorkOrderNo { get; set; }
+    public decimal VisaFeePercentage { get; set; }
+    public decimal McFeePercentage { get; set; }
+    public decimal AmexFeePercentage { get; set; }
+    public decimal DiscoverFeePercentage { get; set; }
     public int? DefaultTenantIncAccountId { get; set; }
     public int? DefaultTenantExpAccountId { get; set; }
     public int? DefaultOwnerIncAccountId { get; set; }
@@ -108,6 +112,10 @@ public class AccountingOfficeResponseDto
         HardClosedMonth = accountingOffice.HardClosedMonth;
         HardClosedYear = accountingOffice.HardClosedYear;
         WorkOrderNo = accountingOffice.WorkOrderNo;
+        VisaFeePercentage = accountingOffice.VisaFeePercentage;
+        McFeePercentage = accountingOffice.McFeePercentage;
+        AmexFeePercentage = accountingOffice.AmexFeePercentage;
+        DiscoverFeePercentage = accountingOffice.DiscoverFeePercentage;
         DefaultTenantIncAccountId = accountingOffice.DefaultTenantIncAccountId;
         DefaultTenantExpAccountId = accountingOffice.DefaultTenantExpAccountId;
         DefaultOwnerIncAccountId = accountingOffice.DefaultOwnerIncAccountId;
