@@ -145,7 +145,7 @@ public class CreateExternalReservationDto
         if (CheckOutTimeId.HasValue && !Enum.IsDefined(typeof(CheckOutTime), CheckOutTimeId.Value))
             errors.Add($"checkOutTimeId must be 1=8AM through 8=3PM. Received {CheckOutTimeId.Value}.");
         if (BillingMethodId.HasValue && !Enum.IsDefined(typeof(BillingMethod), BillingMethodId.Value))
-            errors.Add($"billingMethodId must be 0=Invoice or 1=CreditCard. Received {BillingMethodId.Value}.");
+            errors.Add($"billingMethodId must be 0=Invoice, 1=AchDebit, 2=Realtime, 3=CreditCardVisa, 4=CreditCardMc, 5=CreditCardAmex, or 6=CreditCardDiscover. Received {BillingMethodId.Value}.");
         if (ProrateTypeId.HasValue && !Enum.IsDefined(typeof(ProrateType), ProrateTypeId.Value))
             errors.Add($"prorateTypeId must be 0=FirstMonth or 1=SecondMonth. Received {ProrateTypeId.Value}.");
         if (ResolvedHasPets)
