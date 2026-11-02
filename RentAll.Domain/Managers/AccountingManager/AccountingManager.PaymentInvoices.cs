@@ -1441,21 +1441,14 @@ public partial class AccountingManager
 
     private async Task<decimal> GetCreditCardSurchargePercentageAsync(Reservation reservation)
     {
-        if (reservation.BillingMethod is not (BillingMethod.CreditCardVisa or BillingMethod.CreditCardMc or BillingMethod.CreditCardAmex or BillingMethod.CreditCardDiscover))
+        if (!BillingMethodHelper.IsCreditCard(reservation.BillingMethod))
             return 0;
 
         var accountingOffice = await _organizationRepository.GetAccountingOfficeByIdAsync(reservation.OrganizationId, reservation.OfficeId);
         if (accountingOffice == null)
             return 0;
 
-        return reservation.BillingMethod switch
-        {
-            BillingMethod.CreditCardVisa => accountingOffice.VisaFeePercentage,
-            BillingMethod.CreditCardMc => accountingOffice.McFeePercentage,
-            BillingMethod.CreditCardAmex => accountingOffice.AmexFeePercentage,
-            BillingMethod.CreditCardDiscover => accountingOffice.DiscoverFeePercentage,
-            _ => 0
-        };
+        return accountingOffice.GetCreditCardFeePercentage(reservation.BillingMethod);
     }
 
     private async Task TryAddCompanyMarkupOrReferralLedgerLineAsync(Reservation reservation, List<LedgerLine> ledgerLines, IReadOnlyDictionary<int, CostCode> costCodeById)

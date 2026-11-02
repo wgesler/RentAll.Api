@@ -10,3 +10,14 @@ public enum BillingMethod
     CreditCardAmex = 5,
     CreditCardDiscover = 6
 }
+
+public static class BillingMethodHelper
+{
+    public static bool IsCreditCard(BillingMethod billingMethod)
+    {
+        return billingMethod is BillingMethod.CreditCardVisa
+            or BillingMethod.CreditCardMc
+            or BillingMethod.CreditCardAmex
+            or BillingMethod.CreditCardDiscover;
+    }
+}

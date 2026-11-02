@@ -1,3 +1,5 @@
+using RentAll.Domain.Enums;
+
 namespace RentAll.Domain.Models;
 
 public class AccountingOffice
@@ -71,4 +73,19 @@ public class AccountingOffice
     public Guid ModifiedBy { get; set; }
     public List<BankCard> BankCards { get; set; } = new();
     public List<BankAccount> Banks { get; set; } = new();
+
+    public decimal GetCreditCardFeePercentage(BillingMethod billingMethod)
+    {
+        if (!BillingMethodHelper.IsCreditCard(billingMethod))
+            return 0;
+
+        return billingMethod switch
+        {
+            BillingMethod.CreditCardVisa => VisaFeePercentage,
+            BillingMethod.CreditCardMc => McFeePercentage,
+            BillingMethod.CreditCardAmex => AmexFeePercentage,
+            BillingMethod.CreditCardDiscover => DiscoverFeePercentage,
+            _ => 0
+        };
+    }
 }
