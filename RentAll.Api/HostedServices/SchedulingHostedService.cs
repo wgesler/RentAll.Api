@@ -68,6 +68,7 @@ public class SchedulingHostedService : BackgroundService
 
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
+        await ProcessExpiredAlertsAsync(emailRepository, cancellationToken);
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, loggingRepository, cancellationToken);
         await ProcessDepartureFeesAsync(organizationRepository, accountingManager, cancellationToken);
         await ProcessLinenAndTowelFeesAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
@@ -76,6 +77,21 @@ public class SchedulingHostedService : BackgroundService
     }
 
     #region Alerts
+    private async Task ProcessExpiredAlertsAsync(IEmailRepository emailRepository, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var todayLocal = DateOnly.FromDateTime(DateTimeOffset.UtcNow.LocalDateTime);
+            await emailRepository.DeleteExpiredAlertsAsync(todayLocal);
+            _logger.LogInformation("Expired alert cleanup deleted alerts before {AsOfDate}", todayLocal);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Expired alert cleanup failed");
+        }
+    }
+
     private async Task ProcessScheduledAlertsAsync(
         IOrganizationRepository organizationRepository,
         IEmailRepository emailRepository,

@@ -20,6 +20,7 @@ public class AlertEntity
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }

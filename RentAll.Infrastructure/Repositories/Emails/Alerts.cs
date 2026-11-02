@@ -108,6 +108,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = entity.PlainTextContent,
                 EmailTypeId = entity.EmailTypeId,
                 StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
                 DaysBeforeDeparture = entity.DaysBeforeDeparture,
                 FrequencyId = entity.FrequencyId,
                 EmailStatusId = entity.EmailStatusId,
@@ -147,6 +148,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = entity.PlainTextContent,
                 EmailTypeId = entity.EmailTypeId,
                 StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
                 DaysBeforeDeparture = entity.DaysBeforeDeparture,
                 FrequencyId = entity.FrequencyId,
                 IsActive = entity.IsActive,
@@ -185,6 +187,15 @@ namespace RentAll.Infrastructure.Repositories.Emails
         #endregion
 
         #region Deletes
+        public async Task DeleteExpiredAlertsAsync(DateOnly asOfDate)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Email.Alert_DeleteExpired", new
+            {
+                AsOfDate = asOfDate
+            });
+        }
+
         public async Task DeleteAlertByIdAsync(Guid alertId, Guid organizationId)
         {
             await using var db = new SqlConnection(_dbConnectionString);

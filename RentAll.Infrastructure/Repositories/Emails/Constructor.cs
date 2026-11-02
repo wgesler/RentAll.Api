@@ -183,6 +183,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = e.PlainTextContent,
                 EmailType = (EmailType)e.EmailTypeId,
                 StartDate = e.StartDate,
+                EndDate = e.EndDate,
                 DaysBeforeDeparture = e.DaysBeforeDeparture,
                 Frequency = (FrequencyType)e.FrequencyId,
                 EmailStatus = (EmailStatus)e.EmailStatusId,
@@ -221,6 +222,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = model.PlainTextContent,
                 EmailTypeId = (int)model.EmailType,
                 StartDate = model.StartDate,
+                EndDate = model.EndDate,
                 DaysBeforeDeparture = model.DaysBeforeDeparture,
                 FrequencyId = (int)model.Frequency,
                 EmailStatusId = (int)model.EmailStatus,
@@ -258,6 +260,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 PlainTextContent = row.PlainTextContent,
                 EmailTypeId = row.EmailTypeId,
                 StartDate = row.StartDate,
+                EndDate = row.EndDate,
                 DaysBeforeDeparture = row.DaysBeforeDeparture,
                 FrequencyId = row.FrequencyId,
                 EmailStatusId = row.EmailStatusId,
@@ -414,6 +417,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public string PlainTextContent { get; set; } = string.Empty;
             public int EmailTypeId { get; set; }
             public DateOnly? StartDate { get; set; }
+            public DateOnly? EndDate { get; set; }
             public int? DaysBeforeDeparture { get; set; }
             public int FrequencyId { get; set; }
             public int EmailStatusId { get; set; }

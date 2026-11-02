@@ -19,6 +19,7 @@ public class UpdateAlertDto
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }
@@ -76,6 +77,9 @@ public class UpdateAlertDto
         if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
             return (false, $"Invalid EmailType value: {EmailTypeId}");
 
+        if (StartDate.HasValue && EndDate.HasValue && EndDate.Value < StartDate.Value)
+            return (false, "EndDate must be on or after StartDate");
+
         if (DaysBeforeDeparture.HasValue && DaysBeforeDeparture.Value < 0)
             return (false, "DaysBeforeDeparture cannot be negative");
 
@@ -126,6 +130,7 @@ public class UpdateAlertDto
         existing.PlainTextContent = PlainTextContent;
         existing.EmailType = (EmailType)EmailTypeId;
         existing.StartDate = StartDate;
+        existing.EndDate = EndDate;
         existing.DaysBeforeDeparture = DaysBeforeDeparture;
         existing.Frequency = (FrequencyType)FrequencyId;
         existing.EmailStatus = (EmailStatus)EmailStatusId;

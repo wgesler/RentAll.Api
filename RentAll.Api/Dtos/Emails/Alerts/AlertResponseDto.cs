@@ -20,6 +20,7 @@ public class AlertResponseDto
     public string PlainTextContent { get; set; } = string.Empty;
     public int EmailTypeId { get; set; }
     public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public DateOnly? NextAlertDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public int FrequencyId { get; set; }
@@ -52,6 +53,7 @@ public class AlertResponseDto
         PlainTextContent = alert.PlainTextContent;
         EmailTypeId = (int)alert.EmailType;
         StartDate = alert.StartDate;
+        EndDate = alert.EndDate;
         NextAlertDate = alert.NextAlertDate;
         DaysBeforeDeparture = alert.DaysBeforeDeparture;
         FrequencyId = (int)alert.Frequency;

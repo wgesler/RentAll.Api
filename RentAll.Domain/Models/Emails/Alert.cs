@@ -23,6 +23,7 @@ public class Alert
     public string PlainTextContent { get; set; } = string.Empty;
     public EmailType EmailType { get; set; } = EmailType.Other;
     public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
     public DateOnly? NextAlertDate { get; set; }
     public FrequencyType Frequency { get; set; }

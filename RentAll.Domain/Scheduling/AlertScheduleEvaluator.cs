@@ -16,6 +16,16 @@ public static class AlertScheduleEvaluator
 
     public static DateOnly? GetNextAlertDate(Alert alert, DateTimeOffset utcNow)
     {
+        var next = CalculateNextAlertDate(alert, utcNow);
+        if (alert.EndDate.HasValue && CalendarDate(utcNow) > alert.EndDate.Value)
+            return null;
+        if (next.HasValue && alert.EndDate.HasValue && next.Value > alert.EndDate.Value)
+            return null;
+        return next;
+    }
+
+    private static DateOnly? CalculateNextAlertDate(Alert alert, DateTimeOffset utcNow)
+    {
         if (alert.Frequency == FrequencyType.NA)
             return null;
 
@@ -54,6 +64,8 @@ public static class AlertScheduleEvaluator
             return false;
 
         var today = CalendarDate(utcNow);
+        if (alert.EndDate.HasValue && today > alert.EndDate.Value)
+            return false;
 
         // Same UTC calendar day as last attempt while still "Attempting" — avoid hammering SendGrid.
         if (alert.EmailStatus == EmailStatus.Attempting &&
