@@ -261,7 +261,7 @@ public partial class AccountingController
 
         if (dto.HealthFix)
         {
-            _logger.LogError(
+            _logger.LogInformation(
                 "[HealthFixTrace] Start SyncType={SyncType} PaymentKindId={PaymentKindId} DocumentCount={DocumentCount}",
                 syncType,
                 dto.PaymentKindId,

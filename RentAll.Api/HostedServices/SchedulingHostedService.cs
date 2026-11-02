@@ -84,7 +84,7 @@ public class SchedulingHostedService : BackgroundService
         {
             var todayLocal = DateOnly.FromDateTime(DateTimeOffset.UtcNow.LocalDateTime);
             var deleted = await emailRepository.DeleteExpiredAlertsAsync(todayLocal);
-            _logger.LogError("[AlertCleanup] AsOf={AsOfDate} Deleted={Deleted}", todayLocal, deleted);
+            _logger.LogInformation("[AlertCleanup] AsOf={AsOfDate} Deleted={Deleted}", todayLocal, deleted);
         }
         catch (Exception ex)
         {

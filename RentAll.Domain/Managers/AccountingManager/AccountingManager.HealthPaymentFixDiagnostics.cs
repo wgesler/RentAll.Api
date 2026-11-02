@@ -18,7 +18,7 @@ public partial class AccountingManager
         var transferCode = string.IsNullOrWhiteSpace(transfer.TransferCode)
             ? transfer.TransferId.ToString()
             : transfer.TransferCode.Trim();
-        _logger.LogError(
+        _logger.LogInformation(
             "{Prefix} Step={Step} TransferCode={TransferCode} TransferId={TransferId} Reason={Reason}{Detail}",
             HealthPaymentFixTracePrefix,
             step,
@@ -37,7 +37,7 @@ public partial class AccountingManager
         var paymentCode = string.IsNullOrWhiteSpace(payment.PaymentCode)
             ? payment.PaymentId.ToString()
             : payment.PaymentCode.Trim();
-        _logger.LogError(
+        _logger.LogInformation(
             "{Prefix} Step={Step} PaymentCode={PaymentCode} PaymentId={PaymentId} Reason={Reason}{Detail}",
             HealthPaymentFixTracePrefix,
             step,

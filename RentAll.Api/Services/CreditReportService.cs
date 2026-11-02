@@ -76,12 +76,12 @@ public class CreditReportService
         {
             var skippedReceipts = receipts.RemoveAll(receipt => IsAssociatedWithOtherCard(receipt.BankCardId, bankCards, statementCardTypeId.Value));
             var skippedDrafts = drafts.RemoveAll(draft => IsAssociatedWithOtherCard(draft.BankCardId, bankCards, statementCardTypeId.Value));
-            _logger.LogError("[CreditReportTrace] Step=CardTypeFilter CardType={CardType} SkippedReceipts={SkippedReceipts} SkippedDrafts={SkippedDrafts}", (CardType)statementCardTypeId.Value, skippedReceipts, skippedDrafts);
+            _logger.LogInformation("[CreditReportTrace] Step=CardTypeFilter CardType={CardType} SkippedReceipts={SkippedReceipts} SkippedDrafts={SkippedDrafts}", (CardType)statementCardTypeId.Value, skippedReceipts, skippedDrafts);
         }
 
         var aliases = (await _maintenanceRepository.GetReceiptMatchesByOrganizationIdAsync(dto.OrganizationId)).ToList();
         var billPayments = await LoadCardBillPaymentsAsync(dto.OrganizationId, officeIds, dateRange.StartDate, dateRange.EndDate, bankCards, statementCardTypeId);
-        _logger.LogError("[CreditReportTrace] Step=Extracted LineCount={LineCount} OfficeId={OfficeId} AliasCount={AliasCount} BillPayments={BillPayments}", extraction.Lines.Count, dto.OfficeId, aliases.Count, billPayments.Count);
+        _logger.LogInformation("[CreditReportTrace] Step=Extracted LineCount={LineCount} OfficeId={OfficeId} AliasCount={AliasCount} BillPayments={BillPayments}", extraction.Lines.Count, dto.OfficeId, aliases.Count, billPayments.Count);
         var receiptMatches = AssignClosestMatches(extraction.Lines, receipts, receipt => receipt.ReceiptId, (line, receipt) =>
         {
             var statementVendor = ResolveStatementVendor(line.VendorName, vendors, aliases);
@@ -137,7 +137,7 @@ public class CreditReportService
         foreach (var draft in drafts.Where(draft => !usedDraftIds.Contains(draft.ReceiptDraftId) && draft.BankCardId > 0))
             response.UnknownMatches.Add(CreditReportResponseDto.FromExisting(null, draft, LookupCard(draft.BankCardId, bankCards)));
 
-        _logger.LogError("[CreditReportTrace] Step=Complete Complete={Complete} BillPayments={BillPayments} DraftMatches={DraftMatches} Proposed={Proposed} Unknown={Unknown}", response.CompleteMatches.Count, billPaymentMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count, response.UnknownMatches.Count);
+        _logger.LogInformation("[CreditReportTrace] Step=Complete Complete={Complete} BillPayments={BillPayments} DraftMatches={DraftMatches} Proposed={Proposed} Unknown={Unknown}", response.CompleteMatches.Count, billPaymentMatches.Count, response.DraftMatches.Count, response.CreatedDrafts.Count, response.UnknownMatches.Count);
         return response;
     }
 
@@ -173,7 +173,7 @@ public class CreditReportService
             await _maintenanceRepository.UpdateReceiptMatchAsync(found);
         }
 
-        _logger.LogError("[CreditReportTrace] Step=SaveMatches Count={Count}", dto.Matches?.Count ?? 0);
+        _logger.LogInformation("[CreditReportTrace] Step=SaveMatches Count={Count}", dto.Matches?.Count ?? 0);
     }
 
     public async Task OverwriteMatchedVendorNameAsync(Guid organizationId, string? previousName, string? vendorName, Guid? vendorId)
@@ -221,7 +221,7 @@ public class CreditReportService
             response.CreatedDrafts.Add(CreditReportResponseDto.FromLine(line, draft: created, vendorId: created.VendorId, bankCardId: created.BankCardId, cardTypeId: line.CardTypeId, resolvedCard: bankCard));
         }
 
-        _logger.LogError("[CreditReportTrace] Step=CreateDrafts Created={Created}", response.CreatedDrafts.Count);
+        _logger.LogInformation("[CreditReportTrace] Step=CreateDrafts Created={Created}", response.CreatedDrafts.Count);
         return response;
     }
 
@@ -247,7 +247,7 @@ public class CreditReportService
         if (string.IsNullOrWhiteSpace(updated.BankCardDisplayName))
             updated.BankCardDisplayName = card.DisplayName;
 
-        _logger.LogError("[CreditReportTrace] Step=CorrectCard ReceiptId={ReceiptId} ReceiptCode={ReceiptCode} BankCardId={BankCardId}", updated.ReceiptId, updated.ReceiptCode, updated.BankCardId);
+        _logger.LogInformation("[CreditReportTrace] Step=CorrectCard ReceiptId={ReceiptId} ReceiptCode={ReceiptCode} BankCardId={BankCardId}", updated.ReceiptId, updated.ReceiptCode, updated.BankCardId);
         return updated;
     }
 
@@ -258,7 +258,7 @@ public class CreditReportService
 
         draft.ModifiedBy = currentUser;
         var updated = await _maintenanceRepository.UpdateReceiptDraftAsync(draft);
-        _logger.LogError("[CreditReportTrace] Step=EnrichDraft DraftId={DraftId} DraftCode={DraftCode} VendorId={VendorId} BankCardId={BankCardId}", updated.ReceiptDraftId, updated.DraftCode, updated.VendorId, updated.BankCardId);
+        _logger.LogInformation("[CreditReportTrace] Step=EnrichDraft DraftId={DraftId} DraftCode={DraftCode} VendorId={VendorId} BankCardId={BankCardId}", updated.ReceiptDraftId, updated.DraftCode, updated.VendorId, updated.BankCardId);
         return updated;
     }
 

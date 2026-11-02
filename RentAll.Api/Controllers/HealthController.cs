@@ -165,7 +165,7 @@ public class HealthController : BaseController
 
         try
         {
-            _logger.LogError(
+            _logger.LogInformation(
                 "[HealthFixTrace] Fix SyncType={SyncType} PaymentKindId={PaymentKindId} OfficeIds={OfficeIds}",
                 syncType,
                 paymentKindId,
@@ -209,7 +209,7 @@ public class HealthController : BaseController
 
         try
         {
-            _logger.LogError("[HealthFixTrace] Fix SyncType=documentLinks OfficeIds={OfficeIds}", officeIds);
+            _logger.LogInformation("[HealthFixTrace] Fix SyncType=documentLinks OfficeIds={OfficeIds}", officeIds);
             var result = await _accountingManager.RepairDocumentLinksForHealthFixAsync(CurrentOrganizationId, officeIds, CurrentUser);
             return Ok(new JournalEntrySyncResultDto(result));
         }

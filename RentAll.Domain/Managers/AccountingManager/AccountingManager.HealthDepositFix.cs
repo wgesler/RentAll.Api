@@ -921,7 +921,7 @@ public partial class AccountingManager
 
     private void LogHealthDepositFixTrace(Deposit deposit, string step, string? detail = null)
     {
-        _logger.LogError(
+        _logger.LogInformation(
             "{Prefix} Step={Step} DepositCode={DepositCode} DepositId={DepositId}{Detail}",
             HealthDepositFixTracePrefix,
             step,

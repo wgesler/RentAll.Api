@@ -56,7 +56,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
 
         if (IsTargetLogo(content))
         {
-            _logger.LogError("[ReceiptExtractTrace] Step=TargetLogo VendorName=Target");
+            _logger.LogInformation("[ReceiptExtractTrace] Step=TargetLogo VendorName=Target");
             return new ReceiptDocumentExtraction { VendorName = "Target" };
         }
 
@@ -68,7 +68,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             new Uri(endpoint),
             new DefaultAzureCredential());
 
-        _logger.LogError(
+        _logger.LogInformation(
             "[ReceiptExtractTrace] Step=Analyze Start ContentType={ContentType} ContentLength={ContentLength}",
             contentType,
             content.Length);
@@ -126,7 +126,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         if (!string.IsNullOrWhiteSpace(cardLastFour) && !cardTypeId.HasValue)
             warnings.Add($"Card ending {cardLastFour} was detected but card type was unclear.");
 
-        _logger.LogError(
+        _logger.LogInformation(
             "[ReceiptExtractTrace] Step=Analyze Complete ReceiptDate={ReceiptDate} Amount={Amount} Total={Total} Subtotal={Subtotal} Tax={Tax} VendorName={VendorName} CardLastFour={CardLastFour} CardTypeId={CardTypeId} PropertyCodes={PropertyCodes} ItemCount={ItemCount}",
             transactionDate,
             amount,
@@ -513,7 +513,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         foreach (var fieldName in W9FormParser.QueryFields)
             options.QueryFields.Add(fieldName);
 
-        _logger.LogError(
+        _logger.LogInformation(
             "[W9ExtractTrace] Step=Analyze Start ContentType={ContentType} ContentLength={ContentLength}",
             contentType,
             content.Length);
@@ -522,7 +522,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var fields = ReadW9QueryFields(operation.Value);
         AddW9KeyValueFields(operation.Value, fields);
         var extraction = W9FormParser.Parse(fields, BuildW9Text(operation.Value));
-        _logger.LogError(
+        _logger.LogInformation(
             "[W9ExtractTrace] Step=Analyze Complete TaxClassificationId={TaxClassificationId} OwnerIdTypeId={OwnerIdTypeId} HasTin={HasTin} WarningCount={WarningCount} FieldKeys={FieldKeys} ContentLength={ContentLength} HasSelectedMark={HasSelectedMark}",
             extraction.FederalTaxClassificationId,
             extraction.OwnerIdTypeId,
@@ -672,7 +672,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         {
             var pdfText = CreditCardStatementPdfReader.ReadLines(content);
             var pdfExtraction = CreditCardStatementLineParser.ParseTables([], pdfText);
-            _logger.LogError("[CreditReportTrace] Step=PdfText LineCount={LineCount} TextLength={TextLength}", pdfExtraction.Lines.Count, pdfText.Length);
+            _logger.LogInformation("[CreditReportTrace] Step=PdfText LineCount={LineCount} TextLength={TextLength}", pdfExtraction.Lines.Count, pdfText.Length);
             return pdfExtraction;
         }
 
@@ -684,14 +684,14 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             throw new InvalidOperationException("Document Intelligence endpoint is not configured.");
 
         var client = new DocumentIntelligenceClient(new Uri(endpoint), new DefaultAzureCredential());
-        _logger.LogError("[CreditReportTrace] Step=Analyze Start ContentType={ContentType} FileName={FileName} ContentLength={ContentLength}", contentType, fileName, content.Length);
+        _logger.LogInformation("[CreditReportTrace] Step=Analyze Start ContentType={ContentType} FileName={FileName} ContentLength={ContentLength}", contentType, fileName, content.Length);
 
         var operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, PrebuiltLayoutModelId, BinaryData.FromBytes(content), cancellationToken: cancellationToken);
         var analyzeResult = operation.Value;
         var fullText = analyzeResult.Content ?? string.Empty;
         var tables = BuildTablesFromAnalyzeResult(analyzeResult);
         var extraction = CreditCardStatementLineParser.ParseTables(tables, fullText);
-        _logger.LogError("[CreditReportTrace] Step=Analyze Complete LineCount={LineCount} CardLastFour={CardLastFour} WarningCount={WarningCount}", extraction.Lines.Count, extraction.StatementCardLastFour, extraction.Warnings.Count);
+        _logger.LogInformation("[CreditReportTrace] Step=Analyze Complete LineCount={LineCount} CardLastFour={CardLastFour} WarningCount={WarningCount}", extraction.Lines.Count, extraction.StatementCardLastFour, extraction.Warnings.Count);
         return extraction;
     }
 

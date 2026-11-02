@@ -374,7 +374,7 @@ public class AzureBlobStorageService : IFileService
     {
         if (IsProtectedContainer(blobClient.BlobContainerName))
         {
-            _logger.LogError(
+            _logger.LogInformation(
                 "[StorageGuard] Step=SkipDelete Container={Container} Path={Path}",
                 blobClient.BlobContainerName,
                 filePath);
@@ -709,7 +709,7 @@ public class AzureBlobStorageService : IFileService
         var (containerName, blobName) = parsed.Value;
         if (IsProtectedContainer(containerName))
         {
-            _logger.LogError("[StorageGuard] Step=SkipRestore Container={Container} Path={Path}", containerName, originalPath);
+            _logger.LogInformation("[StorageGuard] Step=SkipRestore Container={Container} Path={Path}", containerName, originalPath);
             return;
         }
 

@@ -195,7 +195,7 @@ public partial class ContactController
         if (saved != null)
             return cardId;
 
-        _logger.LogError("[ContactSaveTrace] Step=DropMissingCard ContactCardId={ContactCardId} OfficeId={OfficeId}", cardId, officeId);
+        _logger.LogInformation("[ContactSaveTrace] Step=DropMissingCard ContactCardId={ContactCardId} OfficeId={OfficeId}", cardId, officeId);
         return null;
     }
 
