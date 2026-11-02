@@ -66,9 +66,9 @@ public class SchedulingHostedService : BackgroundService
         var accountingManager = scope.ServiceProvider.GetRequiredService<IAccountingManager>();
         var loggingRepository = scope.ServiceProvider.GetRequiredService<ILoggingRepository>();
 
+        await ProcessExpiredAlertsAsync(emailRepository, cancellationToken);
         await ProcessRetireExpiredListingLinksAsync(propertyRepository, cancellationToken);
         await ProcessRetireExpiredOwnerFormLinksAsync(leadRepository, cancellationToken);
-        await ProcessExpiredAlertsAsync(emailRepository, cancellationToken);
         await ProcessScheduledAlertsAsync(organizationRepository, emailRepository, reservationRepository, emailManager, loggingRepository, cancellationToken);
         await ProcessDepartureFeesAsync(organizationRepository, accountingManager, cancellationToken);
         await ProcessLinenAndTowelFeesAsync(organizationRepository, propertyRepository, accountingManager, cancellationToken);
@@ -83,8 +83,8 @@ public class SchedulingHostedService : BackgroundService
         try
         {
             var todayLocal = DateOnly.FromDateTime(DateTimeOffset.UtcNow.LocalDateTime);
-            await emailRepository.DeleteExpiredAlertsAsync(todayLocal);
-            _logger.LogInformation("Expired alert cleanup deleted alerts before {AsOfDate}", todayLocal);
+            var deleted = await emailRepository.DeleteExpiredAlertsAsync(todayLocal);
+            _logger.LogError("[AlertCleanup] AsOf={AsOfDate} Deleted={Deleted}", todayLocal, deleted);
         }
         catch (Exception ex)
         {

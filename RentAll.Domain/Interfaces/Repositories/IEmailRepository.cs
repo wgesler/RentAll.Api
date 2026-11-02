@@ -30,6 +30,6 @@ public interface IEmailRepository
     Task<Alert> UpdateAlertByIdAsync(Alert alert);
     Task<Alert> UpdateAlertEmailStatusAsync(Alert alert);
     Task DeleteAlertByIdAsync(Guid alertId, Guid organizationId);
-    Task DeleteExpiredAlertsAsync(DateOnly asOfDate);
+    Task<int> DeleteExpiredAlertsAsync(DateOnly asOfDate);
     #endregion
 }

@@ -1,6 +1,8 @@
+using Dapper;
 using Microsoft.Data.SqlClient;
 using RentAll.Domain.Models;
 using RentAll.Infrastructure.Configuration;
+using System.Data;
 
 namespace RentAll.Infrastructure.Repositories.Emails
 {
@@ -187,13 +189,13 @@ namespace RentAll.Infrastructure.Repositories.Emails
         #endregion
 
         #region Deletes
-        public async Task DeleteExpiredAlertsAsync(DateOnly asOfDate)
+        public async Task<int> DeleteExpiredAlertsAsync(DateOnly asOfDate)
         {
             await using var db = new SqlConnection(_dbConnectionString);
-            await db.DapperProcExecuteAsync("Email.Alert_DeleteExpired", new
-            {
-                AsOfDate = asOfDate
-            });
+            return await db.QuerySingleAsync<int>(
+                "Email.Alert_DeleteExpired",
+                new { AsOfDate = asOfDate.ToDateTime(TimeOnly.MinValue) },
+                commandType: CommandType.StoredProcedure);
         }
 
         public async Task DeleteAlertByIdAsync(Guid alertId, Guid organizationId)
