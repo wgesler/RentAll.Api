@@ -50,44 +50,17 @@ public class UpdateAlertDto
         if (!officeIds.Contains(OfficeId))
             return (false, "OfficeId not valid");
 
-        if (ToRecipients.Count == 0)
-            return (false, "At least one ToRecipient is required");
-
-        if (string.IsNullOrWhiteSpace(FromRecipient.Email))
-            return (false, "FromRecipient.Email is required");
-
-        if (!ToRecipients.All(recipient => IsValidEmail(recipient.Email)))
-            return (false, "One or more ToRecipients have invalid email addresses");
-
-        if (!IsValidEmail(FromRecipient.Email))
-            return (false, "FromRecipient.Email is not a valid email address");
-
-        if (!CcRecipients.All(recipient => string.IsNullOrWhiteSpace(recipient.Email) || IsValidEmail(recipient.Email)))
-            return (false, "One or more CcRecipients have invalid email addresses");
-
-        if (!BccRecipients.All(recipient => string.IsNullOrWhiteSpace(recipient.Email) || IsValidEmail(recipient.Email)))
-            return (false, "One or more BccRecipients have invalid email addresses");
+        if (ToRecipients.Count == 0 || !ToRecipients.All(recipient => IsValidEmail(recipient.Email)))
+            return (false, "A valid To address is required");
 
         if (string.IsNullOrWhiteSpace(Subject))
             return (false, "Subject is required");
 
-        if (string.IsNullOrWhiteSpace(PlainTextContent))
-            return (false, "PlainTextContent is required");
+        if (!StartDate.HasValue)
+            return (false, "StartDate is required");
 
-        if (!Enum.IsDefined(typeof(EmailType), EmailTypeId))
-            return (false, $"Invalid EmailType value: {EmailTypeId}");
-
-        if (StartDate.HasValue && EndDate.HasValue && EndDate.Value < StartDate.Value)
-            return (false, "EndDate must be on or after StartDate");
-
-        if (DaysBeforeDeparture.HasValue && DaysBeforeDeparture.Value < 0)
-            return (false, "DaysBeforeDeparture cannot be negative");
-
-        if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId))
-            return (false, $"Invalid Frequency value: {FrequencyId}");
-
-        if (!Enum.IsDefined(typeof(EmailStatus), EmailStatusId))
-            return (false, $"Invalid EmailStatus value: {EmailStatusId}");
+        if (!Enum.IsDefined(typeof(FrequencyType), FrequencyId) || FrequencyId == (int)FrequencyType.NA)
+            return (false, "Frequency is required");
 
         return (true, null);
     }
@@ -116,7 +89,7 @@ public class UpdateAlertDto
         existing.PropertyId = PropertyId;
         existing.ReservationId = ReservationId;
         existing.TicketId = TicketId;
-        existing.FromRecipient = EmailAddress.Create(FromRecipient.Email, FromRecipient.Name);
+        existing.FromRecipient = EmailAddress.Create(FromRecipient.Email ?? string.Empty, FromRecipient.Name);
         existing.ToRecipients = ToRecipients
             .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
             .ToList();
@@ -127,7 +100,7 @@ public class UpdateAlertDto
             .Select(recipient => EmailAddress.Create(recipient.Email, recipient.Name))
             .ToList();
         existing.Subject = Subject;
-        existing.PlainTextContent = PlainTextContent;
+        existing.PlainTextContent = PlainTextContent ?? string.Empty;
         existing.EmailType = (EmailType)EmailTypeId;
         existing.StartDate = StartDate;
         existing.EndDate = EndDate;
