@@ -846,6 +846,99 @@ public class AccountingManagerReservationInvoicePreviewTests
         Assert.Equal(expectedRent, previews[0].TotalAmount);
     }
 
+    [Fact]
+    public async Task GetMissingInvoicesAsync_FirstThirtyDayLineCrossingIntoAugust_DoesNotRebillAugustSlice()
+    {
+        var arrival = new DateOnly(2026, 7, 11);
+        var firstThirtyEnd = arrival.AddDays(29);
+        var departure = new DateOnly(2026, 9, 30);
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            arrival,
+            departure,
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            3000m);
+        reservation.ReservationCode = "STL-000411";
+        reservation.CurrentInvoiceNo = 1;
+        reservation.OfficeName = "Test Office";
+        var existingInvoice = CreateExistingInvoice(reservation, "STL-000411-001", new DateOnly(2026, 7, 1));
+        existingInvoice.InvoicePeriod = $"{arrival:MM/dd/yyyy} - {firstThirtyEnd:MM/dd/yyyy}";
+        existingInvoice.LedgerLines =
+        [
+            new LedgerLine
+            {
+                Description = $"Rental Fee ({arrival:MM/dd}-{firstThirtyEnd:MM/dd})",
+                Amount = 3000m
+            }
+        ];
+
+        var manager = CreatePreviewManager(
+            reservation,
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync([existingInvoice]);
+            });
+
+        var previews = await manager.GetMissingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        var august = previews.SingleOrDefault(preview => preview.AccountingPeriod == new DateOnly(2026, 8, 1));
+        Assert.NotNull(august);
+        Assert.DoesNotContain(
+            august!.LedgerLines,
+            line => line.Description != null && line.Description.Contains("08/01", StringComparison.Ordinal));
+        Assert.Contains(
+            august.LedgerLines,
+            line => line.Description == "Rental Fee (08/10-08/31)");
+    }
+
+    [Fact]
+    public async Task GetMissingInvoicesAsync_PaidFirstThirtyDaysThroughAugust9_OmitsAugustRow()
+    {
+        var arrival = new DateOnly(2026, 7, 11);
+        var departure = new DateOnly(2026, 8, 9);
+        var reservation = AccountingManagerJournalEntryTestSupport.CreateReservation(
+            arrival,
+            departure,
+            ProrateType.SecondMonth,
+            BillingType.Monthly,
+            5200m);
+        reservation.ReservationCode = "R-000000411";
+        reservation.CurrentInvoiceNo = 1;
+        reservation.OfficeName = "St Louis";
+        var existingInvoice = CreateExistingInvoice(reservation, "R-000000411-001", new DateOnly(2026, 7, 1));
+        existingInvoice.InvoiceDate = new DateOnly(2026, 7, 1);
+        existingInvoice.TotalAmount = 5850m;
+        existingInvoice.PaidAmount = 5850m;
+        existingInvoice.LedgerLines =
+        [
+            new LedgerLine { Description = "Rental Fee (07/11-08/09)", Amount = 5850m },
+            new LedgerLine { Description = "Check 07/11-07/31", Amount = 4095m },
+            new LedgerLine { Description = "Check 08/01-08/09", Amount = 1755m }
+        ];
+
+        var manager = CreatePreviewManager(
+            reservation,
+            invoiceStart: new DateOnly(2026, 8, 1),
+            configureAccountingRepository: repo =>
+            {
+                repo
+                    .Setup(r => r.GetInvoicesAsync(It.IsAny<InvoiceGetCriteria>()))
+                    .ReturnsAsync([existingInvoice]);
+            });
+
+        var previews = await manager.GetMissingInvoicesAsync(
+            AccountingManagerJournalEntryTestSupport.OrganizationId,
+            AccountingManagerJournalEntryTestSupport.OfficeId.ToString(),
+            AccountingManagerJournalEntryTestSupport.CurrentUser);
+
+        Assert.DoesNotContain(previews, preview => preview.AccountingPeriod.Month == 8);
+    }
+
     private static Invoice CreateExistingInvoice(Reservation reservation, string invoiceCode, DateOnly accountingPeriod)
         => new()
         {

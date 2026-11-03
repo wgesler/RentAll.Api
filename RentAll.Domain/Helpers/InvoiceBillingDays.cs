@@ -12,7 +12,7 @@ namespace RentAll.Domain.Helpers;
 public static class InvoiceBillingDays
 {
     private static readonly Regex RentalFeePeriodRegex = new(
-        @"^Rental Fee \((?<start>\d{2}/\d{2})-(?<end>\d{2}/\d{2})\)",
+        @"^Rental Fee\s*\(\s*(?<start>\d{1,2}/\d{1,2})\s*[\u002D\u2010\u2011\u2012\u2013\u2014\u2212]\s*(?<end>\d{1,2}/\d{1,2})\s*\)",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static int CalculateNumberOfDays(

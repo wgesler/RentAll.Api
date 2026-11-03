@@ -181,6 +181,50 @@ public class RentalFeeLineParserTests
     }
 
     [Fact]
+    public void CalculateDaysBilledForBillingPeriod_FirstThirtyDaysOnJulyInvoiceCoversAugustSlice()
+    {
+        var reservation = CreateReservation(BillingType.Monthly, new DateOnly(2026, 8, 9));
+        reservation.ArrivalDate = new DateOnly(2026, 7, 11);
+        var invoices = new[]
+        {
+            BuildInvoice(reservation.ReservationId, new DateOnly(2026, 7, 1), "07/11/2026 - 08/09/2026", [
+                new LedgerLine { Description = "Rental Fee (07/11-08/09)", Amount = 5850m },
+                new LedgerLine { Description = "Check 07/11-07/31", Amount = 4095m },
+                new LedgerLine { Description = "Check 08/01-08/09", Amount = 1755m }
+            ])
+        };
+
+        var daysBilled = RentalFeeLineParser.CalculateDaysBilledForBillingPeriod(
+            invoices,
+            reservation,
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 9),
+            new DateOnly(2026, 8, 9));
+
+        var gaps = RentalFeeLineParser.FindUncoveredBillingRangesForPeriod(
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 9),
+            invoices,
+            new DateOnly(2026, 8, 1));
+
+        Assert.Equal(9, daysBilled);
+        Assert.Empty(gaps);
+    }
+
+    [Fact]
+    public void TryParseRentalFeePeriod_AcceptsEnDash()
+    {
+        Assert.True(InvoiceBillingDays.TryParseRentalFeePeriod(
+            "Rental Fee (07/11\u201308/09)",
+            2026,
+            out var start,
+            out var end));
+        Assert.Equal(new DateOnly(2026, 7, 11), start);
+        Assert.Equal(new DateOnly(2026, 8, 9), end);
+    }
+
+    [Fact]
     public void CalculateDaysBilledFromInvoices_CountsRentalLineWithRateSuffixAndNegativeAmount()
     {
         var reservation = CreateReservation(BillingType.Monthly);
