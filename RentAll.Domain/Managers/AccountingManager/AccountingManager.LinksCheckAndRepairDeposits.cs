@@ -383,6 +383,9 @@ public partial class AccountingManager
         if (line.ChartOfAccountId == undepositedFundsAccountId)
             return false;
 
+        if (IsOwnerStatementPaymentDepositSplit(split))
+            return await IsValidOwnerStatementPaymentDepositSplitAsync(deposit, split, line, payment, paymentJournalEntry);
+
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
         if (accountsReceivableAccountId <= 0 || line.ChartOfAccountId != accountsReceivableAccountId)
@@ -409,6 +412,61 @@ public partial class AccountingManager
             return false;
 
         return true;
+    }
+
+    private async Task<bool> IsValidOwnerStatementPaymentDepositSplitAsync(Deposit deposit, DepositSplit split, JournalEntryLine line, Payment? payment, JournalEntry paymentJournalEntry)
+    {
+        if (payment == null)
+            return false;
+
+        if (payment.PaymentKindId is not ((int)PaymentKind.OwnerInbound or (int)PaymentKind.OwnerOutbound))
+            return false;
+
+        if (paymentJournalEntry.JournalEntryKindId is not (JournalEntryKind.Payment or JournalEntryKind.BillPayment))
+            return false;
+
+        if (paymentJournalEntry.PaymentId is not { } paymentId || paymentId == Guid.Empty)
+            return false;
+
+        if (!DepositSplitMatchesUndepositedLineAmount(split, line.Debit - line.Credit))
+            return false;
+
+        if (!OwnerStatementPaymentMemoMatches(split.Description, line.Memo, paymentJournalEntry.Memo))
+            return false;
+
+        var linePropertyId = NormalizeOptionalGuid(line.PropertyId);
+        var splitPropertyId = NormalizeOptionalGuid(split.PropertyId);
+        if (linePropertyId != null && splitPropertyId != null && linePropertyId != splitPropertyId)
+            return false;
+
+        if (await SplitLineContextMatchesResolvedLineAsync(split.PropertyId, split.ReservationId, line, deposit.OrganizationId, BuildLinkContextHintsFromDepositSplit(split), paymentJournalEntry))
+            return true;
+
+        return linePropertyId == null;
+    }
+
+    private static bool IsOwnerStatementPaymentDepositSplit(DepositSplit split)
+    {
+        var description = (split.Description ?? string.Empty).Trim();
+        const string marker = ": Owner: Payment:";
+        var markerIndex = description.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex <= 0)
+            return false;
+
+        var prefix = description[..markerIndex].Trim();
+        return prefix.Length > 0 && !Regex.IsMatch(prefix, @"^R-\d+-\d+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    private static bool OwnerStatementPaymentMemoMatches(string? splitDescription, string? lineMemo, string? journalEntryMemo)
+    {
+        var splitText = (splitDescription ?? string.Empty).Trim();
+        if (splitText.Length == 0)
+            return false;
+
+        var lineText = (lineMemo ?? string.Empty).Trim();
+        var entryText = (journalEntryMemo ?? string.Empty).Trim();
+        return splitText.Equals(lineText, StringComparison.OrdinalIgnoreCase)
+            || splitText.Equals(entryText, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsValidPaymentAllocationDepositSplitLinkLine(DepositSplit split, JournalEntryLine line, JournalEntry paymentJournalEntry)

@@ -85,6 +85,10 @@ public partial class MaintenanceController
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(created.OrganizationId, office?.Name, created.ReceiptPath, ImageType.Receipts);
             return Ok(response);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating receipt draft");
@@ -249,6 +253,10 @@ public partial class MaintenanceController
             var response = new ReceiptDraftResponseDto(updated);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
             return Ok(response);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {

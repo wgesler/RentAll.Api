@@ -1,5 +1,6 @@
 using RentAll.Api.Dtos.Maintenances.Receipts;
 using RentAll.Api.Services;
+using RentAll.Infrastructure.Services;
 
 namespace RentAll.Api.Controllers;
 
@@ -135,6 +136,9 @@ public partial class MaintenanceController
 
         try
         {
+            if (ReceiptFileRules.IsWordDocument(dto.FileDetails!.FileName, dto.FileDetails.ContentType))
+                return BadRequest(ReceiptFileRules.ConvertWordToPdfMessage);
+
             var fileBytes = ReceiptDocumentExtractionHelper.GetFileBytes(dto.FileDetails!);
             var contentType = string.IsNullOrWhiteSpace(dto.FileDetails!.ContentType)
                 ? "application/octet-stream"
@@ -278,6 +282,10 @@ public partial class MaintenanceController
 
             return Ok(response);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating receipt");
@@ -331,6 +339,10 @@ public partial class MaintenanceController
             var response = new ReceiptResponseDto(updated);
             response.FileDetails = await _fileAttachmentHelper.GetImageDetailsForResponseAsync(updated.OrganizationId, null, updated.ReceiptPath, ImageType.Receipts);
             return Ok(response);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {

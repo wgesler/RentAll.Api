@@ -29,6 +29,7 @@ public class FileService : IFileService
     #region Images
     public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, string fileContent, string fileName, string contentType, ImageType imageType, string? propertyCode = null)
     {
+        ReceiptFileRules.RejectWordDocument(fileName, contentType);
         // Handle base64 encoded content
         byte[] fileBytes;
         if (fileContent.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
@@ -59,7 +60,7 @@ public class FileService : IFileService
 
     public async Task<string> SaveImageAsync(Guid organizationId, string? officeName, Stream fileStream, string fileName, string contentType, ImageType imageType, string? propertyCode = null)
     {
-        // Validate file type
+        ReceiptFileRules.RejectWordDocument(fileName, contentType);
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf", ".heic", ".heif" };
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
