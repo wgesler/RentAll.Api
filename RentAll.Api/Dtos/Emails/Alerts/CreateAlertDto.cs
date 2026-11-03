@@ -20,6 +20,7 @@ public class CreateAlertDto
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
+    public bool MatchDepartureDate { get; set; }
     public int FrequencyId { get; set; }
     public bool IsActive { get; set; } = true;
 
@@ -97,6 +98,7 @@ public class CreateAlertDto
             StartDate = StartDate,
             EndDate = EndDate,
             DaysBeforeDeparture = DaysBeforeDeparture,
+            MatchDepartureDate = MatchDepartureDate,
             Frequency = (FrequencyType)FrequencyId,
             EmailStatus = EmailStatus.Unsent,
             IsActive = IsActive,

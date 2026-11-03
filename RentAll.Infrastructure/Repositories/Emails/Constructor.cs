@@ -185,6 +185,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 StartDate = e.StartDate,
                 EndDate = e.EndDate,
                 DaysBeforeDeparture = e.DaysBeforeDeparture,
+                MatchDepartureDate = e.MatchDepartureDate,
                 Frequency = (FrequencyType)e.FrequencyId,
                 EmailStatus = (EmailStatus)e.EmailStatusId,
                 AttemptCount = e.AttemptCount,
@@ -224,6 +225,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 StartDate = model.StartDate,
                 EndDate = model.EndDate,
                 DaysBeforeDeparture = model.DaysBeforeDeparture,
+                MatchDepartureDate = model.MatchDepartureDate,
                 FrequencyId = (int)model.Frequency,
                 EmailStatusId = (int)model.EmailStatus,
                 AttemptCount = model.AttemptCount,
@@ -262,6 +264,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 StartDate = row.StartDate,
                 EndDate = row.EndDate,
                 DaysBeforeDeparture = row.DaysBeforeDeparture,
+                MatchDepartureDate = row.MatchDepartureDate,
                 FrequencyId = row.FrequencyId,
                 EmailStatusId = row.EmailStatusId,
                 AttemptCount = row.AttemptCount,
@@ -419,6 +422,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
             public DateOnly? StartDate { get; set; }
             public DateOnly? EndDate { get; set; }
             public int? DaysBeforeDeparture { get; set; }
+            public bool MatchDepartureDate { get; set; }
             public int FrequencyId { get; set; }
             public int EmailStatusId { get; set; }
             public int AttemptCount { get; set; }

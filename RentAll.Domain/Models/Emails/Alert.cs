@@ -25,6 +25,7 @@ public class Alert
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
+    public bool MatchDepartureDate { get; set; }
     public DateOnly? NextAlertDate { get; set; }
     public FrequencyType Frequency { get; set; }
     public EmailStatus EmailStatus { get; set; } = EmailStatus.Unsent;

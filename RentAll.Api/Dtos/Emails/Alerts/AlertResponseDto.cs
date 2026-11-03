@@ -23,6 +23,7 @@ public class AlertResponseDto
     public DateOnly? EndDate { get; set; }
     public DateOnly? NextAlertDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
+    public bool MatchDepartureDate { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }
     public int AttemptCount { get; set; }
@@ -56,6 +57,7 @@ public class AlertResponseDto
         EndDate = alert.EndDate;
         NextAlertDate = alert.NextAlertDate;
         DaysBeforeDeparture = alert.DaysBeforeDeparture;
+        MatchDepartureDate = alert.MatchDepartureDate;
         FrequencyId = (int)alert.Frequency;
         EmailStatusId = (int)alert.EmailStatus;
         AttemptCount = alert.AttemptCount;

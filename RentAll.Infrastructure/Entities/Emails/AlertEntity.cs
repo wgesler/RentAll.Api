@@ -22,6 +22,7 @@ public class AlertEntity
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public int? DaysBeforeDeparture { get; set; }
+    public bool MatchDepartureDate { get; set; }
     public int FrequencyId { get; set; }
     public int EmailStatusId { get; set; }
     public int AttemptCount { get; set; }

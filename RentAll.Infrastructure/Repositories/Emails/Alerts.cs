@@ -112,6 +112,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 StartDate = entity.StartDate,
                 EndDate = entity.EndDate,
                 DaysBeforeDeparture = entity.DaysBeforeDeparture,
+                MatchDepartureDate = entity.MatchDepartureDate,
                 FrequencyId = entity.FrequencyId,
                 EmailStatusId = entity.EmailStatusId,
                 AttemptCount = entity.AttemptCount,
@@ -152,6 +153,7 @@ namespace RentAll.Infrastructure.Repositories.Emails
                 StartDate = entity.StartDate,
                 EndDate = entity.EndDate,
                 DaysBeforeDeparture = entity.DaysBeforeDeparture,
+                MatchDepartureDate = entity.MatchDepartureDate,
                 FrequencyId = entity.FrequencyId,
                 IsActive = entity.IsActive,
                 ModifiedBy = entity.ModifiedBy
