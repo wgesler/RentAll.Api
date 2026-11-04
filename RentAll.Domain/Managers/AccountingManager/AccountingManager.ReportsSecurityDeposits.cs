@@ -193,14 +193,11 @@ public partial class AccountingManager
         }
 
         var appliedAmount = await ApplySecurityDepositToOutstandingInvoicesAsync(reservation, officeAccess, collectedAmount, paymentDate, currentUser);
-        var refundableAmount = RoundSecurityDepositAmount(Math.Max(0m, collectedAmount - appliedAmount));
-        var refundAmount = amount > 0
-            ? RoundSecurityDepositAmount(Math.Min(amount, refundableAmount))
-            : amount;
-        if (refundAmount == 0 && appliedAmount <= 0)
+        var escrowAmount = RoundSecurityDepositAmount(Math.Max(0m, collectedAmount));
+        if (escrowAmount == 0 && appliedAmount <= 0)
             throw new Exception("Payment amount cannot be zero");
 
-        if (refundAmount != 0)
+        if (escrowAmount != 0)
         {
             var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, reservation.OfficeId);
@@ -215,7 +212,7 @@ public partial class AccountingManager
                 escrowSecurityDepositAccountId,
                 office?.SecurityDepositCcId,
                 memo,
-                refundAmount,
+                escrowAmount,
                 paymentDate,
                 currentUser);
 
