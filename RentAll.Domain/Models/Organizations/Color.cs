@@ -7,4 +7,5 @@ public class Colour
     public int ReservationStatusId { get; set; }
     public int? NoticeDays { get; set; }
     public string Color { get; set; } = string.Empty;
+    public bool StatusEnabled { get; set; }
 }

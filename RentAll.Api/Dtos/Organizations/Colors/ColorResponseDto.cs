@@ -7,6 +7,7 @@ public class ColorResponseDto
     public int ReservationStatusId { get; set; }
     public int? NoticeDays { get; set; }
     public string Color { get; set; } = string.Empty;
+    public bool StatusEnabled { get; set; }
 
     public ColorResponseDto(Colour c)
     {
@@ -15,5 +16,6 @@ public class ColorResponseDto
         ReservationStatusId = c.ReservationStatusId;
         NoticeDays = c.NoticeDays;
         Color = c.Color;
+        StatusEnabled = c.StatusEnabled;
     }
 }

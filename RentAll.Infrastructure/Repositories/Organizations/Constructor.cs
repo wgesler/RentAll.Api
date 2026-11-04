@@ -327,6 +327,18 @@ public partial class OrganizationRepository : IOrganizationRepository
     }
     #endregion
 
+    #region ReservationStatusSettings
+    private ReservationStatusSetting ConvertEntityToModel(ReservationStatusSettingEntity e)
+    {
+        return new ReservationStatusSetting
+        {
+            OrganizationId = e.OrganizationId,
+            ReservationStatusId = e.ReservationStatusId,
+            IsEnabled = e.IsEnabled
+        };
+    }
+    #endregion
+
     #region Colors
     private Colour ConvertEntityToModel(ColorEntity e)
     {
@@ -336,7 +348,8 @@ public partial class OrganizationRepository : IOrganizationRepository
             OrganizationId = e.OrganizationId,
             ReservationStatusId = e.ReservationStatusId,
             NoticeDays = e.NoticeDays,
-            Color = e.Color
+            Color = e.Color,
+            StatusEnabled = e.StatusEnabled
         };
     }
     #endregion

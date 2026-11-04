@@ -98,6 +98,12 @@ public interface IOrganizationRepository
     Task DeletePartnerSharesByOrganizationIdAsync(Guid organizationId);
     #endregion
 
+    #region ReservationStatusSettings
+    Task<IEnumerable<ReservationStatusSetting>> GetReservationStatusSettingsByOrganizationIdAsync(Guid organizationId);
+    Task<ReservationStatusSetting?> GetReservationStatusSettingAsync(Guid organizationId, int reservationStatusId);
+    Task<ReservationStatusSetting?> UpdateReservationStatusSettingAsync(Guid organizationId, int reservationStatusId, bool isEnabled);
+    #endregion
+
     #region Colors
     Task<IEnumerable<Colour>> GetColorsByOrganizationIdAsync(Guid organizationId);
     Task<Colour?> GetColorByIdAsync(int colorId, Guid organizationId);

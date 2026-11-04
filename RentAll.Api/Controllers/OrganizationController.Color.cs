@@ -55,6 +55,31 @@ namespace RentAll.Api.Controllers
             return Ok();
         }
 
+        [HttpPut("color/status-enabled")]
+        public async Task<IActionResult> UpdateStatusEnabled([FromBody] UpdateStatusEnabledDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Status setting is required");
+
+            var (isValid, errorMessage) = dto.IsValid();
+            if (!isValid)
+                return BadRequest(errorMessage ?? "Invalid request data");
+
+            try
+            {
+                var updated = await _organizationRepository.UpdateReservationStatusSettingAsync(CurrentOrganizationId, dto.ReservationStatusId, dto.StatusEnabled);
+                if (updated == null)
+                    return NotFound("Reservation status setting not found");
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating reservation status setting");
+                return ServerError("An error occurred while updating the reservation status setting");
+            }
+        }
+
         #endregion
 
     }
