@@ -365,32 +365,35 @@ public partial class AccountingManager
         result.JournalEntries.Add(upsertedPaymentEntry);
         await DeleteClaimedOrphanJournalEntriesAsync(mainCashWorkingEntries, payment.OrganizationId, payment.PaymentId);
 
-        foreach (var application in applications)
+        if (payment.PaymentTypeId != (int)PaymentType.SecurityDeposit)
         {
-            var invoiceLabel = application.Invoice.InvoiceCode;
-            var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
-                application.Invoice.OrganizationId,
-                application.Invoice.OfficeId,
-                application.Invoice,
-                application.PaymentLedgerLine);
-            result.Note(
-                $"Invoice {invoiceLabel}: memo-matched existing payment-flow JEs={existingPaymentEntries.Count} "
-                + $"[{string.Join(", ", existingPaymentEntries.Select(entry => $"{entry.JournalEntryCode}/k{(int)entry.JournalEntryKindId}/PayId={entry.PaymentId}"))}]");
-
-            var paymentResult = await UpsertInvoicePaymentSideEffectsAsync(
-                application.Invoice,
-                application.PaymentLedgerLine,
-                existingPaymentEntries,
-                currentUser,
-                createMainCashJournalEntry: false);
-
-            if (paymentResult.HasWarning)
-                result.Bail($"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects warning: {paymentResult.Warning}");
-
-            if (paymentResult.JournalEntry != null
-                && !result.JournalEntries.Any(entry => entry.JournalEntryId == paymentResult.JournalEntry.JournalEntryId))
+            foreach (var application in applications)
             {
-                result.JournalEntries.Add(paymentResult.JournalEntry);
+                var invoiceLabel = application.Invoice.InvoiceCode;
+                var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                    application.Invoice.OrganizationId,
+                    application.Invoice.OfficeId,
+                    application.Invoice,
+                    application.PaymentLedgerLine);
+                result.Note(
+                    $"Invoice {invoiceLabel}: memo-matched existing payment-flow JEs={existingPaymentEntries.Count} "
+                    + $"[{string.Join(", ", existingPaymentEntries.Select(entry => $"{entry.JournalEntryCode}/k{(int)entry.JournalEntryKindId}/PayId={entry.PaymentId}"))}]");
+
+                var paymentResult = await UpsertInvoicePaymentSideEffectsAsync(
+                    application.Invoice,
+                    application.PaymentLedgerLine,
+                    existingPaymentEntries,
+                    currentUser,
+                    createMainCashJournalEntry: false);
+
+                if (paymentResult.HasWarning)
+                    result.Bail($"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects warning: {paymentResult.Warning}");
+
+                if (paymentResult.JournalEntry != null
+                    && !result.JournalEntries.Any(entry => entry.JournalEntryId == paymentResult.JournalEntry.JournalEntryId))
+                {
+                    result.JournalEntries.Add(paymentResult.JournalEntry);
+                }
             }
         }
 
@@ -407,13 +410,24 @@ public partial class AccountingManager
             throw new Exception("At least one invoice allocation is required.");
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(payment.OrganizationId, payment.OfficeId);
-        var undepositedFundsAccountId = GetDefaultUndepositedFunds(chartOfAccounts, payment.OfficeId, accountingOffice);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, payment.OfficeId, accountingOffice);
-        if (undepositedFundsAccountId <= 0 || accountsReceivableAccountId <= 0)
-            throw new Exception(
-                $"Cannot create Payment JE: DefaultUndepFundsAccountId={undepositedFundsAccountId}, DefaultActRcvableAccountId={accountsReceivableAccountId}.");
-
+        var isSecurityDepositApplication = payment.PaymentTypeId == (int)PaymentType.SecurityDeposit;
         var costCodeById = await LoadCostCodeByOfficeIdAsync(payment.OrganizationId, payment.OfficeId);
+        int debitAccountId;
+        if (isSecurityDepositApplication)
+        {
+            var (office, _) = await LoadOfficeCostCodeContextAsync(payment.OrganizationId, payment.OfficeId);
+            debitAccountId = GetDefaultSecurityDepositAccount(chartOfAccounts, payment.OfficeId, office, costCodeById, accountingOffice);
+        }
+        else
+        {
+            debitAccountId = GetDefaultUndepositedFunds(chartOfAccounts, payment.OfficeId, accountingOffice);
+        }
+
+        if (debitAccountId <= 0 || accountsReceivableAccountId <= 0)
+            throw new Exception(
+                $"Cannot create Payment JE: DebitAccountId={debitAccountId}, DefaultActRcvableAccountId={accountsReceivableAccountId}.");
+
         if (!costCodeById.TryGetValue(payment.CostCodeId, out var paymentCostCode) || !IsPaymentLedgerLine(paymentCostCode))
             throw new Exception("Payment must use a payment cost code");
 
@@ -461,7 +475,7 @@ public partial class AccountingManager
 
         var undepositedFundsLine = new JournalEntryLine
         {
-            ChartOfAccountId = undepositedFundsAccountId,
+            ChartOfAccountId = debitAccountId,
             CostCodeId = payment.CostCodeId,
             Debit = ufAmount > 0 ? ufAmount : 0,
             Credit = ufAmount < 0 ? Math.Abs(ufAmount) : 0,

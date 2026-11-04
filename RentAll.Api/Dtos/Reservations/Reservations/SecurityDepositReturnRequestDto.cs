@@ -23,9 +23,6 @@ public class SecurityDepositReturnRequestDto
         if (!Enum.IsDefined(typeof(PaymentType), PaymentTypeId))
             return (false, $"Invalid PaymentType value: {PaymentTypeId}");
 
-        if (Amount == 0)
-            return (false, "No payment submitted");
-
         return (true, null);
     }
 }

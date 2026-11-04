@@ -8,5 +8,6 @@ public enum PaymentType
     OnlineBanking = 3,
     WireTransfer = 4,
     CreditCard = 5,
-    CreditCardRefund = 6
+    CreditCardRefund = 6,
+    SecurityDeposit = 7
 }
