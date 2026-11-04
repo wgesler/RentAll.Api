@@ -88,7 +88,7 @@ public class CreateExternalReservationDto
         if (!ReservationStatusId.HasValue)
             errors.Add("reservationStatusId is required.");
         else if (!Enum.IsDefined(typeof(ReservationStatus), ReservationStatusId.Value))
-            errors.Add($"reservationStatusId must be 0=PreBooking through 8=Offline. Received {ReservationStatusId.Value}.");
+            errors.Add($"reservationStatusId must be 0=PreBooking through 10=Offline. Received {ReservationStatusId.Value}.");
         if (!ReservationNoticeId.HasValue)
             errors.Add("reservationNoticeId is required.");
         else if (!Enum.IsDefined(typeof(ReservationNotice), ReservationNoticeId.Value))

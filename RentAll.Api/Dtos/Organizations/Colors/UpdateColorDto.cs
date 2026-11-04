@@ -10,7 +10,7 @@ public class UpdateColorDto
 
     public (bool IsValid, string? ErrorMessage) IsValid()
     {
-        if (ColorId <= 0)
+        if (ColorId < 0)
             return (false, "Color ID is required");
 
         if (OrganizationId == Guid.Empty)
