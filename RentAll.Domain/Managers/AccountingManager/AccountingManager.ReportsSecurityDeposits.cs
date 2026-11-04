@@ -193,10 +193,14 @@ public partial class AccountingManager
         }
 
         var appliedAmount = await ApplySecurityDepositToOutstandingInvoicesAsync(reservation, officeAccess, collectedAmount, paymentDate, currentUser);
-        if (amount == 0 && appliedAmount <= 0)
+        var refundableAmount = RoundSecurityDepositAmount(Math.Max(0m, collectedAmount - appliedAmount));
+        var refundAmount = amount > 0
+            ? RoundSecurityDepositAmount(Math.Min(amount, refundableAmount))
+            : amount;
+        if (refundAmount == 0 && appliedAmount <= 0)
             throw new Exception("Payment amount cannot be zero");
 
-        if (amount != 0)
+        if (refundAmount != 0)
         {
             var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);
             var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, reservation.OfficeId);
@@ -211,7 +215,7 @@ public partial class AccountingManager
                 escrowSecurityDepositAccountId,
                 office?.SecurityDepositCcId,
                 memo,
-                amount,
+                refundAmount,
                 paymentDate,
                 currentUser);
 
@@ -341,7 +345,10 @@ public partial class AccountingManager
     {
         var invoices = await GetInvoicesForReservationsAsync(reservation.OrganizationId, reservation.OfficeId, [reservation.ReservationId]);
         var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(reservation.OrganizationId, reservation.OfficeId);
-        var owedAmount = CalculateReservationOutstandingOwedAmount(invoices, costCodeById);
+        var outstandingCharges = BuildOutstandingChargeLines(invoices, costCodeById)
+            .Where(line => line.InvoiceId is { } invoiceId && invoiceId != Guid.Empty)
+            .ToList();
+        var owedAmount = RoundSecurityDepositAmount(outstandingCharges.Sum(line => line.Amount));
         var applyCap = RoundSecurityDepositAmount(Math.Min(Math.Max(owedAmount, 0m), Math.Max(collectedAmount, 0m)));
         var existingPayments = await GetSecurityDepositApplicationPaymentsAsync(reservation.OrganizationId, invoices);
         var alreadyApplied = RoundSecurityDepositAmount(existingPayments.Sum(payment => payment.Amount));
@@ -354,8 +361,7 @@ public partial class AccountingManager
         var paymentCostCodeId = ResolveSecurityDepositApplicationPaymentCostCodeId(costCodeById, reservation.OfficeId);
         var description = $"{reservation.ReservationCode.Trim()}: Security Deposit";
         var allocations = new List<PaymentInvoiceAllocation>();
-        foreach (var group in BuildOutstandingChargeLines(invoices, costCodeById)
-            .Where(line => line.InvoiceId is { } invoiceId && invoiceId != Guid.Empty)
+        foreach (var group in outstandingCharges
             .GroupBy(line => line.InvoiceId!.Value)
             .Select(group => new
             {
@@ -364,7 +370,6 @@ public partial class AccountingManager
                 LineDate = group.Min(line => line.LineDate),
                 InvoiceCode = group.Select(line => line.InvoiceCode).FirstOrDefault() ?? string.Empty
             })
-            .Where(group => group.Amount > 0)
             .OrderBy(group => group.LineDate)
             .ThenBy(group => group.InvoiceCode))
         {
@@ -1234,9 +1239,7 @@ public partial class AccountingManager
 
     private static decimal CalculateReservationOutstandingOwedAmount(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        var chargeTotal = CalculateReservationNonSecurityDepositChargeTotal(invoices, costCodeById);
-        var paymentTotal = CalculateReservationInvoicePaymentTotal(invoices, costCodeById);
-        return Math.Max(0m, RoundSecurityDepositAmount(chargeTotal - paymentTotal));
+        return RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById).Sum(line => line.Amount));
     }
 
     private static List<ReservationChargeLineBalance> CalculateReservationChargeLineBalances(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
