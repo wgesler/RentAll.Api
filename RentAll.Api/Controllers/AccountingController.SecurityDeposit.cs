@@ -76,38 +76,6 @@ public partial class AccountingController
         }
     }
 
-    [HttpPut("security-deposit/transfer")]
-    public async Task<IActionResult> ApplySecurityDepositTransferAsync([FromBody] SecurityDepositReturnRequestDto dto)
-    {
-        if (dto == null)
-            return BadRequest("Security deposit transfer data is required");
-
-        var (isValid, errorMessage) = dto.IsValid();
-        if (!isValid)
-            return BadRequest(errorMessage ?? "Invalid request data");
-
-        try
-        {
-            var updatedReservation = await _accountingManager.ApplySecurityDepositTransferAsync(
-                dto.ReservationId,
-                CurrentOrganizationId,
-                CurrentOfficeAccess,
-                dto.ChartOfAccountId,
-                dto.Description,
-                dto.Amount,
-                dto.PaymentDate,
-                (PaymentType)dto.PaymentTypeId,
-                CurrentUser);
-
-            return Ok(new ReservationResponseDto(updatedReservation));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error transferring security deposit for reservation: {ReservationId}", dto.ReservationId);
-            return ServerError(ex.Message);
-        }
-    }
-
     [HttpPut("security-deposit/{reservationId:guid}/undo")]
     public async Task<IActionResult> UndoSecurityDepositAsync(Guid reservationId)
     {
