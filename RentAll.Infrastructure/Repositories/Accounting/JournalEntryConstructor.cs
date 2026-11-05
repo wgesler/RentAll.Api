@@ -171,6 +171,7 @@ public partial class JournalEntryRepository : IJournalEntryRepository
             SourceCode = e.SourceCode,
             CheckNumber = e.CheckNumber,
             JournalEntryMemo = e.JournalEntryMemo,
+            PaymentTypeId = e.PaymentTypeId,
             PaymentId = e.PaymentId == Guid.Empty ? null : e.PaymentId,
             PaymentCode = e.PaymentCode,
             DepositId = e.DepositId == Guid.Empty ? null : e.DepositId,

@@ -30,6 +30,7 @@ public class JournalEntryLineSearchResponseDto
     public string? SourceCode { get; set; }
     public string? CheckNumber { get; set; }
     public string? JournalEntryMemo { get; set; }
+    public int? PaymentTypeId { get; set; }
     public Guid? PaymentId { get; set; }
     public string? PaymentCode { get; set; }
     public Guid? DepositId { get; set; }
@@ -72,6 +73,7 @@ public class JournalEntryLineSearchResponseDto
         SourceCode = result.SourceCode;
         CheckNumber = result.CheckNumber;
         JournalEntryMemo = result.JournalEntryMemo;
+        PaymentTypeId = result.PaymentTypeId;
         PaymentId = result.PaymentId;
         PaymentCode = result.PaymentCode;
         DepositId = result.DepositId;

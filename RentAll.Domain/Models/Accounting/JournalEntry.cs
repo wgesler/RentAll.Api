@@ -19,6 +19,7 @@ public class JournalEntry
     public string? Memo { get; set; }
     public bool IsCashOnly { get; set; } = false;
     public Guid? PaymentId { get; set; }
+    public int? PaymentTypeId { get; set; }
     public string? PaymentCode { get; set; }
     public Guid? DepositId { get; set; }
     public string? DepositCode { get; set; }

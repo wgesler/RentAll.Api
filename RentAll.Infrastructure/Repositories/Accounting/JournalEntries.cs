@@ -244,6 +244,7 @@ public partial class JournalEntryRepository
                     Memo = journalEntry.Memo,
                     IsCashOnly = journalEntry.IsCashOnly,
                     PaymentId = journalEntry.PaymentId,
+                    PaymentTypeId = journalEntry.PaymentTypeId,
                     PaymentCode = journalEntry.PaymentCode,
                     DepositId = journalEntry.DepositId,
                     DepositCode = journalEntry.DepositCode,
