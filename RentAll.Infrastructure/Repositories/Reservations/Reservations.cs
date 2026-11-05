@@ -256,6 +256,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     Deposit = reservation.Deposit,
                     DepositTypeId = (int)reservation.DepositType,
                     DepositReturned = reservation.DepositReturned,
+                    PaymentProcessed = reservation.PaymentProcessed,
                     DepartureFee = reservation.DepartureFee,
                     PropertyProtectionFee = reservation.PropertyProtectionFee,
                     AdministrativeFee = reservation.AdministrativeFee,
@@ -384,6 +385,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                     Deposit = reservation.Deposit,
                     DepositTypeId = (int)reservation.DepositType,
                     DepositReturned = reservation.DepositReturned,
+                    PaymentProcessed = reservation.PaymentProcessed,
                     DepartureFee = reservation.DepartureFee,
                     PropertyProtectionFee = reservation.PropertyProtectionFee,
                     AdministrativeFee = reservation.AdministrativeFee,
@@ -514,6 +516,28 @@ namespace RentAll.Infrastructure.Repositories.Reservations
         {
             await using var db = new SqlConnection(_dbConnectionString);
             await db.DapperProcExecuteAsync("Property.Reservation_ClearDepositReturned", new
+            {
+                ReservationId = reservationId,
+                OrganizationId = organizationId,
+                ModifiedBy = modifiedBy
+            });
+        }
+
+        public async Task MarkPaymentProcessedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Property.Reservation_MarkPaymentProcessed", new
+            {
+                ReservationId = reservationId,
+                OrganizationId = organizationId,
+                ModifiedBy = modifiedBy
+            });
+        }
+
+        public async Task ClearPaymentProcessedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy)
+        {
+            await using var db = new SqlConnection(_dbConnectionString);
+            await db.DapperProcExecuteAsync("Property.Reservation_ClearPaymentProcessed", new
             {
                 ReservationId = reservationId,
                 OrganizationId = organizationId,

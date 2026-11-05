@@ -24,6 +24,8 @@ public interface IReservationRepository
     Task<Reservation> UpdateByIdAsync(Reservation reservation);
     Task MarkDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
     Task ClearDepositReturnedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
+    Task MarkPaymentProcessedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
+    Task ClearPaymentProcessedAsync(Guid reservationId, Guid organizationId, Guid modifiedBy);
     Task DeleteReservationByIdAsync(Guid reservationId, Guid organizationId);
     Task<ReservationActiveStateResult> SetReservationActiveStateAsync(Guid organizationId, Guid reservationId, bool isActive, Guid modifiedBy);
     #endregion

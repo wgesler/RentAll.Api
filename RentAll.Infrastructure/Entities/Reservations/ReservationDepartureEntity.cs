@@ -26,5 +26,6 @@ public class ReservationDepartureEntity
     public int DepositTypeId { get; set; }
     public decimal Deposit { get; set; }
     public bool DepositReturned { get; set; }
+    public bool PaymentProcessed { get; set; }
     public DateOnly SecurityDepositReturnDate { get; set; }
 }

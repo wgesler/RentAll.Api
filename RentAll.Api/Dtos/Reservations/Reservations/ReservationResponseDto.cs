@@ -38,6 +38,7 @@ public class ReservationResponseDto
     public decimal Deposit { get; set; }
     public int DepositTypeId { get; set; }
     public bool DepositReturned { get; set; }
+    public bool PaymentProcessed { get; set; }
     public decimal DepartureFee { get; set; }
     public decimal PropertyProtectionFee { get; set; }
     public decimal AdministrativeFee { get; set; }
@@ -126,6 +127,7 @@ public class ReservationResponseDto
         Deposit = reservation.Deposit;
         DepositTypeId = (int)reservation.DepositType;
         DepositReturned = reservation.DepositReturned;
+        PaymentProcessed = reservation.PaymentProcessed;
         DepartureFee = reservation.DepartureFee;
         PropertyProtectionFee = reservation.PropertyProtectionFee;
         AdministrativeFee = reservation.AdministrativeFee;

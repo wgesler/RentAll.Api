@@ -94,6 +94,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 Deposit = e.Deposit,
                 DepositType = (DepositType)e.DepositTypeId,
                 DepositReturned = e.DepositReturned,
+                PaymentProcessed = e.PaymentProcessed,
                 DepartureFee = e.DepartureFee,
                 PropertyProtectionFee = e.PropertyProtectionFee,
                 AdministrativeFee = e.AdministrativeFee,
@@ -269,6 +270,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 DepositType = (DepositType)e.DepositTypeId,
                 Deposit = e.Deposit,
                 DepositReturned = e.DepositReturned,
+                PaymentProcessed = e.PaymentProcessed,
                 SecurityDepositReturnDate = e.SecurityDepositReturnDate
             };
         }

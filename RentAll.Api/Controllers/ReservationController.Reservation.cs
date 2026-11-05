@@ -188,9 +188,15 @@ namespace RentAll.Api.Controllers
                     return NotFound("Reservation not found");
 
                 var reservation = dto.ToModel(CurrentUser, existingReservation);
+                if (existingReservation.IsActive && !reservation.IsActive)
+                    await _accountingManager.ValidateReservationDeactivationAllowedAsync(CurrentOrganizationId, dto.ReservationId);
                 reservation.CurrentInvoiceNo = existingReservation.CurrentInvoiceNo;
                 var updatedReservation = await _reservationRepository.UpdateByIdAsync(reservation);
                 return Ok(new ReservationResponseDto(updatedReservation));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

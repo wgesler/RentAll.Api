@@ -76,6 +76,27 @@ public partial class AccountingController
         }
     }
 
+    [HttpPut("security-deposit/{reservationId:guid}/payment-processed")]
+    public async Task<IActionResult> SetSecurityDepositPaymentProcessedAsync(Guid reservationId, [FromBody] SecurityDepositPaymentProcessedRequestDto dto)
+    {
+        if (dto == null)
+            return BadRequest("Payment processed data is required");
+
+        if (!HasAnyUserGroup(RoleType.SuperAdmin, RoleType.Admin, RoleType.OfficeAdmin, RoleType.Accounting, RoleType.AccountingAdmin))
+            return Unauthorized("You are not authorized to update payment processed.");
+
+        try
+        {
+            await _accountingManager.SetSecurityDepositPaymentProcessedAsync(reservationId, CurrentOrganizationId, dto.PaymentProcessed, CurrentUser);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting payment processed for reservation: {ReservationId}", reservationId);
+            return ServerError(ex.Message);
+        }
+    }
+
     [HttpPut("security-deposit/{reservationId:guid}/undo")]
     public async Task<IActionResult> UndoSecurityDepositAsync(Guid reservationId)
     {

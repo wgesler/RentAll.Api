@@ -187,9 +187,7 @@ public partial class AccountingManager
         // Collect invoice amounts, deposits, and outstanding charges
         var (_, costCodeById) = await LoadOfficeCostCodeContextAsync(organizationId, reservation.OfficeId);
         var invoices = await GetInvoicesForReservationsAsync(organizationId, reservation.OfficeId, [reservation.ReservationId]);
-        var outstandingAmount = RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById)
-            .Where(line => line.InvoiceId is { } invoiceId && invoiceId != Guid.Empty)
-            .Sum(line => line.Amount));
+        var outstandingAmount = CalculateReservationOutstandingOwedAmount(invoices, costCodeById);
         var hasOutstandingCharges = outstandingAmount > 0m;
         var refundToCreditCard = paymentType == PaymentType.CreditCardRefund;
 
@@ -280,6 +278,17 @@ public partial class AccountingManager
             throw new Exception("Nothing to undo for this security deposit");
 
         return reservation;
+    }
+
+    public async Task SetSecurityDepositPaymentProcessedAsync(Guid reservationId, Guid organizationId, bool paymentProcessed, Guid currentUser)
+    {
+        var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
+            ?? throw new Exception("Reservation not found");
+
+        if (paymentProcessed)
+            await _reservationRepository.MarkPaymentProcessedAsync(reservation.ReservationId, organizationId, currentUser);
+        else
+            await _reservationRepository.ClearPaymentProcessedAsync(reservation.ReservationId, organizationId, currentUser);
     }
 
     #endregion
@@ -791,21 +800,6 @@ public partial class AccountingManager
         return invoicesById.Values.ToList();
     }
 
-    private static decimal CalculateReservationNonSecurityDepositChargeTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
-        => RoundSecurityDepositAmount((invoices ?? [])
-            .SelectMany(invoice => invoice.LedgerLines ?? [])
-            .Where(line => line.Amount != 0m)
-            .Where(line => IsInvoiceChargeLedgerLine(line, costCodeById))
-            .Where(line => !IsRefundableSecurityDepositCharge(line, costCodeById))
-            .Sum(line => line.Amount));
-
-    private static decimal CalculateReservationInvoicePaymentTotal(IEnumerable<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
-        => RoundSecurityDepositAmount((invoices ?? [])
-            .SelectMany(invoice => invoice.LedgerLines ?? [])
-            .Where(line => line.Amount != 0m)
-            .Where(line => IsInvoicePaymentLedgerLine(line, costCodeById))
-            .Sum(line => line.Amount));
-
     /// <summary>
     /// Matches invoice editor total due for rent/fees on a single invoice (charges minus payments, excluding SD charges).
     /// </summary>
@@ -1199,6 +1193,7 @@ public partial class AccountingManager
             Deposit = reservation.Deposit,
             DepositType = reservation.DepositType,
             DepositReturned = reservation.DepositReturned,
+            PaymentProcessed = reservation.PaymentProcessed,
             ArrivalDate = billingArrivalDate,
             DepartureDate = billingDepartureDate,
             BillingRate = reservation.BillingRate,
@@ -1210,11 +1205,9 @@ public partial class AccountingManager
     }
 
     private static decimal CalculateReservationOutstandingOwedAmount(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
-    {
-        var chargeTotal = CalculateReservationNonSecurityDepositChargeTotal(invoices, costCodeById);
-        var paymentTotal = CalculateReservationInvoicePaymentTotal(invoices, costCodeById);
-        return Math.Max(0m, RoundSecurityDepositAmount(chargeTotal - paymentTotal));
-    }
+        => RoundSecurityDepositAmount(BuildOutstandingChargeLines(invoices, costCodeById)
+            .Where(line => line.InvoiceId is { } invoiceId && invoiceId != Guid.Empty)
+            .Sum(line => line.Amount));
 
     private static List<ReservationChargeLineBalance> CalculateReservationChargeLineBalances(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById, IReadOnlySet<Guid>? ignoredPaymentIds = null)
     {

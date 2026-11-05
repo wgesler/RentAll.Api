@@ -26,6 +26,7 @@ public class ReservationDepartureResponseDto
     public int DepositTypeId { get; set; }
     public decimal Deposit { get; set; }
     public bool DepositReturned { get; set; }
+    public bool PaymentProcessed { get; set; }
     public DateOnly SecurityDepositReturnDate { get; set; }
     public decimal CollectedAmount { get; set; }
     public decimal ReturnedAmount { get; set; }
@@ -67,6 +68,7 @@ public class ReservationDepartureResponseDto
         DepositTypeId = (int)departure.DepositType;
         Deposit = departure.Deposit;
         DepositReturned = departure.DepositReturned;
+        PaymentProcessed = departure.PaymentProcessed;
         SecurityDepositReturnDate = departure.SecurityDepositReturnDate;
         CollectedAmount = departure.CollectedAmount;
         ReturnedAmount = departure.ReturnedAmount;

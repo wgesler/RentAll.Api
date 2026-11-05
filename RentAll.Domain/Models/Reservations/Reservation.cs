@@ -40,6 +40,7 @@ public class Reservation
     public decimal Deposit { get; set; }
     public DepositType DepositType { get; set; }
     public bool DepositReturned { get; set; }
+    public bool PaymentProcessed { get; set; }
     public decimal DepartureFee { get; set; }
     public decimal PropertyProtectionFee { get; set; }
     public decimal AdministrativeFee { get; set; }

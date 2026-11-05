@@ -286,6 +286,7 @@ public class CreateExternalReservationDto
             Deposit = ResolvedDepositTypeId == (int)DepositType.CLR ? 0 : Deposit!.Value,
             DepositTypeId = ResolvedDepositTypeId,
             DepositReturned = false,
+            PaymentProcessed = false,
             DepartureFee = DepartureFee!.Value,
             PropertyProtectionFee = PropertyProtectionFee ?? 0,
             AdministrativeFee = AdministrativeFee ?? 0,
