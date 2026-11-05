@@ -285,6 +285,9 @@ public partial class AccountingManager
         var reservation = await _reservationRepository.GetReservationByIdAsync(reservationId, organizationId)
             ?? throw new Exception("Reservation not found");
 
+        if (paymentProcessed && !reservation.DepositReturned)
+            throw new Exception("Return the security deposit before marking payment processed.");
+
         if (paymentProcessed)
             await _reservationRepository.MarkPaymentProcessedAsync(reservation.ReservationId, organizationId, currentUser);
         else
