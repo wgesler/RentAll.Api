@@ -97,6 +97,11 @@ public partial class AccountingManager
             organizationId,
             currentUser);
 
+        await RepairSecurityDepositReturnDepositSplitLinksAsync(deposit, currentUser, trail);
+        reloaded = await _accountingRepository.GetDepositByIdAsync(deposit.DepositId, organizationId);
+        if (reloaded != null)
+            deposit = reloaded;
+
         await ClearOrphanDepositedInvoicePaymentsForDepositHealthFixAsync(
             deposit,
             organizationId,
@@ -288,6 +293,66 @@ public partial class AccountingManager
     {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
         return GetDefaultUndepositedFunds(chartOfAccounts, deposit.OfficeId, accountingOffice);
+    }
+
+    private async Task<int> ResolveAccountsReceivableAccountIdAsync(Deposit deposit)
+    {
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        return GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
+    }
+
+    private async Task RepairSecurityDepositReturnDepositSplitLinksAsync(Deposit deposit, Guid currentUser, AccountingSyncBailTrail? trail)
+    {
+        if (deposit.Splits == null || deposit.Splits.Count == 0 || deposit.OfficeId <= 0)
+            return;
+
+        var undepositedFundsAccountId = await ResolveUndepositedFundsAccountIdAsync(deposit);
+        var accountsReceivableAccountId = await ResolveAccountsReceivableAccountIdAsync(deposit);
+        if (undepositedFundsAccountId <= 0 || accountsReceivableAccountId <= 0)
+            return;
+
+        var assignedLineIds = new HashSet<Guid>();
+        var changed = false;
+        foreach (var split in deposit.Splits)
+        {
+            if (!IsPaymentBackedDepositSplit(split, undepositedFundsAccountId) || RoundCurrency(split.Amount) >= -0.005m)
+                continue;
+
+            if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
+            {
+                var existingLine = await GetJournalEntryLineByIdCachedAsync(existingLineId);
+                if (existingLine != null
+                    && await IsValidSecurityDepositReturnDepositSplitLinkAsync(deposit, split, existingLine, undepositedFundsAccountId))
+                {
+                    assignedLineIds.Add(existingLineId);
+                    continue;
+                }
+            }
+
+            var resolvedLineId = await TryResolveSecurityDepositReturnArLineIdAsync(
+                deposit,
+                split,
+                split.JournalEntryLineId,
+                undepositedFundsAccountId,
+                accountsReceivableAccountId,
+                new HashSet<Guid>(),
+                assignedLineIds);
+            if (resolvedLineId is not { } lineId || lineId == Guid.Empty || split.JournalEntryLineId == lineId)
+                continue;
+
+            split.JournalEntryLineId = lineId;
+            assignedLineIds.Add(lineId);
+            changed = true;
+            trail?.Note($"Repair security deposit return split {split.DepositSplitId} -> line {lineId}.");
+        }
+
+        if (!changed)
+            return;
+
+        deposit.ModifiedBy = currentUser;
+        var updated = await _accountingRepository.UpdateDepositAsync(deposit);
+        deposit.Splits = updated.Splits;
+        _officeSyncCache?.ReplaceDeposit(deposit);
     }
 
     private async Task RepairStalePaymentStampsFromLinkedSplitsForHealthFixAsync(
@@ -559,6 +624,29 @@ public partial class AccountingManager
             var linkedLine = await GetJournalEntryLineByIdCachedAsync(lineId);
             if (linkedLine != null && linkedLine.ChartOfAccountId == undepositedFundsAccountId)
             {
+                var returnLineId = await TryResolveSecurityDepositReturnArLineIdAsync(
+                    deposit,
+                    split,
+                    lineId,
+                    undepositedFundsAccountId,
+                    await ResolveAccountsReceivableAccountIdAsync(deposit),
+                    new HashSet<Guid>(),
+                    new HashSet<Guid>());
+                if (returnLineId is { } resolvedReturnLineId && resolvedReturnLineId != Guid.Empty)
+                {
+                    split.JournalEntryLineId = resolvedReturnLineId;
+                    changed = true;
+                    trail?.Note($"Keep security deposit return: split {split.DepositSplitId} -> line {resolvedReturnLineId}.");
+                    continue;
+                }
+
+                var sourceEntry = await GetJournalEntryByIdCachedAsync(linkedLine.JournalEntryId, deposit.OrganizationId);
+                if (sourceEntry != null && IsSecurityDepositReturnJournalEntry(sourceEntry))
+                {
+                    trail?.Note($"Keep security deposit return UF line: split {split.DepositSplitId} line {lineId}.");
+                    continue;
+                }
+
                 trail?.Note($"Clear invalid link: split {split.DepositSplitId} pointed at payment UF line {lineId}.");
                 split.JournalEntryLineId = null;
                 changed = true;

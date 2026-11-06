@@ -247,11 +247,13 @@ public partial class AccountingManager
                 continue;
             }
 
+            Guid? clearedUndepositedLineId = null;
             if (split.JournalEntryLineId is { } existingLineId && existingLineId != Guid.Empty)
             {
                 var existingLine = await GetJournalEntryLineByIdCachedAsync(existingLineId);
                 if (existingLine != null && existingLine.ChartOfAccountId == undepositedFundsAccountId)
                 {
+                    clearedUndepositedLineId = existingLineId;
                     trail?.Note($"Rematch clear UF line: {splitLabel} amount={split.Amount:0.00} line={existingLineId}");
                     split.JournalEntryLineId = null;
                 }
@@ -273,14 +275,23 @@ public partial class AccountingManager
                 }
             }
 
-            var resolvedLineId = paymentLineCandidates.Count > 0
-                ? await ResolveDepositSplitJournalEntryLineIdAsync(
+            var resolvedLineId = await TryResolveSecurityDepositReturnArLineIdAsync(
+                deposit,
+                split,
+                clearedUndepositedLineId,
+                undepositedFundsAccountId,
+                accountsReceivableAccountId,
+                claimedLineIds,
+                assignedLineIds);
+            if ((resolvedLineId == null || resolvedLineId == Guid.Empty) && paymentLineCandidates.Count > 0)
+            {
+                resolvedLineId = await ResolveDepositSplitJournalEntryLineIdAsync(
                     deposit,
                     split,
                     paymentLineCandidates,
                     claimedLineIds,
-                    assignedLineIds)
-                : null;
+                    assignedLineIds);
+            }
 
             if (resolvedLineId.HasValue && resolvedLineId != Guid.Empty)
             {
@@ -351,6 +362,152 @@ public partial class AccountingManager
         }
     }
 
+    // Negative undeposited-funds credit from a security-deposit return links to the receivable debit on that same return.
+    private async Task<Guid?> TryResolveSecurityDepositReturnArLineIdAsync(Deposit deposit, DepositSplit split, Guid? sourceJournalEntryLineId, int undepositedFundsAccountId, int accountsReceivableAccountId, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds)
+    {
+        if (accountsReceivableAccountId <= 0
+            || !IsPaymentBackedDepositSplit(split, undepositedFundsAccountId)
+            || RoundCurrency(split.Amount) >= -0.005m)
+            return null;
+
+        var matches = new List<Guid>();
+        if (sourceJournalEntryLineId is { } sourceLineId && sourceLineId != Guid.Empty)
+        {
+            var sourceLine = await GetJournalEntryLineByIdCachedAsync(sourceLineId);
+            if (sourceLine != null && sourceLine.JournalEntryId != Guid.Empty)
+            {
+                var sourceEntry = await GetJournalEntryByIdCachedAsync(sourceLine.JournalEntryId, deposit.OrganizationId);
+                if (sourceEntry != null && IsSecurityDepositReturnJournalEntry(sourceEntry))
+                {
+                    CollectSecurityDepositReturnArLineIds(
+                        deposit,
+                        split,
+                        sourceEntry,
+                        undepositedFundsAccountId,
+                        accountsReceivableAccountId,
+                        claimedLineIds,
+                        assignedLineIds,
+                        matches);
+                    var sourceMatches = matches.Distinct().ToList();
+                    return sourceMatches.Count == 1 ? sourceMatches[0] : null;
+                }
+            }
+        }
+
+        var reservationId = NormalizeOptionalGuid(split.ReservationId);
+        if (reservationId == null)
+            return null;
+
+        var entries = await GetJournalEntriesForSourceAsync(
+            deposit.OrganizationId,
+            deposit.OfficeId,
+            SourceType.SecurityDeposit,
+            reservationId.Value,
+            JournalEntryKind.SecurityDepositReturn);
+        foreach (var entry in entries)
+        {
+            CollectSecurityDepositReturnArLineIds(
+                deposit,
+                split,
+                entry,
+                undepositedFundsAccountId,
+                accountsReceivableAccountId,
+                claimedLineIds,
+                assignedLineIds,
+                matches);
+        }
+
+        var distinct = matches.Distinct().ToList();
+        return distinct.Count == 1 ? distinct[0] : null;
+    }
+
+    private static void CollectSecurityDepositReturnArLineIds(Deposit deposit, DepositSplit split, JournalEntry entry, int undepositedFundsAccountId, int accountsReceivableAccountId, IReadOnlySet<Guid> claimedLineIds, IReadOnlySet<Guid> assignedLineIds, ICollection<Guid> matches)
+    {
+        if (!IsSecurityDepositReturnJournalEntry(entry)
+            || !PaymentTransactionDateIsOnOrBeforeDeposit(entry.TransactionDate, deposit.DepositDate))
+            return;
+
+        var pairLineIds = (entry.JournalEntryLines ?? [])
+            .Where(line => SecurityDepositReturnArLinePairsWithSplit(entry, line, split, undepositedFundsAccountId, accountsReceivableAccountId))
+            .Select(line => line.JournalEntryLineId)
+            .Where(lineId => lineId != Guid.Empty && !claimedLineIds.Contains(lineId) && !assignedLineIds.Contains(lineId))
+            .Distinct()
+            .ToList();
+        if (pairLineIds.Count != 1)
+            return;
+
+        var arLine = (entry.JournalEntryLines ?? []).First(line => line.JournalEntryLineId == pairLineIds[0]);
+        if (!SecurityDepositReturnContextMatches(split, entry, arLine))
+            return;
+
+        matches.Add(pairLineIds[0]);
+    }
+
+    private async Task<bool> IsValidSecurityDepositReturnDepositSplitLinkAsync(Deposit deposit, DepositSplit split, JournalEntryLine line, int undepositedFundsAccountId)
+    {
+        if (line.JournalEntryId == Guid.Empty || RoundCurrency(split.Amount) >= -0.005m)
+            return false;
+
+        var entry = await GetJournalEntryByIdCachedAsync(line.JournalEntryId, deposit.OrganizationId);
+        if (entry == null || !IsSecurityDepositReturnJournalEntry(entry))
+            return false;
+
+        if (!PaymentTransactionDateIsOnOrBeforeDeposit(entry.TransactionDate, deposit.DepositDate))
+            return false;
+
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(deposit.OrganizationId, deposit.OfficeId);
+        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, deposit.OfficeId, accountingOffice);
+        if (accountsReceivableAccountId <= 0
+            || !SecurityDepositReturnArLinePairsWithSplit(entry, line, split, undepositedFundsAccountId, accountsReceivableAccountId)
+            || !SecurityDepositReturnContextMatches(split, entry, line))
+            return false;
+
+        var pairCount = (entry.JournalEntryLines ?? []).Count(candidate =>
+            SecurityDepositReturnArLinePairsWithSplit(entry, candidate, split, undepositedFundsAccountId, accountsReceivableAccountId));
+        return pairCount == 1;
+    }
+
+    private static bool SecurityDepositReturnArLinePairsWithSplit(JournalEntry entry, JournalEntryLine arLine, DepositSplit split, int undepositedFundsAccountId, int accountsReceivableAccountId)
+    {
+        if (!IsSecurityDepositReturnJournalEntry(entry) || arLine.ChartOfAccountId != accountsReceivableAccountId)
+            return false;
+
+        var splitAmount = RoundCurrency(split.Amount);
+        if (splitAmount >= -0.005m)
+            return false;
+
+        if (Math.Abs((arLine.Debit - arLine.Credit) + splitAmount) > 0.005m)
+            return false;
+
+        return (entry.JournalEntryLines ?? []).Any(line =>
+            line.ChartOfAccountId == undepositedFundsAccountId
+            && Math.Abs((line.Debit - line.Credit) - splitAmount) <= 0.005m);
+    }
+
+    private static bool SecurityDepositReturnContextMatches(DepositSplit split, JournalEntry entry, JournalEntryLine arLine)
+    {
+        var description = (split.Description ?? string.Empty).Trim();
+        if (description.Length == 0)
+            return false;
+
+        var memoMatches = string.Equals((arLine.Memo ?? string.Empty).Trim(), description, StringComparison.OrdinalIgnoreCase)
+            || string.Equals((entry.Memo ?? string.Empty).Trim(), description, StringComparison.OrdinalIgnoreCase)
+            || (entry.JournalEntryLines ?? []).Any(line =>
+                string.Equals((line.Memo ?? string.Empty).Trim(), description, StringComparison.OrdinalIgnoreCase));
+        if (!memoMatches)
+            return false;
+
+        var reservationId = NormalizeOptionalGuid(split.ReservationId);
+        if (reservationId != null
+            && NormalizeOptionalGuid(arLine.ReservationId) != reservationId
+            && NormalizeOptionalGuid(entry.SourceId) != reservationId)
+            return false;
+
+        var propertyId = NormalizeOptionalGuid(split.PropertyId);
+        var linePropertyId = NormalizeOptionalGuid(arLine.PropertyId);
+        return propertyId == null || linePropertyId == null || propertyId == linePropertyId;
+    }
+
     private async Task<bool> IsValidDepositSplitJournalEntryLineAsync(Deposit deposit, DepositSplit split, int undepositedFundsAccountId)
     {
         if (split.JournalEntryLineId is not { } journalEntryLineId || journalEntryLineId == Guid.Empty)
@@ -359,6 +516,9 @@ public partial class AccountingManager
         var line = await GetJournalEntryLineByIdCachedAsync(journalEntryLineId);
         if (line == null)
             return false;
+
+        if (await IsValidSecurityDepositReturnDepositSplitLinkAsync(deposit, split, line, undepositedFundsAccountId))
+            return true;
 
         if (!await DepositSplitLineStillPointsAtPaymentAsync(deposit.OrganizationId, journalEntryLineId))
             return false;
@@ -599,6 +759,9 @@ public partial class AccountingManager
                 changed = true;
                 continue;
             }
+
+            if (await IsValidSecurityDepositReturnDepositSplitLinkAsync(deposit, split, line, undepositedFundsAccountId))
+                continue;
 
             if (line.ChartOfAccountId == undepositedFundsAccountId)
             {

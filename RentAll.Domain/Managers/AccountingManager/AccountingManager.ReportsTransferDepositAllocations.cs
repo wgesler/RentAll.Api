@@ -143,7 +143,7 @@ public partial class AccountingManager
 
     #region Resolve Single Deposit Allocation
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null, int? depositSplitId = null)
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Guid depositId, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId = null, int? depositSplitId = null, bool repairInvalidDepositLinks = true)
     {
         var deposit = await _accountingRepository.GetDepositByIdAsync(depositId, organizationId)
             ?? throw new InvalidOperationException($"Deposit {depositId} was not found.");
@@ -162,10 +162,11 @@ public partial class AccountingManager
             escrowJournalEntryLineId,
             undepositedFundsAccountId,
             depositJournalEntryCache: null,
-            depositSplitId);
+            depositSplitId,
+            repairInvalidDepositLinks);
     }
 
-    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>>? depositJournalEntryCache, int? depositSplitId = null)
+    private async Task<TransferDepositAllocationResult> ResolveTransferDepositAllocationAsync(Guid organizationId, int officeId, Deposit deposit, decimal escrowAmount, TransferDepositRecapAccountContext recapContext, Guid? escrowJournalEntryLineId, int undepositedFundsAccountId, Dictionary<Guid, List<JournalEntry>>? depositJournalEntryCache, int? depositSplitId = null, bool repairInvalidDepositLinks = true)
     {
         escrowAmount = RoundTransferEscrowAmount(escrowAmount);
         var depositId = deposit.DepositId;
@@ -174,7 +175,7 @@ public partial class AccountingManager
         if (!IsPaymentBackedDepositSplit(matchedSplit, undepositedFundsAccountId))
             return BuildNonPaymentTransferDepositAllocationResult(depositId, escrowJournalEntryLineId, escrowAmount, deposit, matchedSplit);
 
-        if (!await IsValidDepositSplitJournalEntryLineAsync(deposit, matchedSplit, undepositedFundsAccountId))
+        if (repairInvalidDepositLinks && !await IsValidDepositSplitJournalEntryLineAsync(deposit, matchedSplit, undepositedFundsAccountId))
         {
             var originalSplitLineIds = (deposit.Splits ?? [])
                 .Select(split => split.JournalEntryLineId)
@@ -204,6 +205,24 @@ public partial class AccountingManager
             })).ToList();
 
             depositJournalEntryCache?.Add(depositId, depositJournalEntries);
+        }
+
+        if (allocationScope.PaymentId == Guid.Empty
+            && matchedSplit.JournalEntryLineId is { } returnLineId
+            && returnLineId != Guid.Empty)
+        {
+            depositJournalEntries = depositJournalEntries.ToList();
+            var returnLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(returnLineId);
+            if (returnLine != null)
+            {
+                var returnEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(returnLine.JournalEntryId, organizationId);
+                if (returnEntry != null
+                    && IsSecurityDepositReturnJournalEntry(returnEntry)
+                    && depositJournalEntries.All(entry => entry.JournalEntryId != returnEntry.JournalEntryId))
+                {
+                    depositJournalEntries.Add(returnEntry);
+                }
+            }
         }
 
         depositJournalEntries = await MergeTransferDepositPaymentJournalEntriesAsync(
@@ -290,7 +309,8 @@ public partial class AccountingManager
 
         await EnrichTransferSplitsFromJournalEntryLinesAsync(transfer);
 
-        var (_, accountingOffice) = await LoadAccountContextAsync(organizationId, transfer.OfficeId);
+        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(organizationId, transfer.OfficeId);
+        var recapContext = BuildTransferDepositRecapAccountContext(chartOfAccounts, transfer.OfficeId, accountingOffice);
         var ownersAccountId = accountingOffice?.DefaultEscrowOwnersAccountId;
         var secDepAccountId = accountingOffice?.DefaultEscrowSecDepAccountId;
         var sdwAccountId = accountingOffice?.DefaultEscrowSdwAccountId;
@@ -305,11 +325,11 @@ public partial class AccountingManager
 
         foreach (var group in linkedGroups)
         {
-            var sampleSplit = group.First();
-            var journalEntryLineId = sampleSplit.JournalEntryLineId ?? Guid.Empty;
-            results.Add(BuildTransferReportLineAllocationFromSplits(
-                group.ToList(),
-                journalEntryLineId,
+            var splits = group.ToList();
+            var classified = await TryClassifyTransferReportGroupAsync(organizationId, transfer.OfficeId, splits, recapContext);
+            results.Add(classified ?? BuildTransferReportLineAllocationFromSplits(
+                splits,
+                splits[0].JournalEntryLineId ?? Guid.Empty,
                 ownersAccountId,
                 secDepAccountId,
                 sdwAccountId,
@@ -370,10 +390,7 @@ public partial class AccountingManager
             .Select(split => (split.Description ?? string.Empty).Trim())
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
             ?? string.Empty;
-        var ownerEscrow = SumTransferReportSplitAmountsForAccount(splits, ownersAccountId);
-        var secDep = SumTransferReportSplitAmountsForAccount(splits, secDepAccountId);
-        var sdw = SumTransferReportSplitAmountsForAccount(splits, sdwAccountId);
-        var business = SumTransferReportSplitAmountsForAccount(splits, businessAccountId);
+        var (ownerEscrow, secDep, sdw, business) = SumTransferReportSplitsOnce(splits, ownersAccountId, secDepAccountId, sdwAccountId, businessAccountId);
         var destinationTotal = RoundCurrency(ownerEscrow + secDep + sdw + business);
 
         return new TransferReportLineAllocationResult
@@ -417,14 +434,88 @@ public partial class AccountingManager
         return source;
     }
 
-    private static decimal SumTransferReportSplitAmountsForAccount(IReadOnlyList<TransferSplit> splits, int? accountId)
+    private async Task<TransferReportLineAllocationResult?> TryClassifyTransferReportGroupAsync(Guid organizationId, int officeId, IReadOnlyList<TransferSplit> splits, TransferDepositRecapAccountContext recapContext)
     {
-        if (accountId is null or <= 0)
-            return 0m;
+        var journalEntryLineId = splits.Select(split => split.JournalEntryLineId).FirstOrDefault(lineId => lineId is { } value && value != Guid.Empty);
+        if (journalEntryLineId is not { } sourceLineId)
+            return null;
 
-        return RoundCurrency(splits
-            .Where(split => split.ChartOfAccountId == accountId)
-            .Sum(split => split.Amount));
+        var sourceLine = await _journalEntryRepository.GetJournalEntryLineByIdAsync(sourceLineId);
+        if (sourceLine == null)
+            return null;
+
+        var sourceEntry = await _journalEntryRepository.GetJournalEntryByIdAsync(sourceLine.JournalEntryId, organizationId);
+        var depositId = sourceEntry?.DepositId ?? Guid.Empty;
+        if (depositId == Guid.Empty && sourceEntry?.SourceTypeId == (int)SourceType.Deposit && sourceEntry.SourceId is { } sourceId)
+            depositId = sourceId;
+        if (depositId == Guid.Empty)
+            return null;
+
+        var escrowAmount = RoundCurrency(splits.Sum(split => split.Amount));
+        if (Math.Abs(escrowAmount) <= 0.005m)
+            return null;
+
+        try
+        {
+            var allocation = await ResolveTransferDepositAllocationAsync(organizationId, officeId, depositId, escrowAmount, recapContext, sourceLineId, repairInvalidDepositLinks: false);
+            var context = splits[0];
+            var description = splits.Select(split => (split.Description ?? string.Empty).Trim()).FirstOrDefault(value => value.Length > 0) ?? allocation.Description;
+            return new TransferReportLineAllocationResult
+            {
+                JournalEntryLineId = sourceLineId,
+                DepositId = allocation.DepositId,
+                EscrowAmount = allocation.EscrowAmount,
+                OwnerEscrow = allocation.OwnerEscrow,
+                SecDep = allocation.SecDep,
+                Sdw = allocation.Sdw,
+                Business = allocation.Business,
+                PropertyId = context.PropertyId ?? allocation.PropertyId,
+                ReservationId = context.ReservationId ?? allocation.ReservationId,
+                ContactId = context.ContactId ?? allocation.ContactId,
+                Description = description
+            };
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static (decimal OwnerEscrow, decimal SecDep, decimal Sdw, decimal Business) SumTransferReportSplitsOnce(IReadOnlyList<TransferSplit> splits, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
+    {
+        var ownerEscrow = 0m;
+        var secDep = 0m;
+        var sdw = 0m;
+        var business = 0m;
+        foreach (var split in splits)
+        {
+            if (split.ChartOfAccountId is not > 0 || split.Amount == 0m)
+                continue;
+
+            var accountId = split.ChartOfAccountId.Value;
+            var isOwner = ownersAccountId is > 0 && accountId == ownersAccountId;
+            var isSecurityDeposit = secDepAccountId is > 0 && accountId == secDepAccountId;
+            var isSdw = sdwAccountId is > 0 && accountId == sdwAccountId;
+            var isBusiness = businessAccountId is > 0 && accountId == businessAccountId;
+            var matchCount = (isOwner ? 1 : 0) + (isSecurityDeposit ? 1 : 0) + (isSdw ? 1 : 0) + (isBusiness ? 1 : 0);
+            if (matchCount != 1)
+            {
+                if (isBusiness)
+                    business += split.Amount;
+                continue;
+            }
+
+            if (isOwner)
+                ownerEscrow += split.Amount;
+            else if (isSecurityDeposit)
+                secDep += split.Amount;
+            else if (isSdw)
+                sdw += split.Amount;
+            else
+                business += split.Amount;
+        }
+
+        return (RoundCurrency(ownerEscrow), RoundCurrency(secDep), RoundCurrency(sdw), RoundCurrency(business));
     }
 
     #endregion
@@ -502,8 +593,24 @@ public partial class AccountingManager
 
         if (paymentJournalEntry.PaymentId is not { } paymentId || paymentId == Guid.Empty)
         {
-            throw new InvalidOperationException(
-                $"Payment journal entry {paymentJournalEntry.JournalEntryCode} is missing PaymentId for deposit {deposit.DepositCode}.");
+            if (!IsSecurityDepositReturnJournalEntry(paymentJournalEntry))
+            {
+                throw new InvalidOperationException(
+                    $"Payment journal entry {paymentJournalEntry.JournalEntryCode} is missing PaymentId for deposit {deposit.DepositCode}.");
+            }
+
+            var returnSourceCode = paymentJournalEntry.SourceCode?.Trim() ?? string.Empty;
+            return new TransferDepositAllocationScope
+            {
+                PaymentId = Guid.Empty,
+                SourceCode = returnSourceCode,
+                PaymentMemoSourceCode = returnSourceCode,
+                PaymentMemo = CoalesceJournalEntryMemo(paymentJournalEntry.Memo, paymentLine.Memo),
+                SplitAmount = split.Amount,
+                PropertyId = split.PropertyId,
+                ReservationId = split.ReservationId,
+                ContactId = split.ContactId
+            };
         }
 
         if (string.IsNullOrWhiteSpace(paymentJournalEntry.SourceCode))
@@ -664,6 +771,9 @@ public partial class AccountingManager
     {
         if (entry.SourceTypeId == (int)SourceType.Deposit)
             return false;
+
+        if (scope.PaymentId == Guid.Empty && IsSecurityDepositReturnJournalEntry(entry))
+            return true;
 
         // Owner/SD/SDW actuals keep invoice/reservation source codes — link by PaymentId, not PY-xxx SourceCode.
         if (entry.PaymentId == scope.PaymentId && scope.PaymentId != Guid.Empty)
