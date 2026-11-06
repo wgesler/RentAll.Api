@@ -213,11 +213,9 @@ public partial class AccountingManager
         };
 
         Payment? invoicePayment = null;
-        if (hasOutstandingCharges)
-            invoicePayment = await CreateSecurityDepositInvoicePaymentAsync(depositContext, invoices, costCodeById, officeAccess);
-
         try
         {
+            invoicePayment = await CreateSecurityDepositInvoicePaymentAsync(depositContext, invoices, costCodeById, officeAccess);
             switch (hasOutstandingCharges, refundToCreditCard)
             {
                 case (false, false):
@@ -318,7 +316,7 @@ public partial class AccountingManager
 
     private async Task PostSecurityDepositRefundByBankAsync(SecurityDepositContext context)
     {
-        var journalEntry = await BuildJournalEntryForSecurityDepositToAccountsReceivable(context);
+        var journalEntry = CreateSecurityDepositReturnJournalEntry(context);
 
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-AR-TO-ESCROW-JE-ACCOUNTS
@@ -334,7 +332,7 @@ public partial class AccountingManager
 
     private async Task PostSecurityDepositRefundByCreditCardAsync(SecurityDepositContext context)
     {
-        var journalEntry = await BuildJournalEntryForSecurityDepositToAccountsReceivable(context);
+        var journalEntry = CreateSecurityDepositReturnJournalEntry(context);
 
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-REFUND-BY-CREDIT-CARD-JE-ACCOUNTS
@@ -373,7 +371,7 @@ public partial class AccountingManager
 
     private async Task PostSecurityDepositRefundWithChargesByBankAsync(SecurityDepositContext context)
     {
-        var journalEntry = await BuildJournalEntryForSecurityDepositToAccountsReceivable(context);
+        var journalEntry = CreateSecurityDepositReturnJournalEntry(context);
 
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-REFUND-WITH-CHARGES-BY-BANK-JE-ACCOUNTS
@@ -412,7 +410,7 @@ public partial class AccountingManager
 
     private async Task PostSecurityDepositRefundWithChargesByCreditCardAsync(SecurityDepositContext context)
     {
-        var journalEntry = await BuildJournalEntryForSecurityDepositToAccountsReceivable(context);
+        var journalEntry = CreateSecurityDepositReturnJournalEntry(context);
 
         // AGENT-NOTE: DO NOT TOUCH.
         // SECURITY-DEPOSIT-REFUND-WITH-CHARGES-BY-CREDIT-CARD-JE-ACCOUNTS
@@ -492,37 +490,8 @@ public partial class AccountingManager
         ApplyJournalEntryLineContext(line, context.LineContext);
     }
 
-    private async Task<JournalEntry> BuildJournalEntryForSecurityDepositToAccountsReceivable(SecurityDepositContext context)
+    private JournalEntry CreateSecurityDepositReturnJournalEntry(SecurityDepositContext context)
     {
-        // AGENT-NOTE: DO NOT TOUCH.
-        // SECURITY-DEPOSIT-TO-AR-JE-ACCOUNTS
-        // Line 1 — Security Deposit cost code account (GetDefaultSecurityDepositAccount): Debit / Credit 0 (positive return) or reverse for negative.
-        // Line 2 — Accounts Receivable (GetDefaultAccountsReceivable): Credit / Debit 0 (positive return) or reverse for negative.
-        // END SECURITY-DEPOSIT-TO-AR-JE-ACCOUNTS
-
-        var amount = context.CollectedAmount;
-        var (office, costCodeById) = await LoadOfficeCostCodeContextAsync(context.OrganizationId, context.OfficeId);
-        var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
-        var securityDepositAccountId = GetDefaultSecurityDepositAccount(chartOfAccounts, context.OfficeId, office, costCodeById, accountingOffice);
-        var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, context.OfficeId, accountingOffice);
-
-        var securityDepositLine = new JournalEntryLine
-        {
-            ChartOfAccountId = securityDepositAccountId,
-            CostCodeId = office?.SecurityDepositCcId,
-            Debit = amount > 0 ? amount : 0,
-            Credit = amount < 0 ? Math.Abs(amount) : 0
-        };
-        ApplySecurityDepositLine(securityDepositLine, context);
-
-        var accountsReceivableLine = new JournalEntryLine
-        {
-            ChartOfAccountId = accountsReceivableAccountId,
-            Debit = amount < 0 ? Math.Abs(amount) : 0,
-            Credit = amount > 0 ? amount : 0
-        };
-        ApplySecurityDepositLine(accountsReceivableLine, context);
-
         return ClassifyJournalEntry(new JournalEntry
         {
             OrganizationId = context.OrganizationId,
@@ -533,7 +502,7 @@ public partial class AccountingManager
             SourceCode = context.ReservationCode,
             Memo = context.Memo,
             PaymentTypeId = (int)context.PaymentType,
-            JournalEntryLines = new List<JournalEntryLine> { securityDepositLine, accountsReceivableLine },
+            JournalEntryLines = [],
             CreatedBy = context.CurrentUser
         }, JournalEntryKind.SecurityDepositReturn, Perspective.Tenant);
     }
@@ -549,15 +518,10 @@ public partial class AccountingManager
             .OrderBy(invoice => invoice.InvoiceDate)
             .ThenBy(invoice => invoice.InvoiceCode)
             .ToList();
-        var firstChargeInvoice = orderedInvoices
-            .FirstOrDefault(invoice => CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById) > 0m);
-        if (firstChargeInvoice == null)
-            throw new Exception("No outstanding invoice charges were found for the security deposit payment");
+        if (orderedInvoices.Count == 0)
+            throw new Exception("No invoice was found for the security deposit payment");
 
-        var invoiceIds = orderedInvoices
-            .SkipWhile(invoice => invoice.InvoiceId != firstChargeInvoice.InvoiceId)
-            .Select(invoice => invoice.InvoiceId)
-            .ToList();
+        var invoiceIds = orderedInvoices.Select(invoice => invoice.InvoiceId).ToList();
 
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
         var (office, _) = await LoadOfficeCostCodeContextAsync(context.OrganizationId, context.OfficeId);
@@ -566,7 +530,7 @@ public partial class AccountingManager
             OrganizationId = context.OrganizationId,
             OfficeId = context.OfficeId,
             PaymentDate = context.PaymentDate,
-            Amount = context.OutstandingAmount,
+            Amount = context.CollectedAmount,
             CostCodeId = ResolveSecurityDepositPaymentCostCodeId(costCodeById),
             Description = context.Memo,
             PaymentKindId = (int)PaymentKind.Invoice,
