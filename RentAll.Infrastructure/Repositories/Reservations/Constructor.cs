@@ -88,6 +88,7 @@ namespace RentAll.Infrastructure.Repositories.Reservations
                 UnitTenantCode = e.UnitTenantCode,
                 GarageCode = e.GarageCode,
                 BillingMethod = (BillingMethod)e.BillingMethodId,
+                NumberConsentId = e.NumberConsentId,
                 ProrateType = (ProrateType)e.ProrateTypeId,
                 BillingType = (BillingType)e.BillingTypeId,
                 BillingRate = e.BillingRate,

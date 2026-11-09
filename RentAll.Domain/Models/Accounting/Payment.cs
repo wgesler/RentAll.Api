@@ -14,6 +14,8 @@ public class Payment
     public string Description { get; set; } = string.Empty;
     public int PaymentKindId { get; set; }
     public int? PaymentTypeId { get; set; }
+    public int? NumberTxId { get; set; }
+    public string? NumberTxnCode { get; set; }
     public string PaymentTypeDescription { get; set; } = string.Empty;
     public int? ChartOfAccountId { get; set; }
     public Guid? DepositId { get; set; }

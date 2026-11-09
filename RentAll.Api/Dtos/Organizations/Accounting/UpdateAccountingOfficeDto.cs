@@ -1,3 +1,4 @@
+using RentAll.Domain.Enums;
 using RentAll.Domain.Models.Common;
 
 namespace RentAll.Api.Dtos.Organizations.Accounting;
@@ -36,6 +37,7 @@ public class UpdateAccountingOfficeDto
     public int HardClosedMonth { get; set; } = 12;
     public int HardClosedYear { get; set; } = 2020;
     public int WorkOrderNo { get; set; }
+    public int PaymentIntegrationTypeId { get; set; }
     public decimal VisaFeePercentage { get; set; }
     public decimal McFeePercentage { get; set; }
     public decimal AmexFeePercentage { get; set; }
@@ -153,6 +155,9 @@ public class UpdateAccountingOfficeDto
         if (!hardClosedYearCheck.IsValid)
             return hardClosedYearCheck;
 
+        if (!Enum.IsDefined(typeof(PaymentIntegrationType), PaymentIntegrationTypeId))
+            return (false, $"PaymentIntegrationTypeId must be 0=None, 1=Number, or 2=Stripe. Received {PaymentIntegrationTypeId}.");
+
         return (true, null);
     }
 
@@ -192,6 +197,7 @@ public class UpdateAccountingOfficeDto
             HardClosedMonth = HardClosedMonth,
             HardClosedYear = HardClosedYear,
             WorkOrderNo = WorkOrderNo,
+            PaymentIntegrationTypeId = PaymentIntegrationTypeId,
             VisaFeePercentage = VisaFeePercentage,
             McFeePercentage = McFeePercentage,
             AmexFeePercentage = AmexFeePercentage,

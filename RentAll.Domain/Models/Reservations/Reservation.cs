@@ -34,6 +34,7 @@ public class Reservation
     public string? UnitTenantCode { get; set; }
     public string? GarageCode { get; set; }
     public BillingMethod BillingMethod { get; set; }
+    public int? NumberConsentId { get; set; }
     public ProrateType ProrateType { get; set; }
     public BillingType BillingType { get; set; }
     public decimal BillingRate { get; set; }

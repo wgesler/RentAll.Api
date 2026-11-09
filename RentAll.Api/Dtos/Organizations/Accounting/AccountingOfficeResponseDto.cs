@@ -38,6 +38,7 @@ public class AccountingOfficeResponseDto
     public int HardClosedMonth { get; set; }
     public int HardClosedYear { get; set; }
     public int WorkOrderNo { get; set; }
+    public int PaymentIntegrationTypeId { get; set; }
     public decimal VisaFeePercentage { get; set; }
     public decimal McFeePercentage { get; set; }
     public decimal AmexFeePercentage { get; set; }
@@ -112,6 +113,7 @@ public class AccountingOfficeResponseDto
         HardClosedMonth = accountingOffice.HardClosedMonth;
         HardClosedYear = accountingOffice.HardClosedYear;
         WorkOrderNo = accountingOffice.WorkOrderNo;
+        PaymentIntegrationTypeId = accountingOffice.PaymentIntegrationTypeId;
         VisaFeePercentage = accountingOffice.VisaFeePercentage;
         McFeePercentage = accountingOffice.McFeePercentage;
         AmexFeePercentage = accountingOffice.AmexFeePercentage;

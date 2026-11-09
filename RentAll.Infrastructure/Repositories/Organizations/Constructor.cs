@@ -176,6 +176,7 @@ public partial class OrganizationRepository : IOrganizationRepository
             HardClosedMonth = e.HardClosedMonth,
             HardClosedYear = e.HardClosedYear,
             WorkOrderNo = e.WorkOrderNo,
+            PaymentIntegrationTypeId = e.PaymentIntegrationTypeId,
             VisaFeePercentage = e.VisaFeePercentage,
             McFeePercentage = e.McFeePercentage,
             AmexFeePercentage = e.AmexFeePercentage,

@@ -33,6 +33,7 @@ public class AccountingOfficeEntity
     public int HardClosedMonth { get; set; }
     public int HardClosedYear { get; set; }
     public int WorkOrderNo { get; set; }
+    public int PaymentIntegrationTypeId { get; set; }
     public decimal VisaFeePercentage { get; set; }
     public decimal McFeePercentage { get; set; }
     public decimal AmexFeePercentage { get; set; }

@@ -34,6 +34,7 @@ public class ReservationEntity
 
     // Billing Fields
     public int BillingMethodId { get; set; }
+    public int? NumberConsentId { get; set; }
     public int ProrateTypeId { get; set; }
     public int BillingTypeId { get; set; }
     public decimal BillingRate { get; set; }

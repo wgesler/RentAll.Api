@@ -521,6 +521,8 @@ public partial class AccountingRepository : IAccountingRepository
             Description = e.Description,
             PaymentKindId = e.PaymentKindId,
             PaymentTypeId = e.PaymentTypeId,
+            NumberTxId = e.NumberTxId,
+            NumberTxnCode = e.NumberTxnCode,
             PaymentTypeDescription = e.PaymentTypeDescription,
             ChartOfAccountId = e.ChartOfAccountId,
             DepositId = e.DepositId == Guid.Empty ? null : e.DepositId,
