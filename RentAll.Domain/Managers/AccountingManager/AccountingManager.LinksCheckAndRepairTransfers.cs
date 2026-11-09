@@ -669,6 +669,9 @@ public partial class AccountingManager
                 continue;
             }
 
+            if (splitGroup.All(split => IsSecurityDepositAllocationMemo(split.Description)))
+                continue;
+
             var groupLabel = ResolveTransferSplitGroupInvoiceSourceCode(splitGroup)
                 ?? ResolveTransferSplitGroupPaymentSourceCode(splitGroup)
                 ?? "(missing source code)";

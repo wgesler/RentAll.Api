@@ -365,35 +365,32 @@ public partial class AccountingManager
         result.JournalEntries.Add(upsertedPaymentEntry);
         await DeleteClaimedOrphanJournalEntriesAsync(mainCashWorkingEntries, payment.OrganizationId, payment.PaymentId);
 
-        if (payment.PaymentTypeId != (int)PaymentType.SecurityDeposit)
+        foreach (var application in applications)
         {
-            foreach (var application in applications)
+            var invoiceLabel = application.Invoice.InvoiceCode;
+            var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
+                application.Invoice.OrganizationId,
+                application.Invoice.OfficeId,
+                application.Invoice,
+                application.PaymentLedgerLine);
+            result.Note(
+                $"Invoice {invoiceLabel}: memo-matched existing payment-flow JEs={existingPaymentEntries.Count} "
+                + $"[{string.Join(", ", existingPaymentEntries.Select(entry => $"{entry.JournalEntryCode}/k{(int)entry.JournalEntryKindId}/PayId={entry.PaymentId}"))}]");
+
+            var paymentResult = await UpsertInvoicePaymentSideEffectsAsync(
+                application.Invoice,
+                application.PaymentLedgerLine,
+                existingPaymentEntries,
+                currentUser,
+                createMainCashJournalEntry: false);
+
+            if (paymentResult.HasWarning)
+                result.Bail($"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects warning: {paymentResult.Warning}");
+
+            if (paymentResult.JournalEntry != null
+                && !result.JournalEntries.Any(entry => entry.JournalEntryId == paymentResult.JournalEntry.JournalEntryId))
             {
-                var invoiceLabel = application.Invoice.InvoiceCode;
-                var existingPaymentEntries = await GetJournalEntriesForInvoicePaymentLedgerLineAsync(
-                    application.Invoice.OrganizationId,
-                    application.Invoice.OfficeId,
-                    application.Invoice,
-                    application.PaymentLedgerLine);
-                result.Note(
-                    $"Invoice {invoiceLabel}: memo-matched existing payment-flow JEs={existingPaymentEntries.Count} "
-                    + $"[{string.Join(", ", existingPaymentEntries.Select(entry => $"{entry.JournalEntryCode}/k{(int)entry.JournalEntryKindId}/PayId={entry.PaymentId}"))}]");
-
-                var paymentResult = await UpsertInvoicePaymentSideEffectsAsync(
-                    application.Invoice,
-                    application.PaymentLedgerLine,
-                    existingPaymentEntries,
-                    currentUser,
-                    createMainCashJournalEntry: false);
-
-                if (paymentResult.HasWarning)
-                    result.Bail($"Invoice {invoiceLabel}: UpsertInvoicePaymentSideEffects warning: {paymentResult.Warning}");
-
-                if (paymentResult.JournalEntry != null
-                    && !result.JournalEntries.Any(entry => entry.JournalEntryId == paymentResult.JournalEntry.JournalEntryId))
-                {
-                    result.JournalEntries.Add(paymentResult.JournalEntry);
-                }
+                result.JournalEntries.Add(paymentResult.JournalEntry);
             }
         }
 
@@ -412,12 +409,20 @@ public partial class AccountingManager
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(payment.OrganizationId, payment.OfficeId);
         var accountsReceivableAccountId = GetDefaultAccountsReceivable(chartOfAccounts, payment.OfficeId, accountingOffice);
         var isSecurityDepositApplication = payment.PaymentTypeId == (int)PaymentType.SecurityDeposit;
+        var isSecurityDepositBankRefund = payment.Amount < 0
+            && payment.ChartOfAccountId is > 0
+            && (payment.PaymentTypeId == (int)PaymentType.Check || payment.PaymentTypeId == (int)PaymentType.Ach)
+            && IsSecurityDepositRefundMemo(payment.Description);
         var costCodeById = await LoadCostCodeByOfficeIdAsync(payment.OrganizationId, payment.OfficeId);
         int debitAccountId;
         if (isSecurityDepositApplication)
         {
             var (office, _) = await LoadOfficeCostCodeContextAsync(payment.OrganizationId, payment.OfficeId);
             debitAccountId = GetDefaultSecurityDepositAccount(chartOfAccounts, payment.OfficeId, office, costCodeById, accountingOffice);
+        }
+        else if (isSecurityDepositBankRefund)
+        {
+            debitAccountId = payment.ChartOfAccountId!.Value;
         }
         else
         {

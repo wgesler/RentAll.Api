@@ -338,13 +338,15 @@ public partial class AccountingManager
 
         foreach (var manualGroup in GroupUnlinkedTransferSplitsForReport(transfer.Splits))
         {
-            results.Add(BuildTransferReportLineAllocationFromSplits(
-                manualGroup,
-                Guid.Empty,
-                ownersAccountId,
-                secDepAccountId,
-                sdwAccountId,
-                businessAccountId));
+            results.Add(IsSecurityDepositAllocation(manualGroup)
+                ? BuildSecurityDepositAllocationRow(manualGroup, businessAccountId)
+                : BuildTransferReportLineAllocationFromSplits(
+                    manualGroup,
+                    Guid.Empty,
+                    ownersAccountId,
+                    secDepAccountId,
+                    sdwAccountId,
+                    businessAccountId));
         }
 
         return results;
@@ -381,6 +383,41 @@ public partial class AccountingManager
             return description;
 
         return $"ctx:{split.PropertyId}:{split.ReservationId}:{split.ContactId}";
+    }
+
+    private static bool IsSecurityDepositAllocation(IReadOnlyList<TransferSplit> splits)
+        => splits.Count > 0 && splits.All(split => IsSecurityDepositAllocationMemo(split.Description));
+
+    private static TransferReportLineAllocationResult BuildSecurityDepositAllocationRow(IReadOnlyList<TransferSplit> splits, int? businessAccountId)
+    {
+        var contextSplit = splits[0];
+        var markedTbr = splits.Where(split => IsSecurityDepositAllocationTbrMemo(split.Description)).Sum(split => split.Amount);
+        var business = splits.Any(split => IsSecurityDepositAllocationTbrMemo(split.Description))
+            ? splits.Where(split => !IsSecurityDepositAllocationTbrMemo(split.Description)).Sum(split => split.Amount)
+            : businessAccountId is > 0
+                ? splits.Where(split => split.ChartOfAccountId == businessAccountId).Sum(split => split.Amount)
+                : 0m;
+        var tbr = splits.Any(split => IsSecurityDepositAllocationTbrMemo(split.Description))
+            ? markedTbr
+            : splits.Where(split => businessAccountId is not > 0 || split.ChartOfAccountId != businessAccountId).Sum(split => split.Amount);
+        return new TransferReportLineAllocationResult
+        {
+            JournalEntryLineId = Guid.Empty,
+            DepositId = Guid.Empty,
+            EscrowAmount = RoundCurrency(business + tbr),
+            OwnerEscrow = 0m,
+            SecDep = RoundCurrency(tbr),
+            Sdw = 0m,
+            Business = RoundCurrency(business),
+            PropertyId = contextSplit.PropertyId,
+            ReservationId = contextSplit.ReservationId,
+            ContactId = contextSplit.ContactId,
+            Description = splits
+                .Select(split => split.Description)
+                .FirstOrDefault(value => IsSecurityDepositAllocationMemo(value) && !IsSecurityDepositAllocationTbrMemo(value))
+                ?? contextSplit.Description
+                ?? string.Empty
+        };
     }
 
     private static TransferReportLineAllocationResult BuildTransferReportLineAllocationFromSplits(IReadOnlyList<TransferSplit> splits, Guid journalEntryLineId, int? ownersAccountId, int? secDepAccountId, int? sdwAccountId, int? businessAccountId)
