@@ -16,6 +16,7 @@ public class UpdateEmailHtmlDto
     public string MissingReceipts { get; set; } = string.Empty;
     public string BillReport { get; set; } = string.Empty;
     public string Billing { get; set; } = string.Empty;
+    public string PaymentInformationRequest { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
@@ -24,6 +25,7 @@ public class UpdateEmailHtmlDto
     public string ScheduleSubject { get; set; } = string.Empty;
     public string MissingReceiptsSubject { get; set; } = string.Empty;
     public string BillReportSubject { get; set; } = string.Empty;
+    public string PaymentInformationRequestSubject { get; set; } = string.Empty;
 
     public (bool IsValid, string? ErrorMessage) IsValid(Guid organizationId)
     {
@@ -90,6 +92,12 @@ public class UpdateEmailHtmlDto
         if (string.IsNullOrWhiteSpace(BillReportSubject))
             return (false, "BillReportSubject is required");
 
+        if (string.IsNullOrWhiteSpace(PaymentInformationRequest))
+            return (false, "PaymentInformationRequest is required");
+
+        if (string.IsNullOrWhiteSpace(PaymentInformationRequestSubject))
+            return (false, "PaymentInformationRequestSubject is required");
+
         return (true, null);
     }
 
@@ -119,6 +127,8 @@ public class UpdateEmailHtmlDto
             ScheduleSubject = ScheduleSubject,
             MissingReceiptsSubject = MissingReceiptsSubject,
             BillReportSubject = BillReportSubject,
+            PaymentInformationRequest = PaymentInformationRequest,
+            PaymentInformationRequestSubject = PaymentInformationRequestSubject,
             ModifiedBy = currentUser
         };
     }

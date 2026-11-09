@@ -16,6 +16,7 @@ public class EmailHtmlEntity
     public string MissingReceipts { get; set; } = string.Empty;
     public string BillReport { get; set; } = string.Empty;
     public string Billing { get; set; } = string.Empty;
+    public string PaymentInformationRequest { get; set; } = string.Empty;
     public string LetterSubject { get; set; } = string.Empty;
     public string DepartureSubject { get; set; } = string.Empty;
     public string LeaseSubject { get; set; } = string.Empty;
@@ -24,6 +25,7 @@ public class EmailHtmlEntity
     public string ScheduleSubject { get; set; } = string.Empty;
     public string MissingReceiptsSubject { get; set; } = string.Empty;
     public string BillReportSubject { get; set; } = string.Empty;
+    public string PaymentInformationRequestSubject { get; set; } = string.Empty;
     public DateTimeOffset CreatedOn { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset ModifiedOn { get; set; }
