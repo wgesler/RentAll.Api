@@ -298,6 +298,9 @@ public partial class AccountingManager
             ? transfer.BankAccountId.Value
             : accounts.EscrowDepositAccountId;
         var memo = BuildTransferMemo(transfer.TransferCode, transfer.TransferDate);
+        var isSecurityDepositTransfer = IsSecurityDepositAllocationMemo(transfer.Description);
+        if (isSecurityDepositTransfer)
+            memo = BuildSecurityDepositTransferCreditMemo(SecurityDepositTransferInvoicePrefix(transfer.Description));
         var headerLineContext = FirstTransferSplitContext(transfer.Splits) with
         {
             PropertyId = transfer.PropertyId ?? FirstSplitContextId(transfer.Splits, split => split.PropertyId)
@@ -333,6 +336,13 @@ public partial class AccountingManager
             // Line Memo is VARCHAR(250). Aggregated transfers must not use long per-split descriptions
             // or JournalEntryLine_Add fails and the whole update rolls back (Posted JE stays old).
             var lineMemo = TruncateJournalEntryLineMemo(memo);
+            var invoiceCode = SecurityDepositTransferInvoicePrefix(transfer.Description);
+            var creditMemo = isSecurityDepositTransfer ? TruncateJournalEntryLineMemo(BuildSecurityDepositTransferCreditMemo(invoiceCode)) : lineMemo;
+            var debitMemo = isSecurityDepositTransfer
+                ? TruncateJournalEntryLineMemo(IsSecurityDepositAllocationTbrMemo(sampleSplit.Description)
+                    ? $"{invoiceCode}: Transfer: Security Deposit Transfer TBR"
+                    : BuildSecurityDepositTransferDebitMemo(invoiceCode))
+                : lineMemo;
 
             var destinationContext = ResolveAggregatedTransferSplitLineContext(accountTotal.Splits, sampleSplit);
             var destinationIsDebit = accountTotal.Amount > 0;
@@ -342,7 +352,7 @@ public partial class AccountingManager
                 ChartOfAccountId = accountTotal.ChartOfAccountId,
                 Debit = destinationIsDebit ? amount : 0,
                 Credit = destinationIsDebit ? 0 : amount,
-                Memo = lineMemo,
+                Memo = destinationIsDebit ? debitMemo : creditMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(destinationLine, destinationContext);
@@ -352,7 +362,7 @@ public partial class AccountingManager
                 ChartOfAccountId = bankAccountId,
                 Debit = destinationIsDebit ? 0 : amount,
                 Credit = destinationIsDebit ? amount : 0,
-                Memo = lineMemo,
+                Memo = destinationIsDebit ? creditMemo : debitMemo,
                 CreatedBy = currentUser
             };
             ApplyJournalEntryLineContext(bankLine, headerLineContext);

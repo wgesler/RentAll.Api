@@ -204,7 +204,7 @@ public partial class AccountingManager
             PaymentType = paymentType,
             PaymentDate = paymentDate,
             CurrentUser = currentUser,
-            Memo = $"{reservation.ReservationCode.Trim()}: Security Deposit",
+            Memo = BuildSecurityDepositPaymentMemo(reservation.ReservationCode),
             LineContext = new JournalEntryLineContext(reservation.PropertyId, reservation.PropertyCode, reservation.ReservationId, reservation.ReservationCode, contactId, reservation.ContactName)
         };
 
@@ -219,7 +219,7 @@ public partial class AccountingManager
             if (refundAmount != 0)
                 refundPayment = await CreateSecurityDepositRefundPaymentAsync(depositContext, returnInvoice.InvoiceId, costCodeById, officeAccess, refundAmount);
             if (ShouldCreateSecurityDepositTransfer(paymentType, depositContext.CollectedAmount, refundAmount))
-                allocationTransfer = await CreateSecurityDepositAllocationTransferAsync(depositContext, refundAmount);
+                allocationTransfer = await CreateSecurityDepositAllocationTransferAsync(depositContext, returnInvoice.InvoiceCode, refundAmount);
 
             await _reservationRepository.MarkDepositReturnedAsync(reservation.ReservationId, organizationId, currentUser);
         }
@@ -355,6 +355,16 @@ public partial class AccountingManager
     private async Task<Payment> CreateSecurityDepositRefundPaymentAsync(SecurityDepositContext context, Guid invoiceId, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess, decimal refundAmount)
     {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
+        var refundAccountId = context.PaymentType is PaymentType.Check or PaymentType.Ach
+            ? GetDefaultEscrowSecurityDepositAccount(chartOfAccounts, context.OfficeId, accountingOffice)
+            : context.ChartOfAccountId > 0
+                ? context.ChartOfAccountId
+                : GetDefaultUndepositedFunds(chartOfAccounts, context.OfficeId, accountingOffice);
+        if (refundAccountId <= 0)
+            throw new Exception(context.PaymentType is PaymentType.Check or PaymentType.Ach
+                ? "Security deposit escrow is not configured for this office"
+                : "Select the bank account for this security deposit refund");
+
         var payment = new Payment
         {
             OrganizationId = context.OrganizationId,
@@ -365,9 +375,7 @@ public partial class AccountingManager
             Description = BuildSecurityDepositRefundMemo(context.ReservationCode),
             PaymentKindId = (int)PaymentKind.Invoice,
             PaymentTypeId = (int)context.PaymentType,
-            ChartOfAccountId = context.ChartOfAccountId > 0
-                ? context.ChartOfAccountId
-                : GetDefaultUndepositedFunds(chartOfAccounts, context.OfficeId, accountingOffice),
+            ChartOfAccountId = refundAccountId,
             IsActive = true,
             CreatedBy = context.CurrentUser
         };
@@ -386,7 +394,7 @@ public partial class AccountingManager
         return (paymentType == PaymentType.Check || paymentType == PaymentType.Ach) && businessAmount != 0m;
     }
 
-    private async Task<Transfer> CreateSecurityDepositAllocationTransferAsync(SecurityDepositContext context, decimal refundAmount)
+    private async Task<Transfer> CreateSecurityDepositAllocationTransferAsync(SecurityDepositContext context, string invoiceCode, decimal refundAmount)
     {
         var collectedAmount = RoundSecurityDepositAmount(context.CollectedAmount);
         var tbrAmount = RoundSecurityDepositAmount(Math.Min(Math.Abs(refundAmount), collectedAmount));
@@ -401,18 +409,22 @@ public partial class AccountingManager
         if (escrowSecurityDepositAccountId <= 0 || (businessAmount != 0 && businessAccountId <= 0))
             throw new Exception("Security deposit escrow or business bank is not configured for this office");
 
-        var tbrAccountId = context.PaymentType == PaymentType.CreditCardRefund
+        var moveTenantOnTransfer = context.PaymentType == PaymentType.CreditCardRefund;
+        var tbrAccountId = moveTenantOnTransfer
             ? (escrowDepositAccountId > 0 ? escrowDepositAccountId : escrowSecurityDepositAccountId)
             : context.ChartOfAccountId;
-        if (tbrAmount != 0 && tbrAccountId <= 0)
+        if (moveTenantOnTransfer && tbrAmount != 0 && tbrAccountId <= 0)
             throw new Exception("Select the bank account for this security deposit refund");
 
-        var description = BuildSecurityDepositAllocationMemo(context.ReservationCode);
+        if (string.IsNullOrWhiteSpace(invoiceCode))
+            throw new Exception("No invoice was found for the security deposit return");
+
+        var description = BuildSecurityDepositTransferCreditMemo(invoiceCode);
         var splits = new List<TransferSplit>();
         if (businessAmount != 0)
             splits.Add(BuildSecurityDepositAllocationSplit(context, businessAccountId, businessAmount, description));
-        if (tbrAmount != 0)
-            splits.Add(BuildSecurityDepositAllocationSplit(context, tbrAccountId, tbrAmount, BuildSecurityDepositAllocationTbrMemo(context.ReservationCode)));
+        if (moveTenantOnTransfer && tbrAmount != 0)
+            splits.Add(BuildSecurityDepositAllocationSplit(context, tbrAccountId, tbrAmount, $"{invoiceCode.Trim()}: Transfer: Security Deposit Transfer TBR"));
         if (splits.Count == 0)
             throw new Exception("No security deposit amount is available to transfer");
 
@@ -454,7 +466,6 @@ public partial class AccountingManager
 
     private async Task DeleteSecurityDepositAllocationTransferAsync(Guid organizationId, Reservation reservation, Guid currentUser)
     {
-        var description = BuildSecurityDepositAllocationMemo(reservation.ReservationCode);
         var transfers = await _accountingRepository.GetTransfersByCriteriaAsync(new TransferGetCriteria
         {
             OrganizationId = organizationId,
@@ -464,7 +475,7 @@ public partial class AccountingManager
         foreach (var transfer in transfers ?? [])
         {
             var matchesReservation = transfer.Splits?.Any(split => split.ReservationId == reservation.ReservationId) == true
-                || string.Equals(transfer.Description?.Trim(), description, StringComparison.OrdinalIgnoreCase);
+                || IsSecurityDepositTransferForReservation(transfer.Description, reservation.ReservationCode);
             if (matchesReservation && IsSecurityDepositAllocationMemo(transfer.Description))
                 await DeleteTransferAsync(transfer.TransferId, organizationId, currentUser);
         }
@@ -928,8 +939,8 @@ public partial class AccountingManager
                 var reservationId = splits.Select(split => split.ReservationId).FirstOrDefault(id => id is { } value && value != Guid.Empty);
                 var matchedRow = reservationId is { } splitReservationId && splitReservationId != Guid.Empty
                     ? rows.FirstOrDefault(row => row.ReservationId == splitReservationId)
-                    : rows.FirstOrDefault(row => string.Equals(BuildSecurityDepositAllocationMemo(row.ReservationCode), transfer.Description?.Trim(), StringComparison.OrdinalIgnoreCase)
-                        || splits.Any(split => string.Equals(BuildSecurityDepositAllocationMemo(row.ReservationCode), split.Description?.Trim(), StringComparison.OrdinalIgnoreCase)));
+                    : rows.FirstOrDefault(row => IsSecurityDepositTransferForReservation(transfer.Description, row.ReservationCode)
+                        || splits.Any(split => IsSecurityDepositTransferForReservation(split.Description, row.ReservationCode)));
                 if (matchedRow == null)
                     continue;
 
@@ -1029,10 +1040,9 @@ public partial class AccountingManager
         var journalEntriesBySourceId = await LoadJournalEntriesForInvoiceAsync(organizationId, officeId, securityDepositInvoice);
         var (paidJournalEntryId, paidJournalEntryCode) = ResolvePaymentJournalEntryForDepositInvoice(journalEntriesBySourceId, undepositedFundsAccountId);
         var reservationCode = invoices.Select(invoice => invoice.ReservationCode).FirstOrDefault(code => !string.IsNullOrWhiteSpace(code)) ?? string.Empty;
-        var applicationMemo = $"{reservationCode.Trim()}: Security Deposit";
         var ignoredPaymentIds = (await GetSecurityDepositApplicationPaymentsAsync(organizationId, invoices, reservationCode))
             .Where(payment => IsSecurityDepositRefundMemo(payment.Description)
-                || string.Equals(payment.Description?.Trim(), applicationMemo, StringComparison.OrdinalIgnoreCase))
+                || IsSecurityDepositPaymentMemo(payment.Description, reservationCode))
             .Select(payment => payment.PaymentId)
             .ToHashSet();
         var depositAmount = 0m;
@@ -1426,24 +1436,72 @@ public partial class AccountingManager
 
     #region Helpber Memos
 
+    private static string BuildSecurityDepositPaymentMemo(string reservationCode)
+        => $"{reservationCode.Trim()}: Security Deposit Re-Payment";
+
     private static string BuildSecurityDepositRefundMemo(string reservationCode)
         => $"{reservationCode.Trim()}: Security Deposit Refund";
 
     private static string BuildSecurityDepositAllocationMemo(string reservationCode)
-        => $"{reservationCode.Trim()}: Security Deposit Allocation";
+        => $"{reservationCode.Trim()}: Security Deposit Transfer";
+
+    private static string BuildSecurityDepositTransferCreditMemo(string invoiceCode)
+        => $"{invoiceCode.Trim()}: Transfer: Security Deposit Transfer";
+
+    private static string BuildSecurityDepositTransferDebitMemo(string invoiceCode)
+        => $"{invoiceCode.Trim()}: Transfer: Outstanding Charges";
+
+    private static string SecurityDepositTransferInvoicePrefix(string? description)
+    {
+        var value = (description ?? string.Empty).Trim();
+        const string marker = ": Transfer:";
+        var markerIndex = value.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex > 0)
+            return value[..markerIndex].Trim();
+
+        var colon = value.IndexOf(':');
+        return colon > 0 ? value[..colon].Trim() : value;
+    }
 
     private static string BuildSecurityDepositAllocationTbrMemo(string reservationCode)
-        => $"{reservationCode.Trim()}: Security Deposit Allocation TBR";
+        => $"{reservationCode.Trim()}: Security Deposit Transfer TBR";
+
+    private static bool IsSecurityDepositPaymentMemo(string? description, string reservationCode)
+    {
+        var value = (description ?? string.Empty).Trim();
+        var code = reservationCode.Trim();
+        return string.Equals(value, BuildSecurityDepositPaymentMemo(code), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, $"{code}: Security Deposit Payment", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, $"{code}: Security Deposit", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static bool IsSecurityDepositRefundMemo(string? description)
         => string.Equals((description ?? string.Empty).Trim(), BuildSecurityDepositRefundMemo(ExtractReservationCode(description)), StringComparison.OrdinalIgnoreCase)
             || (description ?? string.Empty).Contains(": Security Deposit Refund", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsSecurityDepositAllocationMemo(string? description)
-        => (description ?? string.Empty).Contains(": Security Deposit Allocation", StringComparison.OrdinalIgnoreCase);
+    {
+        var value = description ?? string.Empty;
+        return value.Contains(": Security Deposit Allocation", StringComparison.OrdinalIgnoreCase)
+            || value.Contains(": Security Deposit Transfer", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static bool IsSecurityDepositAllocationTbrMemo(string? description)
-        => (description ?? string.Empty).Contains(": Security Deposit Allocation TBR", StringComparison.OrdinalIgnoreCase);
+    {
+        var value = description ?? string.Empty;
+        return value.Contains(": Security Deposit Allocation TBR", StringComparison.OrdinalIgnoreCase)
+            || value.Contains(": Security Deposit Transfer TBR", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSecurityDepositTransferForReservation(string? description, string reservationCode)
+    {
+        var code = reservationCode.Trim();
+        var value = (description ?? string.Empty).Trim();
+        return string.Equals(value, $"{code}: Security Deposit Transfer", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, $"{code}: Security Deposit Allocation", StringComparison.OrdinalIgnoreCase)
+            || (value.Contains(code, StringComparison.OrdinalIgnoreCase)
+                && value.Contains(": Transfer: Security Deposit Transfer", StringComparison.OrdinalIgnoreCase));
+    }
 
     private static string ExtractReservationCode(string? description)
     {
