@@ -213,10 +213,11 @@ public partial class AccountingManager
         Transfer? allocationTransfer = null;
         try
         {
-            applicationPayment = await CreateSecurityDepositInvoicePaymentAsync(depositContext, invoices, costCodeById, officeAccess);
+            var returnInvoice = ResolveSecurityDepositReturnInvoice(invoices, costCodeById);
+            applicationPayment = await CreateSecurityDepositInvoicePaymentAsync(depositContext, returnInvoice.InvoiceId, costCodeById, officeAccess);
             var refundAmount = RoundSecurityDepositAmount(amount);
             if (refundAmount != 0)
-                refundPayment = await CreateSecurityDepositRefundPaymentAsync(depositContext, invoices, costCodeById, officeAccess, refundAmount);
+                refundPayment = await CreateSecurityDepositRefundPaymentAsync(depositContext, returnInvoice.InvoiceId, costCodeById, officeAccess, refundAmount);
             if (ShouldCreateSecurityDepositTransfer(paymentType, depositContext.CollectedAmount, refundAmount))
                 allocationTransfer = await CreateSecurityDepositAllocationTransferAsync(depositContext, refundAmount);
 
@@ -315,18 +316,22 @@ public partial class AccountingManager
 
     #region Deposit Application
 
-    private async Task<Payment> CreateSecurityDepositInvoicePaymentAsync(SecurityDepositContext context, IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess)
+    private static Invoice ResolveSecurityDepositReturnInvoice(IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById)
     {
-        var orderedInvoices = invoices
+        var activeInvoices = invoices
             .Where(invoice => invoice.IsActive)
             .OrderBy(invoice => invoice.InvoiceDate)
             .ThenBy(invoice => invoice.InvoiceCode)
             .ToList();
-        if (orderedInvoices.Count == 0)
-            throw new Exception("No invoice was found for the security deposit payment");
+        if (activeInvoices.Count == 0)
+            throw new Exception("No invoice was found for the security deposit return");
 
-        var invoiceIds = orderedInvoices.Select(invoice => invoice.InvoiceId).ToList();
+        var invoiceWithOutstandingCharges = activeInvoices.LastOrDefault(invoice => CalculateInvoiceNonSecurityDepositNetDue(invoice, costCodeById) > 0m);
+        return invoiceWithOutstandingCharges ?? activeInvoices[^1];
+    }
 
+    private async Task<Payment> CreateSecurityDepositInvoicePaymentAsync(SecurityDepositContext context, Guid invoiceId, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess)
+    {
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
         var (office, _) = await LoadOfficeCostCodeContextAsync(context.OrganizationId, context.OfficeId);
         var payment = new Payment
@@ -344,19 +349,11 @@ public partial class AccountingManager
             CreatedBy = context.CurrentUser
         };
 
-        return await ApplyInvoicePaymentAsync(payment, invoiceIds, null, officeAccess, context.CurrentUser);
+        return await ApplyInvoicePaymentAsync(payment, new List<Guid> { invoiceId }, null, officeAccess, context.CurrentUser);
     }
 
-    private async Task<Payment> CreateSecurityDepositRefundPaymentAsync(SecurityDepositContext context, IReadOnlyList<Invoice> invoices, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess, decimal refundAmount)
+    private async Task<Payment> CreateSecurityDepositRefundPaymentAsync(SecurityDepositContext context, Guid invoiceId, IReadOnlyDictionary<int, CostCode> costCodeById, string officeAccess, decimal refundAmount)
     {
-        var orderedInvoices = invoices
-            .Where(invoice => invoice.IsActive)
-            .OrderBy(invoice => invoice.InvoiceDate)
-            .ThenBy(invoice => invoice.InvoiceCode)
-            .ToList();
-        if (orderedInvoices.Count == 0)
-            throw new Exception("No invoice was found for the security deposit refund");
-
         var (chartOfAccounts, accountingOffice) = await LoadAccountContextAsync(context.OrganizationId, context.OfficeId);
         var payment = new Payment
         {
@@ -375,7 +372,7 @@ public partial class AccountingManager
             CreatedBy = context.CurrentUser
         };
 
-        return await ApplyInvoicePaymentAsync(payment, orderedInvoices.Select(invoice => invoice.InvoiceId).ToList(), null, officeAccess, context.CurrentUser);
+        return await ApplyInvoicePaymentAsync(payment, new List<Guid> { invoiceId }, null, officeAccess, context.CurrentUser);
     }
 
     private static bool ShouldCreateSecurityDepositTransfer(PaymentType paymentType, decimal collectedAmount, decimal refundAmount)

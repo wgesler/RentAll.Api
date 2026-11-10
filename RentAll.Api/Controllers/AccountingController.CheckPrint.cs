@@ -35,9 +35,6 @@ public partial class AccountingController
                 if (journalEntry.OfficeId != dto.OfficeId)
                     return BadRequest($"Journal entry {journalEntryId} does not belong to office {dto.OfficeId}");
 
-                if (journalEntry.SourceTypeId != (int)SourceType.BillPayment)
-                    return BadRequest($"Journal entry {journalEntryId} is not a bill payment");
-
                 if (!string.IsNullOrWhiteSpace(journalEntry.CheckNumber))
                     return BadRequest($"Journal entry {journalEntryId} already has check number {journalEntry.CheckNumber}");
 

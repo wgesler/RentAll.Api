@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,8 @@ namespace RentAll.Infrastructure.Services;
 
 public class SendGridEmailService : IEmailService
 {
+    private static readonly Regex DataImageSrcRegex = new(@"src\s*=\s*([""'])data:(image/[a-zA-Z0-9.+-]+);base64,([^""']+)\1", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly SendGridSettings _settings;
     private readonly ILogger<SendGridEmailService> _logger;
 
@@ -47,10 +50,13 @@ public class SendGridEmailService : IEmailService
         var toRecipients = message.ToRecipients
             .Select(recipient => ToSendGridAddress(recipient.Email, recipient.Name))
             .ToList();
+        var htmlContent = message.HtmlContent;
         var mail = MailHelper.CreateSingleEmailToMultipleRecipients(from, toRecipients, message.Subject,
             string.IsNullOrWhiteSpace(message.PlainTextContent) ? null : message.PlainTextContent,
-            string.IsNullOrWhiteSpace(message.HtmlContent) ? null : message.HtmlContent,
+            null,
             false);
+        if (!string.IsNullOrWhiteSpace(htmlContent))
+            mail.HtmlContent = AttachInlineImages(mail, htmlContent);
         mail.SetReplyTo(ToSendGridAddress(fromEmail, fromName));
 
         if (!_settings.EnableSendGridClickTracking)
@@ -104,6 +110,35 @@ public class SendGridEmailService : IEmailService
 
         if (!string.IsNullOrWhiteSpace(base64File))
             mail.AddAttachment(fileName, base64File, contentType);
+    }
+
+    private static string AttachInlineImages(SendGridMessage mail, string htmlContent)
+    {
+        var index = 0;
+        return DataImageSrcRegex.Replace(htmlContent, match =>
+        {
+            var quote = match.Groups[1].Value;
+            var contentType = match.Groups[2].Value;
+            var base64 = match.Groups[3].Value;
+            if (string.IsNullOrWhiteSpace(base64))
+                return match.Value;
+
+            index++;
+            var contentId = $"rentall-inline-{index}";
+            var subtype = contentType.Contains('/') ? contentType.Split('/')[1] : "png";
+            if (subtype.Equals("jpeg", StringComparison.OrdinalIgnoreCase))
+                subtype = "jpg";
+
+            mail.AddAttachment(new Attachment
+            {
+                Content = base64,
+                Type = contentType,
+                Filename = $"image-{index}.{subtype}",
+                Disposition = "inline",
+                ContentId = contentId
+            });
+            return $"src={quote}cid:{contentId}{quote}";
+        });
     }
 
     private static SendGridEmailAddress ToSendGridAddress(string email, string? name)
