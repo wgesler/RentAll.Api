@@ -49,7 +49,7 @@ public sealed class SidebarController : BaseController
         var depositCount = depositsTask.Result.Rows.Count(row => row.DepartureDate <= today
             && !row.DepositReturned
             && (Math.Max(0m, row.BalanceAmount - row.ReturnedAmount) > 0.005m
-                || Math.Max(0m, row.OwedAmount - row.TransferredAmount) > 0.005m));
+                || row.ToBeTransferredAmount > 0.005m));
 
         return new SidebarAttentionSummaryDto(countsTask.Result.AssignedTicketCount, countsTask.Result.NewLeadCount,
             depositCount, countsTask.Result.PendingReceiptDraftCount);

@@ -340,7 +340,7 @@ public partial class AccountingManager
             var creditMemo = isSecurityDepositTransfer ? TruncateJournalEntryLineMemo(BuildSecurityDepositTransferCreditMemo(invoiceCode)) : lineMemo;
             var debitMemo = isSecurityDepositTransfer
                 ? TruncateJournalEntryLineMemo(IsSecurityDepositAllocationTbrMemo(sampleSplit.Description)
-                    ? $"{invoiceCode}: Transfer: Security Deposit Transfer TBR"
+                    ? BuildSecurityDepositTransferTbrMemo(invoiceCode)
                     : BuildSecurityDepositTransferDebitMemo(invoiceCode))
                 : lineMemo;
 

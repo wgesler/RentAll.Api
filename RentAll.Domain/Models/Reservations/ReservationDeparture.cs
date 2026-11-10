@@ -35,6 +35,7 @@ public class ReservationDeparture
     public decimal TransferredAmount { get; set; }
     public decimal OwedAmount { get; set; }
     public decimal BalanceAmount { get; set; }
+    public decimal ToBeTransferredAmount { get; set; }
     public Guid? JournalEntryId { get; set; }
     public string JournalEntryCode { get; set; } = string.Empty;
     public Guid? PaidJournalEntryId { get; set; }

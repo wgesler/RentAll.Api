@@ -411,14 +411,19 @@ public partial class AccountingManager
         var isSecurityDepositApplication = payment.PaymentTypeId == (int)PaymentType.SecurityDeposit;
         var isSecurityDepositBankRefund = payment.Amount < 0
             && payment.ChartOfAccountId is > 0
-            && (payment.PaymentTypeId == (int)PaymentType.Check || payment.PaymentTypeId == (int)PaymentType.Ach)
+            && !IsSecurityDepositCardRefund((PaymentType)(payment.PaymentTypeId ?? -1))
             && IsSecurityDepositRefundMemo(payment.Description);
         var costCodeById = await LoadCostCodeByOfficeIdAsync(payment.OrganizationId, payment.OfficeId);
         int debitAccountId;
         if (isSecurityDepositApplication)
         {
-            var (office, _) = await LoadOfficeCostCodeContextAsync(payment.OrganizationId, payment.OfficeId);
-            debitAccountId = GetDefaultSecurityDepositAccount(chartOfAccounts, payment.OfficeId, office, costCodeById, accountingOffice);
+            if (payment.ChartOfAccountId is > 0)
+                debitAccountId = payment.ChartOfAccountId.Value;
+            else
+            {
+                var (office, _) = await LoadOfficeCostCodeContextAsync(payment.OrganizationId, payment.OfficeId);
+                debitAccountId = GetDefaultSecurityDepositAccount(chartOfAccounts, payment.OfficeId, office, costCodeById, accountingOffice);
+            }
         }
         else if (isSecurityDepositBankRefund)
         {
